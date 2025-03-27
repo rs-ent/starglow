@@ -24,7 +24,6 @@ export const authOptions = {
             clientId: process.env.KAKAO_CLIENT_ID!,
             clientSecret: process.env.KAKAO_CLIENT_SECRET!,
         }),
-            
     ],
     session: {
         strategy: "database" as const,
