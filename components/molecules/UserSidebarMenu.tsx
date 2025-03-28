@@ -1,6 +1,6 @@
 /// components\molecules\UserSidebarMenu.tsx
 
-import UserSidebarButton from "../atoms/UserSidebarButton";
+import Button from "../atoms/Button";
 
 interface UserSidebarMenuProps {
     items: {
@@ -16,11 +16,14 @@ export default function UserSidebarMenu(
     return (
         <div className="flex flex-col gap-2">
             {items.map((item) => (
-                <UserSidebarButton
+                <Button
                     key={item.key}
-                    label={item.label}
+                    variant="outline"
                     onClick={() => onSelect(item.key)}
-                />
+                    className="w-full"
+                >
+                    {item.label}
+                </Button>
             ))}
         </div>
     );

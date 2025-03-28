@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { getProviders } from "next-auth/react";
-import SignInSocialButton from "@/components/atoms/SignInSocialButton";
+import SocialAuthButton from "@/components/atoms/SocialAuthButton";
 
 export default function SignInPage() {
     const [providers, setProviders] = useState<Record<string, any> | null>(null);
@@ -24,7 +24,7 @@ export default function SignInPage() {
                 </h1>
 
                 {providers && Object.values(providers).map((provider) => (
-                    <SignInSocialButton
+                    <SocialAuthButton
                         key={provider.id}
                         providerId={provider.id}
                         providerName={provider.name}
