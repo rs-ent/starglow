@@ -4,8 +4,7 @@
 import Image from "next/image";
 import Button from "./Button";
 import { signIn } from "next-auth/react";
-
-type ProviderType = "google" | "twitter" | "kakao";
+import { ProviderType } from "@/types/auth";
 
 interface SocialAuthButtonProps {
     providerId: ProviderType;

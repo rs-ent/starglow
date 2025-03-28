@@ -1,18 +1,22 @@
 /// app\user\[userId]\page.tsx
 
 import { auth } from "@/app/auth/authSettings";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { getUserById } from "@/lib/prisma/user";
-import type { User } from "@prisma/client";
 import UserTemplate from "@/templates/UserTemplate";
 
-export default async function UserProfile({ params }: { params: { userId: string } }) {
+type Params = Promise<{ userId: string }>
+
+export default async function UserProfile(props: { params: Params }) {
   const session = await auth();
+  if (!session?.user) return redirect("/auth/signin");
 
-  if (!session?.user) redirect("/auth/signin");
+  const params = await props.params;
+  const userId = params.userId;
+  const userData = await getUserById(userId);
+  if (!userData) return notFound();
 
-  const userData = await getUserById(params.userId) as User;
-  const owner = session.user.id === params.userId;
+  const owner = session.user.id === userId;
 
   return <UserTemplate userData={userData} owner={owner} />;
 }

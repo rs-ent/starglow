@@ -4,12 +4,15 @@
 import { useEffect, useState } from "react";
 import { getProviders } from "next-auth/react";
 import SocialAuthButton from "@/components/atoms/SocialAuthButton";
+import { Provider } from "@/types/auth";
 
 export default function SignInPage() {
-    const [providers, setProviders] = useState<Record<string, any> | null>(null);
+    const [providers, setProviders] = useState<Record<string, Provider> | null>(null);
 
     useEffect(() => {
-        getProviders().then(setProviders);
+        getProviders().then((result) => {
+            setProviders(result as Record<string, Provider>);
+        });
     }, []);
 
     return (
