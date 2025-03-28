@@ -1,6 +1,6 @@
 /// app\auth\authGuard.tsx
 
-import { auth } from "@/app/auth/settings";
+import { auth } from "@/app/auth/authSettings";
 import { redirect } from "next/navigation";
 
 

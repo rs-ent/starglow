@@ -1,6 +1,6 @@
 /// app\user\page.tsx
 
-import { auth } from "@/app/auth/settings";
+import { auth } from "@/app/auth/authSettings";
 import { redirect } from "next/navigation";
 
 export default async function UserEntryPage() {

@@ -1,6 +1,6 @@
 /// app\user\[userId]\page.tsx
 
-import { auth } from "@/app/auth/settings";
+import { auth } from "@/app/auth/authSettings";
 import { redirect } from "next/navigation";
 import { getUserById } from "@/lib/prisma/user";
 import type { User } from "@prisma/client";
