@@ -12,14 +12,11 @@ export default function Quests() {
     return (
         <div className="relative flex flex-col w-full">
             <div className="bg">
-                <Image
+                <img
                     src="/bg/blur-galaxy.svg"
                     alt="Background"
-                    fill
-                    priority
-                    className="fixed object-cover object-center -z-50"
+                    className="fixed inset-0 w-full h-full object-cover object-center -z-50"
                 />
-
                 <motion.div
                     className="fixed -top-100 -right-100 -z-30"
                     animate={{ x: [0, 20, 0], y: [0, -10, 0] }}
@@ -29,12 +26,12 @@ export default function Quests() {
                         repeat: Infinity,
                     }}
                 >
-                    <Image
+                    <img
                         src="/elements/blur.svg"
                         alt="Blur Element"
-                        width={1000}
-                        height={1000}
+                        style={{ width: '1000px', height: 'auto' }}
                     />
+
                 </motion.div>
 
                 <motion.div
@@ -46,12 +43,12 @@ export default function Quests() {
                         repeat: Infinity,
                     }}
                 >
-                    <Image
+                    <img
                         src="/elements/donut.svg"
                         alt="Donut"
-                        width={600}
-                        height={600}
+                        style={{ width: '600px', height: 'auto' }}
                     />
+
                 </motion.div>
 
                 <motion.div
@@ -63,11 +60,10 @@ export default function Quests() {
                         repeat: Infinity,
                     }}
                 >
-                    <Image
+                    <img
                         src="/logo/3d.svg"
                         alt="Logo"
-                        width={200}
-                        height={200}
+                        style={{ width: '200px', height: 'auto' }}
                     />
                 </motion.div>
 

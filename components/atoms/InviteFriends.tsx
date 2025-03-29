@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { H3 } from "./Typography";
 
 export default function InviteFriends() {
@@ -8,12 +7,11 @@ export default function InviteFriends() {
                 <H3 size={25} className="text-start p-4">
                     Invite Friends!
                 </H3>
-                <Image
+                <img
                     src="/ui/letter.svg"
                     alt="Invite Friends Letter"
-                    width={110}
-                    height={110}
                     className="absolute -top-5 right-2"
+                    style={{ width: '110px', height: 'auto' }}
                 />
             </div>
 

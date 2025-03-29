@@ -4,7 +4,6 @@
 
 import { H1, H2, Paragraph } from "../atoms/Typography";
 import LinkButton from "../atoms/LinkButton";
-import Image from "next/image";
 import Icon from "../atoms/Icon";
 import { ArrowDown } from "lucide-react";
 import { motion } from "framer-motion";
@@ -51,11 +50,9 @@ export default function HeroGitbook() {
                                     md:-top-5 md:left-[calc(90%+25px)] md:w-[75px]
                                     lg:-top-6 lg:left-[calc(90%+30px)] lg:w-[100px]
                                     xl:-top-5 xl:left-[calc(90%+60px)]">
-                        <Image
+                        <img
                             src="/elements/el02.svg"
                             alt="el02"
-                            width={100}
-                            height={100}
                             className="w-full h-auto"
                         />
                     </div>
@@ -72,11 +69,9 @@ export default function HeroGitbook() {
                                     md:top-2 md:left-[calc(50%-20px)] md:w-[75px]
                                     lg:top-2 lg:left-[calc(50%-27px)] lg:w-[100px]
                                     xl:top-7 xl:left-[calc(50%-20px)]">
-                        <Image
+                        <img
                             src="/elements/el02.svg"
                             alt="el02"
-                            width={100}
-                            height={100}
                             className="w-full h-auto"
                         />
                     </div>
@@ -93,12 +88,10 @@ export default function HeroGitbook() {
                                     md:-top-10 md:left-[calc(0%+8px)] md:w-[75px]
                                     lg:-top-7 lg:left-[calc(0%-2px)] lg:w-[100px]
                                     xl:-top-1 xl:left-[calc(0%+2px)]">
-                        <Image
+                        <img
                             src="/elements/el02-1.svg"
                             alt="el02-1"
-                            width={100}
-                            height={100}
-                            className="absolute top-17 left-[calc(0%-40px)] -z-10"
+                            className="absolute top-17 left-[calc(0%-40px)] -z-10 w-[100px] h-auto"
                         />
                     </div>
                 </motion.div>
@@ -120,12 +113,12 @@ export default function HeroGitbook() {
                 lg:w-[110px] lg:mb-20
                 xl:w-[130px] xl:mb-20
             ">
-                <Image
+                <img
                     src="/elements/el01.svg"
                     alt="element01"
-                    width={130}
-                    height={50}
+                    style={{ width: '130px', height: 'auto' }}
                 />
+
             </div>
             <LinkButton href="https://docs.starglow.io" target="_blank" img="/icons/gitbook.svg" frameSize={35} textSize={30} paddingSize={45} gapSize={35}
                 className="flex mb-32 bg-gradient-to-br font-body font-extrabold from-[rgba(103,101,241,1)] to-[rgba(135,94,244,1)] rounded-full drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] hover:text-white hover:animate-pulse"

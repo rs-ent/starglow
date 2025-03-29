@@ -2,7 +2,6 @@
 
 import FollowUs from "../molecules/FollowUs";
 import { Paragraph } from "../atoms/Typography";
-import Image from "next/image";
 
 interface FooterProps {
     followUsVisible?: boolean;
@@ -12,8 +11,8 @@ interface FooterProps {
     followUsGapSize?: number;
 }
 
-export default function Footer({ 
-    followUsVisible = true, 
+export default function Footer({
+    followUsVisible = true,
     followUsMinimal = false,
     followUsFrameSize = 30,
     followUsTextSize = 10,
@@ -32,19 +31,18 @@ export default function Footer({
         `}>
                 {/* Logo */}
                 <div className={`flex flex-col gap-3 items-start`}>
-                    <Image
+                    <img
                         src="/logo/lt-row.svg"
                         alt="Starglow"
-                        width={200}
-                        height={100}
                         className="
-                        w-[120px] h-auto
-                        sm:w-[140px] sm:h-auto
-                        md:w-[160px] md:h-auto
-                        lg:w-[180px] lg:h-auto
-                        xl:w-[220px] xl:h-auto
-                    "
+                            w-[120px] h-auto
+                            sm:w-[140px]
+                            md:w-[160px]
+                            lg:w-[180px]
+                            xl:w-[220px]
+                        "
                     />
+
                     <Paragraph className="font-body font-extralight
                     text-[0.6rem] sm:text-[0.6rem] md:text-[0.7rem] lg:text-[0.7rem] xl:text-[0.8rem]
                 ">

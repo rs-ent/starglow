@@ -35,13 +35,23 @@ export default function Funds({
             <div className={cn("flex items-center justify-center", gapClass)}>
                 {fundsIcon && (
                     <div className="p-1 bg-gradient-to-br from-[rgba(0,0,0,0.7)] to-[rgba(255,255,255,0.3)] rounded-full flex items-center justify-center">
-                        <Image
-                            src={fundsIcon}
-                            alt={`${fundsLabel} logo`}
-                            width={frameSize}
-                            height={frameSize}
-                            className={cn(frameClass)}
-                        />
+                        {fundsIcon.endsWith('.svg') ? (
+                            <img
+                                src={fundsIcon}
+                                alt={`${fundsLabel} logo`}
+                                className={cn(frameClass)}
+                                style={{ width: `${frameSize}px`, height: 'auto' }}
+                            />
+                        ) : (
+                            <Image
+                                src={fundsIcon}
+                                alt={`${fundsLabel} logo`}
+                                width={frameSize}
+                                height={frameSize}
+                                className={cn(frameClass)}
+                                style={{ objectFit: 'contain' }}
+                            />
+                        )}
                     </div>
                 )}
                 <H3 className={cn(textClass, "mt-1 mr-2 text-foreground flex items-center justify-center")}>

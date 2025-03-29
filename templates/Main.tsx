@@ -9,13 +9,12 @@ import Image from "next/image";
 export default function Main() {
     return (
         <div className="relative flex flex-col w-full">
-            <Image
+            <img
                 src="/bg/gradient-galaxy.svg"
                 alt="Background"
-                fill
-                priority
-                className="object-cover object-top -z-10"
+                className="absolute inset-0 w-full h-full object-cover object-top -z-10"
             />
+
             <div className="sticky top-0 z-10 backdrop-blur-md">
                 <NavBar />
             </div>

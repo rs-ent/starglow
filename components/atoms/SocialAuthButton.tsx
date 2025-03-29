@@ -1,7 +1,6 @@
 /// components\atoms\SocialAuthButton.tsx
 
 "use client";
-import Image from "next/image";
 import Button from "./Button";
 import { signIn } from "next-auth/react";
 import { ProviderType } from "@/types/auth";
@@ -30,11 +29,10 @@ export default function SocialAuthButton({ providerId, providerName }: SocialAut
             onClick={() => signIn(providerId)}
             className={`w-full items-center justify-center ${providerColors[providerId]}`}
         >
-            <Image
+            <img
                 src={providerIcons[providerId]}
-                width={20}
-                height={20}
                 alt={`${providerName} icon`}
+                style={{ width: '20px', height: 'auto' }}
             />
             <span className="ml-2">
                 Sign in with {providerId === "twitter" ? "X" : providerName}

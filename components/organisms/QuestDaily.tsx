@@ -4,7 +4,6 @@
 
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import Image from 'next/image';
 import { H2 } from '../atoms/Typography';
 import { getResponsiveClass } from '@/lib/utils/responsiveClass';
 import { cn } from '@/lib/utils/tailwind';
@@ -44,7 +43,7 @@ export default function QuestDaily() {
         if (isLoading) {
             startLoading();
             return;
-        }        
+        }
 
         if (!data) return;
 
@@ -106,13 +105,13 @@ export default function QuestDaily() {
     return (
         <div className="flex items-center justify-center w-full h-full">
             <div className="flex flex-col items-center justify-center">
-                <Image
+                <img
                     src="/elements/el03.svg"
                     alt="el03"
-                    width={200}
-                    height={200}
                     className={cn("mb-4", getResponsiveClass(40).frameClass)}
+                    style={{ width: '200px', height: 'auto' }}
                 />
+
                 <H2 className={cn("text-center mb-1 break-words", getResponsiveClass(40).textClass)}>
                     {`${questDate.getMonth() + 1}/${questDate.getDate()} Today's Song`}
                 </H2>

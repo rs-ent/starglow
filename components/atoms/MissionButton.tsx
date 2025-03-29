@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { H1, H3, Paragraph } from "./Typography";
 import { Daily_Quests } from "@prisma/client";
 import { cn } from "@/lib/utils/tailwind";
@@ -56,11 +55,10 @@ export default function MissionButton({ mission }: { mission: Daily_Quests }) {
                 </div>*/}
                 {/* Icon */}
                 <div className={cn("flex items-center justify-center w-10 h-10 rounded-full", target.background)}>
-                    <Image
+                    <img
                         src={target.icon}
                         alt="Quest Icon"
-                        width={20}
-                        height={20}
+                        style={{ width: '20px', height: 'auto' }}
                     />
                 </div>
 
@@ -72,11 +70,10 @@ export default function MissionButton({ mission }: { mission: Daily_Quests }) {
 
                 {/* Arrow */}
                 <div className="flex items-center justify-center ml-auto">
-                    <Image
+                    <img
                         src={missionSucceeded ? "/ui/ribbon-badge.svg" : "/ui/right-arrow.svg"}
                         alt="Arrow Icon"
-                        width={missionSucceeded ? 35 : 15}
-                        height={missionSucceeded ? 35 : 15}
+                        style={{ width: missionSucceeded ? '35px' : '15px', height: 'auto' }}
                     />
                 </div>
             </div>

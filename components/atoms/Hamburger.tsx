@@ -3,9 +3,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils/tailwind";
-import Lottie, { LottieRefCurrentProps } from "lottie-react";
+import type { LottieRefCurrentProps } from "lottie-react";
 import animationData from "../../public/ui/menu-to-x.json";
+
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 interface HamburgerProps {
     isOpen: boolean;

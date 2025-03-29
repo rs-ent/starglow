@@ -2,7 +2,6 @@
 
 import { H3 } from "../atoms/Typography";
 import LinkButton from "../atoms/LinkButton";
-import Image from "next/image";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
@@ -13,6 +12,13 @@ interface FollowUsProps {
     minimal?: boolean;
     className?: string;
 }
+
+const socialLinks = [
+    { href: "https://docs.starglow.io", icon: "/icons/gitbook-black-round.svg", alt: "Gitbook" },
+    { href: "https://x.com/StarglowP", icon: "/icons/x-black-round.svg", alt: "X" },
+    { href: "https://t.me/StarglowP_Ann", icon: "/icons/telegram-black-round.svg", alt: "Telegram" },
+    { href: "https://medium.com/@starglowP", icon: "/icons/medium-black-round.svg", alt: "Medium" },
+];
 
 export default function FollowUs({
     frameSize = 20,
@@ -26,88 +32,23 @@ export default function FollowUs({
 
     return (
         <div className={cn("flex flex-col items-center justify-center text-center", className)}>
-            {minimal ? (
-                <div className={cn("flex items-center justify-center", gapClass)}>
-                    <LinkButton href="https://docs.starglow.io" target="_blank" frameSize={frameSize} paddingSize={0}>
-                        <Image
-                            src="/icons/gitbook-black-round.svg"
-                            alt="Gitbook"
-                            width={frameSize}
-                            height={frameSize}
-                        />
-                    </LinkButton>
-
-                    <LinkButton href="https://x.com/StarglowP" target="_blank" frameSize={frameSize} paddingSize={0}>
-                        <Image
-                            src="/icons/x-black-round.svg"
-                            alt="X"
-                            width={frameSize}
-                            height={frameSize}
-                        />
-                    </LinkButton>
-
-                    <LinkButton href="https://t.me/StarglowP_Ann" target="_blank" frameSize={frameSize} paddingSize={0}>
-                        <Image
-                            src="/icons/telegram-black-round.svg"
-                            alt="Telegram"
-                            width={frameSize}
-                            height={frameSize}
-                        />
-                    </LinkButton>
-
-                    <LinkButton href="https://medium.com/@starglowP" target="_blank" frameSize={frameSize} paddingSize={0}>
-                        <Image
-                            src="/icons/medium-black-round.svg"
-                            alt="Medium"
-                            width={frameSize}
-                            height={frameSize}
-                        />
-                    </LinkButton>
-                </div>
-            ) : (
-                <>
-                    <H3 className={cn("font-main text-foreground", textClass, "mb-1")}>
-                        FOLLOW US ON SOCIAL MEDIA
-                    </H3>
-                    <div className={cn("flex items-center justify-center", gapClass)}>
-                        <LinkButton href="https://docs.starglow.io" target="_blank" frameSize={frameSize}>
-                            <Image
-                                src="/icons/gitbook-black-round.svg"
-                                alt="Gitbook"
-                                width={frameSize}
-                                height={frameSize}
-                            />
-                        </LinkButton>
-
-                        <LinkButton href="https://x.com/StarglowP" target="_blank" frameSize={frameSize}>
-                            <Image
-                                src="/icons/x-black-round.svg"
-                                alt="X"
-                                width={frameSize}
-                                height={frameSize}
-                            />
-                        </LinkButton>
-
-                        <LinkButton href="https://t.me/StarglowP_Ann" target="_blank" frameSize={frameSize}>
-                            <Image
-                                src="/icons/telegram-black-round.svg"
-                                alt="Telegram"
-                                width={frameSize}
-                                height={frameSize}
-                            />
-                        </LinkButton>
-
-                        <LinkButton href="https://medium.com/@starglowP" target="_blank" frameSize={frameSize}>
-                            <Image
-                                src="/icons/medium-black-round.svg"
-                                alt="Medium"
-                                width={frameSize}
-                                height={frameSize}
-                            />
-                        </LinkButton>
-                    </div>
-                </>
+            {!minimal && (
+                <H3 className={cn("font-main text-foreground", textClass, "mb-1")}>
+                    FOLLOW US ON SOCIAL MEDIA
+                </H3>
             )}
+
+            <div className={cn("flex items-center justify-center", gapClass)}>
+                {socialLinks.map(({ href, icon, alt }) => (
+                    <LinkButton key={alt} href={href} target="_blank" frameSize={frameSize} paddingSize={minimal ? 0 : undefined}>
+                        <img
+                            src={icon}
+                            alt={alt}
+                            style={{ width: `${frameSize}px`, height: "auto" }}
+                        />
+                    </LinkButton>
+                ))}
+            </div>
         </div>
     );
 }

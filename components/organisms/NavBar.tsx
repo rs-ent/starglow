@@ -4,7 +4,6 @@
 import LinkButton from "../atoms/LinkButton";
 import AuthButton from "../atoms/AuthButton";
 import Hamburger from "../atoms/Hamburger";
-import Image from "next/image";
 import { useMobileMenu } from "@/hooks/useMobileMenu";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -25,18 +24,17 @@ export default function NavBar() {
             {/* Logo */}
             <div className="flex justify-start w-[150px] md:w-[200px] lg:w-[220px] xl:w-[300px]">
                 <LinkButton href="/" className="text-lg font-bold" paddingSize={0} gapSize={0}>
-                    <Image
+                    <img
                         src="/logo/lt-row.svg"
                         alt="Starglow"
-                        width={250}
-                        height={150}
+                        style={{ width: '250px', height: 'auto' }}
                     />
                 </LinkButton>
             </div>
 
             {/* Menu */}
             {/* Desktop Menu */}
-            <div 
+            <div
                 className="
                     hidden lg:flex items-center
                     space-x-2
