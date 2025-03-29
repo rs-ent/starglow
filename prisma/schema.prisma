@@ -105,3 +105,10 @@ model Polls {
   group_b           String?
   memo              String?
 }
+
+model OgImageCache {
+  id        String   @id @default(uuid())
+  targetUrl String   @unique
+  imageUrl  String
+  createdAt DateTime @default(now())
+}
