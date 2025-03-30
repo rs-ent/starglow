@@ -3,6 +3,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+import Toast from "@/components/atoms/Toast";
 import Providers from "./Providers";
 import Loading from "@/components/organisms/Loading";
 

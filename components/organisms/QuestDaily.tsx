@@ -14,6 +14,7 @@ import { notFound } from 'next/navigation';
 import { getYoutubeVideoId } from '@/lib/utils/youtube';
 import InviteFriends from '../atoms/InviteFriends';
 import DailyMissions from '../molecules/DailyMissions';
+import Icon from '../atoms/Icon';
 import { Loader2 } from 'lucide-react';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -105,13 +106,8 @@ export default function QuestDaily() {
     return (
         <div className="flex items-center justify-center w-full h-full">
             <div className="flex flex-col items-center justify-center">
-                <img
-                    src="/elements/el03.svg"
-                    alt="el03"
-                    className={cn("mb-4", getResponsiveClass(40).frameClass)}
-                    style={{ width: '200px', height: 'auto' }}
-                />
-
+                <Icon svg='/elements/el03.svg' size={45} />
+                
                 <H2 className={cn("text-center mb-1 break-words", getResponsiveClass(40).textClass)}>
                     {`${questDate.getMonth() + 1}/${questDate.getDate()} Today's Song`}
                 </H2>

@@ -1,4 +1,4 @@
-/// components\atoms\SignInButton.tsx
+/// components/atoms/AuthButton.tsx
 
 "use client";
 
@@ -6,6 +6,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { LogIn, LogOut, LoaderCircle } from "lucide-react";
 import Button from "./Button";
 import { useLoading } from "@/hooks/useLoading";
+import { usePathname } from "next/navigation";
 interface AuthButtonProps {
     frameSize?: number;
     textSize?: number;
@@ -15,20 +16,23 @@ interface AuthButtonProps {
     variant?: "default" | "space" | "destructive" | "outline" | "secondary" | "ghost" | "link";
 }
 
-export default function AuthButton({ 
-    frameSize = 20, 
+export default function AuthButton({
+    frameSize = 20,
     textSize = 20,
     paddingSize = 20,
     gapSize = 20,
     className = "",
-    variant = "default" 
+    variant = "default"
 }: AuthButtonProps) {
     const { data: session, status } = useSession();
     const { startLoading } = useLoading();
+    const pathname = usePathname();
 
     const handleSignIn = async () => {
         startLoading();
-        await signIn();
+        await signIn(undefined, {
+            callbackUrl: pathname,
+        });
     };
 
     if (status === "loading") {

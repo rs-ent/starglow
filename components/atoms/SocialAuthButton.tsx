@@ -2,12 +2,14 @@
 
 "use client";
 import Button from "./Button";
+import { useLoading } from "@/hooks/useLoading";
 import { signIn } from "next-auth/react";
 import { ProviderType } from "@/types/auth";
 
 interface SocialAuthButtonProps {
     providerId: ProviderType;
     providerName: string;
+    callbackUrl?: string;
 }
 
 const providerIcons: Record<ProviderType, string> = {
@@ -22,11 +24,18 @@ const providerColors: Record<ProviderType, string> = {
     kakao: "bg-[rgba(254,230,8,1)] text-[rgba(0,0,0,1)] hover:bg-[rgba(254,230,8,1)] hover:text-[rgba(0,0,0,1)] hover:scale-105",
 }
 
-export default function SocialAuthButton({ providerId, providerName }: SocialAuthButtonProps) {
+export default function SocialAuthButton({ providerId, providerName, callbackUrl = "/" }: SocialAuthButtonProps) {
+    const { startLoading } = useLoading();
+
+    const handleSignIn = async () => {
+        startLoading();
+        await signIn(providerId, { callbackUrl });
+    }
+
     return (
         <Button
             variant="outline"
-            onClick={() => signIn(providerId)}
+            onClick={handleSignIn}
             className={`w-full items-center justify-center ${providerColors[providerId]}`}
         >
             <img

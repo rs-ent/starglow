@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma/client";
 import { env } from "@/lib/config/env";
 import { createSolanaWallet } from "@/lib/solana/createWallet";
 
-export const { handlers, auth, signIn, signOut} = NextAuth({
+export const { handlers, auth, signIn, signOut } = NextAuth({
     secret: env.NEXTAUTH_SECRET,
     adapter: PrismaAdapter(prisma),
     providers: [
@@ -32,27 +32,26 @@ export const { handlers, auth, signIn, signOut} = NextAuth({
             return url.startsWith(baseUrl) ? url : baseUrl;
         },
 
-        async signIn({ user, account }) {
-            const now = new Date();
-            const existingUser = await prisma.user.findUnique({
-                where: { email: user.email as string },
+        async signIn({ user }) {
+            const existingPlayer = await prisma.player.findUnique({
+                where: { userId: user.id },
             });
 
-            if (!existingUser) {
-                await prisma.user.create({
+            if (!existingPlayer) {
+                if (!user.id) {
+                    throw new Error("User ID is undefined");
+                }
+
+                await prisma.player.create({
                     data: {
-                        email: user.email,
-                        name: user.name,
-                        image: user.image,
-                        role: "USER",
-                        active: true,
-                        providerId: account?.id as string || "",
-                        createdAt: now,
-                        lastLoginAt: now,
+                        userId: user.id,
+                        createdAt: new Date(),
                     },
                 });
 
-                console.info("[User][Create] ", user.email);
+                console.info("[Player][Create] User:", user.email);
+            } else {
+                console.info("[Player][Exists] User:", user.email);
             }
 
             return true;

@@ -7,6 +7,13 @@ import Hamburger from "../atoms/Hamburger";
 import { useMobileMenu } from "@/hooks/useMobileMenu";
 import { motion, AnimatePresence } from "framer-motion";
 
+const menuItems = [
+    { name: "About Us", href: "/" },
+    { name: "Quests", href: "/quests" },
+    { name: "Polls", href: "/polls" },
+    { name: "NFTs", href: "/nfts" },
+];
+
 export default function NavBar() {
     const { isOpen, toggle, close } = useMobileMenu();
 
@@ -22,32 +29,18 @@ export default function NavBar() {
             "
         >
             {/* Logo */}
-            <div className="flex justify-start w-[150px] md:w-[200px] lg:w-[220px] xl:w-[300px]">
-                <LinkButton href="/" className="text-lg font-bold" paddingSize={0} gapSize={0}>
-                    <img
-                        src="/logo/lt-row.svg"
-                        alt="Starglow"
-                        style={{ width: '250px', height: 'auto' }}
-                    />
-                </LinkButton>
-            </div>
+            <LinkButton href="/" className="flex justify-start w-[150px] md:w-[200px] lg:w-[220px] xl:w-[300px]" paddingSize={0} gapSize={0}>
+                <img src="/logo/lt-row.svg" alt="Starglow" className="w-[250px] h-auto" />
+            </LinkButton>
 
-            {/* Menu */}
             {/* Desktop Menu */}
-            <div
-                className="
-                    hidden lg:flex items-center
-                    space-x-2
-                    sm:space-x-3
-                    md:space-x-4
-                    lg:space-x-12
-                    xl:space-x-16
-                ">
-                <LinkButton href="/" textSize={15} paddingSize={0}>About Us</LinkButton>
-                <LinkButton href="/" textSize={15} paddingSize={0}>Quests</LinkButton>
-                <LinkButton href="/about" textSize={15} paddingSize={0}>Polls</LinkButton>
-                <LinkButton href="/about" textSize={15} paddingSize={0}>NFTs</LinkButton>
-                <AuthButton frameSize={10} />
+            <div className="hidden lg:flex items-center space-x-2 md:space-x-4 lg:space-x-12 xl:space-x-16">
+                {menuItems.map(({ name, href }) => (
+                    <LinkButton key={name} href={href} textSize={15} paddingSize={0}>
+                        {name}
+                    </LinkButton>
+                ))}
+                <AuthButton frameSize={15} textSize={15} paddingSize={10} gapSize={10} />
             </div>
 
             {/* Mobile Hamburger Icon */}
@@ -62,18 +55,18 @@ export default function NavBar() {
                         exit={{ opacity: 0, y: -20 }}
                         className="fixed top-0 left-0 w-full h-screen bg-[rgba(0,0,0,0.9)] backdrop-blur-sm flex flex-col items-center justify-center space-y-10 z-40"
                     >
-                        <LinkButton href="/about" onClick={close} textSize={40} paddingSize={0}>
-                            About Us
-                        </LinkButton>
-                        <LinkButton href="/polls" onClick={close} textSize={40} paddingSize={0}>
-                            Quests
-                        </LinkButton>
-                        <LinkButton href="/polls" onClick={close} textSize={40} paddingSize={0}>
-                            Polls
-                        </LinkButton>
-                        <LinkButton href="/nfts" onClick={close} textSize={40} paddingSize={0}>
-                            NFTs
-                        </LinkButton>
+                        {menuItems.map(({ name, href }) => (
+                            <LinkButton
+                                key={name}
+                                href={href}
+                                onClick={close}
+                                textSize={40}
+                                paddingSize={0}
+                                className="font-main"
+                            >
+                                {name}
+                            </LinkButton>
+                        ))}
                         <AuthButton frameSize={40} paddingSize={70} gapSize={50} textSize={35} className="font-main" />
                     </motion.div>
                 )}

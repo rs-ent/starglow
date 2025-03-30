@@ -1,3 +1,5 @@
+/// schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -49,6 +51,7 @@ model User {
   active        Boolean   @default(true)
   createdAt     DateTime  @default(now())
   lastLoginAt   DateTime?
+  player        Player?
 }
 
 model Wallet {
@@ -59,6 +62,28 @@ model Wallet {
   network       String
   createdAt     DateTime  @default(now())
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Player {
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  telegramId         String?   @unique
+  first_name         String?
+  last_name          String?
+  username           String?
+  gameMoney          Int       @default(0)
+  usedCashMoney      Int       @default(0)
+  starPurchased      Int       @default(0)
+  recommendedCount   Int       @default(0)
+  rank               Int       @default(0)
+  recommenderId      String?
+  recommenderName    String?
+  raffleTickets      Int       @default(0)
+  createdAt          DateTime  @default(now())
+  lastConnectedAt    DateTime  @updatedAt
+
+  // 🔥 Relations
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {

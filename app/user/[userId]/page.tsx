@@ -3,7 +3,7 @@
 import { auth } from "@/app/auth/authSettings";
 import { redirect, notFound } from "next/navigation";
 import { getUserById } from "@/lib/prisma/user";
-import UserTemplate from "@/templates/UserTemplate";
+import User from "@/templates/User";
 
 type Params = Promise<{ userId: string }>
 
@@ -18,5 +18,5 @@ export default async function UserProfile(props: { params: Params }) {
 
   const owner = session.user.id === userId;
 
-  return <UserTemplate userData={userData} owner={owner} />;
+  return <User userData={userData} owner={owner} />;
 }

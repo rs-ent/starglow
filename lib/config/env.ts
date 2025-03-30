@@ -16,6 +16,8 @@ const envSchema = z.object({
     KAKAO_CLIENT_ID: z.string().min(1),
     KAKAO_CLIENT_SECRET: z.string().min(1),
 
+    TELEGRAM_BOT_TOKEN: z.string().min(1),
+
     ENCRYPTION_METHOD: z.string().min(1),
     ENCRYPTION_SECRET: z.string().min(32),
 });

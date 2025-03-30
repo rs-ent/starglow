@@ -1,0 +1,77 @@
+/// templates/User.tsx
+"use client";
+
+import { useState, useCallback } from "react";
+import UserHeader from "@/components/organisms/UserHeader";
+import UserSidebar from "@/components/organisms/UserSidebar";
+import UserContent from "@/components/organisms/UserContent";
+import Hamburger from "@/components/atoms/Hamburger";
+import { useMobileMenu } from "@/hooks/useMobileMenu";
+import type { User } from "@prisma/client";
+import { motion, AnimatePresence } from "framer-motion";
+
+export interface UserTemplateProps {
+    userData: User;
+    owner: boolean;
+}
+
+export default function User({ userData, owner }: UserTemplateProps) {
+    const [contentType, setContentType] = useState("myassets");
+    const { isOpen, toggle, close } = useMobileMenu();
+
+    const handleSectionClick = useCallback((section: string) => {
+        setContentType(section);
+        close();
+    }, [close]);
+
+    return (
+        <div className="relative min-h-screen bg-background">
+            {/* Mobile Hamburger Icon */}
+            <Hamburger
+                isOpen={isOpen}
+                toggle={toggle}
+                className="absolute top-4 right-4 z-50 lg:hidden"
+            />
+
+            {/* User Header */}
+            <UserHeader
+                src={userData.image || "/default-profile.png"}
+                name={userData.name || "User"}
+            />
+
+            {/* Main Content Area */}
+            <div className="flex min-h-[calc(100vh-200px)]">
+                {/* Desktop Sidebar */}
+                <aside className="hidden lg:block w-[clamp(220px,15%,300px)]">
+                    <UserSidebar onSectionClick={setContentType} />
+                </aside>
+
+                {/* User Content */}
+                <main className="flex-1">
+                    <UserContent contentType={contentType} />
+                </main>
+            </div>
+
+            {/* Mobile Sidebar Menu */}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-40"
+                    >
+                        <UserSidebar
+                            onSectionClick={handleSectionClick}
+                            frameSize={25}
+                            textSize={30}
+                            paddingSize={70}
+                            gapSize={30}
+                            buttonGap={12}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
