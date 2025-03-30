@@ -5,70 +5,61 @@ import { useEffect } from "react";
 import { useToast } from "./useToast";
 import { useLoading } from "./useLoading";
 
-interface TelegramUser {
-  id: string;
-  first_name: string;
-  last_name: string;
-  username?: string;
+type Player = Awaited<ReturnType<typeof fetchPlayer>>;
+async function fetchPlayer() {
+  const response = await fetch("/api/telegram/integrate");
+  if (!response.ok) throw new Error("API response error");
+
+  const data = await response.json();
+  return data.user || null;
 }
 
 interface TelegramState {
-  telegramUser: TelegramUser | null;
-  setTelegramUser: (user: TelegramUser | null) => void;
+  player: Player | null;
+  setPlayer: (player: Player | null) => void;
 }
 
 export const useTelegramStore = create<TelegramState>((set) => ({
-  telegramUser: null,
-  setTelegramUser: (user) => set({ telegramUser: user }),
+  player: null,
+  setPlayer: (player) => set({ player }),
 }));
 
 export const useTelegramIntegration = () => {
-  const { telegramUser, setTelegramUser } = useTelegramStore();
+  const { player, setPlayer } = useTelegramStore();
   const { startLoading, endLoading } = useLoading();
   const toast = useToast();
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const loadPlayer = async () => {
       startLoading();
       try {
-        const response = await fetch("/api/telegram/integrate");
-        if (!response.ok) throw new Error("API response error");
-
-        const data = await response.json();
-        setTelegramUser(data.user);
-
-        if (data.user) {
-          toast.success("Telegram account integrated successfully!");
-        } else {
-          toast.info("Telegram account not integrated yet.");
-        }
+        const player = await fetchPlayer();
+        setPlayer(player || null);
       } catch (error) {
-        console.error("[Telegram Integration] Fetch user error:", error);
-        setTelegramUser(null);
-        toast.error("Failed to fetch Telegram integration status.");
+        console.error("[Telegram Integration] Fetch player error:", error);
+        setPlayer(null);
       } finally {
         endLoading();
       }
     };
-    fetchUser();
-  }, []);
+    loadPlayer();
+  }, [setPlayer, startLoading, endLoading]);
 
   const unlinkTelegram = async () => {
     try {
       const response = await fetch("/api/telegram/integrate", {
         method: "DELETE",
       });
+      if (!response.ok) throw new Error("Failed to unlink Telegram account");
 
-      if (!response.ok) {
-        throw new Error("Failed to unlink Telegram account");
-      }
-
-      setTelegramUser(null);
+      setPlayer((prev: Player | null) =>
+        prev ? { ...prev, telegramId: null } : null
+      );
       toast.success("Telegram account unlinked successfully!");
     } catch (error) {
       toast.error("Failed to unlink Telegram account. Please try again.");
     }
   };
 
-  return { telegramUser, unlinkTelegram };
+  return { player, unlinkTelegram };
 };

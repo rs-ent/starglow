@@ -12,12 +12,17 @@ export const metadata: Metadata = {
   description: "Starglow",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body>
         <Providers>
           <Loading />
+          <Toast />
           {children}
         </Providers>
       </body>
