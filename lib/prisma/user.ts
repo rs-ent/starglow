@@ -11,3 +11,9 @@ export async function getUserById(id: string) {
         },
     });
 }
+
+export async function getUserWallets(userId: string) {
+    return prisma.wallet.findMany({
+        where: { userId },
+    });
+}

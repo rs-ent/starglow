@@ -14,9 +14,7 @@ export async function DELETE() {
         where: { userId: session.user.id },
         data: {
             telegramId: null,
-            first_name: null,
-            last_name: null,
-            username: null,
+            name: null,
         },
     });
 

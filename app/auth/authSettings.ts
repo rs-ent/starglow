@@ -74,6 +74,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         userId: user.id,
                         network: "solana",
                         address: publicKey,
+                        primary: true,
                         privateKey,
                     },
                 });

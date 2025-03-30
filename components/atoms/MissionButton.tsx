@@ -6,6 +6,7 @@ import { Daily_Quests } from "@prisma/client";
 import { cn } from "@/lib/utils/tailwind";
 import Popup from "./Popup";
 import LinkButton from "./LinkButton";
+import Icon from "./Icon";
 
 const missionList = {
     Website: {
@@ -54,12 +55,10 @@ export default function MissionButton({ mission }: { mission: Daily_Quests }) {
                     <H1 size={20} className="text-white text-center font-superbold">MISSION COMPLETE!</H1>
                 </div>*/}
                 {/* Icon */}
-                <div className={cn("flex items-center justify-center w-10 h-10 rounded-full", target.background)}>
-                    <img
-                        src={target.icon}
-                        alt="Quest Icon"
-                        style={{ width: '20px', height: 'auto' }}
-                    />
+                <div className={cn("flex items-center justify-center rounded-full",
+                    "w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 lg:w-16 lg:h-16 xl:w-18 xl:h-18",
+                    target.background)}>
+                    <Icon svg={target.icon} size={35} />
                 </div>
 
                 {/* Description */}

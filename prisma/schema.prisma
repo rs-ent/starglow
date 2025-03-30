@@ -61,29 +61,30 @@ model Wallet {
   privateKey    String
   network       String
   createdAt     DateTime  @default(now())
+  primary       Boolean   @default(false)
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Player {
-  id                 String    @id @default(cuid())
-  userId             String    @unique
-  telegramId         String?   @unique
-  first_name         String?
-  last_name          String?
-  username           String?
-  gameMoney          Int       @default(0)
-  usedCashMoney      Int       @default(0)
-  starPurchased      Int       @default(0)
-  recommendedCount   Int       @default(0)
-  rank               Int       @default(0)
-  recommenderId      String?
+  id                 String    @id @default(cuid()) @map("id")
+  userId             String?   @unique
+  telegramId         String?   @unique @map("telegramId")
+  name               String?   @map("name")
+  gameMoney          Int       @default(0) @map("gameMoney")
+  usedCashMoney      Int       @default(0) @map("usedCashMoney")
+  starPurchased      Int       @default(0) @map("starPurchased")
+  vipUntil           DateTime? @map("vipUntil")
+  recommendedCount   Int       @default(0) @map("recommendedCount")
+  recommenderId      String?   
   recommenderName    String?
-  raffleTickets      Int       @default(0)
+  recommenderMethod  String?
+  raffleTickets      Int       @default(0) @map("raffleTickets")
   createdAt          DateTime  @default(now())
   lastConnectedAt    DateTime  @updatedAt
 
-  // 🔥 Relations
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("Player")
 }
 
 model VerificationToken {

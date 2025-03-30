@@ -7,15 +7,16 @@ import UserSidebar from "@/components/organisms/UserSidebar";
 import UserContent from "@/components/organisms/UserContent";
 import Hamburger from "@/components/atoms/Hamburger";
 import { useMobileMenu } from "@/hooks/useMobileMenu";
-import type { User } from "@prisma/client";
+import type { User, Wallet } from "@prisma/client";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface UserTemplateProps {
     userData: User;
     owner: boolean;
+    wallets: Wallet[];
 }
 
-export default function User({ userData, owner }: UserTemplateProps) {
+export default function User({ userData, owner, wallets }: UserTemplateProps) {
     const [contentType, setContentType] = useState("myassets");
     const { isOpen, toggle, close } = useMobileMenu();
 
@@ -37,17 +38,20 @@ export default function User({ userData, owner }: UserTemplateProps) {
             <UserHeader
                 src={userData.image || "/default-profile.png"}
                 name={userData.name || "User"}
+                walletAddress={wallets.find(
+                    (wallet) => wallet.primary
+                )?.address}
             />
 
             {/* Main Content Area */}
-            <div className="flex min-h-[calc(100vh-200px)]">
+            <div className="flex h-screen">
                 {/* Desktop Sidebar */}
-                <aside className="hidden lg:block w-[clamp(220px,15%,300px)]">
+                <aside className="hidden lg:block w-[clamp(220px,15%,300px)] bg-muted/30 pt-5">
                     <UserSidebar onSectionClick={setContentType} />
                 </aside>
 
                 {/* User Content */}
-                <main className="flex-1">
+                <main className="flex-1 bg-background">
                     <UserContent contentType={contentType} />
                 </main>
             </div>

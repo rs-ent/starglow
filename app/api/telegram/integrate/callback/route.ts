@@ -44,9 +44,7 @@ export async function GET(req: NextRequest) {
         where: { userId: session.user.id },
         data: {
             telegramId: dataWithoutHash.id,
-            first_name: dataWithoutHash.first_name,
-            last_name: dataWithoutHash.last_name,
-            username: dataWithoutHash.username,
+            name: dataWithoutHash.username,
             lastConnectedAt: new Date(),
         },
     });
