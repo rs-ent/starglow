@@ -23,6 +23,12 @@ export default async function UserEntryPage({ searchParams }: PageProps) {
         );
       } else if (integration === "telegram_exists") {
         return redirect(`/user/${session.user.id}?integration=telegram_exists`);
+      } else if (integration === "telegram_unlinked") {
+        return redirect(
+          `/user/${session.user.id}?integration=telegram_unlinked`
+        );
+      } else {
+        return redirect(`/user/${session.user.id}?integration=unknown`);
       }
     }
   }

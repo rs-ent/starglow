@@ -40,10 +40,5 @@ export async function DELETE(req: NextRequest) {
     },
   });
 
-  return NextResponse.redirect(
-    `${baseUrl}/user?integration=telegram_unlinked`,
-    {
-      status: 302,
-    }
-  );
+  return NextResponse.json({ success: true }, { status: 200 });
 }

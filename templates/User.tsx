@@ -34,7 +34,6 @@ export default function User({
     const integration = searchParams.integration as string | undefined;
     if (integration) {
       setContentType("integration");
-      console.log("Integration:", integration);
       if (integration === "telegram_success") {
         toast.success("Telegram account integrated successfully!");
       } else if (integration === "telegram_exists") {

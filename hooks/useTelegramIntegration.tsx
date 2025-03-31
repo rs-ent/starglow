@@ -46,18 +46,25 @@ export const useTelegramIntegration = () => {
   }, [setPlayer, startLoading, endLoading]);
 
   const unlinkTelegram = async () => {
+    startLoading();
     try {
       const response = await fetch("/api/telegram/integrate", {
         method: "DELETE",
       });
-      if (!response.ok) throw new Error("Failed to unlink Telegram account");
 
-      setPlayer((prev: Player | null) =>
-        prev ? { ...prev, telegramId: null } : null
-      );
-      toast.success("Telegram account unlinked successfully!");
+      if (response.ok) {
+        setPlayer((prev: Player | null) =>
+          prev ? { ...prev, telegramId: null } : null
+        );
+        window.location.href = "/user?integration=telegram_unlinked";
+      } else {
+        throw new Error(`Failed to unlink. Status: ${response.status}`);
+      }
     } catch (error) {
+      console.error("[Telegram Integration] Unlink failed:", error);
       toast.error("Failed to unlink Telegram account. Please try again.");
+    } finally {
+      endLoading();
     }
   };
 
