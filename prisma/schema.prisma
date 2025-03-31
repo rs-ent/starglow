@@ -81,8 +81,11 @@ model Player {
   raffleTickets      Int       @default(0) @map("raffleTickets")
   createdAt          DateTime  @default(now())
   lastConnectedAt    DateTime  @updatedAt
+  
+  missionLogs        MissionLog[]
+  gameMoneyLogs      GameMoneyLog[]
 
-  user               User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("Player")
 }
@@ -95,17 +98,55 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+enum CurrencyType {
+  Points
+  SGP
+  SGT
+}
+
+model GameMoneyLog {
+  id            String    @id @default(cuid())
+  playerId      String
+  Price         Int       @default(0)
+  Currency      CurrencyType? @default(Points) @map("Currency")
+  createdAt     DateTime  @default(now())
+
+  player        Player    @relation(fields: [playerId], references: [id])
+}
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model Daily_Quests {
-  id          String  @id
+  id          String  @id @default(cuid())
   Date        String?
   Quest_Type  String? @map("Quest Type")
   poll_id     String
   Quest_Title String? @map("Quest Title")
   URL         String?
+  Price       Int?    @default(800)
+  Currency    CurrencyType? @default(Points) @map("Currency")
 
   @@map("Daily Quests")
+}
+
+enum QuestType {
+  Daily
+  General
+}
+
+model MissionLog {
+  id            String   @id @default(cuid())
+  playerId      String
+  missionId     String
+  type          QuestType
+  Quest_Title   String?
+  Quest_Date    String?
+  Quest_Type    String?
+  URL           String?
+  Price         Int?
+  Currency      String?
+  completedAt   DateTime @default(now())
+
+  player        Player   @relation(fields: [playerId], references: [id])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
