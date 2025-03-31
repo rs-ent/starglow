@@ -39,6 +39,10 @@ export default function User({
         toast.success("Telegram account integrated successfully!");
       } else if (integration === "telegram_exists") {
         toast.error("This Telegram account is already linked to another user.");
+      } else if (integration === "telegram_unlinked") {
+        toast.success("Telegram account unlinked successfully!");
+      } else {
+        toast.error("Unknown integration status.");
       }
     }
   }, [searchParams, toast]);

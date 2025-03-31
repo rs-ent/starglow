@@ -35,7 +35,11 @@ export default function UserIntegration() {
             <Button
               variant="destructive"
               onClick={unlinkTelegram}
-              img="/ui/trash.svg"
+              img="/ui/unlink.svg"
+              frameSize={15}
+              textSize={10}
+              paddingSize={5}
+              gapSize={5}
             >
               Unlink
             </Button>

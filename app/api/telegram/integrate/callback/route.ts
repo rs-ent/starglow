@@ -7,6 +7,7 @@ import { auth } from "@/app/auth/authSettings";
 import { env } from "@/lib/config/env";
 
 export async function GET(req: NextRequest) {
+  const baseUrl = req.nextUrl.origin;
   const telegramData = Object.fromEntries(req.nextUrl.searchParams.entries());
 
   const telegramBotToken = env.TELEGRAM_BOT_TOKEN;
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.redirect("/auth/signin", { status: 302 });
+    return NextResponse.redirect(`${baseUrl}/auth/signin`, { status: 302 });
   }
 
   const existingTelegramUser = await prisma.player.findUnique({
@@ -56,9 +57,12 @@ export async function GET(req: NextRequest) {
       existingTelegramUser.userId &&
       existingTelegramUser.userId !== session.user.id
     ) {
-      return NextResponse.redirect("/user?integration=telegram_exists", {
-        status: 302,
-      });
+      return NextResponse.redirect(
+        `${baseUrl}/user?integration=telegram_exists`,
+        {
+          status: 302,
+        }
+      );
     }
 
     // 현재 사용자의 Player가 있는 경우
@@ -66,9 +70,12 @@ export async function GET(req: NextRequest) {
       // 텔레그램 ID로 만들어진 Player와
       // 현재 사용자의 Player가 같은 경우
       if (existingTelegramUser.userId === currentUserPlayer.userId) {
-        return NextResponse.redirect("/user?integration=telegram_success", {
-          status: 302,
-        });
+        return NextResponse.redirect(
+          `${baseUrl}/user?integration=telegram_success`,
+          {
+            status: 302,
+          }
+        );
       }
 
       // 텔레그램 ID로 만들어진 Player에
@@ -103,9 +110,12 @@ export async function GET(req: NextRequest) {
         });
       });
 
-      return NextResponse.redirect("/user?integration=telegram_success", {
-        status: 302,
-      });
+      return NextResponse.redirect(
+        `${baseUrl}/user?integration=telegram_success`,
+        {
+          status: 302,
+        }
+      );
     }
 
     // 현재 사용자에게 Player가 없는 경우
@@ -117,9 +127,12 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.redirect("/user?integration=telegram_success", {
-      status: 302,
-    });
+    return NextResponse.redirect(
+      `${baseUrl}/user?integration=telegram_success`,
+      {
+        status: 302,
+      }
+    );
   }
 
   // 텔레그램 ID로 만들어진 Player가 없고,
@@ -138,9 +151,12 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.redirect("/user?integration=telegram_success", {
-      status: 302,
-    });
+    return NextResponse.redirect(
+      `${baseUrl}/user?integration=telegram_success`,
+      {
+        status: 302,
+      }
+    );
   }
 
   // 텔레그램 ID로 만들어진 Player가 없고,
@@ -154,7 +170,7 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.redirect("/user?integration=telegram_success", {
+  return NextResponse.redirect(`${baseUrl}/user?integration=telegram_success`, {
     status: 302,
   });
 }

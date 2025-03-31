@@ -1,13 +1,15 @@
 /// app/api/telegram/integrate/route.ts
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { auth } from "@/app/auth/authSettings";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const baseUrl = req.nextUrl.origin;
+
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.redirect("/auth/signin", { status: 302 });
+    return NextResponse.redirect(`${baseUrl}/auth/signin`, { status: 302 });
   }
 
   const player = await prisma.player.findFirst({
@@ -24,10 +26,11 @@ export async function GET() {
   return NextResponse.json({ user: player }, { status: 200 });
 }
 
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
+  const baseUrl = req.nextUrl.origin;
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.redirect("/auth/signin", { status: 302 });
+    return NextResponse.redirect(`${baseUrl}/auth/signin`, { status: 302 });
   }
 
   await prisma.player.update({
@@ -37,8 +40,10 @@ export async function DELETE() {
     },
   });
 
-  return NextResponse.json(
-    { message: "Telegram integration successfully unlinked." },
-    { status: 200 }
+  return NextResponse.redirect(
+    `${baseUrl}/user?integration=telegram_unlinked`,
+    {
+      status: 302,
+    }
   );
 }
