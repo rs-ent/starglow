@@ -1,48 +1,44 @@
-/// components/organisms/QuestDaily.tsx
+/// components/organisms/QuestToday.tsx
 
 "use client";
 
 import { useEffect, useState } from "react";
-import useSWR from "swr";
 import { H2 } from "../atoms/Typography";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import YoutubeCarousel, { CarouselItem } from "../molecules/YoutubeCarousel";
-import { Daily_Quests } from "@prisma/client";
 import { useLoading } from "@/hooks/useLoading";
-import { notFound } from "next/navigation";
 import { getYoutubeVideoId } from "@/lib/utils/youtube";
 import InviteFriends from "../atoms/InviteFriends";
-import DailyMissions from "../molecules/DailyMissions";
+import DailyQuests from "../molecules/DailyQuest";
 import Icon from "../atoms/Icon";
 import { Loader2 } from "lucide-react";
-import { Player } from "@prisma/client";
+import { Player, Daily_Quests } from "@prisma/client";
 
-interface QuestDailyProps {
+interface QuestTodayProps {
     playerId: Player["id"];
+    dailyQuests: Daily_Quests[];
+    completedQuests: { questId: string }[];
 }
 
-export default function QuestDaily({ playerId }: QuestDailyProps) {
-    const { data, error, isLoading } = useSWR<Daily_Quests[]>(
-        "/api/quests/daily/latest",
-        fetcher
-    );
+export default function QuestToday({
+    playerId,
+    dailyQuests,
+    completedQuests,
+}: QuestTodayProps) {
     const { startLoading, endLoading } = useLoading();
 
     const [carouselItems, setCarouselItems] = useState<CarouselItem[]>([]);
-    const [dailyMissions, setDailyMissions] = useState<Daily_Quests[]>([]);
+    const [selectedDailyQuests, setSelectedDailyQuests] = useState<
+        Daily_Quests[]
+    >([]);
 
     useEffect(() => {
-        if (isLoading) {
-            startLoading();
-            return;
-        }
-
-        if (!data) return;
+        startLoading();
 
         const fetchCarouselItems = async () => {
             const items = await Promise.all(
-                data
+                dailyQuests
                     .filter(
                         (quest) =>
                             (quest.Quest_Type === "Youtube" ||
@@ -77,24 +73,17 @@ export default function QuestDaily({ playerId }: QuestDailyProps) {
 
         fetchCarouselItems();
 
-        setDailyMissions(
-            data.filter(
+        setSelectedDailyQuests(
+            dailyQuests.filter(
                 (quest) =>
                     quest.Quest_Type !== "Youtube" &&
                     quest.URL &&
                     quest.Quest_Title
             )
         );
-    }, [data, isLoading, startLoading, endLoading]);
+    }, [startLoading, endLoading]);
 
-    if (error) {
-        console.error("[QuestDaily] error", error);
-        return notFound();
-    }
-
-    if (!data) return null;
-
-    const questDate = new Date(data[0].Date ?? new Date());
+    const questDate = new Date(dailyQuests[0].Date ?? new Date());
 
     return (
         <div className="flex items-center justify-center w-full h-full">
@@ -128,9 +117,10 @@ export default function QuestDaily({ playerId }: QuestDailyProps) {
                 </div>
 
                 <div className="flex items-center justify-center w-full h-full p-4">
-                    <DailyMissions
-                        dailyMissions={dailyMissions}
+                    <DailyQuests
                         playerId={playerId}
+                        dailyQuests={selectedDailyQuests}
+                        completedQuests={completedQuests}
                     />
                 </div>
             </div>

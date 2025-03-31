@@ -1,15 +1,17 @@
 import { Daily_Quests } from "@prisma/client";
-import MissionButton from "../atoms/MissionButton";
+import QuestButton from "../atoms/QuestButton";
 import { Player } from "@prisma/client";
 
 interface DailyMissionProps {
-    dailyMissions: Daily_Quests[];
+    dailyQuests: Daily_Quests[];
+    completedQuests: { questId: string }[];
     playerId: Player["id"];
 }
 
-export default function DailyMissions({
-    dailyMissions,
+export default function DailyQuests({
     playerId,
+    dailyQuests,
+    completedQuests,
 }: DailyMissionProps) {
     return (
         <div className="relative flex w-full items-center justify-center px-3">
@@ -17,15 +19,19 @@ export default function DailyMissions({
                 <h3 className="text-start p-4 text-lg font-bold">
                     Daily Missions
                 </h3>
-                {dailyMissions.map((mission) => (
+                {dailyQuests.map((quest) => (
                     <div
-                        key={mission.id}
+                        key={quest.id}
                         className="flex items-center justify-between mb-3"
                     >
-                        <MissionButton
-                            mission={mission}
+                        <QuestButton
+                            quests={quest}
                             playerId={playerId}
                             questType="Daily"
+                            alreadyCompleted={completedQuests.some(
+                                (completedQuest) =>
+                                    completedQuest.questId === quest.id
+                            )}
                         />
                     </div>
                 ))}

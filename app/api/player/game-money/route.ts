@@ -6,6 +6,8 @@ import { z } from "zod";
 
 const schema = z.object({
     playerId: z.string(),
+    questId: z.string().optional(),
+    description: z.string().optional(),
     Price: z.number().int(),
     Currency: z.enum(["Points", "SGP", "SGT"]),
 });

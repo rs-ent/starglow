@@ -2,12 +2,12 @@
 
 import { useToast } from "./useToast";
 import { useLoading } from "./useLoading";
-import { MissionLog, GameMoneyLog } from "@prisma/client";
+import { QuestLog, GameMoneyLog } from "@prisma/client";
 
-type MissionPayload = Pick<
-    MissionLog,
+type QuestPayLoad = Pick<
+    QuestLog,
     | "playerId"
-    | "missionId"
+    | "questId"
     | "type"
     | "Quest_Title"
     | "Quest_Type"
@@ -17,16 +17,19 @@ type MissionPayload = Pick<
     | "URL"
 >;
 
-type AddMoneyPayload = Pick<GameMoneyLog, "playerId" | "Price" | "Currency">;
+type AddMoneyPayload = Pick<
+    GameMoneyLog,
+    "playerId" | "questId" | "description" | "Price" | "Currency"
+>;
 
 export function useQuest() {
     const toast = useToast();
     const { startLoading, endLoading } = useLoading();
 
-    const questComplete = async (payload: MissionPayload) => {
+    const questComplete = async (payload: QuestPayLoad) => {
         startLoading();
         try {
-            const res = await fetch("/api/missions/complete", {
+            const res = await fetch("/api/quests/complete", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

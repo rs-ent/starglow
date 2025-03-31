@@ -6,26 +6,51 @@ import { prisma } from "@/lib/prisma/client";
 import Quests from "@/templates/Quests";
 
 export default async function QuestPage() {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/auth/signin");
-  }
+    const session = await auth();
+    if (!session?.user) {
+        redirect("/auth/signin");
+    }
 
-  try {
-    const player =
-      (await prisma.player.findUnique({
-        where: { userId: session.user.id },
-      })) ||
-      (await prisma.player.create({
-        data: {
-          userId: session.user.id,
-          name: session.user.name || "Player",
-        },
-      }));
+    try {
+        const player =
+            (await prisma.player.findUnique({
+                where: { userId: session.user.id },
+            })) ||
+            (await prisma.player.create({
+                data: {
+                    userId: session.user.id,
+                    name: session.user.name || "Player",
+                },
+            }));
 
-    return <Quests player={player} />;
-  } catch (error) {
-    console.error("[QuestPage] Error fetching player:", error);
-    return notFound();
-  }
+        const latestQuest = await prisma.daily_Quests.findFirst({
+            orderBy: { Date: "desc" },
+            select: { Date: true },
+        });
+
+        if (!latestQuest) {
+            console.info("[QuestPage] No daily quests found");
+            return notFound();
+        }
+
+        const dailyQuests = await prisma.daily_Quests.findMany({
+            where: { Date: latestQuest.Date },
+        });
+
+        const completedQuests = await prisma.questLog.findMany({
+            where: { playerId: player.id, Completed: true },
+            select: { questId: true },
+        });
+
+        return (
+            <Quests
+                player={player}
+                dailyQuests={dailyQuests}
+                completedQuests={completedQuests}
+            />
+        );
+    } catch (error) {
+        console.error("[QuestPage] Error fetching player:", error);
+        return notFound();
+    }
 }

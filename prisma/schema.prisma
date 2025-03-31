@@ -82,7 +82,7 @@ model Player {
   createdAt          DateTime  @default(now())
   lastConnectedAt    DateTime  @updatedAt
   
-  missionLogs        MissionLog[]
+  questLogs          QuestLog[]
   gameMoneyLogs      GameMoneyLog[]
 
   user               User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -107,6 +107,8 @@ enum CurrencyType {
 model GameMoneyLog {
   id            String    @id @default(cuid())
   playerId      String
+  questId       String?
+  description   String?
   Price         Int       @default(0)
   Currency      CurrencyType? @default(Points) @map("Currency")
   createdAt     DateTime  @default(now())
@@ -133,10 +135,10 @@ enum QuestType {
   General
 }
 
-model MissionLog {
+model QuestLog {
   id            String   @id @default(cuid())
   playerId      String
-  missionId     String
+  questId       String
   type          QuestType
   Quest_Title   String?
   Quest_Date    String?
@@ -144,6 +146,7 @@ model MissionLog {
   URL           String?
   Price         Int?
   Currency      String?
+  Completed     Boolean   @default(false)
   completedAt   DateTime @default(now())
 
   player        Player   @relation(fields: [playerId], references: [id])

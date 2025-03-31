@@ -22,10 +22,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: data.error }, { status: 400 });
     }
 
-    const log = await prisma.missionLog.create({
+    const log = await prisma.questLog.create({
         data: {
             playerId: data.data.playerId,
-            missionId: data.data.missionId,
+            questId: data.data.missionId,
             type: data.data.type,
             Quest_Title: data.data.Quest_Title,
             Quest_Type: data.data.Quest_Type,

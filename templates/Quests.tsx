@@ -5,14 +5,19 @@
 import QuestUtilBar from "@/components/organisms/QuestUtilBar";
 import QuestContents from "@/components/organisms/QuestContents";
 import QuestNavBar from "@/components/organisms/QuestNavBar";
-import { Player } from "@prisma/client";
+import { Player, Daily_Quests } from "@prisma/client";
 
 interface QuestsProps {
     player: Player;
+    dailyQuests: Daily_Quests[];
+    completedQuests: { questId: string }[];
 }
 
-export default function Quests({ player }: QuestsProps) {
-    console.log("[Quests] Player data:", player);
+export default function Quests({
+    player,
+    dailyQuests = [],
+    completedQuests = [],
+}: QuestsProps) {
     return (
         <div className="relative flex flex-col w-full">
             <div className="bg">
@@ -71,7 +76,12 @@ export default function Quests({ player }: QuestsProps) {
                     xl:px-[80px] xl:py-[5px] xl:mt-[100px] xl:mb-[160px]
                 "
             >
-                <QuestContents contentType="dailyQuest" playerId={player.id} />
+                <QuestContents
+                    contentType="dailyQuest"
+                    playerId={player.id}
+                    dailyQuests={dailyQuests}
+                    completedQuests={completedQuests}
+                />
             </div>
 
             <div
