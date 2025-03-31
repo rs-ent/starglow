@@ -6,7 +6,7 @@ import { useRef, useEffect, useState, use } from "react";
 import { useQuest } from "@/hooks/useQuest";
 import { useToast } from "@/hooks/useToast";
 import { H1, H3, Paragraph } from "./Typography";
-import { Daily_Quests, Player } from "@prisma/client";
+import { Quest, Player } from "@prisma/client";
 import { cn } from "@/lib/utils/tailwind";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import Popup from "./Popup";
@@ -33,12 +33,10 @@ const questList = {
 export default function QuestButton({
     quests,
     playerId,
-    questType = "Daily",
     alreadyCompleted = false,
 }: {
-    quests: Daily_Quests;
+    quests: Quest;
     playerId: Player["id"];
-    questType?: "Daily" | "General";
     alreadyCompleted?: boolean;
 }) {
     const [open, setOpen] = useState(false);
@@ -47,7 +45,7 @@ export default function QuestButton({
         useState(false);
     const [questSuccessCardViewport, setQuestSuccessCardViewport] =
         useState(false);
-    const { questComplete, addGameMoney } = useQuest();
+    const { questComplete, addRewards } = useQuest();
 
     const buttonRef = useRef<HTMLDivElement>(null);
     const isInView = useInView(buttonRef, { once: true });
@@ -73,29 +71,35 @@ export default function QuestButton({
 
         if (succeeded) {
             try {
-                await questComplete({
+                const questLogResponse = await questComplete({
                     playerId,
                     questId: quests.id,
-                    type: questType,
-                    Quest_Title: quests.Quest_Title,
-                    Quest_Type: quests.Quest_Type,
-                    Quest_Date: quests.Date,
-                    Price: quests.Price,
-                    Currency: quests.Currency,
-                    URL: quests.URL,
+                    completed: true,
+                    rewards: quests.rewards,
+                    rewardCurrency: quests.rewardCurrency,
+                    completedAt: new Date(),
                 });
 
-                await addGameMoney({
+                if (!questLogResponse.success) {
+                    throw new Error("Failed to complete quest");
+                }
+
+                const questLog = questLogResponse.log;
+
+                await addRewards({
                     playerId,
                     questId: quests.id,
-                    description: quests.Quest_Title,
-                    Price: quests.Price || 0,
-                    Currency: quests.Currency,
+                    questLogId: questLog.id,
+                    amount: quests.rewards,
+                    currency: quests.rewardCurrency,
+                    reason: "Quest Completion",
+                    pollId: null,
+                    pollLogId: null,
                 });
 
                 setQuestSucceeded(true);
                 setQuestSuccessCardVisible(true);
-                console.log("[Quest] Quest completed:", quests.id);
+                console.log("[Quest][Complete] ", quests.title);
             } catch (error) {
                 console.error(
                     "[Quest] Error completing quest:",
@@ -112,7 +116,7 @@ export default function QuestButton({
     };
 
     const target =
-        questList[quests.Quest_Type as keyof typeof questList] ||
+        questList[quests.description as keyof typeof questList] ||
         questList["Default"];
 
     return (
@@ -223,7 +227,7 @@ export default function QuestButton({
                 {/* Description */}
                 <div className="flex flex-col items-start justify-center px-2">
                     <Paragraph size={20} className="mb-1">
-                        {quests.Quest_Title}
+                        {quests.title}
                     </Paragraph>
                     <H3 size={20} className="font-superbold">
                         + 800P
@@ -259,10 +263,10 @@ export default function QuestButton({
                         size={15}
                         className="text-blue-500 border-b border-b-blue-500"
                     >
-                        {quests.URL}
+                        {quests.url}
                     </Paragraph>
                     <LinkButton
-                        href={quests.URL || "#"}
+                        href={quests.url || "#"}
                         target="_blank"
                         onClick={() => {
                             handleClose(true);

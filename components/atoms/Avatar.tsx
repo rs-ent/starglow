@@ -6,7 +6,11 @@ interface AvatarProps {
     size?: number;
 }
 
-export default function Avatar({ src = "/default-avatar.jpg", alt = "Avatar", size = 40 }: AvatarProps) {
+export default function Avatar({
+    src = "/default-avatar.jpg",
+    alt = "Avatar",
+    size = 40,
+}: AvatarProps) {
     return (
         <div className="relative w-[40px] h-[40px]">
             <img

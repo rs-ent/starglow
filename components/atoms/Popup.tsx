@@ -14,8 +14,14 @@ interface PopupProps {
     onClose: () => void;
 }
 
-export default function Popup({ children, width = "400px", height = "auto", className = "", open, onClose }: PopupProps) {
-
+export default function Popup({
+    children,
+    width = "400px",
+    height = "auto",
+    className = "",
+    open,
+    onClose,
+}: PopupProps) {
     useEffect(() => {
         const handleEsc = (event: KeyboardEvent) => {
             if (event.key === "Escape") onClose();
@@ -37,10 +43,18 @@ export default function Popup({ children, width = "400px", height = "auto", clas
                     <motion.div
                         initial={{ scale: 1, y: -70, filter: "blur(10px)" }}
                         animate={{ scale: 1, y: 0, filter: "blur(0)" }}
-                        exit={{ scale: 1, y: 70, opacity: 0, filter: "blur(20px)" }}
+                        exit={{
+                            scale: 1,
+                            y: 70,
+                            opacity: 0,
+                            filter: "blur(20px)",
+                        }}
                         transition={{ duration: 0.2, ease: "easeInOut" }}
                         style={{ width, height }}
-                        className={cn("gradient-border m-2 rounded-3xl shadow-lg relative overflow-hidden bg-gradient-to-br from-[rgba(0,0,0,0.3)] to-[rgba(0,0,0,0.8)] backdrop-blur-lg", className)}
+                        className={cn(
+                            "gradient-border m-2 rounded-3xl shadow-lg relative overflow-hidden bg-gradient-to-br from-[rgba(0,0,0,0.3)] to-[rgba(0,0,0,0.8)] backdrop-blur-lg",
+                            className
+                        )}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button

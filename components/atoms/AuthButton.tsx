@@ -13,7 +13,14 @@ interface AuthButtonProps {
     paddingSize?: number;
     gapSize?: number;
     className?: string;
-    variant?: "default" | "space" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+    variant?:
+        | "default"
+        | "space"
+        | "destructive"
+        | "outline"
+        | "secondary"
+        | "ghost"
+        | "link";
 }
 
 export default function AuthButton({
@@ -22,7 +29,7 @@ export default function AuthButton({
     paddingSize = 20,
     gapSize = 20,
     className = "",
-    variant = "default"
+    variant = "default",
 }: AuthButtonProps) {
     const { data: session, status } = useSession();
     const { startLoading } = useLoading();
@@ -37,18 +44,46 @@ export default function AuthButton({
 
     if (status === "loading") {
         return (
-            <Button disabled={true} variant={variant} className={className} frameSize={frameSize} textSize={textSize} paddingSize={paddingSize} gapSize={gapSize} icon={LoaderCircle} iconSpinning={true}>
+            <Button
+                disabled={true}
+                variant={variant}
+                className={className}
+                frameSize={frameSize}
+                textSize={textSize}
+                paddingSize={paddingSize}
+                gapSize={gapSize}
+                icon={LoaderCircle}
+                iconSpinning={true}
+            >
                 Loading
             </Button>
         );
     }
 
     return session ? (
-        <Button onClick={() => signOut()} variant={variant} className={className} frameSize={frameSize} textSize={textSize} paddingSize={paddingSize} gapSize={gapSize} icon={LogOut}>
+        <Button
+            onClick={() => signOut()}
+            variant={variant}
+            className={className}
+            frameSize={frameSize}
+            textSize={textSize}
+            paddingSize={paddingSize}
+            gapSize={gapSize}
+            icon={LogOut}
+        >
             Sign Out
         </Button>
     ) : (
-        <Button onClick={handleSignIn} variant={variant} className={className} frameSize={frameSize} textSize={textSize} paddingSize={paddingSize} gapSize={gapSize} icon={LogIn}>
+        <Button
+            onClick={handleSignIn}
+            variant={variant}
+            className={className}
+            frameSize={frameSize}
+            textSize={textSize}
+            paddingSize={paddingSize}
+            gapSize={gapSize}
+            icon={LogIn}
+        >
             Sign In
         </Button>
     );

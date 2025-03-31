@@ -38,7 +38,10 @@ export default function Hamburger({
     return (
         <button
             onClick={toggle}
-            className={cn("flex cursor-pointer items-center justify-center", className)}
+            className={cn(
+                "flex cursor-pointer items-center justify-center",
+                className
+            )}
             aria-label="Toggle menu"
             style={{ width: size, height: size }}
         >
@@ -47,7 +50,11 @@ export default function Hamburger({
                 animationData={animationData}
                 loop={false}
                 autoplay={false}
-                style={{ width: size * 3, height: size * 3, filter: "invert(1) brightness(2)" }}
+                style={{
+                    width: size * 3,
+                    height: size * 3,
+                    filter: "invert(1) brightness(2)",
+                }}
             />
         </button>
     );

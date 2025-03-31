@@ -20,7 +20,14 @@ interface ButtonProps {
     iconLeft?: boolean;
     onClick?: () => void;
     disabled?: boolean;
-    variant?: "default" | "space" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+    variant?:
+        | "default"
+        | "space"
+        | "destructive"
+        | "outline"
+        | "secondary"
+        | "ghost"
+        | "link";
     className?: string;
 }
 
@@ -41,7 +48,6 @@ export default function Button({
     variant = "default",
     className = "",
 }: ButtonProps) {
-
     const { textClass } = getResponsiveClass(textSize);
     const { paddingClass } = getResponsiveClass(paddingSize);
     const { frameClass } = getResponsiveClass(frameSize);
@@ -52,24 +58,42 @@ export default function Button({
             onClick={onClick}
             variant={variant}
             disabled={disabled}
-            className={cn("flex items-center justify-center cursor-pointer transition-all", textClass, paddingClass, gapClass, className)}
+            className={cn(
+                "flex items-center justify-center cursor-pointer transition-all",
+                textClass,
+                paddingClass,
+                gapClass,
+                className
+            )}
         >
-            {(Icon && iconLeft) && (
-                <div className={cn(frameClass, "flex items-center justify-center")}>
+            {Icon && iconLeft && (
+                <div
+                    className={cn(
+                        frameClass,
+                        "flex items-center justify-center"
+                    )}
+                >
                     <Icon
                         strokeWidth={2}
-                        className={cn("w-full h-full min-w-full min-h-full", iconSpinning && "animate-spin")}
+                        className={cn(
+                            "w-full h-full min-w-full min-h-full",
+                            iconSpinning && "animate-spin"
+                        )}
                     />
                 </div>
             )}
 
-            {(img && imgLeft) && (
-                img.endsWith('.svg') ? (
+            {img &&
+                imgLeft &&
+                (img.endsWith(".svg") ? (
                     <img
                         src={img}
                         alt="Button Image"
-                        className={cn(frameClass, imgSpinning && "animate-spin")}
-                        style={{ width: `${frameSize}px`, height: 'auto' }}
+                        className={cn(
+                            frameClass,
+                            imgSpinning && "animate-spin"
+                        )}
+                        style={{ width: `${frameSize}px`, height: "auto" }}
                     />
                 ) : (
                     <Image
@@ -77,30 +101,44 @@ export default function Button({
                         alt="Button Image"
                         width={frameSize}
                         height={frameSize}
-                        className={cn(frameClass, imgSpinning && "animate-spin")}
-                        style={{ objectFit: 'contain' }}
+                        className={cn(
+                            frameClass,
+                            imgSpinning && "animate-spin"
+                        )}
+                        style={{ objectFit: "contain" }}
                     />
-                )
-            )}
+                ))}
 
             {children}
 
-            {(Icon && !iconLeft) && (
-                <div className={cn(frameClass, "flex items-center justify-center")}>
+            {Icon && !iconLeft && (
+                <div
+                    className={cn(
+                        frameClass,
+                        "flex items-center justify-center"
+                    )}
+                >
                     <Icon
                         strokeWidth={2}
-                        className={cn("w-full h-full min-w-full min-h-full", iconSpinning && "animate-spin")}
+                        className={cn(
+                            "w-full h-full min-w-full min-h-full",
+                            iconSpinning && "animate-spin"
+                        )}
                     />
                 </div>
             )}
 
-            {(img && !imgLeft) && (
-                img.endsWith('.svg') ? (
+            {img &&
+                !imgLeft &&
+                (img.endsWith(".svg") ? (
                     <img
                         src={img}
                         alt="Button Image"
-                        className={cn(frameClass, imgSpinning && "animate-spin")}
-                        style={{ width: `${frameSize}px`, height: 'auto' }}
+                        className={cn(
+                            frameClass,
+                            imgSpinning && "animate-spin"
+                        )}
+                        style={{ width: `${frameSize}px`, height: "auto" }}
                     />
                 ) : (
                     <Image
@@ -108,13 +146,13 @@ export default function Button({
                         alt="Button Image"
                         width={frameSize}
                         height={frameSize}
-                        className={cn(frameClass, imgSpinning && "animate-spin")}
-                        style={{ objectFit: 'contain' }}
+                        className={cn(
+                            frameClass,
+                            imgSpinning && "animate-spin"
+                        )}
+                        style={{ objectFit: "contain" }}
                     />
-                )
-            )}
-
+                ))}
         </ShadcnButton>
     );
-
 }

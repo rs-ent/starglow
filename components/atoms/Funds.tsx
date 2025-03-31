@@ -25,22 +25,29 @@ export default function Funds({
     gapSize = 20,
     className = "",
 }: FundsProps) {
-
     const { textClass } = getResponsiveClass(textSize);
     const { frameClass } = getResponsiveClass(frameSize);
     const { gapClass } = getResponsiveClass(gapSize);
 
     return (
-        <div className={cn("flex items-center justify-center cursor-pointer bg-muted rounded-full transition-all py-1 px-2 shadow-lg", className)}>
+        <div
+            className={cn(
+                "flex items-center justify-center cursor-pointer bg-muted rounded-full transition-all py-1 px-2 shadow-lg",
+                className
+            )}
+        >
             <div className={cn("flex items-center justify-center", gapClass)}>
                 {fundsIcon && (
                     <div className="p-1 bg-gradient-to-br from-[rgba(0,0,0,0.7)] to-[rgba(255,255,255,0.3)] rounded-full flex items-center justify-center">
-                        {fundsIcon.endsWith('.svg') ? (
+                        {fundsIcon.endsWith(".svg") ? (
                             <img
                                 src={fundsIcon}
                                 alt={`${fundsLabel} logo`}
                                 className={cn(frameClass)}
-                                style={{ width: `${frameSize}px`, height: 'auto' }}
+                                style={{
+                                    width: `${frameSize}px`,
+                                    height: "auto",
+                                }}
                             />
                         ) : (
                             <Image
@@ -49,19 +56,20 @@ export default function Funds({
                                 width={frameSize}
                                 height={frameSize}
                                 className={cn(frameClass)}
-                                style={{ objectFit: 'contain' }}
+                                style={{ objectFit: "contain" }}
                             />
                         )}
                     </div>
                 )}
-                <H3 className={cn(textClass, "mt-1 mr-2 text-foreground flex items-center justify-center")}>
-                    <CountUp
-                        end={funds}
-                        duration={0.7}
-                        separator=","
-                    />
+                <H3
+                    className={cn(
+                        textClass,
+                        "mt-1 mr-2 text-foreground flex items-center justify-center"
+                    )}
+                >
+                    <CountUp end={funds} duration={0.7} separator="," />
                 </H3>
             </div>
         </div>
-    )
+    );
 }

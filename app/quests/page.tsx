@@ -23,9 +23,9 @@ export default async function QuestPage() {
                 },
             }));
 
-        const latestQuest = await prisma.daily_Quests.findFirst({
-            orderBy: { Date: "desc" },
-            select: { Date: true },
+        const latestQuest = await prisma.quest.findFirst({
+            orderBy: { startDate: "desc" },
+            select: { startDate: true },
         });
 
         if (!latestQuest) {
@@ -33,12 +33,12 @@ export default async function QuestPage() {
             return notFound();
         }
 
-        const dailyQuests = await prisma.daily_Quests.findMany({
-            where: { Date: latestQuest.Date },
+        const dailyQuests = await prisma.quest.findMany({
+            where: { startDate: latestQuest.startDate },
         });
 
         const completedQuests = await prisma.questLog.findMany({
-            where: { playerId: player.id, Completed: true },
+            where: { playerId: player.id, completed: true },
             select: { questId: true },
         });
 

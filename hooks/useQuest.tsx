@@ -2,31 +2,35 @@
 
 import { useToast } from "./useToast";
 import { useLoading } from "./useLoading";
-import { QuestLog, GameMoneyLog } from "@prisma/client";
+import { QuestLog, RewardsLog } from "@prisma/client";
 
-type QuestPayLoad = Pick<
+type QuestPayload = Pick<
     QuestLog,
     | "playerId"
     | "questId"
-    | "type"
-    | "Quest_Title"
-    | "Quest_Type"
-    | "Quest_Date"
-    | "Price"
-    | "Currency"
-    | "URL"
+    | "completed"
+    | "completedAt"
+    | "rewards"
+    | "rewardCurrency"
 >;
 
-type AddMoneyPayload = Pick<
-    GameMoneyLog,
-    "playerId" | "questId" | "description" | "Price" | "Currency"
+type RewardPayload = Pick<
+    RewardsLog,
+    | "playerId"
+    | "questId"
+    | "questLogId"
+    | "pollId"
+    | "pollLogId"
+    | "amount"
+    | "reason"
+    | "currency"
 >;
 
 export function useQuest() {
     const toast = useToast();
     const { startLoading, endLoading } = useLoading();
 
-    const questComplete = async (payload: QuestPayLoad) => {
+    const questComplete = async (payload: QuestPayload) => {
         startLoading();
         try {
             const res = await fetch("/api/quests/complete", {
@@ -54,10 +58,10 @@ export function useQuest() {
         }
     };
 
-    const addGameMoney = async (payload: AddMoneyPayload) => {
+    const addRewards = async (payload: RewardPayload) => {
         startLoading();
         try {
-            const res = await fetch("/api/player/game-money", {
+            const res = await fetch("/api/player/rewards", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -81,5 +85,5 @@ export function useQuest() {
         }
     };
 
-    return { questComplete, addGameMoney };
+    return { questComplete, addRewards };
 }

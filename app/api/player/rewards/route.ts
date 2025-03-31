@@ -7,18 +7,29 @@ import { z } from "zod";
 const schema = z.object({
     playerId: z.string(),
     questId: z.string().optional(),
-    description: z.string().optional(),
-    Price: z.number().int(),
-    Currency: z.enum(["Points", "SGP", "SGT"]),
+    questLogId: z.string().optional(),
+    pollId: z.string().optional(),
+    pollLogId: z.string().optional(),
+    amount: z.number().int(),
+    reason: z.string().optional(),
+    currency: z.enum(["points", "SGP", "SGT"]),
 });
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const playerId = searchParams.get("playerId");
+    const currency = searchParams.get("currency");
 
-    if (!playerId) {
+    if (!playerId || !currency) {
         return NextResponse.json(
-            { message: "Player ID is required" },
+            { message: "Player ID and Currency are required" },
+            { status: 400 }
+        );
+    }
+
+    if (!["points", "SGP", "SGT"].includes(currency)) {
+        return NextResponse.json(
+            { message: "Invalid currency" },
             { status: 400 }
         );
     }
@@ -26,7 +37,7 @@ export async function GET(request: NextRequest) {
     try {
         const player = await prisma.player.findUnique({
             where: { id: playerId },
-            select: { gameMoney: true },
+            select: { points: true, SGP: true, SGT: true },
         });
 
         if (!player) {
@@ -36,8 +47,17 @@ export async function GET(request: NextRequest) {
             );
         }
 
+        const currencyMap: Record<"points" | "SGP" | "SGT", number> = {
+            points: player.points,
+            SGP: player.SGP,
+            SGT: player.SGT,
+        };
+
         return NextResponse.json(
-            { gameMoney: player.gameMoney },
+            {
+                currency,
+                amount: currencyMap[currency as "points" | "SGP" | "SGT"],
+            },
             { status: 200 }
         );
     } catch (error) {
@@ -60,27 +80,44 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: "Invalid data" }, { status: 400 });
     }
 
-    const { playerId, Price, Currency } = validation.data;
+    const {
+        playerId,
+        amount,
+        currency,
+        reason,
+        questId,
+        questLogId,
+        pollId,
+        pollLogId,
+    } = validation.data;
+
+    const updateData: Record<string, { increment: number }> = {
+        [currency]: { increment: amount },
+    };
+
     try {
         const player = await prisma.player.update({
             where: { id: playerId },
-            data: {
-                gameMoney: { increment: Price },
-            },
+            data: updateData,
         });
 
-        await prisma.gameMoneyLog.create({
+        await prisma.rewardsLog.create({
             data: {
                 playerId,
-                Price,
-                Currency,
+                amount,
+                currency,
+                reason,
+                questId,
+                questLogId,
+                pollId,
+                pollLogId,
             },
         });
 
         return NextResponse.json({ player }, { status: 200 });
     } catch (error) {
         console.error(
-            "[Player][gameMoney] Error updating player game money:",
+            "[Player][Reward] Error updating player game money:",
             error
         );
         return NextResponse.json(

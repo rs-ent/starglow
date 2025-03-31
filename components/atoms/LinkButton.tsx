@@ -34,7 +34,6 @@ export default function LinkButton({
     imgLeft = true,
     onClick,
 }: LinkButtonProps) {
-
     const { textClass } = getResponsiveClass(textSize);
     const { paddingClass } = getResponsiveClass(paddingSize);
     const { frameClass } = getResponsiveClass(frameSize);
@@ -45,17 +44,25 @@ export default function LinkButton({
             href={href}
             target={target}
             className={cn(
-                "flex text-base font-main text-foreground hover:text-accent transition-all items-center", textClass, paddingClass, gapClass, className
+                "flex text-base font-main text-foreground hover:text-accent transition-all items-center",
+                textClass,
+                paddingClass,
+                gapClass,
+                className
             )}
             onClick={onClick}
         >
-            {img && imgLeft && (
-                img.endsWith('.svg') ? (
+            {img &&
+                imgLeft &&
+                (img.endsWith(".svg") ? (
                     <img
                         src={img}
                         alt="Button Image"
-                        className={cn(frameClass, imgSpinning && "animate-spin")}
-                        style={{ width: `${frameSize}px`, height: 'auto' }}
+                        className={cn(
+                            frameClass,
+                            imgSpinning && "animate-spin"
+                        )}
+                        style={{ width: `${frameSize}px`, height: "auto" }}
                     />
                 ) : (
                     <Image
@@ -63,20 +70,26 @@ export default function LinkButton({
                         alt="Button Image"
                         width={frameSize}
                         height={frameSize}
-                        className={cn(frameClass, imgSpinning && "animate-spin")}
-                        style={{ objectFit: 'contain' }}
+                        className={cn(
+                            frameClass,
+                            imgSpinning && "animate-spin"
+                        )}
+                        style={{ objectFit: "contain" }}
                     />
-                )
-            )}
+                ))}
 
             {children}
-            {img && !imgLeft && (
-                img.endsWith('.svg') ? (
+            {img &&
+                !imgLeft &&
+                (img.endsWith(".svg") ? (
                     <img
                         src={img}
                         alt="Button Image"
-                        className={cn(frameClass, imgSpinning && "animate-spin")}
-                        style={{ width: `${frameSize}px`, height: 'auto' }}
+                        className={cn(
+                            frameClass,
+                            imgSpinning && "animate-spin"
+                        )}
+                        style={{ width: `${frameSize}px`, height: "auto" }}
                     />
                 ) : (
                     <Image
@@ -84,12 +97,13 @@ export default function LinkButton({
                         alt="Button Image"
                         width={frameSize}
                         height={frameSize}
-                        className={cn(frameClass, imgSpinning && "animate-spin")}
-                        style={{ objectFit: 'contain' }}
+                        className={cn(
+                            frameClass,
+                            imgSpinning && "animate-spin"
+                        )}
+                        style={{ objectFit: "contain" }}
                     />
-                )
-            )}
-
+                ))}
         </Link>
     );
 }

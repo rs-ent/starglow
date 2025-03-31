@@ -4,16 +4,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { z } from "zod";
 
+/*
+
+model QuestLog {
+  id             String    @id @default(cuid())
+  playerId       String
+  questId        String
+  completed      Boolean   @default(false)
+  completedAt    DateTime?
+  rewards        Int       @default(0)
+  rewardCurrency RewardCurrency @default(points)
+
+  pointsLogs     PointsLog[]
+
+  player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  quest          Quest     @relation(fields: [questId], references: [id])
+
+  @@unique([playerId, questId])
+  @@index([playerId, questId, completed])
+}
+
+*/
+
 const schema = z.object({
     playerId: z.string(),
-    missionId: z.string(),
-    type: z.enum(["Daily", "General"]),
-    Quest_Title: z.string().optional(),
-    Quest_Type: z.string().optional(),
-    Quest_Date: z.string().optional(),
-    Price: z.number().optional(),
-    Currency: z.enum(["Points", "SGP", "SGT"]).optional(),
-    URL: z.string().optional(),
+    questId: z.string(),
+    completed: z.boolean(),
+    completedAt: z.date().optional(),
+    rewards: z.number().int(),
+    rewardCurrency: z.enum(["points", "SGP", "SGT"]),
 });
 
 export async function POST(req: NextRequest) {
@@ -25,14 +44,11 @@ export async function POST(req: NextRequest) {
     const log = await prisma.questLog.create({
         data: {
             playerId: data.data.playerId,
-            questId: data.data.missionId,
-            type: data.data.type,
-            Quest_Title: data.data.Quest_Title,
-            Quest_Type: data.data.Quest_Type,
-            Quest_Date: data.data.Quest_Date,
-            Price: data.data.Price,
-            Currency: data.data.Currency,
-            URL: data.data.URL,
+            questId: data.data.questId,
+            completed: data.data.completed,
+            completedAt: data.data.completedAt,
+            rewards: data.data.rewards,
+            rewardCurrency: data.data.rewardCurrency,
         },
     });
 

@@ -61,6 +61,7 @@ model Wallet {
   id         String    @id @default(cuid())
   userId     String
   address    String    @unique
+  privateKey String?  
   network    String
   createdAt  DateTime  @default(now())
   default    Boolean   @default(false)
@@ -77,6 +78,8 @@ model Player {
   telegramId         String?       @unique
   name               String?
   points             Int           @default(0)
+  SGP                Int           @default(0)
+  SGT                Int           @default(0)
   recommendedCount   Int           @default(0)
   recommenderId      String?
   recommenderName    String?
@@ -85,16 +88,16 @@ model Player {
   lastConnectedAt    DateTime      @updatedAt
 
   questLogs          QuestLog[]
-  pointsLogs         PointsLog[]
+  rewardLogs         RewardsLog[]
   pollLogs           PollLog[]
 
   user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  @@index([userId, telegramId])
+  @@index([userId, telegramId, id])
 }
 
 enum RewardCurrency {
-  Points
+  points
   SGP
   SGT
 }
@@ -106,13 +109,13 @@ model Quest {
   url             String?
   icon            String?
   rewards         Int                 @default(800)
-  rewardCurrency  RewardCurrency      @default(Points)
+  rewardCurrency  RewardCurrency      @default(points)
   startDate       DateTime?    
   endDate         DateTime?
   permanent       Boolean             @default(false)
 
   questLogs       QuestLog[]
-  pointsLogs      PointsLog[]
+  rewardLogs      RewardsLog[]
 
   @@index([startDate, endDate, permanent])
 }
@@ -122,9 +125,12 @@ model QuestLog {
   playerId       String
   questId        String
   completed      Boolean   @default(false)
-  completedAt    DateTime?
+  completedAt    DateTime  @default(now())
+  rewards        Int       @default(0)
+  rewardCurrency RewardCurrency @default(points)
+  createdAt      DateTime  @default(now())
 
-  pointsLogs    PointsLog[]
+  rewardLogs     RewardsLog[]
 
   player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
   quest          Quest     @relation(fields: [questId], references: [id])
@@ -156,7 +162,7 @@ model Poll {
   updatedAt               DateTime  @updatedAt
 
   pollLogs                PollLog[]
-  pointsLogs             PointsLog[]
+  rewardLogs             RewardsLog[]
 
   @@index([id, startDate, endDate, exposeInScheduleTab])
 }
@@ -169,7 +175,7 @@ model PollLog {
   betAmount      Int       @default(0)
   createdAt      DateTime  @default(now())
 
-  pointsLogs    PointsLog[]
+  rewardLogs     RewardsLog[]
 
   player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
   poll           Poll      @relation(fields: [pollId], references: [id])
@@ -178,14 +184,15 @@ model PollLog {
   @@index([playerId, pollId, option])
 }
 
-model PointsLog {
+model RewardsLog {
   id             String    @id @default(cuid())
   playerId       String
   questId        String?
   questLogId     String?
-  pollId        String?
+  pollId         String?
   pollLogId      String?
   amount         Int
+  currency       RewardCurrency @default(points)
   reason         String?
   createdAt      DateTime  @default(now())
 

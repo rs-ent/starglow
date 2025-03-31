@@ -23,12 +23,13 @@ export default function Icon({
     className,
     onClick,
 }: IconProps) {
-
     const { frameClass } = getResponsiveClass(size);
 
     if (svg) {
         if (!isSvgFile(svg)) {
-            console.error("[Icon Component] Invalid file type provided. Only SVG files are allowed.");
+            console.error(
+                "[Icon Component] Invalid file type provided. Only SVG files are allowed."
+            );
             return null;
         }
 
