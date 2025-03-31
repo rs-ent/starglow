@@ -10,6 +10,25 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          String    @default("user")
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  lastLoginAt   DateTime?
+
+  accounts      Account[]
+  sessions      Session[]
+  wallets       Wallet[]
+  player        Player?
+
+  @@index([lastLoginAt])
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -24,7 +43,7 @@ model Account {
   id_token          String?
   session_state     String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -34,151 +53,166 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
+
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  wallets       Wallet[]
-  providerId    String?
-  role          String    @default("user")
-  active        Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  lastLoginAt   DateTime?
-  player        Player?
-}
-
 model Wallet {
-  id            String    @id @default(cuid())
-  userId        String    // foreign key
-  address       String    @unique
-  privateKey    String
-  network       String
-  createdAt     DateTime  @default(now())
-  primary       Boolean   @default(false)
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  userId     String
+  address    String    @unique
+  network    String
+  createdAt  DateTime  @default(now())
+  default    Boolean   @default(false)
+  primary    Int?      @default(0)
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, address])
 }
 
 model Player {
-  id                 String    @id @default(cuid()) @map("id")
-  userId             String?   @unique
-  telegramId         String?   @unique @map("telegramId")
-  name               String?   @map("name")
-  gameMoney          Int       @default(0) @map("gameMoney")
-  usedCashMoney      Int       @default(0) @map("usedCashMoney")
-  starPurchased      Int       @default(0) @map("starPurchased")
-  vipUntil           DateTime? @map("vipUntil")
-  recommendedCount   Int       @default(0) @map("recommendedCount")
-  recommenderId      String?   
+  id                 String        @id @default(cuid())
+  userId             String        @unique
+  telegramId         String?       @unique
+  name               String?
+  points             Int           @default(0)
+  recommendedCount   Int           @default(0)
+  recommenderId      String?
   recommenderName    String?
   recommenderMethod  String?
-  raffleTickets      Int       @default(0) @map("raffleTickets")
-  createdAt          DateTime  @default(now())
-  lastConnectedAt    DateTime  @updatedAt
-  
+  createdAt          DateTime      @default(now())
+  lastConnectedAt    DateTime      @updatedAt
+
   questLogs          QuestLog[]
-  gameMoneyLogs      GameMoneyLog[]
+  pointsLogs         PointsLog[]
+  pollLogs           PollLog[]
 
-  user               User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("Player")
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, telegramId])
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
-enum CurrencyType {
+enum RewardCurrency {
   Points
   SGP
   SGT
 }
 
-model GameMoneyLog {
-  id            String    @id @default(cuid())
-  playerId      String
-  questId       String?
-  description   String?
-  Price         Int       @default(0)
-  Currency      CurrencyType? @default(Points) @map("Currency")
-  createdAt     DateTime  @default(now())
+model Quest {
+  id              String              @id @default(cuid())
+  title           String
+  description     String?
+  url             String?
+  icon            String?
+  rewards         Int                 @default(800)
+  rewardCurrency  RewardCurrency      @default(Points)
+  startDate       DateTime?    
+  endDate         DateTime?
+  permanent       Boolean             @default(false)
 
-  player        Player    @relation(fields: [playerId], references: [id])
-}
+  questLogs       QuestLog[]
+  pointsLogs      PointsLog[]
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model Daily_Quests {
-  id          String  @id @default(cuid())
-  Date        String?
-  Quest_Type  String? @map("Quest Type")
-  poll_id     String
-  Quest_Title String? @map("Quest Title")
-  URL         String?
-  Price       Int?    @default(800)
-  Currency    CurrencyType? @default(Points) @map("Currency")
-
-  @@map("Daily Quests")
-}
-
-enum QuestType {
-  Daily
-  General
+  @@index([startDate, endDate, permanent])
 }
 
 model QuestLog {
-  id            String   @id @default(cuid())
-  playerId      String
-  questId       String
-  type          QuestType
-  Quest_Title   String?
-  Quest_Date    String?
-  Quest_Type    String?
-  URL           String?
-  Price         Int?
-  Currency      String?
-  Completed     Boolean   @default(false)
-  completedAt   DateTime @default(now())
+  id             String    @id @default(cuid())
+  playerId       String
+  questId        String
+  completed      Boolean   @default(false)
+  completedAt    DateTime?
 
-  player        Player   @relation(fields: [playerId], references: [id])
+  pointsLogs    PointsLog[]
+
+  player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  quest          Quest     @relation(fields: [questId], references: [id])
+
+  @@unique([playerId, questId])
+  @@index([playerId, questId, completed])
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model Polls {
-  poll_id           String  @id
-  title             String?
-  title_shorten     String?
-  options           String?
-  options_shorten   String?
-  img               String?
-  song_title        String?
-  song_img          String?
-  start             String?
-  end               String?
-  announce_today    String?
-  announce_result   String?
-  show_scheduled    String?
-  song_announce_img String?
-  poll_announce_img String?
-  result_img        String?
-  reopen            String?
-  group_a           String?
-  group_b           String?
-  memo              String?
+model Poll {
+  id                      String    @id @default(cuid())
+  title                   String
+  titleShorten            String?
+  options                 String[]  @default([])
+  optionsShorten          String[]  @default([])
+  bannerImg               String?
+  startDate               DateTime  @default(now())
+  endDate                 DateTime  @default(now())
+  exposeInScheduleTab     Boolean   @default(false)
+  openPromotionText       String?
+  openPromotionImg        String?
+  resultPromotionText     String?
+  resultPromotionImg      String?
+  totalVotes              Int       @default(0)
+  totalVotesByOption      Int[]     @default([])
+  totalBetsAmount         Int       @default(0)
+  totalBetsAmountByOption Int[]     @default([])
+  results                 Int[]     @default([])
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  pollLogs                PollLog[]
+  pointsLogs             PointsLog[]
+
+  @@index([id, startDate, endDate, exposeInScheduleTab])
 }
 
-model OgImageCache {
-  id        String   @id @default(uuid())
-  targetUrl String   @unique
-  imageUrl  String
-  createdAt DateTime @default(now())
+model PollLog {
+  id             String    @id @default(cuid())
+  playerId       String
+  pollId         String
+  option         String
+  betAmount      Int       @default(0)
+  createdAt      DateTime  @default(now())
+
+  pointsLogs    PointsLog[]
+
+  player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  poll           Poll      @relation(fields: [pollId], references: [id])
+
+  @@unique([playerId, pollId])
+  @@index([playerId, pollId, option])
+}
+
+model PointsLog {
+  id             String    @id @default(cuid())
+  playerId       String
+  questId        String?
+  questLogId     String?
+  pollId        String?
+  pollLogId      String?
+  amount         Int
+  reason         String?
+  createdAt      DateTime  @default(now())
+
+  player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  quest          Quest?    @relation(fields: [questId], references: [id])
+  questLog       QuestLog? @relation(fields: [questLogId], references: [id])
+  poll           Poll?     @relation(fields: [pollId], references: [id])
+  pollLog        PollLog?  @relation(fields: [pollLogId], references: [id])
+
+  @@index([playerId, createdAt])
+}
+
+model StoredImage {
+  id           String    @id @default(cuid())
+  url          String    @unique @db.VarChar(2048)
+  type         String?   @db.VarChar(50)
+  sourceUrl    String?   @db.VarChar(2048)
+  alt          String?   @db.VarChar(255)
+  width        Int?                      
+  height       Int?                      
+  mimeType     String?   @db.VarChar(50)
+  sizeBytes    Int?                     
+  metadata     Json?                    
+  expiresAt    DateTime?                
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([url, sourceUrl])
+  @@unique([sourceUrl, type])
 }
