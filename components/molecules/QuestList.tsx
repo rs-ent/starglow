@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import QuestButton from "../atoms/QuestButton";
 import Button from "../atoms/Button";
 import { Quest, Player } from "@prisma/client";
@@ -24,13 +24,22 @@ export default function QuestList({
 
     const [selectedType, setSelectedType] = useState<string>("All");
     const [filteredQuests, setFilteredQuests] = useState<Quest[]>(quests);
+    const [selectedButtonPosition, setSelectedButtonPosition] = useState<{
+        x: number;
+        y: number;
+    } | null>(null);
+
+    const buttonRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     const handleTypeChange = (type: string) => {
         setSelectedType(type);
-        if (type === "All") {
-            setFilteredQuests(quests);
-        } else {
-            setFilteredQuests(quests.filter((quest) => quest.type === type));
+        setFilteredQuests(
+            type === "All" ? quests : quests.filter((q) => q.type === type)
+        );
+        const button = buttonRefs.current[type];
+        if (button) {
+            const rect = button.getBoundingClientRect();
+            setSelectedButtonPosition({ x: rect.left, y: rect.top });
         }
     };
 
@@ -46,22 +55,43 @@ export default function QuestList({
                         "
                     >
                         {types.map((type) => (
-                            <Button
+                            <div
+                                ref={(el) => {
+                                    buttonRefs.current[type || 0] = el;
+                                }}
                                 key={type}
-                                variant="space"
-                                textSize={15}
-                                paddingSize={20}
-                                onClick={() => handleTypeChange(type ?? "All")}
-                                className={cn(
-                                    "bg-transparent text-foreground rounded-full flex-shrink-0",
-                                    selectedType === type
-                                        ? "opacity-100 shadow-md"
-                                        : "opacity-40 shadow-none"
-                                )}
                             >
-                                {type}
-                            </Button>
+                                <Button
+                                    key={type}
+                                    variant="space"
+                                    textSize={15}
+                                    paddingSize={20}
+                                    onClick={() =>
+                                        handleTypeChange(type ?? "All")
+                                    }
+                                    className={cn(
+                                        "bg-transparent text-foreground rounded-full flex-shrink-0",
+                                        selectedType === type
+                                            ? "opacity-100 shadow-md"
+                                            : "opacity-40 shadow-none"
+                                    )}
+                                >
+                                    {type}
+                                </Button>
+                            </div>
                         ))}
+
+                        {selectedButtonPosition && (
+                            <img
+                                src="/elements/el02.svg"
+                                alt="indicator"
+                                className="absolute animate-fadeIn"
+                                style={{
+                                    top: selectedButtonPosition.y - 10, // 약간 위로 조정
+                                    left: selectedButtonPosition.x - 10, // 왼쪽 위로 조정
+                                }}
+                            />
+                        )}
                     </div>
                 </div>
 

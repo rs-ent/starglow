@@ -46,6 +46,7 @@ model Account {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -121,7 +122,9 @@ model Quest {
   questLogs       QuestLog[]
   rewardLogs      RewardsLog[]
 
-  @@index([startDate, endDate, permanent])
+  @@index([startDate])
+  @@index([permanent, visible])
+  @@index([primary])
 }
 
 model QuestLog {
@@ -139,8 +142,7 @@ model QuestLog {
   player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
   quest          Quest     @relation(fields: [questId], references: [id])
 
-  @@unique([playerId, questId])
-  @@index([playerId, questId, completed])
+  @@index([playerId, completed])
 }
 
 model Poll {
@@ -168,7 +170,6 @@ model Poll {
   pollLogs                PollLog[]
   rewardLogs             RewardsLog[]
 
-  @@index([id, startDate, endDate, exposeInScheduleTab])
 }
 
 model PollLog {
@@ -184,8 +185,6 @@ model PollLog {
   player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
   poll           Poll      @relation(fields: [pollId], references: [id])
 
-  @@unique([playerId, pollId])
-  @@index([playerId, pollId, option])
 }
 
 model RewardsLog {
@@ -206,7 +205,6 @@ model RewardsLog {
   poll           Poll?     @relation(fields: [pollId], references: [id])
   pollLog        PollLog?  @relation(fields: [pollLogId], references: [id])
 
-  @@index([playerId, createdAt])
 }
 
 model StoredImage {

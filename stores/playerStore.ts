@@ -17,11 +17,17 @@ interface PlayerStore {
     createdAt?: Date | undefined;
     lastConnectedAt?: Date | undefined;
 
-    setPlayerData: (
+    setPlayer: (
         data:
             | Partial<PlayerStore>
             | ((state: PlayerStore) => Partial<PlayerStore>)
     ) => void;
+
+    incrementCurrency: (
+        currency: "points" | "SGP" | "SGT",
+        amount: number
+    ) => void;
+
     resetPlayerData: () => void;
 }
 
@@ -40,7 +46,13 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
     createdAt: undefined,
     lastConnectedAt: undefined,
 
-    setPlayerData: (data) => set((state) => ({ ...state, ...data })),
+    setPlayer: (data) => set((state) => ({ ...state, ...data })),
+
+    incrementCurrency: (currency: "points" | "SGP" | "SGT", amount: number) =>
+        set((state) => ({
+            [currency]: state[currency] + amount,
+        })),
+
     resetPlayerData: () =>
         set(() => ({
             id: "",

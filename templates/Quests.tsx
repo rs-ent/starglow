@@ -8,7 +8,6 @@ import QuestContents from "@/components/organisms/QuestContents";
 import QuestNavBar from "@/components/organisms/QuestNavBar";
 import { Player, Quest } from "@prisma/client";
 import { usePlayerStore } from "@/stores/playerStore";
-import { useRealtime } from "@/hooks/useRealtime";
 
 interface QuestsProps {
     player: Player;
@@ -24,24 +23,12 @@ export default function Quests({
     completedQuests = [],
 }: QuestsProps) {
     const [contentType, setContentType] = useState<string>("Today");
-
-    const setPlayerData = usePlayerStore((state) => state.setPlayerData);
+    const setPlayer = usePlayerStore((state) => state.setPlayer);
     const points = usePlayerStore((state) => state.points);
 
     useEffect(() => {
-        setPlayerData(player);
-        console.log("[Quests] Player data set:", player);
-    }, [player, setPlayerData]);
-
-    useRealtime({
-        table: "Player",
-        event: "UPDATE",
-        rowId: player.id,
-        onDataChange: (newData) => {
-            console.info("[Realtime][onDataChange] Received data:", newData);
-            setPlayerData((state) => ({ ...state, ...newData }));
-        },
-    });
+        setPlayer(player);
+    }, [player, setPlayer]);
 
     return (
         <div className="relative flex flex-col w-full">

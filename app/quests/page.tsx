@@ -12,43 +12,54 @@ export default async function QuestPage() {
     }
 
     try {
-        const player =
-            (await prisma.player.findUnique({
-                where: { userId: session.user.id },
-            })) ||
-            (await prisma.player.create({
-                data: {
-                    userId: session.user.id,
-                    name: session.user.name || "Player",
-                },
-            }));
+        const playerPromise = prisma.player.findUnique({
+            where: { userId: session.user.id },
+        });
 
-        const latestQuest = await prisma.quest.findFirst({
-            where: {
-                startDate: { not: null },
-            },
+        const latestQuestPromise = prisma.quest.findFirst({
+            where: { startDate: { not: null } },
             orderBy: { startDate: "desc" },
             select: { startDate: true },
         });
 
+        const [playerResult, latestQuest] = await Promise.all([
+            playerPromise,
+            latestQuestPromise,
+        ]);
+
+        const player =
+            playerResult ||
+            (await prisma.player.create({
+                data: {
+                    userId: session.user.id,
+                    name: session.user.name || "Superb Player",
+                },
+            }));
+
         if (!latestQuest) {
-            console.info("[QuestPage] No daily quests found");
             return notFound();
         }
 
-        const dailyQuests = await prisma.quest.findMany({
+        const dailyQuestsPromise = prisma.quest.findMany({
             where: { startDate: latestQuest.startDate },
+            orderBy: { primary: "asc" },
         });
 
-        const missions = await prisma.quest.findMany({
+        const missionsPromise = prisma.quest.findMany({
             where: { permanent: true, visible: true },
             orderBy: { primary: "asc" },
         });
 
-        const completedQuests = await prisma.questLog.findMany({
+        const completedQuestsPromise = prisma.questLog.findMany({
             where: { playerId: player.id, completed: true },
             select: { questId: true },
         });
+
+        const [dailyQuests, missions, completedQuests] = await Promise.all([
+            dailyQuestsPromise,
+            missionsPromise,
+            completedQuestsPromise,
+        ]);
 
         return (
             <Quests
