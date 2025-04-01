@@ -39,9 +39,9 @@ export default function QuestNavBar({
                     icon={icon}
                     label={label}
                     isActive={active === label}
-                    textSize={10}
+                    textSize={15}
                     paddingSize={0}
-                    frameSize={30}
+                    frameSize={35}
                     gapSize={5}
                     onClick={() => handleActiveChange(label)}
                     className={

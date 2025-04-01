@@ -143,7 +143,7 @@ export default function QuestButton({
                 className={`
                     ${
                         questSucceeded
-                            ? "cursor-not-allowed opacity-35"
+                            ? "cursor-not-allowed opacity-35 backdrop-blur-3xl"
                             : "cursor-pointer"
                     }
                     relative grid w-full items-center justify-center px-4 py-5

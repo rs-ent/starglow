@@ -56,105 +56,114 @@ export default function Button({
     const { gapClass } = getResponsiveClass(gapSize);
 
     return (
-        <ShadcnButton
-            onClick={onClick}
-            variant={variant}
-            disabled={disabled}
-            className={cn(
-                "flex items-center justify-center cursor-pointer transition-all",
-                textClass,
-                paddingClass,
-                gapClass,
-                className
+        <div>
+            <ShadcnButton
+                onClick={onClick}
+                variant={variant}
+                disabled={disabled}
+                className={cn(
+                    "flex items-center justify-center cursor-pointer transition-all",
+                    textClass,
+                    paddingClass,
+                    gapClass,
+                    className
+                )}
+            >
+                {Icon && iconLeft && (
+                    <div
+                        className={cn(
+                            frameClass,
+                            "flex items-center justify-center"
+                        )}
+                    >
+                        <Icon
+                            strokeWidth={2}
+                            className={cn(
+                                "w-full h-full min-w-full min-h-full",
+                                iconSpinning && "animate-spin"
+                            )}
+                        />
+                    </div>
+                )}
+
+                {img &&
+                    imgLeft &&
+                    (img.endsWith(".svg") ? (
+                        <img
+                            src={img}
+                            alt="Button Image"
+                            className={cn(
+                                frameClass,
+                                imgSpinning && "animate-spin"
+                            )}
+                            style={{ width: `${frameSize}px`, height: "auto" }}
+                        />
+                    ) : (
+                        <Image
+                            src={img}
+                            alt="Button Image"
+                            width={frameSize}
+                            height={frameSize}
+                            className={cn(
+                                frameClass,
+                                imgSpinning && "animate-spin"
+                            )}
+                            style={{ objectFit: "contain" }}
+                        />
+                    ))}
+
+                {children}
+
+                {Icon && !iconLeft && (
+                    <div
+                        className={cn(
+                            frameClass,
+                            "flex items-center justify-center"
+                        )}
+                    >
+                        <Icon
+                            strokeWidth={2}
+                            className={cn(
+                                "w-full h-full min-w-full min-h-full",
+                                iconSpinning && "animate-spin"
+                            )}
+                        />
+                    </div>
+                )}
+
+                {img &&
+                    !imgLeft &&
+                    (img.endsWith(".svg") ? (
+                        <img
+                            src={img}
+                            alt="Button Image"
+                            className={cn(
+                                frameClass,
+                                imgSpinning && "animate-spin"
+                            )}
+                            style={{ width: `${frameSize}px`, height: "auto" }}
+                        />
+                    ) : (
+                        <Image
+                            src={img}
+                            alt="Button Image"
+                            width={frameSize}
+                            height={frameSize}
+                            className={cn(
+                                frameClass,
+                                imgSpinning && "animate-spin"
+                            )}
+                            style={{ objectFit: "contain" }}
+                        />
+                    ))}
+            </ShadcnButton>
+            {beautify && (
+                <img
+                    src="/elements/el02.svg"
+                    alt="Beautify Indicator"
+                    className="absolute -top-[18px] animate-fadeIn pointer-events-none opacity-80 transition-all duration-500 ease-in-out"
+                />
             )}
-        >
-            {Icon && iconLeft && (
-                <div
-                    className={cn(
-                        frameClass,
-                        "flex items-center justify-center"
-                    )}
-                >
-                    <Icon
-                        strokeWidth={2}
-                        className={cn(
-                            "w-full h-full min-w-full min-h-full",
-                            iconSpinning && "animate-spin"
-                        )}
-                    />
-                </div>
-            )}
-
-            {img &&
-                imgLeft &&
-                (img.endsWith(".svg") ? (
-                    <img
-                        src={img}
-                        alt="Button Image"
-                        className={cn(
-                            frameClass,
-                            imgSpinning && "animate-spin"
-                        )}
-                        style={{ width: `${frameSize}px`, height: "auto" }}
-                    />
-                ) : (
-                    <Image
-                        src={img}
-                        alt="Button Image"
-                        width={frameSize}
-                        height={frameSize}
-                        className={cn(
-                            frameClass,
-                            imgSpinning && "animate-spin"
-                        )}
-                        style={{ objectFit: "contain" }}
-                    />
-                ))}
-
-            {children}
-
-            {Icon && !iconLeft && (
-                <div
-                    className={cn(
-                        frameClass,
-                        "flex items-center justify-center"
-                    )}
-                >
-                    <Icon
-                        strokeWidth={2}
-                        className={cn(
-                            "w-full h-full min-w-full min-h-full",
-                            iconSpinning && "animate-spin"
-                        )}
-                    />
-                </div>
-            )}
-
-            {img &&
-                !imgLeft &&
-                (img.endsWith(".svg") ? (
-                    <img
-                        src={img}
-                        alt="Button Image"
-                        className={cn(
-                            frameClass,
-                            imgSpinning && "animate-spin"
-                        )}
-                        style={{ width: `${frameSize}px`, height: "auto" }}
-                    />
-                ) : (
-                    <Image
-                        src={img}
-                        alt="Button Image"
-                        width={frameSize}
-                        height={frameSize}
-                        className={cn(
-                            frameClass,
-                            imgSpinning && "animate-spin"
-                        )}
-                        style={{ objectFit: "contain" }}
-                    />
-                ))}
-        </ShadcnButton>
+        </div>
     );
 }

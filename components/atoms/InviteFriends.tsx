@@ -11,7 +11,12 @@ export default function InviteFriends() {
                     src="/ui/letter.svg"
                     alt="Invite Friends Letter"
                     className="absolute -top-5 right-2"
-                    style={{ width: "110px", height: "auto" }}
+                    style={{
+                        width: "10vw",
+                        maxWidth: "120px",
+                        minWidth: "100px",
+                        height: "auto",
+                    }}
                 />
             </div>
         </div>
