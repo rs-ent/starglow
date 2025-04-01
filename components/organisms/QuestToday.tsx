@@ -2,22 +2,21 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { H2 } from "../atoms/Typography";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import YoutubeCarousel, { CarouselItem } from "../molecules/YoutubeCarousel";
 import { useLoading } from "@/hooks/useLoading";
-import { getYoutubeVideoId } from "@/lib/utils/youtube";
 import InviteFriends from "../atoms/InviteFriends";
 import DailyQuests from "../molecules/DailyQuest";
 import Icon from "../atoms/Icon";
 import { Loader2 } from "lucide-react";
-import { Player, Daily_Quests } from "@prisma/client";
+import { Player, Quest } from "@prisma/client";
 
 interface QuestTodayProps {
     playerId: Player["id"];
-    dailyQuests: Daily_Quests[];
+    dailyQuests: Quest[];
     completedQuests: { questId: string }[];
 }
 
@@ -28,62 +27,30 @@ export default function QuestToday({
 }: QuestTodayProps) {
     const { startLoading, endLoading } = useLoading();
 
-    const [carouselItems, setCarouselItems] = useState<CarouselItem[]>([]);
-    const [selectedDailyQuests, setSelectedDailyQuests] = useState<
-        Daily_Quests[]
-    >([]);
-
+    const [carouselQuests, setCarouselQuests] = useState<CarouselItem[]>([]);
+    const [selectedDailyQuests, setSelectedDailyQuests] = useState<Quest[]>([]);
     useEffect(() => {
-        startLoading();
+        if (!dailyQuests.length) return;
 
-        const fetchCarouselItems = async () => {
-            const items = await Promise.all(
-                dailyQuests
-                    .filter(
-                        (quest) =>
-                            (quest.Quest_Type === "Youtube" ||
-                                quest.Quest_Type === "Website") &&
-                            quest.URL &&
-                            quest.Quest_Title
-                    )
-                    .map(async (quest): Promise<CarouselItem> => {
-                        if (quest.Quest_Type === "Youtube") {
-                            return {
-                                type: "youtube",
-                                videoId: getYoutubeVideoId(quest.URL!)!,
-                                artist: quest.Quest_Title!.split(" - ")[0],
-                                title: quest.Quest_Title!.split(" - ")[1],
-                            };
-                        } else {
-                            const imageUrl = await fetchOgImage(quest.URL!);
+        const carouselItems = dailyQuests
+            .filter((quest) => quest.type?.toLocaleLowerCase() === "carousel")
+            .map((quest) => {
+                return {
+                    type: "youtube" as const,
+                    videoId: extractYoutubeVideoId(quest.url) ?? "",
+                    artist: quest.title.split(" - ")[0],
+                    title: quest.title.split(" - ")[1],
+                };
+            });
+        setCarouselQuests(carouselItems);
 
-                            return {
-                                type: "image",
-                                url: quest.URL!,
-                                title: quest.Quest_Title!,
-                                img: imageUrl,
-                            };
-                        }
-                    })
-            );
-
-            setCarouselItems(items);
-            endLoading();
-        };
-
-        fetchCarouselItems();
-
-        setSelectedDailyQuests(
-            dailyQuests.filter(
-                (quest) =>
-                    quest.Quest_Type !== "Youtube" &&
-                    quest.URL &&
-                    quest.Quest_Title
-            )
+        const selectedQuests = dailyQuests.filter(
+            (quest) => quest.type?.toLocaleLowerCase() !== "carousel"
         );
-    }, [startLoading, endLoading]);
+        setSelectedDailyQuests(selectedQuests);
+    }, [dailyQuests]);
 
-    const questDate = new Date(dailyQuests[0].Date ?? new Date());
+    const questDate = new Date(dailyQuests[0].startDate ?? new Date());
 
     return (
         <div className="flex items-center justify-center w-full h-full">
@@ -101,9 +68,9 @@ export default function QuestToday({
                     }/${questDate.getDate()} Today's Song`}
                 </H2>
                 <div className="flex items-center justify-center w-full h-full max-w-[900px] px-4 mb-8">
-                    {carouselItems.length ? (
+                    {carouselQuests.length ? (
                         <YoutubeCarousel
-                            items={carouselItems}
+                            items={carouselQuests}
                             className="w-full max-w-[90vw]"
                         />
                     ) : (
@@ -128,20 +95,35 @@ export default function QuestToday({
     );
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+function extractYoutubeVideoId(url: string | null | undefined): string | null {
+    if (!url) return null;
 
-async function fetchOgImage(url: string): Promise<string> {
-    try {
-        const res = await fetch(
-            `/api/get-og/image?url=${encodeURIComponent(url)}`
-        );
-        const data = await res.json();
-        if (res.ok && data.imageUrl) {
-            return data.imageUrl;
-        }
-        throw new Error("No image found");
-    } catch (error) {
-        console.error("fetchOgImage Error:", error);
-        return "/ui/default-poll-img.png";
+    // 일반 유튜브 URL (https://www.youtube.com/watch?v=VIDEO_ID)
+    let match = url.match(
+        /(?:\?v=|&v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([^&\n?#]+)/
+    );
+
+    if (match && match[1]) {
+        return match[1];
     }
+
+    // 쿼리 파라미터가 없는 임베드 URL (https://www.youtube.com/embed/VIDEO_ID)
+    match = url.match(/\/embed\/([^/?]+)/);
+    if (match && match[1]) {
+        return match[1];
+    }
+
+    // 짧은 URL (https://youtu.be/VIDEO_ID)
+    match = url.match(/youtu\.be\/([^/?]+)/);
+    if (match && match[1]) {
+        return match[1];
+    }
+
+    // 쇼츠 URL (https://youtube.com/shorts/VIDEO_ID)
+    match = url.match(/\/shorts\/([^/?]+)/);
+    if (match && match[1]) {
+        return match[1];
+    }
+
+    return null;
 }

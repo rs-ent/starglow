@@ -2,9 +2,10 @@
 
 "use client";
 
-import { useRef, useEffect, useState, use } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useQuest } from "@/hooks/useQuest";
 import { useToast } from "@/hooks/useToast";
+import { useLoading } from "@/hooks/useLoading";
 import { H1, H3, Paragraph } from "./Typography";
 import { Quest, Player } from "@prisma/client";
 import { cn } from "@/lib/utils/tailwind";
@@ -13,6 +14,7 @@ import Popup from "./Popup";
 import LinkButton from "./LinkButton";
 import Icon from "./Icon";
 
+/*
 const questList = {
     Website: {
         icon: "/ui/link.svg",
@@ -21,21 +23,45 @@ const questList = {
     },
     X: {
         icon: "/icons/providers/x.svg",
-        background: "bg-gradient-to-br from-[rgba(5,5,5,1)] to-[rgba(0,0,0,1)]",
+        background: "bg-gradient-to-br from-[rgba(7,7,9,1)] to-[rgba(0,0,0,1)]",
     },
     Default: {
         icon: "/ui/default-quest-icon.svg",
         background:
             "bg-gradient-to-br from-[rgba(74,74,80,1)] to-[rgba(50,50,53,1)]",
     },
-};
+    Spotify: {
+        icon: "/icons/spotify.svg",
+        background: "bg-gradient-to-br from-[rgba(7,7,7,1)] to-[rgba(0,0,0,1)]",
+    },
+    Instagram: {
+        icon: "/icons/instagram.svg",
+        background:
+            "bg-gradient-to-br from-[rgba(255,255,255,1)] to-[rgba(255,255,255,1)]",
+    },
+    Youtube: {
+        icon: "/icons/youtube.svg",
+        background:
+            "bg-gradient-to-br from-[rgba(255,255,255,1)] to-[rgba(255,255,255,1)]",
+    },
+    Telegram: {
+        icon: "/icons/telegram-colored.svg",
+        background:
+            "bg-gradient-to-br from-[rgba(255,255,255,1)] to-[rgba(255,255,255,1)]",
+    },
+    Starglow: {
+        icon: "/logo/l-white.svg",
+        background:
+            "bg-gradient-to-br from-[rgba(10,10,20,1)] to-[rgba(1,0,3,1)]",
+    },
+};*/
 
 export default function QuestButton({
-    quests,
+    quest,
     playerId,
     alreadyCompleted = false,
 }: {
-    quests: Quest;
+    quest: Quest;
     playerId: Player["id"];
     alreadyCompleted?: boolean;
 }) {
@@ -45,38 +71,44 @@ export default function QuestButton({
         useState(false);
     const [questSuccessCardViewport, setQuestSuccessCardViewport] =
         useState(false);
-    const { questComplete, addRewards } = useQuest();
+    const { questComplete } = useQuest();
+    const { startLoading, endLoading } = useLoading();
 
     const buttonRef = useRef<HTMLDivElement>(null);
     const isInView = useInView(buttonRef, { once: true });
 
     useEffect(() => {
+        startLoading();
         if (alreadyCompleted) {
             setQuestSucceeded(true);
         }
+        endLoading();
     }, [alreadyCompleted]);
 
     useEffect(() => {
+        startLoading();
         if (isInView) {
             if (questSuccessCardVisible) {
                 setQuestSuccessCardViewport(true);
             }
         }
+        endLoading();
     }, [isInView, questSuccessCardVisible]);
 
     const toast = useToast();
 
     const handleClose = async (succeeded: boolean) => {
+        startLoading();
         setOpen(false);
 
         if (succeeded) {
             try {
                 const questLogResponse = await questComplete({
                     playerId,
-                    questId: quests.id,
+                    questId: quest.id,
                     completed: true,
-                    rewards: quests.rewards,
-                    rewardCurrency: quests.rewardCurrency,
+                    rewards: quest.rewards,
+                    rewardCurrency: quest.rewardCurrency,
                     completedAt: new Date(),
                 });
 
@@ -84,40 +116,24 @@ export default function QuestButton({
                     throw new Error("Failed to complete quest");
                 }
 
-                const questLog = questLogResponse.log;
-
-                await addRewards({
-                    playerId,
-                    questId: quests.id,
-                    questLogId: questLog.id,
-                    amount: quests.rewards,
-                    currency: quests.rewardCurrency,
-                    reason: "Quest Completion",
-                    pollId: null,
-                    pollLogId: null,
-                });
-
                 setQuestSucceeded(true);
                 setQuestSuccessCardVisible(true);
-                console.log("[Quest][Complete] ", quests.title);
+                console.log("[Quest][Complete] ", quest.title);
             } catch (error) {
                 console.error(
                     "[Quest] Error completing quest:",
                     error,
-                    quests.id
+                    quest.id
                 );
                 setQuestSucceeded(false);
             }
         } else {
             setQuestSucceeded(false);
-            console.log("[Quest] Quest canceled by user:", quests.id);
+            console.log("[Quest] Quest canceled by user:", quest.id);
             toast.info("Quest canceled. You can complete it later.");
         }
+        endLoading();
     };
-
-    const target =
-        questList[quests.description as keyof typeof questList] ||
-        questList["Default"];
 
     return (
         <>
@@ -218,16 +234,19 @@ export default function QuestButton({
                     className={cn(
                         "flex items-center justify-center rounded-full",
                         "w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 lg:w-16 lg:h-16 xl:w-18 xl:h-18",
-                        target.background
+                        ""
                     )}
                 >
-                    <Icon svg={target.icon} size={35} />
+                    <Icon
+                        svg={quest.icon ? quest.icon : "/ui/link.svg"}
+                        size={35}
+                    />
                 </div>
 
                 {/* Description */}
                 <div className="flex flex-col items-start justify-center px-2">
                     <Paragraph size={20} className="mb-1">
-                        {quests.title}
+                        {quest.title}
                     </Paragraph>
                     <H3 size={20} className="font-superbold">
                         + 800P
@@ -263,10 +282,10 @@ export default function QuestButton({
                         size={15}
                         className="text-blue-500 border-b border-b-blue-500"
                     >
-                        {quests.url}
+                        {quest.url}
                     </Paragraph>
                     <LinkButton
-                        href={quests.url || "#"}
+                        href={quest.url || "#"}
                         target="_blank"
                         onClick={() => {
                             handleClose(true);

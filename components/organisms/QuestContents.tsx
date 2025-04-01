@@ -1,20 +1,23 @@
 import QuestToday from "./QuestToday";
-import { Player, Daily_Quests } from "@prisma/client";
+import QuestMissions from "./QuestMissions";
+import { Player, Quest } from "@prisma/client";
 
 interface QuestContentsProps {
-    contentType?: "dailyQuest" | "Missions" | "Referral";
+    contentType?: string;
     playerId: Player["id"];
-    dailyQuests?: Daily_Quests[];
+    dailyQuests?: Quest[];
+    missions?: Quest[];
     completedQuests?: { questId: string }[];
 }
 
 export default function QuestContents({
-    contentType = "dailyQuest",
+    contentType = "Today",
     playerId,
     dailyQuests = [],
+    missions = [],
     completedQuests = [],
 }: QuestContentsProps) {
-    if (contentType === "dailyQuest") {
+    if (contentType === "Today") {
         return (
             <div
                 className="
@@ -24,6 +27,16 @@ export default function QuestContents({
                 <QuestToday
                     playerId={playerId}
                     dailyQuests={dailyQuests}
+                    completedQuests={completedQuests}
+                />
+            </div>
+        );
+    } else if (contentType === "Missions") {
+        return (
+            <div>
+                <QuestMissions
+                    playerId={playerId}
+                    quests={missions}
                     completedQuests={completedQuests}
                 />
             </div>

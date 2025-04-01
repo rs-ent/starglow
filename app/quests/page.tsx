@@ -24,6 +24,9 @@ export default async function QuestPage() {
             }));
 
         const latestQuest = await prisma.quest.findFirst({
+            where: {
+                startDate: { not: null },
+            },
             orderBy: { startDate: "desc" },
             select: { startDate: true },
         });
@@ -37,6 +40,11 @@ export default async function QuestPage() {
             where: { startDate: latestQuest.startDate },
         });
 
+        const missions = await prisma.quest.findMany({
+            where: { permanent: true, visible: true },
+            orderBy: { primary: "asc" },
+        });
+
         const completedQuests = await prisma.questLog.findMany({
             where: { playerId: player.id, completed: true },
             select: { questId: true },
@@ -46,6 +54,7 @@ export default async function QuestPage() {
             <Quests
                 player={player}
                 dailyQuests={dailyQuests}
+                missions={missions}
                 completedQuests={completedQuests}
             />
         );

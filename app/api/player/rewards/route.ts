@@ -1,4 +1,4 @@
-/// app/api/player/points/route.ts
+/// app/api/player/rewards/route.ts
 
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma/client";

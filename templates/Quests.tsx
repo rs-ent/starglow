@@ -2,22 +2,47 @@
 
 "use client";
 
+import { useState, useEffect } from "react";
 import QuestUtilBar from "@/components/organisms/QuestUtilBar";
 import QuestContents from "@/components/organisms/QuestContents";
 import QuestNavBar from "@/components/organisms/QuestNavBar";
-import { Player, Daily_Quests } from "@prisma/client";
+import { Player, Quest } from "@prisma/client";
+import { usePlayerStore } from "@/stores/playerStore";
+import { useRealtime } from "@/hooks/useRealtime";
 
 interface QuestsProps {
     player: Player;
-    dailyQuests: Daily_Quests[];
+    dailyQuests: Quest[];
+    missions: Quest[];
     completedQuests: { questId: string }[];
 }
 
 export default function Quests({
     player,
     dailyQuests = [],
+    missions = [],
     completedQuests = [],
 }: QuestsProps) {
+    const [contentType, setContentType] = useState<string>("Today");
+
+    const setPlayerData = usePlayerStore((state) => state.setPlayerData);
+    const points = usePlayerStore((state) => state.points);
+
+    useEffect(() => {
+        setPlayerData(player);
+        console.log("[Quests] Player data set:", player);
+    }, [player, setPlayerData]);
+
+    useRealtime({
+        table: "Player",
+        event: "UPDATE",
+        rowId: player.id,
+        onDataChange: (newData) => {
+            console.info("[Realtime][onDataChange] Received data:", newData);
+            setPlayerData((state) => ({ ...state, ...newData }));
+        },
+    });
+
     return (
         <div className="relative flex flex-col w-full">
             <div className="bg">
@@ -42,7 +67,7 @@ export default function Quests({
                     />
                 </div>
 
-                <div className="fixed top-10 right-20 -z-10 blur-sm">
+                <div className="fixed top-10 -right-10 -z-10 blur-sm">
                     <img
                         src="/logo/3d.svg"
                         alt="Logo"
@@ -63,7 +88,7 @@ export default function Quests({
                     xl:px-[20px] xl:py-[8px]
                 "
             >
-                <QuestUtilBar gameMoney={player.gameMoney || 0} />
+                <QuestUtilBar points={points || 0} />
             </div>
             <div
                 className="
@@ -77,9 +102,10 @@ export default function Quests({
                 "
             >
                 <QuestContents
-                    contentType="dailyQuest"
+                    contentType={contentType}
                     playerId={player.id}
                     dailyQuests={dailyQuests}
+                    missions={missions}
                     completedQuests={completedQuests}
                 />
             </div>
@@ -94,7 +120,12 @@ export default function Quests({
                     xl:px-[200px] xl:py-[15px]
                 "
             >
-                <QuestNavBar />
+                <QuestNavBar
+                    contentType={contentType}
+                    onActiveChange={(type) => {
+                        setContentType(type);
+                    }}
+                />
             </div>
         </div>
     );

@@ -1,9 +1,9 @@
-import { Daily_Quests } from "@prisma/client";
+import { Quest } from "@prisma/client";
 import QuestButton from "../atoms/QuestButton";
 import { Player } from "@prisma/client";
 
-interface DailyMissionProps {
-    dailyQuests: Daily_Quests[];
+interface DailyQuestsProps {
+    dailyQuests: Quest[];
     completedQuests: { questId: string }[];
     playerId: Player["id"];
 }
@@ -12,7 +12,7 @@ export default function DailyQuests({
     playerId,
     dailyQuests,
     completedQuests,
-}: DailyMissionProps) {
+}: DailyQuestsProps) {
     return (
         <div className="relative flex w-full items-center justify-center px-3">
             <div className="relative w-full max-w-[820px] min-w-[270px]">
@@ -25,9 +25,8 @@ export default function DailyQuests({
                         className="flex items-center justify-between mb-3"
                     >
                         <QuestButton
-                            quests={quest}
+                            quest={quest}
                             playerId={playerId}
-                            questType="Daily"
                             alreadyCompleted={completedQuests.some(
                                 (completedQuest) =>
                                     completedQuest.questId === quest.id

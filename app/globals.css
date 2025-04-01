@@ -205,4 +205,23 @@
     mask-composite: exclude;
     pointer-events: none;
   }
+
+  .scrollbar-hovering {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    -ms-overflow-style: none; /* IE 10+ */
+  }
+  .scrollbar-hovering::-webkit-scrollbar {
+    height: 6px;
+  }
+  .scrollbar-hovering::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 6px;
+  }
+  .scrollbar-hovering:hover {
+    scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+  }
+  .scrollbar-hovering:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.3);
+  }
 }

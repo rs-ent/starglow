@@ -113,6 +113,10 @@ model Quest {
   startDate       DateTime?    
   endDate         DateTime?
   permanent       Boolean             @default(false)
+  visible         Boolean             @default(true)
+  primary         Int?                @default(0)
+  effects         String?
+  type            String?
 
   questLogs       QuestLog[]
   rewardLogs      RewardsLog[]

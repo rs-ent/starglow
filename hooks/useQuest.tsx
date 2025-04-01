@@ -32,6 +32,7 @@ export function useQuest() {
 
     const questComplete = async (payload: QuestPayload) => {
         startLoading();
+        console.log("Payload:", payload);
         try {
             const res = await fetch("/api/quests/complete", {
                 method: "POST",

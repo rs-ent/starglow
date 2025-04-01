@@ -28,6 +28,7 @@ interface ButtonProps {
         | "secondary"
         | "ghost"
         | "link";
+    beautify?: boolean;
     className?: string;
 }
 
@@ -46,6 +47,7 @@ export default function Button({
     onClick,
     disabled = false,
     variant = "default",
+    beautify = false,
     className = "",
 }: ButtonProps) {
     const { textClass } = getResponsiveClass(textSize);

@@ -32,58 +32,61 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return url.startsWith(baseUrl) ? url : baseUrl;
         },
 
-        async signIn({ user }) {
-            const existingPlayer = await prisma.player.findUnique({
-                where: { userId: user.id },
-            });
-
-            if (!existingPlayer) {
-                if (!user.id) {
-                    throw new Error("User ID is undefined");
-                }
-
-                await prisma.player.create({
-                    data: {
-                        userId: user.id,
-                        createdAt: new Date(),
-                    },
-                });
-
-                console.info("[Player][Create] User:", user.email);
-            } else {
-                console.info("[Player][Exists] User:", user.email);
-            }
-
+        async signIn({ user, account }) {
             return true;
         },
 
         async session({ session, user }) {
+            if (!user || !user.id) {
+                console.error("[Session] User ID not found");
+                return session;
+            }
+
             session.user.id = user.id;
 
-            const existingWallet = await prisma.wallet.findFirst({
-                where: {
-                    userId: user.id,
-                    network: "solana",
-                },
-            });
+            try {
+                const existingPlayer = await prisma.player.findUnique({
+                    where: { userId: user.id },
+                });
 
-            if (!existingWallet) {
-                const { publicKey, privateKey } = createSolanaWallet();
-                await prisma.wallet.create({
-                    data: {
+                if (!existingPlayer) {
+                    console.log("[Player][Create] User ID:", user.id);
+                    await prisma.player.create({
+                        data: {
+                            userId: user.id,
+                            createdAt: new Date(),
+                        },
+                    });
+                    console.info("[Player][Create] User ID:", session.user.id);
+                }
+
+                const existingWallet = await prisma.wallet.findFirst({
+                    where: {
                         userId: user.id,
                         network: "solana",
-                        address: publicKey,
-                        privateKey,
-                        default: true,
-                        primary: 0,
-                        createdAt: new Date(),
                     },
                 });
 
-                console.info("[Wallet][Create] ", publicKey);
-            } else {
-                console.info("[Wallet][Exists] ", existingWallet.address);
+                if (!existingWallet) {
+                    const { publicKey, privateKey } = createSolanaWallet();
+                    await prisma.wallet.create({
+                        data: {
+                            userId: user.id,
+                            network: "solana",
+                            address: publicKey,
+                            privateKey,
+                            default: true,
+                            primary: 0,
+                            createdAt: new Date(),
+                        },
+                    });
+
+                    console.info("[Wallet][Create] ", publicKey);
+                } else {
+                    console.info("[Wallet][Exists] ", existingWallet.address);
+                }
+            } catch (error) {
+                console.error("[Session][Error] ", error);
             }
 
             return session;
