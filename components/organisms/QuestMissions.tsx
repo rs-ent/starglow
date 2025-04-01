@@ -7,6 +7,8 @@ import { H2 } from "../atoms/Typography";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { Player, Quest } from "@prisma/client";
+import MediaCarousel, { CarouselItem } from "../molecules/MediaCarousel";
+import { Loader2 } from "lucide-react";
 
 interface QuestMissionsProps {
     playerId: Player["id"];
@@ -32,6 +34,19 @@ export default function QuestMissions({
                 >
                     Missions
                 </H2>
+
+                {/*<div className="flex items-center justify-center w-full h-full max-w-[900px] px-4 mb-8">
+                    {banners.length ? (
+                        <MediaCarousel
+                            items={banners}
+                            className="w-full max-w-[90vw]"
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center w-full h-full p-4">
+                            <Loader2 className="w-12 h-12 animate-spin text-white" />
+                        </div>
+                    )}
+                </div>*/}
 
                 <div className="flex items-center justify-center w-full h-full p-4">
                     <QuestList

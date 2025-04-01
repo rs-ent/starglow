@@ -217,7 +217,8 @@ model StoredImage {
   height       Int?                      
   mimeType     String?   @db.VarChar(50)
   sizeBytes    Int?                     
-  metadata     Json?                    
+  metadata     Json?
+  onBanner     Boolean   @default(false)                    
   expiresAt    DateTime?                
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

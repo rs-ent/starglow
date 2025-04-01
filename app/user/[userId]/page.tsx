@@ -3,7 +3,7 @@
 import { auth } from "@/app/auth/authSettings";
 import { redirect, notFound } from "next/navigation";
 import { getUserById, getUserWallets } from "@/lib/prisma/user";
-import User from "@/templates/User";
+import User from "@/components/templates/User";
 
 interface UserProfileProps {
     params: Promise<{ userId: string }>;

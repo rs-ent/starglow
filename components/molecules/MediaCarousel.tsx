@@ -1,6 +1,6 @@
-/// components/molecules/YoutubeCarousel.tsx
+/// components/molecules/MediaCarousel.tsx
 
-'use client';
+"use client";
 
 import Slider from "react-slick";
 import YoutubeViewer, { YoutubeViewerProps } from "../atoms/YoutubeViewer";
@@ -17,19 +17,70 @@ export type CarouselItem =
 export interface CarouselProps {
     items: CarouselItem[];
     className?: string;
+    dots?: boolean;
+    arrows?: boolean;
+    centerMode?: boolean;
+    centerPadding?: string;
+    adaptiveHeight?: boolean;
+    infinite?: boolean;
+    speed?: number;
+    slidesToShow?: number;
+    slidesToScroll?: number;
+    autoplay?: boolean;
+    autoplaySpeed?: number;
+    pauseOnHover?: boolean;
+    pauseOnFocus?: boolean;
+    pauseOnDotsHover?: boolean;
+    pauseOnMouseEnter?: boolean;
+    pauseOnTouchStart?: boolean;
+    pauseOnTouchEnd?: boolean;
+    pauseOnScroll?: boolean;
+    pauseOnScrollEnd?: boolean;
 }
 
-export default function YoutubeCarousel({ items, className = "" }: CarouselProps) {
+export default function MediaCarousel({
+    items,
+    className = "",
+    dots = true,
+    arrows = true,
+    centerMode = true,
+    centerPadding = "0px",
+    adaptiveHeight = false,
+    infinite = false,
+    speed = 500,
+    slidesToShow = 1,
+    slidesToScroll = 1,
+    autoplay = false,
+    autoplaySpeed = 3000,
+    pauseOnHover = true,
+    pauseOnFocus = true,
+    pauseOnDotsHover = true,
+    pauseOnMouseEnter = true,
+    pauseOnTouchStart = true,
+    pauseOnTouchEnd = true,
+    pauseOnScroll = true,
+    pauseOnScrollEnd = true,
+}: CarouselProps) {
     const settings = {
-        dots: true,
-        infinite: false,
-        speed: 500,
-        slidesToShow: 1,
-        slidesToScroll: 1,
-        arrows: true,
-        centerMode: true,
-        centerPadding: '0px',
-        adaptiveHeight: false,
+        dots: dots,
+        arrows: arrows,
+        centerMode: centerMode,
+        centerPadding: centerPadding,
+        adaptiveHeight: adaptiveHeight,
+        infinite: infinite,
+        speed: speed,
+        slidesToShow: slidesToShow,
+        slidesToScroll: slidesToScroll,
+        autoplay: autoplay,
+        autoplaySpeed: autoplaySpeed,
+        pauseOnHover: pauseOnHover,
+        pauseOnFocus: pauseOnFocus,
+        pauseOnDotsHover: pauseOnDotsHover,
+        pauseOnMouseEnter: pauseOnMouseEnter,
+        pauseOnTouchStart: pauseOnTouchStart,
+        pauseOnTouchEnd: pauseOnTouchEnd,
+        pauseOnScroll: pauseOnScroll,
+        pauseOnScrollEnd: pauseOnScrollEnd,
     };
 
     return (
@@ -74,12 +125,14 @@ export default function YoutubeCarousel({ items, className = "" }: CarouselProps
                         color: white !important;
                         opacity: 1 !important;
                     }
-                    .slick-prev, .slick-next {
+                    .slick-prev,
+                    .slick-next {
                         width: 45px;
                         height: 45px;
                         z-index: 10;
                     }
-                    .slick-prev:before, .slick-next:before {
+                    .slick-prev:before,
+                    .slick-next:before {
                         font-size: 20px;
                         color: white;
                     }
@@ -92,5 +145,5 @@ export default function YoutubeCarousel({ items, className = "" }: CarouselProps
                 `}
             </style>
         </div>
-    )
-};
+    );
+}

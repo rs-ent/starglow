@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { H2 } from "../atoms/Typography";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import YoutubeCarousel, { CarouselItem } from "../molecules/YoutubeCarousel";
+import MediaCarousel, { CarouselItem } from "../molecules/MediaCarousel";
 import { useLoading } from "@/hooks/useLoading";
 import InviteFriends from "../atoms/InviteFriends";
 import DailyQuests from "../molecules/DailyQuest";
@@ -69,7 +69,7 @@ export default function QuestToday({
                 </H2>
                 <div className="flex items-center justify-center w-full h-full max-w-[900px] px-4 mb-8">
                     {carouselQuests.length ? (
-                        <YoutubeCarousel
+                        <MediaCarousel
                             items={carouselQuests}
                             className="w-full max-w-[90vw]"
                         />

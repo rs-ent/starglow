@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 const envSchema = z.object({
     DATABASE_URL: z.string().url(),
@@ -20,11 +20,15 @@ const envSchema = z.object({
 
     ENCRYPTION_METHOD: z.string().min(1),
     ENCRYPTION_SECRET: z.string().min(32),
+
+    NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
 
-if(!parsedEnv.success) {
+if (!parsedEnv.success) {
     console.error("[ENV][Error] ", parsedEnv.error.format());
     process.exit(1);
 }

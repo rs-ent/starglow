@@ -3,7 +3,7 @@
 import { auth } from "@/app/auth/authSettings";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma/client";
-import Quests from "@/templates/Quests";
+import Quests from "@/components/templates/Quests";
 
 export default async function QuestPage() {
     const session = await auth();
