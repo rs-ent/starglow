@@ -17,9 +17,7 @@ export async function GET() {
             where: {
                 onBanner: true,
             },
-            orderBy: {
-                createdAt: "desc",
-            },
+            orderBy: [{ order: "asc" }, { createdAt: "desc" }],
         });
 
         return NextResponse.json(images);
@@ -47,12 +45,12 @@ export async function POST(request: Request) {
             files.map(async (file) => {
                 const fileExt = file.name.split(".").pop();
                 const fileName = `${uuidv4()}.${fileExt}`;
-                const filePath = `banner-images/${fileName}`;
+                const filePath = fileName;
 
                 // Upload to Supabase Storage
                 const { data: uploadData, error: uploadError } =
                     await supabase.storage
-                        .from("public")
+                        .from("banner-images")
                         .upload(filePath, file);
 
                 if (uploadError) {
@@ -62,7 +60,9 @@ export async function POST(request: Request) {
                 // Get public URL
                 const {
                     data: { publicUrl },
-                } = supabase.storage.from("public").getPublicUrl(filePath);
+                } = supabase.storage
+                    .from("banner-images")
+                    .getPublicUrl(filePath);
 
                 // Save to database
                 return prisma.storedImage.create({
@@ -85,51 +85,27 @@ export async function POST(request: Request) {
     }
 }
 
-export async function DELETE(
-    request: Request,
-    { params }: { params: { id: string } }
-) {
+export async function PATCH(request: Request) {
     try {
         const session = await auth();
         if (!session?.user) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const { id } = params;
+        const { imageId, newOrder } = await request.json();
 
-        // Get image from database
-        const image = await prisma.storedImage.findUnique({
-            where: { id },
+        if (!imageId || typeof newOrder !== "number") {
+            return new NextResponse("Invalid request", { status: 400 });
+        }
+
+        const updatedImage = await prisma.storedImage.update({
+            where: { id: imageId },
+            data: { order: newOrder },
         });
 
-        if (!image) {
-            return new NextResponse("Image not found", { status: 404 });
-        }
-
-        // Extract file path from URL
-        const filePath = image.url.split("/").pop();
-        if (!filePath) {
-            return new NextResponse("Invalid file path", { status: 400 });
-        }
-
-        // Delete from Supabase Storage
-        const { error: storageError } = await supabase.storage
-            .from("public")
-            .remove([`banner-images/${filePath}`]);
-
-        if (storageError) {
-            console.error("Error deleting from storage:", storageError);
-            return new NextResponse("Error deleting file", { status: 500 });
-        }
-
-        // Delete from database
-        await prisma.storedImage.delete({
-            where: { id },
-        });
-
-        return new NextResponse(null, { status: 204 });
+        return NextResponse.json(updatedImage);
     } catch (error) {
-        console.error("Error deleting banner image:", error);
+        console.error("Error updating image order:", error);
         return new NextResponse("Internal Server Error", { status: 500 });
     }
 }

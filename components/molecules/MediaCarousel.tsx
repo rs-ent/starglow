@@ -17,6 +17,7 @@ export type CarouselItem =
 export interface CarouselProps {
     items: CarouselItem[];
     className?: string;
+    showTitle?: boolean;
     dots?: boolean;
     arrows?: boolean;
     centerMode?: boolean;
@@ -36,11 +37,13 @@ export interface CarouselProps {
     pauseOnTouchEnd?: boolean;
     pauseOnScroll?: boolean;
     pauseOnScrollEnd?: boolean;
+    framePadding?: number;
 }
 
 export default function MediaCarousel({
     items,
     className = "",
+    showTitle = true,
     dots = true,
     arrows = true,
     centerMode = true,
@@ -60,6 +63,7 @@ export default function MediaCarousel({
     pauseOnTouchEnd = true,
     pauseOnScroll = true,
     pauseOnScrollEnd = true,
+    framePadding = undefined,
 }: CarouselProps) {
     const settings = {
         dots: dots,
@@ -97,14 +101,16 @@ export default function MediaCarousel({
                                     videoId={item.videoId}
                                     artist={item.artist}
                                     title={item.title}
+                                    framePadding={framePadding}
                                     className="w-full max-w-[800px] min-w-[270px] h-[100%] mx-auto"
                                 />
                             ) : (
                                 <ImageViewer
                                     url={item.url}
-                                    title={item.title}
+                                    title={showTitle ? item.title : ""}
                                     img={item.img}
-                                    className="w-full max-w-[800px] min-w-[270px] h- mx-auto"
+                                    framePadding={framePadding}
+                                    className="w-full max-w-[800px] min-w-[270px] mx-auto"
                                 />
                             )}
                         </div>

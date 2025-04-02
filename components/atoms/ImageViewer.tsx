@@ -9,6 +9,7 @@ export interface ImageViewerProps {
     title: string;
     img?: string;
     className?: string;
+    framePadding?: number;
 }
 
 export default function ImageViewer({
@@ -16,6 +17,7 @@ export default function ImageViewer({
     title,
     img,
     className = "",
+    framePadding = undefined,
 }: ImageViewerProps) {
     const imageUrl = img || `${url}/opengraph-image.png`;
 
@@ -27,22 +29,29 @@ export default function ImageViewer({
             )}
         >
             <div
-                className="
-                    gradient-border rounded-2xl shadow-lg p-4 backdrop-blur-sm w-full flex flex-col
-                    bg-gradient-to-br from-[rgba(0,0,0,0.15)] to-[rgba(0,0,0,0.3)]
-                "
+                className={cn(
+                    "gradient-border rounded-2xl shadow-lg p-4 backdrop-blur-sm w-full flex flex-col",
+                    `bg-gradient-to-br from-[rgba(0,0,0,0.15)] to-[rgba(0,0,0,0.3)]`,
+                    framePadding ? `p-[${framePadding}px]` : ""
+                )}
             >
                 <div className="relative w-full aspect-video overflow-hidden rounded-xl">
                     <Image
                         src={imageUrl}
                         alt={title}
                         fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover"
+                        style={{
+                            objectFit: "cover",
+                        }}
                     />
                 </div>
-                <div className="mt-4 text-start flex-grow">
-                    <H3 size={15}>{title}</H3>
-                </div>
+                {title && (
+                    <div className="mt-4 text-start flex-grow">
+                        <H3 size={15}>{title}</H3>
+                    </div>
+                )}
             </div>
         </div>
     );

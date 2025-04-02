@@ -9,6 +9,22 @@ import { prisma } from "@/lib/prisma/client";
 import { env } from "@/lib/config/env";
 import { createSolanaWallet } from "@/lib/solana/createWallet";
 
+// Helper function to determine the cookie domain
+function getCookieDomain() {
+    // In development, explicitly set to undefined to allow all subdomains to work
+    if (process.env.NODE_ENV !== "production") {
+        return undefined;
+    }
+
+    // For Vercel preview deployments
+    if (process.env.VERCEL_URL?.includes("vercel.app")) {
+        return ".vercel.app";
+    }
+
+    // For production starglow.io
+    return ".starglow.io";
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
     secret: env.NEXTAUTH_SECRET,
     adapter: PrismaAdapter(prisma),
@@ -33,10 +49,68 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             clientSecret: env.KAKAO_CLIENT_SECRET!,
         }),
     ],
-    session: { strategy: "database" },
+    session: {
+        strategy: "database",
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+    },
+    cookies: {
+        sessionToken: {
+            name: `next-auth.session-token`,
+            options: {
+                httpOnly: true,
+                sameSite: "lax",
+                path: "/",
+                domain: getCookieDomain(),
+                secure: process.env.NODE_ENV === "production",
+            },
+        },
+        callbackUrl: {
+            name: `next-auth.callback-url`,
+            options: {
+                httpOnly: true,
+                sameSite: "lax",
+                path: "/",
+                domain: getCookieDomain(),
+                secure: process.env.NODE_ENV === "production",
+            },
+        },
+        csrfToken: {
+            name: `next-auth.csrf-token`,
+            options: {
+                httpOnly: true,
+                sameSite: "lax",
+                path: "/",
+                domain: getCookieDomain(),
+                secure: process.env.NODE_ENV === "production",
+            },
+        },
+        pkceCodeVerifier: {
+            name: "next-auth.pkce.code_verifier",
+            options: {
+                httpOnly: true,
+                sameSite: "lax",
+                path: "/",
+                domain: getCookieDomain(),
+                secure: process.env.NODE_ENV === "production",
+            },
+        },
+    },
     callbacks: {
         async redirect({ url, baseUrl }) {
-            return url.startsWith(baseUrl) ? url : baseUrl;
+            // Allow both internal and cross-domain redirects
+            if (url.startsWith("/")) {
+                // Handles relative URLs
+                return `${baseUrl}${url}`;
+            } else if (
+                url.includes("starglow.io") ||
+                url.includes("localhost") ||
+                url.includes("vercel.app")
+            ) {
+                // Allow redirects to trusted domains
+                return url;
+            }
+            // Default to base URL
+            return baseUrl;
         },
 
         async signIn({ user, account }) {

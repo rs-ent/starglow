@@ -1,19 +1,25 @@
 /// app/quests/page.tsx
 
 import { auth } from "@/app/auth/authSettings";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma/client";
 import Quests from "@/components/templates/Quests";
+import AuthGuard from "@/app/auth/authGuard";
 
 export default async function QuestPage() {
-    const session = await auth();
-    if (!session?.user) {
-        redirect("/auth/signin");
-    }
+    return (
+        <AuthGuard callbackUrl="/quests">
+            <QuestContent />
+        </AuthGuard>
+    );
+}
 
+async function QuestContent() {
+    const session = await auth();
+    // AuthGuard가 이미 세션 체크를 했으므로, 여기서는 session.user가 항상 존재합니다
     try {
         const playerPromise = prisma.player.findUnique({
-            where: { userId: session.user.id },
+            where: { userId: session!.user.id },
         });
 
         const latestQuestPromise = prisma.quest.findFirst({
@@ -31,8 +37,8 @@ export default async function QuestPage() {
             playerResult ||
             (await prisma.player.create({
                 data: {
-                    userId: session.user.id,
-                    name: session.user.name || "Superb Player",
+                    userId: session!.user.id,
+                    name: session!.user.name || "Superb Player",
                 },
             }));
 
@@ -55,11 +61,19 @@ export default async function QuestPage() {
             select: { questId: true },
         });
 
-        const [dailyQuests, missions, completedQuests] = await Promise.all([
-            dailyQuestsPromise,
-            missionsPromise,
-            completedQuestsPromise,
-        ]);
+        const bannerImagesPromise = prisma.storedImage.findMany({
+            where: { onBanner: true },
+            orderBy: { order: "asc" },
+            select: { id: true, url: true },
+        });
+
+        const [dailyQuests, missions, completedQuests, banners] =
+            await Promise.all([
+                dailyQuestsPromise,
+                missionsPromise,
+                completedQuestsPromise,
+                bannerImagesPromise,
+            ]);
 
         return (
             <Quests
@@ -67,6 +81,7 @@ export default async function QuestPage() {
                 dailyQuests={dailyQuests}
                 missions={missions}
                 completedQuests={completedQuests}
+                banners={banners}
             />
         );
     } catch (error) {

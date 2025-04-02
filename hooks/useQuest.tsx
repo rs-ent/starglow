@@ -2,7 +2,7 @@
 
 import { useToast } from "./useToast";
 import { useLoading } from "./useLoading";
-import { QuestLog, RewardsLog } from "@prisma/client";
+import { QuestLog, RewardsLog, StoredImage } from "@prisma/client";
 import { usePlayerStore } from "@/stores/playerStore";
 
 type QuestPayload = Pick<
@@ -96,5 +96,21 @@ export function useQuest() {
         }
     };
 
-    return { questComplete, addRewards };
+    const getBannerImages = async (): Promise<StoredImage[]> => {
+        try {
+            const response = await fetch(
+                "/api/admin/quests/missions/banner-images"
+            );
+            if (!response.ok) {
+                throw new Error("Failed to fetch banner images");
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching banner images:", error);
+            throw error;
+        }
+    };
+
+    return { questComplete, addRewards, getBannerImages };
 }

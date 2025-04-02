@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import QuestUtilBar from "@/components/organisms/QuestUtilBar";
 import QuestContents from "@/components/organisms/QuestContents";
 import QuestNavBar from "@/components/organisms/QuestNavBar";
-import { Player, Quest } from "@prisma/client";
+import { Player, Quest, StoredImage } from "@prisma/client";
 import { usePlayerStore } from "@/stores/playerStore";
 
 interface QuestsProps {
@@ -14,6 +14,7 @@ interface QuestsProps {
     dailyQuests: Quest[];
     missions: Quest[];
     completedQuests: { questId: string }[];
+    banners: Pick<StoredImage, "id" | "url">[];
 }
 
 export default function Quests({
@@ -21,6 +22,7 @@ export default function Quests({
     dailyQuests = [],
     missions = [],
     completedQuests = [],
+    banners = [],
 }: QuestsProps) {
     const [contentType, setContentType] = useState<string>("Today");
     const setPlayer = usePlayerStore((state) => state.setPlayer);
@@ -94,6 +96,7 @@ export default function Quests({
                     dailyQuests={dailyQuests}
                     missions={missions}
                     completedQuests={completedQuests}
+                    banners={banners}
                 />
             </div>
 

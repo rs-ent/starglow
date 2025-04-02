@@ -1,13 +1,17 @@
 /// hooks\useAdmin.tsx
 
 import { useState } from "react";
+import { useQuest } from "./useQuest";
 import { StoredImage } from "@prisma/client";
 
 interface UseAdminReturn {
     // Banner Images
-    uploadBannerImages: (files: File[]) => Promise<void>;
+    uploadBannerImages: (files: File[]) => Promise<StoredImage[]>;
     deleteBannerImage: (id: string) => Promise<boolean>;
-    getBannerImages: () => Promise<StoredImage[]>;
+    updateBannerImageOrder: (
+        imageId: string,
+        newOrder: number
+    ) => Promise<StoredImage>;
     isUploading: boolean;
 
     // Error Handling
@@ -18,10 +22,13 @@ interface UseAdminReturn {
 export function useAdmin(): UseAdminReturn {
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { getBannerImages } = useQuest();
 
     const clearError = () => setError(null);
 
-    const uploadBannerImages = async (files: File[]) => {
+    const uploadBannerImages = async (
+        files: File[]
+    ): Promise<StoredImage[]> => {
         setIsUploading(true);
         clearError();
 
@@ -76,19 +83,32 @@ export function useAdmin(): UseAdminReturn {
         }
     };
 
-    const getBannerImages = async (): Promise<StoredImage[]> => {
+    const updateBannerImageOrder = async (
+        imageId: string,
+        newOrder: number
+    ): Promise<StoredImage> => {
+        clearError();
+
         try {
             const response = await fetch(
-                "/api/admin/quests/missions/banner-images"
+                "/api/admin/quests/missions/banner-images",
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ imageId, newOrder }),
+                }
             );
+
             if (!response.ok) {
-                throw new Error("Failed to fetch banner images");
+                throw new Error("Failed to update image order");
             }
 
             return await response.json();
         } catch (error) {
-            console.error("Error fetching banner images:", error);
-            setError("Failed to fetch banner images");
+            console.error("Error updating image order:", error);
+            setError("Failed to update image order");
             throw error;
         }
     };
@@ -96,7 +116,7 @@ export function useAdmin(): UseAdminReturn {
     return {
         uploadBannerImages,
         deleteBannerImage,
-        getBannerImages,
+        updateBannerImageOrder,
         isUploading,
         error,
         clearError,

@@ -8,6 +8,7 @@ export interface YoutubeViewerProps {
     artist: string;
     title: string;
     className?: string;
+    framePadding?: number;
 }
 
 export default function YoutubeViewer({
@@ -15,6 +16,7 @@ export default function YoutubeViewer({
     artist,
     title,
     className = "",
+    framePadding = undefined,
 }: YoutubeViewerProps) {
     return (
         <div
@@ -24,10 +26,11 @@ export default function YoutubeViewer({
             )}
         >
             <div
-                className="
-                    gradient-border rounded-2xl shadow-lg p-4 backdrop-blur-sm w-full flex flex-col
-                    bg-gradient-to-br from-[rgba(0,0,0,0.15)] to-[rgba(0,0,0,0.3)]
-                "
+                className={cn(
+                    "gradient-border rounded-2xl shadow-lg p-4 backdrop-blur-sm w-full flex flex-col",
+                    `bg-gradient-to-br from-[rgba(0,0,0,0.15)] to-[rgba(0,0,0,0.3)]`,
+                    framePadding ? `p-[${framePadding}px]` : ""
+                )}
             >
                 <div className="w-full aspect-video overflow-hidden rounded-xl">
                     <iframe

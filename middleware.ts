@@ -1,9 +1,6 @@
 /// middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
-import { prisma } from "@/lib/prisma/client";
-import { env } from "@/lib/config/env";
 
 interface RedirectRule {
     hostnames: string[];
@@ -22,30 +19,9 @@ const redirects: RedirectRule[] = [
 ];
 
 export async function middleware(request: NextRequest) {
-    const token = await getToken({
-        req: request,
-        secret: env.NEXTAUTH_SECRET,
-    });
-    const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
-
-    if (isAdminRoute) {
-        if (!token) {
-            const loginUrl = new URL("/auth/signin", request.url);
-            loginUrl.searchParams.set("callbackUrl", request.url);
-            return NextResponse.redirect(loginUrl);
-        }
-
-        const user = await prisma.user.findUnique({
-            where: { id: token.sub },
-        });
-
-        if (!user || user.role !== "admin") {
-            return new NextResponse("Unauthorized", { status: 403 });
-        }
-    }
-
+    const hostname = request.headers.get("host") || request.nextUrl.hostname;
     const hostnameRedirect = redirects.find(({ hostnames }) =>
-        hostnames.includes(request.nextUrl.hostname)
+        hostnames.includes(hostname)
     );
 
     if (hostnameRedirect) {
@@ -56,5 +32,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ["/:path*", "/admin/:path*"],
+    matcher: [
+        "/((?!api/auth/callback|_next/static|_next/image|favicon.ico).*)",
+    ],
 };
