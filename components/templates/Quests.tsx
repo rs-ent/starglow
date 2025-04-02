@@ -27,9 +27,13 @@ export default function Quests({
     const [contentType, setContentType] = useState<string>("Today");
     const setPlayer = usePlayerStore((state) => state.setPlayer);
     const points = usePlayerStore((state) => state.points);
+    const realtimeCompletedQuests = usePlayerStore(
+        (state) => state.completedQuests
+    );
 
     useEffect(() => {
-        setPlayer(player);
+        const playerWithCompletedQuests = { ...player, completedQuests };
+        setPlayer(playerWithCompletedQuests);
     }, [player, setPlayer]);
 
     return (
@@ -95,7 +99,7 @@ export default function Quests({
                     playerId={player.id}
                     dailyQuests={dailyQuests}
                     missions={missions}
-                    completedQuests={completedQuests}
+                    completedQuests={realtimeCompletedQuests}
                     banners={banners}
                 />
             </div>

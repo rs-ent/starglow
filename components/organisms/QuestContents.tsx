@@ -19,30 +19,27 @@ export default function QuestContents({
     completedQuests = [],
     banners = [],
 }: QuestContentsProps) {
-    if (contentType === "Today") {
-        return (
-            <div
-                className="
-                    flex justify-center items-center 
-                "
-            >
-                <QuestToday
-                    playerId={playerId}
-                    dailyQuests={dailyQuests}
-                    completedQuests={completedQuests}
-                />
-            </div>
-        );
-    } else if (contentType === "Missions") {
-        return (
-            <div>
-                <QuestMissions
-                    playerId={playerId}
-                    quests={missions}
-                    completedQuests={completedQuests}
-                    banners={banners}
-                />
-            </div>
-        );
-    }
+    return (
+        <div className="w-full">
+            {contentType === "Today" && (
+                <div className="flex justify-center items-center">
+                    <QuestToday
+                        playerId={playerId}
+                        dailyQuests={dailyQuests}
+                        completedQuests={completedQuests}
+                    />
+                </div>
+            )}
+            {contentType === "Missions" && (
+                <div>
+                    <QuestMissions
+                        playerId={playerId}
+                        quests={missions}
+                        completedQuests={completedQuests}
+                        banners={banners}
+                    />
+                </div>
+            )}
+        </div>
+    );
 }

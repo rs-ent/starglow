@@ -30,6 +30,9 @@ type RewardPayload = Pick<
 export function useQuest() {
     const toast = useToast();
     const { startLoading, endLoading } = useLoading();
+    const addCompletedQuest = usePlayerStore(
+        (state) => state.addCompletedQuest
+    );
     const incrementCurrency = usePlayerStore(
         (state) => state.incrementCurrency
     );
@@ -51,7 +54,10 @@ export function useQuest() {
                 throw new Error(result.error || "Failed to complete quest");
             }
 
-            // zustand store update
+            if (result.result.questLog) {
+                addCompletedQuest(result.result.questLog.id);
+            }
+
             if (result.result.rewardsLog) {
                 const { amount, currency } = result.result.rewardsLog;
                 incrementCurrency(currency, amount);

@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import QuestButton from "../atoms/QuestButton";
 import Button from "../atoms/Button";
 import { Quest, Player } from "@prisma/client";
@@ -24,6 +24,18 @@ export default function QuestList({
 
     const [selectedType, setSelectedType] = useState<string>("All");
     const [filteredQuests, setFilteredQuests] = useState<Quest[]>(quests);
+    const [alreadyCompletedList, setAlreadyCompletedList] = useState<
+        { questId: string; completed: boolean }[]
+    >([]);
+
+    useEffect(() => {
+        const newList = completedQuests.map((quest) => ({
+            questId: quest.questId,
+            completed: true,
+        }));
+        setAlreadyCompletedList(newList);
+        console.log("New alreadyCompletedList", newList);
+    }, [completedQuests]);
 
     const handleTypeChange = (type: string) => {
         setSelectedType(type);
@@ -72,7 +84,7 @@ export default function QuestList({
                         <QuestButton
                             playerId={playerId}
                             quest={quest}
-                            alreadyCompleted={completedQuests.some(
+                            alreadyCompleted={alreadyCompletedList.some(
                                 (completedQuest) =>
                                     completedQuest.questId === quest.id
                             )}

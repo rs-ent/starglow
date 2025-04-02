@@ -16,6 +16,7 @@ interface PlayerStore {
     recommenderMethod?: string | null;
     createdAt?: Date | undefined;
     lastConnectedAt?: Date | undefined;
+    completedQuests?: { questId: string }[];
 
     setPlayer: (
         data:
@@ -27,6 +28,8 @@ interface PlayerStore {
         currency: "points" | "SGP" | "SGT",
         amount: number
     ) => void;
+
+    addCompletedQuest: (questId: string) => void;
 
     resetPlayerData: () => void;
 }
@@ -45,12 +48,18 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
     recommenderMethod: null,
     createdAt: undefined,
     lastConnectedAt: undefined,
+    completedQuests: [],
 
     setPlayer: (data) => set((state) => ({ ...state, ...data })),
 
     incrementCurrency: (currency: "points" | "SGP" | "SGT", amount: number) =>
         set((state) => ({
             [currency]: state[currency] + amount,
+        })),
+
+    addCompletedQuest: (questId: string) =>
+        set((state) => ({
+            completedQuests: [...(state.completedQuests || []), { questId }],
         })),
 
     resetPlayerData: () =>
