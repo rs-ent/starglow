@@ -16,9 +16,9 @@ function getCookieDomain() {
         return undefined;
     }
 
-    // For Vercel preview deployments
-    if (process.env.VERCEL_URL?.includes("vercel.app")) {
-        return ".vercel.app";
+    // For Vercel deployments (including preview deployments)
+    if (process.env.VERCEL_URL) {
+        return `.${process.env.VERCEL_URL}`;
     }
 
     // For production starglow.io
