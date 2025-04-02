@@ -1,3 +1,5 @@
+/// components\atoms\FileUploader.tsx
+
 "use client";
 
 import { useCallback, useState } from "react";

@@ -43,8 +43,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+<<<<<<< HEAD
     matcher: [
         "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
         "/api/actions/:path*",
     ],
+=======
+    matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+>>>>>>> e685de0 (why)
 };

@@ -207,6 +207,79 @@ model RewardsLog {
 
 }
 
+enum EventCategory {
+  concert
+  fanmeeting
+  fancamp
+  festival
+  exhibition
+  other
+}
+
+enum EventStatus {
+  upcoming
+  ongoing
+  completed
+  cancelled
+}
+
+model Events {
+  id           String    @id @default(cuid())
+  category     EventCategory @default(other)
+  title        String
+  description  String?
+  content      Json?
+  url          String?
+  status       EventStatus @default(upcoming)
+  bannerImg    String?
+  bannerImg2   String?
+  galleryImgs  String[] @default([])
+  detailImg    Json?
+  saleStartDate DateTime?
+  saleEndDate   DateTime?
+  price        Int?
+  capacity     Int?
+  ageLimit     Int?
+  organizer    String?
+  organizerImg String?
+  organizerUrl String?
+  contact      String?
+  startDate    DateTime
+  endDate      DateTime
+  location     String?
+  locationAddress String?
+  locationImg  String?
+  locationUrl  String?
+  locationLat  Float?
+  locationLng  Float?
+  artist       String?
+  artistImg    String?
+  artistUrl    String?
+  tags         String[] @default([])
+  hashtags     String[] @default([])
+  promotionText String?
+  promotionImg  String?
+  isFeatured   Boolean   @default(false)
+  viewCount    Int       @default(0)
+  bookmarkCount Int       @default(0)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@index([saleStartDate])
+  @@index([saleEndDate])
+  @@index([price])
+  @@index([category, status])
+  @@index([isFeatured])
+  @@index([isActive])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([location])
+  @@index([title])
+}
+
 model StoredImage {
   id           String    @id @default(cuid())
   url          String    @unique @db.VarChar(2048)

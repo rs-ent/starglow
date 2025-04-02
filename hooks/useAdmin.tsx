@@ -43,11 +43,14 @@ export function useAdmin(): UseAdminReturn {
 
     // Upload banner images mutation
     const uploadMutation = useMutation({
-        mutationFn: async (files: File[]) => {
+        mutationFn: async (files: Blob[]) => {
+            console.log("Files received in uploadMutation:", files);
             const formData = new FormData();
             files.forEach((file) => {
+                console.log("Appending file to FormData:", file);
                 formData.append("files", file);
             });
+            console.log("FormData entries:", Array.from(formData.entries()));
             return uploadBannerImagesAction(formData);
         },
         onSuccess: () => {
@@ -96,7 +99,9 @@ export function useAdmin(): UseAdminReturn {
         clearError();
 
         try {
-            const result = await uploadMutation.mutateAsync(files);
+            const result = await uploadMutation.mutateAsync(
+                files.map((file) => new Blob([file]))
+            );
             return result;
         } catch (error) {
             throw error;

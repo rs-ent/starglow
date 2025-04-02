@@ -114,9 +114,17 @@ export default function AdminBannerImages() {
         fetchImages();
     }, []);
 
-    const handleFileSelect = async (files: File[]) => {
+    const handleFileSelect = async (files: Blob[]) => {
+        console.log("Files received in handleFileSelect:", files);
+        if (!files || files.length === 0) {
+            console.log("No files in handleFileSelect");
+            toast.error("No files selected", 3000);
+            return;
+        }
+
         startLoading();
         try {
+            console.log("Attempting to upload files:", files);
             const newImages = await uploadBannerImages(files);
             setImages((prev) => [...prev, ...newImages]);
             setProgress(100);
