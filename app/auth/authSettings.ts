@@ -11,17 +11,21 @@ import { createSolanaWallet } from "@/lib/solana/createWallet";
 
 // Helper function to determine the cookie domain
 function getCookieDomain() {
-    // In development, explicitly set to undefined to allow all subdomains to work
-    if (process.env.NODE_ENV !== "production") {
+    if (
+        process.env.NODE_ENV !== "production" ||
+        process.env.VERCEL_ENV === "preview"
+    ) {
         return undefined;
     }
 
-    // For Vercel deployments (including preview deployments)
     if (process.env.VERCEL_URL) {
-        return `.${process.env.VERCEL_URL}`;
+        const domain = process.env.VERCEL_URL.replace(/^https?:\/\//, "").split(
+            ":"
+        )[0];
+
+        return domain.endsWith("vercel.app") ? undefined : `.${domain}`;
     }
 
-    // For production starglow.io
     return ".starglow.io";
 }
 
@@ -85,19 +89,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     callbacks: {
         async redirect({ url, baseUrl }) {
-            // Allow both internal and cross-domain redirects
-            if (url.startsWith("/")) {
-                // Handles relative URLs
-                return `${baseUrl}${url}`;
-            } else if (
-                url.includes("starglow.io") ||
-                url.includes("localhost") ||
-                url.includes("vercel.app")
-            ) {
-                // Allow redirects to trusted domains
-                return url;
-            }
-            // Default to base URL
+            if (url.startsWith("/")) return `${baseUrl}${url}`;
             return baseUrl;
         },
 
