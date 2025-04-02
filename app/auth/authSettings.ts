@@ -25,6 +25,17 @@ function getCookieDomain() {
     return ".starglow.io";
 }
 
+// Helper function to get cookie options
+function getCookieOptions() {
+    return {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        domain: getCookieDomain(),
+        secure: process.env.NODE_ENV === "production",
+    };
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
     secret: env.NEXTAUTH_SECRET,
     adapter: PrismaAdapter(prisma),
@@ -51,48 +62,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ],
     session: {
         strategy: "database",
-        maxAge: 30 * 24 * 60 * 60, // 30 days
+        maxAge: 30 * 24 * 60 * 60,
+        updateAge: 24 * 60 * 60 * 3,
     },
     cookies: {
         sessionToken: {
             name: `next-auth.session-token`,
-            options: {
-                httpOnly: true,
-                sameSite: "lax",
-                path: "/",
-                domain: getCookieDomain(),
-                secure: process.env.NODE_ENV === "production",
-            },
+            options: getCookieOptions(),
         },
         callbackUrl: {
             name: `next-auth.callback-url`,
-            options: {
-                httpOnly: true,
-                sameSite: "lax",
-                path: "/",
-                domain: getCookieDomain(),
-                secure: process.env.NODE_ENV === "production",
-            },
+            options: getCookieOptions(),
         },
         csrfToken: {
             name: `next-auth.csrf-token`,
-            options: {
-                httpOnly: true,
-                sameSite: "lax",
-                path: "/",
-                domain: getCookieDomain(),
-                secure: process.env.NODE_ENV === "production",
-            },
+            options: getCookieOptions(),
         },
         pkceCodeVerifier: {
             name: "next-auth.pkce.code_verifier",
-            options: {
-                httpOnly: true,
-                sameSite: "lax",
-                path: "/",
-                domain: getCookieDomain(),
-                secure: process.env.NODE_ENV === "production",
-            },
+            options: getCookieOptions(),
         },
     },
     callbacks: {
@@ -178,4 +166,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         signIn: "/auth/signin",
         error: "/auth/error",
     },
+    debug: process.env.NODE_ENV === "development",
+    trustHost: true,
+    useSecureCookies: process.env.NODE_ENV === "production",
 });
