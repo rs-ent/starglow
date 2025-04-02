@@ -14,7 +14,7 @@ export default async function AuthGuard({
 
     if (!session?.user) {
         const baseUrl =
-            process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+            process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000";
         const params = new URLSearchParams({ callbackUrl });
         redirect(`${baseUrl}/auth/signin?${params.toString()}`);
     }
