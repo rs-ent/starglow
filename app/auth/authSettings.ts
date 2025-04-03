@@ -9,37 +9,6 @@ import { prisma } from "@/lib/prisma/client";
 import { env } from "@/lib/config/env";
 import { createSolanaWallet } from "@/lib/solana/createWallet";
 
-// Helper function to determine the cookie domain
-function getCookieDomain() {
-    if (
-        process.env.NODE_ENV !== "production" ||
-        process.env.VERCEL_ENV === "preview"
-    ) {
-        return undefined;
-    }
-
-    if (process.env.VERCEL_URL) {
-        const domain = process.env.VERCEL_URL.replace(/^https?:\/\//, "").split(
-            ":"
-        )[0];
-
-        return domain.endsWith("vercel.app") ? undefined : `.${domain}`;
-    }
-
-    return ".starglow.io";
-}
-
-// Helper function to get cookie options
-function getCookieOptions() {
-    return {
-        httpOnly: true,
-        sameSite: "lax" as const,
-        path: "/",
-        domain: getCookieDomain(),
-        secure: process.env.NODE_ENV === "production",
-    };
-}
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
     secret: env.NEXTAUTH_SECRET,
     adapter: PrismaAdapter(prisma),
@@ -69,26 +38,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         maxAge: 30 * 24 * 60 * 60,
         updateAge: 24 * 60 * 60 * 3,
     },
-    cookies: {
-        sessionToken: {
-            name: `next-auth.session-token`,
-            options: getCookieOptions(),
-        },
-        callbackUrl: {
-            name: `next-auth.callback-url`,
-            options: getCookieOptions(),
-        },
-        csrfToken: {
-            name: `next-auth.csrf-token`,
-            options: getCookieOptions(),
-        },
-        pkceCodeVerifier: {
-            name: "next-auth.pkce.code_verifier",
-            options: getCookieOptions(),
-        },
-    },
     callbacks: {
         async redirect({ url, baseUrl }) {
+            // 로컬 환경에서는 baseUrl을 사용하지 않고 현재 URL을 사용
+            if (process.env.NODE_ENV !== "production") {
+                if (url.startsWith("/")) return url;
+                return baseUrl;
+            }
+
+            // 프로덕션 환경에서는 baseUrl을 사용
             if (url.startsWith("/")) return `${baseUrl}${url}`;
             return baseUrl;
         },
@@ -160,5 +118,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     debug: process.env.NODE_ENV === "development",
     trustHost: true,
-    useSecureCookies: process.env.NODE_ENV === "production",
 });

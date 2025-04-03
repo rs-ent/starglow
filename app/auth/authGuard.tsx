@@ -16,7 +16,7 @@ export default async function AuthGuard({
         const baseUrl =
             process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
         const params = new URLSearchParams({ callbackUrl });
-        redirect(`${baseUrl}/auth/signin?${params.toString()}`);
+        redirect(`/auth/signin?${params.toString()}`);
     }
 
     return <>{children}</>;

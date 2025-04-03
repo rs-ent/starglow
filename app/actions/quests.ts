@@ -3,7 +3,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import { Quest, StoredImage } from "@prisma/client";
+import { Quest, StoredFiles } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/app/auth/authUtils";
 
@@ -155,22 +155,6 @@ export async function getMissions(): Promise<Quest[]> {
         return missions;
     } catch (error) {
         console.error("[getMissions] Error:", error);
-        return [];
-    }
-}
-
-// Get banners for Missions page
-export async function getBanners(): Promise<Pick<StoredImage, "id" | "url">[]> {
-    try {
-        const banners = await prisma.storedImage.findMany({
-            where: { onBanner: true },
-            orderBy: { order: "asc" },
-            select: { id: true, url: true },
-        });
-
-        return banners;
-    } catch (error) {
-        console.error("[getBanners] Error:", error);
         return [];
     }
 }

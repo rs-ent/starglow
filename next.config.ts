@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
         domains: [
             "firebasestorage.googleapis.com",
             "qvosmzgjveuikjktqknp.supabase.co",
+            "pv9tnti4kdvwxlot.public.blob.vercel-storage.com",
         ],
     },
 

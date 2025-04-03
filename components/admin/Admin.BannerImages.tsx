@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import FileUploader from "@/components/atoms/FileUploader";
-import { StoredImage } from "@prisma/client";
+import { StoredFile } from "@/app/actions/files";
 import MediaCarousel, {
     CarouselItem,
 } from "@/components/molecules/MediaCarousel";
-import { useAdmin } from "@/hooks/useAdmin";
+import { useFiles } from "@/hooks/useFiles";
 import { FileQuestion } from "lucide-react";
 import {
     DndContext,
@@ -31,7 +31,7 @@ function SortableImage({
     image,
     onDelete,
 }: {
-    image: StoredImage;
+    image: StoredFile;
     onDelete: (id: string) => void;
 }) {
     const {
@@ -61,7 +61,7 @@ function SortableImage({
         >
             <img
                 src={image.url}
-                alt={image.alt || "Banner Image"}
+                alt={image.name || "Banner Image"}
                 className="w-full h-40 object-cover"
             />
             <div className="absolute inset-0 flex items-center justify-center">
@@ -77,17 +77,12 @@ function SortableImage({
 }
 
 export default function AdminBannerImages() {
-    const [images, setImages] = useState<StoredImage[]>([]);
-    const {
-        uploadBannerImages,
-        deleteBannerImage,
-        updateBannerImageOrder,
-        getBannerImages,
-        isUploading,
-        error,
-    } = useAdmin();
+    const [images, setImages] = useState<StoredFile[]>([]);
+    const { files, isLoading, deleteFile, updateFileOrder } =
+        useFiles("banner");
     const toast = useToast();
     const { startLoading, endLoading, setProgress } = useLoading();
+    const isInitialMount = useRef(true);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -97,52 +92,22 @@ export default function AdminBannerImages() {
     );
 
     useEffect(() => {
-        const fetchImages = async () => {
-            startLoading();
-            try {
-                const bannerImages = await getBannerImages();
-                setImages(bannerImages);
-                setProgress(100);
-            } catch (error) {
-                console.error("Error fetching banner images:", error);
-                toast.error("Failed to fetch banner images", 3000);
-            } finally {
-                endLoading();
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            if (files && files.length > 0) {
+                setImages(files);
             }
-        };
-
-        fetchImages();
-    }, []);
-
-    const handleFileSelect = async (files: Blob[]) => {
-        console.log("Files received in handleFileSelect:", files);
-        if (!files || files.length === 0) {
-            console.log("No files in handleFileSelect");
-            toast.error("No files selected", 3000);
-            return;
+        } else if (files && JSON.stringify(files) !== JSON.stringify(images)) {
+            setImages(files);
         }
-
-        startLoading();
-        try {
-            console.log("Attempting to upload files:", files);
-            const newImages = await uploadBannerImages(files);
-            setImages((prev) => [...prev, ...newImages]);
-            setProgress(100);
-            toast.success("Images uploaded successfully", 3000);
-        } catch (error) {
-            console.error("Error uploading images:", error);
-            toast.error("Failed to upload images", 3000);
-        } finally {
-            endLoading();
-        }
-    };
+    }, [files]);
 
     const handleDelete = async (imageId: string) => {
         if (!confirm("Delete this image?")) return;
 
         startLoading();
         try {
-            const success = await deleteBannerImage(imageId);
+            const success = await deleteFile(imageId);
             if (success) {
                 setImages((prev) => prev.filter((img) => img.id !== imageId));
                 setProgress(100);
@@ -171,7 +136,7 @@ export default function AdminBannerImages() {
             try {
                 // Update all images' order in the database
                 const updates = newImages.map((image, index) =>
-                    updateBannerImageOrder(image.id, index)
+                    updateFileOrder(image.id, index)
                 );
                 await Promise.all(updates);
                 setProgress(100);
@@ -179,8 +144,9 @@ export default function AdminBannerImages() {
             } catch (error) {
                 console.error("Error updating image order:", error);
                 // Revert to original order if update fails
-                const originalImages = await getBannerImages();
-                setImages(originalImages);
+                if (files) {
+                    setImages(files);
+                }
                 toast.error("Failed to update image order", 3000);
             } finally {
                 endLoading();
@@ -191,7 +157,7 @@ export default function AdminBannerImages() {
     const carouselItems: CarouselItem[] = images.map((image) => ({
         type: "image",
         url: image.url,
-        title: image.alt || "Banner Image",
+        title: image.name || "Banner Image",
         img: image.url,
     }));
 
@@ -252,7 +218,8 @@ export default function AdminBannerImages() {
             <div className="flex flex-col gap-4">
                 <h2 className="font-bold">Upload Banner Images</h2>
                 <FileUploader
-                    onFileSelect={handleFileSelect}
+                    purpose="banner"
+                    bucket="missions-banners"
                     maxSize={10 * 1024 * 1024}
                     multiple={true}
                 />

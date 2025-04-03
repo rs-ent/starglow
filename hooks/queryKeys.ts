@@ -17,4 +17,10 @@ export const queryKeys = {
     currency: ["currency"] as const,
     rewards: ["rewards"] as const,
     banners: () => ["banners"] as const,
+    files: {
+        all: ["files"] as const,
+        byPurpose: (purpose: string) => ["files", purpose] as const,
+        byBucket: (bucket: string) => ["files", bucket] as const,
+        byId: (id: string) => ["files", id] as const,
+    },
 };

@@ -280,8 +280,9 @@ model Events {
   @@index([title])
 }
 
-model StoredImage {
+model StoredFiles {
   id           String    @id @default(cuid())
+  name         String?   @db.VarChar(255)
   url          String    @unique @db.VarChar(2048)
   type         String?   @db.VarChar(50)
   sourceUrl    String?   @db.VarChar(2048)
@@ -290,9 +291,10 @@ model StoredImage {
   height       Int?                      
   mimeType     String?   @db.VarChar(50)
   sizeBytes    Int?                     
-  metadata     Json?
-  onBanner     Boolean   @default(false)                    
+  metadata     Json?                   
   order        Int?      @default(0)
+  purpose      String?   @db.VarChar(50)
+  bucket       String   @db.VarChar(50)
   expiresAt    DateTime?                
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
