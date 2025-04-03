@@ -11,6 +11,7 @@ import {
     StoredFile,
     getFilesByPurposeAndBucket,
     getFileById,
+    updateFilesOrder as updateFilesOrderAction,
 } from "@/app/actions/files";
 import { useToast } from "./useToast";
 import { queryKeys } from "./queryKeys";
@@ -44,15 +45,16 @@ export function useFiles() {
     const uploadFiles = async (
         files: File[],
         purpose: string,
-        bucket: string = "default"
+        bucket: string
     ): Promise<StoredFile[]> => {
         setIsUploading(true);
         try {
             const results = await Promise.all(
                 files.map((file) => uploadFile(file, purpose, bucket))
             );
+            // 관련된 모든 쿼리 무효화
             queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byPurposeAndBucket(purpose, bucket),
+                queryKey: queryKeys.files.all,
             });
             toast.success("Files uploaded successfully");
             return results;
@@ -69,7 +71,7 @@ export function useFiles() {
     const deleteFiles = async (ids: string[]): Promise<boolean[]> => {
         try {
             const results = await Promise.all(ids.map((id) => deleteFile(id)));
-            // 모든 관련 쿼리 무효화
+            // 관련된 모든 쿼리 무효화
             queryClient.invalidateQueries({
                 queryKey: queryKeys.files.all,
             });
@@ -82,7 +84,7 @@ export function useFiles() {
         }
     };
 
-    // 파일 순서 변경
+    // 파일 순서 변경 (단일 파일)
     const updateFileOrder = async (
         id: string,
         newOrder: number,
@@ -91,14 +93,40 @@ export function useFiles() {
     ): Promise<StoredFile> => {
         try {
             const result = await updateFileOrder(id, newOrder, purpose, bucket);
+            // 관련된 모든 쿼리 무효화
             queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byPurposeAndBucket(purpose, bucket),
+                queryKey: queryKeys.files.all,
             });
             toast.success("File order updated successfully");
             return result;
         } catch (error) {
             console.error("Error updating file order:", error);
             toast.error("Failed to update file order");
+            throw error;
+        }
+    };
+
+    // 파일 순서 일괄 변경
+    const updateFilesOrder = async (
+        files: { id: string; order: number }[],
+        purpose: string,
+        bucket: string = "default"
+    ): Promise<StoredFile[]> => {
+        try {
+            const results = await updateFilesOrderAction(
+                files,
+                purpose,
+                bucket
+            );
+            // 관련된 모든 쿼리 무효화
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.files.all,
+            });
+            toast.success("Files order updated successfully");
+            return results;
+        } catch (error) {
+            console.error("Error updating files order:", error);
+            toast.error("Failed to update files order");
             throw error;
         }
     };
@@ -110,6 +138,7 @@ export function useFiles() {
         uploadFiles,
         deleteFiles,
         updateFileOrder,
+        updateFilesOrder,
     };
 }
 

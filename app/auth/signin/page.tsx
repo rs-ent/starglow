@@ -1,24 +1,38 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { getProviders } from "next-auth/react";
 import SocialAuthButton from "@/components/atoms/SocialAuthButton";
 import { Provider } from "@/types/auth";
 import { useSearchParams } from "next/navigation";
 
 function SignInButtons() {
-    const [providers, setProviders] = useState<Record<string, Provider> | null>(null);
+    const [providers, setProviders] = useState<Record<string, Provider> | null>(
+        null
+    );
     const params = useSearchParams();
     const callbackUrl = params.get("callbackUrl") || "/";
 
-    useEffect(() => {
-        getProviders().then((result) => {
+    const fetchProviders = useCallback(async () => {
+        try {
+            const result = await getProviders();
             setProviders(result as Record<string, Provider>);
-        });
+        } catch (error) {
+            console.error("Failed to fetch providers:", error);
+            setProviders({});
+        }
     }, []);
 
-    return providers ? (
-        <>
+    useEffect(() => {
+        fetchProviders();
+    }, [fetchProviders]);
+
+    if (!providers) {
+        return <div className="animate-pulse">Loading providers...</div>;
+    }
+
+    return (
+        <div className="space-y-3">
             {Object.values(providers).map((provider) => (
                 <SocialAuthButton
                     key={provider.id}
@@ -27,9 +41,7 @@ function SignInButtons() {
                     callbackUrl={callbackUrl}
                 />
             ))}
-        </>
-    ) : (
-        <div>Loading providers...</div>
+        </div>
     );
 }
 
@@ -38,7 +50,9 @@ export default function SignInPage() {
         <div className="min-h-screen flex items-center justify-center bg-background">
             <div className="w-full max-w-md space-y-4 p-6 bg-background rounded-lg shadow-lg">
                 <h1 className="text-xl font-bold text-center">Sign In</h1>
-                <Suspense fallback={<div>Loading...</div>}>
+                <Suspense
+                    fallback={<div className="animate-pulse">Loading...</div>}
+                >
                     <SignInButtons />
                 </Suspense>
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import FileUploader from "@/components/atoms/FileUploader";
 import { StoredFile } from "@/app/actions/files";
 import MediaCarousel, {
@@ -15,6 +15,7 @@ import {
     PointerSensor,
     useSensor,
     useSensors,
+    DragEndEvent,
 } from "@dnd-kit/core";
 import {
     arrayMove,
@@ -78,72 +79,119 @@ function SortableImage({
 
 export default function AdminBannerImages() {
     const [images, setImages] = useState<StoredFile[]>([]);
-    const { getFiles, deleteFiles, updateFileOrder } = useFiles();
+    const { getFiles, deleteFiles, updateFilesOrder } = useFiles();
     const { files, isLoading } = getFiles("banner", "missions-banners");
     const toast = useToast();
     const { startLoading, endLoading, setProgress } = useLoading();
     const isInitialMount = useRef(true);
+    const isUpdating = useRef(false);
 
+    // Optimize sensors with activation constraints
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5, // 5px movement required before drag starts
+            },
+        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
 
+    // Memoize carousel items to prevent unnecessary re-renders
+    const carouselItems: CarouselItem[] = useMemo(
+        () =>
+            images.map((image) => ({
+                type: "image",
+                url: image.url,
+                title: image.name || "Banner Image",
+                img: image.url,
+            })),
+        [images]
+    );
+
+    // Update images only when files change and they're different
     useEffect(() => {
         if (isInitialMount.current) {
             isInitialMount.current = false;
             if (files && files.length > 0) {
                 setImages(files);
             }
-        } else if (files && JSON.stringify(files) !== JSON.stringify(images)) {
-            setImages(files);
-        }
-    }, [files]);
-
-    const handleDelete = async (imageId: string) => {
-        if (!confirm("Delete this image?")) return;
-
-        startLoading();
-        try {
-            const results = await deleteFiles([imageId]);
-            if (results[0]) {
-                setImages((prev) => prev.filter((img) => img.id !== imageId));
-                setProgress(100);
-                toast.success("Image deleted successfully", 3000);
+        } else if (files && !isUpdating.current) {
+            // Simple length check first for performance
+            if (files.length !== images.length) {
+                setImages(files);
+            } else {
+                // Only do deep comparison if lengths match
+                const filesChanged = files.some(
+                    (file, index) =>
+                        file.id !== images[index]?.id ||
+                        file.order !== images[index]?.order
+                );
+                if (filesChanged) {
+                    setImages(files);
+                }
             }
-        } catch (error) {
-            console.error("Error deleting image:", error);
-            toast.error("Failed to delete image", 3000);
-        } finally {
-            endLoading();
         }
-    };
+    }, [files, images]);
 
-    const handleDragEnd = async (event: any) => {
-        const { active, over } = event;
+    const handleDelete = useCallback(
+        async (imageId: string) => {
+            if (!confirm("Delete this image?")) return;
 
-        if (active.id !== over.id) {
+            startLoading();
+            try {
+                const results = await deleteFiles([imageId]);
+                if (results[0]) {
+                    setImages((prev) =>
+                        prev.filter((img) => img.id !== imageId)
+                    );
+                    setProgress(100);
+                    toast.success("Image deleted successfully", 3000);
+                }
+            } catch (error) {
+                console.error("Error deleting image:", error);
+                toast.error("Failed to delete image", 3000);
+            } finally {
+                endLoading();
+            }
+        },
+        [deleteFiles, startLoading, endLoading, setProgress, toast]
+    );
+
+    const handleDragEnd = useCallback(
+        async (event: DragEndEvent) => {
+            const { active, over } = event;
+
+            if (!over || active.id === over.id) return;
+
             const oldIndex = images.findIndex((img) => img.id === active.id);
             const newIndex = images.findIndex((img) => img.id === over.id);
+
+            if (oldIndex === -1 || newIndex === -1) return;
 
             // Optimistically update UI
             const newImages = arrayMove(images, oldIndex, newIndex);
             setImages(newImages);
 
+            // Prevent multiple simultaneous updates
+            if (isUpdating.current) return;
+            isUpdating.current = true;
+
             startLoading();
             try {
-                // Update all images' order in the database
-                const updates = newImages.map((image, index) =>
-                    updateFileOrder(
-                        image.id,
-                        index,
-                        "banner",
-                        "missions-banners"
-                    )
+                // Update all images' order in a single transaction
+                const filesToUpdate = newImages.map((image, index) => ({
+                    id: image.id,
+                    order: index,
+                }));
+
+                await updateFilesOrder(
+                    filesToUpdate,
+                    "banner",
+                    "missions-banners"
                 );
-                await Promise.all(updates);
+
                 setProgress(100);
                 toast.success("Image order updated successfully", 3000);
             } catch (error) {
@@ -155,16 +203,19 @@ export default function AdminBannerImages() {
                 toast.error("Failed to update image order", 3000);
             } finally {
                 endLoading();
+                isUpdating.current = false;
             }
-        }
-    };
-
-    const carouselItems: CarouselItem[] = images.map((image) => ({
-        type: "image",
-        url: image.url,
-        title: image.name || "Banner Image",
-        img: image.url,
-    }));
+        },
+        [
+            images,
+            files,
+            updateFilesOrder,
+            startLoading,
+            endLoading,
+            setProgress,
+            toast,
+        ]
+    );
 
     return (
         <div className="grid grid-cols-[3fr_1fr] gap-8">

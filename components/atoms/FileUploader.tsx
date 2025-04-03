@@ -10,7 +10,7 @@ import { StoredFile } from "@/app/actions/files";
 
 interface FileUploaderProps {
     purpose?: string;
-    bucket?: string;
+    bucket: string;
     onComplete?: (files: { id: string; url: string }[]) => void;
     accept?: Record<string, string[]>;
     maxSize?: number;
@@ -19,7 +19,7 @@ interface FileUploaderProps {
 }
 
 export default function FileUploader({
-    purpose,
+    purpose = "other",
     bucket,
     onComplete,
     accept = {

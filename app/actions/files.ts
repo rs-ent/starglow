@@ -37,8 +37,7 @@ async function optimizeImage(
 export async function uploadFile(
     file: File,
     purpose: string,
-    name?: string,
-    bucket: string = "vercel-blob"
+    bucket: string
 ): Promise<StoredFile> {
     try {
         const session = await auth();
@@ -64,7 +63,7 @@ export async function uploadFile(
 
         // 파일 이름 생성
         const fileExt = optimizedBuffer ? "webp" : file.name.split(".").pop();
-        const fileName = name || `${uuidv4()}.${fileExt}`;
+        const fileName = `${uuidv4()}.${fileExt}`;
 
         // 최적화된 이미지가 있으면 그것을 사용, 없으면 원본 사용
         const fileToUpload = optimizedBuffer || file;
@@ -201,8 +200,8 @@ export async function getFilesByBucket(bucket: string): Promise<StoredFile[]> {
 
 export async function uploadFiles(
     formData: FormData,
-    purpose: string = "other",
-    bucket: string = "vercel-blob"
+    purpose: string,
+    bucket: string
 ): Promise<StoredFile[]> {
     try {
         const session = await auth();
@@ -388,6 +387,44 @@ export async function updateFileOrder(
         };
     } catch (error) {
         console.error("Error updating file order:", error);
+        throw error;
+    }
+}
+
+export async function updateFilesOrder(
+    files: { id: string; order: number }[],
+    purpose: string,
+    bucket: string = "default"
+): Promise<StoredFile[]> {
+    try {
+        const session = await auth();
+        if (!session?.user) {
+            throw new Error("Unauthorized");
+        }
+
+        // Use a transaction to update all files' order at once
+        const updatedFiles = await prisma.$transaction(
+            files.map((file) =>
+                prisma.storedFiles.update({
+                    where: { id: file.id },
+                    data: { order: file.order },
+                })
+            )
+        );
+
+        revalidatePath("/admin/files");
+        return updatedFiles.map((file) => ({
+            id: file.id,
+            url: file.url,
+            name: file.name || "",
+            type: file.type || "",
+            size: file.sizeBytes || 0,
+            purpose: file.purpose || "",
+            order: file.order || 0,
+            createdAt: file.createdAt,
+        }));
+    } catch (error) {
+        console.error("Error updating files order:", error);
         throw error;
     }
 }

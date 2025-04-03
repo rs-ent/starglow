@@ -7,21 +7,19 @@ import KakaoProvider from "next-auth/providers/kakao";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma/client";
 import { env } from "@/lib/config/env";
-import { createSolanaWallet } from "@/lib/solana/createWallet";
+import type { NextAuthConfig } from "next-auth";
 
 const isProd = process.env.NODE_ENV === "production";
 const isVercelPreview = process.env.VERCEL_ENV === "preview";
 
 const getCookieDomain = () => {
     if (!isProd || isVercelPreview) return undefined;
-
     if (process.env.VERCEL_URL) {
         const domain = process.env.VERCEL_URL.replace(/^https?:\/\//, "").split(
             ":"
         )[0];
         return domain.endsWith("vercel.app") ? undefined : `.${domain}`;
     }
-
     return ".starglow.io";
 };
 
@@ -33,8 +31,7 @@ const cookieOptions = {
     secure: isProd,
 };
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-    secret: env.NEXTAUTH_SECRET,
+const authOptions: NextAuthConfig = {
     adapter: PrismaAdapter(prisma),
     providers: [
         GoogleProvider({
@@ -58,80 +55,48 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }),
     ],
     session: {
-        strategy: "database",
-        maxAge: 30 * 24 * 60 * 60,
-        updateAge: 3 * 24 * 60 * 60,
+        strategy: "database" as const,
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+        updateAge: 24 * 60 * 60, // 24 hours
     },
     cookies: {
         sessionToken: {
             name: "next-auth.session-token",
             options: cookieOptions,
         },
-        callbackUrl: { name: "next-auth.callback-url", options: cookieOptions },
-        csrfToken: { name: "next-auth.csrf-token", options: cookieOptions },
+        callbackUrl: {
+            name: "next-auth.callback-url",
+            options: cookieOptions,
+        },
+        csrfToken: {
+            name: "next-auth.csrf-token",
+            options: cookieOptions,
+        },
         pkceCodeVerifier: {
             name: "next-auth.pkce.code_verifier",
             options: cookieOptions,
         },
     },
     callbacks: {
-        async redirect({ url, baseUrl }) {
-            if (url.startsWith("/")) return isProd ? `${baseUrl}${url}` : url;
-            return baseUrl;
-        },
-
-        async signIn() {
-            return true;
-        },
-
-        async session({ session, user }) {
-            if (!user?.id) {
-                console.error("[Session] User ID not found");
-                return session;
+        async session({ session, user }: { session: any; user: any }) {
+            if (session.user) {
+                session.user.id = user.id;
             }
-
-            session.user.id = user.id;
-
-            try {
-                const player = await prisma.player.upsert({
-                    where: { userId: user.id },
-                    create: { userId: user.id, createdAt: new Date() },
-                    update: {},
-                });
-
-                const wallet = await prisma.wallet.findFirst({
-                    where: { userId: user.id, network: "solana" },
-                });
-
-                if (!wallet) {
-                    const { publicKey, privateKey } = createSolanaWallet();
-                    await prisma.wallet.create({
-                        data: {
-                            userId: user.id,
-                            network: "solana",
-                            address: publicKey,
-                            privateKey,
-                            default: true,
-                            primary: 0,
-                            createdAt: new Date(),
-                        },
-                    });
-                    console.info("[Wallet][Created]", publicKey);
-                } else {
-                    console.info("[Wallet][Exists]", wallet.address);
-                }
-            } catch (error) {
-                console.error("[Session][Error]", error);
-            }
-
             return session;
+        },
+        async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
+            if (url.startsWith("/")) return `${baseUrl}${url}`;
+            else if (new URL(url).origin === baseUrl) return url;
+            return baseUrl;
         },
     },
     pages: {
         signIn: "/auth/signin",
         error: "/auth/error",
     },
-    debug: !isProd,
+    debug: false,
     trustHost: true,
     useSecureCookies: isProd,
-});
+};
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authOptions);

@@ -2,6 +2,11 @@
 
 import { auth } from "@/app/auth/authSettings";
 import { redirect } from "next/navigation";
+import { cache } from "react";
+
+const getBaseUrl = cache(
+    () => process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+);
 
 export default async function AuthGuard({
     children,
@@ -10,14 +15,18 @@ export default async function AuthGuard({
     children: React.ReactNode;
     callbackUrl?: string;
 }) {
-    const session = await auth();
+    try {
+        const session = await auth();
 
-    if (!session?.user) {
-        const baseUrl =
-            process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-        const params = new URLSearchParams({ callbackUrl });
-        redirect(`/auth/signin?${params.toString()}`);
+        if (!session?.user) {
+            const baseUrl = getBaseUrl();
+            const params = new URLSearchParams({ callbackUrl });
+            redirect(`/auth/signin?${params.toString()}`);
+        }
+
+        return <>{children}</>;
+    } catch (error) {
+        console.error("AuthGuard Error:", error);
+        redirect("/auth/error?error=Configuration");
     }
-
-    return <>{children}</>;
 }

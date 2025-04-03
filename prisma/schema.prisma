@@ -25,7 +25,10 @@ model User {
   sessions      Session[]
   wallets       Wallet[]
   player        Player?
+  loginAttempts LoginAttemptLog[] @relation("UserLoginAttempts")
 
+  @@index([email, active])
+  @@index([role, active])
   @@index([lastLoginAt])
 }
 
@@ -45,17 +48,19 @@ model Account {
 
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, provider])
   @@unique([provider, providerAccountId])
-  @@index([userId])
 }
 
 model Session {
   id           String   @id @default(cuid())
-  sessionToken String   @unique
+  sessionToken String   @unique(map: "Session_sessionToken_unique")
   userId       String
   expires      DateTime
 
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expires])
 }
 
 model Wallet {
@@ -70,7 +75,8 @@ model Wallet {
 
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, address])
+  @@index([userId, network, default])
+  @@index([address, network])
 }
 
 model Player {
@@ -94,7 +100,9 @@ model Player {
 
   user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  @@index([userId, telegramId, id])
+  @@index([userId, telegramId])
+  @@index([points, SGP, SGT])
+  @@index([recommenderId])
 }
 
 enum RewardCurrency {
@@ -122,9 +130,9 @@ model Quest {
   questLogs       QuestLog[]
   rewardLogs      RewardsLog[]
 
-  @@index([startDate])
-  @@index([permanent, visible])
-  @@index([primary])
+  @@index([permanent, visible, startDate])
+  @@index([type, visible])
+  @@index([primary, visible])
 }
 
 model QuestLog {
@@ -142,7 +150,8 @@ model QuestLog {
   player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
   quest          Quest     @relation(fields: [questId], references: [id])
 
-  @@index([playerId, completed])
+  @@index([playerId, questId, completed])
+  @@index([completedAt, rewardCurrency])
 }
 
 model Poll {
@@ -170,6 +179,8 @@ model Poll {
   pollLogs                PollLog[]
   rewardLogs             RewardsLog[]
 
+  @@index([startDate, endDate, exposeInScheduleTab])
+  @@index([totalVotes, totalBetsAmount])
 }
 
 model PollLog {
@@ -185,6 +196,8 @@ model PollLog {
   player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
   poll           Poll      @relation(fields: [pollId], references: [id])
 
+  @@index([playerId, pollId])
+  @@index([pollId, option])
 }
 
 model RewardsLog {
@@ -205,6 +218,8 @@ model RewardsLog {
   poll           Poll?     @relation(fields: [pollId], references: [id])
   pollLog        PollLog?  @relation(fields: [pollLogId], references: [id])
 
+  @@index([playerId, currency, createdAt])
+  @@index([questId, pollId])
 }
 
 enum EventCategory {
@@ -266,18 +281,9 @@ model Events {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  @@index([category])
-  @@index([status])
-  @@index([saleStartDate])
-  @@index([saleEndDate])
-  @@index([price])
-  @@index([category, status])
-  @@index([isFeatured])
-  @@index([isActive])
-  @@index([startDate])
-  @@index([endDate])
-  @@index([location])
-  @@index([title])
+  @@index([category, status, startDate])
+  @@index([location, startDate])
+  @@index([isFeatured, isActive, startDate])
 }
 
 model StoredFiles {
@@ -299,6 +305,28 @@ model StoredFiles {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  @@index([url, sourceUrl])
+  @@index([bucket, purpose])
+  @@index([url, type])
   @@unique([sourceUrl, type])
+}
+
+model LoginAttemptLog {
+    id          String   @id @default(cuid())
+    userId      String?  // 로그인 성공 시에만 저장
+    email       String?  // 로그인 실패 시에만 저장
+    provider    String?  // OAuth 제공자 (google, twitter, kakao)
+    success     Boolean
+    error       String?  // 실패 시 에러 메시지
+    ipAddress   String?  // IP 주소 (보안 감사용)
+    userAgent   String?  // 브라우저/기기 정보
+    timestamp   DateTime @default(now())
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    @@index([userId, success, timestamp])
+    @@index([email, success, timestamp])
+    @@index([provider, success, timestamp])
+    @@index([ipAddress, timestamp])
+
+    user        User?    @relation("UserLoginAttempts", fields: [userId], references: [id], onDelete: Cascade)
 }

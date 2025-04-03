@@ -1,11 +1,37 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    images: {
+        remotePatterns: [
+            {
+                protocol: "https",
+                hostname: "firebasestorage.googleapis.com",
+            },
+            {
+                protocol: "https",
+                hostname: "qvosmzgjveuikjktqknp.supabase.co",
+            },
+            {
+                protocol: "https",
+                hostname: "pv9tnti4kdvwxlot.public.blob.vercel-storage.com",
+            },
+        ],
+    },
+
+    allowedDevOrigins: [
+        "local-origin.dev",
+        "*.local-origin.dev",
+        "http://localhost:3000",
+        "http://admin.localhost:3000",
+        "http://admin.localhost",
+        "admin.localhost",
+        "https://admin.starglow.io",
+    ],
+
     experimental: {
         serverActions: {
-            bodySizeLimit: "10mb", // 서버 액션 본문 크기 제한을 10MB로 설정
+            bodySizeLimit: "50mb",
         },
     },
-    // 기타 Next.js 설정...
 };
 
 module.exports = nextConfig;

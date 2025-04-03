@@ -1,7 +1,4 @@
 {
-  "editor.defaultFormatter": "hb432.prettier-eslint-typescript",
-  "notebook.defaultFormatter": "hb432.prettier-eslint-typescript",
-  "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true
 }

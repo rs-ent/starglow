@@ -6,7 +6,9 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { LogIn, LogOut, LoaderCircle } from "lucide-react";
 import Button from "./Button";
 import { useLoading } from "@/hooks/useLoading";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback } from "react";
+
 interface AuthButtonProps {
     frameSize?: number;
     textSize?: number;
@@ -34,13 +36,31 @@ export default function AuthButton({
     const { data: session, status } = useSession();
     const { startLoading } = useLoading();
     const pathname = usePathname();
+    const router = useRouter();
 
-    const handleSignIn = async () => {
-        startLoading();
-        await signIn(undefined, {
-            callbackUrl: pathname,
-        });
-    };
+    const handleSignIn = useCallback(async () => {
+        try {
+            startLoading();
+            await signIn(undefined, {
+                callbackUrl: pathname,
+            });
+        } catch (error) {
+            console.error("Sign in error:", error);
+            router.push("/auth/error");
+        }
+    }, [pathname, router, startLoading]);
+
+    const handleSignOut = useCallback(async () => {
+        try {
+            startLoading();
+            await signOut({
+                callbackUrl: "/",
+            });
+        } catch (error) {
+            console.error("Sign out error:", error);
+            router.push("/auth/error");
+        }
+    }, [router, startLoading]);
 
     if (status === "loading") {
         return (
@@ -62,7 +82,7 @@ export default function AuthButton({
 
     return session ? (
         <Button
-            onClick={() => signOut()}
+            onClick={handleSignOut}
             variant={variant}
             className={className}
             frameSize={frameSize}
