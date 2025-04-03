@@ -73,6 +73,7 @@ export default function QuestButton({
         useState(false);
     const { questComplete } = useQuest(playerId);
     const { startLoading, endLoading } = useLoading();
+    const toast = useToast();
 
     const buttonRef = useRef<HTMLDivElement>(null);
     const isInView = useInView(buttonRef, { once: true });
@@ -94,8 +95,6 @@ export default function QuestButton({
         }
         endLoading();
     }, [isInView, questSuccessCardVisible, startLoading, endLoading]);
-
-    const toast = useToast();
 
     const handleClose = async (succeeded: boolean) => {
         startLoading();

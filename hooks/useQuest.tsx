@@ -64,9 +64,8 @@ export function useQuest(playerId?: string) {
     const toast = useToast();
     const { startLoading, endLoading } = useLoading();
     const queryClient = useQueryClient();
-    const { updateCurrency, addCompletedQuest } = usePlayer(playerId || "");
+    const { updateCurrency } = usePlayer(playerId || "");
 
-    // Complete quest mutation
     const completeQuestMutation = useMutation<
         CompleteQuestResult,
         Error,
@@ -85,6 +84,7 @@ export function useQuest(playerId?: string) {
             const previousQuests = queryClient.getQueryData(
                 queryKeys.quests.all
             );
+
             queryClient.setQueryData(queryKeys.quests.all, (old: any) => {
                 const quests = Array.isArray(old) ? old : [];
                 return [
@@ -110,63 +110,21 @@ export function useQuest(playerId?: string) {
             toast.error("Mission completion failed: " + err.message);
         },
         onSuccess: async (result) => {
-            if (result.questLog) {
-                await addCompletedQuest(result.questLog.questId);
-            }
+            queryClient.invalidateQueries({ queryKey: queryKeys.quests.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.player.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.currency });
 
             if (result.rewardsLog) {
                 const { amount, currency } = result.rewardsLog;
                 await updateCurrency(currency, amount);
             }
-
-            queryClient.invalidateQueries({ queryKey: queryKeys.quests.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.player.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.currency });
 
             toast.success("Quest completed successfully!");
         },
     });
 
-    // Add rewards mutation
-    const addRewardsMutation = useMutation<
-        AddRewardsResult,
-        Error,
-        AddRewardsInput
-    >({
-        mutationFn: (input) =>
-            addRewardsAction(
-                input.playerId,
-                input.questId,
-                input.questLogId,
-                input.amount,
-                input.currency,
-                input.reason,
-                input.pollId,
-                input.pollLogId
-            ),
-        onSuccess: async (result) => {
-            // Update player state if needed
-            if (result.player) {
-                // You might want to update player state here
-            }
-
-            if (result.rewardsLog) {
-                const { amount, currency } = result.rewardsLog;
-                await updateCurrency(currency, amount);
-            }
-
-            queryClient.invalidateQueries({ queryKey: queryKeys.rewards });
-            queryClient.invalidateQueries({ queryKey: queryKeys.player.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.currency });
-        },
-        onError: (error: Error) => {
-            console.error("Failed to add game money: " + error.message);
-        },
-    });
-
     const questComplete = async (input: CompleteQuestInput) => {
         startLoading();
-        console.log("Input:", input);
         try {
             const result = await completeQuestMutation.mutateAsync(input);
             return result;
@@ -177,17 +135,5 @@ export function useQuest(playerId?: string) {
         }
     };
 
-    const addRewards = async (input: AddRewardsInput) => {
-        startLoading();
-        try {
-            const result = await addRewardsMutation.mutateAsync(input);
-            return result.player;
-        } catch (error) {
-            throw error;
-        } finally {
-            endLoading();
-        }
-    };
-
-    return { questComplete, addRewards };
+    return { questComplete };
 }

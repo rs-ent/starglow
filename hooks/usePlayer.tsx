@@ -42,29 +42,6 @@ export function usePlayer(playerId: string) {
         },
     });
 
-    // add completed quest
-    const addCompletedQuestMutation = useMutation({
-        mutationFn: addCompletedQuestAction,
-        onSuccess: (result) => {
-            if (result.success) {
-                // invalidate player query
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.player.byId(playerId),
-                });
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.quests.all,
-                });
-
-                toast.success("Quest added to completed quests!");
-            } else {
-                toast.info(result.message || "Quest already completed");
-            }
-        },
-        onError: (error: Error) => {
-            toast.error("Failed to add completed quest: " + error.message);
-        },
-    });
-
     // reset player data
     const resetPlayerDataMutation = useMutation({
         mutationFn: () => resetPlayerDataAction(playerId),
@@ -93,14 +70,6 @@ export function usePlayer(playerId: string) {
         });
     };
 
-    // add completed quest
-    const addCompletedQuest = async (questId: string) => {
-        return addCompletedQuestMutation.mutateAsync({
-            playerId,
-            questId,
-        });
-    };
-
     // get completed quests
     const getCompletedQuests = () => {
         return player?.questLogs || [];
@@ -116,7 +85,6 @@ export function usePlayer(playerId: string) {
         isLoading,
         error,
         updateCurrency,
-        addCompletedQuest,
         getCompletedQuests,
         resetPlayerData,
     };

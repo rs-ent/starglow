@@ -34,7 +34,6 @@ export default function QuestList({
             completed: true,
         }));
         setAlreadyCompletedList(newList);
-        console.log("New alreadyCompletedList", newList);
     }, [completedQuests]);
 
     const handleTypeChange = (type: string) => {
