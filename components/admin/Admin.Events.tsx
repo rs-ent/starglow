@@ -30,14 +30,6 @@ export default function AdminEvents() {
     const [price, setPrice] = useState<number | undefined>(undefined);
 
     // Image states
-    const [bannerImage, setBannerImage] = useState<File[]>([]);
-    const [galleryImages, setGalleryImages] = useState<File[]>([]);
-    const [detailImages, setDetailImages] = useState<Record<Language, File[]>>({
-        ko: [],
-        en: [],
-        ja: [],
-        zh: [],
-    });
     const [content, setContent] = useState<Record<Language, string>>({
         ko: "",
         en: "",
@@ -58,34 +50,21 @@ export default function AdminEvents() {
         zh: null,
     });
 
-    const handleBannerImageSelect = (files: File[]) => {
-        setBannerImage(files);
+    const handleBannerImageUpload = (files: { id: string; url: string }[]) => {
+        setBannerImageUrl(files[0]?.url || null);
     };
 
-    const handleBannerImageUpload = (urls: string[]) => {
-        setBannerImageUrl(urls[0] || null);
-    };
-
-    const handleGalleryImagesSelect = (files: File[]) => {
-        setGalleryImages(files);
-    };
-
-    const handleGalleryImagesUpload = (urls: string[]) => {
-        setGalleryImageUrls(urls);
-    };
-
-    const handleDetailImageSelect = (language: Language) => (files: File[]) => {
-        setDetailImages((prev) => ({
-            ...prev,
-            [language]: files,
-        }));
+    const handleGalleryImagesUpload = (
+        files: { id: string; url: string }[]
+    ) => {
+        setGalleryImageUrls(files.map((file) => file.url));
     };
 
     const handleDetailImageUpload =
-        (language: Language) => (urls: string[]) => {
-            setDetailImageUrls((prev) => ({
+        (language: Language) => (files: { id: string; url: string }[]) => {
+            setDetailImageUrls((prev: Record<Language, string | null>) => ({
                 ...prev,
-                [language]: urls[0] || null,
+                [language]: files[0]?.url || null,
             }));
         };
 
@@ -102,6 +81,12 @@ export default function AdminEvents() {
         setError(null);
 
         try {
+            // Validate required fields
+            if (!title || !category || !status || !startDate || !endDate) {
+                setError("Please fill in all required fields");
+                return;
+            }
+
             const formData = new FormData();
 
             // Add basic form data
@@ -134,22 +119,9 @@ export default function AdminEvents() {
             // Add content for each language
             formData.append("content", JSON.stringify(content));
 
-            const response = await fetch("/api/admin/events", {
-                method: "POST",
-                body: formData,
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to create event");
-            }
-
-            const result = await response.json();
-            if (result.success) {
-                success("Event created successfully");
-                router.push("/admin/events");
-            } else {
-                throw new Error(result.error || "Failed to create event");
-            }
+            await createEvent(formData);
+            success("Event created successfully");
+            router.push("/admin/events");
         } catch (error) {
             console.error("Error creating event:", error);
             showError("Failed to create event");
@@ -173,13 +145,16 @@ export default function AdminEvents() {
                             Category
                         </label>
                         <select
-                            name="category"
+                            value={category}
+                            onChange={(e) =>
+                                setCategory(e.target.value as EventCategory)
+                            }
                             className="w-full p-2 border rounded"
                             required
                         >
-                            {Object.values(EventCategory).map((category) => (
-                                <option key={category} value={category}>
-                                    {category}
+                            {Object.values(EventCategory).map((cat) => (
+                                <option key={cat} value={cat}>
+                                    {cat}
                                 </option>
                             ))}
                         </select>
@@ -190,13 +165,16 @@ export default function AdminEvents() {
                             Status
                         </label>
                         <select
-                            name="status"
+                            value={status}
+                            onChange={(e) =>
+                                setStatus(e.target.value as EventStatus)
+                            }
                             className="w-full p-2 border rounded"
                             required
                         >
-                            {Object.values(EventStatus).map((status) => (
-                                <option key={status} value={status}>
-                                    {status}
+                            {Object.values(EventStatus).map((stat) => (
+                                <option key={stat} value={stat}>
+                                    {stat}
                                 </option>
                             ))}
                         </select>
@@ -208,7 +186,8 @@ export default function AdminEvents() {
                         </label>
                         <input
                             type="text"
-                            name="title"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
                             className="w-full p-2 border rounded"
                             required
                         />
@@ -219,7 +198,8 @@ export default function AdminEvents() {
                             Description
                         </label>
                         <textarea
-                            name="description"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
                             rows={4}
                             className="w-full p-2 border rounded"
                         />
@@ -231,7 +211,10 @@ export default function AdminEvents() {
                         </label>
                         <input
                             type="datetime-local"
-                            name="startDate"
+                            value={startDate.toISOString().slice(0, 16)}
+                            onChange={(e) =>
+                                setStartDate(new Date(e.target.value))
+                            }
                             className="w-full p-2 border rounded"
                             required
                         />
@@ -243,7 +226,10 @@ export default function AdminEvents() {
                         </label>
                         <input
                             type="datetime-local"
-                            name="endDate"
+                            value={endDate.toISOString().slice(0, 16)}
+                            onChange={(e) =>
+                                setEndDate(new Date(e.target.value))
+                            }
                             className="w-full p-2 border rounded"
                             required
                         />
@@ -255,7 +241,8 @@ export default function AdminEvents() {
                         </label>
                         <input
                             type="text"
-                            name="location"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
                             className="w-full p-2 border rounded"
                         />
                     </div>
@@ -266,7 +253,26 @@ export default function AdminEvents() {
                         </label>
                         <input
                             type="number"
-                            name="price"
+                            value={price || ""}
+                            onChange={(e) =>
+                                setPrice(
+                                    e.target.value
+                                        ? Number(e.target.value)
+                                        : undefined
+                                )
+                            }
+                            className="w-full p-2 border rounded"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium mb-2">
+                            Event URL
+                        </label>
+                        <input
+                            type="url"
+                            value={url}
+                            onChange={(e) => setUrl(e.target.value)}
                             className="w-full p-2 border rounded"
                         />
                     </div>
@@ -276,8 +282,9 @@ export default function AdminEvents() {
                             Banner Image
                         </label>
                         <FileUploader
-                            onFileSelect={handleBannerImageSelect}
-                            onUploadComplete={handleBannerImageUpload}
+                            purpose="event-banner"
+                            bucket="events"
+                            onComplete={handleBannerImageUpload}
                             multiple={false}
                         />
                         {bannerImageUrl && (
@@ -294,8 +301,9 @@ export default function AdminEvents() {
                             Gallery Images
                         </label>
                         <FileUploader
-                            onFileSelect={handleGalleryImagesSelect}
-                            onUploadComplete={handleGalleryImagesUpload}
+                            purpose="event-gallery"
+                            bucket="events"
+                            onComplete={handleGalleryImagesUpload}
                             multiple={true}
                         />
                         {galleryImageUrls.length > 0 && (
@@ -306,17 +314,6 @@ export default function AdminEvents() {
                                 </p>
                             </div>
                         )}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium mb-2">
-                            Event URL
-                        </label>
-                        <input
-                            type="url"
-                            name="url"
-                            className="w-full p-2 border rounded"
-                        />
                     </div>
                 </div>
 
@@ -331,10 +328,9 @@ export default function AdminEvents() {
                                     {lang.toUpperCase()} Detail Image
                                 </label>
                                 <FileUploader
-                                    onFileSelect={handleDetailImageSelect(lang)}
-                                    onUploadComplete={handleDetailImageUpload(
-                                        lang
-                                    )}
+                                    purpose={`event-detail-${lang}`}
+                                    bucket="events"
+                                    onComplete={handleDetailImageUpload(lang)}
                                     multiple={false}
                                 />
                                 {detailImageUrls[lang] && (
