@@ -12,11 +12,6 @@ const UpdateCurrencySchema = z.object({
     amount: z.number(),
 });
 
-const AddCompletedQuestSchema = z.object({
-    playerId: z.string(),
-    questId: z.string(),
-});
-
 export async function getPlayer(playerId: string) {
     try {
         const player = await prisma.player.findUnique({
@@ -74,47 +69,6 @@ export async function updatePlayerCurrency(
         return updatedPlayer;
     } catch (error) {
         console.error("Error updating player currency:", error);
-        throw error;
-    }
-}
-
-/**
- * 플레이어 완료 퀘스트를 추가합니다.
- */
-export async function addCompletedQuest(
-    input: z.infer<typeof AddCompletedQuestSchema>
-) {
-    try {
-        const { playerId, questId } = AddCompletedQuestSchema.parse(input);
-
-        // 플레이어 확인
-        const player = await prisma.player.findUnique({
-            where: { id: playerId },
-        });
-
-        if (!player) {
-            throw new Error("Player not found");
-        }
-
-        // 이미 완료한 퀘스트인지 확인
-        const existingQuest = await prisma.questLog.findFirst({
-            where: {
-                playerId,
-                questId,
-                completed: true,
-            },
-        });
-
-        if (existingQuest) {
-            return { success: false, message: "Quest already completed" };
-        }
-
-        // 경로 재검증
-        revalidatePath("/");
-
-        return { success: true };
-    } catch (error) {
-        console.error("Error adding completed quest:", error);
         throw error;
     }
 }

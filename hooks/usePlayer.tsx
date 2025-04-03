@@ -5,7 +5,6 @@ import { queryKeys } from "./queryKeys";
 import {
     getPlayer as getPlayerAction,
     updatePlayerCurrency as updatePlayerCurrencyAction,
-    addCompletedQuest as addCompletedQuestAction,
     resetPlayerData as resetPlayerDataAction,
 } from "@/app/actions/player";
 import { useToast } from "./useToast";
