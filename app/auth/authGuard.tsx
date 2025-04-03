@@ -15,18 +15,13 @@ export default async function AuthGuard({
     children: React.ReactNode;
     callbackUrl?: string;
 }) {
-    try {
-        const session = await auth();
+    const session = await auth();
 
-        if (!session?.user) {
-            const baseUrl = getBaseUrl();
-            const params = new URLSearchParams({ callbackUrl });
-            redirect(`/auth/signin?${params.toString()}`);
-        }
-
-        return <>{children}</>;
-    } catch (error) {
-        console.error("AuthGuard Error:", error);
-        redirect("/auth/error?error=Configuration");
+    if (!session?.user) {
+        const baseUrl = getBaseUrl();
+        const params = new URLSearchParams({ callbackUrl });
+        redirect(`${baseUrl}/auth/signin?${params.toString()}`);
     }
+
+    return <>{children}</>;
 }
