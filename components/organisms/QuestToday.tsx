@@ -7,30 +7,38 @@ import { H2 } from "../atoms/Typography";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import MediaCarousel, { CarouselItem } from "../molecules/MediaCarousel";
-import { useLoading } from "@/hooks/useLoading";
 import InviteFriends from "../atoms/InviteFriends";
 import DailyQuests from "../molecules/DailyQuest";
 import Icon from "../atoms/Icon";
 import { Loader2 } from "lucide-react";
 import { Player, Quest } from "@prisma/client";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/hooks/queryKeys";
+import { getDailyQuests } from "@/app/actions/quests";
+import PartialLoading from "../atoms/PartialLoading";
 
 interface QuestTodayProps {
     playerId: Player["id"];
-    dailyQuests: Quest[];
     completedQuests: { questId: string }[];
 }
 
 export default function QuestToday({
     playerId,
-    dailyQuests,
     completedQuests,
 }: QuestTodayProps) {
-    const { startLoading, endLoading } = useLoading();
+    const { data: dailyQuests = [], isLoading: isLoadingDailyQuests } =
+        useQuery<Quest[]>({
+            queryKey: queryKeys.quests.daily(),
+            queryFn: getDailyQuests,
+        });
 
     const [carouselQuests, setCarouselQuests] = useState<CarouselItem[]>([]);
     const [selectedDailyQuests, setSelectedDailyQuests] = useState<Quest[]>([]);
+
     useEffect(() => {
-        if (!dailyQuests.length) return;
+        if (!dailyQuests.length) {
+            return;
+        }
 
         const carouselItems = dailyQuests
             .filter((quest) => quest.type?.toLocaleLowerCase() === "carousel")
@@ -49,6 +57,10 @@ export default function QuestToday({
         );
         setSelectedDailyQuests(selectedQuests);
     }, [dailyQuests]);
+
+    if (isLoadingDailyQuests || !dailyQuests.length) {
+        return <PartialLoading text="Loading daily quests..." />;
+    }
 
     const questDate = new Date(dailyQuests[0].startDate ?? new Date());
 

@@ -71,7 +71,7 @@ export default function QuestButton({
         useState(false);
     const [questSuccessCardViewport, setQuestSuccessCardViewport] =
         useState(false);
-    const { questComplete } = useQuest();
+    const { questComplete } = useQuest(playerId);
     const { startLoading, endLoading } = useLoading();
 
     const buttonRef = useRef<HTMLDivElement>(null);
@@ -83,7 +83,7 @@ export default function QuestButton({
             setQuestSucceeded(true);
         }
         endLoading();
-    }, [alreadyCompleted]);
+    }, [alreadyCompleted, startLoading, endLoading]);
 
     useEffect(() => {
         startLoading();
@@ -93,7 +93,7 @@ export default function QuestButton({
             }
         }
         endLoading();
-    }, [isInView, questSuccessCardVisible]);
+    }, [isInView, questSuccessCardVisible, startLoading, endLoading]);
 
     const toast = useToast();
 
@@ -106,13 +106,11 @@ export default function QuestButton({
                 const questLogResponse = await questComplete({
                     playerId,
                     questId: quest.id,
-                    completed: true,
                     rewards: quest.rewards,
                     rewardCurrency: quest.rewardCurrency,
-                    completedAt: new Date(),
                 });
 
-                if (!questLogResponse.success) {
+                if (!questLogResponse || !questLogResponse.questLog) {
                     throw new Error("Failed to complete quest");
                 }
 
@@ -276,7 +274,7 @@ export default function QuestButton({
                         Move to Quest
                     </H1>
                     <Paragraph size={15}>
-                        You’re about to move to the quest page:
+                        You're about to move to the quest page:
                     </Paragraph>
                     <Paragraph
                         size={15}

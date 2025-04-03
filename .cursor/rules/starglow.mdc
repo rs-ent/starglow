@@ -1,0 +1,19 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- Supabase + Prisma + Vercel blob storage
+
+- Zustand + TanStack Query
+
+- Tailwind CSS
+
+- Use Server Actions
+
+- Use Zod
+
+- Use Edge Functions if useful

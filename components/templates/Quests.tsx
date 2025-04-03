@@ -2,39 +2,29 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import QuestUtilBar from "@/components/organisms/QuestUtilBar";
 import QuestContents from "@/components/organisms/QuestContents";
 import QuestNavBar from "@/components/organisms/QuestNavBar";
-import { Player, Quest, StoredImage } from "@prisma/client";
-import { usePlayerStore } from "@/stores/playerStore";
+import { Player } from "@prisma/client";
+import { usePlayer } from "@/hooks/usePlayer";
+import PartialLoading from "@/components/atoms/PartialLoading";
 
 interface QuestsProps {
     player: Player;
-    dailyQuests: Quest[];
-    missions: Quest[];
     completedQuests: { questId: string }[];
-    banners: Pick<StoredImage, "id" | "url">[];
 }
 
-export default function Quests({
-    player,
-    dailyQuests = [],
-    missions = [],
-    completedQuests = [],
-    banners = [],
-}: QuestsProps) {
+export default function Quests({ player, completedQuests = [] }: QuestsProps) {
     const [contentType, setContentType] = useState<string>("Today");
-    const setPlayer = usePlayerStore((state) => state.setPlayer);
-    const points = usePlayerStore((state) => state.points);
-    const realtimeCompletedQuests = usePlayerStore(
-        (state) => state.completedQuests
-    );
+    const {
+        player: playerData,
+        isLoading: isLoadingPlayer,
+        getCompletedQuests,
+    } = usePlayer(player.id);
+    const points = playerData?.points || 0;
 
-    useEffect(() => {
-        const playerWithCompletedQuests = { ...player, completedQuests };
-        setPlayer(playerWithCompletedQuests);
-    }, [player, setPlayer]);
+    const completed = playerData ? getCompletedQuests() : completedQuests;
 
     return (
         <div className="relative flex flex-col w-full">
@@ -81,7 +71,7 @@ export default function Quests({
                     xl:px-[20px] xl:py-[8px]
                 "
             >
-                <QuestUtilBar points={points || 0} />
+                <QuestUtilBar points={points} />
             </div>
             <div
                 className="
@@ -94,14 +84,15 @@ export default function Quests({
                     xl:px-[80px] xl:py-[5px] xl:mt-[100px] xl:mb-[160px]
                 "
             >
-                <QuestContents
-                    contentType={contentType}
-                    playerId={player.id}
-                    dailyQuests={dailyQuests}
-                    missions={missions}
-                    completedQuests={realtimeCompletedQuests}
-                    banners={banners}
-                />
+                {isLoadingPlayer ? (
+                    <PartialLoading text="Loading player data..." />
+                ) : (
+                    <QuestContents
+                        contentType={contentType}
+                        playerId={player.id}
+                        completedQuests={completed}
+                    />
+                )}
             </div>
 
             <div

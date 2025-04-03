@@ -16,74 +16,35 @@ export default async function QuestPage() {
 
 async function QuestContent() {
     const session = await auth();
-    // AuthGuard가 이미 세션 체크를 했으므로, 여기서는 session.user가 항상 존재합니다
     try {
-        const playerPromise = prisma.player.findUnique({
-            where: { userId: session!.user.id },
-        });
+        const { player, completedQuests } = await prisma.$transaction(
+            async (tx) => {
+                // 플레이어 조회
+                let player = await tx.player.findUnique({
+                    where: { userId: session!.user.id },
+                });
 
-        const latestQuestPromise = prisma.quest.findFirst({
-            where: { startDate: { not: null } },
-            orderBy: { startDate: "desc" },
-            select: { startDate: true },
-        });
+                // 플레이어가 없으면 생성
+                if (!player) {
+                    player = await tx.player.create({
+                        data: {
+                            userId: session!.user.id,
+                            name: session!.user.name || "Superb Player",
+                        },
+                    });
+                }
 
-        const [playerResult, latestQuest] = await Promise.all([
-            playerPromise,
-            latestQuestPromise,
-        ]);
+                // 완료된 퀘스트 조회
+                const completedQuests = await tx.questLog.findMany({
+                    where: { playerId: player.id, completed: true },
+                    select: { questId: true },
+                });
 
-        const player =
-            playerResult ||
-            (await prisma.player.create({
-                data: {
-                    userId: session!.user.id,
-                    name: session!.user.name || "Superb Player",
-                },
-            }));
-
-        if (!latestQuest) {
-            return notFound();
-        }
-
-        const dailyQuestsPromise = prisma.quest.findMany({
-            where: { startDate: latestQuest.startDate },
-            orderBy: { primary: "asc" },
-        });
-
-        const missionsPromise = prisma.quest.findMany({
-            where: { permanent: true, visible: true },
-            orderBy: { primary: "asc" },
-        });
-
-        const completedQuestsPromise = prisma.questLog.findMany({
-            where: { playerId: player.id, completed: true },
-            select: { questId: true },
-        });
-
-        const bannerImagesPromise = prisma.storedImage.findMany({
-            where: { onBanner: true },
-            orderBy: { order: "asc" },
-            select: { id: true, url: true },
-        });
-
-        const [dailyQuests, missions, completedQuests, banners] =
-            await Promise.all([
-                dailyQuestsPromise,
-                missionsPromise,
-                completedQuestsPromise,
-                bannerImagesPromise,
-            ]);
-
-        return (
-            <Quests
-                player={player}
-                dailyQuests={dailyQuests}
-                missions={missions}
-                completedQuests={completedQuests}
-                banners={banners}
-            />
+                return { player, completedQuests };
+            }
         );
+
+        return <Quests player={player} completedQuests={completedQuests} />;
     } catch (error) {
         console.error("[QuestPage] Error fetching player:", error);
         return notFound();

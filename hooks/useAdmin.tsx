@@ -1,8 +1,14 @@
 /// hooks\useAdmin.tsx
 
 import { useState } from "react";
-import { useQuest } from "./useQuest";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { StoredImage } from "@prisma/client";
+import {
+    getBannerImages as getBannerImagesAction,
+    uploadBannerImages as uploadBannerImagesAction,
+    deleteBannerImage as deleteBannerImageAction,
+    updateBannerImageOrder as updateBannerImageOrderAction,
+} from "@/app/actions/admin/banner-images";
 
 interface UseAdminReturn {
     // Banner Images
@@ -12,7 +18,10 @@ interface UseAdminReturn {
         imageId: string,
         newOrder: number
     ) => Promise<StoredImage>;
+    getBannerImages: () => Promise<StoredImage[]>;
     isUploading: boolean;
+    bannerImages: StoredImage[] | undefined;
+    isLoading: boolean;
 
     // Error Handling
     error: string | null;
@@ -22,9 +31,63 @@ interface UseAdminReturn {
 export function useAdmin(): UseAdminReturn {
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const { getBannerImages } = useQuest();
+    const queryClient = useQueryClient();
 
     const clearError = () => setError(null);
+
+    // Fetch banner images with TanStack Query
+    const { data: bannerImages, isLoading } = useQuery({
+        queryKey: ["bannerImages"],
+        queryFn: getBannerImagesAction,
+    });
+
+    // Upload banner images mutation
+    const uploadMutation = useMutation({
+        mutationFn: async (files: File[]) => {
+            const formData = new FormData();
+            files.forEach((file) => {
+                formData.append("files", file);
+            });
+            return uploadBannerImagesAction(formData);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bannerImages"] });
+        },
+        onError: (error: Error) => {
+            console.error("Error uploading images:", error);
+            setError("Failed to upload images");
+        },
+    });
+
+    // Delete banner image mutation
+    const deleteMutation = useMutation({
+        mutationFn: deleteBannerImageAction,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bannerImages"] });
+        },
+        onError: (error: Error) => {
+            console.error("Error deleting image:", error);
+            setError("Failed to delete image");
+        },
+    });
+
+    // Update banner image order mutation
+    const updateOrderMutation = useMutation({
+        mutationFn: ({
+            imageId,
+            newOrder,
+        }: {
+            imageId: string;
+            newOrder: number;
+        }) => updateBannerImageOrderAction(imageId, newOrder),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bannerImages"] });
+        },
+        onError: (error: Error) => {
+            console.error("Error updating image order:", error);
+            setError("Failed to update image order");
+        },
+    });
 
     const uploadBannerImages = async (
         files: File[]
@@ -33,27 +96,9 @@ export function useAdmin(): UseAdminReturn {
         clearError();
 
         try {
-            const formData = new FormData();
-            files.forEach((file) => {
-                formData.append("files", file);
-            });
-
-            const response = await fetch(
-                "/api/admin/quests/missions/banner-images",
-                {
-                    method: "POST",
-                    body: formData,
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Failed to upload images");
-            }
-
-            return await response.json();
+            const result = await uploadMutation.mutateAsync(files);
+            return result;
         } catch (error) {
-            console.error("Error uploading images:", error);
-            setError("Failed to upload images");
             throw error;
         } finally {
             setIsUploading(false);
@@ -64,21 +109,8 @@ export function useAdmin(): UseAdminReturn {
         clearError();
 
         try {
-            const response = await fetch(
-                `/api/admin/quests/missions/banner-images/${imageId}`,
-                {
-                    method: "DELETE",
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Failed to delete image");
-            }
-
-            return true;
+            return await deleteMutation.mutateAsync(imageId);
         } catch (error) {
-            console.error("Error deleting image:", error);
-            setError("Failed to delete image");
             return false;
         }
     };
@@ -90,25 +122,17 @@ export function useAdmin(): UseAdminReturn {
         clearError();
 
         try {
-            const response = await fetch(
-                "/api/admin/quests/missions/banner-images",
-                {
-                    method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ imageId, newOrder }),
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error("Failed to update image order");
-            }
-
-            return await response.json();
+            return await updateOrderMutation.mutateAsync({ imageId, newOrder });
         } catch (error) {
-            console.error("Error updating image order:", error);
-            setError("Failed to update image order");
+            throw error;
+        }
+    };
+
+    const getBannerImages = async (): Promise<StoredImage[]> => {
+        try {
+            return await getBannerImagesAction();
+        } catch (error) {
+            console.error("Error fetching banner images:", error);
             throw error;
         }
     };
@@ -117,7 +141,10 @@ export function useAdmin(): UseAdminReturn {
         uploadBannerImages,
         deleteBannerImage,
         updateBannerImageOrder,
+        getBannerImages,
         isUploading,
+        bannerImages,
+        isLoading,
         error,
         clearError,
     };

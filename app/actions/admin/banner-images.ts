@@ -1,16 +1,17 @@
-/// app\api\admin\quests\missions\banner-images\route.ts
+"use server";
 
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { auth } from "@/app/auth/authSettings";
 import { supabase } from "@/lib/supabase/client";
 import { v4 as uuidv4 } from "uuid";
+import { StoredImage } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 
-export async function GET() {
+export async function getBannerImages(): Promise<StoredImage[]> {
     try {
         const session = await auth();
         if (!session?.user) {
-            return new NextResponse("Unauthorized", { status: 401 });
+            throw new Error("Unauthorized");
         }
 
         const images = await prisma.storedImage.findMany({
@@ -20,25 +21,26 @@ export async function GET() {
             orderBy: [{ order: "asc" }, { createdAt: "desc" }],
         });
 
-        return NextResponse.json(images);
+        return images;
     } catch (error) {
         console.error("Error fetching banner images:", error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        throw error;
     }
 }
 
-export async function POST(request: Request) {
+export async function uploadBannerImages(
+    formData: FormData
+): Promise<StoredImage[]> {
     try {
         const session = await auth();
         if (!session?.user) {
-            return new NextResponse("Unauthorized", { status: 401 });
+            throw new Error("Unauthorized");
         }
 
-        const formData = await request.formData();
         const files = formData.getAll("files") as File[];
 
         if (!files || files.length === 0) {
-            return new NextResponse("No files provided", { status: 400 });
+            throw new Error("No files provided");
         }
 
         const uploadedImages = await Promise.all(
@@ -78,24 +80,26 @@ export async function POST(request: Request) {
             })
         );
 
-        return NextResponse.json(uploadedImages);
+        revalidatePath("/admin/quests/missions");
+        return uploadedImages;
     } catch (error) {
         console.error("Error uploading banner images:", error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        throw error;
     }
 }
 
-export async function PATCH(request: Request) {
+export async function updateBannerImageOrder(
+    imageId: string,
+    newOrder: number
+): Promise<StoredImage> {
     try {
         const session = await auth();
         if (!session?.user) {
-            return new NextResponse("Unauthorized", { status: 401 });
+            throw new Error("Unauthorized");
         }
 
-        const { imageId, newOrder } = await request.json();
-
         if (!imageId || typeof newOrder !== "number") {
-            return new NextResponse("Invalid request", { status: 400 });
+            throw new Error("Invalid request");
         }
 
         const updatedImage = await prisma.storedImage.update({
@@ -103,9 +107,55 @@ export async function PATCH(request: Request) {
             data: { order: newOrder },
         });
 
-        return NextResponse.json(updatedImage);
+        revalidatePath("/admin/quests/missions");
+        return updatedImage;
     } catch (error) {
         console.error("Error updating image order:", error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        throw error;
+    }
+}
+
+export async function deleteBannerImage(id: string): Promise<boolean> {
+    try {
+        const session = await auth();
+        if (!session?.user) {
+            throw new Error("Unauthorized");
+        }
+
+        // Get image from database
+        const image = await prisma.storedImage.findUnique({
+            where: { id },
+        });
+
+        if (!image) {
+            throw new Error("Image not found");
+        }
+
+        // Extract file path from URL
+        const filePath = image.url.split("/").pop();
+        if (!filePath) {
+            throw new Error("Invalid file path");
+        }
+
+        // Delete from Supabase Storage
+        const { error: storageError } = await supabase.storage
+            .from("banner-images")
+            .remove([filePath]);
+
+        if (storageError) {
+            console.error("Error deleting from storage:", storageError);
+            throw new Error("Error deleting file");
+        }
+
+        // Delete from database
+        await prisma.storedImage.delete({
+            where: { id },
+        });
+
+        revalidatePath("/admin/quests/missions");
+        return true;
+    } catch (error) {
+        console.error("Error deleting banner image:", error);
+        throw error;
     }
 }

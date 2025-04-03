@@ -7,7 +7,6 @@ import MediaCarousel, {
     CarouselItem,
 } from "@/components/molecules/MediaCarousel";
 import { useAdmin } from "@/hooks/useAdmin";
-import { useQuest } from "@/hooks/useQuest";
 import { FileQuestion } from "lucide-react";
 import {
     DndContext,
@@ -83,10 +82,10 @@ export default function AdminBannerImages() {
         uploadBannerImages,
         deleteBannerImage,
         updateBannerImageOrder,
+        getBannerImages,
         isUploading,
         error,
     } = useAdmin();
-    const { getBannerImages } = useQuest();
     const toast = useToast();
     const { startLoading, endLoading, setProgress } = useLoading();
 
