@@ -78,8 +78,8 @@ function SortableImage({
 
 export default function AdminBannerImages() {
     const [images, setImages] = useState<StoredFile[]>([]);
-    const { files, isLoading, deleteFile, updateFileOrder } =
-        useFiles("banner");
+    const { getFiles, deleteFiles, updateFileOrder } = useFiles();
+    const { files, isLoading } = getFiles("banner", "missions-banners");
     const toast = useToast();
     const { startLoading, endLoading, setProgress } = useLoading();
     const isInitialMount = useRef(true);
@@ -107,8 +107,8 @@ export default function AdminBannerImages() {
 
         startLoading();
         try {
-            const success = await deleteFile(imageId);
-            if (success) {
+            const results = await deleteFiles([imageId]);
+            if (results[0]) {
                 setImages((prev) => prev.filter((img) => img.id !== imageId));
                 setProgress(100);
                 toast.success("Image deleted successfully", 3000);
@@ -136,7 +136,12 @@ export default function AdminBannerImages() {
             try {
                 // Update all images' order in the database
                 const updates = newImages.map((image, index) =>
-                    updateFileOrder(image.id, index)
+                    updateFileOrder(
+                        image.id,
+                        index,
+                        "banner",
+                        "missions-banners"
+                    )
                 );
                 await Promise.all(updates);
                 setProgress(100);

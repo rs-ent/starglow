@@ -1,4 +1,4 @@
-/// app\auth\authSettings.ts
+// app/auth/authSettings.ts
 
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
@@ -8,6 +8,30 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma/client";
 import { env } from "@/lib/config/env";
 import { createSolanaWallet } from "@/lib/solana/createWallet";
+
+const isProd = process.env.NODE_ENV === "production";
+const isVercelPreview = process.env.VERCEL_ENV === "preview";
+
+const getCookieDomain = () => {
+    if (!isProd || isVercelPreview) return undefined;
+
+    if (process.env.VERCEL_URL) {
+        const domain = process.env.VERCEL_URL.replace(/^https?:\/\//, "").split(
+            ":"
+        )[0];
+        return domain.endsWith("vercel.app") ? undefined : `.${domain}`;
+    }
+
+    return ".starglow.io";
+};
+
+const cookieOptions = {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    path: "/",
+    domain: getCookieDomain(),
+    secure: isProd,
+};
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     secret: env.NEXTAUTH_SECRET,
@@ -36,27 +60,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     session: {
         strategy: "database",
         maxAge: 30 * 24 * 60 * 60,
-        updateAge: 24 * 60 * 60 * 3,
+        updateAge: 3 * 24 * 60 * 60,
+    },
+    cookies: {
+        sessionToken: {
+            name: "next-auth.session-token",
+            options: cookieOptions,
+        },
+        callbackUrl: { name: "next-auth.callback-url", options: cookieOptions },
+        csrfToken: { name: "next-auth.csrf-token", options: cookieOptions },
+        pkceCodeVerifier: {
+            name: "next-auth.pkce.code_verifier",
+            options: cookieOptions,
+        },
     },
     callbacks: {
         async redirect({ url, baseUrl }) {
-            // 로컬 환경에서는 baseUrl을 사용하지 않고 현재 URL을 사용
-            if (process.env.NODE_ENV !== "production") {
-                if (url.startsWith("/")) return url;
-                return baseUrl;
-            }
-
-            // 프로덕션 환경에서는 baseUrl을 사용
-            if (url.startsWith("/")) return `${baseUrl}${url}`;
+            if (url.startsWith("/")) return isProd ? `${baseUrl}${url}` : url;
             return baseUrl;
         },
 
-        async signIn({ user, account }) {
+        async signIn() {
             return true;
         },
 
         async session({ session, user }) {
-            if (!user || !user.id) {
+            if (!user?.id) {
                 console.error("[Session] User ID not found");
                 return session;
             }
@@ -64,29 +93,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             session.user.id = user.id;
 
             try {
-                const existingPlayer = await prisma.player.findUnique({
+                const player = await prisma.player.upsert({
                     where: { userId: user.id },
+                    create: { userId: user.id, createdAt: new Date() },
+                    update: {},
                 });
 
-                if (!existingPlayer) {
-                    console.log("[Player][Create] User ID:", user.id);
-                    await prisma.player.create({
-                        data: {
-                            userId: user.id,
-                            createdAt: new Date(),
-                        },
-                    });
-                    console.info("[Player][Create] User ID:", session.user.id);
-                }
-
-                const existingWallet = await prisma.wallet.findFirst({
-                    where: {
-                        userId: user.id,
-                        network: "solana",
-                    },
+                const wallet = await prisma.wallet.findFirst({
+                    where: { userId: user.id, network: "solana" },
                 });
 
-                if (!existingWallet) {
+                if (!wallet) {
                     const { publicKey, privateKey } = createSolanaWallet();
                     await prisma.wallet.create({
                         data: {
@@ -99,23 +116,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                             createdAt: new Date(),
                         },
                     });
-
-                    console.info("[Wallet][Create] ", publicKey);
+                    console.info("[Wallet][Created]", publicKey);
                 } else {
-                    console.info("[Wallet][Exists] ", existingWallet.address);
+                    console.info("[Wallet][Exists]", wallet.address);
                 }
             } catch (error) {
-                console.error("[Session][Error] ", error);
+                console.error("[Session][Error]", error);
             }
 
             return session;
         },
     },
-
     pages: {
         signIn: "/auth/signin",
         error: "/auth/error",
     },
-    debug: process.env.NODE_ENV === "development",
+    debug: !isProd,
     trustHost: true,
+    useSecureCookies: isProd,
 });

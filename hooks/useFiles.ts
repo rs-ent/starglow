@@ -9,111 +9,107 @@ import {
     getFilesByBucket,
     updateFileOrder,
     StoredFile,
+    getFilesByPurposeAndBucket,
+    getFileById,
 } from "@/app/actions/files";
 import { useToast } from "./useToast";
 import { queryKeys } from "./queryKeys";
 
-export function useFiles(purpose: string) {
+export function useFiles() {
     const [isUploading, setIsUploading] = useState(false);
     const toast = useToast();
     const queryClient = useQueryClient();
 
-    // Query to fetch files by purpose
-    const { data: files = [], isLoading } = useQuery({
-        queryKey: queryKeys.files.byPurpose(purpose),
-        queryFn: () => getFilesByPurpose(purpose),
-    });
+    // 파일 목록 조회 (purpose와 bucket 필수)
+    const getFiles = (purpose: string, bucket: string = "default") => {
+        const { data: files = [], isLoading } = useQuery({
+            queryKey: queryKeys.files.byPurposeAndBucket(purpose, bucket),
+            queryFn: () => getFilesByPurposeAndBucket(purpose, bucket),
+        });
 
-    // Mutation for uploading files
-    const uploadMutation = useMutation({
-        mutationFn: async (file: File) => {
-            return uploadFile(file, purpose);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byPurpose(purpose),
-            });
-            toast.success("File uploaded successfully");
-        },
-        onError: (error) => {
-            console.error("Error uploading file:", error);
-            toast.error("Failed to upload file");
-        },
-    });
+        return { files, isLoading };
+    };
 
-    // Mutation for deleting files
-    const deleteMutation = useMutation({
-        mutationFn: async (id: string) => {
-            return deleteFile(id);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byPurpose(purpose),
-            });
-            toast.success("File deleted successfully");
-        },
-        onError: (error) => {
-            console.error("Error deleting file:", error);
-            toast.error("Failed to delete file");
-        },
-    });
+    // ID로 파일 조회
+    const getFilesById = (id: string) => {
+        const { data: file, isLoading } = useQuery({
+            queryKey: queryKeys.files.byId(id),
+            queryFn: () => getFileById(id),
+        });
 
-    // Mutation for updating file order
-    const updateOrderMutation = useMutation({
-        mutationFn: async ({
-            id,
-            newOrder,
-        }: {
-            id: string;
-            newOrder: number;
-        }) => {
-            return updateFileOrder(id, newOrder);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byPurpose(purpose),
-            });
-            toast.success("File order updated successfully");
-        },
-        onError: (error) => {
-            console.error("Error updating file order:", error);
-            toast.error("Failed to update file order");
-        },
-    });
+        return { file, isLoading };
+    };
 
-    // Function to handle file upload
-    const handleUpload = async (files: File[]): Promise<StoredFile[]> => {
+    // 파일 업로드
+    const uploadFiles = async (
+        files: File[],
+        purpose: string,
+        bucket: string = "default"
+    ): Promise<StoredFile[]> => {
         setIsUploading(true);
         try {
             const results = await Promise.all(
-                files.map((file) => uploadMutation.mutateAsync(file))
+                files.map((file) => uploadFile(file, purpose, bucket))
             );
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.files.byPurposeAndBucket(purpose, bucket),
+            });
+            toast.success("Files uploaded successfully");
             return results;
+        } catch (error) {
+            console.error("Error uploading files:", error);
+            toast.error("Failed to upload files");
+            throw error;
         } finally {
             setIsUploading(false);
         }
     };
 
-    // Function to handle file deletion
-    const handleDelete = async (id: string): Promise<boolean> => {
-        return await deleteMutation.mutateAsync(id);
+    // 파일 삭제
+    const deleteFiles = async (ids: string[]): Promise<boolean[]> => {
+        try {
+            const results = await Promise.all(ids.map((id) => deleteFile(id)));
+            // 모든 관련 쿼리 무효화
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.files.all,
+            });
+            toast.success("Files deleted successfully");
+            return results;
+        } catch (error) {
+            console.error("Error deleting files:", error);
+            toast.error("Failed to delete files");
+            throw error;
+        }
     };
 
-    // Function to handle file order update
-    const handleUpdateOrder = async (
+    // 파일 순서 변경
+    const updateFileOrder = async (
         id: string,
-        newOrder: number
+        newOrder: number,
+        purpose: string,
+        bucket: string = "default"
     ): Promise<StoredFile> => {
-        return await updateOrderMutation.mutateAsync({ id, newOrder });
+        try {
+            const result = await updateFileOrder(id, newOrder, purpose, bucket);
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.files.byPurposeAndBucket(purpose, bucket),
+            });
+            toast.success("File order updated successfully");
+            return result;
+        } catch (error) {
+            console.error("Error updating file order:", error);
+            toast.error("Failed to update file order");
+            throw error;
+        }
     };
 
     return {
-        files,
-        isLoading,
         isUploading,
-        uploadFile: handleUpload,
-        deleteFile: handleDelete,
-        updateFileOrder: handleUpdateOrder,
+        getFiles,
+        getFilesById,
+        uploadFiles,
+        deleteFiles,
+        updateFileOrder,
     };
 }
 

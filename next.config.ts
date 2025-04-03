@@ -25,6 +25,12 @@ const nextConfig: NextConfig = {
         "admin.localhost",
         "https://admin.starglow.io",
     ],
+
+    experimental: {
+        serverActions: {
+            bodySizeLimit: "50mb",
+        },
+    },
 };
 
 export default withAnalyzer(nextConfig);

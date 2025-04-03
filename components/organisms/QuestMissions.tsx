@@ -5,13 +5,14 @@ import InviteFriends from "../atoms/InviteFriends";
 import { H2 } from "../atoms/Typography";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { Player, Quest, StoredImage } from "@prisma/client";
+import { Player, Quest } from "@prisma/client";
 import MediaCarousel, { CarouselItem } from "../molecules/MediaCarousel";
 import { Loader2 } from "lucide-react";
-import { getMissions, getBanners } from "@/app/actions/quests";
+import { getMissions } from "@/app/actions/quests";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/queryKeys";
 import PartialLoading from "../atoms/PartialLoading";
+import { useFiles } from "@/hooks/useFiles";
 
 interface QuestMissionsProps {
     playerId: Player["id"];
@@ -29,12 +30,12 @@ export default function QuestMissions({
         queryFn: getMissions,
     });
 
-    const { data: banners = [], isLoading: isLoadingBanners } = useQuery<
-        Pick<StoredImage, "id" | "url">[]
-    >({
-        queryKey: queryKeys.banners(),
-        queryFn: getBanners,
-    });
+    // Use the useFiles hook to fetch banner images
+    const { getFiles } = useFiles();
+    const { files: banners = [], isLoading: isLoadingBanners } = getFiles(
+        "banner",
+        "missions-banners"
+    );
 
     const carouselItems: CarouselItem[] = banners.map((image, index) => ({
         type: "image",

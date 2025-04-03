@@ -32,19 +32,17 @@ export default function FileUploader({
     const [isDragging, setIsDragging] = useState(false);
 
     // Use the appropriate hook based on whether purpose or bucket is provided
-    const filesHook = purpose
-        ? useFiles(purpose)
-        : bucket
-        ? useFilesByBucket(bucket)
-        : useFiles("other");
-
-    const { uploadFile, isUploading } = filesHook;
+    const { uploadFiles, isUploading } = useFiles();
 
     const onDrop = useCallback(
         async (acceptedFiles: File[]) => {
             if (acceptedFiles.length === 0) return;
 
-            const uploadedFiles = await uploadFile(acceptedFiles);
+            const uploadedFiles = await uploadFiles(
+                acceptedFiles,
+                purpose || "other",
+                bucket
+            );
 
             if (onComplete && uploadedFiles && uploadedFiles.length > 0) {
                 onComplete(
@@ -55,7 +53,7 @@ export default function FileUploader({
                 );
             }
         },
-        [uploadFile, onComplete]
+        [uploadFiles, purpose, bucket, onComplete]
     );
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({

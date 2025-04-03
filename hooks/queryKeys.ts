@@ -22,5 +22,7 @@ export const queryKeys = {
         byPurpose: (purpose: string) => ["files", purpose] as const,
         byBucket: (bucket: string) => ["files", bucket] as const,
         byId: (id: string) => ["files", id] as const,
+        byPurposeAndBucket: (purpose: string, bucket: string) =>
+            ["files", purpose, bucket] as const,
     },
 };
