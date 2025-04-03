@@ -1,13 +1,24 @@
 "use client";
 
-import { EventCategory, EventStatus } from "@prisma/client";
+import { EventCategory, EventStatus, Events } from "@prisma/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createEvent, getEvents, getEventById } from "@/app/actions/admin/events";
+import {
+    createEvent,
+    getEvents,
+    getEventById,
+} from "@/app/actions/admin/events";
 
 type CreateEventResult = {
     success: boolean;
-    event?: any;
+    event?: Events;
     error?: string;
+};
+
+// Define return type for getEvents function
+type EventsResult = {
+    events: Events[];
+    total: number;
+    totalPages: number;
 };
 
 export function useEvents({
@@ -23,7 +34,7 @@ export function useEvents({
 }) {
     const queryClient = useQueryClient();
 
-    const { data, isLoading, error } = useQuery({
+    const { data, isLoading, error } = useQuery<EventsResult>({
         queryKey: ["events", { category, status, page, limit }],
         queryFn: () => getEvents({ category, status, page, limit }),
     });
@@ -49,7 +60,7 @@ export function useEvents({
 }
 
 export function useEvent(id: string) {
-    const { data, isLoading, error } = useQuery({
+    const { data, isLoading, error } = useQuery<Events | null>({
         queryKey: ["event", id],
         queryFn: () => getEventById(id),
     });

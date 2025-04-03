@@ -4,8 +4,7 @@
 
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { uploadFiles } from "@/app/actions/files";
-import { useFiles, useFilesByBucket } from "@/hooks/useFiles";
+import { useFiles } from "@/hooks/useFiles";
 import { StoredFile } from "@/app/actions/files";
 
 interface FileUploaderProps {
@@ -25,7 +24,7 @@ export default function FileUploader({
     accept = {
         "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"],
     },
-    maxSize = 5 * 1024 * 1024,
+    maxSize = 50 * 1024 * 1024,
     multiple = true,
     className = "",
 }: FileUploaderProps) {

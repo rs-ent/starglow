@@ -5,11 +5,35 @@ import { useState } from "react";
 import FileUploader from "@/components/atoms/FileUploader";
 import { useEvents } from "@/hooks/useEvents";
 import { useRouter } from "next/navigation";
-import DOMPurify from "dompurify";
+import DOMPurify from "isomorphic-dompurify";
 import type { Language } from "@/types/language";
 import { useToast } from "@/hooks/useToast";
 
 const LANGUAGES: Language[] = ["ko", "en", "ja", "zh"];
+
+// Helper function to safely format date for datetime-local input
+const formatDateForInput = (date: Date): string => {
+    try {
+        // Format as YYYY-MM-DDThh:mm (local timezone)
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    } catch (error) {
+        console.error("Invalid date:", date, error);
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const hours = String(now.getHours()).padStart(2, "0");
+        const minutes = String(now.getMinutes()).padStart(2, "0");
+
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+};
 
 export default function AdminEvents() {
     const router = useRouter();
@@ -93,7 +117,7 @@ export default function AdminEvents() {
             formData.append("category", category);
             formData.append("title", title);
             formData.append("description", description);
-            formData.append("url", url);
+            formData.append("url", url || "");
             formData.append("status", status);
             formData.append("startDate", startDate.toISOString());
             formData.append("endDate", endDate.toISOString());
@@ -211,7 +235,7 @@ export default function AdminEvents() {
                         </label>
                         <input
                             type="datetime-local"
-                            value={startDate.toISOString().slice(0, 16)}
+                            value={formatDateForInput(startDate)}
                             onChange={(e) =>
                                 setStartDate(new Date(e.target.value))
                             }
@@ -226,7 +250,7 @@ export default function AdminEvents() {
                         </label>
                         <input
                             type="datetime-local"
-                            value={endDate.toISOString().slice(0, 16)}
+                            value={formatDateForInput(endDate)}
                             onChange={(e) =>
                                 setEndDate(new Date(e.target.value))
                             }
@@ -281,39 +305,62 @@ export default function AdminEvents() {
                         <label className="block text-sm font-medium mb-2">
                             Banner Image
                         </label>
-                        <FileUploader
-                            purpose="event-banner"
-                            bucket="events"
-                            onComplete={handleBannerImageUpload}
-                            multiple={false}
-                        />
-                        {bannerImageUrl && (
-                            <div className="mt-2">
-                                <p className="text-sm text-green-600">
-                                    Uploaded successfully
-                                </p>
-                            </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                            <FileUploader
+                                purpose="event-banner"
+                                bucket="events"
+                                onComplete={handleBannerImageUpload}
+                                multiple={false}
+                            />
+                            {bannerImageUrl && (
+                                <div className="mt-2">
+                                    <p className="text-sm text-green-600">
+                                        Uploaded successfully
+                                    </p>
+                                    <div className="mt-2">
+                                        <img
+                                            src={bannerImageUrl}
+                                            alt="Banner preview"
+                                            className="max-h-48 rounded shadow-sm border border-gray-200"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="md:col-span-2">
                         <label className="block text-sm font-medium mb-2">
                             Gallery Images
                         </label>
-                        <FileUploader
-                            purpose="event-gallery"
-                            bucket="events"
-                            onComplete={handleGalleryImagesUpload}
-                            multiple={true}
-                        />
-                        {galleryImageUrls.length > 0 && (
-                            <div className="mt-2">
-                                <p className="text-sm text-green-600">
-                                    {galleryImageUrls.length} images uploaded
-                                    successfully
-                                </p>
-                            </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                            <FileUploader
+                                purpose="event-gallery"
+                                bucket="events"
+                                onComplete={handleGalleryImagesUpload}
+                                multiple={true}
+                            />
+                            {galleryImageUrls.length > 0 && (
+                                <div className="mt-2">
+                                    <p className="text-sm text-green-600">
+                                        {galleryImageUrls.length} images
+                                        uploaded successfully
+                                    </p>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {galleryImageUrls.map((url, index) => (
+                                            <img
+                                                key={index}
+                                                src={url}
+                                                alt={`Gallery image ${
+                                                    index + 1
+                                                }`}
+                                                className="w-24 h-24 object-cover rounded shadow-sm border border-gray-200"
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -327,19 +374,33 @@ export default function AdminEvents() {
                                 <label className="block text-sm font-medium mb-2">
                                     {lang.toUpperCase()} Detail Image
                                 </label>
-                                <FileUploader
-                                    purpose={`event-detail-${lang}`}
-                                    bucket="events"
-                                    onComplete={handleDetailImageUpload(lang)}
-                                    multiple={false}
-                                />
-                                {detailImageUrls[lang] && (
-                                    <div className="mt-2">
-                                        <p className="text-sm text-green-600">
-                                            Uploaded successfully
-                                        </p>
-                                    </div>
-                                )}
+                                <div className="flex items-center gap-2">
+                                    <FileUploader
+                                        purpose={`event-detail-${lang}`}
+                                        bucket="events"
+                                        onComplete={handleDetailImageUpload(
+                                            lang
+                                        )}
+                                        multiple={false}
+                                    />
+                                    {detailImageUrls[lang] && (
+                                        <div className="mt-2">
+                                            <p className="text-sm text-green-600">
+                                                Uploaded successfully
+                                            </p>
+                                            <div className="mt-2">
+                                                <img
+                                                    src={
+                                                        detailImageUrls[lang] ||
+                                                        ""
+                                                    }
+                                                    alt={`${lang.toUpperCase()} detail preview`}
+                                                    className="max-h-48 rounded shadow-sm border border-gray-200"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
