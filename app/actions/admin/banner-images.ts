@@ -1,3 +1,5 @@
+/// app\actions\admin\banner-images.ts
+
 "use server";
 
 import { prisma } from "@/lib/prisma/client";

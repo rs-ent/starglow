@@ -18,7 +18,11 @@ const redirects: RedirectRule[] = [
     },
 ];
 
+const PERFORMANCE_THRESHOLD = 1000;
+
 export async function middleware(request: NextRequest) {
+    const start = Date.now();
+
     const hostname = request.headers.get("host") || request.nextUrl.hostname;
     const hostnameRedirect = redirects.find(({ hostnames }) =>
         hostnames.includes(hostname)
@@ -28,9 +32,19 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(hostnameRedirect.destination, 301);
     }
 
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set("Cache-Control", "no-store, must-revalidate");
+
+    const duration = Date.now() - start;
+    if (duration > PERFORMANCE_THRESHOLD) {
+        console.warn(`[SLOW] ${request.url} took ${duration}ms`);
+    }
+    return response;
 }
 
 export const config = {
-    matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+    matcher: [
+        "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
+        "/api/actions/:path*",
+    ],
 };

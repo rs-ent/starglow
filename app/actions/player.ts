@@ -1,10 +1,9 @@
-/// app/actions/player.ts
+/// app\actions\player.ts
 
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
 import { revalidatePath } from "next/cache";
-import { Player } from "@prisma/client";
 import { z } from "zod";
 
 const UpdateCurrencySchema = z.object({
