@@ -1,16 +1,11 @@
 /// components\organisms\EventsDetail.tsx
 "use client";
 
-import { Events } from "@prisma/client";
 import { useState } from "react";
 import { useEvent } from "@/hooks/useEvents";
 import EventDescription from "../molecules/EventDescription";
 import EventPayment from "../molecules/EventPayment";
-import Icon from "../atoms/Icon";
 import { Loader2 } from "lucide-react";
-import { H1 } from "../atoms/Typography";
-import { cn } from "@/lib/utils/tailwind";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 
 interface EventsDetailProps {
     eventId: string;
@@ -80,10 +75,7 @@ export default function EventsDetail({
                     {/* Payment Section - 1/3 width on desktop, but first on mobile */}
                     <div className="lg:col-span-1 order-1 lg:order-2">
                         <div className="lg:sticky lg:top-8">
-                            <EventPayment
-                                event={event}
-                                onPurchase={handlePurchase}
-                            />
+                            <EventPayment event={event} />
                         </div>
                     </div>
                 </div>

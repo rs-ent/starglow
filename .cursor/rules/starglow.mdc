@@ -1,6 +1,11 @@
 ---
 description: 
 globs: 
+alwaysApply: false
+---
+---
+description: 
+globs: 
 alwaysApply: true
 ---
 
@@ -17,3 +22,41 @@ alwaysApply: true
 - Use Zod
 
 - Use Edge Functions if useful
+
+Never rewrite or refactor large portions of code at once.
+
+Clearly state why a specific code change is necessary, and proceed step-by-step.
+
+Provide only one small, incremental change per step.
+
+Clearly explain how the change improves readability, functionality, or performance.
+
+Explain clearly, logically, and in detail:
+
+Purpose: Why the suggested change or step is needed.
+
+Implementation: Exactly how the new or adjusted code works, including logic flow.
+
+Benefits: Concrete benefits, performance gains, readability improvements, or best practices being followed.
+
+Always suggest improvements proactively:
+
+If you see better coding patterns, optimizations, or alternative approaches, proactively recommend them and explain why they're beneficial.
+
+Whenever suggesting alternative approaches, clearly outline the trade-offs involved.
+
+Avoid unnecessary comments (주석):
+
+Only include comments if absolutely critical to understanding.
+
+If required, use the simplest possible English wording.
+
+Proceed strictly step-by-step:
+
+Provide only one detailed task at a time. Clearly wait for confirmation from me that the current task has been completed successfully before proceeding.
+
+Clearly indicate when the current step is complete and wait for my explicit confirmation before continuing to the next step.
+
+Break tasks down clearly and logically, creating small, manageable tasks to minimize mistakes.
+
+If I ask questions between steps, always respond to my question first, then gently guide me back to our original goal.

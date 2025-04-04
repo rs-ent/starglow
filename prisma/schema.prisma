@@ -8,6 +8,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -26,6 +27,7 @@ model User {
   wallets       Wallet[]
   player        Player?
   loginAttempts LoginAttemptLog[] @relation("UserLoginAttempts")
+  payments      Payment[]
 
   @@index([email, active])
   @@index([role, active])
@@ -312,13 +314,13 @@ model StoredFiles {
 
 model LoginAttemptLog {
     id          String   @id @default(cuid())
-    userId      String?  // 로그인 성공 시에만 저장
-    email       String?  // 로그인 실패 시에만 저장
-    provider    String?  // OAuth 제공자 (google, twitter, kakao)
+    userId      String?
+    email       String?
+    provider    String?
     success     Boolean
-    error       String?  // 실패 시 에러 메시지
-    ipAddress   String?  // IP 주소 (보안 감사용)
-    userAgent   String?  // 브라우저/기기 정보
+    error       String?
+    ipAddress   String?
+    userAgent   String?
     timestamp   DateTime @default(now())
     createdAt   DateTime @default(now())
     updatedAt   DateTime @updatedAt
@@ -329,4 +331,40 @@ model LoginAttemptLog {
     @@index([ipAddress, timestamp])
 
     user        User?    @relation("UserLoginAttempts", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum PaymentStatus {
+  CREATED     // 결제 세션 생성
+  PENDING     // 결제 대기 중
+  IN_PROGRESS // 결제 진행 중
+  PAID        // 결제 완료
+  CANCELLED   // 결제 취소
+  FAILED      // 결제 실패
+  REFUNDED    // 환불 완료
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  sessionHash     String
+  orderId         String        @unique
+  orderName       String
+  amount          Int
+  currency        String        @default("CURRENCY_USD")
+  method          String        @default("PAYPAL")
+  status          PaymentStatus @default(CREATED)
+  paymentKey      String?       @unique
+  userId          String
+  customerId      String?
+  customerName    String?
+  customerEmail   String?
+  failureReason   String?
+  cancelReason    String?
+  attemptCount    Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([orderId])
 }

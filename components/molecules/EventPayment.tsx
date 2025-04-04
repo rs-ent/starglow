@@ -1,5 +1,6 @@
 "use client";
 
+import PortOneButton from "../atoms/PortOneButton";
 import { Events } from "@prisma/client";
 import { useState } from "react";
 import { H3 } from "../atoms/Typography";
@@ -10,12 +11,14 @@ import {
     Clock,
     AlertCircle,
     CheckCircle2,
+    Wallet,
 } from "lucide-react";
 
 type EventPaymentProps = {
     event: Pick<
         Events,
         | "id"
+        | "title"
         | "price"
         | "capacity"
         | "startDate"
@@ -24,10 +27,9 @@ type EventPaymentProps = {
         | "saleStartDate"
         | "saleEndDate"
     >;
-    onPurchase?: (quantity: number) => void;
 };
 
-export default function EventPayment({ event, onPurchase }: EventPaymentProps) {
+export default function EventPayment({ event }: EventPaymentProps) {
     const [quantity, setQuantity] = useState(1);
     const [paymentMethod, setPaymentMethod] = useState<"card" | "wallet">(
         "card"
@@ -59,12 +61,6 @@ export default function EventPayment({ event, onPurchase }: EventPaymentProps) {
             month: "long",
             day: "numeric",
         });
-    };
-
-    const handlePurchase = () => {
-        if (onPurchase && canPurchase) {
-            onPurchase(quantity);
-        }
     };
 
     return (
@@ -165,7 +161,9 @@ export default function EventPayment({ event, onPurchase }: EventPaymentProps) {
                         </label>
                         <div className="grid grid-cols-2 gap-2 sm:gap-3">
                             <button
-                                onClick={() => setPaymentMethod("card")}
+                                onClick={() => {
+                                    setPaymentMethod("card");
+                                }}
                                 className={`flex items-center justify-center p-2 sm:p-3 rounded-lg border text-sm md:text-base ${
                                     paymentMethod === "card"
                                         ? "border-primary bg-primary/10 text-primary"
@@ -175,51 +173,11 @@ export default function EventPayment({ event, onPurchase }: EventPaymentProps) {
                                 <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
                                 <span>Card</span>
                             </button>
-                            <button
-                                onClick={() => setPaymentMethod("wallet")}
-                                className={`flex items-center justify-center p-2 sm:p-3 rounded-lg border text-sm md:text-base ${
-                                    paymentMethod === "wallet"
-                                        ? "border-primary bg-primary/10 text-primary"
-                                        : "border-border/50 text-foreground/70"
-                                }`}
-                            >
-                                <svg
-                                    className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                >
-                                    <path
-                                        d="M18 8V7.2C18 6.0799 18 5.51984 17.782 5.09202C17.5903 4.71569 17.2843 4.40973 16.908 4.21799C16.4802 4 15.9201 4 14.8 4H6.2C5.0799 4 4.51984 4 4.09202 4.21799C3.71569 4.40973 3.40973 4.71569 3.21799 5.09202C3 5.51984 3 6.0799 3 7.2V16.8C3 17.9201 3 18.4802 3.21799 18.908C3.40973 19.2843 3.71569 19.5903 4.09202 19.782C4.51984 20 5.0799 20 6.2 20H17.8C18.9201 20 19.4802 20 19.908 19.782C20.2843 19.5903 20.5903 19.2843 20.782 18.908C21 18.4802 21 17.9201 21 16.8V12.2C21 11.0799 21 10.5198 20.782 10.092C20.5903 9.71569 20.2843 9.40973 19.908 9.21799C19.4802 9 18.9201 9 17.8 9H4"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    />
-                                </svg>
-                                <span>Wallet</span>
-                            </button>
                         </div>
                     </div>
 
                     {/* Total and purchase button */}
-                    <div className="border-t border-border/30 pt-4 mt-4">
-                        <div className="flex justify-between items-center mb-4">
-                            <span className="text-foreground/90 font-main text-sm md:text-base">
-                                Total
-                            </span>
-                            <span className="font-main text-lg md:text-xl">
-                                {totalPrice.toLocaleString()} SGP
-                            </span>
-                        </div>
-
-                        <button
-                            onClick={handlePurchase}
-                            className="w-full py-2.5 md:py-3 bg-primary text-primary-foreground rounded-lg font-main text-sm md:text-base hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
-                        >
-                            Purchase Tickets
-                        </button>
-                    </div>
+                    <PortOneButton />
                 </>
             ) : (
                 <div className="bg-secondary/30 p-3 sm:p-4 rounded-lg text-sm md:text-base mb-2">

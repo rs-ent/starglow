@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const envSchema = z.object({
-    DATABASE_URL: z.string().url(),
+    POSTGRES_PRISMA_URL: z.string().url(),
     DIRECT_URL: z.string().url(),
 
     NEXTAUTH_SECRET: z.string().min(1),
@@ -24,6 +24,11 @@ const envSchema = z.object({
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+
+    PORTONE_MID: z.string().min(1),
+    PORTONE_V2_API_SECRET: z.string().min(1),
+    PORTONE_PAYPAL_CHANNEL_KEY: z.string().min(1),
+    PAYMENT_SECRET: z.string().min(1),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

@@ -29,10 +29,7 @@ const getPrismaClient = () => {
     }
 
     return new PrismaClient({
-        log:
-            process.env.NODE_ENV === "development"
-                ? ["query", "warn", "error"]
-                : ["error"],
+        log: ["error"],
         datasources: {
             db: { url },
         },
