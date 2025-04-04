@@ -177,7 +177,20 @@ export default function EventPayment({ event }: EventPaymentProps) {
                     </div>
 
                     {/* Total and purchase button */}
-                    <PortOneButton />
+                    <PortOneButton
+                        paymentReadyRequest={{
+                            sessionHash: `session-${Date.now()}-${Math.random()
+                                .toString(36)
+                                .substring(2, 15)}`,
+                            userId: "user-id", // TODO: 실제 사용자 ID로 교체
+                            table: "events",
+                            target: event.id,
+                            quantity,
+                            currency: "USD",
+                            method:
+                                paymentMethod === "card" ? "PAYPAL" : "WALLET",
+                        }}
+                    />
                 </>
             ) : (
                 <div className="bg-secondary/30 p-3 sm:p-4 rounded-lg text-sm md:text-base mb-2">

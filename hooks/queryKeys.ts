@@ -25,4 +25,12 @@ export const queryKeys = {
         byPurposeAndBucket: (purpose: string, bucket: string) =>
             ["files", purpose, bucket] as const,
     },
+    payments: {
+        all: ["payments"] as const,
+        byId: (id: string) => ["payments", id] as const,
+        byUser: (userId: string) => ["payments", "user", userId] as const,
+        byStatus: (status: string) => ["payments", "status", status] as const,
+        ready: (userId: string, table: string, target: string) =>
+            ["payments", "ready", userId, table, target] as const,
+    },
 };

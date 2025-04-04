@@ -334,13 +334,13 @@ model LoginAttemptLog {
 }
 
 enum PaymentStatus {
-  CREATED     // 결제 세션 생성
-  PENDING     // 결제 대기 중
-  IN_PROGRESS // 결제 진행 중
-  PAID        // 결제 완료
-  CANCELLED   // 결제 취소
-  FAILED      // 결제 실패
-  REFUNDED    // 환불 완료
+  CREATED
+  PENDING
+  IN_PROGRESS
+  PAID
+  CANCELLED
+  FAILED
+  REFUNDED
 }
 
 model Payment {
@@ -349,7 +349,7 @@ model Payment {
   orderId         String        @unique
   orderName       String
   amount          Int
-  currency        String        @default("CURRENCY_USD")
+  currency        String        @default("USD")
   method          String        @default("PAYPAL")
   status          PaymentStatus @default(CREATED)
   paymentKey      String?       @unique
