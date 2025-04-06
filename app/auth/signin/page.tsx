@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 import { getProviders } from "next-auth/react";
 import SocialAuthButton from "@/components/atoms/SocialAuthButton";
-import { Provider } from "@/types/auth";
+import { Provider } from "@/app/types/auth";
 import { useSearchParams } from "next/navigation";
 
 function SignInButtons() {

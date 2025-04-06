@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import EventsDetail from "@/components/organisms/EventsDetail";
-import { getEventById } from "@/app/actions/admin/events";
+import { getEventById } from "@/app/actions/events";
 import { notFound } from "next/navigation";
 
 interface EventPageProps {

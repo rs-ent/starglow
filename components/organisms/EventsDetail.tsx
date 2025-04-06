@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { useEvent } from "@/hooks/useEvents";
+import { useEvent } from "@/app/hooks/useEvents";
 import EventDescription from "../molecules/EventDescription";
 import EventPayment from "../molecules/EventPayment";
 import { Loader2 } from "lucide-react";

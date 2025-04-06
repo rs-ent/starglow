@@ -1,8 +1,7 @@
 "use client";
 
-import PortOneButton from "../atoms/PortOneButton";
 import { Events } from "@prisma/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { H3 } from "../atoms/Typography";
 import {
     Ticket,
@@ -11,8 +10,15 @@ import {
     Clock,
     AlertCircle,
     CheckCircle2,
+    Smartphone,
+    CreditCard as CardIcon,
     Wallet,
 } from "lucide-react";
+import PaymentButton, { PayMethod } from "../atoms/PaymentButton";
+import { Entity } from "@portone/browser-sdk/v2";
+import { getSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/app/hooks/useToast";
 
 type EventPaymentProps = {
     event: Pick<
@@ -31,9 +37,10 @@ type EventPaymentProps = {
 
 export default function EventPayment({ event }: EventPaymentProps) {
     const [quantity, setQuantity] = useState(1);
-    const [paymentMethod, setPaymentMethod] = useState<"card" | "wallet">(
-        "card"
-    );
+    const [paymentMethod, setPaymentMethod] = useState<PayMethod>("CARD");
+    const [easyPayProvider, setEasyPayProvider] =
+        useState<Entity.EasyPayProvider>("EASY_PAY_PROVIDER_TOSS_BRANDPAY");
+    const [userId, setUserId] = useState<string>("");
 
     // Calculate total price
     const totalPrice = (event.price || 0) * quantity;
@@ -62,6 +69,47 @@ export default function EventPayment({ event }: EventPaymentProps) {
             day: "numeric",
         });
     };
+
+    // Convert easyPay provider to the appropriate payment method
+    const getPaymentMethodFromProvider = (
+        provider: Entity.EasyPayProvider
+    ): PayMethod => {
+        switch (provider) {
+            case "EASY_PAY_PROVIDER_TOSS_BRANDPAY":
+                return "TOSS_PAY";
+            case "EASY_PAY_PROVIDER_KAKAOPAY":
+                return "KAKAO_PAY";
+            default:
+                return "TOSS_PAY"; // Default to TOSS_PAY for other providers
+        }
+    };
+
+    // Get the current payment method for the PaymentButton
+    const getCurrentPaymentMethod = (): PayMethod => {
+        if (paymentMethod === "TOSS_PAY" || paymentMethod === "KAKAO_PAY") {
+            return paymentMethod;
+        } else if (paymentMethod === "CARD" || paymentMethod === "PAYPAL") {
+            return paymentMethod;
+        } else {
+            return getPaymentMethodFromProvider(easyPayProvider);
+        }
+    };
+
+    // 세션에서 사용자 ID 로드
+    useEffect(() => {
+        const loadUserSession = async () => {
+            try {
+                const session = await getSession();
+                if (session?.user?.id) {
+                    setUserId(session.user.id);
+                }
+            } catch (error) {
+                console.error("Failed to load user session:", error);
+            }
+        };
+
+        loadUserSession();
+    }, []);
 
     return (
         <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50 p-4 sm:p-6 md:p-8">
@@ -159,36 +207,101 @@ export default function EventPayment({ event }: EventPaymentProps) {
                         <label className="block text-xs md:text-sm font-accent uppercase tracking-wider text-foreground/80 mb-2">
                             Payment method
                         </label>
-                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
                             <button
                                 onClick={() => {
-                                    setPaymentMethod("card");
+                                    setPaymentMethod("CARD");
                                 }}
                                 className={`flex items-center justify-center p-2 sm:p-3 rounded-lg border text-sm md:text-base ${
-                                    paymentMethod === "card"
+                                    paymentMethod === "CARD"
                                         ? "border-primary bg-primary/10 text-primary"
                                         : "border-border/50 text-foreground/70"
                                 }`}
                             >
-                                <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                                <CardIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
                                 <span>Card</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setPaymentMethod("PAYPAL");
+                                }}
+                                className={`flex items-center justify-center p-2 sm:p-3 rounded-lg border text-sm md:text-base ${
+                                    paymentMethod === "PAYPAL"
+                                        ? "border-primary bg-primary/10 text-primary"
+                                        : "border-border/50 text-foreground/70"
+                                }`}
+                            >
+                                <Wallet className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                                <span>PayPal</span>
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    setPaymentMethod("TOSS_PAY");
+                                }}
+                                className={`flex items-center justify-center p-2 sm:p-3 rounded-lg border text-sm md:text-base ${
+                                    paymentMethod === "TOSS_PAY"
+                                        ? "border-primary bg-primary/10 text-primary"
+                                        : "border-border/50 text-foreground/70"
+                                }`}
+                            >
+                                <Smartphone className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                                <span>Toss Pay</span>
                             </button>
                         </div>
                     </div>
 
+                    {/* Easy Pay Provider selector (only show if Toss Pay is selected) */}
+                    {paymentMethod === "TOSS_PAY" && (
+                        <div className="mb-5 md:mb-6">
+                            <label className="block text-xs md:text-sm font-accent uppercase tracking-wider text-foreground/80 mb-2">
+                                Easy Pay Provider
+                            </label>
+                            <select
+                                value={easyPayProvider}
+                                onChange={(e) =>
+                                    setEasyPayProvider(
+                                        e.target.value as Entity.EasyPayProvider
+                                    )
+                                }
+                                className="w-full p-2 sm:p-3 rounded-lg border border-border/50 bg-card text-sm md:text-base"
+                            >
+                                <option value="EASY_PAY_PROVIDER_TOSS_BRANDPAY">
+                                    Toss
+                                </option>
+                                <option value="EASY_PAY_PROVIDER_KAKAOPAY">
+                                    Kakao Pay
+                                </option>
+                                <option value="EASY_PAY_PROVIDER_NAVERPAY">
+                                    Naver Pay
+                                </option>
+                                <option value="EASY_PAY_PROVIDER_PAYCO">
+                                    Payco
+                                </option>
+                            </select>
+                        </div>
+                    )}
+
                     {/* Total and purchase button */}
-                    <PortOneButton
-                        paymentReadyRequest={{
-                            sessionHash: `session-${Date.now()}-${Math.random()
-                                .toString(36)
-                                .substring(2, 15)}`,
-                            userId: "user-id", // TODO: 실제 사용자 ID로 교체
-                            table: "events",
-                            target: event.id,
-                            quantity,
-                            currency: "USD",
-                            method:
-                                paymentMethod === "card" ? "PAYPAL" : "WALLET",
+                    <PaymentButton
+                        userId={userId}
+                        table="events"
+                        target={event.id}
+                        quantity={quantity}
+                        currency="CURRENCY_USD"
+                        method={
+                            paymentMethod === "PAYPAL"
+                                ? "PAYPAL"
+                                : getCurrentPaymentMethod()
+                        }
+                        buttonText={`Purchase for ${totalPrice.toLocaleString()} SGP`}
+                        onSuccess={(response) => {
+                            console.log("Payment successful", response);
+                            // TODO: 결제 성공 처리 (리디렉션 등)
+                        }}
+                        onError={(error) => {
+                            console.error("Payment failed", error);
+                            // TODO: 오류 처리
                         }}
                     />
                 </>

@@ -4,8 +4,8 @@ import { Player } from "@prisma/client";
 
 interface DailyQuestsProps {
     dailyQuests: Quest[];
-    completedQuests: { questId: string }[];
-    playerId: Player["id"];
+    completedQuests: string[];
+    playerId: string;
 }
 
 export default function DailyQuests({
@@ -27,9 +27,8 @@ export default function DailyQuests({
                         <QuestButton
                             quest={quest}
                             playerId={playerId}
-                            alreadyCompleted={completedQuests.some(
-                                (completedQuest) =>
-                                    completedQuest.questId === quest.id
+                            alreadyCompleted={completedQuests.includes(
+                                quest.id
                             )}
                         />
                     </div>

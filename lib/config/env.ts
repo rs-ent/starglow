@@ -27,7 +27,6 @@ const envSchema = z.object({
 
     PORTONE_MID: z.string().min(1),
     PORTONE_V2_API_SECRET: z.string().min(1),
-    PORTONE_PAYPAL_CHANNEL_KEY: z.string().min(1),
     PAYMENT_SECRET: z.string().min(1),
 });
 

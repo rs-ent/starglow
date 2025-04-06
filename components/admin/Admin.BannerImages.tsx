@@ -6,7 +6,7 @@ import { StoredFile } from "@/app/actions/files";
 import MediaCarousel, {
     CarouselItem,
 } from "@/components/molecules/MediaCarousel";
-import { useFiles } from "@/hooks/useFiles";
+import { useFiles } from "@/app/hooks/useFiles";
 import { FileQuestion } from "lucide-react";
 import {
     DndContext,
@@ -25,8 +25,8 @@ import {
     verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useToast } from "@/hooks/useToast";
-import { useLoading } from "@/hooks/useLoading";
+import { useToast } from "@/app/hooks/useToast";
+import { useLoading } from "@/app/hooks/useLoading";
 
 function SortableImage({
     image,

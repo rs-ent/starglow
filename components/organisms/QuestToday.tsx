@@ -12,25 +12,21 @@ import DailyQuests from "../molecules/DailyQuest";
 import Icon from "../atoms/Icon";
 import { Loader2 } from "lucide-react";
 import { Player, Quest } from "@prisma/client";
-import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/hooks/queryKeys";
-import { getDailyQuests } from "@/app/actions/quests";
+import { useQuests } from "@/app/hooks/useQuest";
 import PartialLoading from "../atoms/PartialLoading";
 
 interface QuestTodayProps {
-    playerId: Player["id"];
-    completedQuests: { questId: string }[];
+    playerId: string;
+    completedQuests: string[];
 }
 
 export default function QuestToday({
     playerId,
     completedQuests,
 }: QuestTodayProps) {
-    const { data: dailyQuests = [], isLoading: isLoadingDailyQuests } =
-        useQuery<Quest[]>({
-            queryKey: queryKeys.quests.daily(),
-            queryFn: getDailyQuests,
-        });
+    const { getDailyQuests } = useQuests();
+    const { quests: dailyQuests, isLoading: isLoadingDailyQuests } =
+        getDailyQuests();
 
     const [carouselQuests, setCarouselQuests] = useState<CarouselItem[]>([]);
     const [selectedDailyQuests, setSelectedDailyQuests] = useState<Quest[]>([]);

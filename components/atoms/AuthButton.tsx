@@ -5,7 +5,7 @@
 import { useSession, signIn, signOut } from "next-auth/react";
 import { LogIn, LogOut, LoaderCircle } from "lucide-react";
 import Button from "./Button";
-import { useLoading } from "@/hooks/useLoading";
+import { useLoading } from "@/app/hooks/useLoading";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback } from "react";
 

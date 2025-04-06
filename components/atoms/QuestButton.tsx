@@ -3,9 +3,9 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { useQuest } from "@/hooks/useQuest";
-import { useToast } from "@/hooks/useToast";
-import { useLoading } from "@/hooks/useLoading";
+import { useQuests } from "@/app/hooks/useQuest";
+import { useToast } from "@/app/hooks/useToast";
+import { useLoading } from "@/app/hooks/useLoading";
 import { H1, H3, Paragraph } from "./Typography";
 import { Quest, Player } from "@prisma/client";
 import { cn } from "@/lib/utils/tailwind";
@@ -62,7 +62,7 @@ export default function QuestButton({
     alreadyCompleted = false,
 }: {
     quest: Quest;
-    playerId: Player["id"];
+    playerId: string;
     alreadyCompleted?: boolean;
 }) {
     const [open, setOpen] = useState(false);
@@ -71,7 +71,7 @@ export default function QuestButton({
         useState(false);
     const [questSuccessCardViewport, setQuestSuccessCardViewport] =
         useState(false);
-    const { questComplete } = useQuest(playerId);
+    const { completeQuest } = useQuests();
     const { startLoading, endLoading } = useLoading();
     const toast = useToast();
 
@@ -102,12 +102,12 @@ export default function QuestButton({
 
         if (succeeded) {
             try {
-                const questLogResponse = await questComplete({
+                const questLogResponse = await completeQuest(
                     playerId,
-                    questId: quest.id,
-                    rewards: quest.rewards,
-                    rewardCurrency: quest.rewardCurrency,
-                });
+                    quest.id,
+                    quest.rewards,
+                    quest.rewardCurrency,
+                );
 
                 if (!questLogResponse || !questLogResponse.questLog) {
                     throw new Error("Failed to complete quest");

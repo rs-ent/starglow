@@ -6,7 +6,7 @@ import {
     Events as EventModel,
 } from "@prisma/client";
 import Image from "next/image";
-import { useEvents } from "@/hooks/useEvents";
+import { useEvents } from "@/app/hooks/useEvents";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { H2 } from "../atoms/Typography";

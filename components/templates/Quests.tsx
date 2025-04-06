@@ -7,24 +7,19 @@ import QuestUtilBar from "@/components/organisms/QuestUtilBar";
 import QuestContents from "@/components/organisms/QuestContents";
 import QuestNavBar from "@/components/organisms/QuestNavBar";
 import { Player } from "@prisma/client";
-import { usePlayer } from "@/hooks/usePlayer";
+import { usePlayer } from "@/app/hooks/usePlayer";
 import PartialLoading from "@/components/atoms/PartialLoading";
 
 interface QuestsProps {
     player: Player;
-    completedQuests: { questId: string }[];
 }
 
-export default function Quests({ player, completedQuests = [] }: QuestsProps) {
+export default function Quests({ player }: QuestsProps) {
     const [contentType, setContentType] = useState<string>("Today");
-    const {
-        player: playerData,
-        isLoading: isLoadingPlayer,
-        getCompletedQuests,
-    } = usePlayer(player.id);
+    const { player: playerData, isLoading: isLoadingPlayer } = usePlayer(
+        player.id
+    );
     const points = playerData?.points || 0;
-
-    const completed = playerData ? getCompletedQuests() : completedQuests;
 
     return (
         <div className="relative flex flex-col w-full">
@@ -90,7 +85,6 @@ export default function Quests({ player, completedQuests = [] }: QuestsProps) {
                     <QuestContents
                         contentType={contentType}
                         playerId={player.id}
-                        completedQuests={completed}
                     />
                 )}
             </div>

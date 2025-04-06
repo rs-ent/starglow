@@ -1,18 +1,20 @@
 import QuestToday from "./QuestToday";
 import QuestMissions from "./QuestMissions";
 import { Player } from "@prisma/client";
+import { useQuests } from "@/app/hooks/useQuest";
 
 interface QuestContentsProps {
     contentType?: string;
-    playerId: Player["id"];
-    completedQuests?: { questId: string }[];
+    playerId: string;
 }
 
 export default function QuestContents({
     contentType = "Today",
     playerId,
-    completedQuests = [],
 }: QuestContentsProps) {
+    const { getCompletedQuests } = useQuests();
+    const { completedQuests } = getCompletedQuests(playerId);
+
     return (
         <div className="w-full">
             {contentType === "Today" && (

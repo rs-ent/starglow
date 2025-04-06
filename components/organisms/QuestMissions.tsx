@@ -1,36 +1,29 @@
 /// components/organisms/QuestMissions.tsx
 
+"use client";
+
 import QuestList from "../molecules/QuestList";
 import InviteFriends from "../atoms/InviteFriends";
 import { H2 } from "../atoms/Typography";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { Player, Quest } from "@prisma/client";
 import MediaCarousel, { CarouselItem } from "../molecules/MediaCarousel";
 import { Loader2 } from "lucide-react";
-import { getMissions } from "@/app/actions/quests";
-import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/hooks/queryKeys";
+import { useQuests } from "@/app/hooks/useQuest";
+import { useFiles } from "@/app/hooks/useFiles";
 import PartialLoading from "../atoms/PartialLoading";
-import { useFiles } from "@/hooks/useFiles";
 
 interface QuestMissionsProps {
-    playerId: Player["id"];
-    completedQuests: { questId: string }[];
+    playerId: string;
+    completedQuests: string[];
 }
 
 export default function QuestMissions({
     playerId,
     completedQuests = [],
 }: QuestMissionsProps) {
-    const { data: missions = [], isLoading: isLoadingMissions } = useQuery<
-        Quest[]
-    >({
-        queryKey: queryKeys.quests.missions(),
-        queryFn: getMissions,
-    });
-
-    // Use the useFiles hook to fetch banner images
+    const { getMissions } = useQuests();
+    const { missions, isLoading: isLoadingMissions } = getMissions();
     const { getFiles } = useFiles();
     const { files: banners = [], isLoading: isLoadingBanners } = getFiles(
         "banner",

@@ -9,9 +9,9 @@ import { Quest, Player } from "@prisma/client";
 import { cn } from "@/lib/utils/tailwind";
 
 interface QuestListProps {
-    playerId: Player["id"];
+    playerId: string;
     quests: Quest[];
-    completedQuests: { questId: string }[];
+    completedQuests: string[];
 }
 
 export default function QuestList({
@@ -24,17 +24,6 @@ export default function QuestList({
 
     const [selectedType, setSelectedType] = useState<string>("All");
     const [filteredQuests, setFilteredQuests] = useState<Quest[]>(quests);
-    const [alreadyCompletedList, setAlreadyCompletedList] = useState<
-        { questId: string; completed: boolean }[]
-    >([]);
-
-    useEffect(() => {
-        const newList = completedQuests.map((quest) => ({
-            questId: quest.questId,
-            completed: true,
-        }));
-        setAlreadyCompletedList(newList);
-    }, [completedQuests]);
 
     const handleTypeChange = (type: string) => {
         setSelectedType(type);
@@ -83,9 +72,8 @@ export default function QuestList({
                         <QuestButton
                             playerId={playerId}
                             quest={quest}
-                            alreadyCompleted={alreadyCompletedList.some(
-                                (completedQuest) =>
-                                    completedQuest.questId === quest.id
+                            alreadyCompleted={completedQuests.includes(
+                                quest.id
                             )}
                         />
                     </div>

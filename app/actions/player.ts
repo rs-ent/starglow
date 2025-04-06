@@ -3,96 +3,88 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-
-const UpdateCurrencySchema = z.object({
-    playerId: z.string(),
-    currency: z.enum(["points", "SGP", "SGT"]),
-    amount: z.number(),
-});
+import { Player } from "@prisma/client";
+import type { RewardCurrency } from "@/app/types/player";
 
 export async function getPlayer(playerId: string) {
+    const player = await prisma.player.findUnique({
+        where: { id: playerId },
+    });
+
+    if (!player) {
+        throw new Error("Player not found");
+    }
+
+    return player;
+}
+
+export async function setPlayer(
+    userId?: string,
+    telegramId?: string
+): Promise<Player> {
     try {
-        const player = await prisma.player.findUnique({
-            where: { id: playerId },
-            include: {
-                questLogs: {
-                    where: {
-                        completed: true,
-                    },
-                },
-            },
-        });
+        let player;
+
+        if (userId) {
+            player = await prisma.player.findUnique({
+                where: { userId },
+            });
+        }
+
+        if (telegramId) {
+            player = await prisma.player.findUnique({
+                where: { telegramId },
+            });
+        }
 
         if (!player) {
-            throw new Error("Player not found");
+            player = await prisma.player.create({
+                data: {
+                    name: "John Doe",
+                    userId: userId || null,
+                    telegramId: telegramId || null,
+                },
+            });
         }
 
         return player;
     } catch (error) {
-        console.error("Error fetching player:", error);
+        console.error("[setPlayer] Error:", error);
         throw error;
     }
+}
+
+export async function getPlayerCurrency(
+    playerId: string,
+    currency: RewardCurrency
+): Promise<number> {
+    const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        select: {
+            [currency]: true,
+        },
+    });
+
+    if (!player) {
+        throw new Error("Player not found");
+    }
+
+    return Number(player[currency]) || 0;
 }
 
 export async function updatePlayerCurrency(
-    input: z.infer<typeof UpdateCurrencySchema>
-) {
-    try {
-        const { playerId, currency, amount } =
-            UpdateCurrencySchema.parse(input);
-
-        const player = await prisma.player.findUnique({
-            where: { id: playerId },
-        });
-
-        if (!player) {
-            throw new Error("Player not found");
-        }
-
-        // 현재 통화 값 가져오기
-        const currentValue = player[currency] || 0;
-        const newValue = currentValue + amount;
-
-        // 플레이어 통화 업데이트
-        const updatedPlayer = await prisma.player.update({
-            where: { id: playerId },
-            data: {
-                [currency]: newValue,
+    playerId: string,
+    currency: RewardCurrency,
+    amount: number
+): Promise<Player> {
+    const player = await prisma.player.update({
+        where: { id: playerId },
+        data: {
+            [currency]: {
+                increment: amount,
             },
-        });
+        },
+    });
 
-        // 경로 재검증
-        revalidatePath("/");
-
-        return updatedPlayer;
-    } catch (error) {
-        console.error("Error updating player currency:", error);
-        throw error;
-    }
-}
-
-/**
- * 플레이어 데이터를 초기화합니다.
- */
-export async function resetPlayerData(playerId: string) {
-    try {
-        // 플레이어 확인
-        const player = await prisma.player.findUnique({
-            where: { id: playerId },
-        });
-
-        if (!player) {
-            throw new Error("Player not found");
-        }
-
-        // 경로 재검증
-        revalidatePath("/");
-
-        return { success: true };
-    } catch (error) {
-        console.error("Error resetting player data:", error);
-        throw error;
-    }
+    return player;
 }

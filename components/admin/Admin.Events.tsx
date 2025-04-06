@@ -3,11 +3,11 @@
 import { EventCategory, EventStatus } from "@prisma/client";
 import { useState } from "react";
 import FileUploader from "@/components/atoms/FileUploader";
-import { useEvents } from "@/hooks/useEvents";
+import { useEvents } from "@/app/hooks/useEvents";
 import { useRouter } from "next/navigation";
 import DOMPurify from "isomorphic-dompurify";
-import type { Language } from "@/types/language";
-import { useToast } from "@/hooks/useToast";
+import type { Language } from "@/app/types/language";
+import { useToast } from "@/app/hooks/useToast";
 
 const LANGUAGES: Language[] = ["ko", "en", "ja", "zh"];
 
@@ -75,21 +75,26 @@ export default function AdminEvents() {
     });
 
     const handleBannerImageUpload = (files: { id: string; url: string }[]) => {
-        setBannerImageUrl(files[0]?.url || null);
+        if (files.length > 0) {
+            setBannerImageUrl(files[0].url);
+        }
     };
 
     const handleGalleryImagesUpload = (
         files: { id: string; url: string }[]
     ) => {
-        setGalleryImageUrls(files.map((file) => file.url));
+        const newUrls = files.map((file) => file.url);
+        setGalleryImageUrls((prev) => [...prev, ...newUrls]);
     };
 
     const handleDetailImageUpload =
         (language: Language) => (files: { id: string; url: string }[]) => {
-            setDetailImageUrls((prev: Record<Language, string | null>) => ({
-                ...prev,
-                [language]: files[0]?.url || null,
-            }));
+            if (files.length > 0) {
+                setDetailImageUrls((prev: Record<Language, string | null>) => ({
+                    ...prev,
+                    [language]: files[0].url,
+                }));
+            }
         };
 
     const handleContentChange =
@@ -134,11 +139,16 @@ export default function AdminEvents() {
                     JSON.stringify(galleryImageUrls)
                 );
             }
+            const detailImgObj: Record<string, string> = {};
             Object.entries(detailImageUrls).forEach(([lang, url]) => {
                 if (url) {
-                    formData.append(`detailImg_${lang}`, url);
+                    detailImgObj[lang] = url;
                 }
             });
+
+            if (Object.keys(detailImgObj).length > 0) {
+                formData.append("detailImg", JSON.stringify(detailImgObj));
+            }
 
             // Add content for each language
             formData.append("content", JSON.stringify(content));

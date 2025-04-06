@@ -4,7 +4,7 @@
 
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { useFiles } from "@/hooks/useFiles";
+import { useFiles } from "@/app/hooks/useFiles";
 import { StoredFile } from "@/app/actions/files";
 
 interface FileUploaderProps {

@@ -1,7 +1,7 @@
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 ---
 description: 
@@ -19,44 +19,59 @@ alwaysApply: true
 
 - Use Server Actions
 
-- Use Zod
-
 - Use Edge Functions if useful
 
-Never rewrite or refactor large portions of code at once.
 
-Clearly state why a specific code change is necessary, and proceed step-by-step.
+app/
+├── actions/          # 순수 서버 로직만
+│   └── files.ts
+│
+├── queries/          # 데이터 가져오는 쿼리 함수 (캐싱용)
+│   └── filesQueries.ts
+│
+├── mutations/        # 서버에 데이터 변경하는 뮤테이션 함수
+│   └── filesMutations.ts
+│
+├── hooks/            # React 상태 및 로직 관리
+│   ├── useFiles.ts
+│   └── useToast.ts
+│
+├── queryKeys.ts      # 쿼리 키 정의
+└── components/       # UI 컴포넌트
 
-Provide only one small, incremental change per step.
 
-Clearly explain how the change improves readability, functionality, or performance.
+Server Actions	actions/	데이터 CRUD 및 서버 로직만
+Queries	queries/	데이터 fetching 로직(캐싱 관리)
+Mutations	mutations/	데이터 변경 작업(server 호출 후 캐시 무효화)
+Hooks	hooks/	UI 상태 관리 및 Query, Mutation 연결
 
-Explain clearly, logically, and in detail:
 
-Purpose: Why the suggested change or step is needed.
+- Never rewrite or refactor large portions of code at once.
 
-Implementation: Exactly how the new or adjusted code works, including logic flow.
+- Clearly state why a specific code change is necessary, and proceed step-by-step.
 
-Benefits: Concrete benefits, performance gains, readability improvements, or best practices being followed.
+- Provide only one small, incremental change per step.
 
-Always suggest improvements proactively:
+- Clearly explain how the change improves readability, functionality, or performance.
 
-If you see better coding patterns, optimizations, or alternative approaches, proactively recommend them and explain why they're beneficial.
+- Explain clearly, logically, and in detail:
 
-Whenever suggesting alternative approaches, clearly outline the trade-offs involved.
+- Purpose: Why the suggested change or step is needed.
 
-Avoid unnecessary comments (주석):
+- Implementation: Exactly how the new or adjusted code works, including logic flow.
 
-Only include comments if absolutely critical to understanding.
+- Benefits: Concrete benefits, performance gains, readability improvements, or best practices being followed.
 
-If required, use the simplest possible English wording.
+- Always suggest improvements proactively:
 
-Proceed strictly step-by-step:
+- If you see better coding patterns, optimizations, or alternative approaches, proactively recommend them and explain why they're beneficial.
 
-Provide only one detailed task at a time. Clearly wait for confirmation from me that the current task has been completed successfully before proceeding.
+- Whenever suggesting alternative approaches, clearly outline the trade-offs involved.
 
-Clearly indicate when the current step is complete and wait for my explicit confirmation before continuing to the next step.
+- Avoid unnecessary comments (주석): Only include comments if absolutely critical to understanding. If required, use the simplest possible English wording.
 
-Break tasks down clearly and logically, creating small, manageable tasks to minimize mistakes.
+- Proceed strictly step-by-step: Provide only one detailed task at a time. Clearly wait for confirmation from me that the current task has been completed successfully before proceeding. Clearly indicate when the current step is complete and wait for my explicit confirmation before continuing to the next step.
 
-If I ask questions between steps, always respond to my question first, then gently guide me back to our original goal.
+- Break tasks down clearly and logically, creating small, manageable tasks to minimize mistakes. 
+
+- If I ask questions between steps, always respond to my question first, then gently guide me back to our original goal.

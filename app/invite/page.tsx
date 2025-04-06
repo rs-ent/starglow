@@ -41,7 +41,7 @@ async function InvitePage({
 
     try {
         let referrer;
-        const currentPlayer = await prisma.player.findUnique({
+        let currentPlayer = await prisma.player.findUnique({
             where: {
                 userId: session!.user?.id,
             },
@@ -55,7 +55,24 @@ async function InvitePage({
             },
         });
 
-        if (currentPlayer?.recommenderId) {
+        if (!currentPlayer) {
+            currentPlayer = await prisma.player.create({
+                data: {
+                    userId: session!.user!.id,
+                    name: session!.user!.name || "",
+                },
+                select: {
+                    id: true,
+                    userId: true,
+                    telegramId: true,
+                    recommenderId: true,
+                    recommenderMethod: true,
+                    recommenderName: true,
+                },
+            });
+        }
+
+        if (currentPlayer.recommenderId) {
             return (
                 <div>
                     You are already invited by {currentPlayer?.recommenderName}
@@ -106,7 +123,7 @@ async function InvitePage({
 
         await prisma.$transaction([
             prisma.player.update({
-                where: { userId: currentPlayer?.userId },
+                where: { userId: currentPlayer.userId! },
                 data: {
                     recommenderId: referrer.id,
                     recommenderMethod: method,
