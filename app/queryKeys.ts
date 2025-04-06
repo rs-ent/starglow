@@ -32,4 +32,8 @@ export const queryKeys = {
         byId: (id: string) => ["payments", id] as const,
         byStatus: (status: string) => ["payments", "status", status] as const,
     },
+    exchangeRate: {
+        info: ["exchangeRate", "info"] as const,
+        convert: ["exchangeRate", "convert"] as const,
+    },
 };

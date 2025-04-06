@@ -17,6 +17,181 @@ import {
     CurrencyType,
 } from "@/lib/types/payment";
 
+const EXCHANGE_RATE_UPDATE_INTERVAL = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+const EXCHANGE_RATE_ERROR_MARGIN = 0.02; // 2% error margin for exchange rate fluctuations
+
+export interface ExchangeRateInfo {
+    fromCurrency: string;
+    toCurrency: string;
+    rate: number;
+    provider: string;
+    createdAt: Date;
+}
+
+async function getLatestExchangeRate(): Promise<number> {
+    try {
+        // Try to get the latest rate from DB
+        const latestRate = await prisma.exchangeRate.findFirst({
+            where: {
+                fromCurrency: "USD",
+                toCurrency: "KRW",
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        // If rate exists and is fresh enough, return it
+        if (
+            latestRate &&
+            Date.now() - latestRate.createdAt.getTime() <
+                EXCHANGE_RATE_UPDATE_INTERVAL
+        ) {
+            return latestRate.rate;
+        }
+
+        // Fetch new rate from API
+        const response = await fetch(
+            "https://api.exchangerate-api.com/v4/latest/USD"
+        );
+        const data = await response.json();
+        const newRate = data.rates.KRW;
+
+        // Store new rate in DB
+        await prisma.exchangeRate.create({
+            data: {
+                fromCurrency: "USD",
+                toCurrency: "KRW",
+                rate: newRate,
+                provider: "exchangerate-api",
+            },
+        });
+
+        // Optional: Keep only last 30 days of rates
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        await prisma.exchangeRate.deleteMany({
+            where: {
+                createdAt: {
+                    lt: thirtyDaysAgo,
+                },
+            },
+        });
+
+        return newRate;
+    } catch (error) {
+        console.error("Failed to fetch/update exchange rate:", error);
+
+        // If API fails, use latest rate from DB regardless of age
+        const fallbackRate = await prisma.exchangeRate.findFirst({
+            where: {
+                fromCurrency: "USD",
+                toCurrency: "KRW",
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        if (fallbackRate) {
+            return fallbackRate.rate;
+        }
+
+        // If no rate in DB, use fallback
+        return 1300;
+    }
+}
+
+export async function getExchangeRateInfo(
+    fromCurrency: string = "USD",
+    toCurrency: string = "KRW"
+): Promise<ExchangeRateInfo> {
+    try {
+        // Try to get the latest rate from DB
+        const latestRate = await prisma.exchangeRate.findFirst({
+            where: {
+                fromCurrency,
+                toCurrency,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        // If rate exists and is fresh enough, return it
+        if (
+            latestRate &&
+            Date.now() - latestRate.createdAt.getTime() <
+                EXCHANGE_RATE_UPDATE_INTERVAL
+        ) {
+            return latestRate;
+        }
+
+        // Fetch new rate from API
+        const response = await fetch(
+            `https://api.exchangerate-api.com/v4/latest/${fromCurrency}`
+        );
+        const data = await response.json();
+        const newRate = data.rates[toCurrency];
+
+        // Store new rate in DB
+        const savedRate = await prisma.exchangeRate.create({
+            data: {
+                fromCurrency,
+                toCurrency,
+                rate: newRate,
+                provider: "exchangerate-api",
+            },
+        });
+
+        // Optional: Keep only last 30 days of rates
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        await prisma.exchangeRate.deleteMany({
+            where: {
+                createdAt: {
+                    lt: thirtyDaysAgo,
+                },
+            },
+        });
+
+        return savedRate;
+    } catch (error) {
+        console.error("Failed to fetch/update exchange rate:", error);
+
+        // If API fails, use latest rate from DB regardless of age
+        const fallbackRate = await prisma.exchangeRate.findFirst({
+            where: {
+                fromCurrency,
+                toCurrency,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        if (fallbackRate) {
+            return fallbackRate;
+        }
+
+        // If no rate in DB, use fallback
+        return {
+            fromCurrency,
+            toCurrency,
+            rate: 1300,
+            provider: "fallback",
+            createdAt: new Date(),
+        };
+    }
+}
+
+export async function convertAmount(
+    amount: number,
+    fromCurrency: string,
+    toCurrency: string
+): Promise<number> {
+    const rate = await getExchangeRateInfo(fromCurrency, toCurrency);
+    return Math.round(amount * rate.rate * 100) / 100;
+}
+
 export async function initPaymentValidation(
     request: PaymentInitRequest
 ): Promise<PaymentInitResponse> {
@@ -97,23 +272,35 @@ export async function initPaymentValidation(
                 throw new PaymentError("Event not found", "NOT_FOUND");
             }
 
-            const amount = event.price || 0;
-            if (amount <= 0) {
+            const baseAmount = event.price || 0;
+            if (baseAmount <= 0) {
                 throw new PaymentError(
                     "Invalid price: price must be greater than 0",
                     "INVALID_PRICE"
                 );
             }
 
+            // Convert amount based on currency
+            let amount = baseAmount;
+            let exchangeRate: number | null = null;
+
+            if (
+                currency === CurrencyType.USD &&
+                method === PaymentMethodType.PAYPAL
+            ) {
+                exchangeRate = await getLatestExchangeRate();
+                amount = Math.round((baseAmount / exchangeRate) * 100) / 100;
+            }
+
             const totalAmount = amount * quantity;
             const orderName = `${event.title} x${quantity}`;
 
+            // Store payment with exchange rate info
             const nonce = crypto.randomBytes(16).toString("hex");
             const timestamp = Date.now();
             const orderId = `${table}-${target}-${userId}-${timestamp}-${nonce}`;
             const paymentKey = encrypt(orderId);
 
-            // 트랜잭션으로 데이터 일관성 보장
             const log = await prisma.paymentLog.create({
                 data: {
                     userId,
@@ -122,7 +309,9 @@ export async function initPaymentValidation(
                     nonce,
                     orderedProductId: `${table}-${target}-${timestamp}`,
                     orderedProductName: orderName,
-                    amount,
+                    amount: baseAmount,
+                    convertedAmount: amount,
+                    exchangeRate: exchangeRate,
                     currency: currency as string,
                     method: method as string,
                     status: PaymentStatus.INIT,
@@ -175,6 +364,7 @@ export async function verifyPayment(request: PaymentVerifyRequest) {
             paymentKey,
             userId,
             amount,
+            quantity,
             currency,
             table,
             target,
@@ -199,6 +389,8 @@ export async function verifyPayment(request: PaymentVerifyRequest) {
                 paymentKey: true,
                 nonce: true,
                 amount: true,
+                convertedAmount: true,
+                exchangeRate: true,
                 currency: true,
                 status: true,
                 method: true,
@@ -251,9 +443,28 @@ export async function verifyPayment(request: PaymentVerifyRequest) {
             );
         }
 
-        if (amount !== payment.amount) {
+        // Verify amount with tolerance for exchange rate fluctuations
+        let expectedAmount = payment.amount;
+        if (
+            currency === CurrencyType.USD &&
+            payment.method === PaymentMethodType.PAYPAL
+        ) {
+            if (payment.convertedAmount !== null) {
+                expectedAmount = payment.convertedAmount;
+            } else {
+                // Fallback to real-time conversion if stored converted amount is not available
+                const currentRate = await getLatestExchangeRate();
+                expectedAmount =
+                    Math.round((payment.amount / currentRate) * 100) / 100;
+            }
+        }
+
+        const expectedTotal = expectedAmount * quantity;
+        const amountDiff = Math.abs(amount - expectedTotal) / expectedTotal;
+
+        if (amountDiff > EXCHANGE_RATE_ERROR_MARGIN) {
             throw new PaymentError(
-                `Invalid amount: expected ${payment.amount}, got ${amount}`,
+                `Invalid amount: expected ${expectedTotal}, got ${amount}`,
                 "AMOUNT_MISMATCH"
             );
         }

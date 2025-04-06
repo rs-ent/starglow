@@ -13,13 +13,15 @@ import crypto from "crypto";
 import { getSession } from "next-auth/react";
 import { useToast } from "@/app/hooks/useToast";
 import { useRouter } from "next/navigation";
+import { Currency } from "../molecules/PaymentExecutor";
 
 export interface PayPalButtonProps {
     userId?: string;
     table: string;
     target: string;
     quantity: number;
-    currency: "CURRENCY_USD" | "CURRENCY_KRW";
+    amount: number;
+    currency: Currency;
     onSuccess?: (response: any) => void;
     onError?: (error: any) => void;
     paypalOptions?: {
@@ -45,6 +47,7 @@ export default function PayPalButton({
     table,
     target,
     quantity,
+    amount,
     currency,
     onSuccess,
     onError,
@@ -87,7 +90,7 @@ export default function PayPalButton({
                 }
                 setSessionLoaded(true);
             } catch (error) {
-                console.error("세션 로드 실패:", error);
+                console.error("Session loading failed:", error);
                 setSessionLoaded(true);
             }
         };
@@ -183,11 +186,14 @@ export default function PayPalButton({
                 });
 
                 if (!paymentResponse) {
-                    throw new Error("결제 초기화에 실패했습니다.");
+                    throw new Error("Payment initialization failed.");
                 }
 
                 paymentResponseRef.current = paymentResponse;
                 setIsInitialized(true);
+
+                // Calculate total amount in USD for PayPal
+                const totalAmount = amount * quantity;
 
                 const requestData = {
                     uiType: "PAYPAL_SPB" as const,
@@ -195,9 +201,15 @@ export default function PayPalButton({
                     channelKey: paymentResponse.paymentConfig.channelKey,
                     paymentId: paymentResponse.paymentId,
                     orderName: paymentResponse.orderName,
-                    totalAmount: paymentResponse.totalAmount,
+                    totalAmount: totalAmount * 100,
                     currency: entityCurrencyMap[currency],
                 };
+
+                console.log("PayPal request data:", {
+                    ...requestData,
+                    originalAmount: amount,
+                    quantity,
+                });
 
                 setShouldShowPayPal(true);
 

@@ -1,24 +1,20 @@
 "use client";
 
 import { Events } from "@prisma/client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { H3 } from "../atoms/Typography";
 import {
     Ticket,
-    CreditCard,
     Calendar,
     Clock,
     AlertCircle,
     CheckCircle2,
-    Smartphone,
-    CreditCard as CardIcon,
-    Wallet,
 } from "lucide-react";
-import PaymentButton, { PayMethod } from "../atoms/PaymentButton";
-import { Entity } from "@portone/browser-sdk/v2";
-import { getSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useToast } from "@/app/hooks/useToast";
+import PaymentProcessor from "./PaymentProcessor";
+import {
+    useExchangeRateInfo,
+    useCurrencyConverter,
+} from "@/app/hooks/usePaymentValidation";
 
 type EventPaymentProps = {
     event: Pick<
@@ -33,17 +29,36 @@ type EventPaymentProps = {
         | "saleStartDate"
         | "saleEndDate"
     >;
+    initialCurrency?: "CURRENCY_USD" | "CURRENCY_KRW";
 };
 
-export default function EventPayment({ event }: EventPaymentProps) {
+export default function EventPayment({
+    event,
+    initialCurrency = "CURRENCY_KRW",
+}: EventPaymentProps) {
     const [quantity, setQuantity] = useState(1);
-    const [paymentMethod, setPaymentMethod] = useState<PayMethod>("CARD");
-    const [easyPayProvider, setEasyPayProvider] =
-        useState<Entity.EasyPayProvider>("EASY_PAY_PROVIDER_TOSS_BRANDPAY");
-    const [userId, setUserId] = useState<string>("");
+    const [currentCurrency, setCurrentCurrency] = useState(initialCurrency);
+
+    // Get exchange rate info and converted amount
+    const { rateInfo } = useExchangeRateInfo(
+        currentCurrency === "CURRENCY_USD" ? "KRW" : "USD",
+        currentCurrency === "CURRENCY_USD" ? "USD" : "KRW"
+    );
+
+    const { convertedAmount } = useCurrencyConverter(
+        event.price || 0,
+        "KRW",
+        currentCurrency === "CURRENCY_USD" ? "USD" : "KRW"
+    );
+
+    // Get the appropriate price based on currency
+    const currentPrice =
+        currentCurrency === "CURRENCY_USD"
+            ? convertedAmount?.converted.amount || 0
+            : event.price || 0;
 
     // Calculate total price
-    const totalPrice = (event.price || 0) * quantity;
+    const totalPrice = currentPrice * quantity;
 
     // Check if tickets are available for sale
     const now = new Date();
@@ -70,46 +85,17 @@ export default function EventPayment({ event }: EventPaymentProps) {
         });
     };
 
-    // Convert easyPay provider to the appropriate payment method
-    const getPaymentMethodFromProvider = (
-        provider: Entity.EasyPayProvider
-    ): PayMethod => {
-        switch (provider) {
-            case "EASY_PAY_PROVIDER_TOSS_BRANDPAY":
-                return "TOSS_PAY";
-            case "EASY_PAY_PROVIDER_KAKAOPAY":
-                return "KAKAO_PAY";
-            default:
-                return "TOSS_PAY"; // Default to TOSS_PAY for other providers
-        }
+    // Handle successful payment
+    const handlePaymentSuccess = (response: any) => {
+        console.log("Payment successful", response);
+        // TODO: Implement success handling (e.g., show confirmation, redirect, etc.)
     };
 
-    // Get the current payment method for the PaymentButton
-    const getCurrentPaymentMethod = (): PayMethod => {
-        if (paymentMethod === "TOSS_PAY" || paymentMethod === "KAKAO_PAY") {
-            return paymentMethod;
-        } else if (paymentMethod === "CARD" || paymentMethod === "PAYPAL") {
-            return paymentMethod;
-        } else {
-            return getPaymentMethodFromProvider(easyPayProvider);
-        }
+    // Handle payment error
+    const handlePaymentError = (error: any) => {
+        console.error("Payment failed", error);
+        // TODO: Implement error handling
     };
-
-    // 세션에서 사용자 ID 로드
-    useEffect(() => {
-        const loadUserSession = async () => {
-            try {
-                const session = await getSession();
-                if (session?.user?.id) {
-                    setUserId(session.user.id);
-                }
-            } catch (error) {
-                console.error("Failed to load user session:", error);
-            }
-        };
-
-        loadUserSession();
-    }, []);
 
     return (
         <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50 p-4 sm:p-6 md:p-8">
@@ -123,11 +109,35 @@ export default function EventPayment({ event }: EventPaymentProps) {
                 <div className="flex justify-between items-center mb-2">
                     <span className="text-foreground/70">Price per ticket</span>
                     <span className="font-main text-base md:text-lg">
-                        {event.price
-                            ? `${event.price.toLocaleString()} SGP`
-                            : "Free"}
+                        {event.price ? (
+                            <>
+                                <span>
+                                    {currentPrice.toLocaleString()}{" "}
+                                    {currentCurrency === "CURRENCY_USD"
+                                        ? "USD"
+                                        : "KRW"}
+                                </span>
+                                {currentCurrency === "CURRENCY_USD" && (
+                                    <span className="text-xs text-foreground/50 ml-2">
+                                        (≈ {event.price.toLocaleString()} KRW)
+                                    </span>
+                                )}
+                            </>
+                        ) : (
+                            "Free"
+                        )}
                     </span>
                 </div>
+
+                {rateInfo && currentCurrency === "CURRENCY_USD" && (
+                    <div className="text-xs text-foreground/50 text-right mb-2">
+                        {rateInfo.formattedRate}
+                        <br />
+                        <span className="text-[10px]">
+                            Last updated: {rateInfo.lastUpdated}
+                        </span>
+                    </div>
+                )}
 
                 {event.capacity !== null && (
                     <div className="flex justify-between items-center mb-2">
@@ -202,107 +212,15 @@ export default function EventPayment({ event }: EventPaymentProps) {
                         </div>
                     </div>
 
-                    {/* Payment method */}
-                    <div className="mb-5 md:mb-6">
-                        <label className="block text-xs md:text-sm font-accent uppercase tracking-wider text-foreground/80 mb-2">
-                            Payment method
-                        </label>
-                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                            <button
-                                onClick={() => {
-                                    setPaymentMethod("CARD");
-                                }}
-                                className={`flex items-center justify-center p-2 sm:p-3 rounded-lg border text-sm md:text-base ${
-                                    paymentMethod === "CARD"
-                                        ? "border-primary bg-primary/10 text-primary"
-                                        : "border-border/50 text-foreground/70"
-                                }`}
-                            >
-                                <CardIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-                                <span>Card</span>
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setPaymentMethod("PAYPAL");
-                                }}
-                                className={`flex items-center justify-center p-2 sm:p-3 rounded-lg border text-sm md:text-base ${
-                                    paymentMethod === "PAYPAL"
-                                        ? "border-primary bg-primary/10 text-primary"
-                                        : "border-border/50 text-foreground/70"
-                                }`}
-                            >
-                                <Wallet className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-                                <span>PayPal</span>
-                            </button>
-
-                            <button
-                                onClick={() => {
-                                    setPaymentMethod("TOSS_PAY");
-                                }}
-                                className={`flex items-center justify-center p-2 sm:p-3 rounded-lg border text-sm md:text-base ${
-                                    paymentMethod === "TOSS_PAY"
-                                        ? "border-primary bg-primary/10 text-primary"
-                                        : "border-border/50 text-foreground/70"
-                                }`}
-                            >
-                                <Smartphone className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-                                <span>Toss Pay</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Easy Pay Provider selector (only show if Toss Pay is selected) */}
-                    {paymentMethod === "TOSS_PAY" && (
-                        <div className="mb-5 md:mb-6">
-                            <label className="block text-xs md:text-sm font-accent uppercase tracking-wider text-foreground/80 mb-2">
-                                Easy Pay Provider
-                            </label>
-                            <select
-                                value={easyPayProvider}
-                                onChange={(e) =>
-                                    setEasyPayProvider(
-                                        e.target.value as Entity.EasyPayProvider
-                                    )
-                                }
-                                className="w-full p-2 sm:p-3 rounded-lg border border-border/50 bg-card text-sm md:text-base"
-                            >
-                                <option value="EASY_PAY_PROVIDER_TOSS_BRANDPAY">
-                                    Toss
-                                </option>
-                                <option value="EASY_PAY_PROVIDER_KAKAOPAY">
-                                    Kakao Pay
-                                </option>
-                                <option value="EASY_PAY_PROVIDER_NAVERPAY">
-                                    Naver Pay
-                                </option>
-                                <option value="EASY_PAY_PROVIDER_PAYCO">
-                                    Payco
-                                </option>
-                            </select>
-                        </div>
-                    )}
-
-                    {/* Total and purchase button */}
-                    <PaymentButton
-                        userId={userId}
+                    {/* Payment processor */}
+                    <PaymentProcessor
+                        amount={totalPrice}
+                        initialCurrency={currentCurrency}
                         table="events"
                         target={event.id}
                         quantity={quantity}
-                        currency="CURRENCY_USD"
-                        method={
-                            paymentMethod === "PAYPAL"
-                                ? "PAYPAL"
-                                : getCurrentPaymentMethod()
-                        }
-                        buttonText={`Purchase for ${totalPrice.toLocaleString()} SGP`}
-                        onSuccess={(response) => {
-                            console.log("Payment successful", response);
-                            // TODO: 결제 성공 처리 (리디렉션 등)
-                        }}
-                        onError={(error) => {
-                            console.error("Payment failed", error);
-                            // TODO: 오류 처리
-                        }}
+                        onSuccess={handlePaymentSuccess}
+                        onError={handlePaymentError}
                     />
                 </>
             ) : (

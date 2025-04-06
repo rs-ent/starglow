@@ -7,6 +7,9 @@ import {
     getPayments,
     getPaymentById,
     getPaymentsByUserId,
+    getExchangeRateInfo,
+    convertAmount,
+    ExchangeRateInfo,
 } from "@/app/actions/paymentValidation";
 
 export function usePaymentsQuery({
@@ -45,5 +48,39 @@ export function useUserPaymentsQuery(userId: string) {
         queryKey: queryKeys.payments.byUserId(userId),
         queryFn: () => getPaymentsByUserId(userId),
         enabled: !!userId,
+    });
+}
+
+export function useExchangeRate(
+    fromCurrency: string = "USD",
+    toCurrency: string = "KRW",
+    enabled: boolean = true
+) {
+    return useQuery<ExchangeRateInfo, Error>({
+        queryKey: [...queryKeys.exchangeRate.info, fromCurrency, toCurrency],
+        queryFn: () => getExchangeRateInfo(fromCurrency, toCurrency),
+        enabled,
+        gcTime: 1000 * 60 * 60, // Keep in cache for 1 hour
+        staleTime: 1000 * 60 * 30, // Consider data fresh for 30 minutes
+    });
+}
+
+export function useConvertedAmount(
+    amount: number,
+    fromCurrency: string,
+    toCurrency: string,
+    enabled: boolean = true
+) {
+    return useQuery<number, Error>({
+        queryKey: [
+            ...queryKeys.exchangeRate.convert,
+            amount,
+            fromCurrency,
+            toCurrency,
+        ],
+        queryFn: () => convertAmount(amount, fromCurrency, toCurrency),
+        enabled,
+        gcTime: 1000 * 60 * 60, // Keep in cache for 1 hour
+        staleTime: 1000 * 60 * 30, // Consider data fresh for 30 minutes
     });
 }

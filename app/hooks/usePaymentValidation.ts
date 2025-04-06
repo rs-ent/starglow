@@ -12,6 +12,8 @@ import {
     usePaymentsQuery,
     usePaymentByIdQuery,
     useUserPaymentsQuery,
+    useExchangeRate,
+    useConvertedAmount,
 } from "@/app/queries/paymentValidationQueries";
 import { PaymentStatus } from "@prisma/client";
 import {
@@ -20,6 +22,13 @@ import {
     PaymentInitResponse,
 } from "@/lib/types/payment";
 import { useToast } from "./useToast";
+import { ExchangeRateInfo } from "@/app/actions/paymentValidation";
+
+interface FormattedExchangeRate extends ExchangeRateInfo {
+    formattedRate: string;
+    lastUpdated: string;
+    isStale: boolean;
+}
 
 export function usePayments() {
     const toast = useToast();
@@ -136,5 +145,83 @@ export function usePaymentsList({
         totalPages: paymentsData?.pageCount || 0,
         isLoading,
         error,
+    };
+}
+
+export function useExchangeRateInfo(
+    fromCurrency: string = "USD",
+    toCurrency: string = "KRW"
+) {
+    const {
+        data: rateInfo,
+        isLoading,
+        error,
+        isError,
+    } = useExchangeRate(fromCurrency, toCurrency);
+
+    const formattedRate = rateInfo
+        ? {
+              ...rateInfo,
+              formattedRate: `1 ${fromCurrency} = ${rateInfo.rate.toLocaleString()} ${toCurrency}`,
+              lastUpdated: new Date(rateInfo.createdAt).toLocaleString(),
+              isStale:
+                  Date.now() - new Date(rateInfo.createdAt).getTime() >
+                  12 * 60 * 60 * 1000,
+          }
+        : null;
+
+    return {
+        rateInfo: formattedRate as FormattedExchangeRate | null,
+        isLoading,
+        error,
+        isError,
+    };
+}
+
+interface FormattedAmount {
+    original: {
+        amount: number;
+        currency: string;
+        formatted: string;
+    };
+    converted: {
+        amount: number;
+        currency: string;
+        formatted: string;
+    };
+}
+
+export function useCurrencyConverter(
+    amount: number,
+    fromCurrency: string,
+    toCurrency: string
+) {
+    const {
+        data: convertedAmount,
+        isLoading,
+        error,
+        isError,
+    } = useConvertedAmount(amount, fromCurrency, toCurrency);
+
+    const formattedAmount = convertedAmount
+        ? {
+              original: {
+                  amount,
+                  currency: fromCurrency,
+                  formatted: `${amount.toLocaleString()} ${fromCurrency}`,
+              },
+              converted: {
+                  amount: convertedAmount,
+                  currency: toCurrency,
+                  formatted: `${convertedAmount.toLocaleString()} ${toCurrency}`,
+              },
+          }
+        : null;
+
+    return {
+        convertedAmount: formattedAmount as FormattedAmount | null,
+        isLoading,
+        error,
+        isError,
     };
 }

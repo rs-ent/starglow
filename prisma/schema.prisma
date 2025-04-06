@@ -301,6 +301,8 @@ model PaymentLog {
   orderedProductName String
   amount             Int
   currency           String        @default("USD")
+  convertedAmount    Float?
+  exchangeRate       Float?
   method             String        @default("PAYPAL")
   status             PaymentStatus @default(INIT)
   paymentKey         String
@@ -320,6 +322,18 @@ model PaymentLog {
   @@index([sessionHash])
   @@index([createdAt])
   @@index([status, createdAt])
+}
+
+model ExchangeRate {
+    id          String   @id @default(cuid())
+    fromCurrency String
+    toCurrency   String
+    rate        Float
+    provider    String
+    createdAt   DateTime @default(now())
+
+    @@index([fromCurrency, toCurrency])
+    @@index([createdAt])
 }
 
 enum RewardCurrency {
