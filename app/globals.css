@@ -146,7 +146,7 @@
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(87, 67, 183, 0.65) var(--color-background);
+  scrollbar-color: rgba(87, 67, 183, 0.6) var(--color-background);
 }
 
 /* Chrome, Edge, Safari용 */
