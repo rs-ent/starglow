@@ -9,7 +9,7 @@ import {
     verifyPayment,
     recordPaymentFailure,
 } from "@/app/actions/paymentValidation";
-import { PaymentInitRequest, PaymentVerifyRequest } from "@/lib/types/payment";
+import { PaymentInitRequest, PaymentInitResponse } from "@/lib/types/payment";
 
 export function usePaymentInit() {
     const queryClient = useQueryClient();
@@ -30,7 +30,7 @@ export function usePaymentComplete() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (request: PaymentVerifyRequest) => {
+        mutationFn: async (request: PaymentInitResponse) => {
             return verifyPayment(request);
         },
         onSuccess: (data, variables) => {

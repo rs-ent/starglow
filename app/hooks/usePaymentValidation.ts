@@ -18,7 +18,6 @@ import {
 import { PaymentStatus } from "@prisma/client";
 import {
     PaymentInitRequest,
-    PaymentVerifyRequest,
     PaymentInitResponse,
 } from "@/lib/types/payment";
 import { useToast } from "./useToast";
@@ -52,7 +51,7 @@ export function usePayments() {
         }
     };
 
-    const completePayment = async (request: PaymentVerifyRequest) => {
+    const completePayment = async (request: PaymentInitResponse) => {
         setIsProcessing(true);
         try {
             const response = await paymentCompleteMutation.mutateAsync(request);

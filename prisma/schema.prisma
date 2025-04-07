@@ -297,7 +297,7 @@ model LoginAttemptLog {
 
 model PaymentLog {
   id                 String        @id @default(cuid())
-  orderedProductId   String        @unique
+  orderedProductId   String
   orderedProductName String
   amount             Int
   currency           String        @default("USD")

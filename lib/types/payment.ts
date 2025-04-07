@@ -45,24 +45,12 @@ export type PaymentInitRequest = BasePaymentRequest & {
     sessionHash: string;
 };
 
-export type PaymentVerifyRequest = {
-    paymentId: string;
-    sessionHash: string;
-    paymentKey: string;
-    userId: string;
-    amount: number;
-    quantity: number;
-    currency: string;
-    table: string;
-    target: string;
-    additionalData?: Record<string, any>;
-};
-
 export type PaymentInitResponse = {
     paymentId: string;
     sessionHash: string;
-    paymentKey: string;
     userId: string;
+    table: string;
+    target: string;
     amount: number;
     quantity: number;
     totalAmount: number;

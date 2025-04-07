@@ -28,6 +28,12 @@ const envSchema = z.object({
     PORTONE_MID: z.string().min(1),
     PORTONE_V2_API_SECRET: z.string().min(1),
     PAYMENT_SECRET: z.string().min(1),
+
+    PORTONE_PAYPAL: z.string().min(1),
+    PORTONE_CARD: z.string().min(1),
+    PORTONE_INTERCARD: z.string().min(1),
+    PORTONE_TOSS: z.string().min(1),
+    PORTONE_KAKAO: z.string().min(1),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

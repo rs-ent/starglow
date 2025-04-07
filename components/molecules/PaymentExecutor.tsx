@@ -62,7 +62,6 @@ export interface PaymentExecutorProps {
     buttonText?: string;
     onSuccess?: (response: any) => void;
     onError?: (error: any) => void;
-    // PayPal specific options
     paypalOptions?: {
         style?: {
             layout?: "vertical" | "horizontal";
@@ -208,29 +207,27 @@ export default function PaymentExecutor({
     // Handle payment execution
     const handlePaymentExecution = async () => {
         if (isLoading) return;
-
         setIsLoading(true);
+
+        const initResponse = await initializePayment({
+            sessionHash: generateSessionHash(),
+            userId: currentUserId,
+            table,
+            target,
+            quantity,
+            currency: CURRENCY_MAP[currency],
+            method: METHOD_MAP[method],
+            easyPayProvider: easyPayProvider
+                ? EASY_PAY_PROVIDER_MAP[easyPayProvider as EasyPayProvider]
+                : undefined,
+            cardProvider: cardProvider,
+        });
+
         await checkUserAndProceed(async () => {
             try {
                 if (method === "EASY_PAY") {
                     // Payment logic to be implemented
                     if (easyPayProvider === "EASY_PAY_PROVIDER_TOSSPAY") {
-                        const initResponse = await initializePayment({
-                            sessionHash: generateSessionHash(),
-                            userId: currentUserId,
-                            table,
-                            target,
-                            quantity,
-                            currency: CURRENCY_MAP[currency],
-                            method: METHOD_MAP[method],
-                            easyPayProvider:
-                                EASY_PAY_PROVIDER_MAP[
-                                    easyPayProvider as EasyPayProvider
-                                ],
-                        });
-
-                        console.log(initResponse);
-
                         const response = await PortOne.requestPayment({
                             storeId: initResponse.paymentConfig.storeId,
                             channelKey: initResponse.paymentConfig.channelKey,
@@ -239,38 +236,97 @@ export default function PaymentExecutor({
                             totalAmount: initResponse.totalAmount,
                             currency: "KRW",
                             payMethod: "EASY_PAY",
-                        });
+                            onSuccess: async (response: any) => {
+                                try {
+                                    const result = await completePayment(
+                                        initResponse
+                                    );
+                                    console.log("Payment successful");
 
-                        console.log(response);
+                                    if (onSuccess)
+                                        onSuccess({ ...response, ...result });
+                                } catch (error) {
+                                    console.error(
+                                        "Payment completion failed:",
+                                        error
+                                    );
+                                    if (onError) onError(error);
+                                }
+                            },
+                            onError: async (error: any) => {
+                                try {
+                                    const result = await failedPayment(
+                                        initResponse.paymentId,
+                                        error?.message || "Unknown error"
+                                    );
+                                    console.log(
+                                        "Payment failed",
+                                        error?.message || "Unknown error"
+                                    );
+
+                                    if (onError)
+                                        onError({ ...error, ...result });
+                                } catch (error) {
+                                    console.error(
+                                        "Payment failure recording failed:",
+                                        error
+                                    );
+                                    if (onError) onError(error);
+                                }
+                            },
+                        });
                     } else {
                         alert(
                             `${easyPayProvider} payment is not implemented yet.`
                         );
                     }
                 } else if (method === "CARD") {
-                    const initResponse = await initializePayment({
-                        sessionHash: generateSessionHash(),
-                        userId: currentUserId,
-                        table,
-                        target,
-                        quantity,
-                        currency: CURRENCY_MAP[currency],
-                        method: METHOD_MAP[method],
-                        cardProvider: cardProvider,
-                    });
-
-                    if (cardProvider === CardProvider.DOMESTIC) {
-                    }
-
                     const response = await PortOne.requestPayment({
                         storeId: initResponse.paymentConfig.storeId,
                         channelKey: initResponse.paymentConfig.channelKey,
                         paymentId: initResponse.paymentId,
                         orderName: initResponse.orderName,
-                        totalAmount: initResponse.totalAmount,
+                        totalAmount: Math.round(initResponse.totalAmount),
                         currency: initResponse.currency,
                         payMethod: "CARD",
                         cardProvider: cardProvider,
+                        onSuccess: async (response: any) => {
+                            try {
+                                const result = await completePayment(
+                                    initResponse
+                                );
+                                console.log("Payment successful");
+
+                                if (onSuccess)
+                                    onSuccess({ ...response, ...result });
+                            } catch (error) {
+                                console.error(
+                                    "Payment completion failed:",
+                                    error
+                                );
+                                if (onError) onError(error);
+                            }
+                        },
+                        onError: async (error: any) => {
+                            try {
+                                const result = await failedPayment(
+                                    initResponse.paymentId,
+                                    error?.message || "Unknown error"
+                                );
+                                console.log(
+                                    "Payment failed",
+                                    error?.message || "Unknown error"
+                                );
+
+                                if (onError) onError({ ...error, ...result });
+                            } catch (error) {
+                                console.error(
+                                    "Payment failure recording failed:",
+                                    error
+                                );
+                                if (onError) onError(error);
+                            }
+                        },
                     });
 
                     console.log(response);
@@ -300,7 +356,7 @@ export default function PaymentExecutor({
 
         return (
             <PayPalButton
-                userId={userId}
+                userId={currentUserId}
                 table={table}
                 target={target}
                 quantity={quantity}
