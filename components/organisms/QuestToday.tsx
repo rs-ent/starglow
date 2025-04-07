@@ -11,7 +11,7 @@ import InviteFriends from "../atoms/InviteFriends";
 import DailyQuests from "../molecules/DailyQuest";
 import Icon from "../atoms/Icon";
 import { Loader2 } from "lucide-react";
-import { Player, Quest } from "@prisma/client";
+import { Quest } from "@prisma/client";
 import { useQuests } from "@/app/hooks/useQuest";
 import PartialLoading from "../atoms/PartialLoading";
 
@@ -62,7 +62,7 @@ export default function QuestToday({
 
     return (
         <div className="flex items-center justify-center w-full h-full">
-            <div className="flex flex-col items-center justify-center">
+            <div className="flex flex-col items-center justify-center w-full">
                 <Icon svg="/elements/el03.svg" size={45} />
 
                 <H2
@@ -75,11 +75,11 @@ export default function QuestToday({
                         questDate.getMonth() + 1
                     }/${questDate.getDate()} Today's Song`}
                 </H2>
-                <div className="flex items-center justify-center w-full h-full max-w-[900px] px-4 mb-8">
+                <div className="flex items-center justify-center w-full h-full px-4 mb-8">
                     {carouselQuests.length ? (
                         <MediaCarousel
                             items={carouselQuests}
-                            className="w-full max-w-[90vw]"
+                            className="w-full"
                         />
                     ) : (
                         <div className="flex items-center justify-center w-full h-full p-4">

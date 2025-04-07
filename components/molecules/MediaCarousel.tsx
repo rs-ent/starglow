@@ -102,7 +102,7 @@ export default function MediaCarousel({
                                     artist={item.artist}
                                     title={item.title}
                                     framePadding={framePadding}
-                                    className="w-full max-w-[800px] min-w-[270px] h-[100%] mx-auto"
+                                    className="w-full mx-auto"
                                 />
                             ) : (
                                 <ImageViewer
@@ -110,7 +110,7 @@ export default function MediaCarousel({
                                     title={showTitle ? item.title : ""}
                                     img={item.img}
                                     framePadding={framePadding}
-                                    className="w-full max-w-[800px] min-w-[270px] mx-auto"
+                                    className="w-full mx-auto"
                                 />
                             )}
                         </div>

@@ -17,6 +17,13 @@ import {
     useCurrencyConverter,
 } from "@/app/hooks/usePaymentValidation";
 
+// Generate a client-side session hash
+const generateSessionHash = () => {
+    return `session-${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 15)}`;
+};
+
 // Map component types to payment validation types
 export type Currency = "CURRENCY_USD" | "CURRENCY_KRW";
 export type PayMethod = "PAYPAL" | "CARD" | "EASY_PAY";
@@ -209,7 +216,7 @@ export default function PaymentExecutor({
                     // Payment logic to be implemented
                     if (easyPayProvider === "EASY_PAY_PROVIDER_TOSSPAY") {
                         const initResponse = await initializePayment({
-                            sessionHash: "session-hash",
+                            sessionHash: generateSessionHash(),
                             userId: currentUserId,
                             table,
                             target,
@@ -242,7 +249,7 @@ export default function PaymentExecutor({
                     }
                 } else if (method === "CARD") {
                     const initResponse = await initializePayment({
-                        sessionHash: "session-hash",
+                        sessionHash: generateSessionHash(),
                         userId: currentUserId,
                         table,
                         target,
@@ -253,7 +260,6 @@ export default function PaymentExecutor({
                     });
 
                     if (cardProvider === CardProvider.DOMESTIC) {
-                        
                     }
 
                     const response = await PortOne.requestPayment({

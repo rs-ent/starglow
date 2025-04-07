@@ -16,7 +16,7 @@ export default function QuestContents({
     const { completedQuests } = getCompletedQuests(playerId);
 
     return (
-        <div className="w-full">
+        <div className="w-full max-w-[840px] min-w-[270px]">
             {contentType === "Today" && (
                 <div className="flex justify-center items-center">
                     <QuestToday

@@ -43,7 +43,7 @@ export default function QuestMissions({
 
     return (
         <div className="flex items-center justify-center w-full h-full">
-            <div className="flex flex-col items-center justify-center">
+            <div className="flex flex-col items-center justify-center w-full">
                 <H2
                     className={cn(
                         "text-center mb-1 break-words",
@@ -53,7 +53,7 @@ export default function QuestMissions({
                     Missions
                 </H2>
 
-                <div className="flex items-center justify-center w-full h-full max-w-[900px] px-4">
+                <div className="flex items-center justify-center w-full h-full px-4">
                     {carouselItems.length ? (
                         <MediaCarousel
                             items={carouselItems}

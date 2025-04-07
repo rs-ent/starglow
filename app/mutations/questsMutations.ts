@@ -36,6 +36,9 @@ export function useCompleteQuest() {
                     variables.rewardCurrency
                 ),
             });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.player.byId(variables.playerId),
+            });
         },
     });
 }
@@ -75,6 +78,9 @@ export function useAddRewards() {
                     variables.playerId,
                     variables.currency
                 ),
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.player.byId(variables.playerId),
             });
         },
     });

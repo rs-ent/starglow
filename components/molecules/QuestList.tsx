@@ -34,8 +34,8 @@ export default function QuestList({
 
     return (
         <div className="relative flex w-full items-center justify-center px-3">
-            <div className="relative w-full max-w-[820px] min-w-[270px]">
-                <div className="max-w-[90vw] overflow-x-auto scrollbar-hovering mb-3">
+            <div className="relative w-full">
+                <div className="overflow-x-auto scrollbar-hovering mb-3">
                     <div
                         className="
                             flex

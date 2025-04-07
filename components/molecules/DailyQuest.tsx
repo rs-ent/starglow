@@ -15,7 +15,7 @@ export default function DailyQuests({
 }: DailyQuestsProps) {
     return (
         <div className="relative flex w-full items-center justify-center px-3">
-            <div className="relative w-full max-w-[820px] min-w-[270px]">
+            <div className="relative w-full">
                 <h3 className="text-start p-4 text-lg font-bold">
                     Daily Missions
                 </h3>

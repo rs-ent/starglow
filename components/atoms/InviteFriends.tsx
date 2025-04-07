@@ -2,7 +2,7 @@ import { H3 } from "./Typography";
 
 export default function InviteFriends() {
     return (
-        <div className="relative flex w-full items-center justify-center px-4 max-w-[840px] min-w-[270px]">
+        <div className="relative flex w-full items-center justify-center px-4">
             <div className="relative w-full bg-gradient-to-br from-[#A5D7FB] to-[#8E76FA] rounded-2xl">
                 <H3 size={25} className="text-start p-4">
                     Invite Friends!
