@@ -9,6 +9,7 @@ import {
     useExchangeRateInfo,
     useCurrencyConverter,
 } from "@/app/hooks/usePaymentValidation";
+import { CardProvider } from "@/lib/types/payment";
 
 export interface PaymentProcessorProps {
     // Payment configuration
@@ -43,7 +44,10 @@ export default function PaymentProcessor({
     // Payment method state
     const [paymentMethod, setPaymentMethod] = useState<PayMethod>("CARD");
     const [easyPayProvider, setEasyPayProvider] =
-        useState<Entity.EasyPayProvider>("EASY_PAY_PROVIDER_TOSS_BRANDPAY");
+        useState<Entity.EasyPayProvider>("EASY_PAY_PROVIDER_TOSSPAY");
+    const [cardProvider, setCardProvider] = useState<CardProvider>(
+        CardProvider.DOMESTIC
+    );
     const [currency, setCurrency] = useState(initialCurrency);
 
     // Exchange rate information
@@ -83,6 +87,11 @@ export default function PaymentProcessor({
         if (method === "PAYPAL" && currency === "CURRENCY_KRW") {
             setCurrency("CURRENCY_USD");
         }
+
+        // If Easy Pay is selected, force KRW currency
+        if (method === "EASY_PAY" && currency === "CURRENCY_USD") {
+            setCurrency("CURRENCY_KRW");
+        }
     };
 
     // Handle currency change
@@ -94,7 +103,25 @@ export default function PaymentProcessor({
             return;
         }
 
+        // Prevent USD selection for Easy Pay
+        if (paymentMethod === "EASY_PAY" && newCurrency === "CURRENCY_USD") {
+            return;
+        }
+
         setCurrency(newCurrency);
+    };
+
+    // Handle card provider change
+    const handleCardProviderChange = (provider: CardProvider) => {
+        setCardProvider(provider);
+        // If international card is selected, allow USD
+        // If domestic card is selected, force KRW
+        if (
+            provider === "CARD_PROVIDER_DOMESTIC" &&
+            currency === "CURRENCY_USD"
+        ) {
+            setCurrency("CURRENCY_KRW");
+        }
     };
 
     // Get the current payment method
@@ -116,10 +143,12 @@ export default function PaymentProcessor({
             <PaymentMethodSelector
                 paymentMethod={paymentMethod}
                 easyPayProvider={easyPayProvider}
+                cardProvider={cardProvider}
                 amount={currentAmount}
                 currency={currency}
                 onPaymentMethodChange={handlePaymentMethodChange}
                 onEasyPayProviderChange={setEasyPayProvider}
+                onCardProviderChange={handleCardProviderChange}
                 onCurrencyChange={handleCurrencyChange}
                 exchangeRateDisplay={exchangeRateDisplay}
                 lastUpdated={lastUpdated}
@@ -134,6 +163,8 @@ export default function PaymentProcessor({
                 amount={currentAmount}
                 currency={currency}
                 method={getCurrentPaymentMethod()}
+                easyPayProvider={easyPayProvider}
+                cardProvider={cardProvider}
                 buttonText={buttonText}
                 onSuccess={onSuccess}
                 onError={onError}

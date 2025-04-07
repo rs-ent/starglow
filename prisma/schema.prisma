@@ -303,7 +303,9 @@ model PaymentLog {
   currency           String        @default("USD")
   convertedAmount    Float?
   exchangeRate       Float?
-  method             String        @default("PAYPAL")
+  method             String       @default("PAYPAL")
+  easyPayProvider    String?
+  cardProvider       String?
   status             PaymentStatus @default(INIT)
   paymentKey         String
   userId             String

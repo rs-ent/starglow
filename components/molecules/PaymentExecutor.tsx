@@ -2,28 +2,44 @@
 
 import { useState, useEffect } from "react";
 import Button from "../atoms/Button";
-import { CurrencyType, PaymentMethodType } from "@/lib/types/payment";
+import {
+    CurrencyType,
+    EasyPayProviderType,
+    PaymentMethodType,
+    CardProvider,
+} from "@/lib/types/payment";
 import { getSession } from "next-auth/react";
 import { useToast } from "@/app/hooks/useToast";
 import { useRouter } from "next/navigation";
 import PayPalButton from "../atoms/PayPalButton";
-import { useCurrencyConverter } from "@/app/hooks/usePaymentValidation";
+import {
+    usePayments,
+    useCurrencyConverter,
+} from "@/app/hooks/usePaymentValidation";
 
 // Map component types to payment validation types
 export type Currency = "CURRENCY_USD" | "CURRENCY_KRW";
 export type PayMethod = "PAYPAL" | "CARD" | "EASY_PAY";
+export type EasyPayProvider =
+    | "EASY_PAY_PROVIDER_KAKAOPAY"
+    | "EASY_PAY_PROVIDER_TOSSPAY";
 
 // Map for converting component types to PaymentMethodType
 const METHOD_MAP: Record<PayMethod, PaymentMethodType> = {
     PAYPAL: PaymentMethodType.PAYPAL,
     CARD: PaymentMethodType.CARD,
-    EASY_PAY: PaymentMethodType.TOSS_PAY, // Default to TOSS_PAY, will be updated based on provider selection
+    EASY_PAY: PaymentMethodType.EASY_PAY, // Default to TOSS_PAY, will be updated based on provider selection
 };
 
 // Map for converting component types to CurrencyType
 const CURRENCY_MAP: Record<Currency, CurrencyType> = {
     CURRENCY_USD: CurrencyType.USD,
     CURRENCY_KRW: CurrencyType.KRW,
+};
+
+const EASY_PAY_PROVIDER_MAP: Record<EasyPayProvider, EasyPayProviderType> = {
+    EASY_PAY_PROVIDER_KAKAOPAY: EasyPayProviderType.KAKAOPAY,
+    EASY_PAY_PROVIDER_TOSSPAY: EasyPayProviderType.TOSSPAY,
 };
 
 export interface PaymentExecutorProps {
@@ -34,6 +50,8 @@ export interface PaymentExecutorProps {
     amount: number;
     currency: Currency;
     method: PayMethod;
+    easyPayProvider?: string;
+    cardProvider?: CardProvider;
     buttonText?: string;
     onSuccess?: (response: any) => void;
     onError?: (error: any) => void;
@@ -64,6 +82,8 @@ export default function PaymentExecutor({
     amount,
     currency,
     method,
+    easyPayProvider,
+    cardProvider,
     buttonText = "Pay Now",
     onSuccess,
     onError,
@@ -72,6 +92,14 @@ export default function PaymentExecutor({
     const [isLoading, setIsLoading] = useState(false);
     const [sessionLoaded, setSessionLoaded] = useState(false);
     const [currentUserId, setCurrentUserId] = useState<string>(userId || "");
+
+    const {
+        initializePayment,
+        completePayment,
+        failedPayment,
+        isInitializing,
+        isProcessing,
+    } = usePayments();
     const toast = useToast();
     const router = useRouter();
 
@@ -107,6 +135,21 @@ export default function PaymentExecutor({
                 onError(new Error("PayPal only supports USD currency"));
         }
     }, [method, currency, onError]);
+
+    // Load PortOne SDK
+    useEffect(() => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.portone.io/v2/browser-sdk.js";
+        script.async = true;
+        script.onload = () => {
+            console.log("PortOne SDK loaded");
+        };
+        document.body.appendChild(script);
+
+        return () => {
+            document.body.removeChild(script);
+        };
+    }, []);
 
     // Load session and check user ID
     useEffect(() => {
@@ -162,8 +205,73 @@ export default function PaymentExecutor({
         setIsLoading(true);
         await checkUserAndProceed(async () => {
             try {
-                // Payment logic to be implemented
-                alert(`${method} payment is not implemented yet.`);
+                if (method === "EASY_PAY") {
+                    // Payment logic to be implemented
+                    if (easyPayProvider === "EASY_PAY_PROVIDER_TOSSPAY") {
+                        const initResponse = await initializePayment({
+                            sessionHash: "session-hash",
+                            userId: currentUserId,
+                            table,
+                            target,
+                            quantity,
+                            currency: CURRENCY_MAP[currency],
+                            method: METHOD_MAP[method],
+                            easyPayProvider:
+                                EASY_PAY_PROVIDER_MAP[
+                                    easyPayProvider as EasyPayProvider
+                                ],
+                        });
+
+                        console.log(initResponse);
+
+                        const response = await PortOne.requestPayment({
+                            storeId: initResponse.paymentConfig.storeId,
+                            channelKey: initResponse.paymentConfig.channelKey,
+                            paymentId: initResponse.paymentId,
+                            orderName: initResponse.orderName,
+                            totalAmount: initResponse.totalAmount,
+                            currency: "KRW",
+                            payMethod: "EASY_PAY",
+                        });
+
+                        console.log(response);
+                    } else {
+                        alert(
+                            `${easyPayProvider} payment is not implemented yet.`
+                        );
+                    }
+                } else if (method === "CARD") {
+                    const initResponse = await initializePayment({
+                        sessionHash: "session-hash",
+                        userId: currentUserId,
+                        table,
+                        target,
+                        quantity,
+                        currency: CURRENCY_MAP[currency],
+                        method: METHOD_MAP[method],
+                        cardProvider: cardProvider,
+                    });
+
+                    if (cardProvider === CardProvider.DOMESTIC) {
+                        
+                    }
+
+                    const response = await PortOne.requestPayment({
+                        storeId: initResponse.paymentConfig.storeId,
+                        channelKey: initResponse.paymentConfig.channelKey,
+                        paymentId: initResponse.paymentId,
+                        orderName: initResponse.orderName,
+                        totalAmount: initResponse.totalAmount,
+                        currency: initResponse.currency,
+                        payMethod: "CARD",
+                        cardProvider: cardProvider,
+                    });
+
+                    console.log(response);
+                } else {
+                    // Payment logic to be implemented
+                    alert(`${method} payment is not implemented yet.`);
+                }
             } catch (error) {
                 console.error("Payment initialization failed:", error);
                 if (onError) onError(error);

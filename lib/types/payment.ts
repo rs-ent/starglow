@@ -1,8 +1,17 @@
 export enum PaymentMethodType {
     PAYPAL = "PAYPAL",
     CARD = "CARD",
-    KAKAO_PAY = "KAKAO_PAY",
-    TOSS_PAY = "TOSS_PAY",
+    EASY_PAY = "EASY_PAY",
+}
+
+export enum EasyPayProviderType {
+    KAKAOPAY = "EASY_PAY_PROVIDER_KAKAOPAY",
+    TOSSPAY = "EASY_PAY_PROVIDER_TOSSPAY",
+}
+
+export enum CardProvider {
+    DOMESTIC = "CARD_PROVIDER_DOMESTIC",
+    INTERNATIONAL = "CARD_PROVIDER_INTERNATIONAL",
 }
 
 export enum CurrencyType {
@@ -28,6 +37,8 @@ interface BasePaymentRequest {
     quantity: number;
     currency: CurrencyType;
     method: PaymentMethodType;
+    easyPayProvider?: EasyPayProviderType;
+    cardProvider?: CardProvider;
 }
 
 export type PaymentInitRequest = BasePaymentRequest & {
@@ -58,6 +69,8 @@ export type PaymentInitResponse = {
     orderName: string;
     orderId: string;
     method: PaymentMethodType;
+    easyPayProvider: EasyPayProviderType;
+    cardProvider: CardProvider;
     currency: CurrencyType;
     paymentConfig: {
         storeId: string;

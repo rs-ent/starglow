@@ -14,7 +14,9 @@ import {
     PaymentVerifyRequest,
     PaymentInitResponse,
     PaymentMethodType,
+    EasyPayProviderType,
     CurrencyType,
+    CardProvider,
 } from "@/lib/types/payment";
 
 const EXCHANGE_RATE_UPDATE_INTERVAL = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
@@ -204,6 +206,8 @@ export async function initPaymentValidation(
             quantity,
             currency,
             method,
+            easyPayProvider,
+            cardProvider,
         } = request;
 
         // 입력값 검증
@@ -235,13 +239,28 @@ export async function initPaymentValidation(
                 channelKey = process.env.PORTONE_PAYPAL || "";
                 break;
             case PaymentMethodType.CARD:
-                channelKey = process.env.PORTONE_CARD || "";
+                if (cardProvider === CardProvider.DOMESTIC) {
+                    channelKey = process.env.PORTONE_CARD || "";
+                } else if (cardProvider === CardProvider.INTERNATIONAL) {
+                    channelKey = process.env.PORTONE_INTERCARD || "";
+                } else {
+                    throw new PaymentError(
+                        "Invalid card provider",
+                        "INVALID_METHOD"
+                    );
+                }
                 break;
-            case PaymentMethodType.KAKAO_PAY:
-                channelKey = process.env.PORTONE_KAKAO || "";
-                break;
-            case PaymentMethodType.TOSS_PAY:
-                channelKey = process.env.PORTONE_TOSS || "";
+            case PaymentMethodType.EASY_PAY:
+                if (easyPayProvider === EasyPayProviderType.KAKAOPAY) {
+                    channelKey = process.env.PORTONE_KAKAO || "";
+                } else if (easyPayProvider === EasyPayProviderType.TOSSPAY) {
+                    channelKey = process.env.PORTONE_TOSS || "";
+                } else {
+                    throw new PaymentError(
+                        `Unsupported easy pay provider: ${easyPayProvider}`,
+                        "INVALID_METHOD"
+                    );
+                }
                 break;
             default:
                 throw new PaymentError(
@@ -314,6 +333,8 @@ export async function initPaymentValidation(
                     exchangeRate: exchangeRate,
                     currency: currency as string,
                     method: method as string,
+                    easyPayProvider: easyPayProvider as string,
+                    cardProvider: cardProvider as string,
                     status: PaymentStatus.INIT,
                     attemptCount: 0,
                 },
@@ -330,6 +351,8 @@ export async function initPaymentValidation(
                 orderName,
                 orderId,
                 method: method as PaymentMethodType,
+                easyPayProvider: easyPayProvider as EasyPayProviderType,
+                cardProvider: cardProvider as CardProvider,
                 currency: currency as CurrencyType,
                 paymentConfig: {
                     storeId,

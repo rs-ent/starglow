@@ -1,17 +1,20 @@
 "use client";
 
-import { CreditCardIcon, Smartphone, Wallet, DollarSign } from "lucide-react";
+import { CreditCardIcon, Smartphone, Wallet } from "lucide-react";
 import { Entity } from "@portone/browser-sdk/v2";
 import { PayMethod } from "./PaymentExecutor";
 import Button from "../atoms/Button";
+import { CardProvider } from "@/lib/types/payment";
 
 interface PaymentMethodSelectorProps {
     paymentMethod: PayMethod;
     easyPayProvider: Entity.EasyPayProvider;
+    cardProvider: CardProvider;
     amount: number;
     currency: "CURRENCY_USD" | "CURRENCY_KRW";
     onPaymentMethodChange: (method: PayMethod) => void;
     onEasyPayProviderChange: (provider: Entity.EasyPayProvider) => void;
+    onCardProviderChange: (provider: CardProvider) => void;
     onCurrencyChange: (currency: "CURRENCY_USD" | "CURRENCY_KRW") => void;
     exchangeRateDisplay: string;
     lastUpdated: string;
@@ -20,10 +23,12 @@ interface PaymentMethodSelectorProps {
 export default function PaymentMethodSelector({
     paymentMethod,
     easyPayProvider,
+    cardProvider,
     amount,
     currency,
     onPaymentMethodChange,
     onEasyPayProviderChange,
+    onCardProviderChange,
     onCurrencyChange,
     exchangeRateDisplay,
     lastUpdated,
@@ -38,14 +43,26 @@ export default function PaymentMethodSelector({
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <button
                         onClick={() => onCurrencyChange("CURRENCY_USD")}
-                        className={`flex items-center justify-center p-2 sm:p-3 rounded-lg border text-sm md:text-base ${
-                            currency === "CURRENCY_USD"
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border/50 text-foreground/70"
-                        }`}
+                        disabled={paymentMethod === "EASY_PAY"}
+                        className={`flex items-center justify-center p-2 sm:p-3 rounded-lg border text-sm md:text-base 
+                            ${
+                                currency === "CURRENCY_USD" &&
+                                paymentMethod !== "EASY_PAY"
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-border/50"
+                            } 
+                            ${
+                                paymentMethod === "EASY_PAY"
+                                    ? "opacity-50 cursor-not-allowed text-foreground/40"
+                                    : "text-foreground/70"
+                            }`}
+                        title={
+                            paymentMethod === "EASY_PAY"
+                                ? "Only supports KRW"
+                                : undefined
+                        }
                     >
-                        <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-                        <span>USD</span>
+                        <span>＄ USD</span>
                     </button>
                     <button
                         onClick={() => onCurrencyChange("CURRENCY_KRW")}
@@ -68,7 +85,7 @@ export default function PaymentMethodSelector({
                                 : undefined
                         }
                     >
-                        <span>KRW</span>
+                        <span>￦ KRW</span>
                     </button>
                 </div>
                 <div className="mt-2 text-xs text-center">
@@ -84,6 +101,11 @@ export default function PaymentMethodSelector({
                     {paymentMethod === "PAYPAL" && (
                         <div className="mt-1 text-yellow-500">
                             Note: PayPal only supports USD currency
+                        </div>
+                    )}
+                    {paymentMethod === "EASY_PAY" && (
+                        <div className="mt-1 text-yellow-500">
+                            Note: Easy Pay only supports KRW currency
                         </div>
                     )}
                 </div>
@@ -131,6 +153,61 @@ export default function PaymentMethodSelector({
                 </div>
             </div>
 
+            {/* Card Provider selector */}
+            {paymentMethod === "CARD" && (
+                <div>
+                    <label className="block text-xs md:text-sm font-accent uppercase tracking-wider text-foreground/80 mb-2">
+                        Card Type
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                        <Button
+                            onClick={() =>
+                                onCardProviderChange(CardProvider.DOMESTIC)
+                            }
+                            variant={
+                                cardProvider === CardProvider.DOMESTIC
+                                    ? "default"
+                                    : "outline"
+                            }
+                            img="/icons/flags/korea.svg"
+                            frameSize={20}
+                            textSize={5}
+                            gapSize={5}
+                            paddingSize={5}
+                            className="w-full h-12 font-accent"
+                        >
+                            Korean Card
+                        </Button>
+                        <Button
+                            onClick={() =>
+                                onCardProviderChange(CardProvider.INTERNATIONAL)
+                            }
+                            variant={
+                                cardProvider === CardProvider.INTERNATIONAL
+                                    ? "default"
+                                    : "outline"
+                            }
+                            img="/icons/flags/world.svg"
+                            frameSize={20}
+                            textSize={5}
+                            gapSize={5}
+                            paddingSize={5}
+                            className="w-full h-12 font-accent"
+                        >
+                            International
+                        </Button>
+                    </div>
+                    <div className="mt-2 text-xs text-center">
+                        {cardProvider === CardProvider.DOMESTIC &&
+                            currency === "CURRENCY_USD" && (
+                                <div className="mt-1 text-yellow-500">
+                                    Note: Korean cards only support KRW currency
+                                </div>
+                            )}
+                    </div>
+                </div>
+            )}
+
             {/* Easy Pay Provider selector */}
             {paymentMethod === "EASY_PAY" && (
                 <div>
@@ -141,12 +218,11 @@ export default function PaymentMethodSelector({
                         <Button
                             onClick={() =>
                                 onEasyPayProviderChange(
-                                    "EASY_PAY_PROVIDER_TOSS_BRANDPAY"
+                                    "EASY_PAY_PROVIDER_TOSSPAY"
                                 )
                             }
                             variant={
-                                easyPayProvider ===
-                                "EASY_PAY_PROVIDER_TOSS_BRANDPAY"
+                                easyPayProvider === "EASY_PAY_PROVIDER_TOSSPAY"
                                     ? "default"
                                     : "outline"
                             }

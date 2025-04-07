@@ -47,8 +47,6 @@ export interface RequestPaymentResponse {
 // Declare PortOne namespace for global use
 declare global {
     namespace PortOne {
-        function requestPayment(
-            params: RequestPaymentParams
-        ): Promise<RequestPaymentResponse>;
+        function requestPayment(params: any): Promise<any>;
     }
 }
