@@ -14,6 +14,6 @@ const outputDir = path.join(projectRoot, "wiki", "template-analysis");
 console.log("템플릿 컴포넌트 분석 시작...");
 console.log(`템플릿 디렉토리: ${templatesDir}`);
 console.log(`출력 디렉토리: ${outputDir}`);
-analyzeAllTemplates(templatesDir, outputDir);
+analyzeAllTemplates(templatesDir, outputDir, projectRoot);
 console.log("템플릿 컴포넌트 분석 완료!");
 console.log(`분석 결과: ${outputDir}`);

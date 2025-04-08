@@ -6,23 +6,299 @@ import * as t from "@babel/types";
 import { generateMermaidDiagram } from "./generateMermaidDiagram";
 import { ComponentInfo, TemplateAnalysis } from "./types";
 
+// 분석한 컴포넌트 캐시 - 중복 분석 방지
+const analyzedComponents: Map<string, ComponentInfo> = new Map();
+
 /**
  * 컴포넌트 유형 결정하기
  */
 function determineComponentType(
-    importPath: string
+    componentPath: string
 ): "atom" | "molecule" | "organism" | "template" | "unknown" {
-    if (importPath.includes("/atoms/")) return "atom";
-    if (importPath.includes("/molecules/")) return "molecule";
-    if (importPath.includes("/organisms/")) return "organism";
-    if (importPath.includes("/templates/")) return "template";
+    // 파일 경로에서 유형 결정
+    if (
+        componentPath.includes("/atoms/") ||
+        componentPath.includes("\\atoms\\")
+    )
+        return "atom";
+    if (
+        componentPath.includes("/molecules/") ||
+        componentPath.includes("\\molecules\\")
+    )
+        return "molecule";
+    if (
+        componentPath.includes("/organisms/") ||
+        componentPath.includes("\\organisms\\")
+    )
+        return "organism";
+    if (
+        componentPath.includes("/templates/") ||
+        componentPath.includes("\\templates\\")
+    )
+        return "template";
+
+    // 파일 이름에서 유형 추론 시도
+    const fileName = path.basename(componentPath);
+
+    if (fileName.includes(".atom.") || fileName.startsWith("atom."))
+        return "atom";
+    if (fileName.includes(".molecule.") || fileName.startsWith("molecule."))
+        return "molecule";
+    if (fileName.includes(".organism.") || fileName.startsWith("organism."))
+        return "organism";
+    if (fileName.includes(".template.") || fileName.startsWith("template."))
+        return "template";
+
+    // 템플릿 폴더의 기본 파일인 경우
+    if (path.dirname(componentPath).endsWith("templates")) {
+        return "template";
+    }
+
     return "unknown";
+}
+
+/**
+ * 임포트 경로를 기반으로 파일 경로 찾기
+ */
+function resolveComponentPath(
+    importPath: string,
+    baseDir: string,
+    projectRoot: string
+): string | null {
+    try {
+        // @/components/ 형식의 경로 처리
+        if (importPath.startsWith("@/components/")) {
+            const relativePath = importPath.replace("@/components/", "");
+            return (
+                path.join(projectRoot, "components", relativePath) +
+                (relativePath.endsWith(".tsx") ? "" : ".tsx")
+            );
+        }
+
+        // ../atoms/, ../molecules/, ../organisms/ 등의 상대 경로 처리
+        if (
+            importPath.startsWith("../atoms/") ||
+            importPath.startsWith("../molecules/") ||
+            importPath.startsWith("../organisms/") ||
+            importPath.startsWith("../templates/")
+        ) {
+            // 기본 디렉토리에서 상대 경로 해결
+            const resolvedPath =
+                path.join(path.dirname(baseDir), importPath.slice(3)) +
+                (importPath.endsWith(".tsx") ? "" : ".tsx");
+
+            // 파일 존재 여부 확인
+            if (fs.existsSync(resolvedPath)) {
+                return resolvedPath;
+            }
+        }
+
+        console.log(`경로 해결 실패: ${importPath} (baseDir: ${baseDir})`);
+        return null;
+    } catch (error) {
+        console.error(`경로 해결 오류: ${importPath}`, error);
+        return null;
+    }
+}
+
+/**
+ * 컴포넌트 파일 분석하여 하위 컴포넌트 찾기
+ */
+function analyzeComponentFile(
+    componentPath: string,
+    projectRoot: string,
+    depth: number = 0,
+    maxDepth: number = 3
+): ComponentInfo | null {
+    // 최대 깊이 제한 (무한 루프 방지)
+    if (depth > maxDepth) return null;
+
+    // 이미 분석한 컴포넌트 재사용
+    const cacheKey = componentPath;
+    if (analyzedComponents.has(cacheKey)) {
+        return analyzedComponents.get(cacheKey)!;
+    }
+
+    // 파일 존재 확인
+    if (!fs.existsSync(componentPath)) {
+        console.log(`파일이 존재하지 않음: ${componentPath}`);
+        return null;
+    }
+
+    // 파일 내용 읽기
+    const content = fs.readFileSync(componentPath, "utf-8");
+    const componentName = path.basename(
+        componentPath,
+        path.extname(componentPath)
+    );
+
+    // 컴포넌트 타입 결정
+    const componentType = determineComponentType(componentPath);
+
+    // 빈 컴포넌트 정보 생성
+    const componentInfo: ComponentInfo = {
+        name: componentName,
+        type: componentType,
+        path: componentPath,
+        children: [],
+    };
+
+    // 캐시에 먼저 추가 (순환 참조 방지)
+    analyzedComponents.set(cacheKey, componentInfo);
+
+    try {
+        // AST 파싱
+        const ast = parse(content, {
+            sourceType: "module",
+            plugins: ["jsx", "typescript"],
+        });
+
+        // JSX 내에서 사용된 컴포넌트 추적
+        const usedComponents = new Set<string>();
+
+        // 하위 컴포넌트 임포트 처리 및 컴포넌트 정보 저장
+        const importedComponents = new Map<
+            string,
+            { path: string; name: string }
+        >();
+
+        // 하위 컴포넌트 임포트 찾기
+        traverse(ast, {
+            ImportDeclaration(nodePath) {
+                const importPath = nodePath.node.source.value;
+
+                // 컴포넌트 관련 경로만 처리
+                if (
+                    importPath.includes("@/components/") ||
+                    importPath.startsWith("../atoms/") ||
+                    importPath.startsWith("../molecules/") ||
+                    importPath.startsWith("../organisms/") ||
+                    importPath.startsWith("../templates/")
+                ) {
+                    nodePath.node.specifiers.forEach((specifier) => {
+                        if (
+                            t.isImportDefaultSpecifier(specifier) ||
+                            t.isImportSpecifier(specifier)
+                        ) {
+                            let childComponentName = "";
+
+                            if (t.isImportDefaultSpecifier(specifier)) {
+                                childComponentName = specifier.local.name;
+                            } else if (t.isImportSpecifier(specifier)) {
+                                if (specifier.imported) {
+                                    if (t.isIdentifier(specifier.imported)) {
+                                        childComponentName =
+                                            specifier.imported.name;
+                                    } else if (
+                                        t.isStringLiteral(specifier.imported)
+                                    ) {
+                                        childComponentName =
+                                            specifier.imported.value;
+                                    }
+                                } else {
+                                    childComponentName = specifier.local.name;
+                                }
+                            }
+
+                            // 로컬 변수명 (코드에서 사용되는 이름)
+                            const localName = specifier.local.name;
+
+                            // 임포트된 컴포넌트 정보 저장
+                            importedComponents.set(localName, {
+                                path: importPath,
+                                name: childComponentName,
+                            });
+                        }
+                    });
+                }
+            },
+
+            // JSX 요소 분석
+            JSXElement(nodePath) {
+                const jsxElement = nodePath.node;
+                const openingElement = jsxElement.openingElement;
+
+                if (t.isJSXIdentifier(openingElement.name)) {
+                    const elementName = openingElement.name.name;
+
+                    // 대문자로 시작하는 요소만 컴포넌트로 간주
+                    if (
+                        elementName[0] === elementName[0].toUpperCase() &&
+                        ![
+                            "div",
+                            "span",
+                            "p",
+                            "h1",
+                            "h2",
+                            "h3",
+                            "h4",
+                            "h5",
+                            "h6",
+                            "img",
+                            "a",
+                            "button",
+                            "input",
+                            "form",
+                            "nav",
+                            "header",
+                            "footer",
+                            "main",
+                            "section",
+                            "article",
+                        ].includes(elementName)
+                    ) {
+                        usedComponents.add(elementName);
+                    }
+                }
+            },
+        });
+
+        // 실제 사용된 하위 컴포넌트만 분석
+        for (const usedComp of usedComponents) {
+            if (importedComponents.has(usedComp)) {
+                const { path: importPath } = importedComponents.get(usedComp)!;
+
+                // 하위 컴포넌트 파일 경로 해결
+                const childComponentPath = resolveComponentPath(
+                    importPath,
+                    componentPath,
+                    projectRoot
+                );
+
+                if (childComponentPath) {
+                    // 하위 컴포넌트 재귀적으로 분석
+                    const childComponentInfo = analyzeComponentFile(
+                        childComponentPath,
+                        projectRoot,
+                        depth + 1,
+                        maxDepth
+                    );
+
+                    // 하위 컴포넌트 추가
+                    if (childComponentInfo) {
+                        componentInfo.children.push(childComponentInfo);
+                    }
+                }
+            }
+        }
+
+        return componentInfo;
+    } catch (error) {
+        console.error(`컴포넌트 분석 실패: ${componentPath}`, error);
+        return componentInfo; // 오류가 있어도 부분적 정보 반환
+    }
 }
 
 /**
  * 템플릿 컴포넌트 분석
  */
-export function analyzeTemplate(templatePath: string): TemplateAnalysis {
+export function analyzeTemplate(
+    templatePath: string,
+    projectRoot: string
+): TemplateAnalysis {
+    // 분석 캐시 초기화
+    analyzedComponents.clear();
+
     // 파일 존재 여부 확인
     if (!fs.existsSync(templatePath)) {
         throw new Error(`File not found: ${templatePath}`);
@@ -45,7 +321,16 @@ export function analyzeTemplate(templatePath: string): TemplateAnalysis {
         states: [],
         jsx: [],
         mermaidDiagram: "",
+        componentTree: null, // 전체 컴포넌트 트리
     };
+
+    // 템플릿 자체를 루트 컴포넌트로 분석
+    analysis.componentTree = analyzeComponentFile(
+        templatePath,
+        projectRoot,
+        0,
+        5
+    );
 
     // AST 순회하며 분석
     traverse(ast, {
@@ -252,6 +537,10 @@ ${
 \`\`\`
 ${analysis.imports.join("\n")}
 \`\`\`
+
+## 전체 컴포넌트 트리
+
+${generateComponentTreeMarkdown(analysis.componentTree)}
 `;
 
     // 파일 쓰기
@@ -259,11 +548,33 @@ ${analysis.imports.join("\n")}
 }
 
 /**
+ * 컴포넌트 트리를 마크다운으로 변환
+ */
+function generateComponentTreeMarkdown(
+    componentTree: ComponentInfo | null,
+    depth: number = 0
+): string {
+    if (!componentTree) return "컴포넌트 트리를 생성할 수 없습니다.";
+
+    const indent = "  ".repeat(depth);
+    let markdown = `${indent}- **${componentTree.name}** (${componentTree.type})\n`;
+
+    if (componentTree.children && componentTree.children.length > 0) {
+        for (const child of componentTree.children) {
+            markdown += generateComponentTreeMarkdown(child, depth + 1);
+        }
+    }
+
+    return markdown;
+}
+
+/**
  * 모든 템플릿 분석하기
  */
 export function analyzeAllTemplates(
     templatesDir: string,
-    outputDir: string
+    outputDir: string,
+    projectRoot: string
 ): void {
     // 디렉토리 존재 여부 확인
     if (!fs.existsSync(templatesDir)) {
@@ -287,7 +598,7 @@ export function analyzeAllTemplates(
         const outputPath = path.join(outputDir, `${templateName}.md`);
 
         try {
-            const analysis = analyzeTemplate(templatePath);
+            const analysis = analyzeTemplate(templatePath, projectRoot);
             exportTemplateAnalysisToMarkdown(analysis, outputPath);
             console.log(`분석 완료: ${templateName} -> ${outputPath}`);
         } catch (error) {

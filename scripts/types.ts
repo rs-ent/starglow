@@ -19,4 +19,5 @@ export interface TemplateAnalysis {
     states: { name: string; initialValue: string }[];
     jsx: string[];
     mermaidDiagram: string;
+    componentTree: ComponentInfo | null;
 }

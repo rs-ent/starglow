@@ -18,6 +18,14 @@ This project uses GitHub Actions for continuous integration and deployment:
    - Updates on schema changes
    - Available at GitHub Pages: [Schema Visualization](https://your-organization.github.io/starglow/)
 
+### Development Tools
+
+1. **Template Analysis Tool** - Analyzes component structures and visualizes relationships
+   - Identifies component hierarchy based on Atomic Design principles
+   - Generates documentation with component diagrams
+   - Located in `/scripts` directory with results in `/wiki/template-analysis`
+   - Run with `cd scripts && npx ts-node --project tsconfig.json analyzeTemplates.ts`
+
 ### GitHub Wiki
 
 We maintain comprehensive documentation in our [GitHub Wiki](https://github.com/your-organization/starglow/wiki):
@@ -26,6 +34,7 @@ We maintain comprehensive documentation in our [GitHub Wiki](https://github.com/
 - Project structure documentation
 - Tech stack details
 - Contribution guidelines
+- [Template Analysis Results](/wiki/template-analysis/README.md)
 
 Please refer to the Wiki for detailed information about the project.
 
