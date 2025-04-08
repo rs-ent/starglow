@@ -8,6 +8,8 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma/client";
 import { env } from "@/lib/config/env";
 import type { NextAuthConfig } from "next-auth";
+import { setPlayer } from "../actions/player";
+import { createPolygonWallet } from "../actions/defaultWallets";
 
 const isProd = process.env.NODE_ENV === "production";
 const isVercelPreview = process.env.VERCEL_ENV === "preview";
@@ -88,6 +90,35 @@ const authOptions: NextAuthConfig = {
             if (url.startsWith("/")) return `${baseUrl}${url}`;
             else if (new URL(url).origin === baseUrl) return url;
             return baseUrl;
+        },
+    },
+    events: {
+        async signIn({ user }) {
+            try {
+                if (user.id) {
+                    const player = await setPlayer(user.id);
+                    console.log(
+                        `Player created/found for user ${user.id}:`,
+                        player.id
+                    );
+
+                    const walletResult = await createPolygonWallet(user.id);
+                    console.log("Wallet result:", walletResult);
+                    if (walletResult.success) {
+                        console.log(
+                            `Wallet created for user ${user.id}:`,
+                            walletResult.address
+                        );
+                    } else {
+                        console.error(
+                            `Failed to create wallet for user ${user.id}:`,
+                            walletResult.message
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error("Error in signIn event:", error);
+            }
         },
     },
     pages: {

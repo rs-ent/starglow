@@ -36,4 +36,11 @@ export const queryKeys = {
         info: ["exchangeRate", "info"] as const,
         convert: ["exchangeRate", "convert"] as const,
     },
+    defaultWallets: {
+        all: ["defaultWallets"] as const,
+        polygon: ["defaultWallets", "polygon"] as const,
+        byId: (address: string) => ["defaultWallets", address] as const,
+        byNetwork: (network: string) =>
+            ["defaultWallets", "network", network] as const,
+    },
 };

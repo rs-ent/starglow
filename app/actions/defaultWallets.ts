@@ -1,4 +1,5 @@
-// app/actions/polygonWallets.ts
+/// app/actions/defaultWallets.ts
+/// POLYGON NETWORK WALLET
 
 "use server";
 
@@ -9,15 +10,8 @@ import * as crypto from "crypto";
 import { put, getDownloadUrl } from "@vercel/blob";
 import { encrypt, decrypt } from "@/lib/utils/encryption";
 
-export async function createPolygonWallet() {
+export async function createPolygonWallet(userId: string) {
     try {
-        const session = await auth();
-        if (!session?.user) {
-            throw new Error("Unauthorized");
-        }
-
-        const userId = session.user.id;
-
         const existingWallet = await prisma.wallet.findFirst({
             where: { userId, network: "polygon" },
         });
@@ -37,7 +31,7 @@ export async function createPolygonWallet() {
 
         const newWallet = await prisma.wallet.create({
             data: {
-                userId: session.user.id,
+                userId: userId,
                 address: wallet.address,
                 privateKey: ecryptedParts.dbPart,
                 keyHash: ecryptedParts.keyHash,
