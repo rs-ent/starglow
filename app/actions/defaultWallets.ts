@@ -23,10 +23,11 @@ export async function createPolygonWallet(userId: string) {
         const wallet = ethers.Wallet.createRandom();
         const ecryptedParts = encryptPrivateKey(wallet.privateKey);
 
-        const blobPath = `keys/${userId}/${wallet.address}/${ecryptedParts.keyHash}.key`;
-        await put(blobPath, ecryptedParts.blobPart, {
+        const blobPath = `${ecryptedParts.keyHash}.key`;
+        const blobUrl = await put(blobPath, ecryptedParts.blobPart, {
             access: "public",
             addRandomSuffix: false,
+            token: process.env.BLOB_PK_READ_WRITE_TOKEN,
         });
 
         const newWallet = await prisma.wallet.create({
@@ -68,9 +69,14 @@ export async function getPrivateKey(address: string) {
             throw new Error("Unauthorized");
         }
 
-        const userId = session.user.id;
         const wallet = await prisma.wallet.findFirst({
-            where: { userId, address, network: "polygon" },
+            where: { address, network: "polygon" },
+            select: {
+                userId: true,
+                privateKey: true,
+                keyHash: true,
+                nonce: true,
+            },
         });
 
         if (!wallet) {
@@ -81,9 +87,9 @@ export async function getPrivateKey(address: string) {
             throw new Error("This wallet is not created by Starglow");
         }
 
-        const blobPath = `keys/${userId}/${address}/${wallet.keyHash}.key`;
-        const url = await getDownloadUrl(blobPath);
-        const response = await fetch(url);
+        const baseUrl = process.env.BLOB_PK_URL;
+        const blobPath = `${baseUrl}/${wallet.keyHash}.key`;
+        const response = await fetch(blobPath);
         const encryptedPart2 = await response.text();
 
         const verifyHash = crypto

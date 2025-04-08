@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../queryKeys";
 import { prisma } from "@/lib/prisma/client";
 import { auth } from "../auth/authSettings";
-import { Wallet } from "@prisma/client";
 
 export async function getUserPolygonWallet(): Promise<string | null> {
     const session = await auth();
