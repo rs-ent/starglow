@@ -4,22 +4,22 @@
 
 ```mermaid
 graph TD
-    T["User.tsx (Template)"]
-    O1["UserHeader (Organism)"]
-    O2["UserSidebar (Organism)"]
-    O3["UserContent (Organism)"]
-    A1["Hamburger (Atom)"]
+    C1["User (template)"]
+    C2["Hamburger (atom)"]
+    C3["UserHeader (organism)"]
+    C4["UserSidebar (organism)"]
+    C5["UserContent (organism)"]
 
-    T --> O1
-    T --> O2
-    T --> O3
-    O1 --> A1
+    C1 --> C2
+    C1 --> C3
+    C1 --> C4
+    C1 --> C5
 
-    style T fill:#7ec5da,stroke:#2a6079
-    style O1 fill:#a1d6e6,stroke:#3c7d9b
-    style O2 fill:#a1d6e6,stroke:#3c7d9b
-    style O3 fill:#a1d6e6,stroke:#3c7d9b
-    style A1 fill:#e8f4f8,stroke:#79c0d2
+    style C1 fill:#7ec5da,stroke:#2a6079
+    style C2 fill:#e8f4f8,stroke:#79c0d2
+    style C3 fill:#a1d6e6,stroke:#3c7d9b
+    style C4 fill:#a1d6e6,stroke:#3c7d9b
+    style C5 fill:#a1d6e6,stroke:#3c7d9b
 ```
 
 ## 사용된 컴포넌트
@@ -52,3 +52,12 @@ react
 framer-motion
 @/app/hooks/useToast
 ```
+
+## 전체 컴포넌트 트리
+
+- **User** (template)
+  - **Hamburger** (atom)
+  - **UserHeader** (organism)
+  - **UserSidebar** (organism)
+  - **UserContent** (organism)
+

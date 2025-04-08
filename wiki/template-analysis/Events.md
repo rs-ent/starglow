@@ -4,10 +4,10 @@
 
 ```mermaid
 graph TD
-    T["Events.tsx (Template)"]
+    C1["Events (template)"]
 
 
-    style T fill:#7ec5da,stroke:#2a6079
+    style C1 fill:#7ec5da,stroke:#2a6079
 ```
 
 ## 사용된 컴포넌트
@@ -41,3 +41,8 @@ next/link
 ../organisms/NavBar
 ../atoms/PartialLoading
 ```
+
+## 전체 컴포넌트 트리
+
+- **Events** (template)
+

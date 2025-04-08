@@ -4,22 +4,22 @@
 
 ```mermaid
 graph TD
-    T["Main.tsx (Template)"]
-    O1["NavBar (Organism)"]
-    O2["HeroGitbook (Organism)"]
-    O3["HeroFollowUs (Organism)"]
-    O4["Footer (Organism)"]
+    C1["Main (template)"]
+    C2["NavBar (organism)"]
+    C3["Hero.Gitbook (organism)"]
+    C4["Hero.FollowUs (organism)"]
+    C5["Footer (organism)"]
 
-    T --> O1
-    T --> O2
-    T --> O3
-    T --> O4
+    C1 --> C2
+    C1 --> C3
+    C1 --> C4
+    C1 --> C5
 
-    style T fill:#7ec5da,stroke:#2a6079
-    style O1 fill:#a1d6e6,stroke:#3c7d9b
-    style O2 fill:#a1d6e6,stroke:#3c7d9b
-    style O3 fill:#a1d6e6,stroke:#3c7d9b
-    style O4 fill:#a1d6e6,stroke:#3c7d9b
+    style C1 fill:#7ec5da,stroke:#2a6079
+    style C2 fill:#a1d6e6,stroke:#3c7d9b
+    style C3 fill:#a1d6e6,stroke:#3c7d9b
+    style C4 fill:#a1d6e6,stroke:#3c7d9b
+    style C5 fill:#a1d6e6,stroke:#3c7d9b
 ```
 
 ## 사용된 컴포넌트
@@ -46,3 +46,12 @@ graph TD
 @/components/organisms/Footer
 next/image
 ```
+
+## 전체 컴포넌트 트리
+
+- **Main** (template)
+  - **NavBar** (organism)
+  - **Hero.Gitbook** (organism)
+  - **Hero.FollowUs** (organism)
+  - **Footer** (organism)
+
