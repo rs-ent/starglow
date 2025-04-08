@@ -37,11 +37,9 @@ jobs:
           npx prisma generate
           npx prisma db pull
           npx prisma-dbml-generator
-          mkdir -p docs
-          cp prisma/schema.dbml docs/
-
-          # DBML을 SVG로 변환
-          npx dbml2svg docs/schema.dbml -o docs/schema.svg
+          mkdir -p public
+          cp prisma/schema.dbml public/
+          npx dbml2svg public/schema.dbml -o public/schema.svg
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -49,7 +47,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "docs"
+          path: "public"
 
       - name: Deploy to GitHub Pages
         id: deployment
