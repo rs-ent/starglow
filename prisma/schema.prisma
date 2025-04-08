@@ -68,12 +68,20 @@ model Wallet {
   id         String   @id @default(cuid())
   userId     String
   address    String   @unique
-  privateKey String?
+  privateKey String?  @db.Text
+  keyHash    String?
+  nonce      String?
   network    String
-  createdAt  DateTime @default(now())
   default    Boolean  @default(false)
   primary    Int?     @default(0)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  nickname       String?
+  status         WalletStatus @default(ACTIVE)
+  
+  createdAt      DateTime @default(now())
+  lastAccessedAt DateTime @updatedAt
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, network, default])
   @@index([address, network])
@@ -371,3 +379,11 @@ enum PaymentStatus {
   FAILED
   REFUNDED
 }
+
+enum WalletStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+

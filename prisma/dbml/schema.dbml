@@ -1,0 +1,356 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table User {
+  id String [pk]
+  name String
+  email String [unique]
+  emailVerified DateTime
+  image String
+  role String [not null, default: 'user']
+  active Boolean [not null, default: true]
+  createdAt DateTime [default: `now()`, not null]
+  lastLoginAt DateTime
+  accounts Account [not null]
+  loginAttempts LoginAttemptLog [not null]
+  paymentLogs PaymentLog [not null]
+  player Player
+  sessions Session [not null]
+  wallets Wallet [not null]
+}
+
+Table Account {
+  id String [pk]
+  userId String [not null]
+  type String [not null]
+  provider String [not null]
+  providerAccountId String [not null]
+  refresh_token String
+  access_token String
+  expires_at Int
+  token_type String
+  scope String
+  id_token String
+  session_state String
+  user User [not null]
+
+  indexes {
+    (provider, providerAccountId) [unique]
+  }
+}
+
+Table Session {
+  id String [pk]
+  sessionToken String [unique, not null]
+  userId String [not null]
+  expires DateTime [not null]
+  user User [not null]
+}
+
+Table Wallet {
+  id String [pk]
+  userId String [not null]
+  address String [unique, not null]
+  privateKey String
+  keyHash String
+  nonce String
+  network String [not null]
+  default Boolean [not null, default: false]
+  primary Int [default: 0]
+  nickname String
+  status WalletStatus [not null, default: 'ACTIVE']
+  createdAt DateTime [default: `now()`, not null]
+  lastAccessedAt DateTime [not null]
+  user User [not null]
+}
+
+Table Player {
+  id String [pk]
+  userId String [unique]
+  telegramId String [unique]
+  name String
+  points Int [not null, default: 0]
+  SGP Int [not null, default: 0]
+  SGT Int [not null, default: 0]
+  recommendedCount Int [not null, default: 0]
+  recommenderId String
+  recommenderName String
+  recommenderMethod String
+  createdAt DateTime [default: `now()`, not null]
+  lastConnectedAt DateTime [not null]
+  user User
+  pollLogs PollLog [not null]
+  questLogs QuestLog [not null]
+  rewardLogs RewardsLog [not null]
+}
+
+Table Quest {
+  id String [pk]
+  title String [not null]
+  description String
+  url String
+  icon String
+  rewards Int [not null, default: 800]
+  rewardCurrency RewardCurrency [not null, default: 'points']
+  startDate DateTime
+  endDate DateTime
+  permanent Boolean [not null, default: false]
+  visible Boolean [not null, default: true]
+  primary Int [default: 0]
+  effects String
+  type String
+  questLogs QuestLog [not null]
+  rewardLogs RewardsLog [not null]
+}
+
+Table QuestLog {
+  id String [pk]
+  playerId String [not null]
+  questId String [not null]
+  completed Boolean [not null, default: false]
+  completedAt DateTime [default: `now()`, not null]
+  rewards Int [not null, default: 0]
+  rewardCurrency RewardCurrency [not null, default: 'points']
+  createdAt DateTime [default: `now()`, not null]
+  player Player [not null]
+  quest Quest [not null]
+  rewardLogs RewardsLog [not null]
+}
+
+Table Poll {
+  id String [pk]
+  title String [not null]
+  titleShorten String
+  options String[] [not null]
+  optionsShorten String[] [not null]
+  bannerImg String
+  startDate DateTime [default: `now()`, not null]
+  endDate DateTime [default: `now()`, not null]
+  exposeInScheduleTab Boolean [not null, default: false]
+  openPromotionText String
+  openPromotionImg String
+  resultPromotionText String
+  resultPromotionImg String
+  totalVotes Int [not null, default: 0]
+  totalVotesByOption Int[] [not null]
+  totalBetsAmount Int [not null, default: 0]
+  totalBetsAmountByOption Int[] [not null]
+  results Int[] [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  pollLogs PollLog [not null]
+  rewardLogs RewardsLog [not null]
+}
+
+Table PollLog {
+  id String [pk]
+  playerId String [not null]
+  pollId String [not null]
+  option String [not null]
+  betAmount Int [not null, default: 0]
+  createdAt DateTime [default: `now()`, not null]
+  player Player [not null]
+  poll Poll [not null]
+  rewardLogs RewardsLog [not null]
+}
+
+Table RewardsLog {
+  id String [pk]
+  playerId String [not null]
+  questId String
+  questLogId String
+  pollId String
+  pollLogId String
+  amount Int [not null]
+  currency RewardCurrency [not null, default: 'points']
+  reason String
+  createdAt DateTime [default: `now()`, not null]
+  player Player [not null]
+  poll Poll
+  pollLog PollLog
+  quest Quest
+  questLog QuestLog
+}
+
+Table Events {
+  id String [pk]
+  category EventCategory [not null, default: 'other']
+  title String [not null]
+  description String
+  content Json
+  url String
+  status EventStatus [not null, default: 'upcoming']
+  bannerImg String
+  bannerImg2 String
+  galleryImgs String[] [not null]
+  detailImg Json
+  saleStartDate DateTime
+  saleEndDate DateTime
+  price Int
+  capacity Int
+  ageLimit Int
+  organizer String
+  organizerImg String
+  organizerUrl String
+  contact String
+  startDate DateTime [not null]
+  endDate DateTime [not null]
+  location String
+  locationAddress String
+  locationImg String
+  locationUrl String
+  locationLat Float
+  locationLng Float
+  artist String
+  artistImg String
+  artistUrl String
+  tags String[] [not null]
+  hashtags String[] [not null]
+  promotionText String
+  promotionImg String
+  isFeatured Boolean [not null, default: false]
+  viewCount Int [not null, default: 0]
+  bookmarkCount Int [not null, default: 0]
+  isActive Boolean [not null, default: true]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table StoredFiles {
+  id String [pk]
+  name String
+  url String [unique, not null]
+  type String
+  sourceUrl String
+  alt String
+  width Int
+  height Int
+  mimeType String
+  sizeBytes Int
+  metadata Json
+  order Int [default: 0]
+  purpose String
+  bucket String [not null]
+  expiresAt DateTime
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (sourceUrl, type) [unique]
+  }
+}
+
+Table LoginAttemptLog {
+  id String [pk]
+  userId String
+  email String
+  provider String
+  success Boolean [not null]
+  error String
+  ipAddress String
+  userAgent String
+  timestamp DateTime [default: `now()`, not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  user User
+}
+
+Table PaymentLog {
+  id String [pk]
+  orderedProductId String [not null]
+  orderedProductName String [not null]
+  amount Int [not null]
+  currency String [not null, default: 'USD']
+  convertedAmount Float
+  exchangeRate Float
+  method String [not null, default: 'PAYPAL']
+  easyPayProvider String
+  cardProvider String
+  status PaymentStatus [not null, default: 'INIT']
+  paymentKey String [not null]
+  userId String [not null]
+  failureReason String
+  cancelReason String
+  attemptCount Int [not null, default: 0]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  sessionHash String [not null]
+  nonce String [not null]
+  user User [not null]
+}
+
+Table ExchangeRate {
+  id String [pk]
+  fromCurrency String [not null]
+  toCurrency String [not null]
+  rate Float [not null]
+  provider String [not null]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Enum RewardCurrency {
+  points
+  SGP
+  SGT
+}
+
+Enum EventCategory {
+  concert
+  fanmeeting
+  fancamp
+  festival
+  exhibition
+  other
+}
+
+Enum EventStatus {
+  upcoming
+  ongoing
+  completed
+  cancelled
+}
+
+Enum PaymentStatus {
+  INIT
+  COMPLETED
+  CANCELLED
+  FAILED
+  REFUNDED
+}
+
+Enum WalletStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+Ref: Account.userId > User.id [delete: Cascade]
+
+Ref: Session.userId > User.id [delete: Cascade]
+
+Ref: Wallet.userId > User.id [delete: Cascade]
+
+Ref: Player.userId - User.id [delete: Cascade]
+
+Ref: QuestLog.playerId > Player.id [delete: Cascade]
+
+Ref: QuestLog.questId > Quest.id
+
+Ref: PollLog.playerId > Player.id [delete: Cascade]
+
+Ref: PollLog.pollId > Poll.id
+
+Ref: RewardsLog.playerId > Player.id [delete: Cascade]
+
+Ref: RewardsLog.pollId > Poll.id
+
+Ref: RewardsLog.pollLogId > PollLog.id
+
+Ref: RewardsLog.questId > Quest.id
+
+Ref: RewardsLog.questLogId > QuestLog.id
+
+Ref: LoginAttemptLog.userId > User.id [delete: Cascade]
+
+Ref: PaymentLog.userId > User.id [delete: Cascade]
