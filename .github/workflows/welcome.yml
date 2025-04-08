@@ -1,0 +1,17 @@
+name: Welcome New Contributors
+
+on:
+  pull_request_target:
+    types: [opened]
+  issues:
+    types: [opened]
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: "안녕하세요! Starglow 프로젝트에 첫 이슈를 작성해주셔서 감사합니다. 팀원들이 곧 확인할 예정입니다."
+          pr-message: "축하합니다! Starglow 프로젝트에 첫 PR을 제출해주셔서 감사합니다. 검토 후 피드백을 드리겠습니다."

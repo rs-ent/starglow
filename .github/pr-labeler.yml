@@ -1,0 +1,8 @@
+feature: ["feature/*", "feat/*"]
+bugfix: ["fix/*", "bugfix/*"]
+documentation: ["docs/*", "doc/*"]
+enhancement: ["enhancement/*", "improve/*", "refactor/*"]
+style: ["style/*"]
+test: ["test/*", "testing/*"]
+dependency: ["deps/*", "dependencies/*"]
+ci: ["ci/*", "workflow/*"]

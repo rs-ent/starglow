@@ -1,0 +1,19 @@
+name: Auto Assign
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+jobs:
+  auto-assign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Auto-assign issue or PR"
+        uses: pozil/auto-assign-issue@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          assignees: "" # 팀원 GitHub ID를 쉼표로 구분하여 추가 (예: user1,user2)
+          numOfAssignee: 1 # 배정할 인원 수
+          allowSelfAssign: true # PR 작성자가 자신에게 배정 허용

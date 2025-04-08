@@ -1,0 +1,21 @@
+name: Mark stale issues and pull requests
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # 매일 자정에 실행
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-issue-message: "이 이슈는 최근 60일간 활동이 없어 stale로 표시되었습니다. 7일 내에 댓글이 없으면 자동으로 닫힙니다."
+          stale-pr-message: "이 PR은 최근 60일간 활동이 없어 stale로 표시되었습니다. 7일 내에 댓글이 없으면 자동으로 닫힙니다."
+          stale-issue-label: "stale"
+          stale-pr-label: "stale"
+          days-before-stale: 60
+          days-before-close: 7
+          exempt-issue-labels: "pinned,security,enhancement"
+          exempt-pr-labels: "pinned,security,work-in-progress"

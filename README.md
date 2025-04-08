@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Starglow
+
+Starglow is a modern web application built with Next.js, TypeScript, and Supabase.
+
+## Collaboration Tools
+
+### GitHub Actions
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+1. **CI Workflow** - Runs on pull requests to verify code quality and builds
+
+   - Linting
+   - Build checking
+   - Automatic reviews
+
+2. **Database Schema Visualization** - Automatically generates and publishes database schema diagrams
+   - Updates on schema changes
+   - Available at GitHub Pages: [Schema Visualization](https://your-organization.github.io/starglow/)
+
+### GitHub Wiki
+
+We maintain comprehensive documentation in our [GitHub Wiki](https://github.com/your-organization/starglow/wiki):
+
+- Getting started guides
+- Project structure documentation
+- Tech stack details
+- Contribution guidelines
+
+Please refer to the Wiki for detailed information about the project.
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+   ```
+   git clone https://github.com/your-organization/starglow.git
+   cd starglow
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+   ```
+   yarn install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Set up environment variables
 
-## Learn More
+   ```
+   cp .env.example .env.local
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+   And update the variables with your own values.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. Generate Prisma client
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```
+   npx prisma generate
+   ```
 
-## Deploy on Vercel
+5. Start the development server
+   ```
+   yarn dev
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Contributing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting a pull request.
+
+## License
+
+[MIT](LICENSE)
+
+## Contact
+
+For questions and support, please open an issue on GitHub.
