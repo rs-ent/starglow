@@ -45,4 +45,13 @@ next-env.d.ts
 *.backup.js
 restore-original.js
 
+# Hardhat
+/cache
+/artifacts
+/typechain-types
+/typechain
+/coverage
+/coverage.json
+gas-report.txt
+
 .vercel
