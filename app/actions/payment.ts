@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import { getExchangeRateInfo } from "./exchangeRate";
+import { convertAmount, getExchangeRateInfo } from "./exchangeRate";
 import { PaymentStatus } from "@prisma/client";
 import { encrypt, decrypt } from "@/lib/utils/encryption";
 import { nanoid } from "nanoid";
@@ -13,6 +13,7 @@ export interface PaymentResponse {
         paymentLogId: string;
         storeId?: string;
         channelKey?: string;
+        userId?: string;
         defaultAmount?: number;
         convertedAmount?: number;
         currency?: PortOne.Entity.Currency;
@@ -77,42 +78,13 @@ export async function createPayment({
             throw new Error(`Invalid product: ${merchId}`);
         }
 
-        // 2. 채널 ID 결정
-        function getChannelId(
-            payMethod: PortOne.Entity.PayMethod,
-            easyPayProvider?: PortOne.Entity.EasyPayProvider,
-            cardProvider?: PortOne.Entity.Country
-        ): string {
-            switch (payMethod) {
-                case "EASY_PAY":
-                    if (!easyPayProvider)
-                        throw new Error("Easy pay provider is required");
-                    switch (easyPayProvider) {
-                        case "EASY_PAY_PROVIDER_TOSSPAY":
-                            return process.env.PORTONE_TOSS!;
-                        case "EASY_PAY_PROVIDER_KAKAOPAY":
-                            return process.env.PORTONE_KAKAO!;
-                        default:
-                            throw new Error(
-                                `Invalid easy pay provider: ${easyPayProvider}`
-                            );
-                    }
-                case "CARD":
-                    switch (cardProvider) {
-                        case "COUNTRY_KR":
-                            return process.env.PORTONE_CARD!;
-                        default:
-                            return process.env.PORTONE_INTERCARD!;
-                    }
-                case "PAYPAL":
-                    return process.env.PORTONE_PAYPAL!;
-                default:
-                    throw new Error(`Invalid pay method: ${payMethod}`);
-            }
-        }
-
         // 3. 환율 정보 조회 (KRW 기준)
         const exchangeRate = await getExchangeRateInfo(fromCurrency, currency);
+        const convertedAmount = await convertAmount(
+            merch.price,
+            fromCurrency,
+            currency
+        );
 
         // 4. 결제 키 생성 및 암호화
         const nonce = nanoid(16);
@@ -131,7 +103,8 @@ export async function createPayment({
             orderedProductName: merchName,
             amount: merch.price * quantity,
             currency,
-            convertedAmount: merch.price * quantity * exchangeRate.rate,
+            method: payMethod,
+            convertedAmount: convertedAmount?.converted * quantity,
         };
 
         const paymentLog = await prisma.paymentLog.create({
@@ -149,8 +122,9 @@ export async function createPayment({
                     easyPayProvider,
                     cardProvider
                 ),
+                userId,
                 defaultAmount: merch.price * quantity,
-                convertedAmount: merch.price * quantity * exchangeRate.rate,
+                convertedAmount: convertedAmount.converted * quantity,
                 currency,
                 nonce,
                 status: PaymentStatus.INIT,
@@ -171,6 +145,7 @@ export async function createPayment({
 }
 
 export interface VerifyPaymentProps {
+    txId: string;
     paymentLogId: string;
     sessionHash: string;
     userId: string;
@@ -178,7 +153,15 @@ export interface VerifyPaymentProps {
     nonce: string;
 }
 
+export interface VerifyPaymentResponse {
+    success: boolean;
+    status?: PaymentStatus;
+    data?: any;
+    error?: string;
+}
+
 export async function verifyPayment({
+    txId,
     paymentLogId,
     sessionHash,
     userId,
@@ -260,9 +243,12 @@ export async function verifyPayment({
                 {
                     headers: {
                         Authorization: `PortOne ${process.env.PORTONE_V2_API_SECRET}`,
+                        "Content-Type": "application/json",
                     },
                 }
             );
+
+            console.log("paymentResponse", paymentResponse);
 
             if (!paymentResponse.ok) {
                 await tx.paymentLog.update({
@@ -278,9 +264,23 @@ export async function verifyPayment({
             const payment = await paymentResponse.json();
 
             const expectedAmount = log.convertedAmount ?? log.amount;
+
+            if (payment.code === "PG_PROVIDER_ERROR") {
+                await tx.paymentLog.update({
+                    where: { id: paymentLogId },
+                    data: {
+                        status: PaymentStatus.FAILED,
+                        failureReason: payment.message || payment.pgMessage,
+                    },
+                });
+                throw new Error(
+                    `Payment failed: ${payment.message || payment.pgMessage}`
+                );
+            }
+
             if (
-                Math.abs(payment.amount.total - expectedAmount) > 0.01 ||
-                payment.currency !== log.currency
+                Math.abs(payment.amount.total - expectedAmount) > 1 ||
+                payment.currency !== log.currency.replace("CURRENCY_", "")
             ) {
                 await tx.paymentLog.update({
                     where: { id: paymentLogId },
@@ -303,7 +303,7 @@ export async function verifyPayment({
                     });
                     return {
                         success: true,
-                        status: "VIRTUAL_ACCOUNT_ISSUED",
+                        status: PaymentStatus.VIRTUAL_ACCOUNT_ISSUED,
                         data: payment,
                     };
 
@@ -316,7 +316,7 @@ export async function verifyPayment({
                     });
                     return {
                         success: true,
-                        status: "PAID",
+                        status: PaymentStatus.COMPLETED,
                         data: payment,
                     };
 
@@ -651,4 +651,47 @@ export async function getPaymentLogsByStatus(status: string) {
         console.error("Payment logs retrieval by status failed:", error);
         throw error;
     }
+}
+
+function getChannelId(
+    payMethod: PortOne.Entity.PayMethod,
+    easyPayProvider?: PortOne.Entity.EasyPayProvider,
+    cardProvider?: PortOne.Entity.Country
+): string {
+    switch (payMethod) {
+        case "EASY_PAY":
+            if (!easyPayProvider)
+                throw new Error("Easy pay provider is required");
+            switch (easyPayProvider) {
+                case "EASY_PAY_PROVIDER_TOSSPAY":
+                    return process.env.PORTONE_TOSS!;
+                case "EASY_PAY_PROVIDER_KAKAOPAY":
+                    return process.env.PORTONE_KAKAO!;
+                default:
+                    throw new Error(
+                        `Invalid easy pay provider: ${easyPayProvider}`
+                    );
+            }
+        case "CARD":
+            switch (cardProvider) {
+                case "COUNTRY_KR":
+                    return process.env.PORTONE_CARD!;
+                default:
+                    return process.env.PORTONE_INTERCARD!;
+            }
+        case "PAYPAL":
+            return process.env.PORTONE_PAYPAL!;
+        default:
+            throw new Error(`Invalid pay method: ${payMethod}`);
+    }
+}
+
+export async function getPortOneEnv(
+    payMethod: PortOne.Entity.PayMethod,
+    easyPayProvider?: PortOne.Entity.EasyPayProvider,
+    cardProvider?: PortOne.Entity.Country
+): Promise<{ storeId: string; channelKey: string }> {
+    const storeId = process.env.PORTONE_MID!;
+    const channelKey = getChannelId(payMethod, easyPayProvider, cardProvider);
+    return { storeId, channelKey };
 }

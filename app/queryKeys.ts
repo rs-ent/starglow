@@ -1,4 +1,5 @@
 /// app/queryKeys.ts
+import * as PortOne from "@portone/browser-sdk/v2";
 
 export const queryKeys = {
     quests: {
@@ -49,5 +50,17 @@ export const queryKeys = {
         byId: (id: string) => ["payment", id] as const,
         list: (userId: string) => ["payment", "user", userId] as const,
         byStatus: (status: string) => ["payment", "status", status] as const,
+        portOneEnv: (
+            payMethod: PortOne.Entity.PayMethod,
+            easyPayProvider?: PortOne.Entity.EasyPayProvider | undefined,
+            cardProvider?: PortOne.Entity.Country | undefined
+        ) =>
+            [
+                "payment",
+                "portOneEnv",
+                payMethod,
+                easyPayProvider ?? "none",
+                cardProvider ?? "none",
+            ] as const,
     },
 };

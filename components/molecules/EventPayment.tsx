@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import PaymentModule from "../payment/PaymentModule";
 import * as PortOne from "@portone/browser-sdk/v2";
+import { useSearchParams } from "next/navigation";
 
 const DEFAULT_CURRENCY = "CURRENCY_KRW" as PortOne.Entity.Currency;
 
@@ -36,6 +37,18 @@ export default function EventPayment({
     initialCurrency = "CURRENCY_KRW",
 }: EventPaymentProps) {
     const [quantity, setQuantity] = useState(1);
+    const searchParams = useSearchParams();
+
+    // Get payment result from URL parameters
+    const paymentResult = {
+        code: searchParams.get("code"),
+        message: searchParams.get("message"),
+        paymentId: searchParams.get("paymentId"),
+        pgCode: searchParams.get("pgCode"),
+        pgMessage: searchParams.get("pgMessage"),
+        transactionType: searchParams.get("transactionType"),
+        txId: searchParams.get("txId"),
+    };
 
     // Check if tickets are available for sale
     const now = new Date();
@@ -86,7 +99,11 @@ export default function EventPayment({
                 <div className="flex justify-between items-center mb-2">
                     <span className="text-foreground/70">Price per ticket</span>
                     <span className="font-main text-base md:text-lg">
-                        {event.price ? <>{event.price}</> : "Free"}
+                        {event.price ? (
+                            <>{event.price.toLocaleString()}</>
+                        ) : (
+                            "Free"
+                        )}
                     </span>
                 </div>
 
@@ -171,6 +188,7 @@ export default function EventPayment({
                         amount={event.price || 0}
                         quantity={quantity}
                         defaultCurrency={DEFAULT_CURRENCY}
+                        paymentResult={paymentResult}
                     />
                 </>
             ) : (

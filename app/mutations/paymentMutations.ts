@@ -16,6 +16,7 @@ import type {
     VerifyPaymentProps,
     CancelPaymentProps,
     UpdatePaymentStatusProps,
+    VerifyPaymentResponse,
 } from "@/app/actions/payment";
 
 export function useCreatePayment() {
@@ -36,7 +37,7 @@ export function useCreatePayment() {
 export function useVerifyPaymentMutation() {
     const queryClient = useQueryClient();
 
-    return useMutation<PaymentResponse, Error, VerifyPaymentProps>({
+    return useMutation<VerifyPaymentResponse, Error, VerifyPaymentProps>({
         mutationFn: verifyPayment,
         onSuccess: (data, variables) => {
             if (data.success) {

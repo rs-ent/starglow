@@ -159,13 +159,13 @@ export default function PaymentSelector({
                                     : "outline"
                             }
                             img="/icons/flags/korea.svg"
-                            frameSize={20}
+                            frameSize={25}
                             textSize={5}
-                            gapSize={5}
+                            gapSize={10}
                             paddingSize={5}
                             className="w-full h-12 font-accent"
                         >
-                            Korean Card
+                            Korean
                         </Button>
                         <Button
                             onClick={() => onCardProviderChange("COUNTRY_US")}
@@ -175,13 +175,13 @@ export default function PaymentSelector({
                                     : "outline"
                             }
                             img="/icons/flags/world.svg"
-                            frameSize={20}
+                            frameSize={25}
                             textSize={5}
-                            gapSize={5}
+                            gapSize={10}
                             paddingSize={5}
                             className="w-full h-12 font-accent"
                         >
-                            International
+                            Global
                         </Button>
                     </div>
                     <div className="mt-2 text-xs text-center">

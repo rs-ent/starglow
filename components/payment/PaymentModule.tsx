@@ -12,14 +12,28 @@ import PaymentButton from "./PaymentButton";
 import { getAuthUserId } from "@/app/auth/authUtils";
 import { useRouter } from "next/navigation";
 import { useExchangeRate } from "@/app/hooks/useExchangeRate";
+import { PaymentResponse } from "@portone/browser-sdk/v2";
+import { VerifyPaymentProps } from "@/app/actions/payment";
+import PayPalButton from "./PayPalButton";
+import AuthButton from "@/components/atoms/AuthButton";
+import { getPaymentLog } from "@/app/actions/payment";
 
-interface PaymentModuleProps {
+export interface PaymentModuleProps {
     table: string;
     merchId: string;
     merchName: string;
     amount: number;
     defaultCurrency: PortOne.Entity.Currency;
     quantity: number;
+    paymentResult?: {
+        code: string | null;
+        message: string | null;
+        paymentId: string | null;
+        pgCode: string | null;
+        pgMessage: string | null;
+        transactionType: string | null;
+        txId: string | null;
+    };
 }
 
 export default function PaymentModule({
@@ -29,26 +43,26 @@ export default function PaymentModule({
     amount,
     quantity,
     defaultCurrency = "CURRENCY_KRW",
+    paymentResult,
 }: PaymentModuleProps) {
     const [payMethod, setPayMethod] =
         useState<PortOne.Entity.PayMethod>("CARD");
-
     const [currency, setCurrency] =
         useState<PortOne.Entity.Currency>(defaultCurrency);
-
     const [easyPayProvider, setEasyPayProvider] =
         useState<PortOne.Entity.EasyPayProvider>("EASY_PAY_PROVIDER_TOSSPAY");
-
     const [cardProvider, setCardProvider] =
         useState<PortOne.Entity.Country>("COUNTRY_KR");
-
     const [totalAmount, setTotalAmount] = useState(amount * quantity);
+    const [userId, setUserId] = useState<string | null>(null);
+    const [isAuthChecking, setIsAuthChecking] = useState(true);
 
     const toast = useToast();
     const router = useRouter();
     const { getExchangeRate, convertAmount } = useExchangeRate();
+    const { createPayment, isCreating, createError } = usePayment();
+    const { verifyPayment, isVerifying, verifyError } = usePayment();
 
-    // Get exchange rate info and converted amount
     const { data: rateInfo } = getExchangeRate(defaultCurrency, currency);
     const { data: convertedAmountData } = convertAmount(
         amount,
@@ -57,27 +71,113 @@ export default function PaymentModule({
     );
 
     useEffect(() => {
-        console.log("currency changed to:", currency);
+        const checkAuth = async () => {
+            try {
+                const id = await getAuthUserId();
+                setUserId(id);
+            } finally {
+                setIsAuthChecking(false);
+            }
+        };
+        checkAuth();
+    }, []);
+
+    useEffect(() => {
         if (convertedAmountData) {
-            console.log("convertedAmountData", convertedAmountData);
-            setTotalAmount(convertedAmountData.converted * quantity);
+            if (currency === "CURRENCY_USD") {
+                setTotalAmount(
+                    (convertedAmountData.converted * quantity) / 100
+                );
+            } else {
+                setTotalAmount(convertedAmountData.converted * quantity);
+            }
         }
     }, [currency, convertedAmountData, quantity]);
 
+    useEffect(() => {
+        const verifyRedirectedPayment = async () => {
+            if (paymentResult?.paymentId && paymentResult?.txId) {
+                try {
+                    // DB에서 payment 정보 조회
+                    const paymentLog = await getPaymentLog(
+                        paymentResult.paymentId
+                    );
+                    if (!paymentLog) {
+                        toast.error("Payment information not found");
+                        return;
+                    }
+
+                    // 결제 검증 진행
+                    const verifyResult = await verifyPayment.mutateAsync({
+                        paymentLogId: paymentResult.paymentId,
+                        sessionHash: paymentLog.sessionHash,
+                        userId: paymentLog.userId,
+                        merchId,
+                        nonce: paymentLog.nonce,
+                        txId: paymentResult.txId,
+                    });
+
+                    if (verifyResult.success) {
+                        if (verifyResult.status === "VIRTUAL_ACCOUNT_ISSUED") {
+                            toast.success("Virtual account has been issued");
+                        } else if (verifyResult.status === "COMPLETED") {
+                            toast.success("Payment successful");
+                            console.log("Payment successful");
+                        }
+                    } else {
+                        toast.error(
+                            verifyResult.error || "Payment verification failed"
+                        );
+                    }
+                } catch (error) {
+                    console.error("Payment verification error:", error);
+                    toast.error("Payment verification failed");
+                }
+            } else if (paymentResult?.code === "FAILURE_TYPE_PG") {
+                toast.error(paymentResult.pgMessage || "Payment failed");
+            }
+        };
+
+        if (paymentResult) {
+            verifyRedirectedPayment();
+        }
+    }, [paymentResult]);
+
     const sessionHash = nanoid();
 
-    const { createPayment, isCreating, createError } = usePayment();
-    const { verifyPayment, isVerifying, verifyError } = usePayment();
+    if (isAuthChecking) {
+        return (
+            <div className="flex justify-center items-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+            </div>
+        );
+    }
 
-    const handlePayment = async () => {
+    if (!userId) {
+        return (
+            <div className="flex flex-col items-center gap-4 p-8">
+                <p className="text-lg text-gray-600">
+                    Please sign in to purchase
+                </p>
+                <AuthButton variant="default" className="w-full max-w-xs" />
+            </div>
+        );
+    }
+
+    const handlePaymentCreate = async () => {
         try {
-            const userId = await getAuthUserId();
-            if (!userId) {
-                // 현재 페이지 주소를 가져오기
-                const callbackUrl = window.location.href;
-                router.push(`/auth/signin?callbackUrl=${callbackUrl}`);
-                return;
-            }
+            console.log("Payment creation params:", {
+                sessionHash,
+                userId,
+                table,
+                merchId,
+                merchName,
+                payMethod,
+                easyPayProvider,
+                cardProvider,
+                currency,
+                quantity,
+            });
 
             const result = await createPayment.mutateAsync({
                 sessionHash,
@@ -92,70 +192,119 @@ export default function PaymentModule({
                 quantity,
             });
 
-            if (result.success) {
-                const paymentLog = result.data;
-                if (
-                    !paymentLog ||
-                    !paymentLog.channelKey ||
-                    !paymentLog.storeId ||
-                    !paymentLog.convertedAmount ||
-                    !paymentLog.nonce
-                ) {
-                    toast.error("Invalid Payment");
-                    return;
-                }
-                const response = await PortOne.requestPayment({
-                    paymentId: paymentLog.paymentLogId,
-                    orderName: merchName,
-                    totalAmount: paymentLog.convertedAmount,
-                    currency,
-                    payMethod,
-                    storeId: paymentLog.storeId,
-                    channelKey: paymentLog.channelKey,
-                });
+            console.log("Payment creation result:", result);
 
-                if (!response) {
-                    toast.error("Payment failed");
-                    return;
-                }
+            if (!result.success || !result.data) {
+                throw new Error(result.error || "Payment creation failed");
+            }
 
-                if (response.code === "PAYMENT_SUCCESS") {
-                    const verifyResult = await verifyPayment.mutateAsync({
-                        paymentLogId: paymentLog.paymentLogId,
-                        sessionHash,
-                        userId,
-                        merchId,
-                        nonce: paymentLog.nonce,
-                    });
+            return result;
+        } catch (error) {
+            console.error("Payment creation error:", error);
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Payment creation failed"
+            );
+            return null;
+        }
+    };
 
-                    if (verifyResult.success) {
-                        if (
-                            verifyResult.data?.status ===
-                            "VIRTUAL_ACCOUNT_ISSUED"
-                        ) {
-                            toast.success("Virtual account has been issued");
-                            return;
-                        } else if (verifyResult.data?.status === "COMPLETED") {
-                            toast.success("Payment successful");
-                            return;
-                        }
-                    } else {
-                        toast.error(
-                            verifyResult.error || "Payment verification failed"
-                        );
-                        return;
-                    }
-                } else {
-                    toast.error("Payment failed");
-                    return;
+    const handlePaymentVerify = async (
+        paymentLog: VerifyPaymentProps,
+        response: PaymentResponse
+    ) => {
+        if (response.txId) {
+            const verifyResult = await verifyPayment.mutateAsync({
+                paymentLogId: paymentLog.paymentLogId,
+                sessionHash: paymentLog.sessionHash,
+                userId: paymentLog.userId,
+                merchId,
+                nonce: paymentLog.nonce,
+                txId: response.txId,
+            });
+
+            console.log("verifyResult", verifyResult);
+
+            if (verifyResult.success) {
+                if (verifyResult.status === "VIRTUAL_ACCOUNT_ISSUED") {
+                    toast.success("Virtual account has been issued");
+                } else if (verifyResult.status === "COMPLETED") {
+                    toast.success("Payment successful");
+                    console.log("Payment successful");
                 }
             } else {
+                toast.error(
+                    verifyResult.error || "Payment verification failed"
+                );
+            }
+        } else {
+            toast.error("Payment failed: No transaction ID received");
+        }
+    };
+
+    const handlePayment = async () => {
+        try {
+            const result = await handlePaymentCreate();
+            if (!result) return;
+
+            if (!result.success || !result.data) {
                 toast.error(result.error || "Payment creation failed");
+                return null;
+            }
+
+            console.log("result", result);
+
+            const paymentLog = result.data;
+            console.log("paymentLog", paymentLog);
+            if (
+                !paymentLog.channelKey ||
+                !paymentLog.storeId ||
+                !paymentLog.convertedAmount ||
+                !paymentLog.nonce
+            ) {
+                toast.error("Invalid Payment");
+                return null;
+            }
+
+            const response = await PortOne.requestPayment({
+                paymentId: paymentLog.paymentLogId,
+                orderName: merchName,
+                totalAmount: Math.round(paymentLog.convertedAmount!),
+                currency,
+                payMethod,
+                storeId: paymentLog.storeId!,
+                channelKey: paymentLog.channelKey!,
+                redirectUrl:
+                    typeof window !== "undefined" ? window.location.href : "",
+            });
+
+            console.log("requestPayment response", response);
+
+            if (!response) {
+                toast.error("Payment failed");
                 return;
             }
+
+            await handlePaymentVerify(
+                {
+                    paymentLogId: paymentLog.paymentLogId,
+                    sessionHash: sessionHash,
+                    userId: paymentLog.userId,
+                    merchId,
+                    nonce: paymentLog.nonce,
+                } as VerifyPaymentProps,
+                response
+            );
         } catch (error) {
-            toast.error("Payment processing error");
-            return;
+            toast.error(`Handle payment error: ${error}`);
+        }
+    };
+
+    const handlePayMethodChange = (payMethod: PortOne.Entity.PayMethod) => {
+        setPayMethod(payMethod);
+        if (payMethod === "PAYPAL") {
+            setCurrency("CURRENCY_USD");
         }
     };
 
@@ -166,7 +315,7 @@ export default function PaymentModule({
                 currency={currency}
                 easyPayProvider={easyPayProvider}
                 cardProvider={cardProvider}
-                onPayMethodChange={setPayMethod}
+                onPayMethodChange={handlePayMethodChange}
                 onCurrencyChange={setCurrency}
                 onEasyPayProviderChange={setEasyPayProvider}
                 onCardProviderChange={setCardProvider}
@@ -182,13 +331,24 @@ export default function PaymentModule({
                 }
             />
 
-            <PaymentButton
-                onClick={handlePayment}
-                isLoading={isCreating}
-                disabled={isCreating}
-                amount={totalAmount}
-                currency={currency}
-            />
+            {payMethod === "PAYPAL" ? (
+                <PayPalButton
+                    sessionHash={sessionHash}
+                    merchId={merchId}
+                    merchName={merchName}
+                    onCreatePayment={handlePaymentCreate}
+                    onVerifyPayment={handlePaymentVerify}
+                    disabled={isCreating}
+                />
+            ) : (
+                <PaymentButton
+                    onClick={handlePayment}
+                    isLoading={isCreating}
+                    disabled={isCreating}
+                    amount={totalAmount}
+                    currency={currency}
+                />
+            )}
 
             {createError && (
                 <div className="text-red-500 mt-2">

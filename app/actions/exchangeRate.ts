@@ -133,14 +133,13 @@ export async function convertAmount(
     toCurrency: PortOne.Entity.Currency
 ): Promise<{ converted: number; exchangeInfo: ExchangeRateInfo }> {
     const exchangeInfo = await getExchangeRateInfo(fromCurrency, toCurrency);
-    const converted = amount * exchangeInfo.rate;
+    let converted = amount * exchangeInfo.rate;
+    if (toCurrency === "CURRENCY_USD") {
+        converted = converted * 100;
+    }
 
-    // Round to 2 decimal places for USD, 0 decimal places for KRW
-    const decimals = toCurrency === "CURRENCY_USD" ? 2 : 0;
     return {
-        converted:
-            Math.round(converted * Math.pow(10, decimals)) /
-            Math.pow(10, decimals),
+        converted: Math.round(converted),
         exchangeInfo,
     };
 }
