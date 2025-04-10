@@ -2331,10 +2331,15 @@
   resolved "https://registry.yarnpkg.com/@pkgjs/parseargs/-/parseargs-0.11.0.tgz#a77ea742fab25775145434eb1d2328cf5013ac33"
   integrity sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==
 
-"@portone/browser-sdk@^0.0.16":
-  version "0.0.16"
-  resolved "https://registry.yarnpkg.com/@portone/browser-sdk/-/browser-sdk-0.0.16.tgz#dc4b264aefc4a2e3f362c5a06217bb25c75bc184"
-  integrity sha512-aysqpsAQM6DVbB1gDRstFtxzMINAMMVRN6E4ceK9+lNlGmIgKWlR6ypD1/lqxWRZ0LmdTfvqm8BYQzwt7kRC1Q==
+"@portone/browser-sdk@^0.0.17":
+  version "0.0.17"
+  resolved "https://registry.yarnpkg.com/@portone/browser-sdk/-/browser-sdk-0.0.17.tgz#1c0e18b755c53fc7712f67fbc2810ce1922b9696"
+  integrity sha512-PikwX3PGkj8mit5ndTuV4xt4urc9lSTK10XymFNpiE9cLa3UX5/a9ET86qPKw4lNTTGfvckf+cvvdPpn8d1aGw==
+
+"@portone/server-sdk@^0.14.0":
+  version "0.14.0"
+  resolved "https://registry.yarnpkg.com/@portone/server-sdk/-/server-sdk-0.14.0.tgz#1d2bb92a8a57716fc5e1f69161a1a91679d2eaf7"
+  integrity sha512-SW+3VxH8w+CRTtPbwHfS4iksGzMGj2khGq+Sv2ADgmp3KGSMjWgWwiBjovvFOJd5RI+oI0sjNLaj6SADO8QT7A==
 
 "@prisma/client@^6.5.0":
   version "6.5.0"

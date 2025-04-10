@@ -328,6 +328,10 @@ model PaymentLog {
   updatedAt          DateTime      @updatedAt
   sessionHash        String
   nonce              String
+  vbankCode          String?       // 은행 코드
+  vbankNum           String?       // 가상계좌 번호
+  vbankHolder        String?       // 예금주
+  vbankDate          DateTime?     // 입금 기한
   user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([orderedProductId])
@@ -336,6 +340,7 @@ model PaymentLog {
   @@index([sessionHash])
   @@index([createdAt])
   @@index([status, createdAt])
+  @@index([vbankNum])  // 가상계좌 번호로 조회할 수 있도록 인덱스 추가
 }
 
 model ExchangeRate {
@@ -374,6 +379,8 @@ enum EventStatus {
 
 enum PaymentStatus {
   INIT
+  VIRTUAL_ACCOUNT_ISSUED
+  PENDING
   COMPLETED
   CANCELLED
   FAILED

@@ -26,15 +26,16 @@ export const queryKeys = {
         byPurposeAndBucket: (purpose: string, bucket: string) =>
             ["files", purpose, bucket] as const,
     },
-    payments: {
-        all: ["payments"] as const,
-        byUserId: (userId: string) => ["payments", "user", userId] as const,
-        byId: (id: string) => ["payments", id] as const,
-        byStatus: (status: string) => ["payments", "status", status] as const,
-    },
     exchangeRate: {
         info: ["exchangeRate", "info"] as const,
-        convert: ["exchangeRate", "convert"] as const,
+        convert: (amount: number, fromCurrency: string, toCurrency: string) =>
+            [
+                "exchangeRate",
+                "convert",
+                amount,
+                fromCurrency,
+                toCurrency,
+            ] as const,
     },
     defaultWallets: {
         all: ["defaultWallets"] as const,
@@ -42,5 +43,11 @@ export const queryKeys = {
         byId: (address: string) => ["defaultWallets", address] as const,
         byNetwork: (network: string) =>
             ["defaultWallets", "network", network] as const,
+    },
+    payment: {
+        all: ["payment"] as const,
+        byId: (id: string) => ["payment", id] as const,
+        list: (userId: string) => ["payment", "user", userId] as const,
+        byStatus: (status: string) => ["payment", "status", status] as const,
     },
 };

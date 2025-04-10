@@ -277,6 +277,10 @@ Table PaymentLog {
   updatedAt DateTime [not null]
   sessionHash String [not null]
   nonce String [not null]
+  vbankCode String
+  vbankNum String
+  vbankHolder String
+  vbankDate DateTime
   user User [not null]
 }
 
@@ -313,6 +317,8 @@ Enum EventStatus {
 
 Enum PaymentStatus {
   INIT
+  VIRTUAL_ACCOUNT_ISSUED
+  PENDING
   COMPLETED
   CANCELLED
   FAILED

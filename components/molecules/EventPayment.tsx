@@ -10,11 +10,10 @@ import {
     AlertCircle,
     CheckCircle2,
 } from "lucide-react";
-import PaymentProcessor from "./PaymentProcessor";
-import {
-    useExchangeRateInfo,
-    useCurrencyConverter,
-} from "@/app/hooks/usePaymentValidation";
+import PaymentModule from "../payment/PaymentModule";
+import * as PortOne from "@portone/browser-sdk/v2";
+
+const DEFAULT_CURRENCY = "CURRENCY_KRW" as PortOne.Entity.Currency;
 
 type EventPaymentProps = {
     event: Pick<
@@ -37,28 +36,6 @@ export default function EventPayment({
     initialCurrency = "CURRENCY_KRW",
 }: EventPaymentProps) {
     const [quantity, setQuantity] = useState(1);
-    const [currentCurrency, setCurrentCurrency] = useState(initialCurrency);
-
-    // Get exchange rate info and converted amount
-    const { rateInfo } = useExchangeRateInfo(
-        currentCurrency === "CURRENCY_USD" ? "KRW" : "USD",
-        currentCurrency === "CURRENCY_USD" ? "USD" : "KRW"
-    );
-
-    const { convertedAmount } = useCurrencyConverter(
-        event.price || 0,
-        "KRW",
-        currentCurrency === "CURRENCY_USD" ? "USD" : "KRW"
-    );
-
-    // Get the appropriate price based on currency
-    const currentPrice =
-        currentCurrency === "CURRENCY_USD"
-            ? convertedAmount?.converted.amount || 0
-            : event.price || 0;
-
-    // Calculate total price
-    const totalPrice = currentPrice * quantity;
 
     // Check if tickets are available for sale
     const now = new Date();
@@ -109,35 +86,9 @@ export default function EventPayment({
                 <div className="flex justify-between items-center mb-2">
                     <span className="text-foreground/70">Price per ticket</span>
                     <span className="font-main text-base md:text-lg">
-                        {event.price ? (
-                            <>
-                                <span>
-                                    {currentPrice.toLocaleString()}{" "}
-                                    {currentCurrency === "CURRENCY_USD"
-                                        ? "USD"
-                                        : "KRW"}
-                                </span>
-                                {currentCurrency === "CURRENCY_USD" && (
-                                    <span className="text-xs text-foreground/50 ml-2">
-                                        (≈ {event.price.toLocaleString()} KRW)
-                                    </span>
-                                )}
-                            </>
-                        ) : (
-                            "Free"
-                        )}
+                        {event.price ? <>{event.price}</> : "Free"}
                     </span>
                 </div>
-
-                {rateInfo && currentCurrency === "CURRENCY_USD" && (
-                    <div className="text-xs text-foreground/50 text-right mb-2">
-                        {rateInfo.formattedRate}
-                        <br />
-                        <span className="text-[10px]">
-                            Last updated: {rateInfo.lastUpdated}
-                        </span>
-                    </div>
-                )}
 
                 {event.capacity !== null && (
                     <div className="flex justify-between items-center mb-2">
@@ -213,14 +164,13 @@ export default function EventPayment({
                     </div>
 
                     {/* Payment processor */}
-                    <PaymentProcessor
-                        amount={totalPrice}
-                        initialCurrency={currentCurrency}
+                    <PaymentModule
                         table="events"
-                        target={event.id}
+                        merchId={event.id}
+                        merchName={event.title}
+                        amount={event.price || 0}
                         quantity={quantity}
-                        onSuccess={handlePaymentSuccess}
-                        onError={handlePaymentError}
+                        defaultCurrency={DEFAULT_CURRENCY}
                     />
                 </>
             ) : (
