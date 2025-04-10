@@ -16,10 +16,7 @@ import {
     useConvertedAmount,
 } from "@/app/queries/paymentValidationQueries";
 import { PaymentStatus } from "@prisma/client";
-import {
-    PaymentInitRequest,
-    PaymentInitResponse,
-} from "@/lib/types/payment";
+import { PaymentInitRequest, PaymentInitResponse } from "@/lib/types/payments";
 import { useToast } from "./useToast";
 import { ExchangeRateInfo } from "@/app/actions/paymentValidation";
 

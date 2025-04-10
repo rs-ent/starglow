@@ -1,21 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Entity } from "@portone/browser-sdk/v2";
 import PaymentMethodSelector from "./PaymentMethodSelector";
 import PaymentExecutor from "./PaymentExecutor";
-import { PayMethod } from "./PaymentExecutor";
+import AuthButton from "../atoms/AuthButton";
 import {
     useExchangeRateInfo,
     useCurrencyConverter,
 } from "@/app/hooks/usePaymentValidation";
-import { CardProvider } from "@/lib/types/payment";
+import { PayMethod, CardProvider } from "@/lib/types/payments";
+import { getAuthUserId } from "@/app/auth/authUtils";
 
 export interface PaymentProcessorProps {
     // Payment configuration
     amount: number;
     initialCurrency?: "CURRENCY_USD" | "CURRENCY_KRW";
-    userId?: string;
 
     // Database reference for the purchase
     table: string;
@@ -33,7 +33,6 @@ export interface PaymentProcessorProps {
 export default function PaymentProcessor({
     amount: initialAmount,
     initialCurrency = "CURRENCY_KRW",
-    userId,
     table,
     target,
     quantity,
@@ -41,7 +40,8 @@ export default function PaymentProcessor({
     onSuccess,
     onError,
 }: PaymentProcessorProps) {
-    // Payment method state
+    const [userId, setUserId] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [paymentMethod, setPaymentMethod] = useState<PayMethod>("CARD");
     const [easyPayProvider, setEasyPayProvider] =
         useState<Entity.EasyPayProvider>("EASY_PAY_PROVIDER_TOSSPAY");
@@ -67,6 +67,21 @@ export default function PaymentProcessor({
         "USD",
         "KRW"
     );
+
+    useEffect(() => {
+        const fetchUserId = async () => {
+            try {
+                setIsLoading(true);
+                const id = await getAuthUserId();
+                setUserId(id);
+            } catch (error) {
+                console.error("Failed to get auth user ID:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchUserId();
+    }, []);
 
     // Get the current amount based on currency and payment method
     const getCurrentAmount = () => {
@@ -137,38 +152,55 @@ export default function PaymentProcessor({
     const exchangeRateDisplay = rateInfo?.formattedRate || "";
     const lastUpdated = rateInfo?.lastUpdated || "";
 
-    return (
-        <div className="space-y-5 md:space-y-6">
-            {/* Payment method selection */}
-            <PaymentMethodSelector
-                paymentMethod={paymentMethod}
-                easyPayProvider={easyPayProvider}
-                cardProvider={cardProvider}
-                amount={currentAmount}
-                currency={currency}
-                onPaymentMethodChange={handlePaymentMethodChange}
-                onEasyPayProviderChange={setEasyPayProvider}
-                onCardProviderChange={handleCardProviderChange}
-                onCurrencyChange={handleCurrencyChange}
-                exchangeRateDisplay={exchangeRateDisplay}
-                lastUpdated={lastUpdated}
-            />
+    if (isLoading) {
+        return (
+            <div className="flex justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            </div>
+        );
+    }
 
-            {/* Payment execution button */}
-            <PaymentExecutor
-                userId={userId}
-                table={table}
-                target={target}
-                quantity={quantity}
-                amount={currentAmount}
-                currency={currency}
-                method={getCurrentPaymentMethod()}
-                easyPayProvider={easyPayProvider}
-                cardProvider={cardProvider}
-                buttonText={buttonText}
-                onSuccess={onSuccess}
-                onError={onError}
-            />
-        </div>
+    return (
+        <>
+            {userId ? (
+                <div className="space-y-5 md:space-y-6">
+                    <PaymentMethodSelector
+                        paymentMethod={paymentMethod}
+                        easyPayProvider={easyPayProvider}
+                        cardProvider={cardProvider}
+                        amount={currentAmount}
+                        currency={currency}
+                        onPaymentMethodChange={handlePaymentMethodChange}
+                        onEasyPayProviderChange={setEasyPayProvider}
+                        onCardProviderChange={handleCardProviderChange}
+                        onCurrencyChange={handleCurrencyChange}
+                        exchangeRateDisplay={exchangeRateDisplay}
+                        lastUpdated={lastUpdated}
+                    />
+
+                    <PaymentExecutor
+                        userId={userId}
+                        table={table}
+                        target={target}
+                        quantity={quantity}
+                        amount={currentAmount}
+                        currency={currency}
+                        method={getCurrentPaymentMethod()}
+                        easyPayProvider={easyPayProvider}
+                        cardProvider={cardProvider}
+                        buttonText={buttonText}
+                        onSuccess={onSuccess}
+                        onError={onError}
+                    />
+                </div>
+            ) : (
+                <div className="flex flex-col items-center gap-4">
+                    <p className="text-yellow-600 text-xs">
+                        To process payment, please sign in.
+                    </p>
+                    <AuthButton variant="default" />
+                </div>
+            )}
+        </>
     );
 }

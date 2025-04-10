@@ -5,20 +5,18 @@
 import { useState, useEffect, useRef } from "react";
 import * as PortOne from "@portone/browser-sdk/v2";
 import { Entity } from "@portone/browser-sdk/v2";
-import { CurrencyType, PaymentMethodType } from "@/lib/types/payment";
-import { getSession } from "next-auth/react";
 import { useToast } from "@/app/hooks/useToast";
 import { useRouter } from "next/navigation";
 import { usePayments } from "@/app/hooks/usePaymentValidation";
-import { Currency } from "../molecules/PaymentExecutor";
+import { CurrencyType, PaymentMethodType } from "@/lib/types/payments";
+import Icon from "@/components/atoms/Icon";
+import { Loader2 } from "lucide-react";
 
 export interface PayPalButtonProps {
     userId?: string;
     table: string;
     target: string;
     quantity: number;
-    amount: number;
-    currency: Currency;
     onSuccess?: (response: any) => void;
     onError?: (error: any) => void;
     paypalOptions?: {
@@ -38,31 +36,16 @@ export default function PayPalButton({
     table,
     target,
     quantity,
-    amount,
-    currency,
     onSuccess,
     onError,
 }: PayPalButtonProps) {
-    const [sessionLoaded, setSessionLoaded] = useState(false);
-    const [currentUserId, setCurrentUserId] = useState<string>(userId || "");
     const paymentResponseRef = useRef<any>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const containerId = "paypal-button-container";
-    const toast = useToast();
     const router = useRouter();
 
     // usePayments 훅 사용하여 결제 관련 함수 가져오기
     const { initializePayment, completePayment, failedPayment } = usePayments();
-
-    const entityCurrencyMap = {
-        CURRENCY_USD: Entity.Currency.USD,
-        CURRENCY_KRW: Entity.Currency.KRW,
-    };
-
-    const CURRENCY_MAP = {
-        CURRENCY_USD: CurrencyType.USD,
-        CURRENCY_KRW: CurrencyType.KRW,
-    };
 
     useEffect(() => {
         initializePayPal();
@@ -89,7 +72,7 @@ export default function PayPalButton({
             table,
             target,
             quantity,
-            currency: CURRENCY_MAP[currency],
+            currency: CurrencyType.USD,
             method: PaymentMethodType.PAYPAL,
         });
 
@@ -106,7 +89,7 @@ export default function PayPalButton({
             paymentId: paymentResponse.paymentId,
             orderName: paymentResponse.orderName,
             totalAmount: Math.round(paymentResponse.totalAmount),
-            currency: entityCurrencyMap[currency],
+            currency: Entity.Currency.USD,
         };
 
         paymentUIInstance = await PortOne.loadPaymentUI(requestData, {
@@ -150,8 +133,12 @@ export default function PayPalButton({
             <div
                 ref={containerRef}
                 id={containerId}
-                className="portone-ui-container w-full min-h-[50px] bg-secondary/20 rounded-lg overflow-hidden"
-            />
+                className="portone-ui-container w-full min-h-[50px] rounded-lg overflow-hidden relative"
+            >
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <Icon icon={Loader2} className="w-4 h-4 animate-spin" />
+                </div>
+            </div>
         </div>
     );
 }

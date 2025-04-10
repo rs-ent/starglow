@@ -16,7 +16,7 @@ import {
     EasyPayProviderType,
     CurrencyType,
     CardProvider,
-} from "@/lib/types/payment";
+} from "@/lib/types/payments";
 
 const EXCHANGE_RATE_UPDATE_INTERVAL = 12 * 60 * 60 * 1000; // 12 hours
 

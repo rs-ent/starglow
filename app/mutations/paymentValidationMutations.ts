@@ -9,7 +9,7 @@ import {
     verifyPayment,
     recordPaymentFailure,
 } from "@/app/actions/paymentValidation";
-import { PaymentInitRequest, PaymentInitResponse } from "@/lib/types/payment";
+import { PaymentInitRequest, PaymentInitResponse } from "@/lib/types/payments";
 
 export function usePaymentInit() {
     const queryClient = useQueryClient();

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "portone-mcp-server": {
+      "command": "uvx",
+      "args": ["portone-mcp-server@latest"]
+    }
+  }
+}

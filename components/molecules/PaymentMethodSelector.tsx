@@ -2,9 +2,8 @@
 
 import { CreditCardIcon, Smartphone, Wallet } from "lucide-react";
 import { Entity } from "@portone/browser-sdk/v2";
-import { PayMethod } from "./PaymentExecutor";
 import Button from "../atoms/Button";
-import { CardProvider } from "@/lib/types/payment";
+import { PayMethod, CardProvider } from "@/lib/types/payments";
 
 interface PaymentMethodSelectorProps {
     paymentMethod: PayMethod;
