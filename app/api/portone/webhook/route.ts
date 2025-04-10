@@ -68,7 +68,6 @@ export async function POST(request: NextRequest) {
             amount: payment.amount.total,
             currency: payment.currency,
             failureReason: payment.failure_reason,
-            cancelReason: payment.cancel_reason,
             virtualAccountInfo: payment.virtual_account,
         });
 
