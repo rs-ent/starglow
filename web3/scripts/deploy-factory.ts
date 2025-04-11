@@ -32,7 +32,7 @@ async function main() {
         });
 
         await factory.waitForDeployment();
-        const factoryAddress = await factory.getAddress();
+        const factoryAddress = factory.address;
         console.log("Factory deployed to:", factoryAddress);
 
         // 배포 검증

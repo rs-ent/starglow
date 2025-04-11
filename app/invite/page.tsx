@@ -1,11 +1,11 @@
 /// app\invite\page.tsx
 
-import AuthGuard from "../auth/authGuard";
-import { prisma } from "@/lib/prisma/client";
-import { auth } from "../auth/authSettings";
 import { redirect } from "next/navigation";
+import { requireAuthUser } from "../auth/authUtils";
+import { invitePlayer } from "../actions/player";
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+type InviteMethod = "Telegram" | "Web App";
 
 export default async function InviteAuthPage({
     searchParams,
@@ -13,141 +13,59 @@ export default async function InviteAuthPage({
     searchParams: SearchParams;
 }) {
     const { referral, method } = await searchParams;
-    console.log("Ref: ", referral, "Method: ", method);
 
     if (!referral || typeof referral !== "string") {
-        return <div>Invalid Ref</div>;
+        redirect("/error?message=Invalid referral code&returnUrl=/");
     }
 
-    if (!method || typeof method !== "string") {
-        return <div>Invalid Method</div>;
+    if (
+        !method ||
+        typeof method !== "string" ||
+        !["Telegram", "Web App"].includes(method)
+    ) {
+        redirect("/error?message=Invalid invitation method&returnUrl=/");
     }
-
-    return (
-        <AuthGuard callbackUrl={`/invite?ref=${referral}`}>
-            <InvitePage referral={referral} method={method} />
-        </AuthGuard>
-    );
-}
-
-async function InvitePage({
-    referral,
-    method,
-}: {
-    referral: string;
-    method: string;
-}) {
-    const session = await auth();
 
     try {
-        let referrer;
-        let currentPlayer = await prisma.player.findUnique({
-            where: {
-                userId: session!.user?.id,
-            },
-            select: {
-                id: true,
-                userId: true,
-                telegramId: true,
-                recommenderId: true,
-                recommenderMethod: true,
-                recommenderName: true,
-            },
-        });
+        const user = await requireAuthUser(
+            `/invite?ref=${referral}&method=${method}`
+        );
 
-        if (!currentPlayer) {
-            currentPlayer = await prisma.player.create({
-                data: {
-                    userId: session!.user!.id,
-                    name: session!.user!.name || "",
-                },
-                select: {
-                    id: true,
-                    userId: true,
-                    telegramId: true,
-                    recommenderId: true,
-                    recommenderMethod: true,
-                    recommenderName: true,
-                },
+        try {
+            await invitePlayer({
+                currentUser: user,
+                referralId: referral,
+                method: method as InviteMethod,
             });
-        }
 
-        if (currentPlayer.recommenderId) {
-            return (
-                <div>
-                    You are already invited by {currentPlayer?.recommenderName}
-                </div>
+            redirect("/quests");
+        } catch (error: any) {
+            let errorMessage = "An error occurred during invitation";
+
+            switch (error.message) {
+                case "ALREADY_INVITED":
+                    errorMessage = "You have already been invited by someone";
+                    break;
+                case "REFERRER_NOT_FOUND":
+                    errorMessage = "The inviter was not found";
+                    break;
+                case "SELF_INVITE_NOT_ALLOWED":
+                    errorMessage = "You cannot invite yourself";
+                    break;
+            }
+
+            const returnUrl = `/invite?ref=${referral}&method=${method}`;
+            redirect(
+                `/error?message=${encodeURIComponent(
+                    errorMessage
+                )}&returnUrl=${encodeURIComponent(returnUrl)}`
             );
         }
-
-        if (method === "Telegram") {
-            referrer = await prisma.player.findUnique({
-                where: {
-                    telegramId: referral,
-                },
-                select: {
-                    id: true,
-                    userId: true,
-                    telegramId: true,
-                    recommendedCount: true,
-                    name: true,
-                },
-            });
-        } else if (method === "Web App") {
-            referrer = await prisma.player.findUnique({
-                where: {
-                    id: referral,
-                },
-                select: {
-                    id: true,
-                    userId: true,
-                    telegramId: true,
-                    recommendedCount: true,
-                    name: true,
-                },
-            });
-        } else {
-            return <div>Invalid method</div>;
-        }
-
-        if (!referrer) {
-            return <div>Referrer not found</div>;
-        }
-
-        if (
-            referrer?.userId === currentPlayer?.userId ||
-            referrer?.telegramId === currentPlayer?.telegramId
-        ) {
-            return <div>You cannot invite yourself</div>;
-        }
-
-        await prisma.$transaction([
-            prisma.player.update({
-                where: { userId: currentPlayer.userId! },
-                data: {
-                    recommenderId: referrer.id,
-                    recommenderMethod: method,
-                    recommenderName: referrer.name || "",
-                },
-            }),
-            prisma.player.update({
-                where: { id: referrer.id },
-                data: {
-                    recommendedCount: { increment: 1 },
-                },
-            }),
-        ]);
-
-        redirect("/quests");
     } catch (error: any) {
-        return <div>Error: {error.message}</div>;
+        redirect(
+            `/error?message=${encodeURIComponent(
+                "Authentication error. Please try again."
+            )}&returnUrl=/`
+        );
     }
-
-    return (
-        <div>
-            <h1>Invite</h1>
-            <p>Ref: {referral}</p>
-            <p>Method: {method}</p>
-        </div>
-    );
 }

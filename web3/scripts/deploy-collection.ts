@@ -37,7 +37,7 @@ async function main() {
         );
 
         await collection.waitForDeployment();
-        const collectionAddress = await collection.getAddress();
+        const collectionAddress = collection.address;
         console.log("Collection deployed to:", collectionAddress);
 
         // 배포 검증

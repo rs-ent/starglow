@@ -1,8 +1,9 @@
 # Hardhat files
 cache/
-artifacts/
 typechain-types/
-
+artifacts/@openzeppelin/
+artifacts/build-info/
+artifacts/erc721a
 # Dependencies
 node_modules/
 

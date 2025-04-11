@@ -7,9 +7,9 @@ import { updatePlayerCurrency, setPlayer } from "@/app/actions/player";
 import type { RewardCurrency } from "@/app/types/player";
 import { queryKeys } from "@/app/queryKeys";
 import { Player } from "@prisma/client";
-
+import type { User } from "next-auth";
 type SetPlayerRequest = {
-    userId?: string;
+    user?: User;
     telegramId?: string;
 };
 
@@ -17,8 +17,8 @@ export function useSetPlayer() {
     const queryClient = useQueryClient();
 
     return useMutation<Player, Error, SetPlayerRequest>({
-        mutationFn: async ({ userId, telegramId }) => {
-            return setPlayer(userId, telegramId);
+        mutationFn: async ({ user, telegramId }) => {
+            return setPlayer(user, telegramId);
         },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({

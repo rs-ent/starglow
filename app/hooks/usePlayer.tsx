@@ -14,7 +14,7 @@ import {
     useUpdatePlayerCurrency,
 } from "@/app/mutations/playerMutations";
 import { useToast } from "./useToast";
-
+import type { User } from "next-auth";
 export function usePlayer(playerId?: string) {
     const [isProcessing, setIsProcessing] = useState(false);
     const toast = useToast();
@@ -67,7 +67,7 @@ export function usePlayer(playerId?: string) {
     };
 
     const setPlayer = async (request: {
-        userId?: string;
+        user?: User;
         telegramId?: string;
     }): Promise<Player> => {
         setIsProcessing(true);

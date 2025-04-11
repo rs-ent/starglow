@@ -1,24 +1,15 @@
 /// app/quests/page.tsx
 
-import { auth } from "@/app/auth/authSettings";
 import { notFound } from "next/navigation";
 import { setPlayer } from "@/app/actions/player";
 import Quests from "@/components/templates/Quests";
-import AuthGuard from "@/app/auth/authGuard";
+import { requireAuthUser } from "../auth/authUtils";
 
 export default async function QuestPage() {
-    return (
-        <AuthGuard callbackUrl="/quests">
-            <QuestContent />
-        </AuthGuard>
-    );
-}
-
-async function QuestContent() {
-    const session = await auth();
+    const user = await requireAuthUser("/quests");
 
     try {
-        const player = await setPlayer(session?.user.id);
+        const player = await setPlayer(user);
 
         return <Quests player={player} />;
     } catch (error) {

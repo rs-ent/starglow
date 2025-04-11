@@ -1,9 +1,7 @@
 /// app/hooks/web3/useCollection.ts
 
 import { useReadContract, useWriteContract } from "wagmi";
-import { parseEther } from "viem";
 import { abi as COLLECTION_ABI } from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
-import { bigint } from "zod";
 
 const COLLECTION_ADDRESS = process.env.COLLECTION_ADDRESS;
 

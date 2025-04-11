@@ -95,8 +95,8 @@ const authOptions: NextAuthConfig = {
     events: {
         async signIn({ user }) {
             try {
-                if (user.id) {
-                    const player = await setPlayer(user.id);
+                if (user && user.id) {
+                    const player = await setPlayer(user);
                     console.log(
                         `Player created/found for user ${user.id}:`,
                         player.id
