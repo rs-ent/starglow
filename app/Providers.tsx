@@ -34,17 +34,19 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 [mainnet.id]: http(),
                 [sepolia.id]: http(),
             },
+            syncConnectedChain: true,
+            ssr: true,
         })
     );
 
     return (
-        <QueryClientProvider client={queryClient}>
-            <WagmiProvider config={wagmiConfig}>
+        <WagmiProvider config={wagmiConfig}>
+            <QueryClientProvider client={queryClient}>
                 <SessionProvider>{children}</SessionProvider>
                 {process.env.NODE_ENV === "development" && (
                     <ReactQueryDevtools initialIsOpen={false} />
                 )}
-            </WagmiProvider>
-        </QueryClientProvider>
+            </QueryClientProvider>
+        </WagmiProvider>
     );
 }

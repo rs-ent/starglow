@@ -7,7 +7,6 @@ import {
     useExchangeRateQuery,
     useConvertAmountQuery,
 } from "@/app/queries/exchangeRateQueries";
-import { useQuery } from "@tanstack/react-query";
 
 export function useExchangeRate() {
     const getExchangeRate = (

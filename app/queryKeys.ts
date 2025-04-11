@@ -63,4 +63,11 @@ export const queryKeys = {
                 cardProvider ?? "none",
             ] as const,
     },
+    contracts: {
+        factory: {
+            collections: ["contracts", "factory", "collections"] as const,
+            collectionByName: (name: string) =>
+                ["contracts", "factory", "collectionByName", name] as const,
+        },
+    },
 };

@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-viem";
+import "@nomicfoundation/hardhat-ethers";
 import "@openzeppelin/hardhat-upgrades";
 import "dotenv/config";
 
@@ -32,22 +33,6 @@ const config: HardhatUserConfig = {
                 : [],
             chainId: 80002,
         },
-    },
-    etherscan: {
-        apiKey: {
-            sepolia: process.env.ETHERSCAN_API_KEY || "",
-            polygonAmoy: process.env.POLYGONSCAN_API_KEY || "",
-        },
-        customChains: [
-            {
-                network: "polygonAmoy",
-                chainId: 80002,
-                urls: {
-                    apiURL: "https://api-amoy.polygonscan.com/api",
-                    browserURL: "https://amoy.polygonscan.com",
-                },
-            },
-        ],
     },
     paths: {
         sources: "./contracts",
