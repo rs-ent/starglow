@@ -1,0 +1,28 @@
+# Hardhat files
+cache/
+artifacts/
+typechain-types/
+
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Coverage
+coverage/
+coverage.json
+
+# Hardhat local network
+deployments/hardhat/
+deployments/localhost/
+
+# Ignition deployment files
+ignition/deployments/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log 

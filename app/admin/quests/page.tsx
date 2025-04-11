@@ -1,4 +1,4 @@
-import AdminQuests from "@/components/admin/Admin.Quests";
+import AdminQuests from "@/components/admin/quests/Admin.Quests";
 
 export default function AdminQuestsPage() {
     return (

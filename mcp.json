@@ -3,6 +3,14 @@
     "portone-mcp-server": {
       "command": "uvx",
       "args": ["portone-mcp-server@latest"]
+    },
+    "evm-mcp-server": {
+      "command": "npx",
+      "args": ["-y", "@mcpdotdirect/evm-mcp-server"]
+    },
+    "evm-mcp-http": {
+      "command": "npx",
+      "args": ["-y", "@mcpdotdirect/evm-mcp-server", "--http"]
     }
   }
 }
