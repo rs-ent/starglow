@@ -138,10 +138,11 @@ export default function PaymentModule({
             }
         };
 
-        if (paymentResult) {
+        if (paymentResult?.paymentId && paymentResult?.txId) {
+            console.log("paymentResult", paymentResult);
             verifyRedirectedPayment();
         }
-    }, [paymentResult]);
+    }, [paymentResult?.paymentId, paymentResult?.txId]);
 
     const sessionHash = nanoid();
 
