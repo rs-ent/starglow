@@ -4,11 +4,8 @@
 "use server";
 
 import { ethers } from "ethers";
-import { auth } from "../auth/authSettings";
 import { prisma } from "@/lib/prisma/client";
-import * as crypto from "crypto";
-import { put, getDownloadUrl } from "@vercel/blob";
-import { encrypt, decrypt } from "@/lib/utils/encryption";
+import { decryptPrivateKey, encryptPrivateKey } from "@/lib/utils/encryption";
 
 export async function createPolygonWallet(userId: string) {
     try {
@@ -21,14 +18,7 @@ export async function createPolygonWallet(userId: string) {
         }
 
         const wallet = ethers.Wallet.createRandom();
-        const ecryptedParts = encryptPrivateKey(wallet.privateKey);
-
-        const blobPath = `${ecryptedParts.keyHash}.key`;
-        const blobUrl = await put(blobPath, ecryptedParts.blobPart, {
-            access: "public",
-            addRandomSuffix: false,
-            token: process.env.BLOB_PK_READ_WRITE_TOKEN,
-        });
+        const ecryptedParts = await encryptPrivateKey(wallet.privateKey);
 
         const newWallet = await prisma.wallet.create({
             data: {
@@ -64,11 +54,6 @@ export async function createPolygonWallet(userId: string) {
  */
 export async function getPrivateKey(address: string) {
     try {
-        const session = await auth();
-        if (!session?.user) {
-            throw new Error("Unauthorized");
-        }
-
         const wallet = await prisma.wallet.findFirst({
             where: { address, network: "polygon" },
             select: {
@@ -87,27 +72,14 @@ export async function getPrivateKey(address: string) {
             throw new Error("This wallet is not created by Starglow");
         }
 
-        const baseUrl = process.env.BLOB_PK_URL;
-        const blobPath = `${baseUrl}/${wallet.keyHash}.key`;
-        const response = await fetch(blobPath);
-        const encryptedPart2 = await response.text();
+        const decryptedKey = await decryptPrivateKey({
+            dbPart: wallet.privateKey,
+            blobPart: wallet.keyHash,
+            keyHash: wallet.keyHash,
+            nonce: wallet.nonce,
+        });
 
-        const verifyHash = crypto
-            .createHash("sha256")
-            .update(encryptedPart2)
-            .digest("hex");
-        if (verifyHash !== wallet.keyHash) {
-            throw new Error("Invalid key hash");
-        }
-
-        const [nonce1, keyPart1] = decrypt(wallet.privateKey).split(":");
-        const [nonce2, keyPart2] = decrypt(encryptedPart2).split(":");
-
-        if (nonce1 !== wallet.nonce || nonce2 !== wallet.nonce) {
-            throw new Error("Invalid nonce");
-        }
-
-        return keyPart1 + keyPart2;
+        return decryptedKey;
     } catch (error) {
         console.error("Error getting private key", error);
         throw new Error("Failed to get private key");
@@ -118,36 +90,3 @@ export async function getPrivateKey(address: string) {
  * @security
  * This function handles sensitive key encryption and should not be modified
  */
-interface KeyParts {
-    dbPart: string;
-    blobPart: string;
-    keyHash: string;
-    nonce: string;
-}
-
-/**
- * @security
- * This function handles sensitive key encryption and should not be modified
- */
-function encryptPrivateKey(privateKey: string): KeyParts {
-    const nonce = crypto.randomBytes(32).toString("hex");
-
-    const midPoint = Math.floor(privateKey.length / 2);
-    const keyPart1 = privateKey.slice(0, midPoint);
-    const keyPart2 = privateKey.slice(midPoint);
-
-    const encryptedKeyPart1 = encrypt(nonce + ":" + keyPart1);
-    const encryptedKeyPart2 = encrypt(nonce + ":" + keyPart2);
-
-    const keyHash = crypto
-        .createHash("sha256")
-        .update(encryptedKeyPart2)
-        .digest("hex");
-
-    return {
-        dbPart: encryptedKeyPart1,
-        blobPart: encryptedKeyPart2,
-        keyHash,
-        nonce,
-    };
-}

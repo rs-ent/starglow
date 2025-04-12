@@ -393,4 +393,48 @@ enum WalletStatus {
   LOCKED
 }
 
+model BlockchainNetwork {
+  id              String            @id @default(cuid())
+  name            String            @unique
+  chainId         Int               @unique
+  rpcUrl          String
+  explorerUrl     String
+  symbol          String
+  isTestnet       Boolean           @default(true)
+  isActive        Boolean           @default(true)
+  factoryContracts FactoryContract[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
+  @@index([isTestnet, isActive])
+}
+
+model FactoryContract {
+  id              String            @id @default(cuid())
+  address         String
+  networkId       String
+  network         BlockchainNetwork @relation(fields: [networkId], references: [id])
+  deployedAt      DateTime          @default(now())
+  deployedBy      String?
+  transactionHash String?
+  isActive        Boolean           @default(true)
+  collections     String[]          @default([])
+  
+  @@unique([address, networkId])
+  @@index([networkId, isActive])
+}
+
+model EscrowWallet {
+  id              String            @id @default(cuid())
+  address         String            @unique
+  privateKey      String            @db.Text
+  keyHash         String
+  nonce           String
+  networkIds      String[]          @default([])
+  isActive        Boolean           @default(true)
+  balance         Json?             // Store balance per network
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([isActive])
+}

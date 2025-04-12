@@ -71,3 +71,10 @@ export const queryKeys = {
         },
     },
 };
+
+export const QUERY_KEYS = {
+    BLOCKCHAIN_NETWORKS: "blockchain-networks",
+    FACTORY_CONTRACTS: "factory-contracts",
+    ESCROW_WALLETS: "escrow-wallets",
+    ACTIVE_ESCROW_WALLET: "active-escrow-wallet",
+} as const;
