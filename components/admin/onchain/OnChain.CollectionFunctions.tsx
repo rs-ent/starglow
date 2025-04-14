@@ -41,10 +41,8 @@ import {
 } from "@/app/mutations/collectionContractsMutations";
 import { useEscrowWalletManager } from "@/app/hooks/useBlockchain";
 import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
-import { useFiles } from "@/app/hooks/useFiles";
-import { IPFSUploadResult } from "@/app/actions/files";
 import Popup from "@/components/atoms/Popup";
-import { useIPFSMetadata } from "@/app/queries/filesQueries";
+import { useIPFSMetadata } from "@/app/queries/ipfsQueries";
 
 interface CollectionFunctionsProps {
     collection: CollectionContract;
@@ -76,17 +74,7 @@ export default function CollectionFunctions({
     } = useEscrowWalletManager();
     const { networks } = useBlockchainNetworksManager();
     const [showPrivateKey, setShowPrivateKey] = useState(false);
-    const [viewMetadata, setViewMetadata] = useState<IPFSUploadResult | null>(
-        null
-    );
     const [isViewerOpen, setIsViewerOpen] = useState(false);
-
-    // IPFS 메타데이터 조회를 위해 직접 hook 사용
-    const {
-        data: selectedMetadataContent,
-        isLoading: isLoadingSelectedMetadata,
-        error: selectedMetadataError,
-    } = useIPFSMetadata(isViewerOpen ? viewMetadata?.cid || "" : "");
 
     // Fetch current collection status
     const { data: status, isLoading: isLoadingStatus } =
@@ -331,22 +319,6 @@ export default function CollectionFunctions({
         return ipfsUrl;
     };
 
-    // 메타데이터 뷰어 열기
-    const openMetadataViewer = async (contractURI: string) => {
-        if (!contractURI) return;
-
-        // baseURI에서 CID 추출
-        const cid = contractURI.replace("ipfs://", "");
-
-        setViewMetadata({
-            success: true,
-            cid,
-            ipfsUrl: contractURI,
-            gatewayUrl: convertToGatewayUrl(contractURI),
-        });
-        setIsViewerOpen(true);
-    };
-
     // 클립보드에 복사
     const copyToClipboard = (text: string, label: string) => {
         navigator.clipboard.writeText(text);
@@ -532,100 +504,6 @@ export default function CollectionFunctions({
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="metadata" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <div className="flex gap-4 items-center">
-                                <CardTitle>Collection Metadata</CardTitle>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        collection.contractURI &&
-                                        openMetadataViewer(
-                                            collection.contractURI
-                                        )
-                                    }
-                                    className="flex items-center gap-1"
-                                    disabled={!collection.contractURI}
-                                >
-                                    <Eye className="h-4 w-4" />
-                                    <span className="hidden sm:inline">
-                                        View
-                                    </span>
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Base URI</Label>
-                                <div className="flex items-center justify-between p-2 rounded-md bg-muted">
-                                    <div className="font-mono text-sm break-all">
-                                        {collection.baseURI || "Not set"}
-                                    </div>
-                                    <div className="flex gap-2 ml-4">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() =>
-                                                collection.baseURI &&
-                                                copyToClipboard(
-                                                    collection.baseURI,
-                                                    "Base URI"
-                                                )
-                                            }
-                                            className="flex items-center gap-1"
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                            <span className="hidden sm:inline">
-                                                Copy
-                                            </span>
-                                        </Button>
-                                    </div>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Base path for all token metadata. Each
-                                    token&apos;s metadata is accessed at{" "}
-                                    {collection.baseURI || "[baseURI]"}
-                                    /[tokenId]
-                                </p>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Contract URI</Label>
-                                <div className="flex items-center justify-between p-2 rounded-md bg-muted">
-                                    <div className="font-mono text-sm break-all">
-                                        {collection.contractURI || "Not set"}
-                                    </div>
-                                    <div className="flex gap-2 ml-4">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() =>
-                                                collection.contractURI &&
-                                                copyToClipboard(
-                                                    collection.contractURI,
-                                                    "Contract URI"
-                                                )
-                                            }
-                                            className="flex items-center gap-1"
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                            <span className="hidden sm:inline">
-                                                Copy
-                                            </span>
-                                        </Button>
-                                    </div>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Collection-level metadata used by
-                                    marketplaces like OpenSea
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
                 <TabsContent value="settings" className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Card>
@@ -736,147 +614,6 @@ export default function CollectionFunctions({
                     </div>
                 </TabsContent>
             </Tabs>
-
-            {/* 메타데이터 뷰어 팝업 */}
-            <Popup
-                open={isViewerOpen}
-                onClose={() => setIsViewerOpen(false)}
-                width="min(90vw, 800px)"
-                height="90vh"
-                className="p-6 bg-gray-800"
-            >
-                <div className="h-full overflow-auto">
-                    <h3 className="text-xl font-semibold mb-4">
-                        Metadata Details
-                    </h3>
-                    <div className="flex gap-2 flex-wrap mb-4">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                                viewMetadata?.cid &&
-                                copyToClipboard(viewMetadata.cid, "CID")
-                            }
-                            className="flex items-center gap-1"
-                        >
-                            <Copy className="h-4 w-4" />
-                            Copy CID
-                        </Button>
-
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                                viewMetadata?.ipfsUrl &&
-                                copyToClipboard(
-                                    viewMetadata.ipfsUrl,
-                                    "IPFS URL"
-                                )
-                            }
-                            className="flex items-center gap-1"
-                        >
-                            <FileJson className="h-4 w-4" />
-                            Copy IPFS URI
-                        </Button>
-
-                        {viewMetadata?.gatewayUrl && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                    openExternalLink(
-                                        viewMetadata.gatewayUrl || ""
-                                    )
-                                }
-                                className="flex items-center gap-1"
-                            >
-                                <ExternalLink className="h-4 w-4" />
-                                View in Gateway
-                            </Button>
-                        )}
-                    </div>
-
-                    <div className="bg-muted p-3 rounded-md mb-4 font-mono text-xs">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                            <span className="font-semibold min-w-[80px]">
-                                CID:
-                            </span>
-                            <code className="bg-black/10 dark:bg-white/10 p-1 rounded flex-1 overflow-auto">
-                                {viewMetadata?.cid}
-                            </code>
-                        </div>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                            <span className="font-semibold min-w-[80px]">
-                                IPFS URI:
-                            </span>
-                            <code className="bg-black/10 dark:bg-white/10 p-1 rounded flex-1 overflow-auto">
-                                {viewMetadata?.ipfsUrl}
-                            </code>
-                        </div>
-                    </div>
-
-                    <div className="h-[calc(100%-200px)] overflow-auto">
-                        {isLoadingSelectedMetadata ? (
-                            <div className="py-8 text-center">
-                                <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
-                                <p>Loading metadata...</p>
-                            </div>
-                        ) : selectedMetadataError ? (
-                            <div className="py-8 text-center text-red-500">
-                                <p>Error loading metadata.</p>
-                                <p className="text-sm">
-                                    {String(selectedMetadataError)}
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="rounded-md overflow-hidden border">
-                                    <div className="bg-muted p-2 border-b font-medium">
-                                        JSON Metadata
-                                    </div>
-                                    <pre className="bg-slate-900 p-4 overflow-auto text-sm max-h-[300px] whitespace-pre-wrap">
-                                        {JSON.stringify(
-                                            selectedMetadataContent?.metadata,
-                                            null,
-                                            2
-                                        )}
-                                    </pre>
-                                </div>
-
-                                {selectedMetadataContent?.metadata?.image && (
-                                    <div className="rounded-md overflow-hidden border">
-                                        <div className="bg-muted p-2 border-b font-medium">
-                                            Image Preview
-                                        </div>
-                                        <div className="p-4 flex justify-center bg-black">
-                                            <img
-                                                src={convertToGatewayUrl(
-                                                    selectedMetadataContent
-                                                        .metadata.image
-                                                )}
-                                                alt="NFT Preview"
-                                                className="max-w-full max-h-60 object-contain rounded-md"
-                                                onError={(e) => {
-                                                    console.error(
-                                                        "Image loading error:",
-                                                        selectedMetadataContent
-                                                            .metadata.image
-                                                    );
-                                                    (
-                                                        e.target as HTMLImageElement
-                                                    ).src =
-                                                        "https://placehold.co/400x400/png?text=Image+Not+Available";
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </Popup>
-
             <div className="flex justify-end mt-6">
                 <Button type="button" variant="outline" onClick={onClose}>
                     Close

@@ -20,10 +20,8 @@ export default function EventsDetail({
     const [purchaseSuccess, setPurchaseSuccess] = useState(false);
 
     const handlePurchase = (quantity: number) => {
-        // Here you would handle the purchase logic
         console.log(`Purchasing ${quantity} tickets for event ${eventId}`);
 
-        // For demo purposes, just show success after a delay
         setTimeout(() => {
             setPurchaseSuccess(true);
             if (onPurchase) {
@@ -75,7 +73,10 @@ export default function EventsDetail({
                     {/* Payment Section - 1/3 width on desktop, but first on mobile */}
                     <div className="lg:col-span-1 order-1 lg:order-2">
                         <div className="lg:sticky lg:top-8">
-                            <EventPayment event={event} />
+                            <EventPayment
+                                event={event}
+                                onPurchase={handlePurchase}
+                            />
                         </div>
                     </div>
                 </div>

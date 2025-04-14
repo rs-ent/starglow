@@ -1,10 +1,9 @@
 /// lib\utils\encryption.ts
 import crypto from "crypto";
-import { env } from "@/lib/config/env";
 import { put } from "@vercel/blob";
 
-const algorithm = env.ENCRYPTION_METHOD;
-const secretKey = crypto.scryptSync(env.ENCRYPTION_SECRET!, "salt", 32);
+const algorithm = process.env.ENCRYPTION_METHOD || "aes-256-cbc";
+const secretKey = crypto.scryptSync(process.env.ENCRYPTION_SECRET!, "salt", 32);
 const ivLength = 16;
 
 export function encrypt(text: string) {

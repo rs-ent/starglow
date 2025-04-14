@@ -30,11 +30,13 @@ type EventPaymentProps = {
         | "saleEndDate"
     >;
     initialCurrency?: "CURRENCY_USD" | "CURRENCY_KRW";
+    onPurchase?: (quantity: number) => void;
 };
 
 export default function EventPayment({
     event,
     initialCurrency = "CURRENCY_KRW",
+    onPurchase,
 }: EventPaymentProps) {
     const [quantity, setQuantity] = useState(1);
     const searchParams = useSearchParams();
@@ -78,7 +80,10 @@ export default function EventPayment({
     // Handle successful payment
     const handlePaymentSuccess = (response: any) => {
         console.log("Payment successful", response);
-        // TODO: Implement success handling (e.g., show confirmation, redirect, etc.)
+        // Call the onPurchase prop if it exists
+        if (onPurchase) {
+            onPurchase(quantity);
+        }
     };
 
     // Handle payment error
@@ -189,6 +194,7 @@ export default function EventPayment({
                         quantity={quantity}
                         defaultCurrency={DEFAULT_CURRENCY}
                         paymentResult={paymentResult}
+                        onSuccess={() => handlePaymentSuccess({})}
                     />
                 </>
             ) : (

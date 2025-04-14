@@ -9,8 +9,7 @@ import { useToast } from "@/app/hooks/useToast";
 import * as PortOne from "@portone/browser-sdk/v2";
 import PaymentSelector from "./PaymentSelector";
 import PaymentButton from "./PaymentButton";
-import { getAuthUserId } from "@/app/auth/authUtils";
-import { useRouter } from "next/navigation";
+import { getUserId } from "@/app/actions/auth";
 import { useExchangeRate } from "@/app/hooks/useExchangeRate";
 import { PaymentResponse } from "@portone/browser-sdk/v2";
 import { VerifyPaymentProps } from "@/app/actions/payment";
@@ -25,6 +24,7 @@ export interface PaymentModuleProps {
     amount: number;
     defaultCurrency: PortOne.Entity.Currency;
     quantity: number;
+    onSuccess?: () => void;
     paymentResult?: {
         code: string | null;
         message: string | null;
@@ -43,6 +43,7 @@ export default function PaymentModule({
     amount,
     quantity,
     defaultCurrency = "CURRENCY_KRW",
+    onSuccess,
     paymentResult,
 }: PaymentModuleProps) {
     const [payMethod, setPayMethod] =
@@ -58,7 +59,6 @@ export default function PaymentModule({
     const [isAuthChecking, setIsAuthChecking] = useState(true);
 
     const toast = useToast();
-    const router = useRouter();
     const { getExchangeRate, convertAmount } = useExchangeRate();
     const { createPayment, isCreating, createError } = usePayment();
     const { verifyPayment, isVerifying, verifyError } = usePayment();
@@ -73,7 +73,8 @@ export default function PaymentModule({
     useEffect(() => {
         const checkAuth = async () => {
             try {
-                const id = await getAuthUserId();
+                const id = await getUserId();
+                console.log("id", id);
                 setUserId(id);
             } finally {
                 setIsAuthChecking(false);
@@ -123,6 +124,9 @@ export default function PaymentModule({
                         } else if (verifyResult.status === "COMPLETED") {
                             toast.success("Payment successful");
                             console.log("Payment successful");
+                            if (onSuccess) {
+                                onSuccess();
+                            }
                         }
                     } else {
                         toast.error(
@@ -233,6 +237,9 @@ export default function PaymentModule({
                 } else if (verifyResult.status === "COMPLETED") {
                     toast.success("Payment successful");
                     console.log("Payment successful");
+                    if (onSuccess) {
+                        onSuccess();
+                    }
                 }
             } else {
                 toast.error(

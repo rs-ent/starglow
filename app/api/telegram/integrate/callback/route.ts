@@ -4,13 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma/client";
 import { auth } from "@/app/auth/authSettings";
-import { env } from "@/lib/config/env";
 
 export async function GET(req: NextRequest) {
     const baseUrl = req.nextUrl.origin;
     const telegramData = Object.fromEntries(req.nextUrl.searchParams.entries());
 
-    const telegramBotToken = env.TELEGRAM_BOT_TOKEN;
+    const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!telegramBotToken) {
         return NextResponse.json(
             { error: "Telegram bot token is not set" },

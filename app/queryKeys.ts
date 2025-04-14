@@ -27,23 +27,6 @@ export const queryKeys = {
         byPurposeAndBucket: (purpose: string, bucket: string) =>
             ["files", purpose, bucket] as const,
     },
-    ipfs: {
-        metadata: (cid: string) => ["ipfsMetadata", cid],
-        all: (type: string, limit: number) => [
-            "ipfsMetadata",
-            "all",
-            type,
-            limit,
-        ],
-        groups: {
-            all: ["ipfs", "groups"] as const,
-            list: (limit: number, offset: number) =>
-                ["ipfs", "groups", "list", limit, offset] as const,
-            byId: (id: string) => ["ipfs", "groups", id] as const,
-            files: (groupId: string) =>
-                ["ipfs", "groups", groupId, "files"] as const,
-        },
-    },
     exchangeRate: {
         info: ["exchangeRate", "info"] as const,
         convert: (amount: number, fromCurrency: string, toCurrency: string) =>
@@ -85,6 +68,28 @@ export const queryKeys = {
             collections: ["contracts", "factory", "collections"] as const,
             collectionByName: (name: string) =>
                 ["contracts", "factory", "collectionByName", name] as const,
+        },
+    },
+    ipfs: {
+        all: ["ipfs"] as const,
+        files: {
+            all: ["ipfs", "files"] as const,
+            byId: (id: string) => ["ipfs", "files", id] as const,
+            byGroup: (groupId: string) =>
+                ["ipfs", "files", "group", groupId] as const,
+        },
+        metadata: {
+            all: ["ipfs", "metadata"] as const,
+            byId: (id: string) => ["ipfs", "metadata", id] as const,
+            byCollection: (collectionId: string) =>
+                ["ipfs", "metadata", "collection", collectionId] as const,
+            linkable: ["ipfs", "metadata", "linkable"] as const,
+            byCid: (cid: string) => ["ipfs", "metadata", "cid", cid] as const,
+        },
+        groups: {
+            all: ["ipfs", "groups"] as const,
+            byId: (id: string) => ["ipfs", "groups", id] as const,
+            byName: (name: string) => ["ipfs", "groups", "name", name] as const,
         },
     },
 };

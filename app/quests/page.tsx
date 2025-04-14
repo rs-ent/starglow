@@ -1,5 +1,7 @@
 /// app/quests/page.tsx
 
+export const dynamic = "force-dynamic";
+
 import { notFound } from "next/navigation";
 import { setPlayer } from "@/app/actions/player";
 import Quests from "@/components/templates/Quests";

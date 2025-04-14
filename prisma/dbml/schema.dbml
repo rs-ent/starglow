@@ -341,26 +341,43 @@ Table EscrowWallet {
 
 Table IpfsGroup {
   id String [pk]
-  name String [not null]
-  description String
-  isPublic Boolean [not null, default: false]
+  pinataId String [unique, not null]
+  name String [unique, not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
-  files IpfsMetadata [not null]
+  files IpfsFile [not null]
 }
 
-Table IpfsMetadata {
+Table IpfsFile {
   id String [pk]
-  cid String [unique, not null]
-  ipfsUrl String [not null]
-  gatewayUrl String [not null]
-  metadata String [not null]
   type String [not null, default: 'nft-metadata']
-  isGroup Boolean [not null, default: false]
+  pinataId String [not null]
+  name String [not null]
+  cid String [not null]
+  size Int [not null]
+  numberOfFiles Int [not null]
+  mimeType String [not null]
   groupId String
   group IpfsGroup
+  keyvalues Json
+  vectorized Boolean [not null, default: false]
+  network String
   createdAt DateTime [default: `now()`, not null]
-  lastFetched DateTime
+  updatedAt DateTime [not null]
+  metadata Metadata
+}
+
+Table Metadata {
+  id String [pk]
+  metadata Json [not null]
+  groupId String
+  ipfsFileId String [unique, not null]
+  ipfsFile IpfsFile [not null]
+  collectionContractId String
+  collectionContract CollectionContract
+  token NFT
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
 }
 
 Table CollectionContract {
@@ -387,6 +404,7 @@ Table CollectionContract {
   mintedCount Int [not null, default: 0]
   artistId String
   artist Artist
+  metadata Metadata [not null]
 }
 
 Table NFT {
@@ -419,6 +437,8 @@ Table NFT {
   mintedBy String
   royaltyInfo Json
   events NFTEvent [not null]
+  metadataId String [unique]
+  metadata Metadata
 
   indexes {
     (tokenId, collectionId) [unique]
@@ -556,7 +576,11 @@ Ref: PaymentLog.userId > User.id [delete: Cascade]
 
 Ref: FactoryContract.networkId > BlockchainNetwork.id
 
-Ref: IpfsMetadata.groupId > IpfsGroup.id
+Ref: IpfsFile.groupId > IpfsGroup.pinataId
+
+Ref: Metadata.ipfsFileId - IpfsFile.id
+
+Ref: Metadata.collectionContractId > CollectionContract.id
 
 Ref: CollectionContract.factoryId > FactoryContract.id
 
@@ -567,6 +591,8 @@ Ref: CollectionContract.artistId > Artist.id
 Ref: NFT.collectionId > CollectionContract.id
 
 Ref: NFT.networkId > BlockchainNetwork.id
+
+Ref: NFT.metadataId - Metadata.id
 
 Ref: NFTEvent.nftId > NFT.id
 

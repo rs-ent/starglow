@@ -6,7 +6,6 @@ import TwitterProvider from "next-auth/providers/twitter";
 import KakaoProvider from "next-auth/providers/kakao";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma/client";
-import { env } from "@/lib/config/env";
 import type { NextAuthConfig } from "next-auth";
 import { setPlayer } from "../actions/player";
 import { createPolygonWallet } from "../actions/defaultWallets";
@@ -37,8 +36,8 @@ const authOptions: NextAuthConfig = {
     adapter: PrismaAdapter(prisma),
     providers: [
         GoogleProvider({
-            clientId: env.GOOGLE_CLIENT_ID!,
-            clientSecret: env.GOOGLE_CLIENT_SECRET!,
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
             authorization: {
                 params: {
                     prompt: "consent",
@@ -48,12 +47,12 @@ const authOptions: NextAuthConfig = {
             },
         }),
         TwitterProvider({
-            clientId: env.TWITTER_CLIENT_ID!,
-            clientSecret: env.TWITTER_CLIENT_SECRET!,
+            clientId: process.env.TWITTER_CLIENT_ID!,
+            clientSecret: process.env.TWITTER_CLIENT_SECRET!,
         }),
         KakaoProvider({
-            clientId: env.KAKAO_CLIENT_ID!,
-            clientSecret: env.KAKAO_CLIENT_SECRET!,
+            clientId: process.env.KAKAO_CLIENT_ID!,
+            clientSecret: process.env.KAKAO_CLIENT_SECRET!,
         }),
     ],
     session: {

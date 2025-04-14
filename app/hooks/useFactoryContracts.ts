@@ -116,6 +116,7 @@ export function useFactoryCreateCollection() {
 
     return {
         createCollection: createMutation.mutate,
+        mutateAsync: createMutation.mutateAsync,
         isCreating: createMutation.isPending,
         error: createMutation.error,
         isError: !!createMutation.error,

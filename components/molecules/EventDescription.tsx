@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { Events } from "@prisma/client";
 import { H2, H3 } from "../atoms/Typography";
-import { cn } from "@/lib/utils/tailwind";
 import { useState } from "react";
 import {
     Calendar,

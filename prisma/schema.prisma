@@ -442,36 +442,67 @@ model EscrowWallet {
   @@index([isActive])
 }
 
+
 model IpfsGroup {
-  id            String    @id // Pinata group ID를 그대로 사용
-  name          String
-  description   String?
-  isPublic      Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // 그룹에 속한 파일들
-  files         IpfsMetadata[]
+  id          String    @id @default(cuid())
+  pinataId    String    @unique @default(uuid())
+  name        String    @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  files       IpfsFile[]
 
   @@index([name])
+  @@index([pinataId])
 }
 
-model IpfsMetadata {
+model IpfsFile {
   id          String    @id @default(cuid())
-  cid         String    @unique
-  ipfsUrl     String
-  gatewayUrl  String
-  metadata    String    @db.Text
   type        String    @default("nft-metadata")
-  isGroup     Boolean   @default(false)
+  pinataId    String
+  name        String
+  cid         String
+  size        Int
+  numberOfFiles Int
+  mimeType    String
   groupId     String?
-  group       IpfsGroup? @relation(fields: [groupId], references: [id])
+  group       IpfsGroup? @relation(fields: [groupId], references: [pinataId])
+  keyvalues   Json?
+  vectorized  Boolean   @default(false)
+  network     String?
   createdAt   DateTime  @default(now())
-  lastFetched DateTime? @updatedAt
+  updatedAt   DateTime  @updatedAt
 
-  @@index([cid, type])
-  @@index([type, createdAt])
+  metadata Metadata? @relation("IpfsFileMetadata")
+
+  @@index([pinataId])
+  @@index([name])
+  @@index([groupId])
+  @@index([cid])
 }
+
+model Metadata {
+  id          String   @id @default(cuid())
+  metadata   Json
+
+  groupId String?
+
+  ipfsFileId String @unique
+  ipfsFile IpfsFile @relation("IpfsFileMetadata", fields: [ipfsFileId], references: [id])
+
+  collectionContractId String?
+  collectionContract CollectionContract? @relation("CollectionContractMetadata", fields: [collectionContractId], references: [id])
+
+  token NFT? @relation("NFTMetadata")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([collectionContractId])
+  @@index([ipfsFileId])
+  @@index([createdAt])
+}
+
+
 
 model CollectionContract {
   id          String   @id @default(cuid())
@@ -498,7 +529,7 @@ model CollectionContract {
   artistId     String?
   artist       Artist?  @relation(fields: [artistId], references: [id])
 
-
+  metadata Metadata[] @relation("CollectionContractMetadata")
 
   @@index([address, networkId])
   @@index([factoryId])
@@ -535,6 +566,9 @@ model NFT {
   mintedBy         String?
   royaltyInfo      Json?
   events           NFTEvent[]
+
+  metadataId String? @unique
+  metadata Metadata? @relation("NFTMetadata", fields: [metadataId], references: [id])
   
   // 토큰 ID와 컬렉션의 조합은 유니크해야 함
   @@unique([tokenId, collectionId])

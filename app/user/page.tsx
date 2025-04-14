@@ -1,5 +1,7 @@
 /// app\user\page.tsx
 
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { requireAuthUser } from "../auth/authUtils";
 
