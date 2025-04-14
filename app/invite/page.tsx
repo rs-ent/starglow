@@ -1,7 +1,7 @@
 /// app\invite\page.tsx
 
 import { redirect } from "next/navigation";
-import { requireAuthUser } from "../auth/authUtils";
+import { requireAuthUser } from "../actions/auth";
 import { invitePlayer } from "../actions/player";
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;

@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
-import { requireAuthUser } from "../auth/authUtils";
+import { requireAuthUser } from "../actions/auth";
 
 interface PageProps {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
