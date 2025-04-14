@@ -394,31 +394,34 @@ enum WalletStatus {
 }
 
 model BlockchainNetwork {
-  id              String            @id @default(cuid())
-  name            String            @unique
-  chainId         Int               @unique
-  rpcUrl          String
-  explorerUrl     String
-  symbol          String
-  isTestnet       Boolean           @default(true)
-  isActive        Boolean           @default(true)
+  id               String               @id @default(cuid())
+  name             String               @unique
+  chainId          Int                  @unique
+  rpcUrl           String
+  explorerUrl      String
+  symbol           String
+  isTestnet        Boolean              @default(true)
+  isActive         Boolean              @default(true)
   factoryContracts FactoryContract[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  collectionContracts CollectionContract[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  nfts             NFT[]
 
   @@index([isTestnet, isActive])
 }
 
 model FactoryContract {
-  id              String            @id @default(cuid())
+  id              String              @id @default(cuid())
   address         String
   networkId       String
-  network         BlockchainNetwork @relation(fields: [networkId], references: [id])
-  deployedAt      DateTime          @default(now())
+  network         BlockchainNetwork   @relation(fields: [networkId], references: [id])
+  deployedAt      DateTime            @default(now())
   deployedBy      String?
   transactionHash String?
-  isActive        Boolean           @default(true)
-  collections     String[]          @default([])
+  isActive        Boolean             @default(true)
+  collections     String[]            @default([])
+  collectionContracts CollectionContract[]
   
   @@unique([address, networkId])
   @@index([networkId, isActive])
@@ -437,4 +440,176 @@ model EscrowWallet {
   updatedAt       DateTime          @updatedAt
   
   @@index([isActive])
+}
+
+model IpfsGroup {
+  id            String    @id // Pinata group ID를 그대로 사용
+  name          String
+  description   String?
+  isPublic      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // 그룹에 속한 파일들
+  files         IpfsMetadata[]
+
+  @@index([name])
+}
+
+model IpfsMetadata {
+  id          String    @id @default(cuid())
+  cid         String    @unique
+  ipfsUrl     String
+  gatewayUrl  String
+  metadata    String    @db.Text
+  type        String    @default("nft-metadata")
+  isGroup     Boolean   @default(false)
+  groupId     String?
+  group       IpfsGroup? @relation(fields: [groupId], references: [id])
+  createdAt   DateTime  @default(now())
+  lastFetched DateTime? @updatedAt
+
+  @@index([cid, type])
+  @@index([type, createdAt])
+}
+
+model CollectionContract {
+  id          String   @id @default(cuid())
+  address     String
+  name        String
+  symbol      String
+  maxSupply   Int
+  mintPrice   String
+  baseURI     String
+  contractURI String
+  factoryId   String
+  factory     FactoryContract  @relation(fields: [factoryId], references: [id])
+  networkId   String
+  network     BlockchainNetwork @relation(fields: [networkId], references: [id])
+  createdBy   String   @default("admin")
+  txHash      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  nfts        NFT[]
+  events      NFTEvent[]
+  price       Int      @default(0)
+  circulation  Int      @default(1000)
+  mintedCount  Int      @default(0)
+  artistId     String?
+  artist       Artist?  @relation(fields: [artistId], references: [id])
+
+
+
+  @@index([address, networkId])
+  @@index([factoryId])
+  @@index([createdBy, createdAt])
+}
+
+model NFT {
+  id             String   @id @default(cuid())
+  tokenId        Int
+  collectionId   String
+  collection     CollectionContract @relation(fields: [collectionId], references: [id])
+  ownerAddress   String
+  metadataUri    String?
+  mintedAt       DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  transactionHash String
+  networkId      String
+  network        BlockchainNetwork @relation(fields: [networkId], references: [id])
+  name           String?
+  description    String?
+  imageUrl       String?
+  attributes     Json?
+  isListed         Boolean  @default(false)
+  listingPrice     String?
+  lastTransferredAt DateTime?
+  transferCount    Int      @default(0)
+  isBurned         Boolean  @default(false)
+  rarity           Float?
+  tags             String[]
+  category         String?
+  creatorInfo      String?
+  externalUrl      String?
+  mintPrice        String?
+  mintedBy         String?
+  royaltyInfo      Json?
+  events           NFTEvent[]
+  
+  // 토큰 ID와 컬렉션의 조합은 유니크해야 함
+  @@unique([tokenId, collectionId])
+  
+  // 인덱싱을 위한 필드들
+  @@index([ownerAddress])
+  @@index([tokenId])
+  @@index([collectionId])
+}
+
+model NFTEvent {
+  id             String   @id @default(cuid())
+  nftId          String
+  nft            NFT      @relation(fields: [nftId], references: [id])
+  collectionId   String
+  collection     CollectionContract @relation(fields: [collectionId], references: [id])
+  eventType      String   // Transfer, Approval, Listing, Sale 등
+  fromAddress    String?
+  toAddress      String?
+  price          String?  // 거래 가격
+  transactionHash String
+  timestamp      DateTime @default(now())
+  blockNumber    Int?
+  
+  @@index([nftId])
+  @@index([eventType])
+  @@index([fromAddress, toAddress])
+}
+
+model Artist {
+  id        String   @id @default(cuid())
+  name      String
+  description String?
+  imageUrl  String?
+  externalUrl String?
+  reportUrl   String?
+  members     ArtistMember[]
+  company     String?
+  sns         String[] @default([])
+  gallery     String[] @default([])
+  videos      String[] @default([])
+  music       String[] @default([])
+  events      String[] @default([])
+  additionalInfo Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  collectionContracts CollectionContract[]
+
+
+  @@index([name])
+}
+
+model ArtistMember {
+  id        String   @id @default(cuid())
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id])
+  name      String
+  role      String
+  imageUrl  String?
+  externalUrl String?
+  description String?
+  realName    String?
+  birthDate   DateTime?
+  birthPlace  String?
+  nationality String?
+  height      Int?
+  weight      Int?
+  bloodType   String?
+  constellation String?
+  sns         String[] @default([])
+  gallery     String[] @default([])
+  videos      String[] @default([])
+  music       String[] @default([])
+  additionalInfo Json?  
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

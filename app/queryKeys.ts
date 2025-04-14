@@ -27,6 +27,23 @@ export const queryKeys = {
         byPurposeAndBucket: (purpose: string, bucket: string) =>
             ["files", purpose, bucket] as const,
     },
+    ipfs: {
+        metadata: (cid: string) => ["ipfsMetadata", cid],
+        all: (type: string, limit: number) => [
+            "ipfsMetadata",
+            "all",
+            type,
+            limit,
+        ],
+        groups: {
+            all: ["ipfs", "groups"] as const,
+            list: (limit: number, offset: number) =>
+                ["ipfs", "groups", "list", limit, offset] as const,
+            byId: (id: string) => ["ipfs", "groups", id] as const,
+            files: (groupId: string) =>
+                ["ipfs", "groups", groupId, "files"] as const,
+        },
+    },
     exchangeRate: {
         info: ["exchangeRate", "info"] as const,
         convert: (amount: number, fromCurrency: string, toCurrency: string) =>
@@ -77,4 +94,14 @@ export const QUERY_KEYS = {
     FACTORY_CONTRACTS: "factory-contracts",
     ESCROW_WALLETS: "escrow-wallets",
     ACTIVE_ESCROW_WALLET: "active-escrow-wallet",
+    COLLECTION_CONTRACTS: "collection-contracts",
 } as const;
+
+// Collection query keys
+export const collectionKeys = {
+    all: ["collections"] as const,
+    lists: () => [...collectionKeys.all, "list"] as const,
+    detail: (id: string) => [...collectionKeys.all, "detail", id] as const,
+    status: (address: string) =>
+        [...collectionKeys.all, "status", address] as const,
+};

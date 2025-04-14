@@ -2,25 +2,27 @@
 
 import {
     useBlockchainNetworks,
-    useFactoryContracts,
-    useActiveFactoryContract,
+    useBlockchainNetwork,
+} from "../queries/blockchainQueries";
+import {
     useEscrowWallets,
     useActiveEscrowWallet,
 } from "../queries/blockchainQueries";
 import {
     useAddBlockchainNetwork,
     useUpdateBlockchainNetwork,
-    useSaveFactoryContract,
-    useUpdateFactoryContractCollections,
     useSaveEscrowWallet,
     useUpdateEscrowWalletStatus,
     useUpdateEscrowWalletBalance,
     useGenerateWallet,
     useGetWalletBalance,
+    useGetEscrowWalletWithPrivateKey,
 } from "../mutations/blockchainMutations";
 import { useState } from "react";
 
-// Integrated hook for blockchain network management
+/**
+ * 블록체인 네트워크 관리를 위한 통합 훅
+ */
 export function useBlockchainNetworksManager() {
     const networksQuery = useBlockchainNetworks();
     const addNetworkMutation = useAddBlockchainNetwork();
@@ -59,68 +61,9 @@ export function useBlockchainNetworksManager() {
     };
 }
 
-// Integrated hook for factory contract management
-export function useFactoryContractsManager(networkId?: string) {
-    const [selectedContractId, setSelectedContractId] = useState<string | null>(
-        null
-    );
-
-    const contractsQuery = useFactoryContracts(networkId);
-    const activeContractQuery = networkId
-        ? useActiveFactoryContract(networkId)
-        : { data: null, isLoading: false, error: null };
-    const saveContractMutation = useSaveFactoryContract();
-    const updateCollectionsMutation = useUpdateFactoryContractCollections();
-
-    // Get the selected contract
-    const selectedContract = selectedContractId
-        ? contractsQuery.data?.find((c) => c.id === selectedContractId)
-        : null;
-
-    // Combine loading and error states
-    const isLoading =
-        contractsQuery.isLoading ||
-        (activeContractQuery.isLoading && !!networkId) ||
-        saveContractMutation.isPending ||
-        updateCollectionsMutation.isPending;
-
-    const error =
-        contractsQuery.error ||
-        activeContractQuery.error ||
-        saveContractMutation.error ||
-        updateCollectionsMutation.error;
-
-    return {
-        // Queries
-        contracts: contractsQuery.data || [],
-        activeContract: activeContractQuery.data || null,
-        selectedContract,
-
-        // State
-        setSelectedContract: setSelectedContractId,
-
-        // Loading & Error
-        isLoading,
-        error,
-        isError: !!error,
-
-        // Mutations
-        saveContract: saveContractMutation.mutate,
-        updateCollections: updateCollectionsMutation.mutate,
-
-        // Status
-        isSavingContract: saveContractMutation.isPending,
-        isUpdatingCollections: updateCollectionsMutation.isPending,
-
-        // Reset
-        reset: () => {
-            saveContractMutation.reset();
-            updateCollectionsMutation.reset();
-        },
-    };
-}
-
-// Integrated hook for escrow wallet management
+/**
+ * 에스크로 지갑 관리를 위한 통합 훅
+ */
 export function useEscrowWalletManager() {
     const [selectedWalletId, setSelectedWalletId] = useState<string | null>(
         null
@@ -133,6 +76,7 @@ export function useEscrowWalletManager() {
     const updateBalanceMutation = useUpdateEscrowWalletBalance();
     const generateWalletMutation = useGenerateWallet();
     const getBalanceMutation = useGetWalletBalance();
+    const getWalletWithPrivateKeyMutation = useGetEscrowWalletWithPrivateKey();
 
     // Get the selected wallet
     const selectedWallet = selectedWalletId
@@ -147,7 +91,8 @@ export function useEscrowWalletManager() {
         updateStatusMutation.isPending ||
         updateBalanceMutation.isPending ||
         generateWalletMutation.isPending ||
-        getBalanceMutation.isPending;
+        getBalanceMutation.isPending ||
+        getWalletWithPrivateKeyMutation.isPending;
 
     const error =
         walletsQuery.error ||
@@ -156,7 +101,8 @@ export function useEscrowWalletManager() {
         updateStatusMutation.error ||
         updateBalanceMutation.error ||
         generateWalletMutation.error ||
-        getBalanceMutation.error;
+        getBalanceMutation.error ||
+        getWalletWithPrivateKeyMutation.error;
 
     return {
         // Queries
@@ -178,6 +124,7 @@ export function useEscrowWalletManager() {
         updateBalance: updateBalanceMutation.mutate,
         generateWallet: generateWalletMutation.mutateAsync,
         getWalletBalance: getBalanceMutation.mutateAsync,
+        getWalletWithPrivateKey: getWalletWithPrivateKeyMutation.mutateAsync,
 
         // Status
         isSavingWallet: saveWalletMutation.isPending,
@@ -185,6 +132,7 @@ export function useEscrowWalletManager() {
         isUpdatingBalance: updateBalanceMutation.isPending,
         isGeneratingWallet: generateWalletMutation.isPending,
         isGettingBalance: getBalanceMutation.isPending,
+        isGettingPrivateKey: getWalletWithPrivateKeyMutation.isPending,
 
         // Reset
         reset: () => {
@@ -193,11 +141,14 @@ export function useEscrowWalletManager() {
             updateBalanceMutation.reset();
             generateWalletMutation.reset();
             getBalanceMutation.reset();
+            getWalletWithPrivateKeyMutation.reset();
         },
     };
 }
 
-// Standalone wallet balance hook
+/**
+ * 지갑 잔액 조회를 위한 독립 훅
+ */
 export function useWalletBalance() {
     const getBalanceMutation = useGetWalletBalance();
 

@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { encryptPrivateKey, decryptPrivateKey } from "@/lib/utils/encryption";
 import { ethers } from "ethers";
 
+// 블록체인 네트워크 관련 함수
 export async function getBlockchainNetworks(includeInactive = false) {
     try {
         const networks = await prisma.blockchainNetwork.findMany({
@@ -115,118 +116,7 @@ export async function updateBlockchainNetwork(
     }
 }
 
-export async function getFactoryContracts(networkId?: string) {
-    try {
-        const contracts = await prisma.factoryContract.findMany({
-            where: networkId ? { networkId } : {},
-            include: {
-                network: true,
-            },
-            orderBy: [{ deployedAt: "desc" }],
-        });
-
-        return { success: true, data: contracts };
-    } catch (error) {
-        console.error("Error fetching factory contracts:", error);
-        return { success: false, error: "Failed to fetch factory contracts" };
-    }
-}
-
-export async function getActiveFactoryContract(networkId: string) {
-    try {
-        const contract = await prisma.factoryContract.findFirst({
-            where: {
-                networkId,
-                isActive: true,
-            },
-            include: {
-                network: true,
-            },
-            orderBy: {
-                deployedAt: "desc",
-            },
-        });
-
-        if (!contract) {
-            return {
-                success: false,
-                error: "No active factory contract found for this network",
-            };
-        }
-
-        return { success: true, data: contract };
-    } catch (error) {
-        console.error("Error fetching active factory contract:", error);
-        return {
-            success: false,
-            error: "Failed to fetch active factory contract",
-        };
-    }
-}
-
-export interface saveFactoryContractParams {
-    address: string;
-    networkId: string;
-    deployedBy?: string;
-    transactionHash?: string;
-}
-
-export async function saveFactoryContract(params: saveFactoryContractParams) {
-    try {
-        const network = await prisma.blockchainNetwork.findUnique({
-            where: { id: params.networkId },
-        });
-
-        if (!network) {
-            return { success: false, error: "Network not found" };
-        }
-
-        const contract = await prisma.factoryContract.create({
-            data: {
-                ...params,
-                isActive: true,
-            },
-        });
-
-        revalidatePath("/admin/onchain");
-        return { success: true, data: contract };
-    } catch (error) {
-        console.error("Error saving factory contract:", error);
-        return { success: false, error: "Failed to save factory contract" };
-    }
-}
-
-export async function updateFactoryContractCollections(
-    id: string,
-    collections: string[]
-) {
-    try {
-        const contract = await prisma.factoryContract.findUnique({
-            where: { id },
-        });
-
-        if (!contract) {
-            return { success: false, error: "Factory contract not found" };
-        }
-
-        const updatedContract = await prisma.factoryContract.update({
-            where: { id },
-            data: {
-                collections,
-            },
-        });
-
-        revalidatePath("/admin/onchain");
-        return { success: true, data: updatedContract };
-    } catch (error) {
-        console.error("Error updating factory contract collections:", error);
-        return {
-            success: false,
-            error: "Failed to update factory contract collections",
-        };
-    }
-}
-
+// 지갑 관련 함수
 export async function getEscrowWallets() {
     try {
         const wallets = await prisma.escrowWallet.findMany({
@@ -530,8 +420,6 @@ export async function getWalletBalance(params: {
 
         // Convert wei to ether (formatted string)
         const balanceEther = ethers.utils.formatEther(balanceWei);
-
-        
 
         return {
             success: true,

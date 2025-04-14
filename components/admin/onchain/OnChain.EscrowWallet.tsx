@@ -32,19 +32,12 @@ import {
     RefreshCw,
     Eye,
     EyeOff,
+    Copy,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import { useToast } from "@/app/hooks/useToast";
 import { JsonValue } from "@prisma/client/runtime/library";
@@ -85,6 +78,9 @@ export default function OnChainEscrowWallet() {
         useBlockchainNetworksManager();
 
     const toast = useToast();
+
+    // 주소 복사 상태 관리
+    const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
     const [showAddForm, setShowAddForm] = useState(false);
     const [revealPrivateKey, setRevealPrivateKey] = useState(false);
@@ -266,16 +262,30 @@ export default function OnChainEscrowWallet() {
         }
     }
 
+    // 주소 복사 함수
+    async function copyToClipboard(text: string) {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedAddress(text);
+
+            // 1.5초 후 복사 표시 제거
+            setTimeout(() => {
+                setCopiedAddress(null);
+            }, 1500);
+
+            toast.success("Address copied to clipboard");
+        } catch (err) {
+            console.error("Failed to copy:", err);
+            toast.error("Failed to copy address");
+        }
+    }
+
     return (
         <div className="space-y-6">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
                         <CardTitle>Escrow Wallets</CardTitle>
-                        <CardDescription>
-                            Manage wallets for escrow operations on blockchain
-                            networks
-                        </CardDescription>
                     </div>
                     <Button
                         variant="outline"
@@ -333,15 +343,38 @@ export default function OnChainEscrowWallet() {
                                     <Label htmlFor="address">
                                         Wallet Address*
                                     </Label>
-                                    <Input
-                                        id="address"
-                                        value={newWallet.address}
-                                        onChange={(e) =>
-                                            handleAddressChange(e.target.value)
-                                        }
-                                        placeholder="0x..."
-                                        required
-                                    />
+                                    <div className="flex items-center space-x-1">
+                                        <Input
+                                            id="address"
+                                            value={newWallet.address}
+                                            onChange={(e) =>
+                                                handleAddressChange(
+                                                    e.target.value
+                                                )
+                                            }
+                                            placeholder="0x..."
+                                            required
+                                        />
+                                        {newWallet.address && (
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                type="button"
+                                                onClick={() =>
+                                                    copyToClipboard(
+                                                        newWallet.address
+                                                    )
+                                                }
+                                            >
+                                                {copiedAddress ===
+                                                newWallet.address ? (
+                                                    <Check className="h-4 w-4 text-green-500" />
+                                                ) : (
+                                                    <Copy className="h-4 w-4" />
+                                                )}
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
@@ -518,8 +551,23 @@ export default function OnChainEscrowWallet() {
                                         {wallets.map((wallet) => (
                                             <TableRow key={wallet.id}>
                                                 <TableCell className="font-mono">
-                                                    <div className="truncate max-w-[200px]">
-                                                        {wallet.address}
+                                                    <div
+                                                        className="flex items-center space-x-1 cursor-pointer group"
+                                                        onClick={() =>
+                                                            copyToClipboard(
+                                                                wallet.address
+                                                            )
+                                                        }
+                                                    >
+                                                        <span className="truncate max-w-[150px]">
+                                                            {wallet.address}
+                                                        </span>
+                                                        {copiedAddress ===
+                                                        wallet.address ? (
+                                                            <Check className="h-4 w-4 text-green-500 opacity-100" />
+                                                        ) : (
+                                                            <Copy className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        )}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>

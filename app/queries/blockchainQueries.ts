@@ -3,8 +3,6 @@
 import { useQuery } from "@tanstack/react-query";
 import {
     getBlockchainNetworks,
-    getFactoryContracts,
-    getActiveFactoryContract,
     getEscrowWallets,
     getActiveEscrowWallet,
     getBlockchainNetworkById,
@@ -24,18 +22,20 @@ export interface Network {
     updatedAt: Date;
 }
 
-export interface FactoryContract {
+export interface EscrowWallet {
     id: string;
     address: string;
-    networkId: string;
-    deployedBy: string;
-    deployedAt: Date;
-    transactionHash: string;
+    privateKey: string | null; // [ENCRYPTED] 표시되거나 null
+    networkIds: string[];
     isActive: boolean;
-    collections: string[];
-    network: Network;
+    balance: Record<string, string>;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
+/**
+ * 블록체인 네트워크 목록 조회 쿼리 훅
+ */
 export function useBlockchainNetworks(includeInactive = false) {
     return useQuery({
         queryKey: [QUERY_KEYS.BLOCKCHAIN_NETWORKS, { includeInactive }],
@@ -49,6 +49,9 @@ export function useBlockchainNetworks(includeInactive = false) {
     });
 }
 
+/**
+ * 블록체인 네트워크 상세 조회 쿼리 훅
+ */
 export function useBlockchainNetwork(id: string) {
     return useQuery({
         queryKey: [QUERY_KEYS.BLOCKCHAIN_NETWORKS, id],
@@ -63,37 +66,9 @@ export function useBlockchainNetwork(id: string) {
     });
 }
 
-export function useFactoryContracts(networkId?: string) {
-    return useQuery({
-        queryKey: [QUERY_KEYS.FACTORY_CONTRACTS, { networkId }],
-        queryFn: async () => {
-            const result = await getFactoryContracts(networkId);
-            if (!result.success || !result.data) {
-                throw new Error(
-                    result.error || "Failed to fetch factory contracts"
-                );
-            }
-            return result.data;
-        },
-    });
-}
-
-export function useActiveFactoryContract(networkId: string) {
-    return useQuery({
-        queryKey: [QUERY_KEYS.FACTORY_CONTRACTS, "active", networkId],
-        queryFn: async () => {
-            const result = await getActiveFactoryContract(networkId);
-            if (!result.success || !result.data) {
-                throw new Error(
-                    result.error || "Failed to fetch active factory contract"
-                );
-            }
-            return result.data;
-        },
-        enabled: !!networkId,
-    });
-}
-
+/**
+ * 에스크로 지갑 목록 조회 쿼리 훅
+ */
 export function useEscrowWallets() {
     return useQuery({
         queryKey: [QUERY_KEYS.ESCROW_WALLETS],
@@ -109,6 +84,9 @@ export function useEscrowWallets() {
     });
 }
 
+/**
+ * 활성화된 에스크로 지갑 조회 쿼리 훅
+ */
 export function useActiveEscrowWallet() {
     return useQuery({
         queryKey: [QUERY_KEYS.ACTIVE_ESCROW_WALLET],

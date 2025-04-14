@@ -5,19 +5,19 @@ import {
     addBlockchainNetwork,
     addBlockchainNetworkParams,
     updateBlockchainNetwork,
-    saveFactoryContract,
-    saveFactoryContractParams,
-    updateFactoryContractCollections,
     saveEscrowWallet,
     saveEscrowWalletParams,
     updateEscrowWalletStatus,
     updateEscrowWalletBalance,
     generateWallet,
     getWalletBalance,
+    getEscrowWalletWithPrivateKey,
 } from "../actions/blockchain";
 import { QUERY_KEYS } from "../queryKeys";
 
-// Add blockchain network
+/**
+ * 블록체인 네트워크 추가 뮤테이션 훅
+ */
 export function useAddBlockchainNetwork() {
     const queryClient = useQueryClient();
 
@@ -38,7 +38,9 @@ export function useAddBlockchainNetwork() {
     });
 }
 
-// Update blockchain network
+/**
+ * 블록체인 네트워크 업데이트 뮤테이션 훅
+ */
 export function useUpdateBlockchainNetwork() {
     const queryClient = useQueryClient();
 
@@ -65,64 +67,9 @@ export function useUpdateBlockchainNetwork() {
     });
 }
 
-// Save factory contract
-export function useSaveFactoryContract() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async (params: saveFactoryContractParams) => {
-            const result = await saveFactoryContract(params);
-            if (!result.success || !result.data) {
-                throw new Error(
-                    result.error || "Failed to save factory contract"
-                );
-            }
-            return result.data;
-        },
-        onSuccess: (data) => {
-            // Invalidate factory contract list queries
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.FACTORY_CONTRACTS],
-            });
-            queryClient.invalidateQueries({
-                queryKey: [
-                    QUERY_KEYS.FACTORY_CONTRACTS,
-                    "active",
-                    data.networkId,
-                ],
-            });
-        },
-    });
-}
-
-// Update factory contract collections
-export function useUpdateFactoryContractCollections() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async (params: { id: string; collections: string[] }) => {
-            const result = await updateFactoryContractCollections(
-                params.id,
-                params.collections
-            );
-            if (!result.success || !result.data) {
-                throw new Error(
-                    result.error ||
-                        "Failed to update factory contract collections"
-                );
-            }
-            return result.data;
-        },
-        onSuccess: () => {
-            // Invalidate factory contract list queries
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.FACTORY_CONTRACTS],
-            });
-        },
-    });
-}
-
-// Save escrow wallet
+/**
+ * 에스크로 지갑 저장 뮤테이션 훅
+ */
 export function useSaveEscrowWallet() {
     const queryClient = useQueryClient();
 
@@ -146,7 +93,9 @@ export function useSaveEscrowWallet() {
     });
 }
 
-// Update escrow wallet status
+/**
+ * 에스크로 지갑 상태 업데이트 뮤테이션 훅
+ */
 export function useUpdateEscrowWalletStatus() {
     const queryClient = useQueryClient();
 
@@ -175,7 +124,9 @@ export function useUpdateEscrowWalletStatus() {
     });
 }
 
-// Update escrow wallet balance
+/**
+ * 에스크로 지갑 잔액 업데이트 뮤테이션 훅
+ */
 export function useUpdateEscrowWalletBalance() {
     const queryClient = useQueryClient();
 
@@ -207,7 +158,9 @@ export function useUpdateEscrowWalletBalance() {
     });
 }
 
-// Generate new wallet
+/**
+ * 새 지갑 생성 뮤테이션 훅
+ */
 export function useGenerateWallet() {
     return useMutation({
         mutationFn: async () => {
@@ -220,13 +173,32 @@ export function useGenerateWallet() {
     });
 }
 
-// Get wallet balance
+/**
+ * 지갑 잔액 조회 뮤테이션 훅
+ */
 export function useGetWalletBalance() {
     return useMutation({
         mutationFn: async (params: { address: string; networkId: string }) => {
             const result = await getWalletBalance(params);
             if (!result.success || !result.data) {
                 throw new Error(result.error || "Failed to get wallet balance");
+            }
+            return result.data;
+        },
+    });
+}
+
+/**
+ * 지갑의 private key를 가져오는 뮤테이션 훅
+ */
+export function useGetEscrowWalletWithPrivateKey() {
+    return useMutation({
+        mutationFn: async (id: string) => {
+            const result = await getEscrowWalletWithPrivateKey(id);
+            if (!result.success || !result.data) {
+                throw new Error(
+                    result.error || "Failed to get wallet private key"
+                );
             }
             return result.data;
         },

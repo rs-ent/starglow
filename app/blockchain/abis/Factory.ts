@@ -1,8 +1,5 @@
 /// app/web3/abis/CollectionFactory.ts
 
-// CollectionFactory 컨트랙트 주소 및 ABI 정의
-export const FACTORY_ADDRESS = process.env.NEXT_PUBLIC_FACTORY_ADDRESS;
-
 // CollectionFactory에서 사용하는 ABI (Application Binary Interface) 정의
 export const FACTORY_ABI = [
     {
