@@ -1,5 +1,7 @@
 /// app\actions\ipfs.ts
 
+"use server";
+
 import type { GroupResponseItem, UploadResponse } from "pinata";
 import { pinataClient } from "@/lib/pinata/client";
 import { prisma } from "@/lib/prisma/client";
@@ -104,7 +106,7 @@ export type HexColor = string & { __brand: "HexColor" };
  * @param color 검증할 색상 코드 문자열 ('#' 제외)
  * @returns 유효한 HexColor 타입인지 여부
  */
-export function isValidHexColor(color: string): color is HexColor {
+export async function isValidHexColor(color: string): Promise<boolean> {
     return /^[0-9A-Fa-f]{6}$/.test(color);
 }
 
@@ -170,7 +172,7 @@ export async function uploadMetadata(
 
     if (
         metadata.background_color &&
-        !isValidHexColor(metadata.background_color)
+        !(await isValidHexColor(metadata.background_color))
     ) {
         throw new Error("background_color must be a valid hex color");
     }
