@@ -71,26 +71,38 @@ export const queryKeys = {
         },
     },
     ipfs: {
-        all: ["ipfs"] as const,
         files: {
             all: ["ipfs", "files"] as const,
-            byId: (id: string) => ["ipfs", "files", id] as const,
             byGroup: (groupId: string) =>
                 ["ipfs", "files", "group", groupId] as const,
+            byId: (id: string) => ["ipfs", "files", id] as const,
         },
         metadata: {
             all: ["ipfs", "metadata"] as const,
             byId: (id: string) => ["ipfs", "metadata", id] as const,
+            linkable: ["ipfs", "metadata", "linkable"] as const,
             byCollection: (collectionId: string) =>
                 ["ipfs", "metadata", "collection", collectionId] as const,
-            linkable: ["ipfs", "metadata", "linkable"] as const,
-            byCid: (cid: string) => ["ipfs", "metadata", "cid", cid] as const,
+            folder: (metadataId: string) =>
+                [...queryKeys.ipfs.metadata.all, "folder", metadataId] as const,
         },
         groups: {
             all: ["ipfs", "groups"] as const,
             byId: (id: string) => ["ipfs", "groups", id] as const,
             byName: (name: string) => ["ipfs", "groups", "name", name] as const,
         },
+    },
+    nft: {
+        all: ["nft"] as const,
+        byId: (id: string) => ["nft", id] as const,
+        byCollection: (collectionId: string) =>
+            ["nft", "collection", collectionId] as const,
+    },
+    collection: {
+        all: ["collection"] as const,
+        byId: (id: string) => ["collection", id] as const,
+        byAddress: (address: string) =>
+            ["collection", "address", address] as const,
     },
 };
 
@@ -109,4 +121,12 @@ export const collectionKeys = {
     detail: (id: string) => [...collectionKeys.all, "detail", id] as const,
     status: (address: string) =>
         [...collectionKeys.all, "status", address] as const,
+    estimateMintGas: (address: string, to: string, quantity: number) =>
+        [
+            ...collectionKeys.all,
+            "estimateMintGas",
+            address,
+            to,
+            quantity,
+        ] as const,
 };

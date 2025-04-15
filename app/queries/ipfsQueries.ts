@@ -1,7 +1,5 @@
 /// app/queries/ipfsQueries.ts
 
-"use client";
-
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../queryKeys";
 import {
@@ -9,14 +7,16 @@ import {
     getGroupFiles,
     getMetadata,
     getLinkableMetadata,
-    getPinataGroups,
     getPinataGroupById,
     getPinataGroupByName,
+    getPinataGroups,
+    createMetadataFolder,
 } from "../actions/ipfs";
-import { IpfsFile, Metadata } from "@prisma/client";
+import type { GroupResponseItem } from "pinata";
+import type { IpfsFile, Metadata } from "@prisma/client";
 
 /**
- * Hook for fetching all IPFS files
+ * Fetches all IPFS files
  */
 export function useIpfsFiles() {
     return useQuery({
@@ -26,7 +26,7 @@ export function useIpfsFiles() {
 }
 
 /**
- * Hook for fetching files from a specific group
+ * Fetches IPFS files by group ID
  */
 export function useGroupFiles(groupId: string) {
     return useQuery({
@@ -37,10 +37,10 @@ export function useGroupFiles(groupId: string) {
 }
 
 /**
- * Hook for fetching a specific metadata by ID
+ * Fetches metadata by ID
  */
 export function useMetadata(metadataId: string) {
-    return useQuery({
+    return useQuery<Metadata>({
         queryKey: queryKeys.ipfs.metadata.byId(metadataId),
         queryFn: () => getMetadata(metadataId),
         enabled: !!metadataId,
@@ -48,72 +48,54 @@ export function useMetadata(metadataId: string) {
 }
 
 /**
- * Hook for fetching metadata by IPFS CID
- */
-export function useIPFSMetadata(cid: string) {
-    return useQuery({
-        queryKey: queryKeys.ipfs.metadata.byCid(cid),
-        queryFn: async () => {
-            if (!cid) return null;
-
-            try {
-                // IPFS 게이트웨이 URL로 변환
-                const gatewayUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
-                const response = await fetch(gatewayUrl);
-                if (!response.ok) {
-                    throw new Error(
-                        `Failed to fetch metadata: ${response.statusText}`
-                    );
-                }
-                const metadata = await response.json();
-                return { metadata, cid };
-            } catch (error) {
-                console.error("Error fetching IPFS metadata:", error);
-                throw error;
-            }
-        },
-        enabled: !!cid,
-    });
-}
-
-/**
- * Hook for fetching linkable metadata (not connected to any collection)
+ * Fetches all linkable (unlinked) metadata
  */
 export function useLinkableMetadata() {
-    return useQuery({
+    return useQuery<Metadata[]>({
         queryKey: queryKeys.ipfs.metadata.linkable,
         queryFn: () => getLinkableMetadata(),
     });
 }
 
 /**
- * Hook for fetching all Pinata groups
+ * Fetches Pinata group by ID
+ */
+export function usePinataGroupById(groupId: string) {
+    return useQuery<GroupResponseItem | null>({
+        queryKey: queryKeys.ipfs.groups.byId(groupId),
+        queryFn: () => getPinataGroupById(groupId),
+        enabled: !!groupId,
+    });
+}
+
+/**
+ * Fetches Pinata group by name
+ */
+export function usePinataGroupByName(name: string) {
+    return useQuery<GroupResponseItem | null>({
+        queryKey: queryKeys.ipfs.groups.byName(name),
+        queryFn: () => getPinataGroupByName(name),
+        enabled: !!name,
+    });
+}
+
+/**
+ * Fetches all Pinata groups
  */
 export function usePinataGroups() {
-    return useQuery({
+    return useQuery<GroupResponseItem[]>({
         queryKey: queryKeys.ipfs.groups.all,
         queryFn: () => getPinataGroups(),
     });
 }
 
 /**
- * Hook for fetching a specific Pinata group by ID
+ * 메타데이터 폴더 생성 쿼리
  */
-export function usePinataGroup(id: string) {
-    return useQuery({
-        queryKey: queryKeys.ipfs.groups.byId(id),
-        queryFn: () => getPinataGroupById(id),
-        enabled: !!id,
-    });
-}
-
-/**
- * Hook for fetching a Pinata group by name
- */
-export function usePinataGroupByName(name: string) {
-    return useQuery({
-        queryKey: queryKeys.ipfs.groups.byName(name),
-        queryFn: () => getPinataGroupByName(name),
-        enabled: !!name,
+export function useCreateMetadataFolder(metadataId: string, maxSupply: number) {
+    return useQuery<Metadata>({
+        queryKey: queryKeys.ipfs.metadata.folder(metadataId),
+        queryFn: () => createMetadataFolder(metadataId, maxSupply),
+        enabled: !!metadataId && maxSupply > 0,
     });
 }

@@ -1,35 +1,49 @@
 /// app/mutations/ipfsMutations.ts
 
-"use client";
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../queryKeys";
 import {
+    uploadIpfsFile,
     uploadIpfsFiles,
     uploadMetadata,
+    linkMetadataToCollection,
     createNFTMetadata,
     linkNFTsToMetadata,
-    linkMetadataToCollection,
     createPinataGroup,
+    createMetadataFolder,
+    METADATA_TYPE,
 } from "../actions/ipfs";
-import type { METADATA_TYPE } from "../actions/ipfs";
+import type { GroupResponseItem, UploadResponse } from "pinata";
+import type { Metadata, NFT } from "@prisma/client";
 
 /**
- * Hook for uploading files to IPFS
+ * Mutation for uploading a single file to IPFS
  */
-export function useUploadFiles() {
+export function useUploadIpfsFile() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ files, groupId }: { files: File[]; groupId?: string }) =>
-            uploadIpfsFiles(files, groupId),
-        onSuccess: (_, { groupId }) => {
+        mutationFn: async ({
+            file,
+            groupId,
+            gateway = "ipfs://",
+            network,
+        }: {
+            file: File;
+            groupId?: string;
+            gateway?: string;
+            network?: string;
+        }) => {
+            return uploadIpfsFile(file, groupId, gateway, network);
+        },
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.ipfs.files.all,
             });
-            if (groupId) {
+
+            if (variables.groupId) {
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.ipfs.files.byGroup(groupId),
+                    queryKey: queryKeys.ipfs.files.byGroup(variables.groupId),
                 });
             }
         },
@@ -37,22 +51,68 @@ export function useUploadFiles() {
 }
 
 /**
- * Hook for creating metadata
+ * Mutation for uploading multiple files to IPFS
  */
-export function useCreateMetadata() {
+export function useUploadIpfsFiles() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({
+        mutationFn: async ({
+            files,
+            gateway = "ipfs://",
+            network,
+            groupId,
+        }: {
+            files: File[];
+            gateway?: string;
+            network?: string;
+            groupId?: string;
+        }) => {
+            return uploadIpfsFiles(files, gateway, network, groupId);
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.ipfs.files.all,
+            });
+
+            if (variables.groupId) {
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.ipfs.files.byGroup(variables.groupId),
+                });
+            }
+        },
+    });
+}
+
+/**
+ * Mutation for uploading NFT metadata
+ */
+export function useUploadMetadata() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
             metadata,
             groupId,
             collectionId,
+            gateway = "ipfs://",
+            network,
         }: {
             metadata: METADATA_TYPE;
             groupId?: string;
             collectionId?: string;
-        }) => uploadMetadata(metadata, groupId, collectionId),
-        onSuccess: (_, { groupId, collectionId }) => {
+            gateway?: string;
+            network?: string;
+        }) => {
+            return uploadMetadata(
+                metadata,
+                groupId,
+                collectionId,
+                gateway,
+                network
+            );
+        },
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.ipfs.metadata.all,
             });
@@ -60,16 +120,20 @@ export function useCreateMetadata() {
                 queryKey: queryKeys.ipfs.metadata.linkable,
             });
 
-            if (collectionId) {
+            if (variables.collectionId) {
                 queryClient.invalidateQueries({
-                    queryKey:
-                        queryKeys.ipfs.metadata.byCollection(collectionId),
+                    queryKey: queryKeys.ipfs.metadata.byCollection(
+                        variables.collectionId
+                    ),
+                });
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.collection.byId(variables.collectionId),
                 });
             }
 
-            if (groupId) {
+            if (data.id) {
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.ipfs.files.byGroup(groupId),
+                    queryKey: queryKeys.ipfs.metadata.byId(data.id),
                 });
             }
         },
@@ -77,13 +141,50 @@ export function useCreateMetadata() {
 }
 
 /**
- * Hook for batch creating NFT metadata
+ * Mutation for linking metadata to a collection
+ */
+export function useLinkMetadataToCollection() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            metadataFolderId,
+            collectionId,
+        }: {
+            metadataFolderId: string;
+            collectionId: string;
+        }) => {
+            return linkMetadataToCollection(metadataFolderId, collectionId);
+        },
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.ipfs.metadata.all,
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.ipfs.metadata.byId(
+                    variables.metadataFolderId
+                ),
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.ipfs.metadata.folder(
+                    variables.metadataFolderId
+                ),
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.collection.byId(variables.collectionId),
+            });
+        },
+    });
+}
+
+/**
+ * Mutation for creating NFT metadata in batches
  */
 export function useCreateNFTMetadata() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({
+        mutationFn: async ({
             collectionId,
             mintAmount,
             batchSize = 10,
@@ -91,85 +192,128 @@ export function useCreateNFTMetadata() {
             collectionId: string;
             mintAmount: number;
             batchSize?: number;
-        }) => createNFTMetadata(collectionId, mintAmount, batchSize),
-        onSuccess: (_, { collectionId }) => {
+        }) => {
+            return createNFTMetadata(collectionId, mintAmount, batchSize);
+        },
+        onSuccess: (_, variables) => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.ipfs.metadata.all,
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.ipfs.metadata.byCollection(collectionId),
-            });
-        },
-    });
-}
-
-/**
- * Hook for linking NFTs to metadata
- */
-export function useLinkNFTs() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: ({
-            nftIds,
-            collectionId,
-        }: {
-            nftIds: string[];
-            collectionId: string;
-        }) => linkNFTsToMetadata({ nftIds, collectionId }),
-        onSuccess: (_, { collectionId }) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.ipfs.metadata.all,
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.ipfs.metadata.byCollection(collectionId),
-            });
-        },
-    });
-}
-
-/**
- * Hook for linking metadata to a collection
- */
-export function useAttachMetadataToCollection() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: ({
-            metadataId,
-            collectionId,
-        }: {
-            metadataId: string;
-            collectionId: string;
-        }) => linkMetadataToCollection(metadataId, collectionId),
-        onSuccess: (_, { metadataId, collectionId }) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.ipfs.metadata.byId(metadataId),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.ipfs.metadata.byCollection(collectionId),
             });
             queryClient.invalidateQueries({
                 queryKey: queryKeys.ipfs.metadata.linkable,
             });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.ipfs.metadata.byCollection(
+                    variables.collectionId
+                ),
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.collection.byId(variables.collectionId),
+            });
         },
     });
 }
 
 /**
- * Hook for creating a Pinata group
+ * Mutation for linking NFTs to metadata
  */
-export function useCreateGroup() {
+export function useLinkNFTsToMetadata() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (name: string) => createPinataGroup({ name }),
+        mutationFn: async ({
+            nftIds,
+            collectionId,
+            gateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY ?? "ipfs://",
+        }: {
+            nftIds: string[];
+            collectionId: string;
+            gateway?: string;
+        }) => {
+            return linkNFTsToMetadata({ nftIds, collectionId, gateway });
+        },
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.ipfs.metadata.all,
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.ipfs.metadata.linkable,
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.ipfs.metadata.byCollection(
+                    variables.collectionId
+                ),
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.collection.byId(variables.collectionId),
+            });
+
+            // Invalidate each NFT's query
+            data.forEach((nft) => {
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.nft.byId(nft.id),
+                });
+            });
+
+            // Invalidate the collection's NFTs query
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.nft.byCollection(variables.collectionId),
+            });
+        },
+    });
+}
+
+/**
+ * Mutation for creating a Pinata group
+ */
+export function useCreatePinataGroup() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ name }: { name: string }) => {
+            return createPinataGroup({ name });
+        },
         onSuccess: (data) => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.ipfs.groups.all,
             });
             queryClient.invalidateQueries({
+                queryKey: queryKeys.ipfs.groups.byId(data.id),
+            });
+            queryClient.invalidateQueries({
                 queryKey: queryKeys.ipfs.groups.byName(data.name),
+            });
+        },
+    });
+}
+
+/**
+ * Mutation for creating a metadata folder
+ */
+export function useCreateMetadataFolder() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            metadataId,
+            maxSupply,
+            gateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY ?? "ipfs://",
+        }: {
+            metadataId: string;
+            maxSupply: number;
+            gateway?: string;
+        }) => {
+            return createMetadataFolder(metadataId, maxSupply, gateway);
+        },
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.ipfs.metadata.all,
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.ipfs.metadata.byId(variables.metadataId),
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.ipfs.metadata.folder(variables.metadataId),
             });
         },
     });

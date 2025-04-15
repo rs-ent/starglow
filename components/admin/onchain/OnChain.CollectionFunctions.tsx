@@ -18,6 +18,7 @@ import {
     Copy,
     ExternalLink,
     FileJson,
+    Settings,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/app/hooks/useToast";
@@ -33,7 +34,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CollectionContract } from "@/app/queries/collectionContractsQueries";
-import { useCollectionStatusQuery } from "@/app/queries/collectionContractsQueries";
+import {
+    useCollectionStatusQuery,
+    useEstimateMintGasQuery,
+} from "@/app/queries/collectionContractsQueries";
 import {
     useToggleMintingMutation,
     useTogglePauseMutation,
@@ -42,7 +46,9 @@ import {
 import { useEscrowWalletManager } from "@/app/hooks/useBlockchain";
 import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
 import Popup from "@/components/atoms/Popup";
-import { useIPFSMetadata } from "@/app/queries/ipfsQueries";
+import { useIpfs } from "@/app/hooks/useIpfs";
+
+const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY;
 
 interface CollectionFunctionsProps {
     collection: CollectionContract;
@@ -56,6 +62,7 @@ export default function CollectionFunctions({
     onCollectionUpdated,
 }: CollectionFunctionsProps) {
     const toast = useToast();
+    const { linkNFTsToMetadata } = useIpfs();
 
     const [mintQuantity, setMintQuantity] = useState("1");
     const [mintAddress, setMintAddress] = useState("");
@@ -109,6 +116,30 @@ export default function CollectionFunctions({
         }
     }, [selectedWalletId, wallets]);
 
+    // 가스비 관련 상태
+    const [customGasSettings, setCustomGasSettings] = useState(false);
+    const [gasLimit, setGasLimit] = useState("");
+    const [gasPrice, setGasPrice] = useState("");
+    const [showGasSettings, setShowGasSettings] = useState(false);
+
+    // 가스비 예상 쿼리
+    const { data: gasEstimate, isLoading: isLoadingGasEstimate } =
+        useEstimateMintGasQuery(
+            collection.address,
+            collection.network?.id || "",
+            mintAddress,
+            parseInt(mintQuantity) || 1,
+            privateKey
+        );
+
+    // 가스비 예상이 업데이트되면 기본값 설정
+    useEffect(() => {
+        if (gasEstimate && !customGasSettings && privateKey) {
+            setGasLimit(gasEstimate.gasLimit.toString());
+            setGasPrice(gasEstimate.gasPrice.toString());
+        }
+    }, [gasEstimate, customGasSettings, privateKey]);
+
     // Handle minting new tokens
     const handleMint = async () => {
         if (!mintAddress) {
@@ -134,6 +165,10 @@ export default function CollectionFunctions({
                 to: mintAddress,
                 quantity,
                 privateKey,
+                ...(customGasSettings && {
+                    gasLimit,
+                    gasMaxFee: gasPrice,
+                }),
             });
 
             if (result.success) {
@@ -147,6 +182,21 @@ export default function CollectionFunctions({
                     onCollectionUpdated({
                         ...collection,
                     });
+                }
+
+                try {
+                    if (result.data?.nftIds && result.data.nftIds.length > 0) {
+                        await linkNFTsToMetadata({
+                            nftIds: result.data.nftIds,
+                            collectionId: collection.id,
+                        });
+
+                        toast.success(
+                            `Successfully linked ${result.data.nftIds.length} NFTs to metadata`
+                        );
+                    }
+                } catch (error) {
+                    console.error("Error linking NFTs to metadata:", error);
                 }
 
                 toast.success(`Minted ${quantity} token(s)`);
@@ -479,6 +529,143 @@ export default function CollectionFunctions({
                                         setMintQuantity(e.target.value)
                                     }
                                 />
+                            </div>
+
+                            {/* 가스비 예상 및 설정 */}
+                            <div className="border rounded-md p-3 mt-4 space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <div className="font-medium text-sm">
+                                        Gas Estimation
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                            setShowGasSettings(!showGasSettings)
+                                        }
+                                    >
+                                        <Settings className="h-4 w-4 mr-1" />
+                                        {showGasSettings
+                                            ? "Hide Settings"
+                                            : "Show Settings"}
+                                    </Button>
+                                </div>
+
+                                {mintAddress && parseInt(mintQuantity) > 0 ? (
+                                    <div className="text-sm space-y-1">
+                                        {!privateKey ? (
+                                            <div className="text-yellow-500">
+                                                <AlertTriangle className="h-3 w-3 inline mr-1" />
+                                                Please select a wallet with
+                                                admin or escrow permissions
+                                            </div>
+                                        ) : isLoadingGasEstimate ? (
+                                            <div className="flex items-center">
+                                                <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                                                Estimating gas...
+                                            </div>
+                                        ) : gasEstimate ? (
+                                            <>
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">
+                                                        Estimated Gas Cost:
+                                                    </span>
+                                                    <span className="font-mono">
+                                                        {
+                                                            gasEstimate.estimatedGasCostInEth
+                                                        }{" "}
+                                                        {
+                                                            gasEstimate.networkSymbol
+                                                        }
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between text-xs text-muted-foreground">
+                                                    <span>Gas Limit:</span>
+                                                    <span className="font-mono">
+                                                        {gasEstimate.gasLimit.toString()}
+                                                    </span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="text-yellow-500">
+                                                <AlertTriangle className="h-3 w-3 inline mr-1" />
+                                                Unable to estimate gas
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-muted-foreground">
+                                        Enter recipient address and quantity to
+                                        see gas estimation
+                                    </div>
+                                )}
+
+                                {showGasSettings && (
+                                    <div className="pt-2 space-y-3 border-t mt-2">
+                                        <div className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                id="customGasSettings"
+                                                checked={customGasSettings}
+                                                onChange={(e) =>
+                                                    setCustomGasSettings(
+                                                        e.target.checked
+                                                    )
+                                                }
+                                                className="mr-2"
+                                            />
+                                            <Label
+                                                htmlFor="customGasSettings"
+                                                className="text-sm"
+                                            >
+                                                Use custom gas settings
+                                            </Label>
+                                        </div>
+
+                                        {customGasSettings && (
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <Label
+                                                        htmlFor="gasLimit"
+                                                        className="text-xs"
+                                                    >
+                                                        Gas Limit
+                                                    </Label>
+                                                    <Input
+                                                        id="gasLimit"
+                                                        value={gasLimit}
+                                                        onChange={(e) =>
+                                                            setGasLimit(
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        placeholder="Gas Limit"
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label
+                                                        htmlFor="gasPrice"
+                                                        className="text-xs"
+                                                    >
+                                                        Gas Price (wei)
+                                                    </Label>
+                                                    <Input
+                                                        id="gasPrice"
+                                                        value={gasPrice}
+                                                        onChange={(e) =>
+                                                            setGasPrice(
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        placeholder="Gas Price"
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                         <CardFooter>

@@ -64,7 +64,7 @@ export type METADATA_TYPE = {
         trait_type: string;
 
         /** 특성의 값 */
-        value: string;
+        value: string | number;
 
         /**
          * 값의 표시 형식
@@ -130,26 +130,71 @@ export async function getGroupFiles(groupId: string): Promise<IpfsFile[]> {
     return files;
 }
 
+export async function uploadIpfsFile(
+    file: File,
+    groupId?: string,
+    gateway: string = "ipfs://",
+    network?: string
+): Promise<UploadResponse> {
+    console.log(
+        `[uploadIpfsFile] Uploading file: ${file.name}${
+            groupId ? ` to group: ${groupId}` : ""
+        }`
+    );
+    const response = await pinataClient.upload.public
+        .file(file)
+        .group(groupId ?? "");
+    console.log(`[uploadIpfsFile] Upload response:`, response);
+
+    const ipfsFile = await prisma.ipfsFile.create({
+        data: {
+            type: "nft-metadata",
+            url: `${gateway}${response.cid}`,
+            pinataId: response.id,
+            name: file.name,
+            cid: response.cid,
+            size: response.size,
+            numberOfFiles: response.number_of_files,
+            mimeType: response.mime_type,
+            groupId: groupId ?? null,
+            gateway: gateway,
+            network: network,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        },
+    });
+    return response;
+}
+
 export async function uploadIpfsFiles(
     files: File[],
+    gateway: string = "ipfs://",
+    network?: string,
     groupId?: string
-): Promise<UploadResponse> {
+): Promise<UploadResponse[]> {
     console.log(
         `[uploadIpfsFiles] Uploading ${files.length} files${
             groupId ? ` to group: ${groupId}` : ""
         }`
     );
-    const response = await pinataClient.upload.public
-        .fileArray(files)
-        .group(groupId ?? "");
-    console.log(`[uploadIpfsFiles] Upload response:`, response);
-    return response;
+
+    const promises = files.map(async (file) => {
+        const response = await uploadIpfsFile(file, groupId, gateway, network);
+        return response;
+    });
+
+    const responses = await Promise.all(promises);
+
+    console.log(`[uploadIpfsFiles] Created ${responses.length} IPFS files`);
+    return responses;
 }
 
 export async function uploadMetadata(
     metadata: METADATA_TYPE,
     groupId?: string,
-    collectionId?: string
+    collectionId?: string,
+    gateway: string = process.env.NEXT_PUBLIC_PINATA_GATEWAY ?? "ipfs://",
+    network?: string
 ): Promise<Metadata> {
     console.log(
         `[uploadMetadata] Starting upload for metadata: "${metadata.name}"${
@@ -184,11 +229,25 @@ export async function uploadMetadata(
         throw new Error("Image URL must start with 'ipfs://' or 'https://'");
     }
 
+    // 컬렉션 ID가 제공되었다면 실제 존재하는지 검증
+    if (collectionId) {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { id: collectionId },
+        });
+
+        if (!collection) {
+            throw new Error(
+                `CollectionContract with ID ${collectionId} not found`
+            );
+        }
+    }
+
     try {
         console.log(`[uploadMetadata] Uploading metadata to Pinata`);
         const response = await pinataClient.upload.public
             .json(metadata)
-            .group(groupId ?? "");
+            .group(groupId ?? "")
+            .name(metadata.name);
         console.log(`[uploadMetadata] Pinata response:`, response);
 
         console.log(`[uploadMetadata] Saving metadata to database`);
@@ -198,6 +257,7 @@ export async function uploadMetadata(
                 const ipfsFile = await tx.ipfsFile.create({
                     data: {
                         type: "nft-metadata",
+                        url: `${gateway}${response.cid}`,
                         pinataId: response.id,
                         name: metadata.name,
                         cid: response.cid,
@@ -219,9 +279,9 @@ export async function uploadMetadata(
                 const savedMetadata = await tx.metadata.create({
                     data: {
                         metadata: metadata,
+                        url: `${gateway}${response.cid}`,
                         ipfsFileId: ipfsFile.id,
-                        collectionContractId: collectionId ?? "",
-
+                        collectionContractId: collectionId ?? null,
                         createdAt: new Date(),
                         updatedAt: new Date(),
                     },
@@ -279,22 +339,107 @@ export async function getLinkableMetadata(): Promise<Metadata[]> {
     return metadata;
 }
 
-export async function linkMetadataToCollection(
+function createMetadataFile(metadata: METADATA_TYPE, index: number): File {
+    const content = JSON.stringify(metadata, null, 2);
+    const blob = new Blob([content], { type: "application/json" });
+    return new File([blob], `${index}.json`, { type: "application/json" });
+}
+
+export async function createMetadataFolder(
     metadataId: string,
+    maxSupply: number,
+    gateway: string = process.env.NEXT_PUBLIC_PINATA_GATEWAY ?? "ipfs://"
+): Promise<Metadata> {
+    try {
+        // 병렬로 메타데이터와 컬렉션 정보를 조회
+        const linkableMetadata = await prisma.metadata.findUnique({
+            where: { id: metadataId },
+            select: { metadata: true },
+        });
+
+        if (!linkableMetadata?.metadata) {
+            throw new Error("Metadata not found");
+        }
+
+        const metadata = linkableMetadata.metadata as METADATA_TYPE;
+
+        // 메타데이터 파일 생성을 병렬로 처리
+        const files = await Promise.all(
+            Array.from({ length: maxSupply }, (_, i) => {
+                const file = createMetadataFile(metadata, i);
+                console.log(`Metadata Created: ${file.name}`);
+                return file;
+            })
+        );
+
+        // Pinata 업로드
+        const pinataResponse = await pinataClient.upload.public.fileArray(
+            files
+        );
+
+        // 트랜잭션으로 DB 작업 묶기
+        const result = await prisma.$transaction(async (tx) => {
+            // IPFS 파일 정보 생성
+            const ipfsFile = await tx.ipfsFile.create({
+                data: {
+                    type: "nft-metadata-folder",
+                    url: `${gateway}${pinataResponse.cid}`,
+                    pinataId: pinataResponse.id,
+                    name: metadata.name,
+                    cid: pinataResponse.cid,
+                    size: pinataResponse.size,
+                    numberOfFiles: pinataResponse.number_of_files,
+                    mimeType: pinataResponse.mime_type,
+                    keyvalues: pinataResponse.keyvalues ?? {},
+                    vectorized: pinataResponse.vectorized ?? false,
+                },
+            });
+
+            // 메타데이터 업데이트
+            const folder = await tx.metadata.update({
+                where: { id: metadataId },
+                data: {
+                    url: `${gateway}${pinataResponse.cid}`,
+                    metadata: metadata,
+                    ipfsFileId: ipfsFile.id,
+                    collectionContractId: null,
+                },
+            });
+
+            return { ipfsFile, folder };
+        });
+
+        console.log(
+            `[createMetadataFolder] Successfully created metadata folder ${result.folder.id}`
+        );
+
+        return result.folder;
+    } catch (error) {
+        console.error(`[linkMetadataToCollection] Error:`, error);
+        throw error;
+    }
+}
+
+export async function linkMetadataToCollection(
+    metadataFolderId: string,
     collectionId: string
 ): Promise<Metadata> {
     console.log(
-        `[linkMetadataToCollection] Linking metadata ${metadataId} to collection ${collectionId}`
+        `[linkMetadataToCollection] Linking metadata folder ${metadataFolderId} to collection ${collectionId}`
     );
     try {
-        const metadata = await prisma.metadata.update({
-            where: { id: metadataId },
-            data: { collectionContractId: collectionId },
+        const metadataFolder = await prisma.metadata.update({
+            where: { id: metadataFolderId },
+            data: {
+                collectionContractId: collectionId,
+            },
         });
+
         console.log(
-            `[linkMetadataToCollection] Successfully linked metadata ${metadataId} to collection ${collectionId}`
+            `[linkMetadataToCollection] Successfully linked metadata ${metadataFolderId} to collection ${collectionId}`
         );
-        return metadata;
+
+        return metadataFolder;
     } catch (error) {
         console.error(`[linkMetadataToCollection] Error:`, error);
         throw error;
@@ -304,7 +449,8 @@ export async function linkMetadataToCollection(
 export async function createNFTMetadata(
     collectionId: string,
     mintAmount: number,
-    batchSize: number = 10
+    batchSize: number = 10,
+    gateway: string = process.env.NEXT_PUBLIC_PINATA_GATEWAY ?? "ipfs://"
 ): Promise<Metadata[]> {
     const startTime = performance.now();
     console.log(
@@ -380,7 +526,8 @@ export async function createNFTMetadata(
                     return uploadMetadata(
                         metadata as METADATA_TYPE,
                         group?.id,
-                        collection.id
+                        collection.id,
+                        gateway
                     );
                 });
 
@@ -430,9 +577,11 @@ export async function createNFTMetadata(
 export async function linkNFTsToMetadata({
     nftIds,
     collectionId,
+    gateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY ?? "ipfs://",
 }: {
     nftIds: string[];
     collectionId: string;
+    gateway: string;
 }): Promise<NFT[]> {
     const startTime = performance.now();
     console.log(
@@ -471,9 +620,12 @@ export async function linkNFTsToMetadata({
                     `[linkNFTsToMetadata] Creating ${needAmount} new metadata items for collection: ${collectionId}`
                 );
                 const createStart = performance.now();
+                const batchSize = 10;
                 const newLinkableMetadata = await createNFTMetadata(
                     collectionId,
-                    needAmount
+                    needAmount,
+                    batchSize,
+                    gateway
                 );
                 const createEnd = performance.now();
                 const createDuration = (createEnd - createStart) / 1000;

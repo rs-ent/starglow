@@ -38,7 +38,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
 import { METADATA_TYPE, isValidHexColor } from "@/app/actions/ipfs";
-import { MetadataFormValues } from "./OnChain.Metadata";
+import { useIpfs } from "@/app/hooks/useIpfs";
+import { Metadata } from "@prisma/client";
+
+const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY;
 
 /**
  * 컬렉션 생성 결과 인터페이스
@@ -68,15 +71,19 @@ export default function CreateCollection({
     onClose,
     onSuccess,
 }: CreateCollectionProps) {
+    const { linkableMetadata, createFolder, linkMetadataToCollection } =
+        useIpfs();
+
     const toast = useToast();
 
     // 상태 관리
     const [privateKey, setPrivateKey] = useState("");
     const [showPrivateKey, setShowPrivateKey] = useState(false);
     const [selectedWalletId, setSelectedWalletId] = useState<string>("");
-    const [selectedMetadata, setSelectedMetadata] = useState<string | null>(
+    const [selectedMetadata, setSelectedMetadata] = useState<Metadata | null>(
         null
     );
+
     const [collectionResult, setCollectionResult] =
         useState<CollectionCreationResult | null>(null);
 
@@ -105,10 +112,57 @@ export default function CreateCollection({
     const { networks } = useBlockchainNetworksManager();
     const createCollectionMutation = useFactoryCreateCollection();
 
-    // 메타데이터 선택 핸들러
-    const handleMetadataSelect = (metadataId: string) => {
-        setSelectedMetadata(metadataId);
-    };
+    // 메타데이터가 로드되면 컬렉션 폼을 업데이트
+    useEffect(() => {
+        if (
+            selectedMetadata &&
+            linkableMetadata &&
+            linkableMetadata.length > 0
+        ) {
+            const metadataContent = selectedMetadata?.metadata as METADATA_TYPE; // Set the collection name based on metadata name
+            setCollectionForm((prev) => ({
+                ...prev,
+                name: metadataContent.name,
+            }));
+
+            // Generate symbol from the name (use first letters or abbreviated version)
+            const words = metadataContent.name.split(" ");
+            let symbol = "";
+
+            if (words.length <= 3) {
+                // If 3 or fewer words, use first letter of each word
+                symbol = words
+                    .map((word) => word.charAt(0).toUpperCase())
+                    .join("");
+            } else {
+                // If more than 3 words, use first 3 words' first letters
+                symbol = words
+                    .slice(0, 3)
+                    .map((word) => word.charAt(0).toUpperCase())
+                    .join("");
+            }
+
+            // Make sure the symbol is at least 2 characters
+            if (symbol.length < 2 && metadataContent.name.length >= 2) {
+                symbol = metadataContent.name.slice(0, 2).toUpperCase();
+            }
+
+            // Remove special characters, keep only alphanumeric characters
+            symbol = symbol.replace(/[^A-Z0-9]/g, "");
+
+            // If after removing special characters the symbol is empty or too short,
+            // generate a simple default symbol
+            if (symbol.length < 2) {
+                symbol = "NFT";
+            }
+
+            // Update the symbol
+            setCollectionForm((prev) => ({
+                ...prev,
+                symbol: symbol,
+            }));
+        }
+    }, [selectedMetadata, linkableMetadata]);
 
     // Collection 생성 핸들러
     const handleCreateCollection = async () => {
@@ -120,6 +174,12 @@ export default function CreateCollection({
         try {
             setCollectionResult(null);
 
+            const metadataFolder = await createFolder(
+                selectedMetadata.id,
+                parseInt(collectionForm.maxSupply),
+                PINATA_GATEWAY
+            );
+
             const result = await createCollectionMutation.mutateAsync({
                 factoryAddress: factory.address,
                 networkId: factory.networkId,
@@ -127,8 +187,8 @@ export default function CreateCollection({
                 symbol: collectionForm.symbol,
                 maxSupply: parseInt(collectionForm.maxSupply),
                 mintPrice: collectionForm.mintPrice,
-                baseURI: selectedMetadata,
-                contractURI: selectedMetadata,
+                baseURI: metadataFolder.url,
+                contractURI: metadataFolder.url,
                 privateKey,
                 useDefaultGas,
                 gasMaxFee: !useDefaultGas ? gasForm.gasMaxFee : undefined,
@@ -146,6 +206,26 @@ export default function CreateCollection({
                 name: collectionForm.name,
                 symbol: collectionForm.symbol,
             };
+
+            // 메타데이터 링크 시도
+            try {
+                if (!result.collectionAddress) {
+                    throw new Error("No collection address received");
+                }
+
+                await linkMetadataToCollection(
+                    selectedMetadata.id,
+                    result.collectionAddress
+                );
+
+                toast.success(
+                    `Metadata linked to collection successfully: ${result.collectionAddress}`
+                );
+            } catch (linkError) {
+                console.error("Metadata linking error:", linkError);
+                toast.error("Collection created but metadata linking failed");
+                creationResult.message += " (but metadata linking failed)";
+            }
 
             setCollectionResult(creationResult);
             toast.success(
@@ -198,16 +278,81 @@ export default function CreateCollection({
                 </CardHeader>
                 <CardContent>
                     <OnChainMetadata
-                        onSelect={handleMetadataSelect}
-                        selectedMetadataId={selectedMetadata}
+                        onSelect={(metadata) => setSelectedMetadata(metadata)}
+                        selectedMetadata={selectedMetadata}
                     />
                 </CardContent>
             </Card>
 
-            {/* Step 2: Collection Details */}
+            {/* Metadata Verification Step */}
             <Card>
                 <CardHeader>
-                    <CardTitle>2. Collection Details</CardTitle>
+                    <CardTitle>2. Verify Metadata</CardTitle>
+                    <CardDescription>
+                        Review the metadata that will be linked to your
+                        collection
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {selectedMetadata ? (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <p className="font-medium mb-2">
+                                        Metadata URL
+                                    </p>
+                                    <pre className="p-2 bg-muted rounded-md font-mono text-xs break-all overflow-x-auto">
+                                        {selectedMetadata.url}
+                                    </pre>
+                                </div>
+                                <div>
+                                    <p className="font-medium mb-2">Preview</p>
+                                    <a
+                                        href={selectedMetadata.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center text-sm text-blue-500 hover:underline"
+                                    >
+                                        View metadata{" "}
+                                        <ExternalLink className="h-3 w-3 ml-1" />
+                                    </a>
+                                </div>
+                            </div>
+
+                            {selectedMetadata.metadata && (
+                                <div>
+                                    <p className="font-medium mb-2">
+                                        Metadata Contents
+                                    </p>
+                                    <div className="p-3 bg-muted rounded-md max-h-36 overflow-y-auto">
+                                        <pre className="text-xs">
+                                            {JSON.stringify(
+                                                selectedMetadata.metadata,
+                                                null,
+                                                2
+                                            )}
+                                        </pre>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <Alert variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Metadata Not Selected</AlertTitle>
+                            <AlertDescription>
+                                Please select a metadata in Step 1 before
+                                proceeding.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Step 3: Collection Details */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>3. Collection Details</CardTitle>
                     <CardDescription>
                         Configure your collection settings
                     </CardDescription>
@@ -283,10 +428,10 @@ export default function CreateCollection({
                 </CardContent>
             </Card>
 
-            {/* Step 3: Deployment Settings */}
+            {/* Step 4: Deployment Settings */}
             <Card>
                 <CardHeader>
-                    <CardTitle>3. Deployment Settings</CardTitle>
+                    <CardTitle>4. Deployment Settings</CardTitle>
                     <CardDescription>
                         Configure deployment options
                     </CardDescription>

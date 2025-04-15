@@ -136,6 +136,131 @@ function safeStringify(obj: any, indent = 2) {
 }
 
 // Export interfaces for use in mutations
+export interface EstimateMintGasParams {
+    collectionAddress: string;
+    networkId: string;
+    to: string;
+    quantity: number;
+    privateKey?: string;
+}
+
+export interface EstimateMintGasResult {
+    success: boolean;
+    data?: {
+        gasLimit: bigint;
+        gasPrice: bigint;
+        estimatedGasCost: bigint;
+        estimatedGasCostInEth: string;
+        estimatedGasCostInUsd?: string;
+        networkSymbol: string;
+    };
+    error?: string;
+}
+
+/**
+ * Estimates gas cost for minting tokens
+ */
+export async function estimateMintGas(
+    params: EstimateMintGasParams & { privateKey?: string }
+): Promise<EstimateMintGasResult> {
+    try {
+        console.log("===== estimateMintGas: Starting gas estimation =====");
+        const { collectionAddress, networkId, to, quantity } = params;
+
+        // 1. 파라미터 검증
+        if (!collectionAddress?.startsWith("0x")) {
+            return {
+                success: false,
+                error: "Invalid collection address format - must start with 0x",
+            };
+        }
+        if (!to?.startsWith("0x")) {
+            return {
+                success: false,
+                error: "Invalid recipient address format - must start with 0x",
+            };
+        }
+        if (quantity <= 0) {
+            return {
+                success: false,
+                error: "Quantity must be greater than 0",
+            };
+        }
+
+        // 2. 네트워크 설정
+        console.log(`Setting up network: ${networkId}`);
+        const networkResult = await getBlockchainNetworkById(networkId);
+        if (!networkResult.success || !networkResult.data) {
+            return {
+                success: false,
+                error: `Network not found: ${networkId}`,
+            };
+        }
+        const networkData = networkResult.data;
+
+        // 3. 가스 예상 계산
+        const publicClient = createPublicClient({
+            transport: http(networkData.rpcUrl),
+        });
+
+        // 3.1 현재 가스 가격 가져오기
+        const gasPrice = await publicClient.getGasPrice();
+
+        // 개인키가 제공된 경우 해당 계정으로 시뮬레이션
+        let accountToUse = undefined;
+        if (params.privateKey) {
+            let formattedPrivateKey = params.privateKey;
+            if (!formattedPrivateKey.startsWith("0x")) {
+                formattedPrivateKey = `0x${formattedPrivateKey}`;
+            }
+            accountToUse = privateKeyToAccount(
+                formattedPrivateKey as `0x${string}`
+            );
+        }
+
+        // 가스 사용량 예상 (계정 정보 포함)
+        const gasLimit = await publicClient.estimateContractGas({
+            address: collectionAddress as `0x${string}`,
+            abi: COLLECTION_ABI,
+            functionName: "batchMint",
+            args: [to as `0x${string}`, BigInt(quantity), BigInt(1000000000)],
+            account: accountToUse?.address as `0x${string}`, // 계정 주소 추가
+        });
+
+        // 3.3 총 가스 비용 계산
+        const estimatedGasCost = gasLimit * gasPrice;
+
+        // 3.4 ETH 단위로 변환 (wei → ether)
+        const estimatedGasCostInEth =
+            (estimatedGasCost / BigInt(10 ** 18)).toString() +
+            "." +
+            (estimatedGasCost % BigInt(10 ** 18))
+                .toString()
+                .padStart(18, "0")
+                .substring(0, 6);
+
+        return {
+            success: true,
+            data: {
+                gasLimit,
+                gasPrice,
+                estimatedGasCost,
+                estimatedGasCostInEth,
+                networkSymbol: networkData.symbol,
+            },
+        };
+    } catch (error) {
+        console.error("Error estimating gas:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to estimate gas cost",
+        };
+    }
+}
+
 export interface MintTokensParams {
     collectionAddress: string;
     networkId: string;
@@ -157,6 +282,7 @@ export interface MintTokensResult {
             start: number;
             end: number;
         };
+        nftIds: string[];
         blockNumber: number;
         explorerUrl: string;
     };
@@ -182,30 +308,24 @@ export async function mintTokens(
             gasLimit,
         } = params;
 
-        // 1. 향상된 파라미터 검증
+        // 1. 기본 파라미터 검증
         if (!collectionAddress?.startsWith("0x")) {
             return {
                 success: false,
-                error: "Invalid collection address format - must start with 0x",
+                error: "Invalid collection address format",
             };
         }
         if (!to?.startsWith("0x")) {
             return {
                 success: false,
-                error: "Invalid recipient address format - must start with 0x",
+                error: "Invalid recipient address format",
             };
         }
         if (quantity <= 0) {
-            return {
-                success: false,
-                error: "Quantity must be greater than 0",
-            };
+            return { success: false, error: "Quantity must be greater than 0" };
         }
 
         // 2. Collection 데이터 검증
-        console.log(
-            `Fetching collection data for address: ${collectionAddress}`
-        );
         const collection = await prisma.collectionContract.findFirst({
             where: { address: collectionAddress },
         });
@@ -217,42 +337,25 @@ export async function mintTokens(
             };
         }
 
+        // URI 존재 여부만 확인
         if (!collection.baseURI) {
-            return {
-                success: false,
-                error: "Collection baseURI is not set in database. Please set baseURI before minting.",
-            };
+            return { success: false, error: "Collection baseURI is not set" };
         }
 
-        console.log(
-            `Collection found. Name: ${collection.name}, Symbol: ${collection.symbol}`
-        );
-        console.log(`Base URI: ${collection.baseURI}`);
-
-        // 3. 네트워크 및 클라이언트 설정
-        console.log(`Setting up network: ${networkId}`);
+        // 3. 네트워크 설정
         const networkResult = await getBlockchainNetworkById(networkId);
         if (!networkResult.success || !networkResult.data) {
-            return {
-                success: false,
-                error: `Network not found: ${networkId}`,
-            };
+            return { success: false, error: `Network not found: ${networkId}` };
         }
         const networkData = networkResult.data;
 
-        // Format private key
-        let formattedPrivateKey = privateKey;
-        if (!formattedPrivateKey.startsWith("0x")) {
-            formattedPrivateKey = `0x${formattedPrivateKey}`;
-        }
-
-        // Create account
+        // 4. 클라이언트 설정
         const account = privateKeyToAccount(
-            formattedPrivateKey as `0x${string}`
+            (privateKey.startsWith("0x")
+                ? privateKey
+                : `0x${privateKey}`) as `0x${string}`
         );
-        console.log(`Using account: ${account.address}`);
 
-        // Create chain configuration
         const chain = {
             id: networkData.chainId,
             name: networkData.name,
@@ -262,13 +365,10 @@ export async function mintTokens(
                 decimals: 18,
             },
             rpcUrls: {
-                default: {
-                    http: [networkData.rpcUrl],
-                },
+                default: { http: [networkData.rpcUrl] },
             },
         } as const;
 
-        // Create wallet and public clients
         const walletClient = createWalletClient({
             account,
             chain,
@@ -280,20 +380,16 @@ export async function mintTokens(
             transport: http(),
         });
 
-        // Set up gas options
-        const gasOptions: any = {};
-        if (gasMaxFee) {
-            gasOptions.maxFeePerGas = parseGwei(gasMaxFee);
-        }
-        if (gasMaxPriorityFee) {
-            gasOptions.maxPriorityFeePerGas = parseGwei(gasMaxPriorityFee);
-        }
-        if (gasLimit) {
-            gasOptions.gas = BigInt(gasLimit);
-        }
+        // 5. 가스 옵션 설정
+        const gasOptions: any = {
+            ...(gasMaxFee && { maxFeePerGas: parseGwei(gasMaxFee) }),
+            ...(gasMaxPriorityFee && {
+                maxPriorityFeePerGas: parseGwei(gasMaxPriorityFee),
+            }),
+            ...(gasLimit && { gas: BigInt(gasLimit) }),
+        };
 
-        // 4. 컨트랙트 존재 확인
-        console.log(`Verifying contract existence at ${collectionAddress}`);
+        // 6. 컨트랙트 존재 여부 확인
         const code = await publicClient.getCode({
             address: collectionAddress as `0x${string}`,
         });
@@ -305,335 +401,152 @@ export async function mintTokens(
             };
         }
 
-        // 5. 컨트랙트 상태 검증 - 병렬 처리
-        console.log("Validating contract state...");
-        let mintingEnabled, isPaused, owner, totalSupply, maxSupply;
-
-        try {
-            [mintingEnabled, isPaused, owner, totalSupply, maxSupply] =
-                await Promise.all([
-                    publicClient
-                        .readContract({
-                            address: collectionAddress as `0x${string}`,
-                            abi: COLLECTION_ABI,
-                            functionName: "mintingEnabled",
-                        })
-                        .catch((error) => {
-                            console.warn(
-                                "Error checking mintingEnabled:",
-                                error
-                            );
-                            return false;
-                        }),
-                    publicClient
-                        .readContract({
-                            address: collectionAddress as `0x${string}`,
-                            abi: COLLECTION_ABI,
-                            functionName: "paused",
-                        })
-                        .catch((error) => {
-                            console.warn("Error checking paused state:", error);
-                            return true;
-                        }),
-                    publicClient
-                        .readContract({
-                            address: collectionAddress as `0x${string}`,
-                            abi: COLLECTION_ABI,
-                            functionName: "owner",
-                        })
-                        .catch((error) => {
-                            console.warn("Error checking owner:", error);
-                            return "0x0000000000000000000000000000000000000000";
-                        }),
-                    publicClient
-                        .readContract({
-                            address: collectionAddress as `0x${string}`,
-                            abi: COLLECTION_ABI,
-                            functionName: "totalSupply",
-                        })
-                        .catch((error) => {
-                            console.error("Error getting totalSupply:", error);
-                            throw new Error("Failed to get totalSupply");
-                        }),
-                    publicClient
-                        .readContract({
-                            address: collectionAddress as `0x${string}`,
-                            abi: COLLECTION_ABI,
-                            functionName: "maxSupply",
-                        })
-                        .catch((error) => {
-                            console.error("Error getting maxSupply:", error);
-                            throw new Error("Failed to get maxSupply");
-                        }),
-                ]);
-        } catch (error) {
-            return {
-                success: false,
-                error:
-                    error instanceof Error
-                        ? `Contract validation error: ${error.message}`
-                        : "Failed to validate contract state",
-            };
-        }
-
-        // 6. 상태에 따른 검증
-        if (!mintingEnabled) {
-            return {
-                success: false,
-                error: "Minting is currently disabled for this collection. Please enable minting first.",
-            };
-        }
-
-        if (isPaused) {
-            return {
-                success: false,
-                error: "Collection contract is currently paused. Please unpause before minting.",
-            };
-        }
-
-        // 소유자 검증 강화
-        if (owner !== account.address) {
-            console.warn(
-                `Warning: Minting with non-owner account. Owner: ${owner}, Minter: ${account.address}`
-            );
-            // 여기서 진행하도록 남겨두지만, 원하면 에러를 반환할 수도 있음
-        }
-
-        // 공급량 검증
-        console.log(`Current total supply: ${totalSupply}`);
-        console.log(`Max supply: ${maxSupply}`);
-        console.log(`Attempting to mint: ${quantity} tokens`);
-
-        if (totalSupply + BigInt(quantity) > maxSupply) {
-            const remaining = Number(maxSupply - totalSupply);
-            return {
-                success: false,
-                error: `Cannot mint ${quantity} tokens. Only ${remaining} tokens available for minting.`,
-            };
-        }
-
-        // 7. URI 설정 - baseURI와 contractURI 모두 설정
-        console.log("Setting URIs...");
-        try {
-            // Collection의 contractURI 확인
-            if (!collection.contractURI) {
-                console.warn(
-                    "Collection contractURI is not set in database, only setting baseURI"
-                );
-            }
-
-            // Set baseURI
-            const setBaseURIHash = await walletClient.writeContract({
-                address: collectionAddress as `0x${string}`,
-                abi: COLLECTION_ABI,
-                functionName: "setBaseURI",
-                args: [collection.baseURI],
-                ...gasOptions,
-            });
-
-            // 첫 번째 트랜잭션 완료 대기
-            await publicClient.waitForTransactionReceipt({
-                hash: setBaseURIHash,
-            });
-
-            // 이후 두 번째 트랜잭션 실행
-            if (collection.contractURI) {
-                // 가스 가격 증가
-                const updatedGasOptions = {
-                    ...gasOptions,
-                    maxFeePerGas: gasOptions.maxFeePerGas
-                        ? (gasOptions.maxFeePerGas * 110n) / 100n
-                        : undefined, // 10% 증가
-                    maxPriorityFeePerGas: gasOptions.maxPriorityFeePerGas
-                        ? (gasOptions.maxPriorityFeePerGas * 110n) / 100n
-                        : undefined, // 10% 증가
-                };
-
-                const setContractURIHash = await walletClient.writeContract({
+        // 7. 컨트랙트 상태 검증
+        const [mintingEnabled, isPaused, owner, totalSupply, maxSupply] =
+            await Promise.all([
+                publicClient
+                    .readContract({
+                        address: collectionAddress as `0x${string}`,
+                        abi: COLLECTION_ABI,
+                        functionName: "mintingEnabled",
+                    })
+                    .catch(() => false),
+                publicClient
+                    .readContract({
+                        address: collectionAddress as `0x${string}`,
+                        abi: COLLECTION_ABI,
+                        functionName: "paused",
+                    })
+                    .catch(() => true),
+                publicClient
+                    .readContract({
+                        address: collectionAddress as `0x${string}`,
+                        abi: COLLECTION_ABI,
+                        functionName: "owner",
+                    })
+                    .catch(() => null),
+                publicClient.readContract({
                     address: collectionAddress as `0x${string}`,
                     abi: COLLECTION_ABI,
-                    functionName: "setContractURI",
-                    args: [collection.contractURI],
-                    ...updatedGasOptions,
-                });
+                    functionName: "totalSupply",
+                }),
+                publicClient.readContract({
+                    address: collectionAddress as `0x${string}`,
+                    abi: COLLECTION_ABI,
+                    functionName: "maxSupply",
+                }),
+            ]);
 
-                await publicClient.waitForTransactionReceipt({
-                    hash: setContractURIHash,
-                });
-            }
-
-            console.log("Successfully set all URIs");
-
-            // 8. 여기서부터 batchMint 호출 추가 (새로 추가된 부분)
-            console.log(`Minting ${quantity} tokens to ${to}...`);
-            const gasFee = 1000000000n; // 1 gwei in wei
-
-            const mintHash = await walletClient.writeContract({
-                address: collectionAddress as `0x${string}`,
-                abi: COLLECTION_ABI,
-                functionName: "batchMint",
-                args: [to as `0x${string}`, BigInt(quantity), gasFee],
-                ...gasOptions,
-            });
-
-            console.log(`Minting transaction sent! Hash: ${mintHash}`);
-
-            // 민팅 트랜잭션 확인
-            const mintReceipt = await publicClient.waitForTransactionReceipt({
-                hash: mintHash,
-            });
-
-            if (mintReceipt.status !== "success") {
-                return {
-                    success: false,
-                    error: "Minting transaction failed",
-                };
-            }
-
-            console.log(
-                `Minting transaction confirmed in block: ${mintReceipt.blockNumber}`
-            );
-
-            // 9. 민팅 후 새로운 총 공급량을 가져와서 시작 토큰 ID 계산
-            const newTotalSupply = (await publicClient.readContract({
-                address: collectionAddress as `0x${string}`,
-                abi: COLLECTION_ABI,
-                functionName: "totalSupply",
-            })) as bigint;
-
-            const startTokenId = Number(newTotalSupply) - quantity;
-
-            console.log(`Successfully minted ${quantity} tokens!`);
-            console.log(
-                `Token ID range: ${startTokenId} to ${
-                    startTokenId + quantity - 1
-                }`
-            );
-            console.log(
-                `You can verify these tokens at ${networkData.explorerUrl}/token/${collectionAddress}`
-            );
-
-            // 민팅 성공 후 데이터베이스에 저장
-            try {
-                // 토큰 ID 범위 생성
-                const tokenIds = Array.from(
-                    { length: quantity },
-                    (_, i) => startTokenId + i
-                );
-
-                // 현재 컬렉션 데이터 가져오기
-                const collectionData =
-                    await prisma.collectionContract.findFirst({
-                        where: { address: collectionAddress },
-                    });
-
-                if (!collectionData) {
-                    throw new Error("Collection not found");
-                }
-
-                // 트랜잭션으로 모든 데이터베이스 작업 처리
-                await prisma.$transaction(async (tx) => {
-                    // 1. NFT 데이터 생성
-                    const nftData = tokenIds.map((tokenId) => {
-                        return {
-                            tokenId,
-                            collectionId: collectionData.id,
-                            ownerAddress: to, // 받는 주소
-                            metadataUri: collectionData.baseURI,
-                            networkId,
-                            transactionHash: mintHash, // 민팅 트랜잭션 해시
-                            mintedBy: to,
-                            mintPrice: collectionData.mintPrice,
-                            name: `${collectionData.name} #${tokenId}`, // 기본 이름 설정
-                        };
-                    });
-
-                    // NFT 데이터 저장
-                    await tx.nFT.createMany({
-                        data: nftData,
-                    });
-
-                    // 2. 생성된 NFT들 다시 조회하여 ID 가져오기
-                    const savedNfts = await tx.nFT.findMany({
-                        where: {
-                            collectionId: collectionData.id,
-                            tokenId: { in: tokenIds },
-                        },
-                        select: {
-                            id: true,
-                            tokenId: true,
-                        },
-                    });
-
-                    // 3. NFT Event 데이터 생성 (민팅 이벤트)
-                    const nftEventData = savedNfts.map((nft) => {
-                        return {
-                            nftId: nft.id,
-                            collectionId: collectionData.id,
-                            eventType: "Mint",
-                            fromAddress:
-                                "0x0000000000000000000000000000000000000000", // null address
-                            toAddress: to,
-                            price: collectionData.mintPrice,
-                            transactionHash: mintHash,
-                            blockNumber: Number(mintReceipt.blockNumber),
-                        };
-                    });
-
-                    // NFT 이벤트 데이터 저장
-                    await tx.nFTEvent.createMany({
-                        data: nftEventData,
-                    });
-
-                    // 4. Collection Contract mintedCount 증가
-                    await tx.collectionContract.update({
-                        where: { id: collectionData.id },
-                        data: {
-                            mintedCount: {
-                                increment: tokenIds.length,
-                            },
-                        },
-                    });
-                });
-
-                console.log(`Successfully saved ${quantity} NFTs to database`);
-            } catch (error) {
-                console.error("Error saving NFT data to database:", error);
-            }
-
-            // Revalidate paths
-            revalidatePath("/admin/onchain");
-
-            // 민팅 트랜잭션 해시를 반환 (URI 해시가 아님)
-            return {
-                success: true,
-                data: {
-                    transactionHash: mintHash,
-                    startTokenId,
-                    quantity,
-                    tokenIdRange: {
-                        start: startTokenId,
-                        end: startTokenId + quantity - 1,
-                    },
-                    blockNumber: Number(mintReceipt.blockNumber),
-                    explorerUrl: `${networkData.explorerUrl}/tx/${mintHash}`,
-                },
-            };
-        } catch (error) {
-            console.error("Error during minting process:", error);
+        // 8. 상태 검증
+        if (!mintingEnabled) {
+            return { success: false, error: "Minting is currently disabled" };
+        }
+        if (isPaused) {
+            return { success: false, error: "Contract is paused" };
+        }
+        if (totalSupply + BigInt(quantity) > maxSupply) {
             return {
                 success: false,
-                error: "Failed to mint tokens. Please try again.",
+                error: `Only ${Number(
+                    maxSupply - totalSupply
+                )} tokens available`,
             };
         }
+
+        // 9. 민팅 실행
+        const mintHash = await walletClient.writeContract({
+            address: collectionAddress as `0x${string}`,
+            abi: COLLECTION_ABI,
+            functionName: "batchMint",
+            args: [to as `0x${string}`, BigInt(quantity), BigInt(1000000000)],
+            ...gasOptions,
+        });
+
+        const mintReceipt = await publicClient.waitForTransactionReceipt({
+            hash: mintHash,
+        });
+
+        if (mintReceipt.status !== "success") {
+            return { success: false, error: "Minting transaction failed" };
+        }
+
+        // 10. DB 업데이트
+        const startTokenId = Number(totalSupply);
+        const tokenIds = Array.from(
+            { length: quantity },
+            (_, i) => startTokenId + i
+        );
+
+        const savedNfts = await prisma.$transaction(async (tx) => {
+            // NFT 데이터 생성
+            await tx.nFT.createMany({
+                data: tokenIds.map((tokenId) => ({
+                    tokenId,
+                    collectionId: collection.id,
+                    ownerAddress: to,
+                    metadataUri: collection.baseURI,
+                    networkId,
+                    transactionHash: mintHash,
+                    mintedBy: to,
+                    mintPrice: collection.mintPrice,
+                    name: `${collection.name} #${tokenId}`,
+                })),
+            });
+
+            // NFT 조회
+            const saved = await tx.nFT.findMany({
+                where: {
+                    collectionId: collection.id,
+                    tokenId: { in: tokenIds },
+                },
+                select: { id: true, tokenId: true },
+            });
+
+            // 이벤트 생성
+            await tx.nFTEvent.createMany({
+                data: saved.map((nft) => ({
+                    nftId: nft.id,
+                    collectionId: collection.id,
+                    eventType: "Mint",
+                    fromAddress: "0x0000000000000000000000000000000000000000",
+                    toAddress: to,
+                    price: collection.mintPrice,
+                    transactionHash: mintHash,
+                    blockNumber: Number(mintReceipt.blockNumber),
+                })),
+            });
+
+            // Collection 업데이트
+            await tx.collectionContract.update({
+                where: { id: collection.id },
+                data: { mintedCount: { increment: quantity } },
+            });
+
+            return saved;
+        });
+
+        revalidatePath("/admin/onchain");
+
+        return {
+            success: true,
+            data: {
+                transactionHash: mintHash,
+                startTokenId,
+                quantity,
+                tokenIdRange: {
+                    start: startTokenId,
+                    end: startTokenId + quantity - 1,
+                },
+                nftIds: savedNfts.map((nft) => nft.id),
+                blockNumber: Number(mintReceipt.blockNumber),
+                explorerUrl: `${networkData.explorerUrl}/tx/${mintHash}`,
+            },
+        };
     } catch (error) {
         console.error("Error minting tokens:", error);
         return {
             success: false,
-            error:
-                error instanceof Error
-                    ? `Minting failed: ${error.message}`
-                    : "Unknown error during minting process",
+            error: error instanceof Error ? error.message : "Unknown error",
         };
     }
 }

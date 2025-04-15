@@ -5,13 +5,18 @@
 
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { useIpfs } from "@/app/hooks/useIpfs";
+import type { UploadResponse } from "pinata";
 
 interface FileUploaderIPFSProps {
-    onComplete?: (files: File[]) => void;
+    onComplete?: (results: UploadResponse[]) => void;
     accept?: Record<string, string[]>;
     maxSize?: number;
     multiple?: boolean;
     className?: string;
+    groupId?: string;
+    gateway?: string;
+    network?: string;
 }
 
 export default function FileUploaderIPFS({
@@ -22,26 +27,31 @@ export default function FileUploaderIPFS({
     maxSize = 50 * 1024 * 1024,
     multiple = true,
     className = "",
+    groupId,
+    gateway = "ipfs://",
+    network = "mainnet",
 }: FileUploaderIPFSProps) {
+    const { uploadFiles, isUploading } = useIpfs();
     const [isDragging, setIsDragging] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
 
     const onDrop = useCallback(
         async (acceptedFiles: File[]) => {
             if (acceptedFiles.length === 0) return;
 
             try {
-                setIsUploading(true);
+                const result = await uploadFiles(acceptedFiles, {
+                    groupId,
+                    gateway,
+                    network,
+                });
                 if (onComplete) {
-                    onComplete(acceptedFiles);
+                    onComplete(result);
                 }
             } catch (error) {
                 console.error("File upload error:", error);
-            } finally {
-                setIsUploading(false);
             }
         },
-        [onComplete]
+        [onComplete, uploadFiles, groupId]
     );
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({

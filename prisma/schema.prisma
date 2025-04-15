@@ -458,10 +458,11 @@ model IpfsGroup {
 model IpfsFile {
   id          String    @id @default(cuid())
   type        String    @default("nft-metadata")
+  url         String    @default("ipfs://")
   pinataId    String
   name        String
   cid         String
-  size        Int
+  size          Int
   numberOfFiles Int
   mimeType    String
   groupId     String?
@@ -469,12 +470,14 @@ model IpfsFile {
   keyvalues   Json?
   vectorized  Boolean   @default(false)
   network     String?
+  gateway     String    @default("ipfs://")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   metadata Metadata? @relation("IpfsFileMetadata")
 
   @@index([pinataId])
+  @@index([url])
   @@index([name])
   @@index([groupId])
   @@index([cid])
@@ -483,7 +486,7 @@ model IpfsFile {
 model Metadata {
   id          String   @id @default(cuid())
   metadata   Json
-
+  url        String   @default("ipfs://")
   groupId String?
 
   ipfsFileId String @unique

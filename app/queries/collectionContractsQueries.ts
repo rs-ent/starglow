@@ -119,3 +119,48 @@ export function useCollectionStatusQuery(
         enabled: !!address && !!networkId && !!rpcUrl,
     });
 }
+
+/**
+ * 민팅 가스비 예상 쿼리 훅
+ */
+export function useEstimateMintGasQuery(
+    collectionAddress: string,
+    networkId: string,
+    to: string,
+    quantity: number,
+    privateKey?: string
+) {
+    return useQuery({
+        queryKey: collectionKeys.estimateMintGas(
+            collectionAddress,
+            to,
+            quantity
+        ),
+        queryFn: async () => {
+            try {
+                const { estimateMintGas } = await import(
+                    "../actions/collectionContracts"
+                );
+                const result = await estimateMintGas({
+                    collectionAddress,
+                    networkId,
+                    to,
+                    quantity,
+                    privateKey,
+                });
+
+                if (!result.success || !result.data) {
+                    throw new Error(
+                        result.error || "Failed to estimate gas cost"
+                    );
+                }
+
+                return result.data;
+            } catch (error) {
+                console.error("Error in useEstimateMintGasQuery:", error);
+                throw error;
+            }
+        },
+        enabled: !!collectionAddress && !!networkId && !!to && quantity > 0,
+    });
+}

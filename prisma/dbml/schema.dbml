@@ -351,6 +351,7 @@ Table IpfsGroup {
 Table IpfsFile {
   id String [pk]
   type String [not null, default: 'nft-metadata']
+  url String [not null, default: 'ipfs://']
   pinataId String [not null]
   name String [not null]
   cid String [not null]
@@ -362,6 +363,7 @@ Table IpfsFile {
   keyvalues Json
   vectorized Boolean [not null, default: false]
   network String
+  gateway String [not null, default: 'ipfs://']
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   metadata Metadata
@@ -370,6 +372,7 @@ Table IpfsFile {
 Table Metadata {
   id String [pk]
   metadata Json [not null]
+  url String [not null, default: 'ipfs://']
   groupId String
   ipfsFileId String [unique, not null]
   ipfsFile IpfsFile [not null]

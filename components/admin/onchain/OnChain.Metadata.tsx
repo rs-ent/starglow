@@ -27,15 +27,10 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useToast } from "@/app/hooks/useToast";
 import FileUploaderIPFS from "@/components/atoms/FileUploader.IPFS";
-import {
-    useCreateGroup,
-    useUploadFiles,
-    useLinkableMetadata,
-    useCreateMetadata,
-} from "@/app/hooks/useIpfs";
+import { useIpfs } from "@/app/hooks/useIpfs";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
-import { Plus, Trash2, RefreshCw, Eye } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Eye, Calendar } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Table,
@@ -54,6 +49,25 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils/tailwind";
+import { UploadResponse } from "pinata";
+import { Metadata } from "@prisma/client";
+
+const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY;
 
 // 메타데이터 폼 타입
 export type MetadataFormValues = Omit<METADATA_TYPE, "background_color"> & {
@@ -82,7 +96,10 @@ const metadataFormSchema = z.object({
         .array(
             z.object({
                 trait_type: z.string().min(1, "Trait type is required"),
-                value: z.string().min(1, "Value is required"),
+                value: z.union([
+                    z.string().min(1, "Value is required"),
+                    z.number(),
+                ]),
                 display_type: z
                     .enum([
                         "number",
@@ -101,13 +118,13 @@ const metadataFormSchema = z.object({
 }) satisfies z.ZodType<MetadataFormValues>;
 
 interface OnChainMetadataProps {
-    onSelect?: (metadataId: string) => void;
-    selectedMetadataId?: string | null;
+    onSelect?: (metadata: Metadata) => void;
+    selectedMetadata?: Metadata | null;
 }
 
 export function OnChainMetadata({
     onSelect,
-    selectedMetadataId,
+    selectedMetadata,
 }: OnChainMetadataProps) {
     const toast = useToast();
     const [isUploading, setIsUploading] = useState(false);
@@ -116,12 +133,20 @@ export function OnChainMetadata({
     const [showPreview, setShowPreview] = useState(false);
     const [previewMetadata, setPreviewMetadata] =
         useState<METADATA_TYPE | null>(null);
+    const [groupSelectionMode, setGroupSelectionMode] = useState<
+        "create" | "select"
+    >("create");
 
-    const createGroupMutation = useCreateGroup();
-    const uploadFilesMutation = useUploadFiles();
-    const createMetadataMutation = useCreateMetadata();
-    const { data: linkableMetadata, isLoading: isLoadingMetadata } =
-        useLinkableMetadata();
+    const {
+        createGroup,
+        uploadNftMetadata,
+        linkableMetadata,
+        groups,
+
+        isCreatingGroup,
+        isLoadingLinkableMetadata,
+        isLoadingGroups,
+    } = useIpfs();
 
     const form = useForm<MetadataFormValues>({
         resolver: zodResolver(metadataFormSchema),
@@ -129,10 +154,26 @@ export function OnChainMetadata({
             name: "",
             description: "",
             image: "",
-            external_url: "",
+            external_url: "https://report.starglow.io/",
             background_color: "",
             animation_url: "",
-            attributes: [],
+            attributes: [
+                {
+                    trait_type: "Glow Start",
+                    value: Math.floor(new Date(2026, 1, 1).getTime() / 1000),
+                    display_type: "date",
+                },
+                {
+                    trait_type: "Glow End",
+                    value: Math.floor(new Date(2026, 12, 31).getTime() / 1000),
+                    display_type: "date",
+                },
+                {
+                    trait_type: "Share Percentage",
+                    value: 10,
+                    display_type: "boost_percentage",
+                },
+            ],
             collectionName: "",
         },
     });
@@ -148,9 +189,7 @@ export function OnChainMetadata({
         }
 
         try {
-            const result = await createGroupMutation.mutateAsync(
-                collectionName
-            );
+            const result = await createGroup(collectionName);
             setCurrentGroupId(result.id);
             toast.success("Collection group created successfully");
         } catch (error) {
@@ -164,22 +203,31 @@ export function OnChainMetadata({
     };
 
     const onSubmit = async (data: MetadataFormValues) => {
+        console.log("Form submission started", { data });
         try {
             setIsUploading(true);
             if (!currentGroupId) {
+                console.log("No currentGroupId available");
                 toast.error("Please create a collection group first");
                 return;
             }
 
+            console.log(
+                "Preparing to submit metadata with groupId:",
+                currentGroupId
+            );
             const { collectionName, ...metadataFields } = data;
-            const response = await createMetadataMutation.mutateAsync({
-                metadata: metadataFields as METADATA_TYPE,
-                groupId: currentGroupId,
-            });
+            console.log("Submitting metadata:", metadataFields);
 
-            if (onSelect) {
-                onSelect(response.id);
-            }
+            const response = await uploadNftMetadata(
+                metadataFields as METADATA_TYPE,
+                {
+                    groupId: currentGroupId,
+                    gateway: PINATA_GATEWAY,
+                }
+            );
+
+            console.log("Metadata creation successful:", response);
             toast.success("Metadata created successfully");
             form.reset();
         } catch (error) {
@@ -190,8 +238,8 @@ export function OnChainMetadata({
         }
     };
 
-    const handleFileUpload = async (files: File[]) => {
-        if (files.length === 0) return;
+    const handleFileUpload = async (results: UploadResponse[]) => {
+        if (results.length === 0) return;
         if (!currentGroupId) {
             toast.error("Please create a collection group first");
             return;
@@ -199,13 +247,10 @@ export function OnChainMetadata({
 
         try {
             setIsUploading(true);
-            const result = await uploadFilesMutation.mutateAsync({
-                files,
-                groupId: currentGroupId,
-            });
+            const result = results[0];
 
             if (result.cid) {
-                const ipfsUrl = `ipfs://${result.cid}`;
+                const ipfsUrl = `${PINATA_GATEWAY}${result.cid}`;
                 form.setValue("image", ipfsUrl);
                 toast.success("Image uploaded successfully");
             } else {
@@ -250,9 +295,29 @@ export function OnChainMetadata({
     const getHttpUrl = (ipfsUrl: string) => {
         if (!ipfsUrl) return "";
         if (ipfsUrl.startsWith("ipfs://")) {
-            return ipfsUrl.replace("ipfs://", "https://ipfs.io/ipfs/");
+            return ipfsUrl.replace(
+                "ipfs://",
+                PINATA_GATEWAY ?? "https://ipfs.io/ipfs/"
+            );
         }
         return ipfsUrl;
+    };
+
+    // Group selection handler
+    const handleGroupSelection = (groupId: string) => {
+        setCurrentGroupId(groupId);
+
+        // Find the selected group to get its name
+        const selectedGroup = groups?.find((group) => group.id === groupId);
+        if (selectedGroup) {
+            // Set the collectionName field with the selected group's name
+            form.setValue("collectionName", selectedGroup.name);
+
+            // Also set the NFT name field with the same name as default
+            form.setValue("name", selectedGroup.name);
+        }
+
+        toast.success("Collection group selected");
     };
 
     return (
@@ -274,15 +339,26 @@ export function OnChainMetadata({
                         <CardContent>
                             <Form {...form}>
                                 <form
-                                    onSubmit={form.handleSubmit(onSubmit)}
+                                    onSubmit={form.handleSubmit(
+                                        onSubmit,
+                                        (errors) => {
+                                            console.log(
+                                                "Form validation failed",
+                                                errors
+                                            );
+                                            toast.error(
+                                                `Please fix the form errors before submitting`
+                                            );
+                                        }
+                                    )}
                                     className="space-y-6"
                                 >
                                     <div className="space-y-4">
-                                        {/* Step 1: Create Collection Group */}
+                                        {/* Step 1: Create or Select Collection Group */}
                                         <div className="space-y-4 border-b pb-4">
                                             <div className="flex justify-between items-center">
                                                 <h3 className="text-md font-medium">
-                                                    1. Create Collection Group
+                                                    1. Collection Group
                                                 </h3>
                                                 {currentGroupId && (
                                                     <Badge
@@ -294,68 +370,133 @@ export function OnChainMetadata({
                                                 )}
                                             </div>
 
-                                            <FormField
-                                                control={form.control}
-                                                name="collectionName"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>
-                                                            Collection Name
-                                                        </FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                placeholder="Enter collection name"
-                                                                {...field}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                            <div className="space-y-4">
+                                                <FormItem>
+                                                    <FormLabel>
+                                                        Select Collection Group
+                                                    </FormLabel>
+                                                    <Select
+                                                        onValueChange={
+                                                            handleGroupSelection
+                                                        }
+                                                        value={
+                                                            currentGroupId ||
+                                                            undefined
+                                                        }
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select a collection group" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {groups &&
+                                                            groups.length >
+                                                                0 ? (
+                                                                groups.map(
+                                                                    (group) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                group.id
+                                                                            }
+                                                                            value={
+                                                                                group.id
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                group.name
+                                                                            }
+                                                                        </SelectItem>
+                                                                    )
+                                                                )
+                                                            ) : (
+                                                                <SelectItem
+                                                                    value="empty"
+                                                                    disabled
+                                                                >
+                                                                    No groups
+                                                                    available
+                                                                </SelectItem>
+                                                            )}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormDescription>
+                                                        Choose an existing
+                                                        collection group or
+                                                        create a new one
+                                                    </FormDescription>
+                                                </FormItem>
 
-                                            <FormField
-                                                control={form.control}
-                                                name="description"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>
-                                                            Description
-                                                        </FormLabel>
-                                                        <FormControl>
-                                                            <Textarea
-                                                                placeholder="Description of the collection"
-                                                                {...field}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                                <div className="flex gap-2 items-center justify-between">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="collectionName"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>
+                                                                    Collection
+                                                                    Name
+                                                                </FormLabel>
+                                                                <FormControl>
+                                                                    <Input
+                                                                        placeholder="Enter collection name"
+                                                                        {...field}
+                                                                    />
+                                                                </FormControl>
+                                                                <FormDescription>
+                                                                    {currentGroupId
+                                                                        ? "Collection name from selected group"
+                                                                        : "Enter a name for your new collection group"}
+                                                                </FormDescription>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
 
-                                            <Button
-                                                type="button"
-                                                onClick={handleCreateGroup}
-                                                disabled={
-                                                    createGroupMutation.isPending ||
-                                                    !!currentGroupId
-                                                }
-                                                className="w-full"
-                                            >
-                                                {createGroupMutation.isPending ? (
-                                                    <>
-                                                        <Spinner
-                                                            className="mr-2"
-                                                            size="sm"
-                                                        />
-                                                        Creating Collection
-                                                        Group...
-                                                    </>
-                                                ) : currentGroupId ? (
-                                                    "Collection Group Created"
-                                                ) : (
-                                                    "Create Collection Group"
-                                                )}
-                                            </Button>
+                                                    {!currentGroupId && (
+                                                        <Button
+                                                            type="button"
+                                                            onClick={
+                                                                handleCreateGroup
+                                                            }
+                                                            disabled={
+                                                                isCreatingGroup
+                                                            }
+                                                            className="w-52 h-10"
+                                                        >
+                                                            {isCreatingGroup ? (
+                                                                <>
+                                                                    <Spinner
+                                                                        className="mr-2"
+                                                                        size="sm"
+                                                                    />
+                                                                    Creating
+                                                                    Collection
+                                                                    Group...
+                                                                </>
+                                                            ) : (
+                                                                "Create New Collection Group"
+                                                            )}
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                <FormField
+                                                    control={form.control}
+                                                    name="description"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>
+                                                                Description
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <Textarea
+                                                                    placeholder="Description of the collection and metadata"
+                                                                    {...field}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
                                         </div>
 
                                         {/* Step 2: NFT Metadata */}
@@ -390,6 +531,11 @@ export function OnChainMetadata({
                                                         handleFileUpload
                                                     }
                                                     multiple={false}
+                                                    groupId={
+                                                        currentGroupId ??
+                                                        undefined
+                                                    }
+                                                    gateway={PINATA_GATEWAY}
                                                 />
                                             </div>
 
@@ -527,6 +673,56 @@ export function OnChainMetadata({
                                                                     </FormItem>
                                                                 )}
                                                             />
+
+                                                            {/* Display Type Select */}
+                                                            <FormField
+                                                                control={
+                                                                    form.control
+                                                                }
+                                                                name={`attributes.${index}.display_type`}
+                                                                render={({
+                                                                    field,
+                                                                }) => (
+                                                                    <FormItem className="flex-1">
+                                                                        <Select
+                                                                            onValueChange={
+                                                                                field.onChange
+                                                                            }
+                                                                            defaultValue={
+                                                                                field.value
+                                                                            }
+                                                                            value={
+                                                                                field.value
+                                                                            }
+                                                                        >
+                                                                            <SelectTrigger>
+                                                                                <SelectValue placeholder="Type" />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="string">
+                                                                                    Text
+                                                                                </SelectItem>
+                                                                                <SelectItem value="number">
+                                                                                    Number
+                                                                                </SelectItem>
+                                                                                <SelectItem value="boost_number">
+                                                                                    Boost
+                                                                                    Number
+                                                                                </SelectItem>
+                                                                                <SelectItem value="boost_percentage">
+                                                                                    Percentage
+                                                                                </SelectItem>
+                                                                                <SelectItem value="date">
+                                                                                    Date
+                                                                                </SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                        <FormMessage />
+                                                                    </FormItem>
+                                                                )}
+                                                            />
+
+                                                            {/* Value Field (changes based on display_type) */}
                                                             <FormField
                                                                 control={
                                                                     form.control
@@ -534,17 +730,192 @@ export function OnChainMetadata({
                                                                 name={`attributes.${index}.value`}
                                                                 render={({
                                                                     field,
-                                                                }) => (
-                                                                    <FormItem className="flex-1">
-                                                                        <FormControl>
-                                                                            <Input
-                                                                                placeholder="Value"
-                                                                                {...field}
-                                                                            />
-                                                                        </FormControl>
-                                                                        <FormMessage />
-                                                                    </FormItem>
-                                                                )}
+                                                                }) => {
+                                                                    const displayType =
+                                                                        form.watch(
+                                                                            `attributes.${index}.display_type`
+                                                                        );
+
+                                                                    // Date picker for date display type
+                                                                    if (
+                                                                        displayType ===
+                                                                        "date"
+                                                                    ) {
+                                                                        return (
+                                                                            <FormItem className="flex-1">
+                                                                                <Popover>
+                                                                                    <PopoverTrigger
+                                                                                        asChild
+                                                                                    >
+                                                                                        <FormControl>
+                                                                                            <Button
+                                                                                                variant="outline"
+                                                                                                className={cn(
+                                                                                                    "w-full pl-3 text-left font-normal",
+                                                                                                    !field.value &&
+                                                                                                        "text-muted-foreground"
+                                                                                                )}
+                                                                                            >
+                                                                                                {field.value ? (
+                                                                                                    format(
+                                                                                                        // If field.value is a timestamp (number), convert to Date
+                                                                                                        typeof field.value ===
+                                                                                                            "number"
+                                                                                                            ? new Date(
+                                                                                                                  field.value *
+                                                                                                                      1000
+                                                                                                              )
+                                                                                                            : new Date(),
+                                                                                                        "PPP"
+                                                                                                    )
+                                                                                                ) : (
+                                                                                                    <span>
+                                                                                                        Pick
+                                                                                                        a
+                                                                                                        date
+                                                                                                    </span>
+                                                                                                )}
+                                                                                                <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                                                                                            </Button>
+                                                                                        </FormControl>
+                                                                                    </PopoverTrigger>
+                                                                                    <PopoverContent
+                                                                                        className="w-auto p-0"
+                                                                                        align="start"
+                                                                                    >
+                                                                                        <CalendarComponent
+                                                                                            mode="single"
+                                                                                            selected={
+                                                                                                typeof field.value ===
+                                                                                                "number"
+                                                                                                    ? new Date(
+                                                                                                          field.value *
+                                                                                                              1000
+                                                                                                      )
+                                                                                                    : undefined
+                                                                                            }
+                                                                                            onSelect={(
+                                                                                                date
+                                                                                            ) => {
+                                                                                                if (
+                                                                                                    date
+                                                                                                ) {
+                                                                                                    // Convert to Unix timestamp (seconds)
+                                                                                                    field.onChange(
+                                                                                                        Math.floor(
+                                                                                                            date.getTime() /
+                                                                                                                1000
+                                                                                                        )
+                                                                                                    );
+                                                                                                }
+                                                                                            }}
+                                                                                            initialFocus
+                                                                                        />
+                                                                                    </PopoverContent>
+                                                                                </Popover>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        );
+                                                                    }
+
+                                                                    // Number inputs for numeric types
+                                                                    if (
+                                                                        [
+                                                                            "number",
+                                                                            "boost_number",
+                                                                            "boost_percentage",
+                                                                        ].includes(
+                                                                            displayType ||
+                                                                                ""
+                                                                        )
+                                                                    ) {
+                                                                        return (
+                                                                            <div className="flex-1 space-y-2">
+                                                                                <FormItem>
+                                                                                    <FormControl>
+                                                                                        <Input
+                                                                                            type="number"
+                                                                                            placeholder="Value"
+                                                                                            {...field}
+                                                                                            onChange={(
+                                                                                                e
+                                                                                            ) => {
+                                                                                                // Convert string to number for numeric fields
+                                                                                                field.onChange(
+                                                                                                    Number(
+                                                                                                        e
+                                                                                                            .target
+                                                                                                            .value
+                                                                                                    )
+                                                                                                );
+                                                                                            }}
+                                                                                        />
+                                                                                    </FormControl>
+                                                                                    <FormMessage />
+                                                                                </FormItem>
+
+                                                                                {/* Max Value field for boost types */}
+                                                                                {[
+                                                                                    "boost_number",
+                                                                                    "boost_percentage",
+                                                                                ].includes(
+                                                                                    displayType ||
+                                                                                        ""
+                                                                                ) && (
+                                                                                    <FormField
+                                                                                        control={
+                                                                                            form.control
+                                                                                        }
+                                                                                        name={`attributes.${index}.max_value`}
+                                                                                        render={({
+                                                                                            field: maxValueField,
+                                                                                        }) => (
+                                                                                            <FormItem>
+                                                                                                <FormControl>
+                                                                                                    <Input
+                                                                                                        type="number"
+                                                                                                        placeholder="Max Value"
+                                                                                                        {...maxValueField}
+                                                                                                        onChange={(
+                                                                                                            e
+                                                                                                        ) => {
+                                                                                                            maxValueField.onChange(
+                                                                                                                Number(
+                                                                                                                    e
+                                                                                                                        .target
+                                                                                                                        .value
+                                                                                                                )
+                                                                                                            );
+                                                                                                        }}
+                                                                                                    />
+                                                                                                </FormControl>
+                                                                                                <FormDescription className="text-xs">
+                                                                                                    최대값
+                                                                                                    (진행
+                                                                                                    바용)
+                                                                                                </FormDescription>
+                                                                                                <FormMessage />
+                                                                                            </FormItem>
+                                                                                        )}
+                                                                                    />
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    }
+
+                                                                    // Default text input
+                                                                    return (
+                                                                        <FormItem className="flex-1">
+                                                                            <FormControl>
+                                                                                <Input
+                                                                                    placeholder="Value"
+                                                                                    {...field}
+                                                                                />
+                                                                            </FormControl>
+                                                                            <FormMessage />
+                                                                        </FormItem>
+                                                                    );
+                                                                }}
                                                             />
                                                             <Button
                                                                 type="button"
@@ -566,11 +937,13 @@ export function OnChainMetadata({
                                         <Button
                                             type="submit"
                                             disabled={
-                                                isUploading || !currentGroupId
+                                                isUploading ||
+                                                isCreatingGroup ||
+                                                !currentGroupId
                                             }
                                             className="w-full"
                                         >
-                                            {isUploading
+                                            {isUploading || isCreatingGroup
                                                 ? "Creating..."
                                                 : "Create Metadata"}
                                         </Button>
@@ -590,13 +963,7 @@ export function OnChainMetadata({
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {isLoadingMetadata ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <Spinner className="mr-2" />
-                                    <span>Loading metadata...</span>
-                                </div>
-                            ) : linkableMetadata &&
-                              linkableMetadata.length > 0 ? (
+                            {linkableMetadata && linkableMetadata.length > 0 ? (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -620,7 +987,7 @@ export function OnChainMetadata({
                                                 <TableRow
                                                     key={metadata.id}
                                                     className={
-                                                        selectedMetadataId ===
+                                                        selectedMetadata?.id ===
                                                         metadata.id
                                                             ? "bg-muted/50"
                                                             : ""
@@ -631,12 +998,12 @@ export function OnChainMetadata({
                                                             type="radio"
                                                             name="metadata-selection"
                                                             checked={
-                                                                selectedMetadataId ===
+                                                                selectedMetadata?.id ===
                                                                 metadata.id
                                                             }
                                                             onChange={() =>
                                                                 onSelect?.(
-                                                                    metadata.id
+                                                                    metadata
                                                                 )
                                                             }
                                                             className="w-4 h-4"
