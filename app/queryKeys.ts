@@ -97,6 +97,17 @@ export const queryKeys = {
         byId: (id: string) => ["nft", id] as const,
         byCollection: (collectionId: string) =>
             ["nft", "collection", collectionId] as const,
+        byOwner: (ownerAddress: string) =>
+            ["nft", "owner", ownerAddress] as const,
+        events: (nftId: string) => ["nft", "events", nftId] as const,
+        statistics: {
+            collection: (collectionId: string) =>
+                ["nft", "statistics", "collection", collectionId] as const,
+            network: (networkId: string) =>
+                ["nft", "statistics", "network", networkId] as const,
+        },
+        filters: (params: Record<string, any>) =>
+            ["nft", "filters", params] as const,
     },
     collection: {
         all: ["collection"] as const,
@@ -112,6 +123,8 @@ export const QUERY_KEYS = {
     ESCROW_WALLETS: "escrow-wallets",
     ACTIVE_ESCROW_WALLET: "active-escrow-wallet",
     COLLECTION_CONTRACTS: "collection-contracts",
+    NFTS: "nfts",
+    NFT_EVENTS: "nft-events",
 } as const;
 
 // Collection query keys
