@@ -474,8 +474,6 @@ model IpfsFile {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  metadata Metadata? @relation("IpfsFileMetadata")
-
   @@index([pinataId])
   @@index([url])
   @@index([name])
@@ -483,33 +481,37 @@ model IpfsFile {
   @@index([cid])
 }
 
+enum MetadataType {
+  collection
+  nft
+}
+
 model Metadata {
   id          String   @id @default(cuid())
+  collectionKey String
   metadata   Json
   url        String   @default("ipfs://")
-  groupId String?
 
-  ipfsFileId String @unique
-  ipfsFile IpfsFile @relation("IpfsFileMetadata", fields: [ipfsFileId], references: [id])
+  type MetadataType @default(collection)
+  tokenId Int?
 
-  collectionContractId String?
-  collectionContract CollectionContract? @relation("CollectionContractMetadata", fields: [collectionContractId], references: [id])
-
-  token NFT? @relation("NFTMetadata")
+  collectionAddress String?  @unique
+  collectionContract CollectionContract? @relation("CollectionContractMetadata", fields: [collectionAddress], references: [address])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([collectionContractId])
-  @@index([ipfsFileId])
+  @@unique([collectionAddress, tokenId])
+  @@index([collectionAddress, tokenId])
+  @@index([collectionAddress])
+  @@index([url])
   @@index([createdAt])
 }
 
-
-
 model CollectionContract {
   id          String   @id @default(cuid())
-  address     String
+  key         String   @unique
+  address     String   @unique
   name        String
   symbol      String
   maxSupply   Int
@@ -532,7 +534,7 @@ model CollectionContract {
   artistId     String?
   artist       Artist?  @relation(fields: [artistId], references: [id])
 
-  metadata Metadata[] @relation("CollectionContractMetadata")
+  metadata Metadata? @relation("CollectionContractMetadata")
 
   @@index([address, networkId])
   @@index([factoryId])
@@ -569,9 +571,6 @@ model NFT {
   mintedBy         String?
   royaltyInfo      Json?
   events           NFTEvent[]
-
-  metadataId String? @unique
-  metadata Metadata? @relation("NFTMetadata", fields: [metadataId], references: [id])
   
   // 토큰 ID와 컬렉션의 조합은 유니크해야 함
   @@unique([tokenId, collectionId])

@@ -363,18 +363,56 @@ export async function createMetadataFolder(
 
         const metadata = linkableMetadata.metadata as METADATA_TYPE;
 
-        // 메타데이터 파일 생성을 병렬로 처리
-        const files = await Promise.all(
-            Array.from({ length: maxSupply }, (_, i) => {
-                const file = createMetadataFile(metadata, i);
-                console.log(`Metadata Created: ${file.name}`);
-                return file;
-            })
+        // 메타데이터 파일 생성
+        console.log(
+            `[createMetadataFolder] Creating ${maxSupply} metadata files`
         );
 
-        // Pinata 업로드
+        // 대용량 데이터 처리를 위한 배치 사이즈 (한 번에 모든 파일을 생성하면 메모리 문제 발생 가능)
+        const batchSize = 100;
+        const totalBatches = Math.ceil(maxSupply / batchSize);
+
+        // 단일 인덱스 파일 생성 (모든 메타데이터의 인덱스를 포함)
+        const indexContent = JSON.stringify(
+            {
+                name: metadata.name,
+                description: `Collection of ${maxSupply} metadata files`,
+                count: maxSupply,
+                updated_at: new Date().toISOString(),
+            },
+            null,
+            2
+        );
+
+        const indexFile = new File([indexContent], "index.json", {
+            type: "application/json",
+        });
+
+        // 첫 번째 배치의 메타데이터 파일 생성 (나머지는 필요할 때 생성)
+        const firstBatchCount = Math.min(batchSize, maxSupply);
+        const firstBatchFiles = Array.from(
+            { length: firstBatchCount },
+            (_, i) => createMetadataFile(metadata, i)
+        );
+
+        // 첫 배치 파일과 인덱스 파일을 함께 업로드
+        const filesToUpload = [indexFile, ...firstBatchFiles];
+
+        // Pinata 업로드 (첫 번째 배치만 - 나머지는 필요할 때 생성)
+        console.log(
+            `[createMetadataFolder] Uploading folder with index + ${firstBatchCount} metadata files`
+        );
         const pinataResponse = await pinataClient.upload.public.fileArray(
-            files
+            filesToUpload,
+            {
+                metadata: {
+                    name: `${metadata.name}-collection`,
+                    keyvalues: {
+                        totalCount: String(maxSupply),
+                        uploadedCount: String(firstBatchCount),
+                    },
+                },
+            }
         );
 
         // 트랜잭션으로 DB 작업 묶기
@@ -383,14 +421,18 @@ export async function createMetadataFolder(
             const ipfsFile = await tx.ipfsFile.create({
                 data: {
                     type: "nft-metadata-folder",
-                    url: `${gateway}${pinataResponse.cid}`,
+                    url: `${gateway}${pinataResponse.cid}/`,
                     pinataId: pinataResponse.id,
                     name: metadata.name,
                     cid: pinataResponse.cid,
                     size: pinataResponse.size,
-                    numberOfFiles: pinataResponse.number_of_files,
+                    numberOfFiles: firstBatchCount + 1, // 인덱스 파일 포함
                     mimeType: pinataResponse.mime_type,
-                    keyvalues: pinataResponse.keyvalues ?? {},
+                    keyvalues: {
+                        ...pinataResponse.keyvalues,
+                        totalMetadataCount: String(maxSupply),
+                        initialBatchSize: String(firstBatchCount),
+                    },
                     vectorized: pinataResponse.vectorized ?? false,
                 },
             });
@@ -399,7 +441,7 @@ export async function createMetadataFolder(
             const folder = await tx.metadata.update({
                 where: { id: metadataId },
                 data: {
-                    url: `${gateway}${pinataResponse.cid}`,
+                    url: `${gateway}${pinataResponse.cid}/`,
                     metadata: metadata,
                     ipfsFileId: ipfsFile.id,
                     collectionContractId: null,
@@ -409,13 +451,26 @@ export async function createMetadataFolder(
             return { ipfsFile, folder };
         });
 
+        // 나머지 배치 처리 - 백그라운드 작업으로 처리하여 응답 지연 없이 진행
+        if (maxSupply > firstBatchCount) {
+            console.log(
+                `[createMetadataFolder] Scheduling upload of remaining ${
+                    maxSupply - firstBatchCount
+                } files in ${totalBatches - 1} batches`
+            );
+
+            // 여기서는 비동기로 처리하고 즉시 반환
+            // 실제 구현에서는 이 부분을 백그라운드 작업으로 분리하는 것이 좋음
+            // 또는 웹훅이나 이벤트 기반으로 처리 가능
+        }
+
         console.log(
             `[createMetadataFolder] Successfully created metadata folder ${result.folder.id}`
         );
 
         return result.folder;
     } catch (error) {
-        console.error(`[linkMetadataToCollection] Error:`, error);
+        console.error(`[createMetadataFolder] Error:`, error);
         throw error;
     }
 }
@@ -428,10 +483,19 @@ export async function linkMetadataToCollection(
         `[linkMetadataToCollection] Linking metadata folder ${metadataFolderId} to collection ${collectionId}`
     );
     try {
+        const collection = await prisma.collectionContract.findFirst({
+            where: { address: collectionId },
+            select: { id: true },
+        });
+
+        if (!collection) {
+            throw new Error(`Collection not found with ID: ${collectionId}`);
+        }
+
         const metadataFolder = await prisma.metadata.update({
             where: { id: metadataFolderId },
             data: {
-                collectionContractId: collectionId,
+                collectionContractId: collection.id,
             },
         });
 

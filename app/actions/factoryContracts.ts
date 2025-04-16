@@ -817,6 +817,7 @@ export async function deployFactoryContract(
 
 // Create Collection 요청 파라미터 정의
 export interface CreateCollectionParams {
+    collectionKey: string;
     factoryAddress: string;
     networkId: string;
     name: string;
@@ -853,6 +854,7 @@ export async function createCollection(
             "===== createCollection: Starting collection creation ====="
         );
         const {
+            collectionKey,
             factoryAddress,
             networkId,
             name,
@@ -1387,6 +1389,7 @@ export async function createCollection(
             }
 
             const saveResult = await saveCollectionContract({
+                collectionKey,
                 address: collectionAddress,
                 factoryAddress: factoryAddress,
                 name,

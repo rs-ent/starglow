@@ -18,7 +18,9 @@ const config: HardhatUserConfig = {
     },
     networks: {
         sepolia: {
-            url: process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org",
+            url:
+                process.env.SEPOLIA_RPC_URL ||
+                "https://ethereum-sepolia.rpc.subquery.network/public",
             accounts: process.env.ESCROW_PRIVATE_KEY
                 ? [process.env.ESCROW_PRIVATE_KEY]
                 : [],

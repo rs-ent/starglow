@@ -46,9 +46,8 @@ import {
 import { useEscrowWalletManager } from "@/app/hooks/useBlockchain";
 import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
 import Popup from "@/components/atoms/Popup";
-import { useIpfs } from "@/app/hooks/useIpfs";
-
-const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY;
+import { useMetadata } from "@/app/hooks/useMetadata";
+import { METADATA_TYPE } from "@/app/actions/metadata";
 
 interface CollectionFunctionsProps {
     collection: CollectionContract;
@@ -62,7 +61,6 @@ export default function CollectionFunctions({
     onCollectionUpdated,
 }: CollectionFunctionsProps) {
     const toast = useToast();
-    const { linkNFTsToMetadata } = useIpfs();
 
     const [mintQuantity, setMintQuantity] = useState("1");
     const [mintAddress, setMintAddress] = useState("");
@@ -182,21 +180,6 @@ export default function CollectionFunctions({
                     onCollectionUpdated({
                         ...collection,
                     });
-                }
-
-                try {
-                    if (result.data?.nftIds && result.data.nftIds.length > 0) {
-                        await linkNFTsToMetadata({
-                            nftIds: result.data.nftIds,
-                            collectionId: collection.id,
-                        });
-
-                        toast.success(
-                            `Successfully linked ${result.data.nftIds.length} NFTs to metadata`
-                        );
-                    }
-                } catch (error) {
-                    console.error("Error linking NFTs to metadata:", error);
                 }
 
                 toast.success(`Minted ${quantity} token(s)`);
@@ -688,6 +671,110 @@ export default function CollectionFunctions({
                                 )}
                             </Button>
                         </CardFooter>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="metadata" className="space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Collection Metadata</CardTitle>
+                            <CardDescription>
+                                View the metadata associated with this
+                                collection
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-4">
+                                <div>
+                                    <Label className="font-medium">
+                                        Base URI
+                                    </Label>
+                                    <div className="flex items-center gap-2 mt-2 border rounded-md p-2">
+                                        <div className="text-sm font-mono truncate flex-1">
+                                            {collection.baseURI || "Not set"}
+                                        </div>
+                                        {collection.baseURI && (
+                                            <div className="flex-shrink-0">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        copyToClipboard(
+                                                            collection.baseURI ||
+                                                                "",
+                                                            "Base URI"
+                                                        )
+                                                    }
+                                                >
+                                                    <Copy className="h-4 w-4 mr-1" />
+                                                    Copy
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        openExternalLink(
+                                                            convertToGatewayUrl(
+                                                                collection.baseURI ||
+                                                                    ""
+                                                            )
+                                                        )
+                                                    }
+                                                >
+                                                    <ExternalLink className="h-4 w-4 mr-1" />
+                                                    Open
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <Label className="font-medium">
+                                        Contract URI
+                                    </Label>
+                                    <div className="flex items-center gap-2 mt-2 border rounded-md p-2">
+                                        <div className="text-sm font-mono truncate flex-1">
+                                            {collection.contractURI ||
+                                                "Not set"}
+                                        </div>
+                                        {collection.contractURI && (
+                                            <div className="flex-shrink-0">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        copyToClipboard(
+                                                            collection.contractURI ||
+                                                                "",
+                                                            "Contract URI"
+                                                        )
+                                                    }
+                                                >
+                                                    <Copy className="h-4 w-4 mr-1" />
+                                                    Copy
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        openExternalLink(
+                                                            convertToGatewayUrl(
+                                                                collection.contractURI ||
+                                                                    ""
+                                                            )
+                                                        )
+                                                    }
+                                                >
+                                                    <ExternalLink className="h-4 w-4 mr-1" />
+                                                    Open
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
                     </Card>
                 </TabsContent>
 

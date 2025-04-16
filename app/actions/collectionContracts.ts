@@ -8,9 +8,11 @@ import { privateKeyToAccount } from "viem/accounts";
 import { COLLECTION_ABI } from "../blockchain/abis/Collection";
 import { getBlockchainNetworkById } from "./blockchain";
 import { prisma } from "@/lib/prisma/client";
+import { createNFTMetadata } from "./metadata";
 
 // Collection 컨트랙트 관련 함수들 (blockchain.ts에서 이동)
 interface SaveCollectionContractParams {
+    collectionKey: string;
     address: string;
     factoryAddress: string;
     name: string;
@@ -46,6 +48,7 @@ export async function saveCollectionContract(
         // Collection 저장
         const collection = await prisma.collectionContract.create({
             data: {
+                key: params.collectionKey,
                 address: params.address,
                 name: params.name,
                 symbol: params.symbol,
@@ -224,7 +227,7 @@ export async function estimateMintGas(
             abi: COLLECTION_ABI,
             functionName: "batchMint",
             args: [to as `0x${string}`, BigInt(quantity), BigInt(1000000000)],
-            account: accountToUse?.address as `0x${string}`, // 계정 주소 추가
+            account: accountToUse,
         });
 
         // 3.3 총 가스 비용 계산
@@ -326,7 +329,7 @@ export async function mintTokens(
         }
 
         // 2. Collection 데이터 검증
-        const collection = await prisma.collectionContract.findFirst({
+        const collection = await prisma.collectionContract.findUnique({
             where: { address: collectionAddress },
         });
 
@@ -453,6 +456,25 @@ export async function mintTokens(
             };
         }
 
+        const baseURI = collection.baseURI;
+        const correctedBaseURI = baseURI.replace("contract.json", "");
+        const setBaseURITx = await walletClient.writeContract({
+            address: collectionAddress as `0x${string}`,
+            abi: COLLECTION_ABI,
+            functionName: "setBaseURI",
+            args: [correctedBaseURI],
+            ...gasOptions,
+        });
+
+        console.log(`BaseURI update transaction sent: ${setBaseURITx}`);
+
+        // 트랜잭션 완료 대기
+        await publicClient.waitForTransactionReceipt({
+            hash: setBaseURITx,
+        });
+
+        console.log(`Successfully BaseURI set to ${correctedBaseURI}`);
+
         // 9. 민팅 실행
         const mintHash = await walletClient.writeContract({
             address: collectionAddress as `0x${string}`,
@@ -477,6 +499,18 @@ export async function mintTokens(
             (_, i) => startTokenId + i
         );
 
+        // 메타데이터 생성
+        try {
+            console.log(
+                `Generating metadata for tokens: ${startTokenId} to ${
+                    startTokenId + quantity - 1
+                }`
+            );
+            await createNFTMetadata(collection, quantity, startTokenId);
+        } catch (metadataError) {
+            console.error("Error generating metadata:", metadataError);
+        }
+
         const savedNfts = await prisma.$transaction(async (tx) => {
             // NFT 데이터 생성
             await tx.nFT.createMany({
@@ -484,7 +518,10 @@ export async function mintTokens(
                     tokenId,
                     collectionId: collection.id,
                     ownerAddress: to,
-                    metadataUri: collection.baseURI,
+                    metadataUri: `${collection.baseURI.replace(
+                        "contract.json",
+                        ""
+                    )}${tokenId}.json`,
                     networkId,
                     transactionHash: mintHash,
                     mintedBy: to,

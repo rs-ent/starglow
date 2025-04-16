@@ -24,24 +24,14 @@ import {
     EyeOff,
 } from "lucide-react";
 import { useToast } from "@/app/hooks/useToast";
-import { useFiles } from "@/app/hooks/useFiles";
 import { useFactoryCreateCollection } from "@/app/hooks/useFactoryContracts";
 import { useEscrowWalletManager } from "@/app/hooks/useBlockchain";
 import { OnChainMetadata } from "./OnChain.Metadata";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
-import { METADATA_TYPE, isValidHexColor } from "@/app/actions/ipfs";
-import { useIpfs } from "@/app/hooks/useIpfs";
+import { METADATA_TYPE } from "@/app/actions/metadata";
 import { Metadata } from "@prisma/client";
-
-const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY;
+import { useMetadata } from "@/app/hooks/useMetadata";
 
 /**
  * 컬렉션 생성 결과 인터페이스
@@ -71,8 +61,7 @@ export default function CreateCollection({
     onClose,
     onSuccess,
 }: CreateCollectionProps) {
-    const { linkableMetadata, createFolder, linkMetadataToCollection } =
-        useIpfs();
+    const { linkableMetadata, linkMetadata } = useMetadata();
 
     const toast = useToast();
 
@@ -174,21 +163,16 @@ export default function CreateCollection({
         try {
             setCollectionResult(null);
 
-            const metadataFolder = await createFolder(
-                selectedMetadata.id,
-                parseInt(collectionForm.maxSupply),
-                PINATA_GATEWAY
-            );
-
             const result = await createCollectionMutation.mutateAsync({
+                collectionKey: selectedMetadata.collectionKey,
                 factoryAddress: factory.address,
                 networkId: factory.networkId,
                 name: collectionForm.name,
                 symbol: collectionForm.symbol,
                 maxSupply: parseInt(collectionForm.maxSupply),
                 mintPrice: collectionForm.mintPrice,
-                baseURI: metadataFolder.url,
-                contractURI: metadataFolder.url,
+                baseURI: selectedMetadata.url,
+                contractURI: selectedMetadata.url,
                 privateKey,
                 useDefaultGas,
                 gasMaxFee: !useDefaultGas ? gasForm.gasMaxFee : undefined,
@@ -213,13 +197,13 @@ export default function CreateCollection({
                     throw new Error("No collection address received");
                 }
 
-                await linkMetadataToCollection(
-                    selectedMetadata.id,
-                    result.collectionAddress
-                );
+                const linkedMetadata = await linkMetadata({
+                    metadataId: selectedMetadata.id,
+                    collectionAddress: result.collectionAddress,
+                });
 
                 toast.success(
-                    `Metadata linked to collection successfully: ${result.collectionAddress}`
+                    `Successfully linked metadata to collection: ${linkedMetadata}`
                 );
             } catch (linkError) {
                 console.error("Metadata linking error:", linkError);

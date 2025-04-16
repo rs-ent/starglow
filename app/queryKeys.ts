@@ -70,7 +70,7 @@ export const queryKeys = {
                 ["contracts", "factory", "collectionByName", name] as const,
         },
     },
-    ipfs: {
+    /*ipfs: {
         files: {
             all: ["ipfs", "files"] as const,
             byGroup: (groupId: string) =>
@@ -91,7 +91,7 @@ export const queryKeys = {
             byId: (id: string) => ["ipfs", "groups", id] as const,
             byName: (name: string) => ["ipfs", "groups", "name", name] as const,
         },
-    },
+    },*/
     nft: {
         all: ["nft"] as const,
         byId: (id: string) => ["nft", id] as const,
@@ -130,3 +130,15 @@ export const collectionKeys = {
             quantity,
         ] as const,
 };
+
+export const metadataKeys = {
+    all: ["metadata"] as const,
+    lists: () => [...metadataKeys.all, "list"] as const,
+    list: (filters: string) => [...metadataKeys.lists(), { filters }] as const,
+    details: () => [...metadataKeys.all, "detail"] as const,
+    detail: (id: string) => [...metadataKeys.details(), id] as const,
+    collection: (address: string) =>
+        [...metadataKeys.all, "collection", address] as const,
+    nfts: (collectionAddress: string) =>
+        [...metadataKeys.all, "nfts", collectionAddress] as const,
+} as const;
