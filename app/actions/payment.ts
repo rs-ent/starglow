@@ -12,59 +12,18 @@ import {
     convertAmount,
     ExchangeRateInfo,
 } from "./exchangeRate";
+import {
+    PayMethod,
+    EasyPayProvider,
+    CardProvider,
+    ProductTable,
+    Currency,
+    prismaTransaction,
+    PRODUCT_MAP,
+} from "@/lib/types/payment";
 
 const PAYMENT_SECRET =
     process.env.PAYMENT_SECRET || "&^%$#-super-secret-v0-!##@!#";
-
-export type PayMethod = PortOne.Entity.PayMethod;
-export type EasyPayProvider = PortOne.Entity.EasyPayProvider;
-export type CardProvider = PortOne.Entity.Country;
-export type Currency = PortOne.Entity.Currency;
-export type ProductTable = "events";
-type prismaTransaction =
-    | PrismaClient
-    | Omit<
-          PrismaClient,
-          | "$connect"
-          | "$disconnect"
-          | "$on"
-          | "$transaction"
-          | "$use"
-          | "$extends"
-      >;
-
-export const PRODUCT_MAP = {
-    product: {
-        events: async ({
-            productId,
-            tx,
-        }: {
-            productId: string;
-            tx?: prismaTransaction;
-        }) => {
-            const product = await (tx ?? prisma).events.findUnique({
-                where: {
-                    id: productId,
-                },
-            });
-
-            if (!product) {
-                throw new Error("Product not found");
-            }
-
-            return product;
-        },
-    },
-    amountField: {
-        events: "price" as keyof Events,
-    },
-    defaultCurrency: {
-        events: "CURRENCY_KRW" as Currency,
-    },
-    nameField: {
-        events: "title" as keyof Events,
-    },
-};
 
 function getStoreIdAndChannelKey(
     payMethod: PayMethod,
@@ -1043,10 +1002,8 @@ export async function handlePortOneWebhook(body: PortOneWebhookBody) {
     const webhookEvent = await prisma.webhookEvent.create({
         data: {
             paymentId: payment.id,
-            eventType: body.type,
-            status: payment.status,
-            payload: body as any, // Json 타입으로 저장
-            processedAt: null as any, // 처리 완료 후 업데이트
+            description: body.type as string,
+            payload: body,
         },
     });
 
@@ -1095,7 +1052,9 @@ export async function handlePortOneWebhook(body: PortOneWebhookBody) {
         await prisma.webhookEvent.update({
             where: { id: webhookEvent.id },
             data: {
-                processedAt: new Date(),
+                description: `[${
+                    body.type
+                }] Processed at ${new Date().toISOString()}`,
             },
         });
 
@@ -1105,8 +1064,9 @@ export async function handlePortOneWebhook(body: PortOneWebhookBody) {
         await prisma.webhookEvent.update({
             where: { id: webhookEvent.id },
             data: {
-                processedAt: new Date(),
-                status: "ERROR",
+                description: `[${
+                    body.type
+                }] Processed at ${new Date().toISOString()}`,
                 payload: {
                     ...body,
                     error:

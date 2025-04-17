@@ -407,18 +407,14 @@ model PaymentPromotion {
 
 model WebhookEvent {
     id              String    @id @default(cuid())
-    paymentId       String
-    payment         Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+    paymentId       String?
+    payment         Payment?   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+    description     String?
     
-    eventType       String    // Webhook 이벤트 타입
-    status          String    // 이벤트 당시의 결제 상태
-    payload         Json      // Webhook 원본 데이터
-    processedAt     DateTime  // 이벤트 처리 시간
+    payload         Json?      // Webhook 원본 데이터
     
     createdAt       DateTime  @default(now())
-
-    @@index([paymentId, eventType])
-    @@index([createdAt])
 }
 
 model VirtualAccount {

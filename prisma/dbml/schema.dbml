@@ -322,12 +322,10 @@ Table PaymentPromotion {
 
 Table WebhookEvent {
   id String [pk]
-  paymentId String [not null]
-  payment Payment [not null]
-  eventType String [not null]
-  status String [not null]
-  payload Json [not null]
-  processedAt DateTime [not null]
+  paymentId String
+  payment Payment
+  description String
+  payload Json
   createdAt DateTime [default: `now()`, not null]
 }
 
