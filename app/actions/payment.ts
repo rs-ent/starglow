@@ -790,6 +790,17 @@ async function updatePaymentStatus({
 
                         // pgResponse가 존재하면 추가
                         if (pgResponse) {
+                            updateData.code = pgResponse.code ?? undefined;
+                            updateData.message =
+                                pgResponse.message ?? undefined;
+                            updateData.paymentId =
+                                pgResponse.paymentId ?? undefined;
+                            updateData.pgCode = pgResponse.pgCode ?? undefined;
+                            updateData.pgMessage =
+                                pgResponse.pgMessage ?? undefined;
+                            updateData.transactionType =
+                                pgResponse.transactionType ?? undefined;
+                            updateData.txId = pgResponse.txId ?? undefined;
                             updateData.pgResponse = pgResponse;
                             scope.log(`Adding PG response data to update`);
                         }
@@ -862,6 +873,16 @@ async function updatePaymentStatus({
                                 ? { refundedAt: new Date() }
                                 : {}),
                             cancelAmount: cancelledAmount,
+                            code: cancelResponseData.code ?? undefined,
+                            message: cancelResponseData.message ?? undefined,
+                            paymentId:
+                                cancelResponseData.paymentId ?? undefined,
+                            pgCode: cancelResponseData.pgCode ?? undefined,
+                            pgMessage:
+                                cancelResponseData.pgMessage ?? undefined,
+                            transactionType:
+                                cancelResponseData.transactionType ?? undefined,
+                            txId: cancelResponseData.txId ?? undefined,
                             pgResponse: cancelResponseData,
                         },
                     });
@@ -933,6 +954,14 @@ async function updatePaymentStatus({
 
                 // pgResponse가 존재하면 추가
                 if (pgResponse) {
+                    updateData.code = pgResponse.code ?? undefined;
+                    updateData.message = pgResponse.message ?? undefined;
+                    updateData.paymentId = pgResponse.paymentId ?? undefined;
+                    updateData.pgCode = pgResponse.pgCode ?? undefined;
+                    updateData.pgMessage = pgResponse.pgMessage ?? undefined;
+                    updateData.transactionType =
+                        pgResponse.transactionType ?? undefined;
+                    updateData.txId = pgResponse.txId ?? undefined;
                     updateData.pgResponse = pgResponse;
                     scope.log(`Adding PG response data to update`);
                 }

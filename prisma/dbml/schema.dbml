@@ -291,7 +291,13 @@ Table Payment {
   failedAt DateTime
   refundedAt DateTime
   cancelAmount Int
-  pgTxId String
+  code String
+  message String
+  paymentId String
+  pgCode String
+  pgMessage String
+  transactionType String
+  txId String
   pgResponse Json
   virtualAccount VirtualAccount
   webhookEvents WebhookEvent [not null]

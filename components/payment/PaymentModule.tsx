@@ -10,9 +10,9 @@ import {
     CardProvider,
 } from "@/lib/types/payment";
 import { Payment } from "@prisma/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import PaymentSelector from "./PaymentSelector";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Button from "../atoms/Button";
 import { ShoppingBasket } from "lucide-react";
 import { useExchangeRate } from "@/app/hooks/useExchangeRate";
@@ -20,6 +20,7 @@ import { usePayment } from "@/app/hooks/usePayment";
 import { useAuthUserId } from "@/app/auth/authUtils.Client";
 import { useToast } from "@/app/hooks/useToast";
 import { useLoading } from "@/app/hooks/useLoading";
+import { getPayment } from "@/app/actions/payment";
 
 interface PaymentModuleProps {
     productTable: ProductTable;
@@ -58,8 +59,22 @@ export default function PaymentModule({
     onPaymentRefund,
 }: PaymentModuleProps) {
     const toast = useToast();
-    const { startLoading, endLoading, isLoading } = useLoading();
+    const { startLoading, endLoading } = useLoading();
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const paymentResult = useMemo(
+        () => ({
+            code: searchParams.get("code"),
+            message: searchParams.get("message"),
+            paymentId: searchParams.get("paymentId"),
+            pgCode: searchParams.get("pgCode"),
+            pgMessage: searchParams.get("pgMessage"),
+            transactionType: searchParams.get("transactionType"),
+            txId: searchParams.get("txId"),
+        }),
+        [searchParams]
+    );
 
     const { getExchangeRate } = useExchangeRate();
     const {
@@ -110,18 +125,8 @@ export default function PaymentModule({
 
     const handlePay = () => {
         startLoading();
-        console.log("Payment process starting with payment method:", payMethod);
 
         const redirectUrl = window.location.href.split("?")[0];
-
-        console.log("Product Table", productTable);
-        console.log("Product ID", productId);
-        console.log("Quantity", quantity);
-        console.log("Currency", currency);
-        console.log("Pay Method", payMethod);
-        console.log("Easy Pay Provider", easyPayProvider);
-        console.log("Card Provider", cardProvider);
-        console.log("Redirect URL", redirectUrl);
 
         const paymentInput = {
             productTable,
@@ -135,27 +140,70 @@ export default function PaymentModule({
             redirectUrl,
         };
 
-        console.log("Submitting payment with input:", paymentInput);
         resetAndInitiatePayment(paymentInput);
     };
 
     useEffect(() => {
-        console.log("Current Payment ID changed to:", currentPaymentId);
-        console.log(
-            "Payment creation state:",
-            isCreatingPayment ? "Creating" : "Completed"
-        );
+        if (!paymentResult.paymentId) return;
 
-        // Only handle payment window opening when we have a payment ID and payment creation is complete
+        const handlePaymentResult = async () => {
+            startLoading();
+            try {
+                console.log("Payment Id", paymentResult.paymentId);
+                const payment = await getPayment({
+                    paymentId: paymentResult.paymentId as string,
+                });
+                console.log("Payment", payment);
+
+                if (!payment) {
+                    endLoading();
+                    return;
+                }
+
+                switch (payment.status) {
+                    case "PAID":
+                        console.log("Payment Success", payment);
+                        toast.success("Payment successful");
+                        onPaymentSuccess?.(payment);
+                        break;
+                    case "FAILED":
+                        console.log("Payment Failed", payment);
+                        toast.error("Payment failed");
+                        onPaymentError?.(
+                            new Error(payment.statusReason || "Payment failed")
+                        );
+                        break;
+                    case "CANCELLED":
+                        console.log("Payment Cancelled", payment);
+                        toast.error("Payment cancelled");
+                        onPaymentCancel?.(payment);
+                        break;
+                    case "REFUNDED":
+                        console.log("Payment Refunded", payment);
+                        toast.success("Payment refunded");
+                        onPaymentRefund?.(payment);
+                        break;
+                }
+            } catch (error) {
+                onPaymentError?.(
+                    error instanceof Error
+                        ? error
+                        : new Error("Payment verification failed")
+                );
+            }
+        };
+
+        handlePaymentResult();
+    }, [paymentResult.paymentId]);
+
+    useEffect(() => {
         if (currentPaymentId && !isCreatingPayment) {
-            console.log("Opening payment window for ID:", currentPaymentId);
             const timer = setTimeout(() => {
                 router.push(`/payment/${currentPaymentId}`);
                 endLoading();
-            }, 1000);
+            }, 500);
             return () => clearTimeout(timer);
         } else if (!currentPaymentId && !isCreatingPayment) {
-            console.log("Payment creation completed but no payment ID was set");
             endLoading();
         }
     }, [currentPaymentId, isCreatingPayment]);

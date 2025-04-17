@@ -41,12 +41,9 @@ export default function PayPalButton({
                     },
                     {
                         onPaymentSuccess: async (response) => {
-                            toast.success("PayPal payment successful");
-                            response.code = "0";
                             onPaymentProceed(response);
                         },
                         onPaymentFail: (error) => {
-                            toast.error("PayPal payment failed");
                             onPaymentProceed(error);
                         },
                     }

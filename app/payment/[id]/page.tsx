@@ -43,18 +43,6 @@ export default async function PaymentPage({
         );
     }
 
-    /*
-    const paymentResult = {
-        code: searchParams.get("code"),
-        message: searchParams.get("message"),
-        paymentId: searchParams.get("paymentId"),
-        pgCode: searchParams.get("pgCode"),
-        pgMessage: searchParams.get("pgMessage"),
-        transactionType: searchParams.get("transactionType"),
-        txId: searchParams.get("txId"),
-    };
-    */
-
     if (!payment.userId) {
         await updatePaymentUserId(id, user.id!);
         revalidatePath(`/payment/${id}`);

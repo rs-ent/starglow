@@ -50,11 +50,16 @@ export default function Payments({ payment, userId }: PaymentProps) {
     }, [payment.id, userId, setCurrentPaymentId, setUserId, payment.status]);
 
     useEffect(() => {
-        if (currentPayment && currentPayment.status === "PAID") {
-            toast.success("Payment successful!");
-            // router.push(`/payment/success/${payment.id}`);
+        if (
+            currentPayment &&
+            (currentPayment.status === "PAID" ||
+                currentPayment.status === "FAILED")
+        ) {
+            router.push(
+                `${currentPayment.redirectUrl}?paymentId=${currentPayment.id}`
+            );
         }
-    }, [currentPayment, payment.id, router, toast]);
+    }, [currentPayment, payment.id, router]);
 
     useEffect(() => {
         if (!isVerifyingPayment && isProcessing) {
@@ -269,7 +274,10 @@ export default function Payments({ payment, userId }: PaymentProps) {
                                                     "PAYPAL"
                                                         ? "PayPal"
                                                         : payment.easyPayProvider
-                                                        ? `${payment.easyPayProvider.replace("EASYPAY_", "")} (Easy Pay)`
+                                                        ? `${payment.easyPayProvider.replace(
+                                                              "EASYPAY_",
+                                                              ""
+                                                          )} (Easy Pay)`
                                                         : payment.cardProvider
                                                         ? `Card`
                                                         : payment.payMethod}

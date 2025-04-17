@@ -363,7 +363,13 @@ model Payment {
 
   cancelAmount Int?
   
-  pgTxId      String? // 결제 플랫폼 거래 아이디
+  code      String? // 결제 플랫폼 코드
+  message   String? // 결제 플랫폼 메시지
+  paymentId String? // 결제 플랫폼 결제 아이디
+  pgCode    String? // 결제 플랫폼 코드
+  pgMessage String? // 결제 플랫폼 메시지
+  transactionType String? // 결제 플랫폼 거래 타입
+  txId      String? // 결제 플랫폼 거래 아이디
   pgResponse  Json? // 결제 플랫폼 응답
 
   virtualAccount VirtualAccount? // 가상 계좌
