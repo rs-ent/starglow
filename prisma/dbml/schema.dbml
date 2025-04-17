@@ -258,8 +258,8 @@ Table LoginAttemptLog {
 
 Table Payment {
   id String [pk]
-  userId String [not null]
-  user User [not null]
+  userId String
+  user User
   storeId String [not null]
   channelKey String [not null]
   productTable String [not null]
@@ -291,20 +291,14 @@ Table Payment {
   failedAt DateTime
   refundedAt DateTime
   cancelAmount Int
-  clientHash String [not null]
-  serverHash String [not null]
-  nonce String [not null]
   pgTxId String
   pgResponse Json
   virtualAccount VirtualAccount
   webhookEvents WebhookEvent [not null]
   metadata Json
+  redirectUrl String
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
-
-  indexes {
-    (clientHash, serverHash) [unique]
-  }
 }
 
 Table PaymentPromotion {

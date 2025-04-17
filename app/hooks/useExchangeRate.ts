@@ -3,25 +3,65 @@
 "use client";
 
 import * as PortOne from "@portone/browser-sdk/v2";
-import {
-    useExchangeRateQuery,
-    useConvertAmountQuery,
-} from "@/app/queries/exchangeRateQueries";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getExchangeRateInfo, convertAmount } from "@/app/actions/exchangeRate";
+import { queryKeys } from "@/app/queryKeys";
+import type { ExchangeRateInfo } from "@/app/actions/exchangeRate";
 
 export function useExchangeRate() {
-    const getExchangeRate = (
-        fromCurrency: PortOne.Entity.Currency,
-        toCurrency: PortOne.Entity.Currency
-    ) => useExchangeRateQuery(fromCurrency, toCurrency);
+    // 환율 정보 직접 조회
+    const exchangeRateQuery = useCallback(
+        (
+            fromCurrency: PortOne.Entity.Currency,
+            toCurrency: PortOne.Entity.Currency
+        ) => {
+            return useQuery<ExchangeRateInfo>({
+                queryKey: queryKeys.exchangeRate.info,
+                queryFn: () =>
+                    getExchangeRateInfo({ fromCurrency, toCurrency }),
+                staleTime: 24 * 60 * 60 * 1000, // 24시간 캐싱
+            });
+        },
+        []
+    );
 
-    const convertAmount = (
-        amount: number,
-        fromCurrency: PortOne.Entity.Currency,
-        toCurrency: PortOne.Entity.Currency
-    ) => useConvertAmountQuery(amount, fromCurrency, toCurrency);
+    // 금액 변환 함수
+    const convertAmountQuery = useCallback(
+        (
+            amount: number,
+            fromCurrency: PortOne.Entity.Currency,
+            toCurrency: PortOne.Entity.Currency
+        ) => {
+            return useQuery<{
+                converted: number;
+                exchangeInfo: ExchangeRateInfo;
+            }>({
+                queryKey: queryKeys.exchangeRate.convert(
+                    amount,
+                    fromCurrency,
+                    toCurrency
+                ),
+                queryFn: async () => {
+                    const exchangeInfo = await getExchangeRateInfo({
+                        fromCurrency,
+                        toCurrency,
+                    });
+                    const converted = await convertAmount(
+                        amount,
+                        fromCurrency,
+                        toCurrency,
+                        exchangeInfo
+                    );
+                    return { converted, exchangeInfo };
+                },
+            });
+        },
+        []
+    );
 
     return {
-        getExchangeRate,
-        convertAmount,
+        getExchangeRate: exchangeRateQuery,
+        convertAmount: convertAmountQuery,
     };
 }

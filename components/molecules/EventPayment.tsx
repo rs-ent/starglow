@@ -1,7 +1,7 @@
 "use client";
 
 import { Events } from "@prisma/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { H3 } from "../atoms/Typography";
 import {
     Ticket,
@@ -11,10 +11,7 @@ import {
     CheckCircle2,
 } from "lucide-react";
 import PaymentModule from "../payment/PaymentModule";
-import * as PortOne from "@portone/browser-sdk/v2";
-import { useSearchParams } from "next/navigation";
-
-const DEFAULT_CURRENCY = "CURRENCY_KRW" as PortOne.Entity.Currency;
+import { Currency } from "@/lib/types/payment";
 
 type EventPaymentProps = {
     event: Pick<
@@ -29,27 +26,18 @@ type EventPaymentProps = {
         | "saleStartDate"
         | "saleEndDate"
     >;
-    initialCurrency?: "CURRENCY_USD" | "CURRENCY_KRW";
     onPurchase?: (quantity: number) => void;
 };
 
-export default function EventPayment({
-    event,
-    initialCurrency = "CURRENCY_KRW",
-    onPurchase,
-}: EventPaymentProps) {
-    const [quantity, setQuantity] = useState(1);
-    const searchParams = useSearchParams();
+const initialCurrency = "CURRENCY_KRW" as Currency;
 
-    // Get payment result from URL parameters
-    const paymentResult = {
-        code: searchParams.get("code"),
-        message: searchParams.get("message"),
-        paymentId: searchParams.get("paymentId"),
-        pgCode: searchParams.get("pgCode"),
-        pgMessage: searchParams.get("pgMessage"),
-        transactionType: searchParams.get("transactionType"),
-        txId: searchParams.get("txId"),
+export default function EventPayment({ event, onPurchase }: EventPaymentProps) {
+    const [quantity, setQuantity] = useState(1);
+    const [displayPrice, setDisplayPrice] = useState<number>(event.price ?? 0);
+    const [currency, setCurrency] = useState<Currency>(initialCurrency);
+
+    const handleDisplayPriceChange = (displayPrice: number) => {
+        setDisplayPrice(displayPrice);
     };
 
     // Check if tickets are available for sale
@@ -77,21 +65,6 @@ export default function EventPayment({
         });
     };
 
-    // Handle successful payment
-    const handlePaymentSuccess = (response: any) => {
-        console.log("Payment successful", response);
-        // Call the onPurchase prop if it exists
-        if (onPurchase) {
-            onPurchase(quantity);
-        }
-    };
-
-    // Handle payment error
-    const handlePaymentError = (error: any) => {
-        console.error("Payment failed", error);
-        // TODO: Implement error handling
-    };
-
     return (
         <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50 p-4 sm:p-6 md:p-8">
             <div className="flex items-center mb-5 md:mb-6">
@@ -104,8 +77,11 @@ export default function EventPayment({
                 <div className="flex justify-between items-center mb-2">
                     <span className="text-foreground/70">Price per ticket</span>
                     <span className="font-main text-base md:text-lg">
-                        {event.price ? (
-                            <>{event.price.toLocaleString()}</>
+                        {displayPrice ? (
+                            <>
+                                {currency === "CURRENCY_KRW" ? "￦" : "＄"}{" "}
+                                {(displayPrice * quantity).toLocaleString()}
+                            </>
                         ) : (
                             "Free"
                         )}
@@ -187,14 +163,18 @@ export default function EventPayment({
 
                     {/* Payment processor */}
                     <PaymentModule
-                        table="events"
-                        merchId={event.id}
-                        merchName={event.title}
-                        amount={event.price || 0}
+                        productTable="events"
+                        productId={event.id}
                         quantity={quantity}
-                        defaultCurrency={DEFAULT_CURRENCY}
-                        paymentResult={paymentResult}
-                        onSuccess={() => handlePaymentSuccess({})}
+                        buttonText={
+                            quantity > 1
+                                ? `Pay for ${quantity} tickets`
+                                : "Pay for 1 ticket"
+                        }
+                        productInitialCurrencyForDisplay={initialCurrency}
+                        productInitialPriceForDisplay={event.price ?? 0}
+                        onDisplayPriceChange={handleDisplayPriceChange}
+                        onCurrencyChange={setCurrency}
                     />
                 </>
             ) : (

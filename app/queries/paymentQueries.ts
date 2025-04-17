@@ -3,55 +3,36 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { getPayment, getPaymentsByUserId } from "@/app/actions/payment";
 import { queryKeys } from "@/app/queryKeys";
-import { PaymentLog } from "@prisma/client";
-import {
-    getPaymentLog,
-    getPaymentLogs,
-    getPaymentLogsByStatus,
-    getPortOneEnv,
-} from "@/app/actions/payment";
-import { PaymentStatus } from "@prisma/client";
-import * as PortOne from "@portone/browser-sdk/v2";
+import { Payment, PaymentStatus } from "@prisma/client";
 
-export function usePaymentLog(paymentLogId: string) {
-    return useQuery<PaymentLog>({
-        queryKey: queryKeys.payment.byId(paymentLogId),
-        queryFn: () => getPaymentLog(paymentLogId),
-        enabled: Boolean(paymentLogId),
+export function usePaymentQuery(paymentId: string) {
+    return useQuery<Payment | null>({
+        queryKey: queryKeys.payment.byId(paymentId),
+        queryFn: () => getPayment({ paymentId }),
+        enabled: Boolean(paymentId),
     });
 }
 
-export function usePaymentLogs(userId: string) {
-    return useQuery<PaymentLog[]>({
-        queryKey: queryKeys.payment.list(userId),
-        queryFn: () => getPaymentLogs(userId),
+export function usePaymentsByUserIdQuery(userId: string) {
+    return useQuery<Payment[]>({
+        queryKey: queryKeys.payment.byUserId(userId),
+        queryFn: () => getPaymentsByUserId({ userId }),
         enabled: Boolean(userId),
     });
 }
 
-export function usePaymentLogsByStatus(status: PaymentStatus) {
-    return useQuery<PaymentLog[]>({
-        queryKey: queryKeys.payment.byStatus(status),
-        queryFn: () => getPaymentLogsByStatus(status),
-        enabled: Boolean(status),
-    });
-}
-
-export function usePortOneEnv(
-    payMethod: PortOne.Entity.PayMethod,
-    easyPayProvider?: PortOne.Entity.EasyPayProvider,
-    cardProvider?: PortOne.Entity.Country
+export function usePaymentsByStatusQuery(
+    userId: string,
+    status: PaymentStatus
 ) {
-    return useQuery({
-        queryKey: queryKeys.payment.portOneEnv(
-            payMethod,
-            easyPayProvider,
-            cardProvider
-        ),
-        queryFn: () => getPortOneEnv(payMethod, easyPayProvider, cardProvider),
-        enabled: Boolean(payMethod),
-        staleTime: 5 * 60 * 1000,
-        gcTime: 30 * 60 * 1000,
+    return useQuery<Payment[]>({
+        queryKey: [...queryKeys.payment.byUserId(userId), status],
+        queryFn: async () => {
+            const payments = await getPaymentsByUserId({ userId });
+            return payments.filter((payment) => payment.status === status);
+        },
+        enabled: Boolean(userId && status),
     });
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { handlePortOneWebhook } from "@/app/actions/webhook";
+import { handlePortOneWebhook } from "@/app/actions/payment";
 
 // 웹훅 시크릿 키
 const WEBHOOK_SECRET = process.env.PORTONE_WEBHOOK_SECRET;

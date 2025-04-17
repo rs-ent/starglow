@@ -2,23 +2,26 @@
 
 "use client";
 
+import { useEffect } from "react";
 import { CreditCardIcon, Smartphone, Wallet } from "lucide-react";
-import * as PortOne from "@portone/browser-sdk/v2";
+import {
+    PayMethod,
+    Currency,
+    EasyPayProvider,
+    CardProvider,
+} from "@/lib/types/payment";
 import Button from "../atoms/Button";
 
 interface PaymentSelectorProps {
-    payMethod: PortOne.Entity.PayMethod;
-    currency: PortOne.Entity.Currency;
-    easyPayProvider: PortOne.Entity.EasyPayProvider;
-    cardProvider: PortOne.Entity.Country;
-    exchangeRateDisplay: string;
-    lastUpdated: string;
-    onPayMethodChange: (payMethod: PortOne.Entity.PayMethod) => void;
-    onCurrencyChange: (currency: PortOne.Entity.Currency) => void;
-    onEasyPayProviderChange: (
-        easyPayProvider: PortOne.Entity.EasyPayProvider
-    ) => void;
-    onCardProviderChange: (cardProvider: PortOne.Entity.Country) => void;
+    payMethod: PayMethod;
+    currency: Currency;
+    easyPayProvider: EasyPayProvider | null;
+    cardProvider: CardProvider | null;
+
+    onPayMethodChange: (payMethod: PayMethod) => void;
+    onCurrencyChange: (currency: Currency) => void;
+    onEasyPayProviderChange: (easyPayProvider: EasyPayProvider | null) => void;
+    onCardProviderChange: (cardProvider: CardProvider | null) => void;
 }
 
 export default function PaymentSelector({
@@ -26,13 +29,28 @@ export default function PaymentSelector({
     currency,
     easyPayProvider,
     cardProvider,
-    exchangeRateDisplay,
-    lastUpdated,
+
     onPayMethodChange,
     onCurrencyChange,
     onEasyPayProviderChange,
     onCardProviderChange,
 }: PaymentSelectorProps) {
+    useEffect(() => {
+        if (payMethod === "EASY_PAY") {
+            onCurrencyChange("CURRENCY_KRW");
+            if (!easyPayProvider) {
+                onEasyPayProviderChange("EASY_PAY_PROVIDER_TOSSPAY");
+            }
+        } else if (payMethod === "CARD") {
+            onCurrencyChange("CURRENCY_KRW");
+            if (!cardProvider) {
+                onCardProviderChange("COUNTRY_KR");
+            }
+        } else if (payMethod === "PAYPAL") {
+            onCurrencyChange("CURRENCY_USD");
+        }
+    }, [payMethod]);
+
     return (
         <div className="space-y-5 md:space-y-6">
             {/* Currency selector */}

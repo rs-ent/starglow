@@ -19,6 +19,16 @@ export const queryKeys = {
     currency: ["currency"] as const,
     rewards: ["rewards"] as const,
     banners: () => ["banners"] as const,
+    payment: {
+        all: ["payments"] as const,
+        byId: (id: string) => ["payments", id] as const,
+        byUserId: (userId: string) => ["payments", "user", userId] as const,
+        byStatus: (status: string) => ["payments", "status", status] as const,
+        byProductTable: (productTable: string) =>
+            ["payments", "productTable", productTable] as const,
+        byProductId: (productTable: string, productId: string) =>
+            ["payments", "product", productTable, productId] as const,
+    },
     files: {
         all: ["files"] as const,
         byPurpose: (purpose: string) => ["files", purpose] as const,
@@ -44,24 +54,6 @@ export const queryKeys = {
         byId: (address: string) => ["defaultWallets", address] as const,
         byNetwork: (network: string) =>
             ["defaultWallets", "network", network] as const,
-    },
-    payment: {
-        all: ["payment"] as const,
-        byId: (id: string) => ["payment", id] as const,
-        list: (userId: string) => ["payment", "user", userId] as const,
-        byStatus: (status: string) => ["payment", "status", status] as const,
-        portOneEnv: (
-            payMethod: PortOne.Entity.PayMethod,
-            easyPayProvider?: PortOne.Entity.EasyPayProvider | undefined,
-            cardProvider?: PortOne.Entity.Country | undefined
-        ) =>
-            [
-                "payment",
-                "portOneEnv",
-                payMethod,
-                easyPayProvider ?? "none",
-                cardProvider ?? "none",
-            ] as const,
     },
     contracts: {
         factory: {

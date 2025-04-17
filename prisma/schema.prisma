@@ -320,8 +320,8 @@ enum PaymentStatus {
 
 model Payment {
   id            String          @id @default(cuid())
-  userId        String
-  user          User            @relation(fields: [userId], references: [id])
+  userId        String?
+  user          User?           @relation(fields: [userId], references: [id])
 
   storeId String
   channelKey String
@@ -362,10 +362,6 @@ model Payment {
   refundedAt  DateTime?
 
   cancelAmount Int?
-
-  clientHash  String     
-  serverHash  String     
-  nonce       String     
   
   pgTxId      String? // 결제 플랫폼 거래 아이디
   pgResponse  Json? // 결제 플랫폼 응답
@@ -376,10 +372,11 @@ model Payment {
 
   metadata Json?
 
+  redirectUrl String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([clientHash, serverHash])
   @@index([userId])
   @@index([userId, status])  
 }
