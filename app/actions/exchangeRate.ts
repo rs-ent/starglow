@@ -3,12 +3,25 @@
 import { prisma } from "@/lib/prisma/client";
 import { cache } from "react";
 import * as PortOne from "@portone/browser-sdk/v2";
+import { PrismaClient } from "@prisma/client";
 
 const EXCHANGE_RATE_UPDATE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 const EXCHANGE_RATE_FALLBACK = 1300;
 
 const DEFAULT_FROM_CURRENCY = "CURRENCY_USD" as const;
 const DEFAULT_TO_CURRENCY = "CURRENCY_KRW" as const;
+
+type prismaTransaction =
+    | PrismaClient
+    | Omit<
+          PrismaClient,
+          | "$connect"
+          | "$disconnect"
+          | "$on"
+          | "$transaction"
+          | "$use"
+          | "$extends"
+      >;
 
 export interface ExchangeRateInfo {
     fromCurrency: PortOne.Entity.Currency;
@@ -22,10 +35,15 @@ function convertToApiCurrency(currency: PortOne.Entity.Currency): string {
     return currency.replace("CURRENCY_", "");
 }
 
-export async function getExchangeRateInfo(
-    fromCurrency: PortOne.Entity.Currency = DEFAULT_FROM_CURRENCY,
-    toCurrency: PortOne.Entity.Currency = DEFAULT_TO_CURRENCY
-): Promise<ExchangeRateInfo> {
+export async function getExchangeRateInfo({
+    fromCurrency,
+    toCurrency,
+    tx,
+}: {
+    fromCurrency: PortOne.Entity.Currency;
+    toCurrency: PortOne.Entity.Currency;
+    tx?: prismaTransaction;
+}): Promise<ExchangeRateInfo> {
     try {
         if (fromCurrency === toCurrency) {
             return {
@@ -39,7 +57,7 @@ export async function getExchangeRateInfo(
         const fromCurrencyStr = convertToApiCurrency(fromCurrency);
         const toCurrencyStr = convertToApiCurrency(toCurrency);
 
-        const latestRate = await prisma.exchangeRate.findFirst({
+        const latestRate = await (tx ?? prisma).exchangeRate.findFirst({
             where: {
                 fromCurrency: fromCurrencyStr,
                 toCurrency: toCurrencyStr,
@@ -69,7 +87,7 @@ export async function getExchangeRateInfo(
         const data = await response.json();
         const newRate = data.rates[toCurrencyStr];
 
-        const savedRate = await prisma.exchangeRate.create({
+        const savedRate = await (tx ?? prisma).exchangeRate.create({
             data: {
                 fromCurrency: fromCurrencyStr,
                 toCurrency: toCurrencyStr,
@@ -79,7 +97,7 @@ export async function getExchangeRateInfo(
         });
 
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        await prisma.exchangeRate.deleteMany({
+        await (tx ?? prisma).exchangeRate.deleteMany({
             where: {
                 createdAt: {
                     lt: thirtyDaysAgo,
@@ -97,7 +115,7 @@ export async function getExchangeRateInfo(
     } catch (error) {
         console.error("Error fetching exchange rate:", error);
 
-        const fallbackRate = await prisma.exchangeRate.findFirst({
+        const fallbackRate = await (tx ?? prisma).exchangeRate.findFirst({
             where: {
                 fromCurrency: convertToApiCurrency(fromCurrency),
                 toCurrency: convertToApiCurrency(toCurrency),
@@ -130,16 +148,18 @@ export async function getExchangeRateInfo(
 export async function convertAmount(
     amount: number,
     fromCurrency: PortOne.Entity.Currency,
-    toCurrency: PortOne.Entity.Currency
-): Promise<{ converted: number; exchangeInfo: ExchangeRateInfo }> {
-    const exchangeInfo = await getExchangeRateInfo(fromCurrency, toCurrency);
+    toCurrency: PortOne.Entity.Currency,
+    exchangeRateInfo?: ExchangeRateInfo,
+    tx?: prismaTransaction
+): Promise<number> {
+    const exchangeInfo =
+        exchangeRateInfo ??
+        (await getExchangeRateInfo({ fromCurrency, toCurrency, tx }));
+
     let converted = amount * exchangeInfo.rate;
     if (toCurrency === "CURRENCY_USD") {
         converted = converted * 100;
     }
 
-    return {
-        converted: Math.round(converted),
-        exchangeInfo,
-    };
+    return Math.round(converted);
 }

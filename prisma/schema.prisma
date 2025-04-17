@@ -25,10 +25,10 @@ model User {
   lastLoginAt   DateTime?
   accounts      Account[]
   loginAttempts LoginAttemptLog[] @relation("UserLoginAttempts")
-  paymentLogs   PaymentLog[]
   player        Player?
   sessions      Session[]
   wallets       Wallet[]
+  payments      Payment[]
 
   @@index([email, active])
   @@index([role, active])
@@ -307,40 +307,139 @@ model LoginAttemptLog {
   @@index([ipAddress, timestamp])
 }
 
-model PaymentLog {
-  id                 String        @id @default(cuid())
-  orderedProductId   String
-  orderedProductName String
-  amount             Int
-  currency           String        @default("USD")
-  convertedAmount    Float?
-  exchangeRate       Float?
-  method             String       @default("PAYPAL")
-  easyPayProvider    String?
-  cardProvider       String?
-  status             PaymentStatus @default(INIT)
-  paymentKey         String
-  userId             String
-  failureReason      String?
-  cancelReason       String?
-  attemptCount       Int           @default(0)
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-  sessionHash        String
-  nonce              String
-  vbankCode          String?       // 은행 코드
-  vbankNum           String?       // 가상계좌 번호
-  vbankHolder        String?       // 예금주
-  vbankDate          DateTime?     // 입금 기한
-  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum PaymentStatus {
+  PENDING
+  AWAITING_DEPOSIT
+  PAID
+  CANCELLED
+  FAILED
+  EXPIRED
+  REFUNDED
+  PARTIALLY_CANCELLED
+}
 
-  @@index([orderedProductId])
-  @@index([userId, status])
-  @@index([paymentKey])
-  @@index([sessionHash])
-  @@index([createdAt])
-  @@index([status, createdAt])
-  @@index([vbankNum])  // 가상계좌 번호로 조회할 수 있도록 인덱스 추가
+model Payment {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+
+  storeId String
+  channelKey String
+  
+  productTable  String
+  productId     String
+  productName     String
+  productDefaultCurrency String // 상품 기본 화폐
+
+  amount      Int
+  quantity    Int
+  currency    String // 결제 화폐
+  payMethod   String
+  easyPayProvider String?
+  cardProvider String?
+
+  cardInstallmentMonths Int?
+  cardInterestFree      Boolean?
+  cardApproveNumber     String?
+  cardNumber            String?
+
+  promotionCode String?
+  promotion PaymentPromotion? @relation(fields: [promotionCode], references: [code])
+  isPromotionApplied Boolean @default(false)
+  
+  exchangeRate Float?
+  exchangeRateProvider String?
+  exchangeRateTimestamp DateTime?
+  originalProductPrice Int?
+  convertedPrice Int?
+
+  status      PaymentStatus @default(PENDING)
+  statusReason String?
+
+  paidAt      DateTime?
+  cancelledAt DateTime?
+  failedAt    DateTime?
+  refundedAt  DateTime?
+
+  cancelAmount Int?
+
+  clientHash  String     
+  serverHash  String     
+  nonce       String     
+  
+  pgTxId      String? // 결제 플랫폼 거래 아이디
+  pgResponse  Json? // 결제 플랫폼 응답
+
+  virtualAccount VirtualAccount? // 가상 계좌
+
+  webhookEvents WebhookEvent[]
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientHash, serverHash])
+  @@index([userId])
+  @@index([userId, status])  
+}
+
+enum PaymentPromotionDiscountType {
+  percentage
+  amount
+}
+
+model PaymentPromotion {
+  id String @id @default(cuid())
+  code String @unique
+  startDate DateTime
+  endDate DateTime
+  discountType PaymentPromotionDiscountType @default(percentage)
+  discountValue Int
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments Payment[]
+
+  @@index([code])
+}
+
+model WebhookEvent {
+    id              String    @id @default(cuid())
+    paymentId       String
+    payment         Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+    
+    eventType       String    // Webhook 이벤트 타입
+    status          String    // 이벤트 당시의 결제 상태
+    payload         Json      // Webhook 원본 데이터
+    processedAt     DateTime  // 이벤트 처리 시간
+    
+    createdAt       DateTime  @default(now())
+
+    @@index([paymentId, eventType])
+    @@index([createdAt])
+}
+
+model VirtualAccount {
+    id              String    @id @default(cuid())
+    paymentId       String    @unique  
+    payment         Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+    
+    bankCode        String    
+    accountNumber   String    
+    holderName      String    
+    expiresAt       DateTime  
+    
+    // 입금 정보
+    depositedAt     DateTime?  // 입금 완료 시간
+    depositorName   String?    // 실제 입금자명
+    
+    createdAt       DateTime  @default(now())
+    updatedAt       DateTime  @updatedAt
+
+    @@index([accountNumber])
+    @@index([expiresAt])
 }
 
 model ExchangeRate {
@@ -375,16 +474,6 @@ enum EventStatus {
   ongoing
   completed
   cancelled
-}
-
-enum PaymentStatus {
-  INIT
-  VIRTUAL_ACCOUNT_ISSUED
-  PENDING
-  COMPLETED
-  CANCELLED
-  FAILED
-  REFUNDED
 }
 
 enum WalletStatus {

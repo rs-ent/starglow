@@ -1,672 +1,91 @@
+/// app\actions\payment.ts
+
 "use server";
 
-import { prisma } from "@/lib/prisma/client";
-import { convertAmount, getExchangeRateInfo } from "./exchangeRate";
-import { PaymentStatus } from "@prisma/client";
-import { encrypt, decrypt } from "@/lib/utils/encryption";
-import { nanoid } from "nanoid";
 import * as PortOne from "@portone/browser-sdk/v2";
+import { PaymentStatus, PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma/client";
+import { Payment, Events, PaymentPromotionDiscountType } from "@prisma/client";
+import { encrypt, decrypt } from "@/lib/utils/encryption";
+import {
+    getExchangeRateInfo,
+    convertAmount,
+    ExchangeRateInfo,
+} from "./exchangeRate";
 
-export interface PaymentResponse {
-    success: boolean;
-    data?: {
-        paymentLogId: string;
-        storeId?: string;
-        channelKey?: string;
-        userId?: string;
-        defaultAmount?: number;
-        convertedAmount?: number;
-        currency?: PortOne.Entity.Currency;
-        nonce?: string;
-        status?: PaymentStatus;
-        failureReason?: string | null;
-        virtualAccountInfo?: {
-            accountNumber?: string;
-            bankCode?: string;
-            holderName?: string;
-            dueDate?: Date;
-        };
-    };
-    error?: string;
-}
+const PAYMENT_SECRET =
+    process.env.PAYMENT_SECRET || "&^%$#-super-secret-v0-!##@!#";
 
-export interface CreatePaymentProps {
-    sessionHash: string;
-    userId: string;
-    table: string;
-    merchId: string;
-    merchName: string;
-    payMethod: PortOne.Entity.PayMethod;
-    easyPayProvider?: PortOne.Entity.EasyPayProvider;
-    cardProvider?: PortOne.Entity.Country;
-    currency: PortOne.Entity.Currency;
-    quantity: number;
-}
+export type PayMethod = PortOne.Entity.PayMethod;
+export type EasyPayProvider = PortOne.Entity.EasyPayProvider;
+export type CardProvider = PortOne.Entity.Country;
+export type Currency = PortOne.Entity.Currency;
+export type ProductTable = "events";
+type prismaTransaction =
+    | PrismaClient
+    | Omit<
+          PrismaClient,
+          | "$connect"
+          | "$disconnect"
+          | "$on"
+          | "$transaction"
+          | "$use"
+          | "$extends"
+      >;
 
-const DEFAULT_CURRENCY = "CURRENCY_KRW" as const;
-
-export async function createPayment({
-    sessionHash,
-    userId,
-    table,
-    merchId,
-    merchName,
-    payMethod,
-    easyPayProvider,
-    cardProvider,
-    currency,
-    quantity,
-}: CreatePaymentProps) {
-    try {
-        let fromCurrency: PortOne.Entity.Currency = DEFAULT_CURRENCY;
-        // 1. 상품 정보 조회
-        function getDynamicQuery(table: string) {
-            switch (table) {
-                case "events":
-                    fromCurrency = "CURRENCY_KRW" as PortOne.Entity.Currency;
-                    return prisma.events.findUnique({
-                        where: { id: merchId },
-                        select: { price: true },
-                    });
-                default:
-                    throw new Error(`Invalid table: ${table}`);
-            }
-        }
-
-        const merch = await getDynamicQuery(table);
-        if (!merch || !merch.price) {
-            throw new Error(`Invalid product: ${merchId}`);
-        }
-
-        // 3. 환율 정보 조회 (KRW 기준)
-        const exchangeRate = await getExchangeRateInfo(fromCurrency, currency);
-        const convertedAmount = await convertAmount(
-            merch.price,
-            fromCurrency,
-            currency
-        );
-
-        // 4. 결제 키 생성 및 암호화
-        const nonce = nanoid(16);
-        const paymentKey = `${userId}:${merchId}:${nonce}`;
-        const encryptedPaymentKey = encrypt(paymentKey);
-
-        // 5. 결제 로그 생성
-        const logData = {
-            status: PaymentStatus.INIT,
-            sessionHash,
-            paymentKey: encryptedPaymentKey,
-            nonce,
-            userId,
-            attemptCount: 0,
-            orderedProductId: merchId,
-            orderedProductName: merchName,
-            amount: merch.price * quantity,
-            currency,
-            method: payMethod,
-            convertedAmount: convertedAmount?.converted * quantity,
-        };
-
-        const paymentLog = await prisma.paymentLog.create({
-            data: logData,
-        });
-
-        // 6. 응답 데이터 구성
-        const response: PaymentResponse = {
-            success: true,
-            data: {
-                paymentLogId: paymentLog.id,
-                storeId: process.env.PORTONE_MID!,
-                channelKey: getChannelId(
-                    payMethod,
-                    easyPayProvider,
-                    cardProvider
-                ),
-                userId,
-                defaultAmount: merch.price * quantity,
-                convertedAmount: convertedAmount.converted * quantity,
-                currency,
-                nonce,
-                status: PaymentStatus.INIT,
-                failureReason: null,
-            },
-        };
-        return response;
-    } catch (error) {
-        console.error("Payment creation failed:", error);
-        return {
-            success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to create payment",
-        };
-    }
-}
-
-export interface VerifyPaymentProps {
-    txId: string;
-    paymentLogId: string;
-    sessionHash: string;
-    userId: string;
-    merchId: string;
-    nonce: string;
-}
-
-export interface VerifyPaymentResponse {
-    success: boolean;
-    status?: PaymentStatus;
-    data?: any;
-    error?: string;
-}
-
-export async function verifyPayment({
-    txId,
-    paymentLogId,
-    sessionHash,
-    userId,
-    merchId,
-    nonce,
-}: VerifyPaymentProps) {
-    if (!process.env.PORTONE_V2_API_SECRET) {
-        throw new Error("PORTONE_V2_API_SECRET is not configured");
-    }
-
-    return await prisma.$transaction(async (tx) => {
-        try {
-            const log = await tx.paymentLog.findUnique({
-                where: { id: paymentLogId },
-                select: {
-                    sessionHash: true,
-                    paymentKey: true,
-                    nonce: true,
-                    userId: true,
-                    orderedProductId: true,
-                    orderedProductName: true,
-                    amount: true,
-                    currency: true,
-                    convertedAmount: true,
-                    status: true,
+export const PRODUCT_MAP = {
+    product: {
+        events: async ({
+            productId,
+            tx,
+        }: {
+            productId: string;
+            tx?: prismaTransaction;
+        }) => {
+            const product = await (tx ?? prisma).events.findUnique({
+                where: {
+                    id: productId,
                 },
             });
 
-            if (!log) {
-                throw new Error("Payment log not found");
+            if (!product) {
+                throw new Error("Product not found");
             }
 
-            if (log.status !== PaymentStatus.INIT) {
-                await tx.paymentLog.update({
-                    where: { id: paymentLogId },
-                    data: {
-                        status: PaymentStatus.FAILED,
-                        failureReason: "Payment already processed",
-                    },
-                });
-                throw new Error("Payment already processed");
-            }
+            return product;
+        },
+    },
+    amountField: {
+        events: "price" as keyof Events,
+    },
+    defaultCurrency: {
+        events: "CURRENCY_KRW" as Currency,
+    },
+    nameField: {
+        events: "title" as keyof Events,
+    },
+};
 
-            if (log.sessionHash !== sessionHash) {
-                await tx.paymentLog.update({
-                    where: { id: paymentLogId },
-                    data: {
-                        status: PaymentStatus.FAILED,
-                        failureReason: "Invalid session hash",
-                    },
-                });
-                throw new Error("Invalid session hash");
-            }
-
-            const decryptedPaymentKey = decrypt(log.paymentKey);
-            const [logUserId, logMerchId, logNonce] =
-                decryptedPaymentKey.split(":");
-
-            if (
-                logUserId !== userId ||
-                logMerchId !== merchId ||
-                logNonce !== nonce
-            ) {
-                await tx.paymentLog.update({
-                    where: { id: paymentLogId },
-                    data: {
-                        status: PaymentStatus.FAILED,
-                        failureReason: "Invalid payment key",
-                    },
-                });
-                throw new Error("Invalid payment key");
-            }
-
-            // 1. 포트원 결제내역 단건 조회 API 호출
-            const paymentResponse = await fetch(
-                `https://api.portone.io/payments/${encodeURIComponent(
-                    paymentLogId
-                )}`,
-                {
-                    headers: {
-                        Authorization: `PortOne ${process.env.PORTONE_V2_API_SECRET}`,
-                        "Content-Type": "application/json",
-                    },
-                }
-            );
-
-            console.log("paymentResponse", paymentResponse);
-
-            if (!paymentResponse.ok) {
-                await tx.paymentLog.update({
-                    where: { id: paymentLogId },
-                    data: {
-                        status: PaymentStatus.FAILED,
-                        failureReason: "Failed to fetch payment details",
-                    },
-                });
-                throw new Error("Failed to fetch payment details");
-            }
-
-            const payment = await paymentResponse.json();
-
-            const expectedAmount = log.convertedAmount ?? log.amount;
-
-            if (payment.code === "PG_PROVIDER_ERROR") {
-                await tx.paymentLog.update({
-                    where: { id: paymentLogId },
-                    data: {
-                        status: PaymentStatus.FAILED,
-                        failureReason: payment.message || payment.pgMessage,
-                    },
-                });
-                throw new Error(
-                    `Payment failed: ${payment.message || payment.pgMessage}`
-                );
-            }
-
-            if (
-                Math.abs(payment.amount.total - expectedAmount) > 1 ||
-                payment.currency !== log.currency.replace("CURRENCY_", "")
-            ) {
-                await tx.paymentLog.update({
-                    where: { id: paymentLogId },
-                    data: {
-                        status: PaymentStatus.FAILED,
-                        failureReason: "Payment amount or currency mismatch",
-                    },
-                });
-                throw new Error("Payment amount or currency mismatch");
-            }
-
-            switch (payment.status) {
-                case "VIRTUAL_ACCOUNT_ISSUED":
-                    await tx.paymentLog.update({
-                        where: { id: paymentLogId },
-                        data: {
-                            status: PaymentStatus.VIRTUAL_ACCOUNT_ISSUED,
-                            failureReason: "Virtual account issued",
-                        },
-                    });
-                    return {
-                        success: true,
-                        status: PaymentStatus.VIRTUAL_ACCOUNT_ISSUED,
-                        data: payment,
-                    };
-
-                case "PAID":
-                    await tx.paymentLog.update({
-                        where: { id: paymentLogId },
-                        data: {
-                            status: PaymentStatus.COMPLETED,
-                        },
-                    });
-                    return {
-                        success: true,
-                        status: PaymentStatus.COMPLETED,
-                        data: payment,
-                    };
-
-                default:
-                    await tx.paymentLog.update({
-                        where: { id: paymentLogId },
-                        data: {
-                            status: PaymentStatus.FAILED,
-                            failureReason: `Unexpected payment status: ${payment.status}`,
-                        },
-                    });
-                    throw new Error(
-                        `Unexpected payment status: ${payment.status}`
-                    );
-            }
-        } catch (error) {
-            // 이미 상태가 업데이트된 경우는 다시 업데이트하지 않도록
-            const currentLog = await tx.paymentLog.findUnique({
-                where: { id: paymentLogId },
-                select: { status: true },
-            });
-
-            if (currentLog?.status === PaymentStatus.INIT) {
-                await tx.paymentLog.update({
-                    where: { id: paymentLogId },
-                    data: {
-                        status: PaymentStatus.FAILED,
-                        failureReason:
-                            error instanceof Error
-                                ? error.message
-                                : "Unknown error",
-                    },
-                });
-            }
-
-            console.error("Payment verification failed:", error);
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error",
-            };
-        }
-    });
-}
-
-export interface CancelPaymentProps {
-    paymentLogId: string;
-    userId: string;
-    cancelReason: string;
-}
-
-export async function cancelPayment({
-    paymentLogId,
-    userId,
-    cancelReason,
-}: CancelPaymentProps) {
-    if (!process.env.PORTONE_V2_API_SECRET) {
-        throw new Error("PORTONE_V2_API_SECRET is not configured");
-    }
-
-    return await prisma.$transaction(async (tx) => {
-        try {
-            // 1. 결제 로그 조회 및 검증
-            const log = await tx.paymentLog.findUnique({
-                where: { id: paymentLogId },
-                select: {
-                    status: true,
-                    userId: true,
-                    convertedAmount: true,
-                    currency: true,
-                },
-            });
-
-            if (!log) {
-                throw new Error("Payment log not found");
-            }
-
-            // 2. 권한 검증
-            if (log.userId !== userId) {
-                throw new Error("Unauthorized");
-            }
-
-            // 3. 상태 검증
-            if (log.status !== PaymentStatus.COMPLETED) {
-                throw new Error("Payment is not in completed status");
-            }
-
-            // 4. PortOne 취소 API 호출
-            const cancelResponse = await fetch(
-                `https://api.portone.io/payments/${encodeURIComponent(
-                    paymentLogId
-                )}/cancel`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `PortOne ${process.env.PORTONE_V2_API_SECRET}`,
-                    },
-                    body: JSON.stringify({
-                        amount: log.convertedAmount,
-                        currency: log.currency,
-                        reason: cancelReason,
-                    }),
-                }
-            );
-
-            if (!cancelResponse.ok) {
-                const errorData = await cancelResponse.json();
-                throw new Error(
-                    `Failed to cancel payment: ${
-                        errorData.message || cancelResponse.statusText
-                    }`
-                );
-            }
-
-            // 5. 결제 로그 상태 업데이트
-            const updatedLog = await tx.paymentLog.update({
-                where: { id: paymentLogId },
-                data: {
-                    status: PaymentStatus.CANCELLED,
-                    failureReason: cancelReason,
-                    updatedAt: new Date(),
-                },
-            });
-
-            return {
-                success: true,
-                data: {
-                    paymentLogId: updatedLog.id,
-                    status: updatedLog.status,
-                    failureReason: updatedLog.failureReason,
-                },
-            };
-        } catch (error) {
-            console.error("Payment cancellation failed:", error);
-
-            // 에러 발생 시 현재 상태 확인
-            const currentLog = await tx.paymentLog.findUnique({
-                where: { id: paymentLogId },
-                select: { status: true },
-            });
-
-            // COMPLETED 상태일 때만 FAILED로 업데이트
-            if (currentLog?.status === PaymentStatus.COMPLETED) {
-                await tx.paymentLog.update({
-                    where: { id: paymentLogId },
-                    data: {
-                        status: PaymentStatus.FAILED,
-                        failureReason:
-                            error instanceof Error
-                                ? error.message
-                                : "Unknown error",
-                    },
-                });
-            }
-
-            return {
-                success: false,
-                error:
-                    error instanceof Error
-                        ? error.message
-                        : "Failed to cancel payment",
-            };
-        }
-    });
-}
-
-export interface WebhookPayload {
-    eventType: "PAYMENT_STATUS_CHANGED";
-    paymentId: string;
-    status: "VIRTUAL_ACCOUNT_ISSUED" | "PAID" | "FAILED" | "CANCELLED";
-    amount: number;
-    currency: string;
-    failureReason?: string;
-    virtualAccountInfo?: {
-        accountNumber: string;
-        bankCode: string;
-        customerName: string;
-        dueDate: string;
-    };
-}
-
-export async function handleWebhook(payload: WebhookPayload) {
-    return await prisma.$transaction(async (tx) => {
-        try {
-            const { paymentId, status, failureReason, virtualAccountInfo } =
-                payload;
-
-            // 가상계좌 정보 유효성 검사
-            if (status === "VIRTUAL_ACCOUNT_ISSUED" && !virtualAccountInfo) {
-                throw new Error(
-                    "Virtual account information is required for VIRTUAL_ACCOUNT_ISSUED status"
-                );
-            }
-
-            const updatedLog = await tx.paymentLog.update({
-                where: { id: paymentId },
-                data: {
-                    status: mapPortOneStatusToPaymentStatus(status),
-                    failureReason,
-                    ...(virtualAccountInfo && {
-                        vbankNum: virtualAccountInfo.accountNumber,
-                        vbankCode: virtualAccountInfo.bankCode,
-                        vbankHolder: virtualAccountInfo.customerName,
-                        vbankDate: new Date(virtualAccountInfo.dueDate),
-                    }),
-                    updatedAt: new Date(),
-                },
-            });
-
-            return {
-                success: true,
-                data: {
-                    paymentLogId: updatedLog.id,
-                    status: updatedLog.status,
-                    virtualAccountInfo:
-                        status === "VIRTUAL_ACCOUNT_ISSUED"
-                            ? {
-                                  accountNumber: updatedLog.vbankNum,
-                                  bankCode: updatedLog.vbankCode,
-                                  holderName: updatedLog.vbankHolder,
-                                  dueDate: updatedLog.vbankDate,
-                              }
-                            : undefined,
-                },
-            };
-        } catch (error) {
-            console.error("Webhook processing failed:", error);
-            return {
-                success: false,
-                error:
-                    error instanceof Error
-                        ? error.message
-                        : "Failed to process webhook",
-            };
-        }
-    });
-}
-
-// PortOne 상태값을 내부 PaymentStatus로 매핑
-function mapPortOneStatusToPaymentStatus(portoneStatus: string): PaymentStatus {
-    switch (portoneStatus) {
-        case "VIRTUAL_ACCOUNT_ISSUED":
-            return PaymentStatus.VIRTUAL_ACCOUNT_ISSUED;
-        case "PAID":
-            return PaymentStatus.COMPLETED;
-        case "CANCELLED":
-            return PaymentStatus.CANCELLED;
-        case "FAILED":
-            return PaymentStatus.FAILED;
-        default:
-            return PaymentStatus.FAILED;
-    }
-}
-
-export interface UpdatePaymentStatusProps {
-    paymentId: string;
-    status: PaymentStatus;
-}
-
-export async function updatePaymentStatus({
-    paymentId,
-    status,
-}: UpdatePaymentStatusProps) {
-    try {
-        const updatedPayment = await prisma.paymentLog.update({
-            where: { id: paymentId },
-            data: {
-                status,
-                updatedAt: new Date(),
-            },
-        });
-
-        return {
-            success: true,
-            data: {
-                paymentLogId: updatedPayment.id,
-                status: updatedPayment.status,
-            },
-        };
-    } catch (error) {
-        console.error("Payment status update failed:", error);
-        return {
-            success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to update payment status",
-        };
-    }
-}
-
-export async function getPaymentLog(paymentLogId: string) {
-    try {
-        const paymentLog = await prisma.paymentLog.findUnique({
-            where: { id: paymentLogId },
-        });
-
-        if (!paymentLog) {
-            throw new Error("Payment log not found");
-        }
-
-        return paymentLog;
-    } catch (error) {
-        console.error("Payment log retrieval failed:", error);
-        throw error;
-    }
-}
-
-export async function getPaymentLogs(userId: string) {
-    try {
-        const paymentLogs = await prisma.paymentLog.findMany({
-            where: { userId },
-            orderBy: { createdAt: "desc" },
-        });
-
-        return paymentLogs;
-    } catch (error) {
-        console.error("Payment logs retrieval failed:", error);
-        throw error;
-    }
-}
-
-export async function getPaymentLogsByStatus(status: string) {
-    try {
-        const paymentLogs = await prisma.paymentLog.findMany({
-            where: { status: status as PaymentStatus },
-            orderBy: { createdAt: "desc" },
-        });
-
-        return paymentLogs;
-    } catch (error) {
-        console.error("Payment logs retrieval by status failed:", error);
-        throw error;
-    }
-}
-
-function getChannelId(
-    payMethod: PortOne.Entity.PayMethod,
-    easyPayProvider?: PortOne.Entity.EasyPayProvider,
-    cardProvider?: PortOne.Entity.Country
-): string {
+function getStoreIdAndChannelKey(
+    payMethod: PayMethod,
+    easyPayProvider?: EasyPayProvider,
+    cardProvider?: CardProvider
+): { storeId: string; channelKey: string } {
     switch (payMethod) {
         case "EASY_PAY":
             if (!easyPayProvider)
                 throw new Error("Easy pay provider is required");
             switch (easyPayProvider) {
                 case "EASY_PAY_PROVIDER_TOSSPAY":
-                    return process.env.PORTONE_TOSS!;
+                    return {
+                        storeId: process.env.PORTONE_MID!,
+                        channelKey: process.env.PORTONE_TOSS!,
+                    };
                 case "EASY_PAY_PROVIDER_KAKAOPAY":
-                    return process.env.PORTONE_KAKAO!;
+                    return {
+                        storeId: process.env.PORTONE_MID!,
+                        channelKey: process.env.PORTONE_KAKAO!,
+                    };
                 default:
                     throw new Error(
                         `Invalid easy pay provider: ${easyPayProvider}`
@@ -675,23 +94,1029 @@ function getChannelId(
         case "CARD":
             switch (cardProvider) {
                 case "COUNTRY_KR":
-                    return process.env.PORTONE_CARD!;
+                    return {
+                        storeId: process.env.PORTONE_MID!,
+                        channelKey: process.env.PORTONE_CARD!,
+                    };
                 default:
-                    return process.env.PORTONE_INTERCARD!;
+                    return {
+                        storeId: process.env.PORTONE_MID!,
+                        channelKey: process.env.PORTONE_INTERCARD!,
+                    };
             }
         case "PAYPAL":
-            return process.env.PORTONE_PAYPAL!;
+            return {
+                storeId: process.env.PORTONE_MID!,
+                channelKey: process.env.PORTONE_PAYPAL!,
+            };
         default:
             throw new Error(`Invalid pay method: ${payMethod}`);
     }
 }
 
-export async function getPortOneEnv(
-    payMethod: PortOne.Entity.PayMethod,
-    easyPayProvider?: PortOne.Entity.EasyPayProvider,
-    cardProvider?: PortOne.Entity.Country
-): Promise<{ storeId: string; channelKey: string }> {
-    const storeId = process.env.PORTONE_MID!;
-    const channelKey = getChannelId(payMethod, easyPayProvider, cardProvider);
-    return { storeId, channelKey };
+function generateServerHash(clientHash: string, nonce: string) {
+    const nowTime = new Date().getTime();
+    return encrypt(`${clientHash}-${nonce}-${PAYMENT_SECRET}-${nowTime}`);
+}
+
+function validateServerHash(
+    encryptedServerHash: string,
+    clientHash: string,
+    nonce: string
+) {
+    const decrypted = decrypt(encryptedServerHash);
+    const [
+        decryptedClientHash,
+        decryptedNonce,
+        decryptedSecret,
+        decryptedNowTime,
+    ] = decrypted.split("-");
+
+    if (decryptedClientHash !== clientHash || decryptedNonce !== nonce) {
+        return false;
+    }
+
+    if (decryptedSecret !== PAYMENT_SECRET) {
+        return false;
+    }
+
+    return true;
+}
+
+async function getProduct({
+    productTable,
+    productId,
+    tx,
+}: {
+    productTable: ProductTable;
+    productId: string;
+    tx?: prismaTransaction;
+}): Promise<{
+    productPrice: number | null;
+    defaultCurrency: Currency | null;
+    productName: string | null;
+}> {
+    // 서버의 저장된 상품 조회
+    if (!PRODUCT_MAP.product[productTable]) {
+        return { productPrice: null, defaultCurrency: null, productName: null };
+    }
+
+    const product = await PRODUCT_MAP.product[productTable]({ productId, tx });
+
+    const productPrice = product[PRODUCT_MAP.amountField[productTable]] as
+        | number
+        | null;
+    const defaultCurrency = PRODUCT_MAP.defaultCurrency[
+        productTable
+    ] as Currency | null;
+    const productName = product[PRODUCT_MAP.nameField[productTable]] as
+        | string
+        | null;
+
+    return { productPrice, defaultCurrency, productName };
+}
+
+async function getTotalPrice({
+    productPrice,
+    fromCurrency,
+    toCurrency,
+    quantity,
+    promotionCode,
+    exchangeRateInfo,
+    tx,
+}: {
+    productPrice: number;
+    fromCurrency: Currency;
+    toCurrency: Currency;
+    quantity: number;
+    exchangeRateInfo: ExchangeRateInfo;
+    promotionCode?: string;
+    tx?: prismaTransaction;
+}): Promise<{
+    convertedPrice: number;
+    totalAmount: number;
+    promotionActivated: boolean;
+}> {
+    // 기본 가격
+    let price = productPrice;
+
+    // 프로모션 적용 여부
+    let promotionActivated = false;
+    let promotion = null;
+    if (promotionCode) {
+        promotion = await (tx ?? prisma).paymentPromotion.findUnique({
+            where: {
+                code: promotionCode,
+            },
+        });
+
+        if (promotion && promotion.isActive) {
+            promotionActivated = true;
+            if (
+                promotion.discountType ===
+                PaymentPromotionDiscountType.percentage
+            ) {
+                price = price * (1 - promotion.discountValue / 100);
+            } else if (
+                promotion.discountType === PaymentPromotionDiscountType.amount
+            ) {
+                price = price - promotion.discountValue;
+            }
+        }
+    }
+
+    // 가격 최소 0원
+    if (price < 0) {
+        price = 0;
+    }
+
+    // 환율 변환
+    const convertedPrice = await convertAmount(
+        price,
+        fromCurrency,
+        toCurrency,
+        exchangeRateInfo
+    );
+
+    // 총 결제 금액
+    const totalAmount = convertedPrice * quantity;
+    return { convertedPrice, totalAmount, promotionActivated };
+}
+
+export type PaymentErrorCode =
+    | "INVALID_INPUT"
+    | "PAYMENT_CANCELLED"
+    | "PAYMENT_FAILED"
+    | "DUPLICATE_PAYMENT"
+    | "INVALID_PAYMENT_METHOD"
+    | "INVALID_PRODUCT"
+    | "INVALID_AMOUNT"
+    | "PRODUCT_NOT_FOUND"
+    | "PAYMENT_EXPIRED"
+    | "DATABASE_ERROR"
+    | "INTERNAL_SERVER_ERROR"
+    | "PAYMENT_NOT_FOUND"
+    | "UNAUTHORIZED"
+    | "INVALID_SERVER_HASH"
+    | "PAYMENT_RESPONSE_FAILED"
+    | "INVALID_PAYMENT_AMOUNT"
+    | "INVALID_PAYMENT_STATE";
+
+export interface CreatePaymentInput {
+    userId: string;
+    productTable: ProductTable;
+    productId: string;
+    productName?: string;
+    productDefaultCurrency?: Currency;
+
+    quantity: number;
+    currency: Currency;
+    payMethod: PayMethod;
+    easyPayProvider?: EasyPayProvider;
+    cardProvider?: CardProvider;
+
+    promotionCode?: string;
+
+    clientHash: string;
+    nonce: string;
+}
+
+export interface CreatePaymentSuccess {
+    success: true;
+    data: Payment;
+}
+
+export interface CreatePaymentError {
+    success: false;
+    error: {
+        code: PaymentErrorCode;
+        message: string;
+        details?: any;
+    };
+}
+
+export type CreatePaymentResponse = CreatePaymentSuccess | CreatePaymentError;
+
+export async function createPayment(
+    input: CreatePaymentInput
+): Promise<CreatePaymentResponse> {
+    try {
+        // 입력값 검증
+        if (
+            !input.userId ||
+            !input.productTable ||
+            !input.productId ||
+            !input.currency ||
+            !input.payMethod
+        ) {
+            return {
+                success: false,
+                error: {
+                    code: "INVALID_INPUT",
+                    message: "Required fields are missing",
+                },
+            };
+        }
+
+        // 서버 해시 생성
+        const serverHash = generateServerHash(input.clientHash, input.nonce);
+
+        const transaction = await prisma.$transaction(async (tx) => {
+            try {
+                // 중복 결제 요청 체크
+                const existingPayment = await tx.payment.findFirst({
+                    where: {
+                        clientHash: input.clientHash,
+                        serverHash: serverHash,
+                    },
+                });
+
+                if (existingPayment) {
+                    return {
+                        success: false,
+                        error: {
+                            code: "DUPLICATE_REQUEST",
+                            message: "Duplicate payment request",
+                            details: { paymentId: existingPayment.id },
+                        },
+                    };
+                }
+
+                // StoreId 및 채널키 생성
+                const { storeId, channelKey } = getStoreIdAndChannelKey(
+                    input.payMethod,
+                    input.easyPayProvider,
+                    input.cardProvider
+                );
+
+                if (!storeId || !channelKey) {
+                    return {
+                        success: false,
+                        error: {
+                            code: "INVALID_PAYMENT_METHOD",
+                            message: "Invalid payment method",
+                        },
+                    };
+                }
+
+                const { productPrice, defaultCurrency, productName } =
+                    await getProduct({
+                        productTable: input.productTable,
+                        productId: input.productId,
+                        tx,
+                    });
+
+                if (!productPrice || !defaultCurrency || !productName) {
+                    return {
+                        success: false,
+                        error: {
+                            code: "INVALID_PRODUCT",
+                            message: "Product not found",
+                        },
+                    };
+                }
+
+                const exchangeRateInfo = await getExchangeRateInfo({
+                    fromCurrency: defaultCurrency,
+                    toCurrency: input.currency,
+                    tx,
+                });
+
+                const { convertedPrice, totalAmount, promotionActivated } =
+                    await getTotalPrice({
+                        productPrice,
+                        fromCurrency: defaultCurrency,
+                        toCurrency: input.currency,
+                        quantity: input.quantity,
+                        promotionCode: input.promotionCode,
+                        exchangeRateInfo,
+                        tx,
+                    });
+
+                // 결제 데이터 생성
+                const paymentData = {
+                    userId: input.userId,
+
+                    storeId,
+                    channelKey,
+
+                    productTable: input.productTable,
+                    productId: input.productId,
+                    productName:
+                        input.productName ||
+                        `${productName} x${input.quantity}`,
+                    productDefaultCurrency: defaultCurrency,
+
+                    amount: totalAmount,
+                    quantity: input.quantity,
+                    currency: input.currency,
+                    payMethod: input.payMethod,
+                    easyPayProvider: input.easyPayProvider,
+                    cardProvider: input.cardProvider,
+
+                    exchangeRate: exchangeRateInfo.rate,
+                    exchangeRateProvider: exchangeRateInfo.provider,
+                    exchangeRateTimestamp: exchangeRateInfo.createdAt,
+                    originalProductPrice: productPrice,
+                    convertedPrice,
+
+                    promotionCode: input.promotionCode,
+                    isPromotionApplied: promotionActivated,
+
+                    status: PaymentStatus.PENDING,
+                    statusReason: "Payment initiated",
+
+                    clientHash: input.clientHash,
+                    serverHash: serverHash,
+                    nonce: input.nonce,
+                };
+
+                const payment = await tx.payment.create({
+                    data: paymentData,
+                });
+
+                return {
+                    success: true,
+                    data: payment,
+                };
+            } catch (error) {
+                console.error("Payment creation failed", error);
+                return {
+                    success: false,
+                    error: {
+                        code: "INTERNAL_SERVER_ERROR",
+                        message: "Payment creation failed",
+                    },
+                };
+            }
+        });
+
+        return transaction as CreatePaymentResponse;
+    } catch (error) {
+        console.error("Payment creation failed", error);
+        return {
+            success: false,
+            error: {
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Payment creation failed",
+                details:
+                    process.env.NODE_ENV === "development" ? error : undefined,
+            },
+        };
+    }
+}
+
+export interface VerifyPaymentInput {
+    paymentId: string;
+    userId: string;
+    clientHash: string;
+    nonce: string;
+}
+
+export interface VerifyPaymentSuccess {
+    success: true;
+    data: Payment;
+}
+
+export interface VerifyPaymentError {
+    success: false;
+    error: {
+        code: PaymentErrorCode;
+        message: string;
+        details?: any;
+    };
+}
+
+export type VerifyPaymentResponse = VerifyPaymentSuccess | VerifyPaymentError;
+
+async function updatePaymentStatus({
+    payment,
+    status,
+    statusReason,
+    errorCode,
+    cancelAmount,
+    percentage,
+    tx,
+}: {
+    payment: Payment;
+    status: PaymentStatus;
+    statusReason: string;
+    errorCode?: PaymentErrorCode;
+    cancelAmount?: number;
+    percentage?: Percentage;
+    tx?: prismaTransaction;
+}): Promise<VerifyPaymentResponse> {
+    const importedPrismaClient = tx ?? prisma;
+
+    switch (status) {
+        case PaymentStatus.EXPIRED: {
+            const { cancelledAmount, cancelResponseData } =
+                await portOneCancelPayment({
+                    payment,
+                    statusReason,
+                    percentage: floatPercent(1.0),
+                });
+
+            await importedPrismaClient.payment.update({
+                where: { id: payment.id },
+                data: {
+                    status: PaymentStatus.EXPIRED,
+                    statusReason,
+                    failedAt: new Date(),
+                    cancelAmount: cancelledAmount,
+                    pgResponse: cancelResponseData,
+                },
+            });
+
+            return {
+                success: false,
+                error: {
+                    code: errorCode ?? "PAYMENT_EXPIRED",
+                    message: statusReason,
+                },
+            } as VerifyPaymentError;
+        }
+
+        case PaymentStatus.CANCELLED: {
+            const { cancelledAmount, cancelResponseData } =
+                await portOneCancelPayment({
+                    payment,
+                    statusReason,
+                    percentage,
+                    cancelAmount,
+                });
+
+            await importedPrismaClient.payment.update({
+                where: { id: payment.id },
+                data: {
+                    status: PaymentStatus.CANCELLED,
+                    statusReason,
+                    cancelledAt: new Date(),
+                    cancelAmount: cancelledAmount,
+                    pgResponse: cancelResponseData,
+                },
+            });
+
+            return {
+                success: false,
+                error: {
+                    code: errorCode ?? "PAYMENT_CANCELLED",
+                    message: statusReason,
+                },
+            } as VerifyPaymentError;
+        }
+
+        case PaymentStatus.FAILED: {
+            const { cancelledAmount, cancelResponseData } =
+                await portOneCancelPayment({
+                    payment,
+                    statusReason,
+                    percentage: floatPercent(1.0),
+                });
+
+            await importedPrismaClient.payment.update({
+                where: { id: payment.id },
+                data: {
+                    status: PaymentStatus.FAILED,
+                    statusReason,
+                    failedAt: new Date(),
+                    cancelAmount: cancelledAmount,
+                    pgResponse: cancelResponseData,
+                },
+            });
+
+            return {
+                success: false,
+                error: {
+                    code: errorCode ?? "PAYMENT_FAILED",
+                    message: statusReason,
+                },
+            } as VerifyPaymentError;
+        }
+
+        case PaymentStatus.REFUNDED: {
+            const { cancelledAmount, cancelResponseData } =
+                await portOneCancelPayment({
+                    payment,
+                    statusReason,
+                    cancelAmount,
+                    percentage,
+                });
+
+            const updatedPayment = await importedPrismaClient.payment.update({
+                where: { id: payment.id },
+                data: {
+                    status: PaymentStatus.REFUNDED,
+                    statusReason,
+                    refundedAt: new Date(),
+                    cancelAmount: cancelledAmount,
+                    pgResponse: cancelResponseData,
+                },
+            });
+
+            return {
+                success: true,
+                data: updatedPayment,
+            } as VerifyPaymentSuccess;
+        }
+
+        case PaymentStatus.PAID: {
+            const updatedPayment = await importedPrismaClient.payment.update({
+                where: { id: payment.id },
+                data: {
+                    status: PaymentStatus.PAID,
+                    statusReason,
+                    paidAt: new Date(),
+                },
+            });
+
+            return {
+                success: true,
+                data: updatedPayment,
+            } as VerifyPaymentSuccess;
+        }
+
+        default: {
+            return {
+                success: false,
+                error: {
+                    code: "INVALID_PAYMENT_STATE",
+                    message: "Invalid payment state",
+                },
+            } as VerifyPaymentError;
+        }
+    }
+}
+
+export async function verifyPayment(
+    input: VerifyPaymentInput
+): Promise<VerifyPaymentResponse> {
+    try {
+        // 입력값 검증
+        if (!input.paymentId || !input.userId) {
+            return {
+                success: false,
+                error: {
+                    code: "INVALID_INPUT",
+                    message: "Required fields are missing",
+                },
+            };
+        }
+
+        // 결제 조회
+        const transaction = await prisma.$transaction(async (tx) => {
+            try {
+                // 결제 조회
+                const payment = await getPayment({
+                    paymentId: input.paymentId,
+                });
+
+                if (!payment) {
+                    return {
+                        success: false,
+                        error: {
+                            code: "PAYMENT_NOT_FOUND",
+                            message: "Payment not found",
+                        },
+                    };
+                }
+
+                // 결제 상태 확인
+                if (payment.userId !== input.userId) {
+                    return await updatePaymentStatus({
+                        payment,
+                        status: PaymentStatus.FAILED,
+                        statusReason: "Unauthorized payment access",
+                        tx,
+                    });
+                }
+
+                // 서버 해시 검증
+                const isValidServerHash = validateServerHash(
+                    payment.serverHash,
+                    input.clientHash,
+                    input.nonce
+                );
+
+                if (!isValidServerHash) {
+                    return await updatePaymentStatus({
+                        payment,
+                        status: PaymentStatus.FAILED,
+                        statusReason: "Invalid server hash",
+                        tx,
+                    });
+                }
+
+                // 결제 상태 확인
+                if (payment.status !== PaymentStatus.PENDING) {
+                    return await updatePaymentStatus({
+                        payment,
+                        status: PaymentStatus.FAILED,
+                        statusReason: "Invalid payment state",
+                        tx,
+                    });
+                }
+
+                const { productPrice, defaultCurrency, productName } =
+                    await getProduct({
+                        productTable: payment.productTable as ProductTable,
+                        productId: payment.productId,
+                        tx,
+                    });
+
+                if (!productPrice || !defaultCurrency || !productName) {
+                    return await updatePaymentStatus({
+                        payment,
+                        status: PaymentStatus.FAILED,
+                        statusReason: "Product not found",
+                        tx,
+                    });
+                }
+
+                const exchangeRateInfo = {
+                    rate: payment.exchangeRate,
+                    provider: payment.exchangeRateProvider,
+                    createdAt: payment.exchangeRateTimestamp,
+                } as ExchangeRateInfo;
+
+                const { convertedPrice, totalAmount, promotionActivated } =
+                    await getTotalPrice({
+                        productPrice,
+                        fromCurrency: defaultCurrency,
+                        toCurrency: payment.currency as Currency,
+                        quantity: payment.quantity,
+                        promotionCode: payment.promotionCode ?? undefined,
+                        exchangeRateInfo,
+                        tx,
+                    });
+
+                if (
+                    convertedPrice !== payment.convertedPrice ||
+                    totalAmount !== payment.amount
+                ) {
+                    return await updatePaymentStatus({
+                        payment,
+                        status: PaymentStatus.FAILED,
+                        statusReason:
+                            "Payment amount is different with the server data",
+                        tx,
+                    });
+                }
+
+                const paymentResponse = await fetch(
+                    `https://api.portone.io/payments/${encodeURIComponent(
+                        input.paymentId
+                    )}`,
+                    {
+                        headers: {
+                            Authorization: `PortOne ${process.env.PORTONE_V2_API_SECRET}`,
+                            "Content-Type": "application/json",
+                        },
+                    }
+                );
+
+                if (!paymentResponse.ok) {
+                    return await updatePaymentStatus({
+                        payment,
+                        status: PaymentStatus.FAILED,
+                        statusReason: "Failed to fetch payment details",
+                        tx,
+                    });
+                }
+
+                const paymentResponseData = await paymentResponse.json();
+
+                if (paymentResponseData.code === "PG_PROVIDER_ERROR") {
+                    return await updatePaymentStatus({
+                        payment,
+                        status: PaymentStatus.FAILED,
+                        statusReason: paymentResponseData.message,
+                        tx,
+                    });
+                }
+
+                if (Math.abs(payment.amount - paymentResponseData.amount) > 1) {
+                    return await updatePaymentStatus({
+                        payment,
+                        status: PaymentStatus.FAILED,
+                        statusReason: "Payment amount or currency mismatch",
+                        tx,
+                    });
+                }
+
+                // 결제 성공
+                return await updatePaymentStatus({
+                    payment,
+                    status: PaymentStatus.PAID,
+                    statusReason: "Successfully verified payment",
+                    tx,
+                });
+            } catch (error) {
+                console.error("Payment verification failed", error);
+                return {
+                    success: false,
+                    error: {
+                        code: "INTERNAL_SERVER_ERROR",
+                        message: "Payment verification failed",
+                        details:
+                            process.env.NODE_ENV === "development"
+                                ? error
+                                : undefined,
+                    },
+                };
+            }
+        });
+
+        return transaction as VerifyPaymentResponse;
+    } catch (error) {
+        console.error("Payment verification failed", error);
+        return {
+            success: false,
+            error: {
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Payment verification failed",
+                details:
+                    process.env.NODE_ENV === "development" ? error : undefined,
+            },
+        };
+    }
+}
+
+type Percentage = number & { __brand: "Percentage" };
+function floatPercent(value: number): Percentage {
+    if (value < 0 || value > 1) {
+        throw new Error("Percentage must be between 0 and 1");
+    }
+    return value as Percentage;
+}
+
+async function portOneCancelPayment({
+    payment,
+    statusReason,
+    cancelAmount,
+    percentage,
+}: {
+    payment: Payment;
+    statusReason?: string;
+    cancelAmount?: number;
+    percentage?: Percentage;
+}): Promise<{
+    cancelledAmount: number;
+    cancelResponseData: any;
+}> {
+    try {
+        const cancelledAmount =
+            cancelAmount && cancelAmount > 0
+                ? payment.amount - cancelAmount
+                : percentage && percentage > 0
+                ? payment.amount * percentage
+                : payment.amount;
+
+        const cancelResponse = await fetch(
+            `https://api.portone.io/payments/${encodeURIComponent(
+                payment.id
+            )}/cancel`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `PortOne ${process.env.PORTONE_V2_API_SECRET}`,
+                },
+                body: JSON.stringify({
+                    amount: cancelledAmount,
+                    currency: payment.currency,
+                    reason: statusReason ?? "Canceled by user",
+                }),
+            }
+        );
+
+        if (!cancelResponse.ok) {
+            throw new Error("Failed to cancel payment");
+        }
+
+        const cancelResponseData = await cancelResponse.json();
+
+        return {
+            cancelledAmount,
+            cancelResponseData,
+        };
+    } catch (error) {
+        console.error("Failed to cancel payment", error);
+        throw error;
+    }
+}
+
+export async function cancelPayment({
+    payment,
+    cancelReason,
+    cancelAmount,
+    percentage,
+}: {
+    payment: Payment;
+    cancelReason?: string;
+    cancelAmount?: number;
+    percentage?: Percentage;
+}): Promise<VerifyPaymentResponse> {
+    return await updatePaymentStatus({
+        payment,
+        status: PaymentStatus.CANCELLED,
+        statusReason: cancelReason ?? "Canceled by user",
+        cancelAmount,
+        percentage,
+    });
+}
+
+export async function refundPayment({
+    payment,
+    refundReason,
+    cancelAmount,
+    percentage,
+}: {
+    payment: Payment;
+    refundReason?: string;
+    cancelAmount?: number;
+    percentage?: Percentage;
+}): Promise<VerifyPaymentResponse> {
+    return await updatePaymentStatus({
+        payment,
+        status: PaymentStatus.REFUNDED,
+        statusReason: refundReason ?? "Refunded by user",
+        cancelAmount,
+        percentage,
+    });
+}
+
+export async function getPayment({
+    paymentId,
+}: {
+    paymentId: string;
+}): Promise<Payment | null> {
+    return await prisma.payment.findUnique({
+        where: {
+            id: paymentId,
+        },
+    });
+}
+
+export async function getPaymentsByUserId({
+    userId,
+}: {
+    userId: string;
+}): Promise<Payment[]> {
+    return await prisma.payment.findMany({
+        where: {
+            userId,
+        },
+    });
+}
+
+export type PortOneWebhookBody = {
+    type:
+        | "Transaction.Ready"
+        | "Transaction.Paid"
+        | "Transaction.PartialCancelled"
+        | "Transaction.Cancelled"
+        | "Transaction.Failed"
+        | "Transaction.PayPending"
+        | "Transaction.CancelPending";
+    data: {
+        paymentId?: string;
+        storeId?: string;
+    };
+};
+
+export async function setCancelledAmount({
+    paymentId,
+}: {
+    paymentId: string;
+}): Promise<boolean> {
+    const payment = await getPayment({ paymentId });
+    if (!payment) {
+        throw new Error("Payment not found");
+    }
+
+    const response = await fetch(
+        `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
+        {
+            headers: {
+                Authorization: `PortOne ${process.env.PORTONE_V2_API_SECRET}`,
+            },
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error("Failed to get cancelled amount");
+    }
+
+    const data = await response.json();
+    if (data.status === "CANCELLED" || data.status === "PARTIAL_CANCELLED") {
+        const cancelledAmount = data.amount.cancelled;
+        await cancelPayment({
+            payment,
+            cancelAmount: cancelledAmount,
+        });
+        return true;
+    }
+
+    return false;
+}
+
+export async function handlePortOneWebhook(body: PortOneWebhookBody) {
+    const paymentId = body.data.paymentId;
+    const storeId = body.data.storeId;
+
+    if (!paymentId) {
+        throw new Error("Invalid webhook body");
+    }
+
+    // 스토어 ID 검증
+    if (storeId && storeId !== process.env.PORTONE_MID) {
+        throw new Error("Invalid store ID");
+    }
+
+    const payment = await getPayment({ paymentId });
+    if (!payment) {
+        throw new Error("Payment not found");
+    }
+
+    // 웹훅 이벤트 생성
+    const webhookEvent = await prisma.webhookEvent.create({
+        data: {
+            paymentId: payment.id,
+            eventType: body.type,
+            status: payment.status,
+            payload: body as any, // Json 타입으로 저장
+            processedAt: null as any, // 처리 완료 후 업데이트
+        },
+    });
+
+    try {
+        switch (body.type) {
+            case "Transaction.Paid":
+                await verifyPayment({
+                    paymentId: payment.id,
+                    userId: payment.userId,
+                    clientHash: payment.clientHash,
+                    nonce: payment.nonce,
+                });
+                break;
+            case "Transaction.PartialCancelled": {
+                const success = await setCancelledAmount({
+                    paymentId: payment.id,
+                });
+                if (!success) {
+                    throw new Error("Failed to set cancelled amount");
+                }
+                break;
+            }
+            case "Transaction.Cancelled": {
+                const success = await setCancelledAmount({
+                    paymentId: payment.id,
+                });
+                if (!success) {
+                    throw new Error("Failed to set cancelled amount");
+                }
+                break;
+            }
+            case "Transaction.Failed":
+                await prisma.payment.update({
+                    where: { id: payment.id },
+                    data: {
+                        status: PaymentStatus.FAILED,
+                        statusReason: "PortOne Webhook sent failed",
+                    },
+                });
+                break;
+            default:
+                console.log(`Unhandled webhook type: ${body.type}`);
+        }
+
+        // 웹훅 이벤트 처리 완료 시간 업데이트
+        await prisma.webhookEvent.update({
+            where: { id: webhookEvent.id },
+            data: {
+                processedAt: new Date(),
+            },
+        });
+
+        return { success: true };
+    } catch (error) {
+        // 에러 발생 시에도 웹훅 이벤트 처리 시간 업데이트
+        await prisma.webhookEvent.update({
+            where: { id: webhookEvent.id },
+            data: {
+                processedAt: new Date(),
+                status: "ERROR",
+                payload: {
+                    ...body,
+                    error:
+                        error instanceof Error
+                            ? error.message
+                            : "Unknown error",
+                },
+            },
+        });
+
+        throw error;
+    }
 }

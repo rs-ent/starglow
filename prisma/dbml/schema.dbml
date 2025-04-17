@@ -14,10 +14,10 @@ Table User {
   lastLoginAt DateTime
   accounts Account [not null]
   loginAttempts LoginAttemptLog [not null]
-  paymentLogs PaymentLog [not null]
   player Player
   sessions Session [not null]
   wallets Wallet [not null]
+  payments Payment [not null]
 }
 
 Table Account {
@@ -256,32 +256,93 @@ Table LoginAttemptLog {
   user User
 }
 
-Table PaymentLog {
+Table Payment {
   id String [pk]
-  orderedProductId String [not null]
-  orderedProductName String [not null]
+  userId String [not null]
+  user User [not null]
+  storeId String [not null]
+  channelKey String [not null]
+  productTable String [not null]
+  productId String [not null]
+  productName String [not null]
+  productDefaultCurrency String [not null]
   amount Int [not null]
-  currency String [not null, default: 'USD']
-  convertedAmount Float
-  exchangeRate Float
-  method String [not null, default: 'PAYPAL']
+  quantity Int [not null]
+  currency String [not null]
+  payMethod String [not null]
   easyPayProvider String
   cardProvider String
-  status PaymentStatus [not null, default: 'INIT']
-  paymentKey String [not null]
-  userId String [not null]
-  failureReason String
-  cancelReason String
-  attemptCount Int [not null, default: 0]
+  cardInstallmentMonths Int
+  cardInterestFree Boolean
+  cardApproveNumber String
+  cardNumber String
+  promotionCode String
+  promotion PaymentPromotion
+  isPromotionApplied Boolean [not null, default: false]
+  exchangeRate Float
+  exchangeRateProvider String
+  exchangeRateTimestamp DateTime
+  originalProductPrice Int
+  convertedPrice Int
+  status PaymentStatus [not null, default: 'PENDING']
+  statusReason String
+  paidAt DateTime
+  cancelledAt DateTime
+  failedAt DateTime
+  refundedAt DateTime
+  cancelAmount Int
+  clientHash String [not null]
+  serverHash String [not null]
+  nonce String [not null]
+  pgTxId String
+  pgResponse Json
+  virtualAccount VirtualAccount
+  webhookEvents WebhookEvent [not null]
+  metadata Json
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
-  sessionHash String [not null]
-  nonce String [not null]
-  vbankCode String
-  vbankNum String
-  vbankHolder String
-  vbankDate DateTime
-  user User [not null]
+
+  indexes {
+    (clientHash, serverHash) [unique]
+  }
+}
+
+Table PaymentPromotion {
+  id String [pk]
+  code String [unique, not null]
+  startDate DateTime [not null]
+  endDate DateTime [not null]
+  discountType PaymentPromotionDiscountType [not null, default: 'percentage']
+  discountValue Int [not null]
+  isActive Boolean [not null, default: true]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  payments Payment [not null]
+}
+
+Table WebhookEvent {
+  id String [pk]
+  paymentId String [not null]
+  payment Payment [not null]
+  eventType String [not null]
+  status String [not null]
+  payload Json [not null]
+  processedAt DateTime [not null]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table VirtualAccount {
+  id String [pk]
+  paymentId String [unique, not null]
+  payment Payment [not null]
+  bankCode String [not null]
+  accountNumber String [not null]
+  holderName String [not null]
+  expiresAt DateTime [not null]
+  depositedAt DateTime
+  depositorName String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
 }
 
 Table ExchangeRate {
@@ -510,6 +571,22 @@ Table ArtistMember {
   updatedAt DateTime [not null]
 }
 
+Enum PaymentStatus {
+  PENDING
+  AWAITING_DEPOSIT
+  PAID
+  CANCELLED
+  FAILED
+  EXPIRED
+  REFUNDED
+  PARTIALLY_CANCELLED
+}
+
+Enum PaymentPromotionDiscountType {
+  percentage
+  amount
+}
+
 Enum RewardCurrency {
   points
   SGP
@@ -530,16 +607,6 @@ Enum EventStatus {
   ongoing
   completed
   cancelled
-}
-
-Enum PaymentStatus {
-  INIT
-  VIRTUAL_ACCOUNT_ISSUED
-  PENDING
-  COMPLETED
-  CANCELLED
-  FAILED
-  REFUNDED
 }
 
 Enum WalletStatus {
@@ -581,7 +648,13 @@ Ref: RewardsLog.questLogId > QuestLog.id
 
 Ref: LoginAttemptLog.userId > User.id [delete: Cascade]
 
-Ref: PaymentLog.userId > User.id [delete: Cascade]
+Ref: Payment.userId > User.id
+
+Ref: Payment.promotionCode > PaymentPromotion.code
+
+Ref: WebhookEvent.paymentId > Payment.id [delete: Cascade]
+
+Ref: VirtualAccount.paymentId - Payment.id [delete: Cascade]
 
 Ref: FactoryContract.networkId > BlockchainNetwork.id
 
