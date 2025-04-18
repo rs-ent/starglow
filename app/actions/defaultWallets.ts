@@ -54,8 +54,8 @@ export async function createPolygonWallet(userId: string) {
  */
 export async function getPrivateKey(address: string) {
     try {
-        const wallet = await prisma.wallet.findFirst({
-            where: { address, network: "polygon" },
+        const wallet = await prisma.wallet.findUnique({
+            where: { address },
             select: {
                 userId: true,
                 privateKey: true,

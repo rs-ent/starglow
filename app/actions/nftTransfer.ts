@@ -12,6 +12,8 @@ import {
     defineChain,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { getPrivateKey } from "./defaultWallets";
+import { decryptPrivateKey } from "@/lib/utils/encryption";
 
 // 로깅 유틸리티 직접 정의
 const logger = {
@@ -150,7 +152,7 @@ async function findEligibleEscrowWallet(
         id: string;
         address: string;
         privateKey: string;
-        balance: Record<string, number>;
+        balance: Record<string, string>;
     };
     account: ReturnType<typeof privateKeyToAccount>;
     walletClient: ReturnType<typeof createWalletClient>;
@@ -159,9 +161,20 @@ async function findEligibleEscrowWallet(
         // 1. 네트워크 정보 및 클라이언트 가져오기
         const chainClients = await getChainClients(networkId);
         if (!chainClients) {
-            logger.error(
+            console.error(
                 `Failed to get chain clients for network ${networkId}`
             );
+            return null;
+        }
+
+        // 네트워크 symbol 가져오기
+        const network = await prisma.blockchainNetwork.findUnique({
+            where: { id: networkId },
+            select: { symbol: true },
+        });
+
+        if (!network) {
+            console.error(`Network with ID ${networkId} not found`);
             return null;
         }
 
@@ -178,36 +191,54 @@ async function findEligibleEscrowWallet(
                 address: true,
                 privateKey: true,
                 balance: true,
+                keyHash: true,
+                nonce: true,
             },
         });
 
         if (escrowWallets.length === 0) {
-            logger.error(
+            console.error(
                 `No active escrow wallets found for network ${networkId}`
             );
             return null;
         }
 
         // 3. 충분한 잔액을 가진 지갑 선택
+        // 3. 충분한 잔액을 가진 지갑 선택
         const eligibleWallet = escrowWallets.find((wallet) => {
             const balanceData =
-                (wallet.balance as Record<string, number>) || {};
-            return (
-                balanceData[networkId] && balanceData[networkId] >= minBalance
+                (wallet.balance as Record<string, string>) || {};
+            const balance = Object.entries(balanceData).find(([key]) =>
+                key.includes(network.symbol)
             );
+
+            if (!balance) return false;
+
+            const balanceValue = parseFloat(balance[1].split(" ")[0]);
+            return balanceValue >= minBalance;
         });
 
         if (!eligibleWallet) {
-            logger.error(
+            console.error(
                 `No escrow wallet with sufficient balance found for network ${networkId}`
             );
             return null;
         }
 
         // 4. 지갑 객체 생성
+        const decryptedKey = await decryptPrivateKey({
+            dbPart: eligibleWallet.privateKey,
+            blobPart: eligibleWallet.keyHash,
+            keyHash: eligibleWallet.keyHash,
+            nonce: eligibleWallet.nonce,
+        });
+
         const account = privateKeyToAccount(
-            eligibleWallet.privateKey as `0x${string}`
+            decryptedKey.startsWith("0x")
+                ? (decryptedKey as `0x${string}`)
+                : (`0x${decryptedKey}` as `0x${string}`)
         );
+
         const walletClient = createWalletClient({
             account,
             chain: chainClients.chain,
@@ -220,7 +251,7 @@ async function findEligibleEscrowWallet(
                 address: eligibleWallet.address,
                 privateKey: eligibleWallet.privateKey,
                 balance:
-                    (eligibleWallet.balance as Record<string, number>) || {},
+                    (eligibleWallet.balance as Record<string, string>) || {},
             },
             account,
             walletClient,
@@ -306,7 +337,7 @@ export async function transferNFTToUser(
         }
 
         // 3. 결제 상태 확인
-        if (payment.status !== PaymentStatus.PAID) {
+        if (payment.status !== "PAID") {
             scope.log("Invalid payment status for transfer");
             return {
                 success: false,
@@ -517,16 +548,6 @@ export async function transferNFTToUser(
                 };
             }
 
-            // 10. 지갑 잔액 업데이트
-            const currentBalance =
-                escrowWallet.balance[collection.networkId] || 0;
-            const estimatedGasCost = 0.002; // 실제 환경에서는 계산 필요
-            await updateEscrowWalletBalance(
-                escrowWallet.id,
-                collection.networkId,
-                currentBalance - estimatedGasCost
-            );
-
             // 11. 전송 결과 DB 업데이트 (lastReceipt 사용)
             await prisma.payment.update({
                 where: { id: payment.id },
@@ -634,7 +655,7 @@ export async function escrowTransferNFT(
         }
 
         // 3. 결제 상태 확인
-        if (payment.status !== PaymentStatus.PAID) {
+        if (payment.status !== "PAID") {
             scope.log("Invalid payment status for transfer");
             return {
                 success: false,
@@ -775,15 +796,6 @@ export async function escrowTransferNFT(
                 await chainClients.publicClient.waitForTransactionReceipt({
                     hash,
                 });
-
-            // 12. 지갑 잔액 업데이트
-            const currentBalance = escrowWallet.balance[nft.networkId] || 0;
-            const estimatedGasCost = 0.002; // 실제 환경에서는 계산 필요
-            await updateEscrowWalletBalance(
-                escrowWallet.id,
-                nft.networkId,
-                currentBalance - estimatedGasCost
-            );
 
             // 13. NFT 이벤트 생성
             await prisma.nFTEvent.create({
