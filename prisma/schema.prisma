@@ -438,7 +438,6 @@ model VirtualAccount {
     updatedAt       DateTime  @updatedAt
 
     @@index([accountNumber])
-    @@index([expiresAt])
 }
 
 model ExchangeRate {
@@ -450,7 +449,6 @@ model ExchangeRate {
     createdAt   DateTime @default(now())
 
     @@index([fromCurrency, toCurrency])
-    @@index([createdAt])
 }
 
 enum RewardCurrency {
@@ -593,7 +591,6 @@ model Metadata {
   @@index([collectionAddress, tokenId])
   @@index([collectionAddress])
   @@index([url])
-  @@index([createdAt])
 }
 
 model CollectionContract {
@@ -626,7 +623,6 @@ model CollectionContract {
 
   @@index([address, networkId])
   @@index([factoryId])
-  @@index([createdBy, createdAt])
 }
 
 model NFT {
@@ -659,14 +655,9 @@ model NFT {
   mintedBy         String?
   royaltyInfo      Json?
   events           NFTEvent[]
-  
-  // 토큰 ID와 컬렉션의 조합은 유니크해야 함
-  @@unique([tokenId, collectionId])
-  
-  // 인덱싱을 위한 필드들
-  @@index([ownerAddress])
-  @@index([tokenId])
+
   @@index([collectionId])
+  @@index([ownerAddress])
 }
 
 model NFTEvent {

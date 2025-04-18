@@ -14,6 +14,29 @@ import {
     useCreateCollection,
 } from "../mutations/factoryContractsMutations";
 
+// 타입 정의 추가
+export interface FactoryContract {
+    id: string;
+    address: string;
+    networkId: string;
+    name?: string;
+    version?: string;
+    verified?: boolean;
+    deployedAt: Date;
+    network: {
+        symbol: string;
+        name: string;
+        id: string;
+        chainId: number;
+        rpcUrl: string;
+        explorerUrl: string;
+        isTestnet: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        isActive: boolean;
+    };
+}
+
 /**
  * 팩토리 컨트랙트 관리를 위한 통합 훅
  */
@@ -58,7 +81,7 @@ export function useFactoryContractsManager(networkId?: string) {
 
     return {
         // 쿼리 결과
-        contracts: contractsQuery.data || [],
+        contracts: (contractsQuery.data || []) as FactoryContract[],
         activeContract: activeContractQuery.data || null,
         selectedContract,
 
@@ -69,6 +92,9 @@ export function useFactoryContractsManager(networkId?: string) {
         isLoading,
         error,
         isError: !!error,
+
+        // refetch 함수 추가
+        refetch: contractsQuery.refetch,
 
         // 뮤테이션
         saveContract: saveContractMutation.mutate,

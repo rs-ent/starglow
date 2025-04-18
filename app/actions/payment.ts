@@ -227,12 +227,12 @@ function getStoreIdAndChannelKey(
     }
 }
 
-async function getProduct({
+async function getProduct<T extends ProductTable>({
     productTable,
     productId,
     tx,
 }: {
-    productTable: ProductTable;
+    productTable: T;
     productId: string;
     tx?: prismaTransaction;
 }): Promise<{
@@ -240,7 +240,6 @@ async function getProduct({
     defaultCurrency: Currency | null;
     productName: string | null;
 }> {
-    // 서버의 저장된 상품 조회
     if (!PRODUCT_MAP.product[productTable]) {
         return { productPrice: null, defaultCurrency: null, productName: null };
     }
@@ -250,9 +249,7 @@ async function getProduct({
     const productPrice = product[PRODUCT_MAP.amountField[productTable]] as
         | number
         | null;
-    const defaultCurrency = PRODUCT_MAP.defaultCurrency[
-        productTable
-    ] as Currency | null;
+    const defaultCurrency = PRODUCT_MAP.defaultCurrency[productTable];
     const productName = product[PRODUCT_MAP.nameField[productTable]] as
         | string
         | null;

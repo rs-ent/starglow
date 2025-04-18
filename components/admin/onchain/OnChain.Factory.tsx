@@ -6,6 +6,7 @@
 import { useState } from "react";
 import FactoryList from "./OnChain.FactoryList";
 import FactoryDeploy from "./OnChain.FactoryDeploy";
+import { Card } from "@/components/ui/card";
 
 export interface CreateCollectionResult {
     success: boolean;
@@ -55,27 +56,21 @@ export default function OnChainFactory({
     preSelectedNetworkId,
     onDeploySuccess,
 }: OnChainFactoryProps) {
-    // 배포 폼 표시 여부
     const [showDeployForm, setShowDeployForm] = useState(
         preSelectedNetworkId ? true : false
     );
 
-    // Factory 배포 다이얼로그 열기
     function handleDeployClick() {
         setShowDeployForm(true);
     }
 
-    // Factory 배포 성공/취소 핸들러
     function handleDeploySuccess(result: {
         address: string;
         transactionHash: string;
         networkId: string;
         owner?: string;
     }) {
-        // 배포 폼 닫기
         setShowDeployForm(false);
-
-        // 상위 컴포넌트 콜백 실행 (있을 경우)
         if (onDeploySuccess) {
             onDeploySuccess(result);
         }
@@ -86,16 +81,35 @@ export default function OnChainFactory({
     }
 
     return (
-        <div className="space-y-6">
-            {/* Factory 배포 폼 - 배포 모드일 때만 표시 */}
-            {showDeployForm ? (
-                <FactoryDeploy
-                    preSelectedNetworkId={preSelectedNetworkId}
-                    onCancel={handleDeployCancel}
-                    onDeploySuccess={handleDeploySuccess}
-                />
-            ) : (
-                <FactoryList onDeployClick={handleDeployClick} />
+        <div className="space-y-8">
+            {/* Factory Manager Container */}
+            <div className="bg-muted/5 rounded-xl border shadow-sm">
+                {showDeployForm ? (
+                    // Deploy Form Mode
+                    <div className="p-6">
+                        <FactoryDeploy
+                            preSelectedNetworkId={preSelectedNetworkId}
+                            onCancel={handleDeployCancel}
+                            onDeploySuccess={handleDeploySuccess}
+                        />
+                    </div>
+                ) : (
+                    // List Mode
+                    <div className="p-6">
+                        <FactoryList onDeployClick={handleDeployClick} />
+                    </div>
+                )}
+            </div>
+
+            {/* Optional: Info Card */}
+            {!showDeployForm && (
+                <Card className="p-4 bg-blue-500/5 border-blue-500/20">
+                    <p className="text-sm text-blue-500">
+                        Deploy new factory contracts or manage existing ones.
+                        Factory contracts allow you to create and manage NFT
+                        collections.
+                    </p>
+                </Card>
             )}
         </div>
     );

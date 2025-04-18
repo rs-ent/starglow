@@ -48,6 +48,7 @@ import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
 import Popup from "@/components/atoms/Popup";
 import { useMetadata } from "@/app/hooks/useMetadata";
 import { METADATA_TYPE } from "@/app/actions/metadata";
+import { useCollectionSettings } from "@/app/hooks/useCollectionContracts";
 
 interface CollectionFunctionsProps {
     collection: CollectionContract;
@@ -362,6 +363,96 @@ export default function CollectionFunctions({
     const openExternalLink = (url: string) => {
         window.open(url, "_blank", "noopener,noreferrer");
     };
+
+    // Collection 설정 관련 상태와 로직
+    const {
+        settings,
+        isLoading: isLoadingSettings,
+        updateSettings,
+        isUpdating: isUpdatingSettings,
+    } = useCollectionSettings(collection.id);
+
+    const [price, setPrice] = useState(collection.price.toString());
+    const [circulation, setCirculation] = useState(
+        collection.circulation.toString()
+    );
+
+    // settings가 로드되면 상태 업데이트
+    useEffect(() => {
+        if (settings) {
+            setPrice(settings.price.toString());
+            setCirculation(settings.circulation.toString());
+        }
+    }, [settings]);
+
+    // 설정 업데이트 핸들러
+    const handleUpdateSettings = async () => {
+        try {
+            await updateSettings(Number(price), Number(circulation));
+
+            if (onCollectionUpdated) {
+                onCollectionUpdated({
+                    ...collection,
+                    price: Number(price),
+                    circulation: Number(circulation),
+                });
+            }
+        } catch (error) {
+            console.error("Failed to update settings:", error);
+        }
+    };
+
+    // Settings 탭에 추가할 카드
+    const settingsCard = (
+        <Card>
+            <CardHeader>
+                <CardTitle>Collection Settings</CardTitle>
+                <CardDescription>
+                    Update collection price and circulation
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="price">Price (＄)</Label>
+                    <Input
+                        id="price"
+                        type="number"
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value)}
+                        placeholder="Enter price in wei"
+                        disabled={isLoadingSettings}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="circulation">Maximum Circulation</Label>
+                    <Input
+                        id="circulation"
+                        type="number"
+                        value={circulation}
+                        onChange={(e) => setCirculation(e.target.value)}
+                        placeholder="Enter maximum circulation"
+                        disabled={isLoadingSettings}
+                    />
+                </div>
+            </CardContent>
+            <CardFooter>
+                <Button
+                    onClick={handleUpdateSettings}
+                    disabled={isUpdatingSettings || isLoadingSettings}
+                    className="w-full"
+                >
+                    {isUpdatingSettings ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Updating...
+                        </>
+                    ) : (
+                        "Update Settings"
+                    )}
+                </Button>
+            </CardFooter>
+        </Card>
+    );
 
     return (
         <div className="rounded-md bg-muted/40 p-4 space-y-4">
@@ -885,6 +976,8 @@ export default function CollectionFunctions({
                                 </Button>
                             </CardFooter>
                         </Card>
+
+                        {settingsCard}
                     </div>
                 </TabsContent>
             </Tabs>

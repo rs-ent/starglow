@@ -11,6 +11,7 @@ import {
     type TogglePauseParams,
     type ToggleMintingParams,
 } from "../actions/collectionContracts";
+import { updateCollectionSettings } from "../actions/collectionContracts";
 import { collectionKeys } from "../queryKeys";
 
 /**
@@ -71,6 +72,25 @@ export function useToggleMintingMutation() {
                 queryKey: collectionKeys.status(variables.collectionAddress),
             });
             queryClient.invalidateQueries({ queryKey: collectionKeys.lists() });
+        },
+    });
+}
+
+export function useUpdateCollectionSettingsMutation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: updateCollectionSettings,
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: collectionKeys.settings(variables.collectionId),
+            });
+            queryClient.invalidateQueries({
+                queryKey: collectionKeys.detail(variables.collectionId),
+            });
+            queryClient.invalidateQueries({
+                queryKey: collectionKeys.lists(),
+            });
         },
     });
 }

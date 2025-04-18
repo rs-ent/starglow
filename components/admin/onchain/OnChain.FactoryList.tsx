@@ -23,10 +23,30 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Code, ExternalLink, PlusCircle, ChevronDown } from "lucide-react";
+import {
+    Code,
+    ExternalLink,
+    PlusCircle,
+    ChevronDown,
+    Activity,
+    Shield,
+    Clock,
+    CheckCircle2,
+    XCircle,
+    RefreshCw,
+    Copy,
+} from "lucide-react";
 import { format } from "date-fns";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import FactoryFunctions from "./OnChain.FactoryFunctions";
+import { useToast } from "@/app/hooks/useToast";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { FactoryContract } from "@/app/hooks/useFactoryContracts";
 
 interface FactoryListProps {
     onDeployClick: () => void;
@@ -38,28 +58,52 @@ export default function FactoryList({ onDeployClick }: FactoryListProps) {
         isLoading: isLoadingContracts,
         error: contractsError,
         isError,
+        refetch,
     } = useFactoryContractsManager();
 
-    // 어코디언 상태 관리
     const [openAccordion, setOpenAccordion] = useState<string | null>(null);
-
-    // 선택된 Factory 컨트랙트 정보
     const [selectedFactory, setSelectedFactory] = useState<{
         address: string;
         networkId: string;
         id: string;
     } | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const toast = useToast();
 
-    // Explorer URL 생성 함수
-    function getExplorerAddressUrl(contract: any) {
-        return `${contract.network.explorerUrl}/address/${contract.address}`;
-    }
+    // 복사 상태 관리
+    const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
     function formatDate(date: Date) {
         return format(new Date(date), "yyyy-MM-dd HH:mm:ss");
     }
 
-    // 특정 Factory로 Functions 폼 토글
+    function getExplorerAddressUrl(contract: FactoryContract) {
+        return `${contract.network.explorerUrl}/address/${contract.address}`;
+    }
+
+    async function copyToClipboard(text: string) {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedAddress(text);
+            setTimeout(() => setCopiedAddress(null), 2000);
+            toast.success("Address copied to clipboard");
+        } catch (err) {
+            toast.error("Failed to copy address");
+        }
+    }
+
+    async function handleRefresh() {
+        setIsRefreshing(true);
+        try {
+            await refetch();
+            toast.success("Contract list refreshed");
+        } catch (error) {
+            toast.error("Failed to refresh contracts");
+        } finally {
+            setIsRefreshing(false);
+        }
+    }
+
     function toggleFactoryFunctions(
         factoryAddress: string,
         networkId: string,
@@ -71,172 +115,233 @@ export default function FactoryList({ onDeployClick }: FactoryListProps) {
             id,
         });
 
-        // 선택된 어코디언 토글
-        if (openAccordion === id) {
-            setOpenAccordion(null);
-        } else {
-            setOpenAccordion(id);
-        }
+        setOpenAccordion(openAccordion === id ? null : id);
     }
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle>Factory Contracts</CardTitle>
+        <Card className="border-none shadow-md bg-gradient-to-b from-background to-muted/5">
+            <CardHeader className="border-b bg-muted/5 rounded-t-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                        <CardTitle className="text-2xl flex items-center gap-2">
+                            <Code className="h-6 w-6 text-primary" />
+                            Factory Contracts
+                        </CardTitle>
+                        <CardDescription className="text-base">
+                            Manage your deployed factory contracts
+                        </CardDescription>
+                    </div>
+                    <div className="flex gap-3">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRefresh}
+                            disabled={isRefreshing}
+                            className="hover:bg-muted/50 transition-colors"
+                        >
+                            <RefreshCw
+                                className={`h-4 w-4 mr-2 ${
+                                    isRefreshing ? "animate-spin" : ""
+                                }`}
+                            />
+                            Refresh
+                        </Button>
+                        <Button
+                            onClick={onDeployClick}
+                            className="bg-primary hover:bg-primary/90"
+                        >
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Deploy New Contract
+                        </Button>
+                    </div>
                 </div>
-                <Button variant="default" onClick={onDeployClick}>
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Deploy New Contract
-                </Button>
             </CardHeader>
-            <CardContent>
+
+            <CardContent className="p-6">
                 {isLoadingContracts ? (
-                    <div className="flex justify-center items-center py-8">
+                    <div className="flex justify-center items-center py-12">
                         <PartialLoading text="Loading contracts..." />
                     </div>
                 ) : isError ? (
-                    <Alert variant="destructive" className="mb-4">
-                        <AlertDescription>
+                    <Alert
+                        variant="destructive"
+                        className="bg-red-500/5 border-red-500/20"
+                    >
+                        <AlertDescription className="flex items-center gap-2">
+                            <XCircle className="h-5 w-5" />
                             {contractsError instanceof Error
                                 ? contractsError.message
                                 : "Failed to load contracts"}
                         </AlertDescription>
                     </Alert>
-                ) : (
-                    <div className="overflow-x-auto">
-                        {!contracts || contracts.length === 0 ? (
-                            <div className="text-center py-8">
-                                <p className="text-muted-foreground mb-4">
-                                    No Factory contracts have been deployed yet.
-                                </p>
-                                <Button
-                                    variant="outline"
-                                    onClick={onDeployClick}
-                                >
-                                    Deploy Your First Contract
-                                </Button>
+                ) : !contracts || contracts.length === 0 ? (
+                    <div className="text-center py-12 px-4">
+                        <div className="max-w-md mx-auto space-y-4">
+                            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                                <Code className="h-10 w-10 text-primary" />
                             </div>
-                        ) : (
-                            <Table className="w-full">
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[15%]">
-                                            Network
-                                        </TableHead>
-                                        <TableHead className="w-[30%]">
-                                            Contract Address
-                                        </TableHead>
-                                        <TableHead className="w-[20%]">
-                                            Deployed At
-                                        </TableHead>
-                                        <TableHead className="w-[15%]">
-                                            Deployed By
-                                        </TableHead>
-                                        <TableHead className="w-[20%]">
-                                            Actions
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {contracts.map((contract) => (
-                                        <Fragment key={contract.id}>
-                                            <TableRow
-                                                className={`w-full ${
-                                                    openAccordion ===
-                                                    contract.id
-                                                        ? "bg-muted/50"
-                                                        : ""
-                                                }`}
-                                            >
-                                                <TableCell className="w-[15%]">
-                                                    <Badge variant="outline">
+                            <div className="space-y-3">
+                                <h3 className="text-lg font-semibold">
+                                    No Factory Contracts
+                                </h3>
+                                <p className="text-muted-foreground text-sm">
+                                    Get started by deploying your first factory
+                                    contract to manage NFT collections.
+                                </p>
+                            </div>
+                            <Button
+                                onClick={onDeployClick}
+                                className="bg-primary/10 text-primary hover:bg-primary/20"
+                            >
+                                <PlusCircle className="h-4 w-4 mr-2" />
+                                Deploy Your First Contract
+                            </Button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid gap-4">
+                        {contracts.map((contract: FactoryContract) => (
+                            <Card
+                                key={contract.id}
+                                className={`overflow-hidden transition-all duration-200 hover:shadow-lg border ${
+                                    openAccordion === contract.id
+                                        ? "ring-2 ring-primary/20 bg-muted/5"
+                                        : "hover:border-primary/20"
+                                }`}
+                            >
+                                <CardContent className="p-0">
+                                    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="space-y-2">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="font-semibold text-lg">
+                                                    {contract.name ||
+                                                        "Factory Contract"}
+                                                </span>
+                                                <div className="flex gap-2">
+                                                    <Badge
+                                                        variant={
+                                                            contract.verified
+                                                                ? "default"
+                                                                : "outline"
+                                                        }
+                                                        className={
+                                                            contract.verified
+                                                                ? "bg-green-500/10 text-green-500"
+                                                                : ""
+                                                        }
+                                                    >
+                                                        {contract.verified ? (
+                                                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                                                        ) : (
+                                                            <Shield className="h-3 w-3 mr-1" />
+                                                        )}
+                                                        {contract.verified
+                                                            ? "Verified"
+                                                            : "Unverified"}
+                                                    </Badge>
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="bg-blue-500/10 text-blue-500"
+                                                    >
                                                         {contract.network.name}
                                                     </Badge>
-                                                </TableCell>
-                                                <TableCell className="w-[30%] font-mono">
-                                                    <div className="flex items-center space-x-2">
-                                                        <span className="truncate max-w-[120px]">
-                                                            {contract.address}
-                                                        </span>
-                                                        <a
-                                                            href={getExplorerAddressUrl(
-                                                                contract
-                                                            )}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-primary hover:text-primary/80"
-                                                        >
-                                                            <ExternalLink
-                                                                size={14}
-                                                            />
-                                                        </a>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="w-[20%]">
-                                                    {formatDate(
-                                                        contract.deployedAt
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="w-[15%]">
-                                                    {contract.deployedBy}
-                                                </TableCell>
-                                                <TableCell className="w-[20%]">
-                                                    <div className="flex space-x-2">
-                                                        <Button
-                                                            variant="default"
-                                                            size="sm"
-                                                            className="flex items-center"
-                                                            onClick={() =>
-                                                                toggleFactoryFunctions(
-                                                                    contract.address,
-                                                                    contract.networkId,
-                                                                    contract.id
-                                                                )
-                                                            }
-                                                        >
-                                                            <Code className="h-4 w-4 mr-1" />
-                                                            Functions
-                                                            {openAccordion ===
-                                                            contract.id ? (
-                                                                <ChevronDown className="h-4 w-4 ml-1 rotate-180 transition-transform" />
-                                                            ) : (
-                                                                <ChevronDown className="h-4 w-4 ml-1 transition-transform" />
-                                                            )}
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
+                                                </div>
+                                            </div>
 
-                                            {openAccordion === contract.id && (
-                                                <TableRow className="bg-muted/50">
-                                                    <TableCell
-                                                        colSpan={5}
-                                                        className="p-0"
-                                                    >
-                                                        <div className="border-t border-t-muted py-4 px-6">
-                                                            {selectedFactory?.id ===
-                                                                contract.id && (
-                                                                <FactoryFunctions
-                                                                    factory={
-                                                                        selectedFactory
-                                                                    }
-                                                                    onClose={() =>
-                                                                        setOpenAccordion(
-                                                                            null
-                                                                        )
-                                                                    }
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
+                                            <div className="flex items-center gap-3 text-sm">
+                                                <div
+                                                    className="font-mono bg-muted/30 px-3 py-1 rounded-md cursor-pointer 
+                                                             hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                                    onClick={() =>
+                                                        copyToClipboard(
+                                                            contract.address
+                                                        )
+                                                    }
+                                                >
+                                                    {contract.address.substring(
+                                                        0,
+                                                        8
+                                                    )}
+                                                    ...
+                                                    {contract.address.substring(
+                                                        contract.address
+                                                            .length - 6
+                                                    )}
+                                                    {copiedAddress ===
+                                                    contract.address ? (
+                                                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                                    ) : (
+                                                        <Copy className="h-3 w-3 text-muted-foreground" />
+                                                    )}
+                                                </div>
+                                                <a
+                                                    href={getExplorerAddressUrl(
+                                                        contract
+                                                    )}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary hover:text-primary/80 flex items-center gap-1"
+                                                >
+                                                    View on Explorer
+                                                    <ExternalLink size={12} />
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                            <div className="text-sm text-muted-foreground flex items-center gap-2 bg-muted/20 px-3 py-1 rounded-md">
+                                                <Clock className="h-4 w-4" />
+                                                {formatDate(
+                                                    contract.deployedAt
+                                                )}
+                                            </div>
+                                            <Button
+                                                variant={
+                                                    openAccordion ===
+                                                    contract.id
+                                                        ? "default"
+                                                        : "outline"
+                                                }
+                                                size="sm"
+                                                className="flex items-center gap-2 min-w-[120px]"
+                                                onClick={() =>
+                                                    toggleFactoryFunctions(
+                                                        contract.address,
+                                                        contract.networkId,
+                                                        contract.id
+                                                    )
+                                                }
+                                            >
+                                                <Code className="h-4 w-4" />
+                                                Functions
+                                                <ChevronDown
+                                                    className={`h-4 w-4 transition-transform ${
+                                                        openAccordion ===
+                                                        contract.id
+                                                            ? "rotate-180"
+                                                            : ""
+                                                    }`}
+                                                />
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {openAccordion === contract.id && (
+                                        <div className="border-t bg-muted/5">
+                                            {selectedFactory?.id ===
+                                                contract.id && (
+                                                <FactoryFunctions
+                                                    factory={selectedFactory}
+                                                    onClose={() =>
+                                                        setOpenAccordion(null)
+                                                    }
+                                                />
                                             )}
-                                        </Fragment>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        )}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        ))}
                     </div>
                 )}
             </CardContent>

@@ -4,14 +4,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
+import {
+    useBlockchainNetworksManager,
+    useEscrowWalletManager,
+} from "@/app/hooks/useBlockchain";
 import { useDeployFactory } from "@/app/hooks/useFactoryContracts";
+import { type DeployFactoryParams } from "@/app/actions/factoryContracts";
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
     CardDescription,
+    CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +29,27 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Check, AlertTriangle } from "lucide-react";
+import {
+    Loader2,
+    Check,
+    AlertTriangle,
+    Server,
+    Shield,
+    Settings,
+    Key,
+    Eye,
+    EyeOff,
+    HelpCircle,
+} from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/app/hooks/useToast";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
 
 interface DeploymentResult {
     success: boolean;
@@ -54,40 +77,74 @@ export default function FactoryDeploy({
 }: FactoryDeployProps) {
     const { networks, isLoading: isLoadingNetworks } =
         useBlockchainNetworksManager();
-
-    // useDeployFactory 훅 사용
     const {
         deployFactory,
-        isDeploying: deploying,
+        isDeploying,
         error: deployError,
-        data: deployData,
-        reset: resetDeploy,
+        data,
     } = useDeployFactory();
+    const { wallets, getWalletWithPrivateKey } = useEscrowWalletManager();
+    const toast = useToast();
 
+    // 상태 관리
+    const [deploymentStep, setDeploymentStep] = useState(1);
+    const [deploymentProgress, setDeploymentProgress] = useState(0);
     const [selectedNetwork, setSelectedNetwork] = useState(
         preSelectedNetworkId || ""
     );
-    const [useDefaultGas, setUseDefaultGas] = useState(true);
-    const [gasSettings, setGasSettings] = useState({
-        maxFee: "3",
-        maxPriorityFee: "2",
-        gasLimit: "4000000",
-    });
-    const [skipVerification, setSkipVerification] = useState(false);
-    const [result, setResult] = useState<DeploymentResult | null>(null);
-
-    // Viem 관련 상태
-    const [useViem, setUseViem] = useState(true);
-    const [privateKey, setPrivateKey] = useState("");
+    const [selectedWalletId, setSelectedWalletId] = useState<string>("");
     const [showPrivateKey, setShowPrivateKey] = useState(false);
-    const [initialOwner, setInitialOwner] = useState("");
+    const [deploymentConfig, setDeploymentConfig] = useState({
+        useDefaultGas: true,
+        gasSettings: {
+            maxFee: "3",
+            maxPriorityFee: "2",
+            gasLimit: "4000000",
+        },
+        skipVerification: false,
+        useViem: true,
+        privateKey: "",
+        initialOwner: "",
+    });
 
-    const toast = useToast();
+    // 배포 진행 상태 시각화
+    useEffect(() => {
+        if (isDeploying) {
+            const interval = setInterval(() => {
+                setDeploymentProgress((prev) => (prev < 90 ? prev + 10 : prev));
+            }, 1000);
+            return () => clearInterval(interval);
+        }
+    }, [isDeploying]);
 
-    async function handleDeploy() {
+    // Wallet 선택 핸들러 추가
+    const handleWalletSelect = async (walletId: string) => {
         try {
-            setResult(null);
+            setSelectedWalletId(walletId);
 
+            if (!walletId) {
+                setDeploymentConfig((prev) => ({ ...prev, privateKey: "" }));
+                return;
+            }
+
+            const result = await getWalletWithPrivateKey(walletId);
+            setDeploymentConfig((prev) => ({
+                ...prev,
+                privateKey: result.privateKey,
+                initialOwner: result.address,
+            }));
+            toast.success("Wallet loaded successfully");
+        } catch (error) {
+            console.error("Error fetching wallet:", error);
+            toast.error("Failed to load wallet");
+            setSelectedWalletId("");
+            setDeploymentConfig((prev) => ({ ...prev, privateKey: "" }));
+        }
+    };
+
+    const handleDeploy = async () => {
+        try {
+            setDeploymentProgress(0);
             const selectedNetworkObj = networks?.find(
                 (n) => n.id === selectedNetwork
             );
@@ -95,381 +152,231 @@ export default function FactoryDeploy({
                 throw new Error("Please select a network.");
             }
 
-            // Viem 사용 시 privateKey 필요
-            if (useViem && !privateKey) {
+            // Prepare deployment parameters
+            const deployParams: Partial<DeployFactoryParams> = {
+                network: selectedNetworkObj.name,
+                privateKey: deploymentConfig.privateKey,
+                useDefaultGas: deploymentConfig.useDefaultGas,
+            };
+
+            // Add gas parameters only if not using defaults
+            if (!deploymentConfig.useDefaultGas) {
+                deployParams.gasMaxFee = deploymentConfig.gasSettings.maxFee;
+                deployParams.gasMaxPriorityFee =
+                    deploymentConfig.gasSettings.maxPriorityFee;
+                deployParams.gasLimit = deploymentConfig.gasSettings.gasLimit;
+            }
+
+            // Call the deployment function - need to convert to a complete DeployFactoryParams
+            await deployFactory(deployParams as DeployFactoryParams);
+
+            // After successful deployment, data will be updated in the hook result
+            // This waits for the mutation to complete and avoids using the return value directly
+            if (!data) {
                 throw new Error(
-                    "Private key is required when using Viem deployment."
+                    "Deployment succeeded but no data was returned"
                 );
             }
 
-            // deployFactory mutation 호출
-            await deployFactory({
-                network: selectedNetworkObj.name,
-                gasMaxFee: gasSettings.maxFee,
-                gasMaxPriorityFee: gasSettings.maxPriorityFee,
-                gasLimit: gasSettings.gasLimit,
-                useDefaultGas,
-                skipVerification,
-                useViem,
-                privateKey: useViem ? privateKey : "",
-                initialOwner: initialOwner || undefined,
+            setDeploymentProgress(100);
+
+            onDeploySuccess({
+                address: data.address,
+                transactionHash: data.transactionHash,
+                networkId: selectedNetworkObj.id,
+                owner: data.owner,
             });
 
-            // mutation 결과 처리
-            if (deployData) {
-                const deployResult = {
-                    success: true,
-                    address: deployData.address,
-                    transactionHash: deployData.transactionHash,
-                    owner: deployData.owner,
-                };
-
-                setResult(deployResult);
-
-                if (onDeploySuccess) {
-                    onDeploySuccess({
-                        address: deployData.address,
-                        transactionHash: deployData.transactionHash,
-                        networkId: selectedNetwork,
-                        owner: deployData.owner,
-                    });
-                }
-
-                toast.success("Factory contract deployed successfully!");
-            }
+            toast.success("Factory contract deployed successfully!");
         } catch (error) {
             console.error("Deployment error:", error);
-            const errorMessage =
-                error instanceof Error
-                    ? error.message
-                    : "Unknown error occurred.";
-
-            setResult({
-                success: false,
-                error: errorMessage,
-            });
-
-            toast.error(`Deployment failed: ${errorMessage}`);
         }
-    }
-
-    // 에러 발생 시 처리
-    useEffect(() => {
-        if (deployError) {
-            setResult({
-                success: false,
-                error:
-                    deployError instanceof Error
-                        ? deployError.message
-                        : "Unknown error occurred",
-            });
-
-            toast.error(
-                `Deployment failed: ${
-                    deployError instanceof Error
-                        ? deployError.message
-                        : "Unknown error"
-                }`
-            );
-        }
-    }, [deployError]);
-
-    function handleGasSettingChange(
-        field: keyof typeof gasSettings,
-        value: string
-    ) {
-        setGasSettings((prev) => ({ ...prev, [field]: value }));
-    }
+    };
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Deploy Factory Contract</CardTitle>
-                <CardDescription>
-                    Deploy a Factory contract to the selected network.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <form
-                    className="space-y-6"
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        handleDeploy();
-                    }}
+        <div className="space-y-6">
+            {/* 배포 진행 상태 */}
+            <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                    <span>Deployment Progress</span>
+                    <span>{deploymentProgress}%</span>
+                </div>
+                <Progress value={deploymentProgress} className="h-2" />
+            </div>
+
+            {/* 단계별 배포 프로세스 */}
+            <div className="grid gap-6">
+                {/* Step 1: Network Selection */}
+                <Card
+                    className={
+                        deploymentStep === 1 ? "ring-2 ring-primary" : ""
+                    }
                 >
-                    <div className="space-y-4">
-                        <div>
-                            <Label htmlFor="network">Network</Label>
+                    <CardHeader>
+                        <div className="flex items-center gap-2">
+                            <Server className="h-5 w-5" />
+                            <CardTitle>1. Select Network</CardTitle>
+                        </div>
+                        <CardDescription>
+                            Choose the blockchain network for deployment
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Select
+                            value={selectedNetwork}
+                            onValueChange={(value) => {
+                                setSelectedNetwork(value);
+                                setDeploymentStep(2);
+                            }}
+                            disabled={isDeploying || !!preSelectedNetworkId}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select network" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {networks?.map((network) => (
+                                    <SelectItem
+                                        key={network.id}
+                                        value={network.id}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            {network.isTestnet ? (
+                                                <Shield className="h-4 w-4" />
+                                            ) : (
+                                                <Server className="h-4 w-4" />
+                                            )}
+                                            {network.name}
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </CardContent>
+                </Card>
+
+                {/* Step 2: Wallet Selection */}
+                <Card
+                    className={
+                        deploymentStep === 2 ? "ring-2 ring-primary" : ""
+                    }
+                >
+                    <CardHeader>
+                        <div className="flex items-center gap-2">
+                            <Key className="h-5 w-5" />
+                            <CardTitle>2. Select Wallet</CardTitle>
+                        </div>
+                        <CardDescription>
+                            Choose a wallet to deploy the contract
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Select Wallet</Label>
                             <Select
-                                value={selectedNetwork}
-                                onValueChange={setSelectedNetwork}
-                                disabled={
-                                    deploying ||
-                                    isLoadingNetworks ||
-                                    !!preSelectedNetworkId
-                                }
+                                value={selectedWalletId}
+                                onValueChange={handleWalletSelect}
                             >
-                                <SelectTrigger id="network">
-                                    <SelectValue placeholder="Select network to deploy" />
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select a wallet" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {isLoadingNetworks ? (
-                                        <div className="flex items-center justify-center p-2">
-                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                            <span>Loading networks...</span>
-                                        </div>
-                                    ) : (
-                                        networks?.map((network) => (
-                                            <SelectItem
-                                                key={network.id}
-                                                value={network.id}
-                                            >
-                                                {network.name} (Chain ID:{" "}
-                                                {network.chainId})
-                                                {network.isTestnet &&
-                                                    " - Testnet"}
-                                            </SelectItem>
-                                        ))
-                                    )}
+                                    {wallets?.map((wallet) => (
+                                        <SelectItem
+                                            key={wallet.id}
+                                            value={wallet.id}
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className="font-mono text-sm">
+                                                    {wallet.address.substring(
+                                                        0,
+                                                        6
+                                                    )}
+                                                    ...
+                                                    {wallet.address.substring(
+                                                        wallet.address.length -
+                                                            4
+                                                    )}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {wallet.networkIds
+                                                        .map((id) => {
+                                                            const network =
+                                                                networks?.find(
+                                                                    (n) =>
+                                                                        n.id ===
+                                                                        id
+                                                                );
+                                                            return (
+                                                                network?.name ||
+                                                                id
+                                                            );
+                                                        })
+                                                        .join(", ")}
+                                                </span>
+                                            </div>
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        {/* Viem 사용 옵션 추가 */}
-                        <div className="flex items-center space-x-2">
-                            <Switch
-                                id="use-viem"
-                                checked={useViem}
-                                onCheckedChange={setUseViem}
-                                disabled={deploying}
-                            />
-                            <Label htmlFor="use-viem">
-                                Use Viem for deployment (Recommended)
-                            </Label>
-                        </div>
-
-                        {/* Viem 사용 시 프라이빗 키 입력 필드 추가 */}
-                        {useViem && (
+                        {deploymentConfig.privateKey && (
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="private-key">
-                                        Private Key
-                                    </Label>
+                                    <Label>Private Key</Label>
                                     <Button
-                                        type="button"
-                                        variant="outline"
+                                        variant="ghost"
                                         size="sm"
                                         onClick={() =>
                                             setShowPrivateKey(!showPrivateKey)
                                         }
                                     >
-                                        {showPrivateKey ? "Hide" : "Show"}
+                                        {showPrivateKey ? (
+                                            <EyeOff className="h-4 w-4" />
+                                        ) : (
+                                            <Eye className="h-4 w-4" />
+                                        )}
                                     </Button>
                                 </div>
                                 <Input
-                                    id="private-key"
                                     type={showPrivateKey ? "text" : "password"}
-                                    value={privateKey}
-                                    onChange={(e) =>
-                                        setPrivateKey(e.target.value)
-                                    }
-                                    placeholder="Enter private key for contract deployment"
-                                    disabled={deploying}
+                                    value={deploymentConfig.privateKey}
+                                    disabled
                                     className="font-mono"
                                 />
-                                <p className="text-sm text-muted-foreground">
-                                    Your private key is only used for signing
-                                    the deployment transaction and is never
-                                    stored.
+                                <p className="text-xs text-muted-foreground">
+                                    Private key is securely loaded from the
+                                    selected wallet
                                 </p>
                             </div>
                         )}
+                    </CardContent>
+                </Card>
 
-                        {/* 초기 소유자 입력 필드 추가 */}
-                        {useViem && (
-                            <div className="space-y-2">
-                                <Label htmlFor="initial-owner">
-                                    Initial Owner Address (Optional)
-                                </Label>
-                                <Input
-                                    id="initial-owner"
-                                    type="text"
-                                    value={initialOwner}
-                                    onChange={(e) =>
-                                        setInitialOwner(e.target.value)
-                                    }
-                                    placeholder="Default: Deployer's address"
-                                    disabled={deploying}
-                                    className="font-mono"
-                                />
-                                <p className="text-sm text-muted-foreground">
-                                    If not specified, the deployer's address
-                                    will be used as the contract owner.
-                                </p>
-                            </div>
-                        )}
-
-                        <div className="flex items-center space-x-2">
-                            <Switch
-                                id="use-default-gas"
-                                checked={useDefaultGas}
-                                onCheckedChange={setUseDefaultGas}
-                                disabled={deploying}
-                            />
-                            <Label htmlFor="use-default-gas">
-                                Use default gas settings
-                            </Label>
-                        </div>
-
-                        {!useDefaultGas && (
-                            <div className="space-y-4 border p-4 rounded-md">
-                                <div>
-                                    <Label htmlFor="max-fee">
-                                        Max Fee (Gwei)
-                                    </Label>
-                                    <Input
-                                        id="max-fee"
-                                        type="text"
-                                        value={gasSettings.maxFee}
-                                        onChange={(e) =>
-                                            handleGasSettingChange(
-                                                "maxFee",
-                                                e.target.value
-                                            )
-                                        }
-                                        disabled={deploying}
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="max-priority-fee">
-                                        Max Priority Fee (Gwei)
-                                    </Label>
-                                    <Input
-                                        id="max-priority-fee"
-                                        type="text"
-                                        value={gasSettings.maxPriorityFee}
-                                        onChange={(e) =>
-                                            handleGasSettingChange(
-                                                "maxPriorityFee",
-                                                e.target.value
-                                            )
-                                        }
-                                        disabled={deploying}
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="gas-limit">Gas Limit</Label>
-                                    <Input
-                                        id="gas-limit"
-                                        type="text"
-                                        value={gasSettings.gasLimit}
-                                        onChange={(e) =>
-                                            handleGasSettingChange(
-                                                "gasLimit",
-                                                e.target.value
-                                            )
-                                        }
-                                        disabled={deploying}
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex items-center space-x-2">
-                            <Switch
-                                id="skip-verification"
-                                checked={skipVerification}
-                                onCheckedChange={setSkipVerification}
-                                disabled={deploying}
-                            />
-                            <Label htmlFor="skip-verification">
-                                Skip contract verification
-                            </Label>
-                        </div>
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={onCancel}
-                            disabled={deploying}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={
-                                deploying ||
-                                !selectedNetwork ||
-                                (useViem && !privateKey)
-                            }
-                        >
-                            {deploying ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Deploying...
-                                </>
-                            ) : (
-                                "Deploy"
-                            )}
-                        </Button>
-                    </div>
-                </form>
-
-                {result && (
-                    <div className="mt-6 space-y-4">
-                        {result.success ? (
-                            <div className="space-y-4">
-                                <Alert>
-                                    <Check className="h-4 w-4 text-green-600" />
-                                    <AlertTitle>
-                                        Deployment Successful
-                                    </AlertTitle>
-                                    <AlertDescription>
-                                        Factory contract has been successfully
-                                        deployed.
-                                    </AlertDescription>
-                                </Alert>
-
-                                <div className="grid grid-cols-1 gap-4">
-                                    <div>
-                                        <Label>Contract Address</Label>
-                                        <div className="font-mono bg-muted p-2 rounded-md overflow-x-auto">
-                                            {result.address}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <Label>Transaction Hash</Label>
-                                        <div className="font-mono bg-muted p-2 rounded-md overflow-x-auto">
-                                            {result.transactionHash}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <Label>Contract Owner</Label>
-                                        <div className="font-mono bg-muted p-2 rounded-md overflow-x-auto">
-                                            {result.owner}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end">
-                                    <Button onClick={onCancel}>
-                                        Back to Contracts
-                                    </Button>
-                                </div>
-                            </div>
+                {/* 배포 버튼 */}
+                <div className="flex justify-end gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={onCancel}
+                        disabled={isDeploying}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleDeploy}
+                        disabled={!selectedNetwork || isDeploying}
+                    >
+                        {isDeploying ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Deploying...
+                            </>
                         ) : (
-                            <Alert variant="destructive">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertTitle>Deployment Failed</AlertTitle>
-                                <AlertDescription>
-                                    {result.error}
-                                </AlertDescription>
-                            </Alert>
+                            "Deploy Factory"
                         )}
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+                    </Button>
+                </div>
+            </div>
+        </div>
     );
 }

@@ -1,4 +1,32 @@
-import { IPFSUploadResult } from "@/app/actions/files";
+import {
+    NFT,
+    NFTEvent,
+    CollectionContract,
+    BlockchainNetwork,
+} from "@prisma/client";
+
+export interface NFTWithRelations extends NFT {
+    collection: CollectionContract;
+    network: BlockchainNetwork;
+    events: NFTEvent[];
+}
+
+export interface NFTFilters {
+    collectionId?: string;
+    ownerAddress?: string;
+    isListed?: boolean;
+    isBurned?: boolean;
+    searchTerm?: string;
+    networkId?: string;
+    status?: "all" | "listed" | "unlisted" | "burned";
+}
+
+export interface NFTPaginationParams {
+    page: number;
+    limit: number;
+    sortBy: "mintedAt" | "tokenId" | "rarity";
+    sortDirection: "asc" | "desc";
+}
 
 /**
  * Result of a collection creation operation

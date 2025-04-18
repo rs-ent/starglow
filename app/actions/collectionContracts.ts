@@ -9,8 +9,8 @@ import { COLLECTION_ABI } from "../blockchain/abis/Collection";
 import { getBlockchainNetworkById } from "./blockchain";
 import { prisma } from "@/lib/prisma/client";
 import { createNFTMetadata } from "./metadata";
+import { BooleanLiteralTypeAnnotation } from "@babel/types";
 
-// Collection 컨트랙트 관련 함수들 (blockchain.ts에서 이동)
 interface SaveCollectionContractParams {
     collectionKey: string;
     address: string;
@@ -521,7 +521,7 @@ export async function mintTokens(
                     metadataUri: `${collection.baseURI.replace(
                         "contract.json",
                         ""
-                    )}${tokenId}.json`,
+                    )}${tokenId}`,
                     networkId,
                     transactionHash: mintHash,
                     mintedBy: to,
@@ -1388,6 +1388,57 @@ export async function setContractURI(
                 error instanceof Error
                     ? error.message
                     : "Unknown error setting contract URI",
+        };
+    }
+}
+
+export interface UpdateCollectionSettingsInput {
+    collectionId: string;
+    price: number;
+    circulation: number;
+}
+
+export interface UpdateCollectionSettingsResult {
+    success: boolean;
+    data?: {
+        id: string;
+        price: number;
+        circulation: number;
+    };
+    error?: string;
+}
+
+export async function updateCollectionSettings(
+    input: UpdateCollectionSettingsInput
+): Promise<UpdateCollectionSettingsResult> {
+    try {
+        const { collectionId, price, circulation } = input;
+
+        const updatedCollection = await prisma.collectionContract.update({
+            where: { id: collectionId },
+            data: {
+                price,
+                circulation,
+            },
+            select: {
+                id: true,
+                price: true,
+                circulation: true,
+            },
+        });
+
+        return {
+            success: true,
+            data: updatedCollection,
+        };
+    } catch (error) {
+        console.error("Error updating collection settings:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Unknown error updating collection settings",
         };
     }
 }

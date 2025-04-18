@@ -40,6 +40,8 @@ export interface CollectionContract {
     factory?: any;
     paused?: boolean;
     mintingEnabled?: boolean;
+    price: number;
+    circulation: number;
 }
 
 /**
@@ -162,5 +164,29 @@ export function useEstimateMintGasQuery(
             }
         },
         enabled: !!collectionAddress && !!networkId && !!to && quantity > 0,
+    });
+}
+
+export interface CollectionSettings {
+    id: string;
+    price: number;
+    circulation: number;
+}
+
+export function useCollectionSettingsQuery(collectionId: string) {
+    return useQuery({
+        queryKey: collectionKeys.settings(collectionId),
+        queryFn: async () => {
+            const result = await getCollectionContract(collectionId);
+            if (!result.success || !result.data) {
+                throw new Error(result.error || "Failed to fetch collection");
+            }
+            return {
+                id: result.data.id,
+                price: result.data.price,
+                circulation: result.data.circulation,
+            };
+        },
+        enabled: !!collectionId,
     });
 }

@@ -124,6 +124,7 @@ export const collectionKeys = {
     all: ["collections"] as const,
     lists: () => [...collectionKeys.all, "list"] as const,
     detail: (id: string) => [...collectionKeys.all, "detail", id] as const,
+    settings: (id: string) => [...collectionKeys.all, "settings", id] as const,
     status: (address: string) =>
         [...collectionKeys.all, "status", address] as const,
     estimateMintGas: (address: string, to: string, quantity: number) =>

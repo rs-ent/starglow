@@ -22,6 +22,10 @@ import {
     ExternalLink,
     Eye,
     EyeOff,
+    Code,
+    FileText,
+    Settings,
+    Cog,
 } from "lucide-react";
 import { useToast } from "@/app/hooks/useToast";
 import { useFactoryCreateCollection } from "@/app/hooks/useFactoryContracts";
@@ -32,6 +36,7 @@ import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
 import { METADATA_TYPE } from "@/app/actions/metadata";
 import { Metadata } from "@prisma/client";
 import { useMetadata } from "@/app/hooks/useMetadata";
+import { cn } from "@/lib/utils/tailwind";
 
 /**
  * 컬렉션 생성 결과 인터페이스
@@ -249,18 +254,37 @@ export default function CreateCollection({
     };
 
     return (
-        <div className="rounded-md bg-muted/40 p-4 space-y-4">
-            <h3 className="text-lg font-semibold">Create New NFT Collection</h3>
+        <div className="rounded-xl bg-gradient-to-b from-background/80 to-muted/5 p-6 space-y-6 shadow-lg border border-muted/20">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Code className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                    <h3 className="text-2xl font-bold tracking-tight">
+                        Create New NFT Collection
+                    </h3>
+                    <p className="text-muted-foreground">
+                        Configure and deploy your NFT collection
+                    </p>
+                </div>
+            </div>
 
             {/* Step 1: Select Metadata */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>1. Select Metadata</CardTitle>
-                    <CardDescription>
-                        Choose the metadata for your NFT collection
-                    </CardDescription>
+            <Card className="bg-card/50 border-muted/10 shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="border-b border-muted/10 bg-muted/5">
+                    <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <FileText className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                            <CardTitle>1. Select Metadata</CardTitle>
+                            <CardDescription>
+                                Choose the metadata for your NFT collection
+                            </CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                     <OnChainMetadata
                         onSelect={(metadata) => setSelectedMetadata(metadata)}
                         selectedMetadata={selectedMetadata}
@@ -269,46 +293,57 @@ export default function CreateCollection({
             </Card>
 
             {/* Metadata Verification Step */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>2. Verify Metadata</CardTitle>
-                    <CardDescription>
-                        Review the metadata that will be linked to your
-                        collection
-                    </CardDescription>
+            <Card className="bg-card/50 border-muted/10 shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="border-b border-muted/10 bg-muted/5">
+                    <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Eye className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                            <CardTitle>2. Verify Metadata</CardTitle>
+                            <CardDescription>
+                                Review the metadata that will be linked to your
+                                collection
+                            </CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="pt-6 space-y-6">
                     {selectedMetadata ? (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <p className="font-medium mb-2">
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <h4 className="font-medium text-sm text-primary">
                                         Metadata URL
-                                    </p>
-                                    <pre className="p-2 bg-muted rounded-md font-mono text-xs break-all overflow-x-auto">
-                                        {selectedMetadata.url}
-                                    </pre>
+                                    </h4>
+                                    <div className="p-3 bg-muted/10 rounded-lg">
+                                        <pre className="font-mono text-xs break-all overflow-x-auto">
+                                            {selectedMetadata.url}
+                                        </pre>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-medium mb-2">Preview</p>
+                                <div className="space-y-2">
+                                    <h4 className="font-medium text-sm text-primary">
+                                        Preview
+                                    </h4>
                                     <a
                                         href={selectedMetadata.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center text-sm text-blue-500 hover:underline"
+                                        className="inline-flex items-center px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
                                     >
                                         View metadata{" "}
-                                        <ExternalLink className="h-3 w-3 ml-1" />
+                                        <ExternalLink className="h-4 w-4 ml-2" />
                                     </a>
                                 </div>
                             </div>
 
                             {selectedMetadata.metadata && (
-                                <div>
-                                    <p className="font-medium mb-2">
+                                <div className="space-y-2">
+                                    <h4 className="font-medium text-sm text-primary">
                                         Metadata Contents
-                                    </p>
-                                    <div className="p-3 bg-muted rounded-md max-h-36 overflow-y-auto">
+                                    </h4>
+                                    <div className="p-4 bg-muted/10 rounded-lg max-h-48 overflow-y-auto">
                                         <pre className="text-xs">
                                             {JSON.stringify(
                                                 selectedMetadata.metadata,
@@ -321,9 +356,14 @@ export default function CreateCollection({
                             )}
                         </div>
                     ) : (
-                        <Alert variant="destructive">
-                            <AlertTriangle className="h-4 w-4" />
-                            <AlertTitle>Metadata Not Selected</AlertTitle>
+                        <Alert
+                            variant="destructive"
+                            className="bg-destructive/5 border-destructive/20"
+                        >
+                            <AlertTriangle className="h-5 w-5 text-destructive" />
+                            <AlertTitle className="font-semibold">
+                                Metadata Not Selected
+                            </AlertTitle>
                             <AlertDescription>
                                 Please select a metadata in Step 1 before
                                 proceeding.
@@ -334,17 +374,27 @@ export default function CreateCollection({
             </Card>
 
             {/* Step 3: Collection Details */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>3. Collection Details</CardTitle>
-                    <CardDescription>
-                        Configure your collection settings
-                    </CardDescription>
+            <Card className="bg-card/50 border-muted/10 shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="border-b border-muted/10 bg-muted/5">
+                    <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Settings className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                            <CardTitle>3. Collection Details</CardTitle>
+                            <CardDescription>
+                                Configure your collection settings
+                            </CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="collection-name">
+                <CardContent className="pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                            <Label
+                                htmlFor="collection-name"
+                                className="text-sm font-medium"
+                            >
                                 Collection Name
                             </Label>
                             <Input
@@ -357,10 +407,16 @@ export default function CreateCollection({
                                     }))
                                 }
                                 placeholder="My Awesome NFT"
+                                className="bg-background/50"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="collection-symbol">Symbol</Label>
+                        <div className="space-y-3">
+                            <Label
+                                htmlFor="collection-symbol"
+                                className="text-sm font-medium"
+                            >
+                                Symbol
+                            </Label>
                             <Input
                                 id="collection-symbol"
                                 value={collectionForm.symbol}
@@ -371,13 +427,19 @@ export default function CreateCollection({
                                     }))
                                 }
                                 placeholder="NFT"
+                                className="bg-background/50"
                             />
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="max-supply">Max Supply</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                            <Label
+                                htmlFor="max-supply"
+                                className="text-sm font-medium"
+                            >
+                                Max Supply
+                            </Label>
                             <Input
                                 id="max-supply"
                                 type="number"
@@ -389,10 +451,16 @@ export default function CreateCollection({
                                     }))
                                 }
                                 placeholder="10000"
+                                className="bg-background/50"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="mint-price">Mint Price (wei)</Label>
+                        <div className="space-y-3">
+                            <Label
+                                htmlFor="mint-price"
+                                className="text-sm font-medium"
+                            >
+                                Mint Price (wei)
+                            </Label>
                             <Input
                                 id="mint-price"
                                 value={collectionForm.mintPrice}
@@ -403,6 +471,7 @@ export default function CreateCollection({
                                     }))
                                 }
                                 placeholder="50000000000000000"
+                                className="bg-background/50"
                             />
                             <p className="text-xs text-muted-foreground">
                                 50000000000000000 wei = 0.05 ETH
@@ -413,14 +482,21 @@ export default function CreateCollection({
             </Card>
 
             {/* Step 4: Deployment Settings */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>4. Deployment Settings</CardTitle>
-                    <CardDescription>
-                        Configure deployment options
-                    </CardDescription>
+            <Card className="bg-card/50 border-muted/10 shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="border-b border-muted/10 bg-muted/5">
+                    <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Cog className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                            <CardTitle>4. Deployment Settings</CardTitle>
+                            <CardDescription>
+                                Configure deployment options
+                            </CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="pt-6 space-y-6">
                     {/* Gas Settings */}
                     <div className="space-y-4">
                         <div className="flex items-center space-x-2">
@@ -450,6 +526,7 @@ export default function CreateCollection({
                                             }))
                                         }
                                         placeholder="20"
+                                        className="bg-background/50"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -467,6 +544,7 @@ export default function CreateCollection({
                                             }))
                                         }
                                         placeholder="1.5"
+                                        className="bg-background/50"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -481,6 +559,7 @@ export default function CreateCollection({
                                             }))
                                         }
                                         placeholder="500000"
+                                        className="bg-background/50"
                                     />
                                 </div>
                             </div>
@@ -523,7 +602,7 @@ export default function CreateCollection({
                                 type={showPrivateKey ? "text" : "password"}
                                 value={privateKey}
                                 disabled
-                                className="font-mono"
+                                className="font-mono bg-background/50"
                             />
                         </div>
                     </div>
@@ -533,21 +612,22 @@ export default function CreateCollection({
             {/* Result Display */}
             {collectionResult && (
                 <Alert
-                    className={
+                    className={cn(
+                        "border rounded-lg p-4",
                         collectionResult.success
-                            ? "bg-slate-800"
-                            : "bg-red-900/20"
-                    }
+                            ? "bg-green-500/5 border-green-500/20"
+                            : "bg-destructive/5 border-destructive/20"
+                    )}
                 >
                     {collectionResult.success ? (
-                        <Check className="h-4 w-4 text-green-600" />
+                        <Check className="h-5 w-5 text-green-500" />
                     ) : (
-                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <AlertTriangle className="h-5 w-5 text-destructive" />
                     )}
-                    <AlertTitle>
+                    <AlertTitle className="font-semibold">
                         {collectionResult.success ? "Success" : "Error"}
                     </AlertTitle>
-                    <AlertDescription>
+                    <AlertDescription className="mt-2">
                         {collectionResult.message}
                         {collectionResult.collectionAddress && (
                             <div className="mt-2">
@@ -574,16 +654,29 @@ export default function CreateCollection({
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-end space-x-2 pt-4">
-                <Button type="button" variant="outline" onClick={onClose}>
+            <div className="flex justify-end gap-3 pt-6 border-t border-muted/10">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onClose}
+                    className="hover:bg-muted/50 transition-colors"
+                >
                     Cancel
                 </Button>
                 <Button
                     type="button"
                     onClick={handleCreateCollection}
                     disabled={!selectedMetadata || !privateKey}
+                    className="bg-primary hover:bg-primary/90 transition-colors"
                 >
-                    Create Collection
+                    {createCollectionMutation.isCreating ? (
+                        <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Creating...
+                        </>
+                    ) : (
+                        "Create Collection"
+                    )}
                 </Button>
             </div>
         </div>

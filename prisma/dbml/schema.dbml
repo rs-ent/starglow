@@ -502,10 +502,6 @@ Table NFT {
   mintedBy String
   royaltyInfo Json
   events NFTEvent [not null]
-
-  indexes {
-    (tokenId, collectionId) [unique]
-  }
 }
 
 Table NFTEvent {

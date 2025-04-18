@@ -4,3 +4,187 @@
 
 import { prisma } from "@/lib/prisma/client";
 import { NFT, NFTEvent } from "@prisma/client";
+import {
+    NFTFilters,
+    NFTPaginationParams,
+} from "@/components/admin/onchain/OnChain.types";
+
+export async function fetchNFTs(
+    filters: NFTFilters,
+    pagination: NFTPaginationParams
+) {
+    try {
+        // 기본 where 조건 설정
+        const where = {
+            ...(filters.collectionId && { collectionId: filters.collectionId }),
+            ...(filters.ownerAddress && { ownerAddress: filters.ownerAddress }),
+            ...(filters.isListed !== undefined && {
+                isListed: filters.isListed,
+            }),
+            ...(filters.isBurned !== undefined && {
+                isBurned: filters.isBurned,
+            }),
+            ...(filters.networkId && { networkId: filters.networkId }),
+            ...(filters.searchTerm && {
+                OR: [
+                    { name: { contains: filters.searchTerm } },
+                    { description: { contains: filters.searchTerm } },
+                ],
+            }),
+        };
+
+        // 페이지네이션 및 정렬 설정
+        const [total, items] = await Promise.all([
+            // 전체 개수 조회
+            prisma.nFT.count({ where }),
+            // 실제 데이터 조회
+            prisma.nFT.findMany({
+                where,
+                include: {
+                    collection: true,
+                    network: true,
+                    events: {
+                        orderBy: [{ id: "desc" }],
+                        take: 5,
+                    },
+                },
+                orderBy: {
+                    [pagination.sortBy]: pagination.sortDirection,
+                },
+                skip: (pagination.page - 1) * pagination.limit,
+                take: pagination.limit,
+            }),
+        ]);
+
+        return {
+            items,
+            total,
+            pageCount: Math.ceil(total / pagination.limit),
+        };
+    } catch (error) {
+        console.error("Error fetching NFTs:", error);
+        throw new Error("Failed to fetch NFTs");
+    }
+}
+
+export async function fetchNFTDetails(nftId: string) {
+    try {
+        const nft = await prisma.nFT.findUnique({
+            where: { id: nftId },
+            include: {
+                collection: true,
+                network: true,
+                events: {
+                    orderBy: { id: "desc" },
+                },
+            },
+        });
+
+        if (!nft) {
+            throw new Error("NFT not found");
+        }
+
+        return nft;
+    } catch (error) {
+        console.error("Error fetching NFT details:", error);
+        throw new Error("Failed to fetch NFT details");
+    }
+}
+
+// NFT 이벤트 타입 정의를 모델에 맞게 수정
+type NFTEventType = "TRANSFER" | "APPROVAL" | "LISTING" | "SALE";
+
+// 이벤트 생성 함수 수정
+async function createNFTEvent(params: {
+    nftId: string;
+    collectionId: string;
+    eventType: NFTEventType;
+    fromAddress?: string;
+    toAddress?: string;
+    price?: string;
+    transactionHash: string;
+    blockNumber?: number;
+}) {
+    return prisma.nFTEvent.create({
+        data: {
+            ...params,
+        },
+    });
+}
+
+// updateNFTStatus 수정
+export async function updateNFTStatus(params: {
+    nftId: string;
+    isListed?: boolean;
+    isBurned?: boolean;
+    listingPrice?: string;
+}) {
+    try {
+        const { nftId, ...updateData } = params;
+
+        const updatedNFT = await prisma.nFT.update({
+            where: { id: nftId },
+            data: {
+                ...updateData,
+                updatedAt: new Date(),
+            },
+            include: {
+                collection: true,
+                network: true,
+            },
+        });
+
+        // 이벤트 생성 수정
+        await createNFTEvent({
+            nftId,
+            collectionId: updatedNFT.collectionId,
+            eventType: "LISTING",
+            price: updateData.listingPrice,
+            transactionHash: "0x0", // 실제 트랜잭션 해시로 교체 필요
+        });
+
+        return updatedNFT;
+    } catch (error) {
+        console.error("Error updating NFT status:", error);
+        throw new Error("Failed to update NFT status");
+    }
+}
+
+// transferNFTOwnership 수정
+export async function transferNFTOwnership(params: {
+    nftId: string;
+    newOwnerAddress: string;
+    transactionHash: string;
+}) {
+    try {
+        const { nftId, newOwnerAddress, transactionHash } = params;
+
+        const updatedNFT = await prisma.nFT.update({
+            where: { id: nftId },
+            data: {
+                ownerAddress: newOwnerAddress,
+                lastTransferredAt: new Date(),
+                transferCount: { increment: 1 },
+            },
+            include: {
+                collection: true,
+                network: true,
+            },
+        });
+
+        // 이벤트 생성 수정
+        await createNFTEvent({
+            nftId,
+            collectionId: updatedNFT.collectionId,
+            eventType: "TRANSFER",
+            fromAddress: updatedNFT.ownerAddress,
+            toAddress: newOwnerAddress,
+            transactionHash,
+        });
+
+        return updatedNFT;
+    } catch (error) {
+        console.error("Error transferring NFT ownership:", error);
+        throw new Error("Failed to transfer NFT ownership");
+    }
+}

@@ -282,197 +282,228 @@ export default function OnChainEscrowWallet() {
 
     return (
         <div className="space-y-6">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle>Escrow Wallets</CardTitle>
+            <Card className="border-none shadow-md">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
+                    <div className="space-y-1">
+                        <CardTitle className="text-2xl font-bold">
+                            Escrow Wallets
+                        </CardTitle>
+                        <CardDescription>
+                            Manage and monitor your escrow wallets across
+                            multiple networks
+                        </CardDescription>
                     </div>
                     <Button
-                        variant="outline"
+                        variant={showAddForm ? "secondary" : "default"}
                         onClick={() => setShowAddForm(!showAddForm)}
+                        className="transition-all duration-200"
                     >
                         {showAddForm ? (
-                            <>
-                                <X className="h-4 w-4 mr-2" />
-                                Cancel
-                            </>
+                            <div className="flex items-center gap-2">
+                                <X className="h-4 w-4" />
+                                <span>Cancel</span>
+                            </div>
                         ) : (
-                            <>
-                                <PlusCircle className="h-4 w-4 mr-2" />
-                                Add Wallet
-                            </>
+                            <div className="flex items-center gap-2">
+                                <PlusCircle className="h-4 w-4" />
+                                <span>Add Wallet</span>
+                            </div>
                         )}
                     </Button>
                 </CardHeader>
-                <CardContent>
+
+                <CardContent className="pt-6">
                     {showAddForm && (
-                        <Card className="mb-6">
-                            <CardHeader>
-                                <CardTitle>Add New Escrow Wallet</CardTitle>
+                        <Card className="mb-8 border-2 border-primary/10 bg-muted/5">
+                            <CardHeader className="space-y-1">
+                                <CardTitle className="text-xl">
+                                    New Escrow Wallet
+                                </CardTitle>
                                 <CardDescription>
-                                    Enter wallet details to add a new escrow
-                                    wallet
+                                    Add a new wallet to manage your escrow
+                                    transactions
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">
-                                        Generate Wallet
+                            <CardContent className="space-y-6">
+                                {/* Generate Wallet Section */}
+                                <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                                    <Label className="text-base font-medium">
+                                        Quick Setup
                                     </Label>
                                     <Button
                                         variant="outline"
-                                        size="sm"
                                         onClick={handleGenerateWallet}
                                         disabled={isGeneratingWallet}
+                                        className="w-full sm:w-auto"
                                     >
                                         {isGeneratingWallet ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                Generating...
-                                            </>
+                                            <div className="flex items-center gap-2">
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                <span>Generating...</span>
+                                            </div>
                                         ) : (
-                                            "Generate Wallet"
+                                            <div className="flex items-center gap-2">
+                                                <RefreshCw className="h-4 w-4" />
+                                                <span>Generate New Wallet</span>
+                                            </div>
                                         )}
                                     </Button>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Creates a new random wallet with address
-                                        and private key
+                                    <p className="text-sm text-muted-foreground">
+                                        Automatically generate a secure wallet
+                                        with address and private key
                                     </p>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="address">
-                                        Wallet Address*
-                                    </Label>
-                                    <div className="flex items-center space-x-1">
+
+                                {/* Wallet Details Section */}
+                                <div className="grid gap-6">
+                                    {/* Address Input */}
+                                    <div className="space-y-2">
+                                        <Label
+                                            htmlFor="address"
+                                            className="text-sm font-medium"
+                                        >
+                                            Wallet Address
+                                        </Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                id="address"
+                                                value={newWallet.address}
+                                                onChange={(e) =>
+                                                    handleAddressChange(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                placeholder="0x..."
+                                                className="font-mono text-sm"
+                                            />
+                                            {newWallet.address && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    onClick={() =>
+                                                        copyToClipboard(
+                                                            newWallet.address
+                                                        )
+                                                    }
+                                                    className="shrink-0"
+                                                >
+                                                    {copiedAddress ===
+                                                    newWallet.address ? (
+                                                        <Check className="h-4 w-4 text-green-500" />
+                                                    ) : (
+                                                        <Copy className="h-4 w-4" />
+                                                    )}
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Private Key Input */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label
+                                                htmlFor="privateKey"
+                                                className="text-sm font-medium"
+                                            >
+                                                Private Key
+                                            </Label>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                    setRevealPrivateKey(
+                                                        !revealPrivateKey
+                                                    )
+                                                }
+                                                className="h-8"
+                                            >
+                                                {revealPrivateKey ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <EyeOff className="h-4 w-4" />
+                                                        <span>Hide</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <Eye className="h-4 w-4" />
+                                                        <span>Show</span>
+                                                    </div>
+                                                )}
+                                            </Button>
+                                        </div>
                                         <Input
-                                            id="address"
-                                            value={newWallet.address}
+                                            id="privateKey"
+                                            type={
+                                                revealPrivateKey
+                                                    ? "text"
+                                                    : "password"
+                                            }
+                                            value={newWallet.privateKey}
                                             onChange={(e) =>
-                                                handleAddressChange(
+                                                handlePrivateKeyChange(
                                                     e.target.value
                                                 )
                                             }
-                                            placeholder="0x..."
-                                            required
+                                            placeholder="Enter private key"
+                                            className="font-mono text-sm"
                                         />
-                                        {newWallet.address && (
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                type="button"
-                                                onClick={() =>
-                                                    copyToClipboard(
-                                                        newWallet.address
-                                                    )
-                                                }
-                                            >
-                                                {copiedAddress ===
-                                                newWallet.address ? (
-                                                    <Check className="h-4 w-4 text-green-500" />
-                                                ) : (
-                                                    <Copy className="h-4 w-4" />
-                                                )}
-                                            </Button>
-                                        )}
+                                        <p className="text-xs text-muted-foreground">
+                                            Private key will be securely
+                                            encrypted before storage
+                                        </p>
                                     </div>
-                                </div>
 
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <Label htmlFor="privateKey">
-                                            Private Key*
+                                    {/* Networks Selection */}
+                                    <div className="space-y-3">
+                                        <Label className="text-sm font-medium">
+                                            Supported Networks
                                         </Label>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                                setRevealPrivateKey(
-                                                    !revealPrivateKey
-                                                )
-                                            }
-                                        >
-                                            {revealPrivateKey ? (
-                                                <>
-                                                    <EyeOff className="h-4 w-4 mr-1" />
-                                                    Hide
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Eye className="h-4 w-4 mr-1" />
-                                                    Show
-                                                </>
-                                            )}
-                                        </Button>
-                                    </div>
-                                    <Input
-                                        id="privateKey"
-                                        type={
-                                            revealPrivateKey
-                                                ? "text"
-                                                : "password"
-                                        }
-                                        value={newWallet.privateKey}
-                                        onChange={(e) =>
-                                            handlePrivateKeyChange(
-                                                e.target.value
-                                            )
-                                        }
-                                        placeholder="Enter private key"
-                                        required
-                                    />
-                                    <p className="text-sm text-muted-foreground">
-                                        Private key will be encrypted before
-                                        storage.
-                                    </p>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Supported Networks*</Label>
-                                    <div className="grid grid-cols-2 gap-2">
                                         {isLoadingNetworks ? (
-                                            <div className="col-span-2 flex items-center justify-center p-4">
+                                            <div className="flex items-center justify-center p-4 bg-muted/30 rounded-lg">
                                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                                 <span>Loading networks...</span>
                                             </div>
                                         ) : (
-                                            networks?.map((network) => (
-                                                <div
-                                                    key={network.id}
-                                                    className="flex items-center space-x-2"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        id={`network-${network.id}`}
-                                                        checked={newWallet.networkIds.includes(
-                                                            network.id
-                                                        )}
-                                                        onChange={() =>
-                                                            handleNetworkChange(
-                                                                network.id
-                                                            )
-                                                        }
-                                                        className="h-4 w-4 rounded border-gray-300"
-                                                    />
-                                                    <Label
-                                                        htmlFor={`network-${network.id}`}
-                                                        className="text-sm font-normal"
+                                            <div className="grid sm:grid-cols-2 gap-3 p-4 bg-muted/30 rounded-lg">
+                                                {networks?.map((network) => (
+                                                    <div
+                                                        key={network.id}
+                                                        className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
                                                     >
-                                                        {network.name}
-                                                        {network.isTestnet &&
-                                                            " (Testnet)"}
-                                                    </Label>
-                                                </div>
-                                            ))
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`network-${network.id}`}
+                                                            checked={newWallet.networkIds.includes(
+                                                                network.id
+                                                            )}
+                                                            onChange={() =>
+                                                                handleNetworkChange(
+                                                                    network.id
+                                                                )
+                                                            }
+                                                            className="h-4 w-4 rounded border-gray-300"
+                                                        />
+                                                        <Label
+                                                            htmlFor={`network-${network.id}`}
+                                                            className="text-sm font-normal cursor-pointer"
+                                                        >
+                                                            {network.name}
+                                                            {network.isTestnet && (
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="ml-2 text-xs"
+                                                                >
+                                                                    Testnet
+                                                                </Badge>
+                                                            )}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
-                                    {newWallet.networkIds.length === 0 && (
-                                        <p className="text-sm text-destructive">
-                                            Select at least one network.
-                                        </p>
-                                    )}
                                 </div>
                             </CardContent>
-                            <CardFooter className="flex justify-end space-x-2">
+                            <CardFooter className="flex justify-end gap-3 border-t pt-6">
                                 <Button
                                     variant="outline"
                                     onClick={() => {
@@ -496,10 +527,10 @@ export default function OnChainEscrowWallet() {
                                     }
                                 >
                                     {isSavingWallet ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            Saving...
-                                        </>
+                                        <div className="flex items-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span>Saving...</span>
+                                        </div>
                                     ) : (
                                         "Add Wallet"
                                     )}
@@ -508,146 +539,189 @@ export default function OnChainEscrowWallet() {
                         </Card>
                     )}
 
+                    {/* Wallets Table Section */}
                     {isLoading ? (
-                        <div className="flex justify-center items-center py-8">
+                        <div className="flex justify-center items-center py-12">
                             <PartialLoading text="Loading wallets..." />
                         </div>
                     ) : isError ? (
-                        <Alert variant="destructive" className="mb-4">
+                        <Alert variant="destructive" className="mb-6">
                             <AlertDescription>
                                 {error instanceof Error
                                     ? error.message
                                     : "Failed to load wallets"}
                             </AlertDescription>
                         </Alert>
+                    ) : !wallets || wallets.length === 0 ? (
+                        <div className="text-center py-12 space-y-4">
+                            <p className="text-muted-foreground">
+                                No escrow wallets have been added yet.
+                            </p>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowAddForm(true)}
+                                className="gap-2"
+                            >
+                                <PlusCircle className="h-4 w-4" />
+                                <span>Add Your First Wallet</span>
+                            </Button>
+                        </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            {!wallets || wallets.length === 0 ? (
-                                <div className="text-center py-8">
-                                    <p className="text-muted-foreground mb-4">
-                                        No escrow wallets have been added yet.
-                                    </p>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setShowAddForm(true)}
-                                    >
-                                        Add Your First Wallet
-                                    </Button>
-                                </div>
-                            ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Address</TableHead>
-                                            <TableHead>Networks</TableHead>
-                                            <TableHead>Balance</TableHead>
-                                            <TableHead>Created At</TableHead>
-                                            <TableHead>Last Updated</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {wallets.map((wallet) => (
-                                            <TableRow key={wallet.id}>
-                                                <TableCell className="font-mono">
-                                                    <div
-                                                        className="flex items-center space-x-1 cursor-pointer group"
-                                                        onClick={() =>
-                                                            copyToClipboard(
-                                                                wallet.address
-                                                            )
-                                                        }
-                                                    >
-                                                        <span className="truncate max-w-[150px]">
-                                                            {wallet.address}
-                                                        </span>
-                                                        {copiedAddress ===
-                                                        wallet.address ? (
-                                                            <Check className="h-4 w-4 text-green-500 opacity-100" />
-                                                        ) : (
-                                                            <Copy className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {getNetworkNames(
-                                                        wallet.networkIds
+                        <div className="rounded-lg border overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-muted/50">
+                                        <TableHead>Address</TableHead>
+                                        <TableHead>Networks</TableHead>
+                                        <TableHead>Balance</TableHead>
+                                        <TableHead>Created</TableHead>
+                                        <TableHead>Updated</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">
+                                            Actions
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {wallets.map((wallet) => (
+                                        <TableRow
+                                            key={wallet.id}
+                                            className="hover:bg-muted/5"
+                                        >
+                                            <TableCell className="font-mono">
+                                                <div
+                                                    className="flex items-center gap-2 group cursor-pointer"
+                                                    onClick={() =>
+                                                        copyToClipboard(
+                                                            wallet.address
+                                                        )
+                                                    }
+                                                >
+                                                    <span className="truncate max-w-[150px]">
+                                                        {wallet.address}
+                                                    </span>
+                                                    {copiedAddress ===
+                                                    wallet.address ? (
+                                                        <Check className="h-4 w-4 text-green-500" />
+                                                    ) : (
+                                                        <Copy className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                     )}
-                                                </TableCell>
-                                                <TableCell>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {wallet.networkIds.map(
+                                                        (id) => {
+                                                            const network =
+                                                                networks?.find(
+                                                                    (n) =>
+                                                                        n.id ===
+                                                                        id
+                                                                );
+                                                            return network ? (
+                                                                <Badge
+                                                                    key={id}
+                                                                    variant="outline"
+                                                                    className="text-xs"
+                                                                >
+                                                                    {
+                                                                        network.name
+                                                                    }
+                                                                </Badge>
+                                                            ) : null;
+                                                        }
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="font-mono text-sm">
                                                     {formatBalance(
                                                         wallet.balance,
                                                         wallet.networkIds
                                                     )}
-                                                </TableCell>
-                                                <TableCell>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="text-sm text-muted-foreground">
                                                     {formatDate(
                                                         wallet.createdAt
                                                     )}
-                                                </TableCell>
-                                                <TableCell>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="text-sm text-muted-foreground">
                                                     {formatUpdatedAt(
                                                         wallet.updatedAt
                                                     )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        variant={
-                                                            wallet.isActive
-                                                                ? "default"
-                                                                : "outline"
-                                                        }
-                                                    >
-                                                        {wallet.isActive
-                                                            ? "Active"
-                                                            : "Inactive"}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex space-x-2">
-                                                        {!wallet.isActive && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() =>
-                                                                    handleSetActive(
-                                                                        wallet.id,
-                                                                        true
-                                                                    )
-                                                                }
-                                                            >
-                                                                Set Active
-                                                            </Button>
-                                                        )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    variant={
+                                                        wallet.isActive
+                                                            ? "default"
+                                                            : "outline"
+                                                    }
+                                                    className={
+                                                        wallet.isActive
+                                                            ? "bg-green-500/10 text-green-500"
+                                                            : ""
+                                                    }
+                                                >
+                                                    {wallet.isActive
+                                                        ? "Active"
+                                                        : "Inactive"}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex justify-end gap-2">
+                                                    {!wallet.isActive && (
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
                                                             onClick={() =>
-                                                                handleUpdateBalance(
-                                                                    wallet
+                                                                handleSetActive(
+                                                                    wallet.id,
+                                                                    true
                                                                 )
                                                             }
-                                                            disabled={
-                                                                updatingWalletId ===
-                                                                wallet.id
-                                                            }
+                                                            className="h-8"
                                                         >
-                                                            {updatingWalletId ===
-                                                            wallet.id ? (
-                                                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                                            ) : (
-                                                                <RefreshCw className="h-4 w-4 mr-1" />
-                                                            )}
-                                                            Update Balance
+                                                            Set Active
                                                         </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            )}
+                                                    )}
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            handleUpdateBalance(
+                                                                wallet
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            updatingWalletId ===
+                                                            wallet.id
+                                                        }
+                                                        className="h-8"
+                                                    >
+                                                        {updatingWalletId ===
+                                                        wallet.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <div className="flex items-center gap-2">
+                                                                <RefreshCw className="h-4 w-4" />
+                                                                <span>
+                                                                    Update
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </div>
                     )}
                 </CardContent>

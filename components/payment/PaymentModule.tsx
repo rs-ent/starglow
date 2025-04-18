@@ -149,11 +149,9 @@ export default function PaymentModule({
         const handlePaymentResult = async () => {
             startLoading();
             try {
-                console.log("Payment Id", paymentResult.paymentId);
                 const payment = await getPayment({
                     paymentId: paymentResult.paymentId as string,
                 });
-                console.log("Payment", payment);
 
                 if (!payment) {
                     endLoading();

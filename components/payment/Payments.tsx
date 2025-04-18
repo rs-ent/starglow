@@ -101,8 +101,8 @@ export default function Payments({ payment, userId }: PaymentProps) {
         return new Intl.NumberFormat("en-US", {
             style: "currency",
             currency: currency.replace("CURRENCY_", ""),
-            minimumFractionDigits: 2,
-        }).format(amount / 100);
+            minimumFractionDigits: currency === "CURRENCY_KRW" ? 0 : 2,
+        }).format(currency === "CURRENCY_KRW" ? amount : amount / 100);
     };
 
     const formatDate = (date: Date | null | undefined) => {

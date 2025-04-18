@@ -29,7 +29,22 @@ import { useToast } from "@/app/hooks/useToast";
 import FileUploader from "@/components/atoms/FileUploader";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
-import { Plus, Trash2, RefreshCw, Eye, Calendar } from "lucide-react";
+import {
+    Plus,
+    Trash2,
+    RefreshCw,
+    Eye,
+    Calendar,
+    X,
+    FileText,
+    Tags,
+    Tag,
+    Type,
+    Hash,
+    TrendingUp,
+    Percent,
+    Image,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Table,
@@ -81,68 +96,95 @@ function MetadataPreviewDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>Metadata Preview</DialogTitle>
-                    <DialogDescription>
-                        Preview the metadata content and image
-                    </DialogDescription>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-b from-background to-muted/5">
+                <DialogHeader className="space-y-3 pb-4 border-b">
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Eye className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-2xl font-bold tracking-tight">
+                                {metadata.name}
+                            </DialogTitle>
+                            <DialogDescription className="text-base">
+                                Preview and verify metadata content
+                            </DialogDescription>
+                        </div>
+                    </div>
                 </DialogHeader>
 
-                <div className="space-y-6">
-                    {/* 이미지 미리보기 */}
-                    <div className="aspect-square w-full max-w-md mx-auto bg-black/5 rounded-lg overflow-hidden">
-                        <img
-                            src={metadata.image}
-                            alt={metadata.name}
-                            className="w-full h-full object-contain"
-                        />
+                <div className="grid md:grid-cols-2 gap-8 py-6">
+                    {/* Image Section */}
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-lg flex items-center gap-2">
+                            <Image className="h-5 w-5 text-primary" />
+                            Preview Image
+                        </h3>
+                        <div className="aspect-square w-full bg-black/5 rounded-xl overflow-hidden border shadow-sm hover:shadow-md transition-shadow">
+                            <img
+                                src={metadata.image}
+                                alt={metadata.name}
+                                className="w-full h-full object-contain"
+                            />
+                        </div>
                     </div>
 
-                    {/* 메타데이터 정보 */}
-                    <div className="grid gap-4">
-                        <div className="space-y-2">
-                            <h4 className="font-medium">Name</h4>
-                            <p>{metadata.name}</p>
-                        </div>
-
-                        <div className="space-y-2">
-                            <h4 className="font-medium">Description</h4>
-                            <p>{metadata.description}</p>
-                        </div>
-
-                        <div className="space-y-2">
-                            <h4 className="font-medium">External URL</h4>
-                            <p className="font-mono text-sm">
-                                {metadata.external_url}
-                            </p>
-                        </div>
-
-                        {metadata.animation_url && (
-                            <div className="space-y-2">
-                                <h4 className="font-medium">Animation URL</h4>
-                                <p className="font-mono text-sm">
-                                    {metadata.animation_url}
-                                </p>
+                    {/* Metadata Info Section */}
+                    <div className="space-y-6">
+                        <div className="space-y-4">
+                            <h3 className="font-semibold text-lg flex items-center gap-2">
+                                <FileText className="h-5 w-5 text-primary" />
+                                Details
+                            </h3>
+                            <div className="grid gap-4">
+                                <div className="p-4 bg-muted/10 rounded-lg space-y-2">
+                                    <p className="text-sm font-medium text-primary">
+                                        Description
+                                    </p>
+                                    <p className="text-sm">
+                                        {metadata.description}
+                                    </p>
+                                </div>
+                                <div className="p-4 bg-muted/10 rounded-lg space-y-2">
+                                    <p className="text-sm font-medium text-primary">
+                                        External URL
+                                    </p>
+                                    <p className="text-sm font-mono break-all hover:text-primary transition-colors">
+                                        {metadata.external_url}
+                                    </p>
+                                </div>
+                                {metadata.animation_url && (
+                                    <div className="p-4 bg-muted/10 rounded-lg space-y-2">
+                                        <p className="text-sm font-medium text-primary">
+                                            Animation URL
+                                        </p>
+                                        <p className="text-sm font-mono break-all hover:text-primary transition-colors">
+                                            {metadata.animation_url}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
-                        )}
+                        </div>
 
-                        {/* Attributes */}
+                        {/* Attributes Section */}
                         {metadata.attributes &&
                             metadata.attributes.length > 0 && (
-                                <div className="space-y-2">
-                                    <h4 className="font-medium">Attributes</h4>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                <div className="space-y-4">
+                                    <h3 className="font-semibold text-lg flex items-center gap-2">
+                                        <Tags className="h-5 w-5 text-primary" />
+                                        Attributes
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-3">
                                         {metadata.attributes.map(
                                             (attr, idx) => (
                                                 <div
                                                     key={idx}
-                                                    className="bg-muted p-2 rounded-md"
+                                                    className="bg-muted/10 p-4 rounded-lg space-y-1.5 hover:bg-muted/20 transition-colors"
                                                 >
-                                                    <p className="text-xs text-muted-foreground">
+                                                    <p className="text-xs font-medium text-primary">
                                                         {attr.trait_type}
                                                     </p>
-                                                    <p className="font-medium">
+                                                    <p className="font-medium text-sm">
                                                         {attr.value}
                                                     </p>
                                                 </div>
@@ -154,12 +196,14 @@ function MetadataPreviewDialog({
                     </div>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="border-t pt-4 mt-6">
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
+                        className="hover:bg-muted/50 transition-colors"
                     >
-                        Close
+                        <X className="h-4 w-4 mr-2" />
+                        Close Preview
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -177,208 +221,253 @@ function AttributeFormField({
     form: UseFormReturn<MetadataFormValues>;
     onRemove: () => void;
 }) {
-    const displayType = form.watch(`attributes.${index}.display_type`) as
-        | "string"
-        | "number"
-        | "boost_number"
-        | "boost_percentage"
-        | "date"
-        | undefined;
+    const displayType = form.watch(`attributes.${index}.display_type`);
 
     return (
-        <div key={index} className="flex gap-2 items-start">
-            <FormField
-                control={form.control}
-                name={`attributes.${index}.trait_type`}
-                render={({ field }) => (
-                    <FormItem className="flex-1">
-                        <FormControl>
-                            <Input placeholder="Trait Type" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
+        <div className="p-5 border rounded-xl space-y-4 bg-muted/5 hover:bg-muted/10 transition-colors">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Tag className="h-3 w-3 text-primary" />
+                    </div>
+                    <h4 className="font-medium">Attribute #{index + 1}</h4>
+                </div>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onRemove}
+                    className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors"
+                >
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </div>
 
-            <FormField
-                control={form.control}
-                name={`attributes.${index}.display_type`}
-                render={({ field }) => (
-                    <FormItem className="flex-1">
-                        <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            value={field.value}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="string">Text</SelectItem>
-                                <SelectItem value="number">Number</SelectItem>
-                                <SelectItem value="boost_number">
-                                    Boost Number
-                                </SelectItem>
-                                <SelectItem value="boost_percentage">
-                                    Percentage
-                                </SelectItem>
-                                <SelectItem value="date">Date</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
+            <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                    control={form.control}
+                    name={`attributes.${index}.trait_type`}
+                    render={({ field }) => (
+                        <FormItem className="flex-1">
+                            <FormControl>
+                                <Input
+                                    placeholder="Trait Type"
+                                    {...field}
+                                    className="bg-background/50"
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
-            <FormField
-                control={form.control}
-                name={`attributes.${index}.value`}
-                render={({ field }) => {
-                    // Date picker for date display type
-                    if (displayType === "date") {
-                        return (
-                            <FormItem className="flex-1">
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                className={cn(
-                                                    "w-full pl-3 text-left font-normal",
-                                                    !field.value &&
-                                                        "text-muted-foreground"
-                                                )}
+                <FormField
+                    control={form.control}
+                    name={`attributes.${index}.display_type`}
+                    render={({ field }) => (
+                        <FormItem className="flex-1">
+                            <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                                value={field.value}
+                            >
+                                <SelectTrigger className="bg-background/50">
+                                    <SelectValue placeholder="Select Type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="string">
+                                        <span className="flex items-center gap-2">
+                                            <Type className="h-4 w-4" />
+                                            Text
+                                        </span>
+                                    </SelectItem>
+                                    <SelectItem value="number">
+                                        <span className="flex items-center gap-2">
+                                            <Hash className="h-4 w-4" />
+                                            Number
+                                        </span>
+                                    </SelectItem>
+                                    <SelectItem value="boost_number">
+                                        <span className="flex items-center gap-2">
+                                            <TrendingUp className="h-4 w-4" />
+                                            Boost Number
+                                        </span>
+                                    </SelectItem>
+                                    <SelectItem value="boost_percentage">
+                                        <span className="flex items-center gap-2">
+                                            <Percent className="h-4 w-4" />
+                                            Percentage
+                                        </span>
+                                    </SelectItem>
+                                    <SelectItem value="date">
+                                        <span className="flex items-center gap-2">
+                                            <Calendar className="h-4 w-4" />
+                                            Date
+                                        </span>
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <div className="md:col-span-2">
+                    <FormField
+                        control={form.control}
+                        name={`attributes.${index}.value`}
+                        render={({ field }) => {
+                            if (displayType === "date") {
+                                return (
+                                    <FormItem className="flex-1">
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant="outline"
+                                                        className={cn(
+                                                            "w-full pl-3 text-left font-normal bg-background/50",
+                                                            !field.value &&
+                                                                "text-muted-foreground"
+                                                        )}
+                                                    >
+                                                        {field.value ? (
+                                                            format(
+                                                                typeof field.value ===
+                                                                    "number"
+                                                                    ? new Date(
+                                                                          field.value *
+                                                                              1000
+                                                                      )
+                                                                    : new Date(),
+                                                                "PPP"
+                                                            )
+                                                        ) : (
+                                                            <span>
+                                                                Pick a date
+                                                            </span>
+                                                        )}
+                                                        <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent
+                                                className="w-auto p-0"
+                                                align="start"
                                             >
-                                                {field.value ? (
-                                                    format(
+                                                <CalendarComponent
+                                                    mode="single"
+                                                    selected={
                                                         typeof field.value ===
-                                                            "number"
+                                                        "number"
                                                             ? new Date(
                                                                   field.value *
                                                                       1000
                                                               )
-                                                            : new Date(),
-                                                        "PPP"
-                                                    )
-                                                ) : (
-                                                    <span>Pick a date</span>
-                                                )}
-                                                <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent
-                                        className="w-auto p-0"
-                                        align="start"
-                                    >
-                                        <CalendarComponent
-                                            mode="single"
-                                            selected={
-                                                typeof field.value === "number"
-                                                    ? new Date(
-                                                          field.value * 1000
-                                                      )
-                                                    : undefined
-                                            }
-                                            onSelect={(date) => {
-                                                if (date) {
-                                                    // Convert to Unix timestamp (seconds)
-                                                    field.onChange(
-                                                        Math.floor(
-                                                            date.getTime() /
-                                                                1000
-                                                        )
-                                                    );
-                                                }
-                                            }}
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                            </FormItem>
-                        );
-                    }
+                                                            : undefined
+                                                    }
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            field.onChange(
+                                                                Math.floor(
+                                                                    date.getTime() /
+                                                                        1000
+                                                                )
+                                                            );
+                                                        }
+                                                    }}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                );
+                            }
 
-                    // Number inputs for numeric types
-                    if (
-                        ["number", "boost_number", "boost_percentage"].includes(
-                            displayType || ""
-                        )
-                    ) {
-                        return (
-                            <div className="flex-1 space-y-2">
-                                <FormItem>
+                            // Number inputs for numeric types
+                            if (
+                                [
+                                    "number",
+                                    "boost_number",
+                                    "boost_percentage",
+                                ].includes(displayType || "")
+                            ) {
+                                return (
+                                    <div className="flex-1 space-y-2">
+                                        <FormItem>
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="Value"
+                                                    {...field}
+                                                    onChange={(e) => {
+                                                        field.onChange(
+                                                            Number(
+                                                                e.target.value
+                                                            )
+                                                        );
+                                                    }}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+
+                                        {/* Max Value field for boost types */}
+                                        {[
+                                            "boost_number",
+                                            "boost_percentage",
+                                        ].includes(displayType || "") && (
+                                            <FormField
+                                                control={form.control}
+                                                name={`attributes.${index}.max_value`}
+                                                render={({
+                                                    field: maxValueField,
+                                                }) => (
+                                                    <FormItem>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="number"
+                                                                placeholder="Max Value"
+                                                                {...maxValueField}
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    maxValueField.onChange(
+                                                                        Number(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        )
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormDescription className="text-xs">
+                                                            최대값 (진행 바용)
+                                                        </FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            }
+
+                            // Default text input
+                            return (
+                                <FormItem className="flex-1">
                                     <FormControl>
-                                        <Input
-                                            type="number"
-                                            placeholder="Value"
-                                            {...field}
-                                            onChange={(e) => {
-                                                field.onChange(
-                                                    Number(e.target.value)
-                                                );
-                                            }}
-                                        />
+                                        <Input placeholder="Value" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
-
-                                {/* Max Value field for boost types */}
-                                {["boost_number", "boost_percentage"].includes(
-                                    displayType || ""
-                                ) && (
-                                    <FormField
-                                        control={form.control}
-                                        name={`attributes.${index}.max_value`}
-                                        render={({ field: maxValueField }) => (
-                                            <FormItem>
-                                                <FormControl>
-                                                    <Input
-                                                        type="number"
-                                                        placeholder="Max Value"
-                                                        {...maxValueField}
-                                                        onChange={(e) => {
-                                                            maxValueField.onChange(
-                                                                Number(
-                                                                    e.target
-                                                                        .value
-                                                                )
-                                                            );
-                                                        }}
-                                                    />
-                                                </FormControl>
-                                                <FormDescription className="text-xs">
-                                                    최대값 (진행 바용)
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                )}
-                            </div>
-                        );
-                    }
-
-                    // Default text input
-                    return (
-                        <FormItem className="flex-1">
-                            <FormControl>
-                                <Input placeholder="Value" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    );
-                }}
-            />
-            <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onRemove}
-            >
-                <Trash2 className="h-4 w-4" />
-            </Button>
+                            );
+                        }}
+                    />
+                </div>
+            </div>
         </div>
     );
 }

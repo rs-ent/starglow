@@ -86,80 +86,109 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
 
     if (isLoading) {
         return (
-            <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-2">Loading networks...</span>
+            <div className="flex justify-center items-center min-h-[400px] bg-muted/5 rounded-xl">
+                <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="text-muted-foreground">
+                        Loading networks...
+                    </span>
+                </div>
             </div>
         );
     }
 
     if (isError) {
         return (
-            <Alert variant="destructive" className="mb-4">
-                <AlertDescription>
-                    {error instanceof Error
-                        ? error.message
-                        : "Failed to load network data"}
+            <Alert variant="destructive" className="mb-4 border-2">
+                <AlertDescription className="flex items-center gap-2">
+                    <X className="h-5 w-5" />
+                    <span>
+                        {error instanceof Error
+                            ? error.message
+                            : "Failed to load network data"}
+                    </span>
                 </AlertDescription>
             </Alert>
         );
     }
 
     return (
-        <div className="w-full flex gap-4">
-            <Card className="w-full">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle>Blockchain Networks</CardTitle>
-                        <CardDescription>
-                            Available blockchain networks for deployment
+        <div className="grid lg:grid-cols-2 gap-6">
+            {/* Networks List Card */}
+            <Card className="lg:col-span-2 border-none shadow-md">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 border-b">
+                    <div className="space-y-1">
+                        <CardTitle className="text-2xl font-bold">
+                            Blockchain Networks
+                        </CardTitle>
+                        <CardDescription className="text-base">
+                            Configure and manage your blockchain network
+                            connections
                         </CardDescription>
                     </div>
                     <Button
-                        variant="outline"
-                        size="sm"
+                        variant={showAddForm ? "secondary" : "default"}
                         onClick={() => setShowAddForm(!showAddForm)}
+                        className="transition-all duration-200"
                     >
                         {showAddForm ? (
-                            <>
-                                <X className="h-4 w-4 mr-2" />
-                                Cancel
-                            </>
+                            <div className="flex items-center gap-2">
+                                <X className="h-4 w-4" />
+                                <span>Cancel</span>
+                            </div>
                         ) : (
-                            <>
-                                <PlusCircle className="h-4 w-4 mr-2" />
-                                Add Network
-                            </>
+                            <div className="flex items-center gap-2">
+                                <PlusCircle className="h-4 w-4" />
+                                <span>Add Network</span>
+                            </div>
                         )}
                     </Button>
                 </CardHeader>
-                <CardContent>
-                    <div className="overflow-x-auto">
+                <CardContent className="pt-6">
+                    <div className="rounded-lg border overflow-hidden">
                         <Table>
                             <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Chain ID</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Explorer</TableHead>
-                                    <TableHead>Actions</TableHead>
+                                <TableRow className="bg-muted/50">
+                                    <TableHead className="font-semibold">
+                                        Name
+                                    </TableHead>
+                                    <TableHead className="font-semibold">
+                                        Chain ID
+                                    </TableHead>
+                                    <TableHead className="font-semibold">
+                                        Type
+                                    </TableHead>
+                                    <TableHead className="font-semibold">
+                                        Explorer
+                                    </TableHead>
+                                    <TableHead className="font-semibold text-right">
+                                        Actions
+                                    </TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {networks?.map((network) => (
-                                    <TableRow key={network.id}>
-                                        <TableCell>
-                                            <div className="font-medium">
-                                                {network.name}
-                                            </div>
+                                    <TableRow
+                                        key={network.id}
+                                        className="hover:bg-muted/5"
+                                    >
+                                        <TableCell className="font-medium">
+                                            {network.name}
                                         </TableCell>
-                                        <TableCell>{network.chainId}</TableCell>
+                                        <TableCell className="font-mono text-sm">
+                                            {network.chainId}
+                                        </TableCell>
                                         <TableCell>
                                             <Badge
                                                 variant={
                                                     network.isTestnet
                                                         ? "outline"
                                                         : "default"
+                                                }
+                                                className={
+                                                    network.isTestnet
+                                                        ? ""
+                                                        : "bg-green-500/10 text-green-500"
                                                 }
                                             >
                                                 {network.isTestnet
@@ -172,31 +201,30 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                                 href={network.explorerUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-primary hover:text-primary/80 flex items-center"
+                                                className="flex items-center gap-1 text-primary hover:text-primary/80 transition-colors"
                                             >
-                                                <span className="mr-1">
-                                                    Explorer
-                                                </span>
-                                                <ExternalLink size={14} />
+                                                <span>Explorer</span>
+                                                <ExternalLink className="h-3 w-3" />
                                             </a>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex space-x-2">
+                                            <div className="flex justify-end gap-2">
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
+                                                    className="h-8"
                                                 >
-                                                    <Edit className="h-4 w-4 mr-1" />
+                                                    <Edit className="h-3 w-3 mr-1" />
                                                     Edit
                                                 </Button>
                                                 <Button
-                                                    variant="default"
                                                     size="sm"
                                                     onClick={() =>
                                                         onDeployClick(
                                                             network.id
                                                         )
                                                     }
+                                                    className="h-8"
                                                 >
                                                     Deploy to
                                                 </Button>
@@ -208,10 +236,21 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                     <TableRow>
                                         <TableCell
                                             colSpan={5}
-                                            className="text-center py-4 text-muted-foreground"
+                                            className="h-32 text-center text-muted-foreground"
                                         >
-                                            No networks available. Add a network
-                                            to get started.
+                                            <div className="flex flex-col items-center gap-2">
+                                                <p>No networks available</p>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() =>
+                                                        setShowAddForm(true)
+                                                    }
+                                                    className="mt-2"
+                                                >
+                                                    <PlusCircle className="h-4 w-4 mr-2" />
+                                                    Add Your First Network
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -221,80 +260,116 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                 </CardContent>
             </Card>
 
+            {/* Add Network Form */}
             {showAddForm && (
-                <Card className="w-full">
-                    <CardHeader>
-                        <CardTitle>Add New Network</CardTitle>
+                <Card className="lg:col-span-2 border-2 border-primary/10 bg-muted/5">
+                    <CardHeader className="space-y-1">
+                        <CardTitle className="text-xl">
+                            Add New Network
+                        </CardTitle>
                         <CardDescription>
-                            Enter details for the new blockchain network
+                            Configure a new blockchain network connection
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleAddNetwork}>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                        <CardContent className="space-y-6">
+                            {/* Basic Info */}
+                            <div className="grid md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="name">Network Name*</Label>
+                                    <Label
+                                        htmlFor="name"
+                                        className="font-medium"
+                                    >
+                                        Network Name
+                                    </Label>
                                     <Input
                                         id="name"
                                         name="name"
                                         placeholder="e.g. Ethereum Mainnet"
                                         value={newNetwork.name}
                                         onChange={handleInputChange}
+                                        className="bg-background"
                                         required
                                     />
                                 </div>
-
                                 <div className="space-y-2">
-                                    <Label htmlFor="symbol">Symbol*</Label>
+                                    <Label
+                                        htmlFor="symbol"
+                                        className="font-medium"
+                                    >
+                                        Symbol
+                                    </Label>
                                     <Input
                                         id="symbol"
                                         name="symbol"
                                         placeholder="e.g. ETH"
                                         value={newNetwork.symbol}
                                         onChange={handleInputChange}
+                                        className="bg-background"
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="chainId">Chain ID*</Label>
-                                <Input
-                                    id="chainId"
-                                    name="chainId"
-                                    type="number"
-                                    placeholder="e.g. 1"
-                                    value={newNetwork.chainId}
-                                    onChange={handleInputChange}
-                                    required
-                                />
+
+                            {/* Network Details */}
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="chainId"
+                                        className="font-medium"
+                                    >
+                                        Chain ID
+                                    </Label>
+                                    <Input
+                                        id="chainId"
+                                        name="chainId"
+                                        type="number"
+                                        placeholder="e.g. 1"
+                                        value={newNetwork.chainId}
+                                        onChange={handleInputChange}
+                                        className="bg-background"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="rpcUrl"
+                                        className="font-medium"
+                                    >
+                                        RPC URL
+                                    </Label>
+                                    <Input
+                                        id="rpcUrl"
+                                        name="rpcUrl"
+                                        placeholder="e.g. https://mainnet.infura.io/v3/your-api-key"
+                                        value={newNetwork.rpcUrl}
+                                        onChange={handleInputChange}
+                                        className="bg-background font-mono text-sm"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="explorerUrl"
+                                        className="font-medium"
+                                    >
+                                        Block Explorer URL
+                                    </Label>
+                                    <Input
+                                        id="explorerUrl"
+                                        name="explorerUrl"
+                                        placeholder="e.g. https://etherscan.io"
+                                        value={newNetwork.explorerUrl}
+                                        onChange={handleInputChange}
+                                        className="bg-background font-mono text-sm"
+                                        required
+                                    />
+                                </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="rpcUrl">RPC URL*</Label>
-                                <Input
-                                    id="rpcUrl"
-                                    name="rpcUrl"
-                                    placeholder="e.g. https://mainnet.infura.io/v3/your-api-key"
-                                    value={newNetwork.rpcUrl}
-                                    onChange={handleInputChange}
-                                    required
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="explorerUrl">
-                                    Block Explorer URL*
-                                </Label>
-                                <Input
-                                    id="explorerUrl"
-                                    name="explorerUrl"
-                                    placeholder="e.g. https://etherscan.io"
-                                    value={newNetwork.explorerUrl}
-                                    onChange={handleInputChange}
-                                    required
-                                />
-                            </div>
-
-                            <div className="flex items-center space-x-2">
+                            {/* Network Type */}
+                            <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-lg">
                                 <Switch
                                     id="isTestnet"
                                     name="isTestnet"
@@ -306,13 +381,16 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                         }))
                                     }
                                 />
-                                <Label htmlFor="isTestnet">
+                                <Label
+                                    htmlFor="isTestnet"
+                                    className="font-medium cursor-pointer"
+                                >
                                     This is a testnet
                                 </Label>
                             </div>
 
                             {addNetworkMutation.isError && (
-                                <Alert variant="destructive">
+                                <Alert variant="destructive" className="mt-4">
                                     <AlertDescription>
                                         {addNetworkMutation.error instanceof
                                         Error
@@ -322,7 +400,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                 </Alert>
                             )}
                         </CardContent>
-                        <CardFooter className="flex justify-end space-x-2">
+                        <CardFooter className="flex justify-end gap-3 border-t pt-6">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -335,10 +413,10 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                 disabled={addNetworkMutation.isPending}
                             >
                                 {addNetworkMutation.isPending ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Adding...
-                                    </>
+                                    <div className="flex items-center gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <span>Adding...</span>
+                                    </div>
                                 ) : (
                                     "Add Network"
                                 )}

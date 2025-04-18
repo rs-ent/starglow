@@ -7,12 +7,14 @@ import {
     useCollectionContractsQuery,
     useCollectionContractQuery,
     useCollectionStatusQuery,
+    useCollectionSettingsQuery,
 } from "../queries/collectionContractsQueries";
 import {
     useMintTokensMutation,
     useSetBaseURIMutation,
     useTogglePauseMutation,
     useToggleMintingMutation,
+    useUpdateCollectionSettingsMutation,
 } from "../mutations/collectionContractsMutations";
 import type {
     MintTokensParams,
@@ -20,6 +22,7 @@ import type {
     TogglePauseParams,
     ToggleMintingParams,
 } from "../actions/collectionContracts";
+import { useToast } from "./useToast";
 
 /**
  * 컬렉션 컨트랙트 관리를 위한 통합 훅
@@ -164,4 +167,42 @@ export function useCollectionStatus(
     rpcUrl: string
 ) {
     return useCollectionStatusQuery(address, networkId, rpcUrl);
+}
+
+export function useCollectionSettings(collectionId: string) {
+    const toast = useToast();
+
+    const {
+        data: settings,
+        isLoading,
+        error,
+    } = useCollectionSettingsQuery(collectionId);
+
+    const updateSettingsMutation = useUpdateCollectionSettingsMutation();
+
+    const updateSettings = async (price: number, circulation: number) => {
+        try {
+            const result = await updateSettingsMutation.mutateAsync({
+                collectionId,
+                price,
+                circulation,
+            });
+
+            if (!result.success) {
+                throw new Error(result.error || "Failed to update settings");
+            }
+
+            toast.success("Collection settings updated successfully");
+        } catch (error) {
+            toast.error("Failed to update collection settings");
+        }
+    };
+
+    return {
+        settings,
+        isLoading,
+        error,
+        updateSettings,
+        isUpdating: updateSettingsMutation.isPending,
+    };
 }

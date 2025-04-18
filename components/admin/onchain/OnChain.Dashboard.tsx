@@ -11,6 +11,8 @@ import OnChainFactory from "./OnChain.Factory";
 import OnChainEscrowWallet from "./OnChain.EscrowWallet";
 import OnChainCollection from "./OnChain.Collection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Network, Factory, Wallet, Layers, Image } from "lucide-react";
+import OnChainNFTManager from "./OnChain.NFT";
 
 export default function OnChainDashboard() {
     const { contracts, isLoading, error, isError } =
@@ -27,44 +29,90 @@ export default function OnChainDashboard() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8 p-6 max-w-[1400px] mx-auto">
+            <div className="space-y-2">
+                <h1 className="text-3xl font-bold tracking-tight">
+                    Blockchain Dashboard
+                </h1>
+                <p className="text-muted-foreground">
+                    Manage your blockchain networks, contracts, and NFTs
+                </p>
+            </div>
+
             <Tabs
                 defaultValue="networks"
                 value={activeTab}
                 onValueChange={setActiveTab}
+                className="space-y-6"
             >
-                <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="networks">Networks</TabsTrigger>
-                    <TabsTrigger value="wallets">Escrow Wallets</TabsTrigger>
-                    <TabsTrigger value="contracts">
-                        Factory Contracts
+                <TabsList className="grid w-full grid-cols-5 gap-4 bg-muted/50 p-1 rounded-xl h-auto">
+                    <TabsTrigger
+                        value="networks"
+                        className="data-[state=active]:bg-background flex items-center gap-2 py-3 rounded-lg transition-all"
+                    >
+                        <Network className="h-4 w-4" />
+                        <span>Networks</span>
                     </TabsTrigger>
-                    <TabsTrigger value="collections">
-                        NFT Collections
+
+                    <TabsTrigger
+                        value="wallets"
+                        className="data-[state=active]:bg-background flex items-center gap-2 py-3 rounded-lg transition-all"
+                    >
+                        <Wallet className="h-4 w-4" />
+                        <span>Escrow Wallets</span>
+                    </TabsTrigger>
+
+                    <TabsTrigger
+                        value="contracts"
+                        className="data-[state=active]:bg-background flex items-center gap-2 py-3 rounded-lg transition-all"
+                    >
+                        <Factory className="h-4 w-4" />
+                        <span>Factory Contracts</span>
+                    </TabsTrigger>
+
+                    <TabsTrigger
+                        value="collections"
+                        className="data-[state=active]:bg-background flex items-center gap-2 py-3 rounded-lg transition-all"
+                    >
+                        <Layers className="h-4 w-4" />
+                        <span>Collections</span>
+                    </TabsTrigger>
+
+                    <TabsTrigger
+                        value="nfts"
+                        className="data-[state=active]:bg-background flex items-center gap-2 py-3 rounded-lg transition-all"
+                    >
+                        <Image className="h-4 w-4" />
+                        <span>NFTs</span>
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="networks" className="mt-6">
-                    {/* Network Component */}
-                    <OnChainNetwork onDeployClick={handleDeployClick} />
-                </TabsContent>
+                <div className="mt-6 bg-card rounded-xl border shadow-sm">
+                    <TabsContent value="networks" className="p-6">
+                        <OnChainNetwork onDeployClick={handleDeployClick} />
+                    </TabsContent>
 
-                <TabsContent value="contracts" className="mt-6">
-                    {/* Factory Component */}
-                    <OnChainFactory
-                        preSelectedNetworkId={selectedNetworkId || undefined}
-                        onDeploySuccess={() => setSelectedNetworkId(null)}
-                    />
-                </TabsContent>
+                    <TabsContent value="contracts" className="p-6">
+                        <OnChainFactory
+                            preSelectedNetworkId={
+                                selectedNetworkId || undefined
+                            }
+                            onDeploySuccess={() => setSelectedNetworkId(null)}
+                        />
+                    </TabsContent>
 
-                <TabsContent value="wallets" className="mt-6">
-                    {/* Escrow Wallets Component */}
-                    <OnChainEscrowWallet />
-                </TabsContent>
+                    <TabsContent value="wallets" className="p-6">
+                        <OnChainEscrowWallet />
+                    </TabsContent>
 
-                <TabsContent value="collections" className="mt-6">
-                    <OnChainCollection />
-                </TabsContent>
+                    <TabsContent value="collections" className="p-6">
+                        <OnChainCollection />
+                    </TabsContent>
+
+                    <TabsContent value="nfts" className="p-6">
+                        <OnChainNFTManager />
+                    </TabsContent>
+                </div>
             </Tabs>
         </div>
     );
