@@ -3,7 +3,6 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import { PaymentStatus } from "@prisma/client";
 import {
     createPublicClient,
     createWalletClient,
@@ -12,7 +11,6 @@ import {
     defineChain,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { getPrivateKey } from "./defaultWallets";
 import { decryptPrivateKey } from "@/lib/utils/encryption";
 
 // 로깅 유틸리티 직접 정의
@@ -336,18 +334,6 @@ export async function transferNFTToUser(
             };
         }
 
-        // 3. 결제 상태 확인
-        if (payment.status !== "PAID") {
-            scope.log("Invalid payment status for transfer");
-            return {
-                success: false,
-                error: {
-                    code: "INVALID_PAYMENT_STATUS",
-                    message: "Payment must be in PAID status for NFT transfer",
-                },
-            };
-        }
-
         // 4. 수신 지갑 주소 확인
         if (!payment.receiverWalletAddress) {
             scope.log("Receiver wallet address not found");
@@ -650,18 +636,6 @@ export async function escrowTransferNFT(
                 error: {
                     code: "UNAUTHORIZED",
                     message: "Unauthorized transfer attempt",
-                },
-            };
-        }
-
-        // 3. 결제 상태 확인
-        if (payment.status !== "PAID") {
-            scope.log("Invalid payment status for transfer");
-            return {
-                success: false,
-                error: {
-                    code: "INVALID_PAYMENT_STATUS",
-                    message: "Payment must be in PAID status for NFT transfer",
                 },
             };
         }
