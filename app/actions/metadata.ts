@@ -383,3 +383,23 @@ export async function createNFTMetadata(
         throw new Error("Failed to create NFT metadata");
     }
 }
+
+export async function getMetadataByCollectionAddress(address: string) {
+    try {
+        const metadata = await prisma.metadata.findUnique({
+            where: {
+                collectionAddress: address,
+                type: MetadataType.collection,
+            },
+        });
+
+        if (!metadata) {
+            throw new Error("Collection metadata not found");
+        }
+
+        return metadata;
+    } catch (error) {
+        console.error("Failed to get metadata by collection address:", error);
+        throw new Error("Failed to get metadata by collection address");
+    }
+}

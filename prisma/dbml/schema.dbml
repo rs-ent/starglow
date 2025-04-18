@@ -60,6 +60,7 @@ Table Wallet {
   primary Int [default: 0]
   nickname String
   status WalletStatus [not null, default: 'ACTIVE']
+  payments Payment [not null]
   createdAt DateTime [default: `now()`, not null]
   lastAccessedAt DateTime [not null]
   user User [not null]
@@ -290,6 +291,7 @@ Table Payment {
   cancelledAt DateTime
   failedAt DateTime
   refundedAt DateTime
+  completedAt DateTime
   cancelAmount Int
   code String
   message String
@@ -300,6 +302,11 @@ Table Payment {
   txId String
   pgResponse Json
   virtualAccount VirtualAccount
+  needWallet Boolean [not null, default: false]
+  receiverWalletAddress String
+  receiverWallet Wallet
+  postProcessResult Json
+  postProcessResultAt DateTime
   webhookEvents WebhookEvent [not null]
   metadata Json
   redirectUrl String
@@ -467,6 +474,7 @@ Table CollectionContract {
   price Int [not null, default: 0]
   circulation Int [not null, default: 1000]
   mintedCount Int [not null, default: 0]
+  isListed Boolean [not null, default: false]
   artistId String
   artist Artist
   metadata Metadata
@@ -574,6 +582,7 @@ Enum PaymentStatus {
   EXPIRED
   REFUNDED
   PARTIALLY_CANCELLED
+  COMPLETED
 }
 
 Enum PaymentPromotionDiscountType {
@@ -645,6 +654,8 @@ Ref: LoginAttemptLog.userId > User.id [delete: Cascade]
 Ref: Payment.userId > User.id
 
 Ref: Payment.promotionCode > PaymentPromotion.code
+
+Ref: Payment.receiverWalletAddress > Wallet.address
 
 Ref: WebhookEvent.paymentId > Payment.id [delete: Cascade]
 

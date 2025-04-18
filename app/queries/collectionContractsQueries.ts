@@ -7,42 +7,11 @@ import { collectionKeys } from "../queryKeys";
 import {
     getCollectionContracts,
     getCollectionContract,
+    listedCollections,
 } from "../actions/collectionContracts";
 import { createPublicClient, http } from "viem";
 import { COLLECTION_ABI } from "../blockchain/abis/Collection";
 import { QUERY_KEYS } from "../queryKeys";
-
-// 타입 정의
-export interface CollectionContract {
-    id: string;
-    address: string;
-    name: string;
-    symbol: string;
-    factoryAddress?: string;
-    network?: {
-        id: string;
-        name: string;
-        chainId: number;
-        rpcUrl: string;
-        explorerUrl: string;
-        symbol: string;
-        isTestnet: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        isActive: boolean;
-    };
-    maxSupply: number;
-    mintPrice: string;
-    baseURI?: string;
-    contractURI?: string;
-    createdAt: Date;
-    txHash?: string | null;
-    factory?: any;
-    paused?: boolean;
-    mintingEnabled?: boolean;
-    price: number;
-    circulation: number;
-}
 
 /**
  * 모든 컬렉션 컨트랙트 조회 쿼리 훅
@@ -188,5 +157,18 @@ export function useCollectionSettingsQuery(collectionId: string) {
             };
         },
         enabled: !!collectionId,
+    });
+}
+
+export function useListedCollectionsQuery() {
+    return useQuery({
+        queryKey: collectionKeys.listed(),
+        queryFn: async () => {
+            const result = await listedCollections();
+            if (result.length === 0) {
+                throw new Error("No listed collections found");
+            }
+            return result;
+        },
     });
 }

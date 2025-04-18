@@ -30,15 +30,6 @@ export default function OnChainDashboard() {
 
     return (
         <div className="space-y-8 p-6 max-w-[1400px] mx-auto">
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight">
-                    Blockchain Dashboard
-                </h1>
-                <p className="text-muted-foreground">
-                    Manage your blockchain networks, contracts, and NFTs
-                </p>
-            </div>
-
             <Tabs
                 defaultValue="networks"
                 value={activeTab}
@@ -67,7 +58,7 @@ export default function OnChainDashboard() {
                         className="data-[state=active]:bg-background flex items-center gap-2 py-3 rounded-lg transition-all"
                     >
                         <Factory className="h-4 w-4" />
-                        <span>Factory Contracts</span>
+                        <span>Factory</span>
                     </TabsTrigger>
 
                     <TabsTrigger

@@ -77,6 +77,8 @@ model Wallet {
 
   nickname       String?
   status         WalletStatus @default(ACTIVE)
+
+  payments Payment[]
   
   createdAt      DateTime @default(now())
   lastAccessedAt DateTime @updatedAt
@@ -316,6 +318,7 @@ enum PaymentStatus {
   EXPIRED
   REFUNDED
   PARTIALLY_CANCELLED
+  COMPLETED
 }
 
 model Payment {
@@ -360,6 +363,7 @@ model Payment {
   cancelledAt DateTime?
   failedAt    DateTime?
   refundedAt  DateTime?
+  completedAt DateTime?
 
   cancelAmount Int?
   
@@ -373,6 +377,13 @@ model Payment {
   pgResponse  Json? // 결제 플랫폼 응답
 
   virtualAccount VirtualAccount? // 가상 계좌
+
+  needWallet Boolean @default(false)
+  receiverWalletAddress String?
+  receiverWallet Wallet? @relation(fields: [receiverWalletAddress], references: [address])
+
+  postProcessResult Json?
+  postProcessResultAt DateTime?
 
   webhookEvents WebhookEvent[]
 
@@ -616,6 +627,7 @@ model CollectionContract {
   price       Int      @default(0)
   circulation  Int      @default(1000)
   mintedCount  Int      @default(0)
+  isListed     Boolean  @default(false)
   artistId     String?
   artist       Artist?  @relation(fields: [artistId], references: [id])
 

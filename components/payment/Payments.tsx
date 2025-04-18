@@ -2,7 +2,7 @@
 
 "use client";
 
-import { Payment } from "@prisma/client";
+import { Payment, Wallet } from "@prisma/client";
 import PayPalButton from "./PayPalButton";
 import PaymentButton from "./PaymentButton";
 import { PaymentResponse } from "@portone/browser-sdk/v2";
@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useToast } from "@/app/hooks/useToast";
 import { H1, H2, H3, Paragraph } from "@/components/atoms/Typography";
+import { formatCurrency } from "@/lib/utils/format";
 import { motion } from "framer-motion";
 import {
     LoaderCircle,
@@ -21,6 +22,15 @@ import {
     AlertCircle,
     DollarSign,
 } from "lucide-react";
+import { Wallet as WalletIcon } from "lucide-react";
+import { useWalletsByUserId } from "@/app/hooks/useWallet";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import Icon from "@/components/atoms/Icon";
 import Badge from "@/components/atoms/Badge";
 import { cn } from "@/lib/utils/tailwind";
@@ -42,12 +52,23 @@ export default function Payments({ payment, userId }: PaymentProps) {
     const toast = useToast();
     const [isProcessing, setIsProcessing] = useState(false);
     const [isAlreadyPaid, setIsAlreadyPaid] = useState(false);
+    const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
+    const { wallets, isLoading: isLoadingWallets } = useWalletsByUserId(userId);
+
+    const needsWalletSelection = payment.needWallet && !selectedWallet;
+    const showPaymentButton = !payment.needWallet || !needsWalletSelection;
 
     useEffect(() => {
         setCurrentPaymentId(payment.id);
         setUserId(userId);
         setIsAlreadyPaid(payment.status === "PAID");
     }, [payment.id, userId, setCurrentPaymentId, setUserId, payment.status]);
+
+    useEffect(() => {
+        if (wallets && wallets.length > 0) {
+            setSelectedWallet(wallets[0]);
+        }
+    }, [wallets]);
 
     useEffect(() => {
         if (
@@ -83,9 +104,16 @@ export default function Payments({ payment, userId }: PaymentProps) {
                 return;
             }
 
+            if (payment.needWallet && !selectedWallet) {
+                toast.error("Please select a receiving wallet");
+                setIsProcessing(false);
+                return;
+            }
+
             verifyPayment({
                 paymentId: payment.id,
                 userId,
+                receiverWalletAddress: selectedWallet?.address,
             });
         } catch (error) {
             toast.error(
@@ -95,14 +123,6 @@ export default function Payments({ payment, userId }: PaymentProps) {
             );
             setIsProcessing(false);
         }
-    };
-
-    const formatCurrency = (amount: number, currency: string) => {
-        return new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency: currency.replace("CURRENCY_", ""),
-            minimumFractionDigits: currency === "CURRENCY_KRW" ? 0 : 2,
-        }).format(currency === "CURRENCY_KRW" ? amount : amount / 100);
     };
 
     const formatDate = (date: Date | null | undefined) => {
@@ -358,6 +378,103 @@ export default function Payments({ payment, userId }: PaymentProps) {
                                     </div>
                                 </div>
 
+                                {/* Wallet Selection */}
+                                {payment.needWallet && (
+                                    <div className="bg-card/10 backdrop-blur-md p-6 rounded-2xl border border-border/5">
+                                        <div className="flex items-center mb-4">
+                                            <div className="p-2 bg-primary/10 rounded-lg mr-3">
+                                                <Icon
+                                                    icon={WalletIcon}
+                                                    className="w-5 h-5 text-primary"
+                                                />
+                                            </div>
+                                            <H3 size={20}>Receiving Wallet</H3>
+                                        </div>
+
+                                        {isLoadingWallets ? (
+                                            <div className="h-10 bg-secondary/20 animate-pulse rounded-lg" />
+                                        ) : wallets && wallets.length > 0 ? (
+                                            <div className="space-y-2">
+                                                <Select
+                                                    value={
+                                                        selectedWallet?.address
+                                                    }
+                                                    onValueChange={(value) => {
+                                                        const wallet =
+                                                            wallets.find(
+                                                                (w) =>
+                                                                    w.address ===
+                                                                    value
+                                                            );
+                                                        setSelectedWallet(
+                                                            wallet || null
+                                                        );
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select wallet to receive NFT" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {wallets.map(
+                                                            (wallet) => (
+                                                                <SelectItem
+                                                                    key={
+                                                                        wallet.id
+                                                                    }
+                                                                    value={
+                                                                        wallet.address
+                                                                    }
+                                                                >
+                                                                    <div className="flex items-center gap-2">
+                                                                        <WalletIcon className="h-4 w-4" />
+                                                                        <div className="flex flex-col">
+                                                                            <span className="font-medium">
+                                                                                {wallet.nickname ||
+                                                                                    "Wallet"}
+                                                                                {wallet.default && (
+                                                                                    <span className="ml-2 text-xs text-primary">
+                                                                                        (Default)
+                                                                                    </span>
+                                                                                )}
+                                                                            </span>
+                                                                            <span className="text-xs text-muted-foreground">
+                                                                                {`${wallet.address.slice(
+                                                                                    0,
+                                                                                    6
+                                                                                )}...${wallet.address.slice(
+                                                                                    -4
+                                                                                )}`}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </SelectItem>
+                                                            )
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                                {selectedWallet && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Selected wallet:{" "}
+                                                        {selectedWallet.address.slice(
+                                                            0,
+                                                            6
+                                                        )}
+                                                        ...
+                                                        {selectedWallet.address.slice(
+                                                            -4
+                                                        )}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg">
+                                                No wallets available. Please add
+                                                a wallet first.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {/* Payment Action */}
                                 {payment.status !== "PAID" && (
                                     <motion.div
@@ -399,11 +516,26 @@ export default function Payments({ payment, userId }: PaymentProps) {
                                             </div>
                                         ) : (
                                             <div>
-                                                <div className="flex justify-center w-full">
-                                                    {payment.payMethod ===
-                                                    "PAYPAL" ? (
-                                                        <div className="w-full my-6">
-                                                            <PayPalButton
+                                                {showPaymentButton ? (
+                                                    <div className="flex justify-center w-full">
+                                                        {payment.payMethod ===
+                                                        "PAYPAL" ? (
+                                                            <div className="w-full my-6">
+                                                                <PayPalButton
+                                                                    payment={
+                                                                        payment
+                                                                    }
+                                                                    disabled={
+                                                                        isProcessing ||
+                                                                        isVerifyingPayment
+                                                                    }
+                                                                    onPaymentProceed={
+                                                                        handlePaymentProceed
+                                                                    }
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <PaymentButton
                                                                 payment={
                                                                     payment
                                                                 }
@@ -415,20 +547,15 @@ export default function Payments({ payment, userId }: PaymentProps) {
                                                                     handlePaymentProceed
                                                                 }
                                                             />
-                                                        </div>
-                                                    ) : (
-                                                        <PaymentButton
-                                                            payment={payment}
-                                                            disabled={
-                                                                isProcessing ||
-                                                                isVerifyingPayment
-                                                            }
-                                                            onPaymentProceed={
-                                                                handlePaymentProceed
-                                                            }
-                                                        />
-                                                    )}
-                                                </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-center text-muted-foreground">
+                                                        Please select a
+                                                        receiving wallet to
+                                                        continue
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </motion.div>

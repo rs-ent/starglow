@@ -4,6 +4,7 @@ import { Metadata } from "@prisma/client";
 import {
     getCollectionMetadata,
     getLinkableCollectionMetadata,
+    getMetadataByCollectionAddress,
 } from "../actions/metadata";
 
 export function useCollectionMetadata(metadataId: string) {
@@ -24,6 +25,14 @@ export function useNFTMetadataStatus(collectionAddress: string) {
     return useQuery({
         queryKey: metadataKeys.nfts(collectionAddress),
         queryFn: () => getCollectionMetadata(collectionAddress),
+        enabled: !!collectionAddress,
+    });
+}
+
+export function useMetadataByCollectionAddress(collectionAddress: string) {
+    return useQuery({
+        queryKey: metadataKeys.collection(collectionAddress),
+        queryFn: () => getMetadataByCollectionAddress(collectionAddress),
         enabled: !!collectionAddress,
     });
 }

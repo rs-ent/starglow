@@ -234,7 +234,9 @@ export default function OnChainCollection() {
                                                         variant="outline"
                                                         className="bg-muted/30"
                                                     >
-                                                        {collection.maxSupply}
+                                                        {collection.maxSupply} (
+                                                        {collection.mintedCount}{" "}
+                                                        minted)
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>

@@ -135,6 +135,7 @@ export const collectionKeys = {
             to,
             quantity,
         ] as const,
+    listed: () => [...collectionKeys.all, "listed"] as const,
 };
 
 export const metadataKeys = {
@@ -147,4 +148,42 @@ export const metadataKeys = {
         [...metadataKeys.all, "collection", address] as const,
     nfts: (collectionAddress: string) =>
         [...metadataKeys.all, "nfts", collectionAddress] as const,
+} as const;
+
+export const walletKeys = {
+    all: ["wallets"] as const,
+    byUserId: (userId: string) => ["wallets", "user", userId] as const,
+} as const;
+
+export const paymentPostProcessorKeys = {
+    all: ["payment-post-processor"] as const,
+    status: (paymentId: string) =>
+        [...paymentPostProcessorKeys.all, "status", paymentId] as const,
+    result: (paymentId: string) =>
+        [...paymentPostProcessorKeys.all, "result", paymentId] as const,
+    nft: {
+        transfer: (paymentId: string) =>
+            [
+                ...paymentPostProcessorKeys.all,
+                "nft",
+                "transfer",
+                paymentId,
+            ] as const,
+        escrowTransfer: (paymentId: string) =>
+            [
+                ...paymentPostProcessorKeys.all,
+                "nft",
+                "escrow-transfer",
+                paymentId,
+            ] as const,
+    },
+    events: {
+        process: (paymentId: string) =>
+            [
+                ...paymentPostProcessorKeys.all,
+                "events",
+                "process",
+                paymentId,
+            ] as const,
+    },
 } as const;

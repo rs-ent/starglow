@@ -9,7 +9,7 @@ import {
     EasyPayProvider,
     CardProvider,
 } from "@/lib/types/payment";
-import { Payment } from "@prisma/client";
+import { Payment, Wallet } from "@prisma/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import PaymentSelector from "./PaymentSelector";
 import { useEffect, useState, useMemo } from "react";
@@ -21,6 +21,7 @@ import { useAuthUserId } from "@/app/auth/authUtils.Client";
 import { useToast } from "@/app/hooks/useToast";
 import { useLoading } from "@/app/hooks/useLoading";
 import { getPayment } from "@/app/actions/payment";
+import { usePaymentPostProcessor } from "@/app/hooks/usePaymentPostProcessor";
 
 interface PaymentModuleProps {
     productTable: ProductTable;
@@ -29,6 +30,8 @@ interface PaymentModuleProps {
 
     productInitialCurrencyForDisplay?: Currency;
     productInitialPriceForDisplay?: number;
+
+    needWallet?: boolean;
 
     buttonText?: string;
 
@@ -47,6 +50,8 @@ export default function PaymentModule({
     quantity,
     productInitialCurrencyForDisplay = "CURRENCY_KRW",
     productInitialPriceForDisplay = 0,
+
+    needWallet = false,
 
     buttonText = "Get Now",
 
@@ -85,6 +90,21 @@ export default function PaymentModule({
         currentPayment,
         setCurrentPaymentId,
     } = usePayment();
+
+    const {
+        processPayment: postProcess,
+        isLoading: isPostProcessing,
+        error: postProcessError,
+        status: postProcessStatus,
+        details: postProcessDetails,
+    } = usePaymentPostProcessor(currentPaymentId ?? "", {
+        onSuccess: () => {
+            toast.success("Payment processed successfully");
+        },
+        onError: (error) => {
+            toast.error("Payment processing failed");
+        },
+    });
 
     const exchangeRate = getExchangeRate(
         productInitialCurrencyForDisplay,
@@ -133,6 +153,7 @@ export default function PaymentModule({
             userId: authUserId ?? undefined,
             productId,
             quantity,
+            needWallet,
             currency,
             payMethod,
             easyPayProvider: easyPayProvider ?? undefined,
@@ -162,6 +183,7 @@ export default function PaymentModule({
                     case "PAID":
                         console.log("Payment Success", payment);
                         toast.success("Payment successful");
+                        postProcess(payment);
                         onPaymentSuccess?.(payment);
                         break;
                     case "FAILED":
@@ -193,6 +215,18 @@ export default function PaymentModule({
 
         handlePaymentResult();
     }, [paymentResult.paymentId]);
+
+    useEffect(() => {
+        if (postProcessStatus?.status === "COMPLETED") {
+            if (postProcessDetails?.type === "NFT_TRANSFER") {
+                toast.success("NFT transfer completed");
+            } else if (postProcessDetails?.type === "NFT_ESCROW_TRANSFER") {
+                toast.success("NFT escrow transfer completed");
+            } else if (postProcessDetails?.type === "EVENT_PROCESS") {
+                toast.success("Event processing completed");
+            }
+        }
+    }, [postProcessStatus, postProcessDetails]);
 
     useEffect(() => {
         if (currentPaymentId && !isCreatingPayment) {

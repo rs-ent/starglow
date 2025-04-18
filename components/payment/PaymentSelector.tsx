@@ -42,7 +42,6 @@ export default function PaymentSelector({
                 onEasyPayProviderChange("EASY_PAY_PROVIDER_TOSSPAY");
             }
         } else if (payMethod === "CARD") {
-            onCurrencyChange("CURRENCY_KRW");
             if (!cardProvider) {
                 onCardProviderChange("COUNTRY_KR");
             }

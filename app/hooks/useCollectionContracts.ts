@@ -8,6 +8,8 @@ import {
     useCollectionContractQuery,
     useCollectionStatusQuery,
     useCollectionSettingsQuery,
+    useEstimateMintGasQuery,
+    useListedCollectionsQuery,
 } from "../queries/collectionContractsQueries";
 import {
     useMintTokensMutation,
@@ -23,6 +25,39 @@ import type {
     ToggleMintingParams,
 } from "../actions/collectionContracts";
 import { useToast } from "./useToast";
+
+export interface CollectionContract {
+    id: string;
+    address: string;
+    name: string;
+    symbol: string;
+    factoryAddress?: string;
+    network?: {
+        id: string;
+        name: string;
+        chainId: number;
+        rpcUrl: string;
+        explorerUrl: string;
+        symbol: string;
+        isTestnet: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        isActive: boolean;
+    };
+    maxSupply: number;
+    mintPrice: string;
+    baseURI?: string;
+    contractURI?: string;
+    createdAt: Date;
+    txHash?: string | null;
+    factory?: any;
+    paused?: boolean;
+    mintingEnabled?: boolean;
+    price: number;
+    circulation: number;
+    mintedCount: number;
+    isListed: boolean;
+}
 
 /**
  * 컬렉션 컨트랙트 관리를 위한 통합 훅
@@ -180,12 +215,17 @@ export function useCollectionSettings(collectionId: string) {
 
     const updateSettingsMutation = useUpdateCollectionSettingsMutation();
 
-    const updateSettings = async (price: number, circulation: number) => {
+    const updateSettings = async (
+        price: number,
+        circulation: number,
+        isListed: boolean
+    ) => {
         try {
             const result = await updateSettingsMutation.mutateAsync({
                 collectionId,
                 price,
                 circulation,
+                isListed,
             });
 
             if (!result.success) {
@@ -204,5 +244,180 @@ export function useCollectionSettings(collectionId: string) {
         error,
         updateSettings,
         isUpdating: updateSettingsMutation.isPending,
+    };
+}
+
+export function useCollectionFunctions(collection: CollectionContract) {
+    const toast = useToast();
+    const [lastOperation, setLastOperation] = useState<{
+        success: boolean;
+        message: string;
+        txHash?: string;
+    } | null>(null);
+
+    const { data: status, isLoading: isStatusLoading } =
+        useCollectionStatusQuery(
+            collection.address,
+            collection.network?.id || "",
+            collection.network?.rpcUrl || ""
+        );
+
+    const estimateGas = (to: string, quantity: number, privateKey?: string) => {
+        return useEstimateMintGasQuery(
+            collection.address,
+            collection.network?.id || "",
+            to,
+            quantity,
+            privateKey
+        );
+    };
+
+    const mintTokensMutation = useMintTokensMutation();
+    const togglePauseMutation = useTogglePauseMutation();
+    const toggleMintingMutation = useToggleMintingMutation();
+
+    const mintTokens = async (params: {
+        to: string;
+        quantity: number;
+        privateKey: string;
+        gasLimit?: string;
+        gasPrice?: string;
+    }) => {
+        try {
+            const result = await mintTokensMutation.mutateAsync({
+                collectionAddress: collection.address,
+                networkId: collection.network?.id || "",
+                ...params,
+            });
+
+            handleOperationResult(
+                result,
+                `Successfully minted ${result.data?.quantity} tokens`
+            );
+            return result;
+        } catch (error) {
+            toast.error("Failed to mint tokens");
+            handleOperationError(error, "Failed to mint tokens");
+            throw error;
+        }
+    };
+
+    const togglePause = async (params: {
+        pause: boolean;
+        privateKey: string;
+    }) => {
+        try {
+            const result = await togglePauseMutation.mutateAsync({
+                collectionAddress: collection.address,
+                networkId: collection.network?.id || "",
+                ...params,
+            });
+
+            handleOperationResult(
+                result,
+                `Successfully ${
+                    params.pause ? "paused" : "unpaused"
+                } the collection`
+            );
+            return result;
+        } catch (error) {
+            handleOperationError(
+                error,
+                `${params.pause ? "pausing" : "unpausing"} collection`
+            );
+            throw error;
+        }
+    };
+
+    const toggleMinting = async (params: {
+        enabled: boolean;
+        privateKey: string;
+    }) => {
+        try {
+            const result = await toggleMintingMutation.mutateAsync({
+                collectionAddress: collection.address,
+                networkId: collection.network?.id || "",
+                ...params,
+            });
+
+            handleOperationResult(
+                result,
+                `Successfully ${
+                    params.enabled ? "enabled" : "disabled"
+                } minting`
+            );
+            return result;
+        } catch (error) {
+            handleOperationError(
+                error,
+                `${params.enabled ? "enabling" : "disabling"} minting`
+            );
+            throw error;
+        }
+    };
+
+    const handleOperationResult = (result: any, successMessage: string) => {
+        if (result.success) {
+            setLastOperation({
+                success: true,
+                message: successMessage,
+                txHash: result.data?.transactionHash,
+            });
+            toast.success(successMessage);
+        } else {
+            throw new Error(result.error || "Unknown error");
+        }
+    };
+
+    const handleOperationError = (error: unknown, operation: string) => {
+        const errorMessage =
+            error instanceof Error
+                ? error.message
+                : `Unknown error ${operation}`;
+        setLastOperation({
+            success: false,
+            message: errorMessage,
+        });
+        toast.error(errorMessage);
+    };
+
+    return {
+        // Status
+        status,
+        isStatusLoading,
+        lastOperation,
+
+        // Operations
+        estimateGas,
+        mintTokens,
+        togglePause,
+        toggleMinting,
+
+        // Mutation states
+        isMinting: mintTokensMutation.isPending,
+        isTogglingPause: togglePauseMutation.isPending,
+        isTogglingMinting: toggleMintingMutation.isPending,
+
+        // Reset
+        resetLastOperation: () => setLastOperation(null),
+    };
+}
+
+export function useListedCollections() {
+    const {
+        data: listedCollections,
+        isLoading,
+        isError,
+        error,
+        refetch,
+    } = useListedCollectionsQuery();
+
+    return {
+        listedCollections,
+        isLoading,
+        isError,
+        error,
+        refetch,
+        isEmpty: listedCollections?.length === 0,
     };
 }

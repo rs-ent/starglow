@@ -909,7 +909,9 @@ export function OnChainMetadata({
     const [previewMetadata, setPreviewMetadata] =
         useState<METADATA_TYPE | null>(null);
 
-    const { linkableMetadata, createCollection, linkMetadata } = useMetadata();
+    const { linkableMetadata, createCollection, linkMetadata } = useMetadata(
+        {}
+    );
 
     const form = useForm<MetadataFormValues>({
         resolver: zodResolver(metadataFormSchema),

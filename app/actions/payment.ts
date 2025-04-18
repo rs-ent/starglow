@@ -3,7 +3,7 @@
 "use server";
 
 import * as PortOne from "@portone/browser-sdk/v2";
-import { PaymentStatus, PrismaClient } from "@prisma/client";
+import { PaymentStatus, PrismaClient, Wallet } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 import { Payment, Events, PaymentPromotionDiscountType } from "@prisma/client";
 import { encrypt, decrypt } from "@/lib/utils/encryption";
@@ -421,6 +421,8 @@ export interface CreatePaymentInput {
     productName?: string;
     productDefaultCurrency?: Currency;
 
+    needWallet?: boolean;
+
     quantity: number;
     currency: Currency;
     payMethod: PayMethod;
@@ -485,8 +487,8 @@ export async function createPayment(
             input.productTable,
             input.productId,
             input.payMethod,
-            input.easyPayProvider,
-            input.cardProvider
+            input.easyPayProvider as EasyPayProvider | undefined,
+            input.cardProvider as CardProvider | undefined
         );
 
         if (recentCheck.isDuplicate) {
@@ -623,6 +625,8 @@ export async function createPayment(
                     easyPayProvider: input.easyPayProvider,
                     cardProvider: input.cardProvider,
 
+                    needWallet: input.needWallet ?? false,
+
                     exchangeRate: exchangeRateInfo.rate,
                     exchangeRateProvider: exchangeRateInfo.provider,
                     exchangeRateTimestamp: exchangeRateInfo.createdAt,
@@ -647,6 +651,7 @@ export async function createPayment(
                     amount: payment.amount,
                     currency: payment.currency,
                     status: payment.status,
+                    receiverWalletAddress: payment.receiverWalletAddress,
                 });
 
                 txScope.end({ success: true, paymentId: payment.id });
@@ -698,6 +703,7 @@ export async function createPayment(
 export interface VerifyPaymentInput {
     paymentId: string;
     userId: string;
+    receiverWalletAddress?: string;
 }
 
 export interface VerifyPaymentSuccess {
@@ -1063,10 +1069,8 @@ export async function verifyPayment(
             };
         }
 
-        logDebug(
-            `Payment data retrieved`,
-            isDev ? payment : { id: payment.id }
-        );
+        // payment가 null이 아님이 확인되었으므로 이후 로직에서 안전하게 사용 가능
+        let currentPayment = payment; // 변경 가능한 payment 참조 생성
 
         // 병렬로 검증 진행
         logDebug(`Starting parallel validations for payment: ${payment.id}`);
@@ -1138,9 +1142,37 @@ export async function verifyPayment(
                     async (tx) => {
                         try {
                             logDebug(`Getting product information`, {
-                                productTable: payment.productTable,
-                                productId: payment.productId,
+                                productTable: currentPayment.productTable,
+                                productId: currentPayment.productId,
                             });
+
+                            if (currentPayment.needWallet) {
+                                if (!input.receiverWalletAddress) {
+                                    logWarning(
+                                        `Receiver wallet address is missing`,
+                                        {
+                                            paymentId: currentPayment.id,
+                                        }
+                                    );
+                                    return {
+                                        isValid: false,
+                                        code: "INVALID_INPUT",
+                                        message:
+                                            "Receiver wallet address is missing",
+                                    };
+                                }
+
+                                // 지갑 주소 업데이트
+                                const updatedPayment = await tx.payment.update({
+                                    where: { id: currentPayment.id },
+                                    data: {
+                                        receiverWalletAddress:
+                                            input.receiverWalletAddress,
+                                    },
+                                });
+
+                                currentPayment = updatedPayment;
+                            }
 
                             const {
                                 productPrice,
@@ -1148,8 +1180,8 @@ export async function verifyPayment(
                                 productName,
                             } = await getProduct({
                                 productTable:
-                                    payment.productTable as ProductTable,
-                                productId: payment.productId,
+                                    currentPayment.productTable as ProductTable,
+                                productId: currentPayment.productId,
                                 tx,
                             });
 
@@ -1159,8 +1191,8 @@ export async function verifyPayment(
                                 !productName
                             ) {
                                 logWarning(`Product not found`, {
-                                    productTable: payment.productTable,
-                                    productId: payment.productId,
+                                    productTable: currentPayment.productTable,
+                                    productId: currentPayment.productId,
                                 });
                                 return {
                                     isValid: false,
@@ -1176,17 +1208,17 @@ export async function verifyPayment(
                             });
 
                             const exchangeRateInfo = {
-                                rate: payment.exchangeRate,
-                                provider: payment.exchangeRateProvider,
-                                createdAt: payment.exchangeRateTimestamp,
+                                rate: currentPayment.exchangeRate,
+                                provider: currentPayment.exchangeRateProvider,
+                                createdAt: currentPayment.exchangeRateTimestamp,
                             } as ExchangeRateInfo;
 
                             logDebug(`Calculating total price`, {
                                 productPrice,
                                 fromCurrency: defaultCurrency,
-                                toCurrency: payment.currency,
-                                quantity: payment.quantity,
-                                exchangeRate: payment.exchangeRate,
+                                toCurrency: currentPayment.currency,
+                                quantity: currentPayment.quantity,
+                                exchangeRate: currentPayment.exchangeRate,
                             });
 
                             const {
@@ -1196,10 +1228,10 @@ export async function verifyPayment(
                             } = await getTotalPrice({
                                 productPrice,
                                 fromCurrency: defaultCurrency,
-                                toCurrency: payment.currency as Currency,
-                                quantity: payment.quantity,
+                                toCurrency: currentPayment.currency as Currency,
+                                quantity: currentPayment.quantity,
                                 promotionCode:
-                                    payment.promotionCode ?? undefined,
+                                    currentPayment.promotionCode ?? undefined,
                                 exchangeRateInfo,
                                 tx,
                             });
@@ -1208,18 +1240,21 @@ export async function verifyPayment(
                                 convertedPrice,
                                 totalAmount,
                                 promotionActivated,
-                                expectedConvertedPrice: payment.convertedPrice,
-                                expectedTotalAmount: payment.amount,
+                                expectedConvertedPrice:
+                                    currentPayment.convertedPrice,
+                                expectedTotalAmount: currentPayment.amount,
                             });
 
                             if (
-                                convertedPrice !== payment.convertedPrice ||
-                                totalAmount !== payment.amount
+                                convertedPrice !==
+                                    currentPayment.convertedPrice ||
+                                totalAmount !== currentPayment.amount
                             ) {
                                 logWarning(`Payment amount mismatch`, {
                                     expected: {
-                                        convertedPrice: payment.convertedPrice,
-                                        totalAmount: payment.amount,
+                                        convertedPrice:
+                                            currentPayment.convertedPrice,
+                                        totalAmount: currentPayment.amount,
                                     },
                                     calculated: {
                                         convertedPrice,
@@ -1268,7 +1303,10 @@ export async function verifyPayment(
             }
 
             // PortOne API 호출로 최종 검증
-            return await verifyPaymentWithPortOne(payment, input.paymentId);
+            return await verifyPaymentWithPortOne(
+                currentPayment,
+                input.paymentId
+            );
         } catch (txError) {
             logError("Transaction execution failed", txError);
             return {

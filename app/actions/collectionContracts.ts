@@ -9,7 +9,6 @@ import { COLLECTION_ABI } from "../blockchain/abis/Collection";
 import { getBlockchainNetworkById } from "./blockchain";
 import { prisma } from "@/lib/prisma/client";
 import { createNFTMetadata } from "./metadata";
-import { BooleanLiteralTypeAnnotation } from "@babel/types";
 
 interface SaveCollectionContractParams {
     collectionKey: string;
@@ -115,6 +114,27 @@ export async function getCollectionContract(id: string) {
             include: {
                 network: true,
                 factory: true,
+            },
+        });
+
+        if (!collection) {
+            return { success: false, error: "Collection not found" };
+        }
+
+        return { success: true, data: collection };
+    } catch (error) {
+        console.error("Error fetching collection contract:", error);
+        return { success: false, error: "Failed to fetch collection contract" };
+    }
+}
+
+export async function getCollectionContractByAddress(address: string) {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address },
+            include: {
+                network: true,
+                metadata: true,
             },
         });
 
@@ -1396,6 +1416,7 @@ export interface UpdateCollectionSettingsInput {
     collectionId: string;
     price: number;
     circulation: number;
+    isListed: boolean;
 }
 
 export interface UpdateCollectionSettingsResult {
@@ -1404,6 +1425,7 @@ export interface UpdateCollectionSettingsResult {
         id: string;
         price: number;
         circulation: number;
+        isListed: boolean;
     };
     error?: string;
 }
@@ -1412,18 +1434,20 @@ export async function updateCollectionSettings(
     input: UpdateCollectionSettingsInput
 ): Promise<UpdateCollectionSettingsResult> {
     try {
-        const { collectionId, price, circulation } = input;
+        const { collectionId, price, circulation, isListed } = input;
 
         const updatedCollection = await prisma.collectionContract.update({
             where: { id: collectionId },
             data: {
                 price,
                 circulation,
+                isListed,
             },
             select: {
                 id: true,
                 price: true,
                 circulation: true,
+                isListed: true,
             },
         });
 
@@ -1441,4 +1465,13 @@ export async function updateCollectionSettings(
                     : "Unknown error updating collection settings",
         };
     }
+}
+
+export async function listedCollections() {
+    const collections = await prisma.collectionContract.findMany({
+        where: {
+            isListed: true,
+        },
+    });
+    return collections;
 }
