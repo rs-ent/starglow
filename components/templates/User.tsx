@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import NavBar from "@/components/organisms/NavBar";
 import UserHeader from "@/components/organisms/UserHeader";
 import UserSidebar from "@/components/organisms/UserSidebar";
 import UserContent from "@/components/organisms/UserContent";
@@ -12,14 +13,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/app/hooks/useToast";
 
 export interface UserTemplateProps {
-    userData: User;
+    user: User;
     owner: boolean;
     wallets: Wallet[];
     searchParams?: { [key: string]: string | string[] | undefined };
 }
 
 export default function User({
-    userData,
+    user,
     owner,
     wallets,
     searchParams,
@@ -58,55 +59,20 @@ export default function User({
 
     return (
         <div className="relative min-h-screen bg-background">
-            {/* Mobile Hamburger Icon */}
-            <Hamburger
-                isOpen={isOpen}
-                toggle={toggle}
-                className="absolute top-4 right-4 z-50 lg:hidden"
-            />
-
-            {/* User Header */}
-            <UserHeader
-                src={userData.image || "/default-profile.png"}
-                name={userData.name || "User"}
-                walletAddress={
-                    wallets.find((wallet) => wallet.primary)?.address
-                }
-            />
+            <div className="sticky top-0 z-10 backdrop-blur-md">
+                <NavBar />
+            </div>
 
             {/* Main Content Area */}
             <div className="flex h-screen">
                 {/* Desktop Sidebar */}
-                <aside className="hidden lg:block w-[clamp(220px,15%,300px)] bg-muted/30 pt-5">
-                    <UserSidebar onSectionClick={setContentType} />
-                </aside>
+                <UserSidebar onSectionClick={setContentType} />
 
                 {/* User Content */}
                 <main className="flex-1 bg-background">
-                    <UserContent contentType={contentType} />
+                    <UserContent contentType={contentType} user={user} />
                 </main>
             </div>
-
-            {/* Mobile Sidebar Menu */}
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-40"
-                    >
-                        <UserSidebar
-                            onSectionClick={handleSectionClick}
-                            frameSize={25}
-                            textSize={30}
-                            paddingSize={70}
-                            gapSize={30}
-                            buttonGap={12}
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </div>
     );
 }

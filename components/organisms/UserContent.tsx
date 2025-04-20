@@ -1,14 +1,20 @@
 /// components\organisms\UserContent.tsx
 
 import UserIntegration from "./UserIntegration";
+import UserMyAssets from "./User.MyAssets";
+import { User } from "@prisma/client";
 interface UserContentProps {
     contentType: string;
+    user: User;
 }
 
-export default function UserContent({ contentType }: UserContentProps) {
+export default function UserContent({
+    contentType,
+    user,
+}: UserContentProps) {
     return (
         <main className="flex-1 p-6">
-            {contentType === "myassets" && <div>My Assets Content</div>}
+            {contentType === "myassets" && <UserMyAssets user={user} />}
             {contentType === "integration" && <UserIntegration />}
             {contentType === "nft-mint" && <div>NFT Minting Content</div>}
         </main>

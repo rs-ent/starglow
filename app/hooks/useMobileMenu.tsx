@@ -1,6 +1,6 @@
 /// hooks/useMobileMenu.tsx
 
-import { create } from 'zustand';
+import { create } from "zustand";
 
 interface MobileMenuState {
     isOpen: boolean;

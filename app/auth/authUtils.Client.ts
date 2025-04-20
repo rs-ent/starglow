@@ -46,7 +46,7 @@ export async function getAuthUserIdClient(): Promise<string | null> {
 }
 
 /**
- * 세션 없이 사용자 정보를 가져오는 함수 (useEffect 내부 등에서 사용)
+ * 사용자 정보를 가져오는 함수 (useEffect 내부 등에서 사용)
  * @returns Promise<User | null>
  */
 export async function getAuthUserClient(): Promise<User | null> {

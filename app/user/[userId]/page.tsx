@@ -17,15 +17,15 @@ export default async function UserProfile(props: UserProfileProps) {
     const params = await props.params;
     const searchParams = await props.searchParams;
     const userId = params.userId;
-    const userData = await getUserById(userId);
+    const user = await getUserById(userId);
     const wallets = await getUserWallets(userId);
-    if (!userData) return notFound();
+    if (!user) return notFound();
 
     const owner = session.user.id === userId;
 
     return (
         <User
-            userData={userData}
+            user={user}
             wallets={wallets}
             owner={owner}
             searchParams={searchParams}

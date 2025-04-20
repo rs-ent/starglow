@@ -1,5 +1,8 @@
 /// components\atoms\Avatar.tsx
 
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+
 interface AvatarProps {
     src?: string;
     alt: string;
@@ -9,16 +12,16 @@ interface AvatarProps {
 export default function Avatar({
     src = "/default-avatar.jpg",
     alt = "Avatar",
-    size = 40,
+    size = 20,
 }: AvatarProps) {
+    const responsiveClass = getResponsiveClass(size);
+    const frameSize = responsiveClass.frameClass;
     return (
-        <div className="relative w-[40px] h-[40px]">
+        <div className={cn("relative w-[40px] h-[40px]", frameSize)}>
             <img
                 src={src}
                 alt={alt}
-                width={size}
-                height={size}
-                className="rounded-full object-cover"
+                className={cn("rounded-full object-cover", frameSize)}
             />
         </div>
     );

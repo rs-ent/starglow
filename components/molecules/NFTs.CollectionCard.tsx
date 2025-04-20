@@ -20,9 +20,19 @@ import { METADATA_TYPE } from "@/app/actions/metadata";
 
 interface CollectionCardProps {
     collection: CollectionContract;
+    nftCount?: number;
+    showPrice?: boolean;
+    showSharePercentage?: boolean;
+    showCirculation?: boolean;
 }
 
-export default function CollectionCard({ collection }: CollectionCardProps) {
+export default function CollectionCard({
+    collection,
+    nftCount,
+    showPrice = true,
+    showSharePercentage = true,
+    showCirculation = true,
+}: CollectionCardProps) {
     const { metadataByCollectionAddress } = useMetadata({
         collectionAddress: collection.address,
     });
@@ -54,15 +64,28 @@ export default function CollectionCard({ collection }: CollectionCardProps) {
                         <Skeleton className="w-full h-full" />
                     )}
 
-                    {/* 가격 배지 */}
+                    {/* 가격과 NFT 수량 배지 */}
                     <div className="absolute top-4 right-4 flex gap-2">
-                        <Badge
-                            variant="secondary"
-                            className="font-bold px-3 py-1.5"
-                        >
-                            <CircleDollarSign className="w-4 h-4 mr-1 inline" />
-                            ${collection.price}
-                        </Badge>
+                        {showPrice && (
+                            <Badge
+                                variant="secondary"
+                                className="font-bold px-3 py-1.5"
+                            >
+                                <CircleDollarSign className="w-4 h-4 mr-1 inline" />
+                                ${collection.price}
+                            </Badge>
+                        )}
+                        {nftCount !== undefined && (
+                            <Badge
+                                variant="secondary"
+                                className="font-bold px-3 py-1.5"
+                            >
+                                <Users className="w-4 h-4 mr-1 inline" />
+                                {nftCount > 1
+                                    ? `Owned ${nftCount} NFTs`
+                                    : "Owned 1 NFT"}
+                            </Badge>
+                        )}
                     </div>
                 </div>
 
@@ -77,19 +100,27 @@ export default function CollectionCard({ collection }: CollectionCardProps) {
                     )}
                 </CardHeader>
 
-                <CardFooter className="flex items-center justify-between p-4 pt-0">
-                    <div className="flex items-center gap-2 text-sm">
-                        <Users className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                            {collection.circulation}
-                        </span>
-                    </div>
-                    {sharePercentage && (
-                        <Badge variant="outline" className="font-medium">
-                            {sharePercentage} Share
-                        </Badge>
-                    )}
-                </CardFooter>
+                {showCirculation ||
+                    (showSharePercentage && (
+                        <CardFooter className="flex items-center justify-between p-4 pt-0">
+                            {showCirculation && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <Users className="w-4 h-4 text-muted-foreground" />
+                                    <span className="text-muted-foreground">
+                                        {collection.circulation}
+                                    </span>
+                                </div>
+                            )}
+                            {sharePercentage && showSharePercentage && (
+                                <Badge
+                                    variant="outline"
+                                    className="font-medium"
+                                >
+                                    {sharePercentage} Share
+                                </Badge>
+                            )}
+                        </CardFooter>
+                    ))}
             </Card>
         </Link>
     );
