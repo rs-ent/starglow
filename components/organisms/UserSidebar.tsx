@@ -39,6 +39,11 @@ export default function UserSidebar({
             svg: "/ui/integration.svg",
         },
         { label: "NFT Minting", key: "nft-mint", svg: "/ui/mint.svg" },
+        {
+            label: "Sign Out",
+            key: "signout",
+            svg: "/ui/signout.svg",
+        }
     ];
 
     return (
