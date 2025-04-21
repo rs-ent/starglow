@@ -7,6 +7,7 @@ import {
     useCreateCollectionMetadata,
     useCreateNFTMetadata,
     useLinkCollectionMetadata,
+    useRecoverNFTMetadata,
 } from "../mutations/metadataMutations";
 
 export function useMetadata({
@@ -24,6 +25,7 @@ export function useMetadata({
     const metadataByCollectionAddress = useMetadataByCollectionAddress(
         collectionAddress || ""
     );
+    const recoverNFTMetadata = useRecoverNFTMetadata();
 
     return {
         // queries
@@ -39,11 +41,13 @@ export function useMetadata({
         createCollection: createCollection.mutate,
         createNFTs: createNFTs.mutate,
         linkMetadata: linkMetadata.mutate,
+        recoverNFTMetadata: recoverNFTMetadata.mutateAsync,
 
         // mutation states
         isCreating: createCollection.isPending,
         isCreatingNFTs: createNFTs.isPending,
         isLinking: linkMetadata.isPending,
+        isRecovering: recoverNFTMetadata.isPending,
 
         // errors
         error:
@@ -53,5 +57,6 @@ export function useMetadata({
         createError: createCollection.error,
         createNFTsError: createNFTs.error,
         linkError: linkMetadata.error,
+        recoverError: recoverNFTMetadata.error,
     };
 }

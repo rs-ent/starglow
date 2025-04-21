@@ -368,6 +368,7 @@ Table BlockchainNetwork {
   symbol String [not null]
   isTestnet Boolean [not null, default: true]
   isActive Boolean [not null, default: true]
+  multicallAddress String
   factoryContracts FactoryContract [not null]
   collectionContracts CollectionContract [not null]
   createdAt DateTime [default: `now()`, not null]

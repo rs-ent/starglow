@@ -13,6 +13,7 @@ import {
     NFTsByWalletsParams,
 } from "@/app/actions/nfts";
 import { queryKeys } from "../queryKeys";
+import { verifyNFTOwnershipQuery } from "../queries/nftQueries";
 
 // 개별 훅으로 분리하여 재사용성 향상
 export function useNFTs(filters: NFTFilters, pagination: NFTPaginationParams) {
@@ -68,6 +69,32 @@ export function useNFTsByWallets(params: NFTsByWalletsParams) {
     });
 }
 
+export function useVerifyNFTOwnership({
+    contractAddress,
+    tokenIds,
+    ownerAddress,
+    networkId,
+}: {
+    contractAddress: string;
+    tokenIds: string[];
+    ownerAddress: string;
+    networkId: string;
+}) {
+    return useQuery({
+        ...verifyNFTOwnershipQuery({
+            contractAddress,
+            tokenIds,
+            ownerAddress,
+            networkId,
+        }),
+        enabled:
+            !!contractAddress &&
+            tokenIds.length > 0 &&
+            !!ownerAddress &&
+            !!networkId,
+    });
+}
+
 // 필요한 경우 모든 훅을 한번에 사용할 수 있는 통합 훅 제공
 export function useNFTManager() {
     return {
@@ -75,5 +102,6 @@ export function useNFTManager() {
         useNFTDetails,
         useUpdateNFTStatus,
         useTransferNFTOwnership,
+        useVerifyNFTOwnership,
     };
 }

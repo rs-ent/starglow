@@ -499,6 +499,7 @@ model BlockchainNetwork {
   symbol           String
   isTestnet        Boolean              @default(true)
   isActive         Boolean              @default(true)
+  multicallAddress String?
   factoryContracts FactoryContract[]
   collectionContracts CollectionContract[]
   createdAt        DateTime             @default(now())

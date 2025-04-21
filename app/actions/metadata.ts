@@ -403,3 +403,33 @@ export async function getMetadataByCollectionAddress(address: string) {
         throw new Error("Failed to get metadata by collection address");
     }
 }
+
+export async function recoverNFTMetadata({
+    tokenId,
+    collectionAddress,
+}: {
+    tokenId: number;
+    collectionAddress: string;
+}) {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: {
+                address: collectionAddress,
+            },
+            include: {
+                metadata: true,
+            },
+        });
+
+        if (!collection) {
+            throw new Error("Collection not found");
+        }
+
+        const result = await createNFTMetadata(collection, 1, tokenId);
+
+        return result;
+    } catch (error) {
+        console.error("Failed to recover NFT metadata:", error);
+        throw new Error("Failed to recover NFT metadata");
+    }
+}

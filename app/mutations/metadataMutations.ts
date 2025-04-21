@@ -4,6 +4,7 @@ import {
     createCollectionMetadata,
     createNFTMetadata,
     linkCollectionMetadata,
+    recoverNFTMetadata,
 } from "../actions/metadata";
 import type { METADATA_TYPE } from "../actions/metadata";
 import type { CollectionContract } from "@prisma/client";
@@ -62,6 +63,32 @@ export function useLinkCollectionMetadata() {
             });
             queryClient.invalidateQueries({
                 queryKey: metadataKeys.collection(variables.collectionAddress),
+            });
+        },
+    });
+}
+
+export function useRecoverNFTMetadata() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            collectionAddress,
+            tokenId,
+        }: {
+            collectionAddress: string;
+            tokenId: number;
+        }) => recoverNFTMetadata({ collectionAddress, tokenId }),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: metadataKeys.recovery.nft(
+                    variables.collectionAddress,
+                    variables.tokenId
+                ),
+            });
+
+            queryClient.invalidateQueries({
+                queryKey: metadataKeys.nfts(variables.collectionAddress),
             });
         },
     });

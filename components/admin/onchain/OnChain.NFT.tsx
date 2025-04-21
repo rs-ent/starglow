@@ -40,6 +40,8 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
+import { useMetadata } from "@/app/hooks/useMetadata";
+import { useVerifyNFTOwnership } from "@/app/hooks/useNFTs";
 
 // 메타데이터 타입 정의
 interface NFTMetadata {
@@ -57,7 +59,7 @@ interface NFTMetadata {
     }[];
 }
 
-// NFT 필터 컴포넌트 개선
+// NFT 필터 컴포넌트
 function NFTFiltersComponent({
     filters,
     onFiltersChange,
@@ -135,17 +137,65 @@ function NFTCard({
     nft: NFTWithRelations;
     onViewDetails: (id: string) => void;
 }) {
-    const { data: metadata, isLoading: isLoadingMetadata } =
-        useQuery<NFTMetadata>({
-            queryKey: ["nft-metadata", nft.metadataUri],
-            queryFn: async () => {
-                if (!nft.metadataUri) return null;
-                const response = await fetch(nft.metadataUri);
-                if (!response.ok) throw new Error("Failed to fetch metadata");
-                return response.json();
-            },
-            enabled: !!nft.metadataUri,
+    const { recoverNFTMetadata, isRecovering } = useMetadata({
+        collectionAddress: nft.collection.address,
+    });
+
+    const [recoveryError, setRecoveryError] = useState<string | null>(null);
+
+    const handleRecovery = async () => {
+        try {
+            const recovered = await recoverNFTMetadata({
+                tokenId: Number(nft.tokenId),
+                collectionAddress: nft.collection.address,
+            });
+
+            if (recovered.successful > 0) {
+                return true;
+            }
+
+            throw new Error("Failed to recover metadata");
+        } catch (error) {
+            setRecoveryError(
+                "Failed to recover metadata. Please try again later."
+            );
+            return null;
+        }
+    };
+
+    const {
+        data: metadata,
+        isLoading: isLoadingMetadata,
+        error,
+    } = useQuery<NFTMetadata>({
+        queryKey: ["nft-metadata", nft.metadataUri],
+        queryFn: async () => {
+            if (!nft.metadataUri) return null;
+            const response = await fetch(nft.metadataUri);
+            if (!response.ok) throw new Error("Failed to fetch metadata");
+            return response.json();
+        },
+        enabled: true,
+        retry: 1,
+    });
+
+    // 온체인 소유권 확인
+    const { data: ownershipData, isLoading: isCheckingOwnership } =
+        useVerifyNFTOwnership({
+            contractAddress: nft.collection.address,
+            tokenIds: [nft.tokenId.toString()],
+            ownerAddress: nft.ownerAddress,
+            networkId: nft.networkId,
         });
+
+    // 로딩 상태 처리
+    if (isLoadingMetadata || isRecovering) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <Card className="hover:shadow-lg transition-shadow">
@@ -176,14 +226,48 @@ function NFTCard({
                         <span className="text-sm">
                             Collection: {nft.collection.name}
                         </span>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onViewDetails(nft.id)}
-                        >
-                            View Details
-                        </Button>
+                        <div className="flex flex-col gap-2 items-end">
+                            {isCheckingOwnership ? (
+                                <span className="text-sm text-muted-foreground">
+                                    Verifying ownership...
+                                </span>
+                            ) : ownershipData?.[0]?.isOwner === false ? (
+                                <span className="text-sm text-destructive">
+                                    Ownership mismatch
+                                </span>
+                            ) : (
+                                <span className="text-sm text-green-600">
+                                    Ownership verified
+                                </span>
+                            )}
+                            {(!metadata || error) && (
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={handleRecovery}
+                                    disabled={isRecovering}
+                                >
+                                    {isRecovering ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        "Recover Metadata"
+                                    )}
+                                </Button>
+                            )}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onViewDetails(nft.id)}
+                            >
+                                View Details
+                            </Button>
+                        </div>
                     </div>
+                    {recoveryError && (
+                        <div className="text-red-500 text-sm mt-2">
+                            {recoveryError}
+                        </div>
+                    )}
                 </div>
             </CardContent>
         </Card>

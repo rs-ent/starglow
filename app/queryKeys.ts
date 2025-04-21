@@ -102,6 +102,20 @@ export const queryKeys = {
         },
         filters: (params: Record<string, any>) =>
             ["nft", "filters", params] as const,
+        ownership: (
+            contractAddress: string,
+            tokenIds: string[],
+            ownerAddress: string,
+            networkId: string
+        ) =>
+            [
+                "nft",
+                "ownership",
+                contractAddress,
+                tokenIds,
+                ownerAddress,
+                networkId,
+            ] as const,
     },
     collection: {
         all: ["collection"] as const,
@@ -150,6 +164,16 @@ export const metadataKeys = {
         [...metadataKeys.all, "collection", address] as const,
     nfts: (collectionAddress: string) =>
         [...metadataKeys.all, "nfts", collectionAddress] as const,
+    recovery: {
+        nft: (collectionAddress: string, tokenId: number) =>
+            [
+                ...metadataKeys.all,
+                "recovery",
+                "nft",
+                collectionAddress,
+                tokenId,
+            ] as const,
+    },
 } as const;
 
 export const walletKeys = {

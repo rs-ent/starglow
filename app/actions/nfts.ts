@@ -8,6 +8,7 @@ import {
     NFTFilters,
     NFTPaginationParams,
 } from "@/components/admin/onchain/OnChain.types";
+import { ethers, providers } from "ethers";
 
 export async function fetchNFTs(
     filters: NFTFilters,
@@ -242,5 +243,82 @@ export async function getNFTsByWallets({
     } catch (error) {
         console.error("Error fetching NFTs by wallets:", error);
         throw new Error("Failed to fetch NFTs");
+    }
+}
+
+export async function verifyOwnership({
+    contractAddress,
+    tokenIds,
+    ownerAddress,
+    networkId,
+}: {
+    contractAddress: string;
+    tokenIds: string[];
+    ownerAddress: string;
+    networkId: string;
+}): Promise<{ tokenId: string; isOwner: boolean }[]> {
+    try {
+        // 1. 네트워크 정보 조회
+        const network = await prisma.blockchainNetwork.findUnique({
+            where: { id: networkId },
+            select: {
+                rpcUrl: true,
+                multicallAddress: true,
+            },
+        });
+
+        if (!network?.multicallAddress) {
+            throw new Error("Multicall address not configured for network");
+        }
+
+        // 2. Provider 설정
+        const provider = new providers.JsonRpcProvider(network.rpcUrl);
+
+        // 3. Multicall 인터페이스 설정
+        const multicallInterface = new ethers.utils.Interface([
+            "function aggregate(tuple(address target, bytes callData)[] calls) view returns (uint256 blockNumber, bytes[] returnData)",
+        ]);
+
+        // 4. NFT 컨트랙트 인터페이스
+        const nftInterface = new ethers.utils.Interface([
+            "function ownerOf(uint256) view returns (address)",
+        ]);
+
+        // 5. 각 tokenId에 대한 호출 데이터 생성
+        const calls = tokenIds.map((tokenId) => ({
+            target: contractAddress,
+            callData: nftInterface.encodeFunctionData("ownerOf", [tokenId]),
+        }));
+
+        // 6. Multicall 컨트랙트 호출
+        const multicallContract = new ethers.Contract(
+            network.multicallAddress,
+            multicallInterface,
+            provider
+        );
+
+        const [, returnData] = await multicallContract.aggregate(calls);
+
+        // 7. 결과 디코딩 및 반환
+        return tokenIds.map((tokenId, index) => {
+            try {
+                const owner = nftInterface.decodeFunctionResult(
+                    "ownerOf",
+                    returnData[index]
+                )[0];
+                return {
+                    tokenId,
+                    isOwner: owner.toLowerCase() === ownerAddress.toLowerCase(),
+                };
+            } catch (error) {
+                return {
+                    tokenId,
+                    isOwner: false,
+                };
+            }
+        });
+    } catch (error) {
+        console.error("Error verifying ownership:", error);
+        throw new Error("Failed to verify ownership");
     }
 }
