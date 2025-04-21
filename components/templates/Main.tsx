@@ -22,7 +22,7 @@ export default function Main() {
                 <HeroGitbook />
                 <HeroFollowUs />
             </main>
-            <Footer followUsMinimal={true} />
+            <Footer followUsMinimal={false} />
         </div>
     );
 }

@@ -4,7 +4,7 @@ import { getCollectionContractByAddress } from "@/app/actions/collectionContract
 import { notFound } from "next/navigation";
 import Collection from "@/components/organisms/NFTs.Collection";
 import { CollectionContract, Metadata } from "@prisma/client";
-
+import NavBar from "@/components/organisms/NavBar";
 interface CollectionPageProps {
     params: Promise<{
         address: string;
@@ -24,7 +24,14 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
             metadata: Metadata;
         };
 
-        return <Collection collection={collection} />;
+        return (
+            <>
+                <div className="sticky top-0 z-10 backdrop-blur-md">
+                    <NavBar />
+                </div>
+                <Collection collection={collection} />
+            </>
+        );
     } catch (error) {
         console.error("Error fetching collection:", error);
         notFound();

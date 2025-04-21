@@ -7,6 +7,7 @@ import { CollectionContract } from "@prisma/client";
 import CollectionList from "@/components/organisms/NFTs.CollectionList";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Loader2 } from "lucide-react";
+import NavBar from "../organisms/NavBar";
 
 export default function NFTs() {
     const { listedCollections, isLoading, isError, error, isEmpty, refetch } =
@@ -37,19 +38,24 @@ export default function NFTs() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">NFT Collections</h1>
-                {/* 필요한 경우 필터/정렬 컨트롤 추가 */}
+        <>
+            <div className="sticky top-0 z-10 backdrop-blur-md">
+                <NavBar />
             </div>
-
-            {isEmpty ? (
-                <div className="text-center text-muted-foreground py-8">
-                    No collections available at the moment
+            <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <h1 className="text-2xl font-bold">NFT Collections</h1>
+                    {/* 필요한 경우 필터/정렬 컨트롤 추가 */}
                 </div>
-            ) : (
-                <CollectionList collections={listedCollections || []} />
-            )}
-        </div>
+
+                {isEmpty ? (
+                    <div className="text-center text-muted-foreground py-8">
+                        No collections available at the moment
+                    </div>
+                ) : (
+                    <CollectionList collections={listedCollections || []} />
+                )}
+            </div>
+        </>
     );
 }
