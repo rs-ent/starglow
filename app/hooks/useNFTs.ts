@@ -9,7 +9,10 @@ import {
     fetchNFTDetails,
     updateNFTStatus,
     transferNFTOwnership,
+    getNFTsByWallets,
+    NFTsByWalletsParams,
 } from "@/app/actions/nfts";
+import { queryKeys } from "../queryKeys";
 
 // 개별 훅으로 분리하여 재사용성 향상
 export function useNFTs(filters: NFTFilters, pagination: NFTPaginationParams) {
@@ -54,6 +57,14 @@ export function useTransferNFTOwnership() {
                 queryKey: ["nft", updatedNFT.id],
             });
         },
+    });
+}
+
+export function useNFTsByWallets(params: NFTsByWalletsParams) {
+    return useQuery({
+        queryKey: queryKeys.nft.byWallets(params.walletAddresses),
+        queryFn: () => getNFTsByWallets(params),
+        enabled: params.walletAddresses.length > 0,
     });
 }
 

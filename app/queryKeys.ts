@@ -91,6 +91,8 @@ export const queryKeys = {
             ["nft", "collection", collectionId] as const,
         byOwner: (ownerAddress: string) =>
             ["nft", "owner", ownerAddress] as const,
+        byWallets: (walletAddresses: string[]) =>
+            ["nft", "owners", walletAddresses] as const,
         events: (nftId: string) => ["nft", "events", nftId] as const,
         statistics: {
             collection: (collectionId: string) =>

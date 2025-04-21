@@ -2,6 +2,7 @@
 
 import { H3, Paragraph } from "./Typography";
 import { cn } from "@/lib/utils/tailwind";
+import { useRef } from "react";
 
 export interface YoutubeViewerProps {
     videoId: string;
@@ -9,6 +10,9 @@ export interface YoutubeViewerProps {
     title: string;
     className?: string;
     framePadding?: number;
+    isShowing?: boolean;
+    autoPlay?: boolean;
+    initialVolume?: number;
 }
 
 export default function YoutubeViewer({
@@ -17,7 +21,10 @@ export default function YoutubeViewer({
     title,
     className = "",
     framePadding = undefined,
+    autoPlay = true,
 }: YoutubeViewerProps) {
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+
     return (
         <div
             className={cn(
@@ -34,17 +41,25 @@ export default function YoutubeViewer({
             >
                 <div className="w-full aspect-video overflow-hidden rounded-xl">
                     <iframe
+                        ref={iframeRef}
                         className="w-full h-full"
-                        src={`https://www.youtube.com/embed/${videoId}`}
+                        src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${
+                            typeof window !== "undefined"
+                                ? window.location.origin
+                                : ""
+                        }&autoplay=${
+                            autoPlay ? "1" : "0"
+                        }&playsinline=1&loop=1&controls=0`}
                         title={`${artist} - ${title}`}
-                        allowFullScreen
                     />
                 </div>
-                <div className="mt-4 text-start flex-grow">
-                    <H3 size={20}>{title}</H3>
-                    <Paragraph size={10} className="text-muted-foreground">
-                        {artist}
-                    </Paragraph>
+                <div className="flex items-start justify-between mt-2">
+                    <div className="text-start flex-grow mt-1">
+                        <H3 size={20}>{title}</H3>
+                        <Paragraph size={10} className="text-muted-foreground">
+                            {artist}
+                        </Paragraph>
+                    </div>
                 </div>
             </div>
         </div>

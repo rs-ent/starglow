@@ -188,3 +188,59 @@ export async function transferNFTOwnership(params: {
         throw new Error("Failed to transfer NFT ownership");
     }
 }
+
+export interface NFTsByWalletsParams {
+    walletAddresses: string[];
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortDirection?: "asc" | "desc";
+}
+
+export async function getNFTsByWallets({
+    walletAddresses,
+    page = 1,
+    limit = 100,
+    sortBy = "mintedAt",
+    sortDirection = "desc",
+}: NFTsByWalletsParams) {
+    try {
+        const skip = (page - 1) * limit;
+
+        const [nfts, total] = await Promise.all([
+            prisma.nFT.findMany({
+                where: {
+                    ownerAddress: {
+                        in: walletAddresses,
+                    },
+                },
+                include: {
+                    collection: true,
+                },
+                orderBy: {
+                    [sortBy]: sortDirection,
+                },
+                skip,
+                take: limit,
+            }),
+            prisma.nFT.count({
+                where: {
+                    ownerAddress: {
+                        in: walletAddresses,
+                    },
+                },
+            }),
+        ]);
+
+        return {
+            items: nfts,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
+    } catch (error) {
+        console.error("Error fetching NFTs by wallets:", error);
+        throw new Error("Failed to fetch NFTs");
+    }
+}

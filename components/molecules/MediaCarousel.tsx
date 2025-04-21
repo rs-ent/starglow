@@ -6,7 +6,7 @@ import Slider from "react-slick";
 import YoutubeViewer, { YoutubeViewerProps } from "../atoms/YoutubeViewer";
 import ImageViewer, { ImageViewerProps } from "../atoms/ImageViewer";
 import { cn } from "@/lib/utils/tailwind";
-
+import { useState } from "react";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 

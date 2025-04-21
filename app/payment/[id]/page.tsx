@@ -45,7 +45,6 @@ export default async function PaymentPage({
 
     if (!payment.userId) {
         await updatePaymentUserId(id, user.id!);
-        revalidatePath(`/payment/${id}`);
     } else if (payment.userId !== user.id) {
         return (
             <div className="flex flex-col items-center justify-center h-screen w-full px-4 bg-[url('/bg/scifi-round.svg')] bg-cover bg-center">

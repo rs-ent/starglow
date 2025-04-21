@@ -3,18 +3,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useNFTManager } from "@/app/hooks/useNFTs";
+import { useNFTsByWallets } from "@/app/hooks/useNFTs";
 import { User, Wallet, NFT, CollectionContract } from "@prisma/client";
 import { H3 } from "@/components/atoms/Typography";
 import { Wallet as WalletIcon } from "lucide-react";
 import Icon from "@/components/atoms/Icon";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { useWalletsByUserId } from "@/app/hooks/useWallet";
 import CollectionCard from "../molecules/NFTs.CollectionCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,33 +17,22 @@ interface UserMyAssetsProps {
 }
 
 export default function UserMyAssets({ user }: UserMyAssetsProps) {
-    const { useNFTs } = useNFTManager();
     const { wallets, isLoading: isLoadingWallets } = useWalletsByUserId(
         user.id
     );
-    const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
 
-    // NFT 쿼리 설정
+    // NFT 쿼리 설정 - 모든 지갑의 NFT를 한번에 가져옴
     const {
         data: nftData,
         isLoading: isLoadingNFTs,
         error: nftError,
-    } = useNFTs(
-        { ownerAddress: selectedWallet?.address || "" },
-        {
-            page: 1,
-            limit: 100,
-            sortBy: "mintedAt",
-            sortDirection: "desc",
-        }
-    );
-
-    // 초기 지갑 선택
-    useEffect(() => {
-        if (wallets && wallets.length > 0) {
-            setSelectedWallet(wallets[0]);
-        }
-    }, [wallets]);
+    } = useNFTsByWallets({
+        walletAddresses: wallets?.map((w) => w.address) || [],
+        page: 1,
+        limit: 100,
+        sortBy: "mintedAt",
+        sortDirection: "desc",
+    });
 
     // NFT를 컬렉션별로 그룹화
     const groupedNFTs =
@@ -69,79 +51,18 @@ export default function UserMyAssets({ user }: UserMyAssetsProps) {
 
     return (
         <div className="bg-card/10 backdrop-blur-md p-6 rounded-2xl border border-border/5">
-            {/* 지갑 선택 섹션 */}
+            {/* 지갑 목록 섹션 */}
             <div className="flex items-center mb-4">
                 <div className="p-2 bg-primary/10 rounded-lg mr-3">
                     <Icon icon={WalletIcon} className="w-5 h-5 text-primary" />
                 </div>
-                <H3 size={20}>Wallets</H3>
+                <H3 size={20}>Connected Wallets</H3>
             </div>
-
-            {isLoadingWallets ? (
-                <div className="h-10 bg-secondary/20 animate-pulse rounded-lg" />
-            ) : wallets && wallets.length > 0 ? (
-                <div className="space-y-2">
-                    <Select
-                        value={selectedWallet?.address}
-                        onValueChange={(value) => {
-                            const wallet = wallets.find(
-                                (w) => w.address === value
-                            );
-                            setSelectedWallet(wallet || null);
-                        }}
-                    >
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select wallet to receive NFT" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {wallets.map((wallet) => (
-                                <SelectItem
-                                    key={wallet.id}
-                                    value={wallet.address}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <WalletIcon className="h-4 w-4" />
-                                        <div className="flex flex-col">
-                                            <span className="font-medium">
-                                                {wallet.nickname || "Wallet"}
-                                                {wallet.default && (
-                                                    <span className="ml-2 text-xs text-primary">
-                                                        (Default)
-                                                    </span>
-                                                )}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">
-                                                {`${wallet.address.slice(
-                                                    0,
-                                                    6
-                                                )}...${wallet.address.slice(
-                                                    -4
-                                                )}`}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {selectedWallet && (
-                        <p className="text-xs text-muted-foreground">
-                            Selected wallet:{" "}
-                            {selectedWallet.address.slice(0, 6)}...
-                            {selectedWallet.address.slice(-4)}
-                        </p>
-                    )}
-                </div>
-            ) : (
-                <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg">
-                    No wallets available. Please add a wallet first.
-                </div>
-            )}
 
             {/* NFT 컬렉션 표시 섹션 */}
             <div className="mt-6">
                 <H3 size={20} className="mb-4">
-                    NFT
+                    NFT Collections
                 </H3>
                 {isLoadingNFTs ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -170,7 +91,7 @@ export default function UserMyAssets({ user }: UserMyAssetsProps) {
                     </div>
                 ) : (
                     <div className="text-sm text-muted-foreground bg-secondary/10 p-4 rounded-lg">
-                        No NFTs found in this wallet.
+                        No NFTs found in your wallets.
                     </div>
                 )}
             </div>

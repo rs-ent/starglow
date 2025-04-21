@@ -165,7 +165,7 @@ export default function PaymentModule({
             redirectUrl,
         };
 
-        resetAndInitiatePayment(paymentInput);
+        initiatePayment(paymentInput);
     };
 
     useEffect(() => {

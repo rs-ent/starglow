@@ -351,22 +351,22 @@ interface VerificationInProgress {
 }
 
 // 중복 결제 체크를 위한 함수 수정
-async function checkRecentPayment(
-    userId: string | undefined,
-    productTable: ProductTable,
-    productId: string,
-    payMethod: PayMethod,
-    easyPayProvider?: EasyPayProvider,
-    cardProvider?: CardProvider,
-    cooldownSeconds: number = 60 // 1분 기본 쿨다운
-): Promise<{ isDuplicate: boolean; existingPaymentId?: string }> {
+async function checkRecentPayment({
+    input,
+    cooldownSeconds = 10, // 10초 기본 쿨다운
+}: {
+    input: CreatePaymentInput;
+    cooldownSeconds?: number;
+}): Promise<{ isDuplicate: boolean; existingPaymentId?: string }> {
     const scope = createLogScope("checkRecentPayment", {
-        userId: userId || "anonymous",
-        productTable,
-        productId,
-        payMethod,
-        easyPayProvider,
-        cardProvider,
+        userId: input.userId || "anonymous",
+        productTable: input.productTable,
+        productId: input.productId,
+        quantity: input.quantity,
+        payMethod: input.payMethod,
+        currency: input.currency,
+        easyPayProvider: input.easyPayProvider,
+        cardProvider: input.cardProvider,
     });
 
     try {
@@ -377,12 +377,16 @@ async function checkRecentPayment(
         scope.log(`Checking for recent payment within cooldown period`);
         const recentPayment = await prisma.payment.findFirst({
             where: {
-                userId: userId,
-                productTable: productTable,
-                productId: productId,
-                payMethod: payMethod,
-                easyPayProvider: easyPayProvider,
-                cardProvider: cardProvider,
+                userId: input.userId,
+                productTable: input.productTable,
+                productId: input.productId,
+                productName: input.productName,
+                payMethod: input.payMethod,
+                quantity: input.quantity,
+                currency: input.currency,
+                easyPayProvider: input.easyPayProvider,
+                cardProvider: input.cardProvider,
+                promotionCode: input.promotionCode,
                 createdAt: {
                     gte: cooldownTime,
                 },
@@ -482,14 +486,10 @@ export async function createPayment(
         }
 
         // 중복 결제 체크
-        const recentCheck = await checkRecentPayment(
-            input.userId,
-            input.productTable,
-            input.productId,
-            input.payMethod,
-            input.easyPayProvider as EasyPayProvider | undefined,
-            input.cardProvider as CardProvider | undefined
-        );
+        const recentCheck = await checkRecentPayment({
+            input,
+            cooldownSeconds: 10,
+        });
 
         if (recentCheck.isDuplicate) {
             scope.log(`Duplicate payment request detected`);
