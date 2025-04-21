@@ -22,6 +22,7 @@ import { useToast } from "@/app/hooks/useToast";
 import { useLoading } from "@/app/hooks/useLoading";
 import { getPayment } from "@/app/actions/payment";
 import { usePaymentPostProcessor } from "@/app/hooks/usePaymentPostProcessor";
+import WarningPopup from "../atoms/WarningPopup";
 
 interface PaymentModuleProps {
     productTable: ProductTable;
@@ -67,6 +68,9 @@ export default function PaymentModule({
     const { startLoading, endLoading } = useLoading();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const [message, setMessage] = useState(
+        "If you leave this page before the payment is completed, the process will be lost."
+    );
 
     const paymentResult = useMemo(
         () => ({
@@ -179,10 +183,27 @@ export default function PaymentModule({
                     return;
                 }
 
+                switch (payment.productTable) {
+                    case "nfts":
+                        setMessage(
+                            "NFTs are being transferred. Please keep this window open."
+                        );
+                        break;
+                    default:
+                        setMessage(
+                            "Payment is being processed. Please keep this window open."
+                        );
+                        break;
+                }
+
                 switch (payment.status) {
                     case "PAID":
-                        console.log("Payment Success", payment);
-                        toast.success("Payment successful");
+                        toast.success(
+                            "Payment is processing. Please keep this window open."
+                        );
+                        setMessage(
+                            "NFTs are being transferred. Please keep this window open."
+                        );
                         postProcess(payment);
                         onPaymentSuccess?.(payment);
                         break;
@@ -217,6 +238,21 @@ export default function PaymentModule({
     }, [paymentResult.paymentId]);
 
     useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isPostProcessing) {
+                e.preventDefault();
+                const message =
+                    "If you leave this page before the payment is completed, the process will be lost.";
+                return message;
+            }
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () =>
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [isPostProcessing]);
+
+    useEffect(() => {
         if (postProcessStatus?.status === "COMPLETED") {
             if (postProcessDetails?.type === "NFT_TRANSFER") {
                 toast.success("NFT transfer completed");
@@ -242,6 +278,14 @@ export default function PaymentModule({
 
     return (
         <div>
+            <WarningPopup
+                open={isPostProcessing}
+                title="Please keep this window open."
+                message={message}
+                loading={true}
+                preventClose={true}
+            />
+
             <PaymentSelector
                 payMethod={payMethod}
                 currency={currency}
