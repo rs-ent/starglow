@@ -179,15 +179,6 @@ function NFTCard({
         retry: 1,
     });
 
-    // 온체인 소유권 확인
-    const { data: ownershipData, isLoading: isCheckingOwnership } =
-        useVerifyNFTOwnership({
-            contractAddress: nft.collection.address,
-            tokenIds: [nft.tokenId.toString()],
-            ownerAddress: nft.ownerAddress,
-            networkId: nft.networkId,
-        });
-
     // 로딩 상태 처리
     if (isLoadingMetadata || isRecovering) {
         return (
@@ -227,19 +218,6 @@ function NFTCard({
                             Collection: {nft.collection.name}
                         </span>
                         <div className="flex flex-col gap-2 items-end">
-                            {isCheckingOwnership ? (
-                                <span className="text-sm text-muted-foreground">
-                                    Verifying ownership...
-                                </span>
-                            ) : ownershipData?.[0]?.isOwner === false ? (
-                                <span className="text-sm text-destructive">
-                                    Ownership mismatch
-                                </span>
-                            ) : (
-                                <span className="text-sm text-green-600">
-                                    Ownership verified
-                                </span>
-                            )}
                             {(!metadata || error) && (
                                 <Button
                                     variant="secondary"

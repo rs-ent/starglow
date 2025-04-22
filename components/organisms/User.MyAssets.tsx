@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useNFTsByWallets } from "@/app/hooks/useNFTs";
+import { useNFTsByWallets, useVerifyNFTOwnership } from "@/app/hooks/useNFTs";
 import { User, Wallet, NFT, CollectionContract } from "@prisma/client";
 import { H3 } from "@/components/atoms/Typography";
 import { Wallet as WalletIcon } from "lucide-react";
@@ -34,19 +34,29 @@ export default function UserMyAssets({ user }: UserMyAssetsProps) {
         sortDirection: "desc",
     });
 
+    const { data: ownershipData, isLoading: isCheckingOwnership } =
+        useVerifyNFTOwnership({
+            contractAddress: nftData?.items[0]?.collection.address || "",
+            tokenIds: nftData?.items.map((nft) => nft.tokenId.toString()) || [],
+            ownerAddress: nftData?.items[0]?.ownerAddress || "",
+            networkId: nftData?.items[0]?.networkId || "",
+        });
+
     // NFT를 컬렉션별로 그룹화
     const groupedNFTs =
-        nftData?.items.reduce((acc, nft) => {
-            const collectionAddress = nft.collection.address;
-            if (!acc[collectionAddress]) {
-                acc[collectionAddress] = {
-                    collection: nft.collection,
-                    nfts: [],
-                };
-            }
-            acc[collectionAddress].nfts.push(nft);
-            return acc;
-        }, {} as Record<string, { collection: CollectionContract; nfts: NFT[] }>) ||
+        nftData?.items
+            .filter((nft, index) => ownershipData?.[index]?.isOwner)
+            .reduce((acc, nft) => {
+                const collectionAddress = nft.collection.address;
+                if (!acc[collectionAddress]) {
+                    acc[collectionAddress] = {
+                        collection: nft.collection,
+                        nfts: [],
+                    };
+                }
+                acc[collectionAddress].nfts.push(nft);
+                return acc;
+            }, {} as Record<string, { collection: CollectionContract; nfts: NFT[] }>) ||
         {};
 
     return (
@@ -64,7 +74,7 @@ export default function UserMyAssets({ user }: UserMyAssetsProps) {
                 <H3 size={20} className="mb-4">
                     NFT Collections
                 </H3>
-                {isLoadingNFTs ? (
+                {isLoadingNFTs || isCheckingOwnership ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {[1, 2, 3].map((i) => (
                             <Skeleton key={i} className="h-[300px] w-full" />
@@ -85,13 +95,14 @@ export default function UserMyAssets({ user }: UserMyAssetsProps) {
                                     showPrice={false}
                                     showSharePercentage={false}
                                     showCirculation={false}
+                                    isVerified={false}
                                 />
                             )
                         )}
                     </div>
                 ) : (
                     <div className="text-sm text-muted-foreground bg-secondary/10 p-4 rounded-lg">
-                        No NFTs found in your wallets.
+                        No verified NFTs found in your wallets.
                     </div>
                 )}
             </div>

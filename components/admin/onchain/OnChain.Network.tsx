@@ -47,6 +47,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
         rpcUrl: "",
         explorerUrl: "",
         isTestnet: true,
+        multicallAddress: "0xcA11bde05977b3631167028862bE2a173976CA11",
     });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,6 +78,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                 rpcUrl: "",
                 explorerUrl: "",
                 isTestnet: true,
+                multicallAddress: "0xcA11bde05977b3631167028862bE2a173976CA11",
             });
             setShowAddForm(false);
         } catch (error) {
@@ -365,6 +367,42 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                         className="bg-background font-mono text-sm"
                                         required
                                     />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="multicallAddress"
+                                        className="font-medium flex items-center justify-between"
+                                    >
+                                        <span>Multicall Contract Address</span>
+                                        <a
+                                            href="https://www.multicall3.com/deployments"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
+                                        >
+                                            <span>View all deployments</span>
+                                            <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                    </Label>
+                                    <Input
+                                        id="multicallAddress"
+                                        name="multicallAddress"
+                                        placeholder="e.g. 0xcA11bde05977b3631167028862bE2a173976CA11"
+                                        value={newNetwork.multicallAddress}
+                                        onChange={handleInputChange}
+                                        className="bg-background font-mono text-sm"
+                                    />
+                                    <div className="text-sm text-muted-foreground space-y-1">
+                                        <p>
+                                            Default Multicall3 address:
+                                            0xcA11bde05977b3631167028862bE2a173976CA11
+                                        </p>
+                                        <p>
+                                            Visit multicall3.com/deployments to
+                                            check network-specific addresses
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 

@@ -49,6 +49,7 @@ export interface addBlockchainNetworkParams {
     explorerUrl: string;
     symbol: string;
     isTestnet: boolean;
+    multicallAddress?: string;
 }
 
 export async function addBlockchainNetwork(params: addBlockchainNetworkParams) {

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { User } from "next-auth";
 import { auth } from "./authSettings";
-
+import { prisma } from "@/lib/prisma/client";
 export async function requireAuth() {
     const session = await auth();
     if (!session?.user) {
@@ -37,4 +37,39 @@ export async function requireAuthUser(callbackUrl: string): Promise<User> {
         const encodedCallback = encodeURIComponent(callbackUrl);
         redirect(`/auth/signin?callbackUrl=${encodedCallback}`);
     }
+}
+
+export async function requireAdmin() {
+    const sessionUser = await requireAuthUser("/admin");
+    const user = await prisma.user.findUnique({
+        where: {
+            id: sessionUser.id,
+        },
+        select: {
+            role: true,
+        },
+    });
+
+    if (!user) {
+        return {
+            success: false,
+            error: "User not found",
+        };
+    }
+
+    if (
+        user.role !== "admin" &&
+        user.role !== "superadmin" &&
+        user.role !== "administrator"
+    ) {
+        return {
+            success: false,
+            error: "Unauthorized",
+        };
+    }
+
+    return {
+        success: true,
+        user: user,
+    };
 }

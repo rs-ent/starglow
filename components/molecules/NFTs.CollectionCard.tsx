@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import Link from "next/link";
-import { CircleDollarSign, Users } from "lucide-react";
+import { CircleDollarSign, Users, CheckCircle2 } from "lucide-react";
 import { METADATA_TYPE } from "@/app/actions/metadata";
 
 interface CollectionCardProps {
@@ -24,6 +24,7 @@ interface CollectionCardProps {
     showPrice?: boolean;
     showSharePercentage?: boolean;
     showCirculation?: boolean;
+    isVerified?: boolean;
 }
 
 export default function CollectionCard({
@@ -32,6 +33,7 @@ export default function CollectionCard({
     showPrice = true,
     showSharePercentage = true,
     showCirculation = true,
+    isVerified = false,
 }: CollectionCardProps) {
     const { metadataByCollectionAddress } = useMetadata({
         collectionAddress: collection.address,
@@ -54,7 +56,7 @@ export default function CollectionCard({
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            quality={95}
+                            quality={90}
                             priority
                             loading="eager"
                             placeholder="blur"
@@ -84,6 +86,15 @@ export default function CollectionCard({
                                 {nftCount > 1
                                     ? `Owned ${nftCount} NFTs`
                                     : "Owned 1 NFT"}
+                            </Badge>
+                        )}
+                        {isVerified && (
+                            <Badge
+                                variant="default"
+                                className="font-bold px-3 py-1.5"
+                            >
+                                <CheckCircle2 className="w-4 h-4 mr-1 inline" />
+                                Verified
                             </Badge>
                         )}
                     </div>
