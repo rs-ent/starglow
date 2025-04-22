@@ -644,6 +644,7 @@ model NFT {
   collectionId   String
   collection     CollectionContract @relation(fields: [collectionId], references: [id])
   ownerAddress   String
+  currentOwnerAddress String?
   metadataUri    String?
   mintedAt       DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -670,6 +671,8 @@ model NFT {
   events           NFTEvent[]
 
   @@index([collectionId])
+  @@index([tokenId])
+  @@index([currentOwnerAddress])
   @@index([ownerAddress])
 }
 

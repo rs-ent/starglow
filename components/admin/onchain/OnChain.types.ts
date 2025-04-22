@@ -13,7 +13,9 @@ export interface NFTWithRelations extends NFT {
 
 export interface NFTFilters {
     collectionId?: string;
+    tokenId?: string;
     ownerAddress?: string;
+    currentOwnerAddress?: string;
     isListed?: boolean;
     isBurned?: boolean;
     searchTerm?: string;

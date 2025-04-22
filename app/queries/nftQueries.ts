@@ -1,7 +1,27 @@
 /// app/queries/nftQueries.ts
 
 import { queryKeys } from "@/app/queryKeys";
-import { verifyOwnership } from "@/app/actions/nfts";
+import { getOwnerByTokenIds, verifyOwnership } from "@/app/actions/nfts";
+
+export function getOwnerByTokenIdsQuery({
+    contractAddress,
+    tokenIds,
+    networkId,
+}: {
+    contractAddress: string;
+    tokenIds: string[];
+    networkId: string;
+}) {
+    return {
+        queryKey: queryKeys.nft.owner(contractAddress, tokenIds, networkId),
+        queryFn: () =>
+            getOwnerByTokenIds({
+                contractAddress,
+                tokenIds,
+                networkId,
+            }),
+    };
+}
 
 export function verifyNFTOwnershipQuery({
     contractAddress,

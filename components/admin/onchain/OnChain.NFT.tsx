@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,14 +14,14 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationPrevious,
+    PaginationNext,
+    PaginationLink,
+    PaginationEllipsis,
+} from "@/components/ui/pagination";
 import {
     Table,
     TableBody,
@@ -30,10 +30,23 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Loader2, Search, ArrowUpDown } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Loader2, Search, ArrowUpDown, MoreVertical } from "lucide-react";
 import { CollectionContract, NFT } from "@prisma/client";
 import { useCollectionContractsManager } from "@/app/hooks/useCollectionContracts";
+import {
+    useNFTs,
+    useNFTDetails,
+    useGetOwnerByTokenIds,
+} from "@/app/hooks/useNFTs";
+import { NFTFilters, NFTPaginationParams } from "./OnChain.types";
+import { useToast } from "@/app/hooks/useToast";
+
 function CollectionList({
     collections,
     selectedCollection,
@@ -79,44 +92,345 @@ function CollectionList({
     );
 }
 
-function NFTList({
-    collection,
-    nfts,
-    isLoading,
-}: {
-    collection: CollectionContract;
-    nfts: NFT[];
-    isLoading: boolean;
-}) {
-    if (isLoading) {
-        return (
-            <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
+function NFTList({ collection }: { collection: CollectionContract }) {
+    const toast = useToast();
+
+    const [filters, setFilters] = useState<NFTFilters & { address: string }>({
+        collectionId: collection.id,
+        status: "all",
+        address: "",
+    });
+
+    const [pagination, setPagination] = useState<NFTPaginationParams>({
+        page: 1,
+        limit: 50,
+        sortBy: "tokenId",
+        sortDirection: "asc",
+    });
+
+    const { data: nfts, isLoading } = useNFTs(filters, pagination);
+
+    const [copied, setCopied] = useState(false);
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        toast.success(`Copied to clipboard: ${text}`);
+    };
+
+    const FilterBar = () => (
+        <div className="flex gap-4 mb-4">
+            <Select
+                value={filters.status}
+                onValueChange={(value) =>
+                    setFilters({
+                        ...filters,
+                        status: value as NFTFilters["status"],
+                    })
+                }
+            >
+                <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="listed">Listed</SelectItem>
+                    <SelectItem value="unlisted">Unlisted</SelectItem>
+                    <SelectItem value="burned">Burned</SelectItem>
+                </SelectContent>
+            </Select>
+            <Input
+                placeholder="Search by owner address..."
+                value={filters.address || ""}
+                onChange={(e) => {
+                    setFilters({
+                        ...filters,
+                        address: e.target.value,
+                    });
+                    setFilteredNftList(
+                        e.target.value
+                            ? nftList.filter(
+                                  (nft) =>
+                                      nft.currentOwnerAddress?.includes(
+                                          e.target.value
+                                      ) ||
+                                      nft.ownerAddress.includes(e.target.value)
+                              )
+                            : nftList
+                    );
+                }}
+                className="w-[300px]"
+            />
+        </div>
+    );
+
+    const { data: owners, isLoading: isLoadingOwners } = useGetOwnerByTokenIds({
+        contractAddress: collection.address,
+        tokenIds: nfts?.items.map((nft) => nft.tokenId.toString()) || [],
+        networkId: collection.networkId,
+    });
+
+    const [nftList, setNftList] = useState<NFT[]>(nfts?.items || []);
+    const [filteredNftList, setFilteredNftList] = useState<NFT[]>(
+        nftList || []
+    );
+    useEffect(() => {
+        if (nfts && nfts.items && owners) {
+            const updatedNfts = nfts.items.map((nft) => {
+                const owner = owners.find(
+                    (owner) => owner.tokenId === nft.tokenId.toString()
+                );
+                return {
+                    ...nft,
+                    currentOwnerAddress: owner?.ownerAddress || null,
+                };
+            });
+            setNftList(updatedNfts);
+            setFilteredNftList(updatedNfts);
+        }
+    }, [isLoadingOwners]);
+
+    const PaginationUI = () => {
+        if (!nfts || nfts.pageCount <= 1) return null;
+
+        const currentPage = pagination.page;
+        const totalPages = nfts.pageCount;
+        const maxVisiblePages = 5;
+
+        let startPage = Math.max(
+            1,
+            currentPage - Math.floor(maxVisiblePages / 2)
         );
-    }
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        return (
+            <Pagination className="mt-4">
+                <PaginationContent>
+                    <PaginationItem>
+                        <PaginationPrevious
+                            onClick={() =>
+                                setPagination({
+                                    ...pagination,
+                                    page: Math.max(1, currentPage - 1),
+                                })
+                            }
+                            className={
+                                currentPage === 1
+                                    ? "pointer-events-none opacity-50"
+                                    : ""
+                            }
+                        />
+                    </PaginationItem>
+
+                    {startPage > 1 && (
+                        <>
+                            <PaginationItem>
+                                <PaginationLink
+                                    onClick={() =>
+                                        setPagination({
+                                            ...pagination,
+                                            page: 1,
+                                        })
+                                    }
+                                >
+                                    1
+                                </PaginationLink>
+                            </PaginationItem>
+                            {startPage > 2 && (
+                                <PaginationItem>
+                                    <PaginationEllipsis />
+                                </PaginationItem>
+                            )}
+                        </>
+                    )}
+
+                    {Array.from(
+                        { length: endPage - startPage + 1 },
+                        (_, i) => startPage + i
+                    ).map((page) => (
+                        <PaginationItem key={page}>
+                            <PaginationLink
+                                onClick={() =>
+                                    setPagination({
+                                        ...pagination,
+                                        page,
+                                    })
+                                }
+                                isActive={currentPage === page}
+                            >
+                                {page}
+                            </PaginationLink>
+                        </PaginationItem>
+                    ))}
+
+                    {endPage < totalPages && (
+                        <>
+                            {endPage < totalPages - 1 && (
+                                <PaginationItem>
+                                    <PaginationEllipsis />
+                                </PaginationItem>
+                            )}
+                            <PaginationItem>
+                                <PaginationLink
+                                    onClick={() =>
+                                        setPagination({
+                                            ...pagination,
+                                            page: totalPages,
+                                        })
+                                    }
+                                >
+                                    {totalPages}
+                                </PaginationLink>
+                            </PaginationItem>
+                        </>
+                    )}
+
+                    <PaginationItem>
+                        <PaginationNext
+                            onClick={() =>
+                                setPagination({
+                                    ...pagination,
+                                    page: Math.min(totalPages, currentPage + 1),
+                                })
+                            }
+                            className={
+                                currentPage === totalPages
+                                    ? "pointer-events-none opacity-50"
+                                    : ""
+                            }
+                        />
+                    </PaginationItem>
+                </PaginationContent>
+            </Pagination>
+        );
+    };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {nfts.map((nft) => (
-                /// NFT 카드 대신 테이블 형식으로 표시
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Token ID</TableHead>
-                            <TableHead>Owner</TableHead>
-                            <TableHead>Metadata</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <TableRow>
-                            <TableCell>{nft.tokenId}</TableCell>
-                            <TableCell>{nft.ownerAddress}</TableCell>
-                            <TableCell>{nft.metadataUri}</TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
-            ))}
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h2 className="text-lg font-semibold">
+                    {collection.name} NFTs
+                </h2>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm">
+                        Mint New NFT
+                    </Button>
+                    <Button variant="outline" size="sm">
+                        Bulk Actions
+                    </Button>
+                </div>
+            </div>
+
+            <FilterBar />
+
+            <Card>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Token ID</TableHead>
+                                <TableHead>Initial Owner</TableHead>
+                                <TableHead>Current Owner</TableHead>
+                                <TableHead>Minted At</TableHead>
+                                <TableHead>Initial Transferred At</TableHead>
+                                <TableHead>Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={6}
+                                        className="text-center"
+                                    >
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                filteredNftList.map((nft) => (
+                                    <TableRow key={nft.id}>
+                                        <TableCell>{nft.tokenId}</TableCell>
+                                        <TableCell>
+                                            <button
+                                                className="font-mono max-w-[100px] overflow-hidden text-ellipsis hover:underline cursor-pointer"
+                                                onClick={() =>
+                                                    copyToClipboard(
+                                                        nft.ownerAddress
+                                                    )
+                                                }
+                                            >
+                                                {nft.ownerAddress}
+                                            </button>
+                                        </TableCell>
+                                        {isLoadingOwners ? (
+                                            <TableCell>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            </TableCell>
+                                        ) : (
+                                            <TableCell className="font-mono">
+                                                <button
+                                                    className="font-mono max-w-[100px] overflow-hidden text-ellipsis hover:underline cursor-pointer"
+                                                    onClick={() =>
+                                                        copyToClipboard(
+                                                            nft.currentOwnerAddress ||
+                                                                nft.ownerAddress
+                                                        )
+                                                    }
+                                                >
+                                                    {nft.currentOwnerAddress ||
+                                                        nft.ownerAddress}
+                                                </button>
+                                            </TableCell>
+                                        )}
+                                        <TableCell>
+                                            {new Date(
+                                                nft.mintedAt
+                                            ).toLocaleDateString()}
+                                        </TableCell>
+                                        <TableCell>
+                                            {nft.lastTransferredAt
+                                                ? new Date(
+                                                      nft.lastTransferredAt
+                                                  ).toLocaleDateString()
+                                                : "-"}
+                                        </TableCell>
+                                        <TableCell>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="h-8 w-8 p-0"
+                                                    >
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem>
+                                                        View Details
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem>
+                                                        Transfer
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem>
+                                                        Burn
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem>
+                                                        Airdrop Tokens
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                    <PaginationUI />
+                </CardContent>
+            </Card>
         </div>
     );
 }
@@ -126,12 +440,29 @@ export default function OnChainNFTManager() {
         useCollectionContractsManager();
 
     return (
-        <div className="space-y-4">
-            <CollectionList
-                collections={collections || []}
-                selectedCollection={selectedCollection || null}
-                onSelectCollection={setSelectedCollection}
-            />
+        <div className="container mx-auto p-4">
+            <div className="grid grid-cols-1 gap-6">
+                {/* Collection 목록 */}
+                <div className="lg:col-span-1">
+                    <h2 className="text-lg font-semibold mb-4">Collections</h2>
+                    <CollectionList
+                        collections={collections || []}
+                        selectedCollection={selectedCollection?.data || null}
+                        onSelectCollection={setSelectedCollection}
+                    />
+                </div>
+
+                {/* NFT 목록 */}
+                <div className="lg:col-span-3 mt-8">
+                    {selectedCollection ? (
+                        <NFTList collection={selectedCollection.data} />
+                    ) : (
+                        <div className="flex justify-center items-center h-64 text-muted-foreground">
+                            Select a collection to view NFTs
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }

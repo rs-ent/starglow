@@ -102,6 +102,11 @@ export const queryKeys = {
         },
         filters: (params: Record<string, any>) =>
             ["nft", "filters", params] as const,
+        owner: (
+            contractAddress: string,
+            tokenIds: string[],
+            networkId: string
+        ) => ["nft", "owner", contractAddress, tokenIds, networkId] as const,
         ownership: (
             contractAddress: string,
             tokenIds: string[],

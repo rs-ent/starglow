@@ -246,17 +246,17 @@ export async function getNFTsByWallets({
     }
 }
 
-export async function verifyOwnership({
+
+
+export async function getOwnerByTokenIds({
     contractAddress,
     tokenIds,
-    ownerAddress,
     networkId,
 }: {
     contractAddress: string;
     tokenIds: string[];
-    ownerAddress: string;
     networkId: string;
-}): Promise<{ tokenId: string; isOwner: boolean }[]> {
+}): Promise<{ tokenId: string; ownerAddress: string }[]> {
     try {
         // 1. 네트워크 정보 조회
         const network = await prisma.blockchainNetwork.findUnique({
@@ -299,24 +299,45 @@ export async function verifyOwnership({
 
         const [, returnData] = await multicallContract.aggregate(calls);
 
-        // 7. 결과 디코딩 및 반환
-        return tokenIds.map((tokenId, index) => {
-            try {
-                const owner = nftInterface.decodeFunctionResult(
-                    "ownerOf",
-                    returnData[index]
-                )[0];
-                return {
-                    tokenId,
-                    isOwner: owner.toLowerCase() === ownerAddress.toLowerCase(),
-                };
-            } catch (error) {
-                return {
-                    tokenId,
-                    isOwner: false,
-                };
-            }
+        return tokenIds.map((tokenId, index) => ({
+            tokenId,
+            ownerAddress: nftInterface.decodeFunctionResult(
+                "ownerOf",
+                returnData[index]
+            )[0],
+        }));
+    } catch (error) {
+        console.error("Error fetching owner by token IDs:", error);
+        throw new Error("Failed to fetch owner by token IDs");
+    }
+}
+
+export async function verifyOwnership({
+    contractAddress,
+    tokenIds,
+    ownerAddress,
+    networkId,
+}: {
+    contractAddress: string;
+    tokenIds: string[];
+    ownerAddress: string;
+    networkId: string;
+}): Promise<{ tokenId: string; isOwner: boolean }[]> {
+    try {
+        const ownerAddresses = await getOwnerByTokenIds({
+            contractAddress,
+            tokenIds,
+            networkId,
         });
+
+        return tokenIds.map((tokenId) => ({
+            tokenId,
+            isOwner: ownerAddresses.some(
+                (address) =>
+                    address.tokenId === tokenId &&
+                    address.ownerAddress === ownerAddress
+            ),
+        }));
     } catch (error) {
         console.error("Error verifying ownership:", error);
         throw new Error("Failed to verify ownership");
