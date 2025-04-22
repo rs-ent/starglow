@@ -1,6 +1,8 @@
 import AdminNav from "@/components/admin/Admin.Nav";
 import { requireAdmin } from "@/app/auth/authUtils";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({
     children,
 }: {
