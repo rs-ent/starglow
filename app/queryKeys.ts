@@ -117,12 +117,6 @@ export const queryKeys = {
                 networkId,
             ] as const,
     },
-    collection: {
-        all: ["collection"] as const,
-        byId: (id: string) => ["collection", id] as const,
-        byAddress: (address: string) =>
-            ["collection", "address", address] as const,
-    },
 };
 
 export const QUERY_KEYS = {
@@ -152,6 +146,8 @@ export const collectionKeys = {
             quantity,
         ] as const,
     listed: () => [...collectionKeys.all, "listed"] as const,
+    byAddress: (address: string) =>
+        [...collectionKeys.all, "address", address] as const,
 };
 
 export const metadataKeys = {

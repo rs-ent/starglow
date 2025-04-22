@@ -84,7 +84,7 @@ export default function AuthButton({
     }
 
     return session && session.user ? (
-        showUserCard && (
+        showUserCard ? (
             <UserCard
                 src={session.user.image || ""}
                 name={session.user.name || ""}
@@ -93,7 +93,7 @@ export default function AuthButton({
                 unserNameTruncate={true}
                 className="max-w-[60%]"
             />
-        )
+        ) : null
     ) : (
         <Button
             onClick={handleSignIn}

@@ -66,7 +66,9 @@ export default function CreateCollection({
     onClose,
     onSuccess,
 }: CreateCollectionProps) {
-    const { linkableMetadata, linkMetadata } = useMetadata();
+    const { linkableMetadata, linkMetadata } = useMetadata({
+        metadataId: "",
+    });
 
     const toast = useToast();
 

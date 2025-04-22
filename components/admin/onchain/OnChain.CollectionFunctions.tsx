@@ -33,14 +33,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useEscrowWalletManager } from "@/app/hooks/useBlockchain";
-import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
 import {
-    CollectionContract,
-    useCollectionSettings,
+    useEscrowWalletManager,
+    useBlockchainNetworksManager,
+} from "@/app/hooks/useBlockchain";
+import {
     useCollectionFunctions,
+    useCollectionSettings,
+    useEstimateMintGas,
 } from "@/app/hooks/useCollectionContracts";
 import { Switch } from "@/components/ui/switch";
+import { CollectionContract } from "@prisma/client";
 
 interface CollectionFunctionsProps {
     collection: CollectionContract;
@@ -68,15 +71,14 @@ export default function CollectionFunctions({
 
     const {
         status,
-        isStatusLoading,
         lastOperation,
-        estimateGas,
         mintTokens,
         togglePause,
         toggleMinting,
         isMinting,
         isTogglingPause,
         isTogglingMinting,
+        isStatusLoading,
     } = useCollectionFunctions(collection);
 
     const {
@@ -93,22 +95,16 @@ export default function CollectionFunctions({
         isUpdating: isUpdatingSettings,
     } = useCollectionSettings(collection.id);
 
+    const { gasEstimate, isGasEstimateLoading } = useEstimateMintGas({
+        address: collection.address,
+        to: mintAddress,
+        quantity: parseInt(mintQuantity) || 1,
+        privateKey,
+    });
+
     const [price, setPrice] = useState(collection.price.toString());
     const [circulation, setCirculation] = useState(
         collection.circulation.toString()
-    );
-
-    useEffect(() => {
-        if (status && !isStatusLoading) {
-            collection.paused = status.paused;
-            collection.mintingEnabled = status.mintingEnabled;
-        }
-    }, [status, isStatusLoading, collection]);
-
-    const { data: gasEstimate, isLoading: isLoadingGasEstimate } = estimateGas(
-        mintAddress,
-        parseInt(mintQuantity) || 1,
-        privateKey
     );
 
     useEffect(() => {
@@ -143,6 +139,8 @@ export default function CollectionFunctions({
 
         try {
             const result = await mintTokens({
+                collectionAddress: collection.address,
+                networkId: collection.networkId,
                 to: mintAddress,
                 quantity,
                 privateKey,
@@ -152,7 +150,7 @@ export default function CollectionFunctions({
                 }),
             });
 
-            if (result.success && onCollectionUpdated) {
+            if (result?.transactionHash && onCollectionUpdated) {
                 onCollectionUpdated({
                     ...collection,
                 });
@@ -166,15 +164,17 @@ export default function CollectionFunctions({
         if (!privateKey) return;
 
         try {
+            const currentPauseState = status?.paused;
             const result = await togglePause({
-                pause: !collection.paused,
+                collectionAddress: collection.address,
+                networkId: collection.networkId,
+                pause: !currentPauseState,
                 privateKey,
             });
 
-            if (result.success && onCollectionUpdated) {
+            if (result?.transactionHash && onCollectionUpdated) {
                 onCollectionUpdated({
                     ...collection,
-                    paused: !collection.paused,
                 });
             }
         } catch (error) {
@@ -186,15 +186,17 @@ export default function CollectionFunctions({
         if (!privateKey) return;
 
         try {
+            const currentMintingState = status?.mintingEnabled;
             const result = await toggleMinting({
-                enabled: !collection.mintingEnabled,
+                collectionAddress: collection.address,
+                networkId: collection.networkId,
+                enabled: !currentMintingState,
                 privateKey,
             });
 
-            if (result.success && onCollectionUpdated) {
+            if (result?.transactionHash && onCollectionUpdated) {
                 onCollectionUpdated({
                     ...collection,
-                    mintingEnabled: !collection.mintingEnabled,
                 });
             }
         } catch (error) {
@@ -323,7 +325,9 @@ export default function CollectionFunctions({
                     Collection Address: {collection.address}
                 </div>
                 <div className="font-mono text-xs">
-                    Network: {collection.network?.name || "Unknown"}
+                    Network:{" "}
+                    {networks?.find((n) => n.id === collection.networkId)
+                        ?.name || "Unknown"}
                 </div>
             </div>
 
@@ -490,7 +494,7 @@ export default function CollectionFunctions({
                                                 Please select a wallet with
                                                 admin or escrow permissions
                                             </div>
-                                        ) : isLoadingGasEstimate ? (
+                                        ) : isGasEstimateLoading ? (
                                             <div className="flex items-center">
                                                 <Loader2 className="h-3 w-3 mr-2 animate-spin" />
                                                 Estimating gas...
@@ -603,7 +607,7 @@ export default function CollectionFunctions({
                             <Button
                                 onClick={handleMint}
                                 disabled={
-                                    !collection.mintingEnabled || !privateKey
+                                    !status?.mintingEnabled || !privateKey
                                 }
                                 className="w-full"
                             >
@@ -737,9 +741,7 @@ export default function CollectionFunctions({
                                 <p className="text-sm text-muted-foreground">
                                     Current status:{" "}
                                     <span className="font-semibold">
-                                        {collection.paused
-                                            ? "Paused"
-                                            : "Active"}
+                                        {status?.paused ? "Paused" : "Active"}
                                     </span>
                                 </p>
                             </CardContent>
@@ -748,7 +750,7 @@ export default function CollectionFunctions({
                                     onClick={handleTogglePause}
                                     disabled={isTogglingPause || !privateKey}
                                     variant={
-                                        collection.paused
+                                        status?.paused
                                             ? "default"
                                             : "destructive"
                                     }
@@ -757,13 +759,13 @@ export default function CollectionFunctions({
                                     {isTogglingPause ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            {collection.paused
+                                            {status?.paused
                                                 ? "Unpausing..."
                                                 : "Pausing..."}
                                         </>
                                     ) : (
                                         <>
-                                            {collection.paused ? (
+                                            {status?.paused ? (
                                                 <>
                                                     <Play className="mr-2 h-4 w-4" />
                                                     Unpause Contract
@@ -791,7 +793,7 @@ export default function CollectionFunctions({
                                 <p className="text-sm text-muted-foreground">
                                     Current status:{" "}
                                     <span className="font-semibold">
-                                        {collection.mintingEnabled
+                                        {status?.mintingEnabled
                                             ? "Enabled"
                                             : "Disabled"}
                                     </span>
@@ -802,7 +804,7 @@ export default function CollectionFunctions({
                                     onClick={handleToggleMinting}
                                     disabled={isTogglingMinting || !privateKey}
                                     variant={
-                                        collection.mintingEnabled
+                                        status?.mintingEnabled
                                             ? "destructive"
                                             : "default"
                                     }
@@ -811,13 +813,13 @@ export default function CollectionFunctions({
                                     {isTogglingMinting ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            {collection.mintingEnabled
+                                            {status?.mintingEnabled
                                                 ? "Disabling..."
                                                 : "Enabling..."}
                                         </>
                                     ) : (
                                         <>
-                                            {collection.mintingEnabled
+                                            {status?.mintingEnabled
                                                 ? "Disable Minting"
                                                 : "Enable Minting"}
                                         </>

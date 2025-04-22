@@ -335,29 +335,9 @@ export async function createNFTMetadata(
                     }`
                 );
 
-                if (nftMetadataList.length >= 100) {
-                    await tx.metadata.createMany({
-                        data: nftMetadataList,
-                        skipDuplicates: true,
-                    });
-                    nftMetadataList.length = 0;
-                }
-
                 if (end < endPoint) {
                     await new Promise((resolve) => setTimeout(resolve, 1000));
                 }
-            }
-
-            if (nftMetadataList.length > 0) {
-                console.log(
-                    `Creating ${nftMetadataList.length} metadata entries`
-                );
-                console.log("Rest of metadata:", nftMetadataList);
-                const restofMetadata = await tx.metadata.createMany({
-                    data: nftMetadataList,
-                    skipDuplicates: true,
-                });
-                console.log(`Created ${restofMetadata.count} metadata entries`);
             }
 
             if (failedUploads.length > 0) {

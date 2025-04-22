@@ -9,6 +9,7 @@ import { COLLECTION_ABI } from "../blockchain/abis/Collection";
 import { getBlockchainNetworkById } from "./blockchain";
 import { prisma } from "@/lib/prisma/client";
 import { createNFTMetadata } from "./metadata";
+import { CollectionContract } from "@prisma/client";
 
 interface SaveCollectionContractParams {
     collectionKey: string;
@@ -149,19 +150,9 @@ export async function getCollectionContractByAddress(address: string) {
     }
 }
 
-// Helper function to safely stringify objects with BigInt values
-function safeStringify(obj: any, indent = 2) {
-    return JSON.stringify(
-        obj,
-        (_, value) => (typeof value === "bigint" ? value.toString() : value),
-        indent
-    );
-}
-
 // Export interfaces for use in mutations
 export interface EstimateMintGasParams {
-    collectionAddress: string;
-    networkId: string;
+    address: string;
     to: string;
     quantity: number;
     privateKey?: string;
@@ -184,14 +175,12 @@ export interface EstimateMintGasResult {
  * Estimates gas cost for minting tokens
  */
 export async function estimateMintGas(
-    params: EstimateMintGasParams & { privateKey?: string }
+    params: EstimateMintGasParams
 ): Promise<EstimateMintGasResult> {
     try {
-        console.log("===== estimateMintGas: Starting gas estimation =====");
-        const { collectionAddress, networkId, to, quantity } = params;
-
+        const { address, to, quantity, privateKey } = params;
         // 1. 파라미터 검증
-        if (!collectionAddress?.startsWith("0x")) {
+        if (!address?.startsWith("0x")) {
             return {
                 success: false,
                 error: "Invalid collection address format - must start with 0x",
@@ -210,24 +199,40 @@ export async function estimateMintGas(
             };
         }
 
-        // 2. 네트워크 설정
-        console.log(`Setting up network: ${networkId}`);
-        const networkResult = await getBlockchainNetworkById(networkId);
-        if (!networkResult.success || !networkResult.data) {
+        console.log("===== estimateMintGas: Starting gas estimation =====");
+        console.log("=== estimateMintGas: address", address);
+        console.log("=== estimateMintGas: to", to);
+        console.log("=== estimateMintGas: quantity", quantity);
+        console.log("=== estimateMintGas: privateKey", privateKey);
+        const collection = await getCollectionContractByAddress(address);
+        console.log("=== estimateMintGas: collection", collection);
+        if (!collection.success || !collection.data) {
             return {
                 success: false,
-                error: `Network not found: ${networkId}`,
+                error: "Collection not found",
             };
         }
-        const networkData = networkResult.data;
+
+        console.log("=== estimateMintGas: collection", collection);
+        const network = await getBlockchainNetworkById(
+            collection.data.networkId
+        );
+        console.log("=== estimateMintGas: network", network);
+        if (!network.success || !network.data) {
+            return {
+                success: false,
+                error: "Network not found",
+            };
+        }
 
         // 3. 가스 예상 계산
         const publicClient = createPublicClient({
-            transport: http(networkData.rpcUrl),
+            transport: http(network.data.rpcUrl),
         });
 
         // 3.1 현재 가스 가격 가져오기
         const gasPrice = await publicClient.getGasPrice();
+        console.log("=== estimateMintGas: gasPrice", gasPrice);
 
         // 개인키가 제공된 경우 해당 계정으로 시뮬레이션
         let accountToUse = undefined;
@@ -241,14 +246,22 @@ export async function estimateMintGas(
             );
         }
 
+        console.log("=== estimateMintGas: accountToUse", accountToUse);
+        console.log(
+            "=== estimateMintGas: privateKey has been provided",
+            !!privateKey
+        );
+
         // 가스 사용량 예상 (계정 정보 포함)
         const gasLimit = await publicClient.estimateContractGas({
-            address: collectionAddress as `0x${string}`,
+            address: address as `0x${string}`,
             abi: COLLECTION_ABI,
             functionName: "batchMint",
             args: [to as `0x${string}`, BigInt(quantity), BigInt(1000000000)],
             account: accountToUse,
         });
+
+        console.log("=== estimateMintGas: gasLimit", gasLimit);
 
         // 3.3 총 가스 비용 계산
         const estimatedGasCost = gasLimit * gasPrice;
@@ -262,6 +275,11 @@ export async function estimateMintGas(
                 .padStart(18, "0")
                 .substring(0, 6);
 
+        console.log(
+            "=== estimateMintGas: estimatedGasCostInEth",
+            estimatedGasCostInEth
+        );
+
         return {
             success: true,
             data: {
@@ -269,7 +287,7 @@ export async function estimateMintGas(
                 gasPrice,
                 estimatedGasCost,
                 estimatedGasCostInEth,
-                networkSymbol: networkData.symbol,
+                networkSymbol: network.data.symbol,
             },
         };
     } catch (error) {
@@ -802,7 +820,7 @@ export async function setBaseURI(
 export interface TogglePauseParams {
     collectionAddress: string;
     networkId: string;
-    pause: boolean; // true to pause, false to unpause
+    pause: boolean;
     privateKey: string;
     gasMaxFee?: string;
     gasMaxPriorityFee?: string;
@@ -1474,4 +1492,53 @@ export async function listedCollections() {
         },
     });
     return collections;
+}
+
+export async function getCollectionStatus(
+    address: string
+): Promise<{ success: boolean; data?: CollectionStatus; error?: string }> {
+    try {
+        const collection = await getCollectionContractByAddress(address);
+        if (!collection.success || !collection.data) {
+            return {
+                success: false,
+                error: "Collection not found",
+            };
+        }
+        const rpcUrl = collection.data.network.rpcUrl;
+
+        const publicClient = createPublicClient({
+            transport: http(rpcUrl),
+        });
+
+        const [paused, mintingEnabled] = await Promise.all([
+            publicClient.readContract({
+                address: address as `0x${string}`,
+                abi: COLLECTION_ABI,
+                functionName: "paused",
+            }),
+            publicClient.readContract({
+                address: address as `0x${string}`,
+                abi: COLLECTION_ABI,
+                functionName: "mintingEnabled",
+            }),
+        ]);
+
+        return {
+            success: true,
+            data: {
+                paused: paused as boolean,
+                mintingEnabled: mintingEnabled as boolean,
+            },
+        };
+    } catch (error) {
+        console.error("Error reading collection status:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to read collection status",
+        };
+    }
 }
