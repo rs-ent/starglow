@@ -13,6 +13,14 @@ contract Collection is ERC721AUpgradeable, OwnableUpgradeable, PausableUpgradeab
     uint256 public mintPrice;
     bool public mintingEnabled;
 
+    struct Lockup {
+        uint256 lockedAt;
+        uint256 unlockScheduledAt;
+        uint256 unlockedAt;
+        bool isLocked;
+    }
+    mapping(uint256 => Lockup) public lockups;
+
     event TokenMinted(uint256 indexed tokenId);
     event TokenBurned(uint256 indexed tokenId);
     event BaseURIUpdated(string indexed newBaseURI);
@@ -20,6 +28,8 @@ contract Collection is ERC721AUpgradeable, OwnableUpgradeable, PausableUpgradeab
     event MintingEnabled(bool enabled);
     event MintPriceUpdated(uint256 newMintPrice);
     event BatchMinted(address indexed minter, uint256 quantity, uint256 gasPrice);
+    event TokenLocked(uint256 indexed tokenId, uint256 lockedAt, uint256 unlockScheduledAt);
+    event TokenUnlocked(uint256 indexed tokenId, uint256 lockedAt, uint256 unlockScheduledAt, uint256 unlockedAt);
 
     function initialize(
         string memory name,
@@ -68,6 +78,47 @@ contract Collection is ERC721AUpgradeable, OwnableUpgradeable, PausableUpgradeab
             _burn(tokenIds[i]);
             emit TokenBurned(tokenIds[i]);
         }
+    }
+
+    function isTokenLocked(uint256 tokenId) public view returns (bool) {
+        return lockups[tokenId].isLocked;
+    }
+
+    function lockTokens(uint256[] memory tokenIds, uint256 unlockScheduledAt) external onlyOwner whenNotPaused nonReentrant {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            require(_exists(tokenIds[i]), "TOKEN_NOT_EXIST");
+            require(!lockups[tokenIds[i]].isLocked, "ALREADY_LOCKED");
+
+            lockups[tokenIds[i]] = Lockup({
+                lockedAt: block.timestamp,
+                unlockScheduledAt: unlockScheduledAt,
+                unlockedAt: 0,
+                isLocked: true
+            });
+
+            emit TokenLocked(tokenIds[i], block.timestamp, unlockScheduledAt);
+        }
+    }
+
+    function unlockTokens(uint256[] memory tokenIds, bool forceUnlock) external onlyOwner whenNotPaused nonReentrant {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            require(lockups[tokenIds[i]].isLocked, "NOT_LOCKED");
+            require(forceUnlock || block.timestamp >= lockups[tokenIds[i]].unlockScheduledAt, "SCHEDULED_LOCKUP");
+
+            lockups[tokenIds[i]].unlockedAt = block.timestamp;
+            lockups[tokenIds[i]].isLocked = false;
+
+            emit TokenUnlocked(tokenIds[i], lockups[tokenIds[i]].lockedAt, lockups[tokenIds[i]].unlockScheduledAt, block.timestamp);
+        }
+    }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal override {
+        require(!isTokenLocked(tokenId), "TOKEN_LOCKED");
+        super._beforeTokenTransfer(from, to, tokenId);
     }
 
     function _baseURI() internal view override returns (string memory) {
