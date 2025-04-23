@@ -1,0 +1,964 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import "erc721a/contracts/ERC721A.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
+
+/**
+ * @title Collection
+ * @dev 배치 민팅 기능을 구현한 NFT 컬렉션 컨트랙트
+ */
+contract Collection is ERC721A, Ownable, Pausable, ReentrancyGuard, AccessControl, ERC2981 {
+    using Strings for uint256;
+
+    // 역할 정의
+    bytes32 public constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
+    
+    // EIP-712 타입 해시
+    bytes32 private constant _TYPE_HASH = keccak256("Transfer(address from,address to,uint256 tokenId,address verifyingContract,uint256 nonce,uint256 chainId)");
+    
+    // EIP-712 도메인 분리자
+    bytes32 private _DOMAIN_SEPARATOR;
+    
+    // 평균 블록 시간 (초 단위)
+    uint256 public averageBlockTime;
+    
+    // 상태 변수
+    string private _baseTokenURI;
+    string private _contractURI;
+    bool public mintingEnabled;
+    uint256 public maxSupply;
+    uint256 public mintPrice;
+    mapping(address => uint256) private _nonces;
+
+    // 이벤트 정의
+    event BatchMinted(address indexed to, uint256 startTokenId, uint256 quantity, uint256 gasPrice);
+    event TokenBurned(address indexed owner, uint256 tokenId);
+    event RoyaltyInfoUpdated(address indexed receiver, uint96 basisPoints);
+    event BaseURIUpdated(string baseURI);
+    event ContractURIUpdated(string contractURI);
+    event MintingStatusUpdated(bool enabled);
+    event MintPriceUpdated(uint256 oldPrice, uint256 newPrice);
+    event GlobalLockupPeriodUpdated(uint256 period);
+    event TokenLocked(uint256 indexed tokenId, uint256 lockedAt, uint256 unlockScheduledAt);
+    event TokenUnlocked(uint256 indexed tokenId, uint256 unlockedAt);
+    event EscrowRoleGranted(address indexed account);
+    event EscrowRoleRevoked(address indexed account);
+    event EscrowTransferred(address indexed from, address indexed to, uint256 tokenId, uint256 gasPrice);
+
+    // 락업 관련 변수
+    uint256 public globalLockupPeriod; // 전체 컬렉션 락업 기간 (초 단위)
+    mapping(uint256 => uint256) public lockedAt; // 토큰이 락업된 시간
+    mapping(uint256 => uint256) public unlockScheduledAt; // 토큰이 해제될 시간 (0이면 수동 언락 필요)
+    mapping(uint256 => uint256) public unlockedAt; // 토큰이 해제된 시간 (0이면 아직 락업 중)
+    
+    // 배치 민팅 이벤트
+    event BatchMintGasInfo(address indexed to, uint256 quantity, uint256 gasPrice, uint256 estimatedTime);
+    event AverageBlockTimeUpdated(uint256 oldBlockTime, uint256 newBlockTime);
+    event EscrowBatchMinted(address indexed escrow, address indexed to, uint256 fromTokenId, uint256 quantity, uint256 gasPrice);
+
+    // 생성자 - 컬렉션 생성
+    constructor(
+        string memory name,
+        string memory symbol,
+        address initialOwner,
+        uint256 _maxSupply,
+        uint256 initialMintPrice,
+        string memory baseURI,
+        string memory contractURI_
+    ) ERC721A(name, symbol) Ownable(initialOwner) {
+        maxSupply = _maxSupply;
+        mintPrice = initialMintPrice;
+        _baseTokenURI = baseURI;
+        _contractURI = contractURI_;
+        mintingEnabled = false;
+        globalLockupPeriod = 0;
+
+        // 초기 소유자에게 ESCROW 역할 부여 (모든 관리 권한)
+        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
+        _grantRole(ESCROW_ROLE, initialOwner);
+        
+        // EIP-712 도메인 분리자 생성
+        _DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(name)),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(this)
+            )
+        );
+        
+        // 기본 로열티 설정 (0%)
+        _setDefaultRoyalty(initialOwner, 0);
+    }
+    
+    /**
+     * @dev ESCROW 역할 부여
+     * @param account: ESCROW 역할을 부여할 계정
+     */
+    function grantEscrowRole(address account) external onlyRole(ESCROW_ROLE) {
+        grantRole(ESCROW_ROLE, account);
+        emit EscrowRoleGranted(account);
+    }
+    
+    /**
+     * @dev ESCROW 역할 박탈
+     * @param account: ESCROW 역할을 박탈할 계정
+     */
+    function revokeEscrowRole(address account) external onlyRole(ESCROW_ROLE) {
+        revokeRole(ESCROW_ROLE, account);
+        emit EscrowRoleRevoked(account);
+    }
+    
+    /**
+     * @dev 사용자의 현재 Nonce 조회
+     * @param owner: 사용자 주소
+     * @return 사용자의 현재 Nonce
+     */
+    function nonce(address owner) public view returns (uint256) {
+        return _nonces[owner];
+    }
+    
+    /**
+     * @dev 도메인 분리자 조회
+     * @return 도메인 분리자
+     */
+    function domainSeparator() public view returns (bytes32) {
+        return _DOMAIN_SEPARATOR;
+    }
+    
+    /**
+     * @dev 서명 검증
+     * @param signer: 서명자 주소
+     * @param messageHash: 메시지 해시
+     * @param signature: 서명 데이터
+     * @return 유효한 서명 여부
+     */
+    function verifySignature(
+        address signer,
+        bytes32 messageHash,
+        bytes memory signature
+    ) internal pure returns (bool) {
+        bytes32 ethSignedMessageHash = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32",
+                messageHash
+            )
+        );
+        
+        (bytes32 r, bytes32 s, uint8 v) = splitSignature(signature);
+        
+        // s 값 검사 (EIP-2 규정)
+        require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "Invalid signature 's' value");
+    
+        address recoveredSigner = ecrecover(ethSignedMessageHash, v, r, s);
+        require(recoveredSigner != address(0), "Invalid signature");
+
+        return recoveredSigner == signer;
+    }
+    
+    /**
+     * @dev 서명 분리
+     * @param signature: 서명 데이터
+     */
+    function splitSignature(bytes memory signature)
+        internal pure returns (bytes32 r, bytes32 s, uint8 v) 
+    {
+        require(signature.length == 65, "Invalid signature length");
+
+        assembly {
+            r := mload(add(signature, 32))
+            s := mload(add(signature, 64))
+            v := byte(0, mload(add(signature, 96)))
+        }
+
+        if (v < 27) {
+            v += 27;
+        }
+
+        require(v == 27 || v == 28, "Invalid signature 'v' value");
+
+        return (r, s, v);
+    }
+    
+    /**
+     * @dev 메시지 해시 생성 (프론트엔드 서명에 활용)
+     * @param from: 보내는 주소
+     * @param to: 받는 주소
+     * @param tokenId: 토큰 ID
+     * @return 메시지 해시
+     */
+    function getMessageHash(
+        address from,
+        address to,
+        uint256 tokenId
+    ) external view returns (bytes32) {
+        uint256 currentNonce = _nonces[from];
+
+        // EIP-712 메시지 해시 생성
+        bytes32 structHash = keccak256(
+            abi.encode(
+                _TYPE_HASH,
+                from,
+                to,
+                tokenId,
+                address(this),
+                currentNonce,
+                block.chainid
+            )
+        );
+
+        // EIP-712 도메인 분리자와 함께 해시 결합
+        return keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                _DOMAIN_SEPARATOR,
+                structHash
+            )
+        );
+    }
+    
+    /**
+     * @dev 배치 민팅 NFTs
+     * @param to: 민팅할 주소
+     * @param quantity: 민팅할 토큰 수
+     * @param gasFee: 트랜잭션 가스비 (gwei 단위)
+     */
+    function batchMint(address to, uint256 quantity, uint256 gasFee)
+        external
+        nonReentrant
+        whenNotPaused
+    {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()) || hasRole(ESCROW_ROLE, _msgSender()), 
+                "Caller is not an ADMIN or ESCROW");
+        require(mintingEnabled, "Minting is not enabled");
+        require(_totalMinted() + quantity <= maxSupply, "Max supply reached");
+        require(to != address(0), "Invalid address");
+        require(quantity > 0, "Invalid quantity");
+        require(gasFee > 0, "Gas fee must be greater than 0");
+
+        // gasFee는 gwei 단위로 입력 받음 (1 gwei = 10^9 wei)
+        uint256 gasPrice = gasFee * 1e9;
+        
+        uint256 startTokenId = _nextTokenId();
+        _mint(to, quantity);
+        
+        emit BatchMinted(to, startTokenId, quantity, gasPrice);
+    }
+
+    /**
+     * @dev 토큰 URI 조회 (컴퓨팅)
+     * @return 토큰 URI
+     */
+    function _baseURI() internal view override returns (string memory) {
+        return _baseTokenURI;
+    }
+
+    /**
+     * @dev 토큰 URI 조회 (사용자)
+     * @param tokenId: 토큰 ID
+     * @return 토큰 URI
+     */
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(_exists(tokenId), "Token does not exist");
+
+        string memory baseURI = _baseURI();
+        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
+    }
+
+    /**
+     * @dev 현재 총 공급량 조회
+     * @return 총 토큰 수
+     */
+    function totalSupply() public view override returns (uint256) {
+        return _totalMinted();
+    }
+    
+    /**
+     * @dev 토큰 전송 전 실행되는 훅
+     * @param from: 보내는 주소
+     * @param to: 받는 주소
+     * @param startTokenId: 시작 토큰 ID
+     * @param quantity: 토큰 수
+     */
+    function _beforeTokenTransfers(
+        address from,
+        address to,
+        uint256 startTokenId,
+        uint256 quantity
+    ) internal override whenNotPaused {
+        super._beforeTokenTransfers(from, to, startTokenId, quantity);
+        
+        // 민팅과 소각은 락업 체크에서 제외
+        if (from != address(0) && to != address(0)) {
+            // 배치 전송에서는 모든 토큰을 체크
+            for (uint256 i = 0; i < quantity; i++) {
+                uint256 tokenId = startTokenId + i;
+                // ESCROW_ROLE이 있거나 락업되지 않은 경우에만 전송 허용
+                if (!hasRole(ESCROW_ROLE, _msgSender())) {
+                    require(!isTokenLocked(tokenId), "Token is locked");
+                    require(_isApprovedOrOwner(tokenId, _msgSender()), "Transfer caller is not owner nor approved");
+                }
+            }
+        }
+    }
+    
+    /**
+     * @dev 인터페이스 지원 여부 확인 (ERC165)
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721A, AccessControl, ERC2981)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
+    }
+
+    function burn(uint256 tokenId) external {
+        require(_isApprovedOrOwner(tokenId, _msgSender()), "Caller is not owner nor approved");
+        _burn(tokenId);
+        emit TokenBurned(_msgSender(), tokenId);
+    }
+
+    function setDefaultRoyalty(address receiver, uint96 basisPoints) external onlyRole(ESCROW_ROLE) {
+        require(basisPoints <= 1000, "Royalty cannot exceed 10%");
+        _setDefaultRoyalty(receiver, basisPoints);
+        emit RoyaltyInfoUpdated(receiver, basisPoints);
+    }
+
+    function setTokenRoyalty(uint256 tokenId, address receiver, uint96 basisPoints) 
+        external 
+        onlyRole(ESCROW_ROLE) 
+    {
+        require(basisPoints <= 1000, "Royalty cannot exceed 10%");
+        require(_exists(tokenId), "Token does not exist");
+        _setTokenRoyalty(tokenId, receiver, basisPoints);
+        emit RoyaltyInfoUpdated(receiver, basisPoints);
+    }
+
+    function setBaseURI(string memory baseURI_) external onlyRole(ESCROW_ROLE) {
+        _baseTokenURI = baseURI_;
+        emit BaseURIUpdated(baseURI_);
+    }
+
+    function setContractURI(string memory contractURI_) external onlyRole(ESCROW_ROLE) {
+        _contractURI = contractURI_;
+        emit ContractURIUpdated(contractURI_);
+    }
+
+    function setMintingEnabled(bool enabled) external onlyRole(ESCROW_ROLE) {
+        mintingEnabled = enabled;
+        emit MintingStatusUpdated(enabled);
+    }
+
+    function pause() external onlyRole(ESCROW_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(ESCROW_ROLE) {
+        _unpause();
+    }
+
+    /**
+     * @dev 평균 블록 시간 설정
+     * @param blockTime: 블록 시간 (초 단위)
+     */
+    function setAverageBlockTime(uint256 blockTime) external onlyRole(ESCROW_ROLE) {
+        require(blockTime > 0, "Block time must be greater than 0");
+        uint256 oldBlockTime = averageBlockTime;
+        averageBlockTime = blockTime;
+        emit AverageBlockTimeUpdated(oldBlockTime, blockTime);
+    }
+
+    /**
+     * @dev 에스크로 전송 (서명 기반)
+     * @notice 가스비를 ESCROW_ROLE이 대신 지불하는 전송 방식
+     * @param from: 토큰 소유자 주소
+     * @param to: 받는 주소
+     * @param tokenId: 전송할 토큰 ID
+     * @param signature: 소유자의 서명
+     * @param gasFee: 트랜잭션 가스비 (gwei 단위)
+     */
+    function escrowTransfer(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory signature,
+        uint256 gasFee
+    ) external whenNotPaused onlyRole(ESCROW_ROLE) {
+        require(_exists(tokenId), "Token does not exist");
+        require(ownerOf(tokenId) == from, "From address is not the owner");
+        require(to != address(0), "Cannot transfer to zero address");
+        require(!isTokenLocked(tokenId), "Token is locked");
+        require(gasFee > 0, "Gas fee must be greater than 0");
+
+        // gasFee는 gwei 단위로 입력 받음 (1 gwei = 10^9 wei)
+        uint256 gasPrice = gasFee * 1e9;
+
+        // 메시지 해시 생성
+        uint256 currentNonce = _nonces[from];
+        bytes32 structHash = keccak256(
+            abi.encode(
+                _TYPE_HASH,
+                from,
+                to,
+                tokenId,
+                address(this),
+                currentNonce,
+                block.chainid
+            )
+        );
+
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                _DOMAIN_SEPARATOR,
+                structHash
+            )
+        );
+
+        // 서명 검증
+        require(verifySignature(from, messageHash, signature), "Invalid signature");
+
+        // Nonce 증가
+        _nonces[from]++;
+
+        // ESCROW_ROLE을 가진 계정에게 특정 토큰 전송 권한 부여
+        _approve(_msgSender(), tokenId, false);
+        
+        // 토큰 전송 (가스비는 함수 호출자인 ESCROW_ROLE이 지불)
+        transferFrom(from, to, tokenId);
+        
+        // 가스비 관련 이벤트 발생
+        emit EscrowTransferred(from, to, tokenId, gasPrice);
+    }
+
+    /**
+     * @dev EIP-712 도메인 분리자 조회
+     * @return 도메인 분리자
+     */
+    function getDomainSeparator() public view returns (bytes32) {
+        return _DOMAIN_SEPARATOR;
+    }
+
+    /**
+     * @dev 토큰 소유자 또는 승인된 주소인지 확인
+     * @param tokenId: 토큰 ID
+     * @param spender: 확인할 주소
+     * @return 승인 여부
+     */
+    function _isApprovedOrOwner(uint256 tokenId, address spender) internal view returns (bool) {
+        address owner = ownerOf(tokenId);
+        return (spender == owner || isApprovedForAll(owner, spender) || getApproved(tokenId) == spender);
+    }
+
+    /****************************************************/
+    /***************** 락업 관련 함수 **********************/
+    /****************************************************/
+
+    /**
+     * @dev 토큰 락업 상태 확인
+     * @param tokenId: 토큰 ID
+     * @return 락업 상태 (true: 락업, false: 락업 해제)
+     */
+    function isTokenLocked(uint256 tokenId) public view returns (bool) {
+        if (!_exists(tokenId)) {
+            return false;
+        }
+
+        // 이미 언락되었다면 false 반환
+        if (unlockedAt[tokenId] > 0) {
+            return false;
+        }
+
+        // 락업된 적이 없다면 false 반환
+        if (lockedAt[tokenId] == 0) {
+            return false;
+        }
+
+        // 예약된 언락 시간이 있고, 그 시간이 지났다면 false 반환
+        if (unlockScheduledAt[tokenId] != 0 && block.timestamp >= unlockScheduledAt[tokenId]) {
+            return false;
+        }
+
+        // 그 외의 경우는 모두 락업 상태
+        return true;
+    }
+    
+    /**
+     * @dev 특정 토큰 락업 설정
+     * @param tokenId: 토큰 ID
+     * @param unlockScheduledTime: 락업 해제 예정 시간 (0이면 수동 언락 필요)
+     */
+    function setLockToken(uint256 tokenId, uint256 unlockScheduledTime) public onlyRole(ESCROW_ROLE) {
+        require(_exists(tokenId), "Token does not exist");
+        require(!isTokenLocked(tokenId), "Token is already locked");
+
+        uint256 currentTime = block.timestamp;
+
+        if(unlockScheduledTime != 0) {
+            require(unlockScheduledTime > currentTime, "Unlock time must be in the future");
+        }
+
+        lockedAt[tokenId] = currentTime;
+        unlockScheduledAt[tokenId] = unlockScheduledTime;
+        unlockedAt[tokenId] = 0;
+
+        emit TokenLocked(tokenId, currentTime, unlockScheduledTime);
+    }
+    
+    /**
+     * @dev 여러 토큰 락업 설정
+     * @param tokenIds: 토큰 ID 배열
+     * @param unlockScheduledTime: 락업 해제 예정 시간 (0이면 수동 언락 필요)
+     */
+    function setLockTokenBatch(uint256[] calldata tokenIds, uint256 unlockScheduledTime) external onlyRole(ESCROW_ROLE) {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            require(tokenIds[i] < _nextTokenId(), "Token ID out of bounds");
+            require(unlockedAt[tokenIds[i]] == 0, "Token is already unlocked");
+            setLockToken(tokenIds[i], unlockScheduledTime);
+        }
+    }
+
+    /**
+     * @dev 특정 토큰 락업 해제
+     * @param tokenId: 토큰 ID
+     */
+    function setUnlockToken(uint256 tokenId) public onlyRole(ESCROW_ROLE) {
+        require(_exists(tokenId), "Token does not exist");
+        require(isTokenLocked(tokenId), "Token is not locked");
+
+        uint256 currentTime = block.timestamp;
+
+        if(unlockScheduledAt[tokenId] != 0) {
+            require(currentTime >= unlockScheduledAt[tokenId], "Unlock time has not passed");
+        }
+
+        unlockedAt[tokenId] = currentTime;
+        emit TokenUnlocked(tokenId, currentTime);
+    }
+    
+    /**
+     * @dev 여러 토큰 락업 해제
+     * @param tokenIds: 토큰 ID 배열
+     */
+    function setUnlockTokenBatch(uint256[] calldata tokenIds) external onlyRole(ESCROW_ROLE) {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            require(tokenIds[i] < _nextTokenId(), "Token ID out of bounds");
+            require(isTokenLocked(tokenIds[i]), "Token is not locked");
+            setUnlockToken(tokenIds[i]);
+        }
+    }
+
+    /**
+     * @dev 특정 토큰 락업 해제 (강제)
+     * @param tokenId: 토큰 ID
+     */
+    function forceUnlockToken(uint256 tokenId) public onlyRole(ESCROW_ROLE) {
+        require(_exists(tokenId), "Token does not exist");
+        require(isTokenLocked(tokenId), "Token is not locked");
+
+        uint256 currentTime = block.timestamp;
+        unlockedAt[tokenId] = currentTime;
+        emit TokenUnlocked(tokenId, currentTime);
+    }
+
+    /**
+     * @dev 여러 토큰 락업 해제 (강제)
+     * @param tokenIds: 토큰 ID 배열
+     */
+    function forceUnlockTokenBatch(uint256[] calldata tokenIds) external onlyRole(ESCROW_ROLE) {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            require(tokenIds[i] < _nextTokenId(), "Token ID out of bounds");
+            require(isTokenLocked(tokenIds[i]), "Token is not locked");
+            forceUnlockToken(tokenIds[i]);
+        }
+    } 
+    
+    /****************************************************/
+    /***************** 스테이킹 관련 함수 *******************/
+    /****************************************************/
+    struct StakedToken {
+        uint256 tokenId;
+        address staker;
+        uint256 stakedAt;
+        uint256 unstakeScheduledAt;
+        uint256 unstakedAt;
+        bool isStaked;
+    }
+
+    // 스테이킹 맵핑
+    mapping(uint256 => StakedToken) public stakedTokens;
+
+    // 스테이킹 이벤트
+    event TokenStaked(uint256 indexed tokenId, address indexed staker, uint256 stakedAt, uint256 unstakeScheduledAt);
+    event TokenUnstaked(uint256 indexed tokenId, address indexed staker, uint256 unstakedAt);
+
+    /**
+     * @dev 토큰 스테이킹
+     * @param tokenId: 토큰 ID
+     * @param unstakeScheduledTime: 언스테이킹 예정 시간 (0이면 수동 언스테이킹 필요)
+     */
+    function stakeToken(uint256 tokenId, uint256 unstakeScheduledTime) public whenNotPaused {
+        require(_exists(tokenId), "Token does not exist");
+        require(!stakedTokens[tokenId].isStaked, "Token is already staked");
+        require(!isTokenLocked(tokenId), "Token is locked");
+
+        if (!hasRole(ESCROW_ROLE, _msgSender())) {
+            require(ownerOf(tokenId) == _msgSender(), "Only the staker can stake the token");
+        }
+
+        uint256 currentTime = block.timestamp;
+        address staker = ownerOf(tokenId);
+
+        if (unstakeScheduledTime != 0) {
+            require(unstakeScheduledTime > currentTime, "Unstake time must be in the future");
+        }
+
+        stakedTokens[tokenId] = StakedToken({
+            tokenId: tokenId,
+            staker: staker,
+            stakedAt: currentTime,
+            unstakeScheduledAt: unstakeScheduledTime,
+            unstakedAt: 0,
+            isStaked: true
+        });
+
+        setLockToken(tokenId, 0);
+
+        emit TokenStaked(tokenId, staker, currentTime, unstakeScheduledTime);
+    }
+
+    /**
+     * @dev 여러 토큰 스테이킹
+     * @param tokenIds: 토큰 ID 배열
+     * @param unstakeScheduledTime: 언스테이킹 예정 시간 (0이면 수동 언스테이킹 필요)
+     */
+    function stakeTokenBatch(uint256[] calldata tokenIds, uint256 unstakeScheduledTime) external whenNotPaused {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            require(tokenIds[i] < _nextTokenId(), "Token ID out of bounds");
+            stakeToken(tokenIds[i], unstakeScheduledTime);
+        }
+    }
+        
+
+    /**
+     * @dev 특정 토큰 언스테이킹
+     * @param tokenId: 토큰 ID
+     */
+    function unstakeToken(uint256 tokenId) public whenNotPaused {
+        require(_exists(tokenId), "Token does not exist");
+        require(stakedTokens[tokenId].isStaked, "Token is not staked");
+
+        StakedToken memory staking = stakedTokens[tokenId];
+
+        if (!hasRole(ESCROW_ROLE, _msgSender())) {
+            require(staking.staker == _msgSender(), "Only the staker can unstake the token");
+        }
+
+        uint256 currentTime = block.timestamp;
+
+        if (staking.unstakeScheduledAt != 0) {
+            require(currentTime >= staking.unstakeScheduledAt, "Unstake time has not passed");
+        }
+
+        stakedTokens[tokenId].unstakedAt = currentTime;
+        stakedTokens[tokenId].isStaked = false;
+
+        forceUnlockToken(tokenId);
+
+        emit TokenUnstaked(tokenId, staking.staker, currentTime);
+    }
+
+    /**
+     * @dev 여러 토큰 언스테이킹
+     * @param tokenIds: 토큰 ID 배열
+     */
+    function unstakeTokenBatch(uint256[] calldata tokenIds) external whenNotPaused {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            require(tokenIds[i] < _nextTokenId(), "Token ID out of bounds");
+            unstakeToken(tokenIds[i]);
+        }
+    }
+
+    /**
+     * @dev 특정 토큰 언스테이킹 (강제)
+     * @param tokenId: 토큰 ID
+     */
+    function forceUnstakeToken(uint256 tokenId) public onlyRole(ESCROW_ROLE) {
+        require(_exists(tokenId), "Token does not exist");
+        require(stakedTokens[tokenId].isStaked, "Token is not staked");
+
+        StakedToken memory staking = stakedTokens[tokenId];
+
+        if (!hasRole(ESCROW_ROLE, _msgSender())) {
+            require(staking.staker == _msgSender(), "Only the staker can force unstake the token");
+        }
+
+        uint256 currentTime = block.timestamp;
+        stakedTokens[tokenId].unstakedAt = currentTime;
+        stakedTokens[tokenId].isStaked = false;
+
+        forceUnlockToken(tokenId);
+
+        emit TokenUnstaked(tokenId, staking.staker, currentTime);
+    }
+
+    /**
+     * @dev 여러 토큰 언스테이킹 (강제)
+     * @param tokenIds: 토큰 ID 배열
+     */
+    function forceUnstakeTokenBatch(uint256[] calldata tokenIds) external onlyRole(ESCROW_ROLE) {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            require(tokenIds[i] < _nextTokenId(), "Token ID out of bounds");
+            forceUnstakeToken(tokenIds[i]);
+        }
+    }
+    
+    /**
+     * @dev 특정 토큰 스테이킹 정보 조회
+     * @param tokenId: 토큰 ID
+     * @return 스테이킹 정보 
+     */
+    function getStakingStatus(uint256 tokenId) public view returns (StakedToken memory) {
+        return stakedTokens[tokenId];
+    }
+
+    /**
+     * @dev 여러 토큰 스테이킹 정보 조회
+     * @param tokenIds: 토큰 ID 배열
+     * @return 스테이킹 정보 배열
+     */
+    function getStakingStatusBatch(uint256[] calldata tokenIds) external view returns (StakedToken[] memory) {
+        StakedToken[] memory statuses = new StakedToken[](tokenIds.length);
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            require(tokenIds[i] < _nextTokenId(), "Token ID out of bounds");
+            statuses[i] = getStakingStatus(tokenIds[i]);
+        }
+        return statuses;
+    }
+
+    struct Reward {
+        uint256 rewardId;
+        string rewardType;
+        uint256 amount;
+        string description;
+        bool isActive;
+        uint256 activeAt;
+        uint256 deactiveAt;
+        uint256 claimableStakedTime;
+        string metadata;
+        string functionAbi;
+        uint256 createdAt;
+    }
+
+    struct ClaimedReward {
+        uint256 rewardId;
+        uint256 tokenId;
+        address staker;
+        uint256 stakedAt;
+        uint256 claimedAt;
+        bool isClaimed;
+        bool isRevoked;
+        uint256 revokedAt;
+        string revokedReason;
+        uint256 createdAt;
+    }
+
+    mapping(uint256 => Reward) public rewards;
+    mapping(uint256 => mapping(uint256 => ClaimedReward)) public claimedRewards;
+    uint256 public nextRewardId;
+
+    event RewardAdded(uint256 indexed rewardId, string indexed rewardType, uint256 amount, string description, string metadata, string functionAbi, uint256 activeAt, uint256 deactiveAt, uint256 claimableStakedTime);
+    event RewardClaimed(uint256 indexed rewardId, uint256 indexed tokenId, address indexed staker, uint256 amount, uint256 claimedAt);
+    event RewardRevoked(uint256 indexed rewardId, uint256 indexed tokenId, address indexed staker, string reason, uint256 revokedAt);
+    event RewardActivated(uint256 indexed rewardId);
+    event RewardDeactivated(uint256 indexed rewardId);
+
+    /**
+     * @dev 보상 추가
+     * @param rewardType: 보상 타입
+     * @param amount: 보상 금액
+     * @param description: 보상 설명
+     * @param metadata: 보상 메타데이터
+     * @param functionAbi: 보상 함수 ABI
+     * @param activeAt: 보상 활성화 시간 (0이면 즉시 활성화)
+     * @param deactiveAt: 보상 비활성화 시간 (0이면 무제한)
+     * @param claimableStakedTime: 보상을 받기 위한 최소 스테이킹 시간 (초 단위)
+     */
+    function addReward(
+        string memory rewardType,
+        uint256 amount,
+        string memory description,
+        string memory metadata,
+        string memory functionAbi,
+        uint256 activeAt,
+        uint256 deactiveAt,
+        uint256 claimableStakedTime
+    ) external onlyRole(ESCROW_ROLE) {
+        require(bytes(rewardType).length > 0, "Reward type cannot be empty");
+        require(bytes(description).length > 0, "Description cannot be empty");
+        require(claimableStakedTime > 0, "Claimable staked time must be greater than 0");
+
+        uint256 currentTime =  block.timestamp;
+
+        if (activeAt != 0) {
+            require(activeAt > currentTime, "Active time must be in the future");
+        }
+
+        if (deactiveAt != 0) {
+            require(deactiveAt > currentTime, "Deactive time must be in the future");
+            if (activeAt != 0) {
+                require(deactiveAt > activeAt, "Deactive time must be after active time");
+            }
+        }
+
+        uint256 rewardId = nextRewardId++;
+        rewards[rewardId] = Reward({
+            rewardId: rewardId,
+            rewardType: rewardType,
+            amount: amount,
+            description: description,
+            isActive: true, // 등록 시 활성화
+            activeAt: activeAt,
+            deactiveAt: deactiveAt,
+            claimableStakedTime: claimableStakedTime,
+            metadata: metadata,
+            functionAbi: functionAbi,
+            createdAt: currentTime
+        });
+
+        emit RewardAdded(rewardId, rewardType, amount, description, metadata, functionAbi, activeAt, deactiveAt, claimableStakedTime);
+    }
+
+    /**
+     * @dev 보상 활성화
+     * @param rewardId: 보상 ID
+     */
+    function activateReward(uint256 rewardId) external onlyRole(ESCROW_ROLE) {
+        require(!rewards[rewardId].isActive, "Reward is already active");
+
+        rewards[rewardId].isActive = true;
+        emit RewardActivated(rewardId);
+    }
+    
+    /**
+     * @dev 보상 비활성화
+     * @param rewardId: 보상 ID
+     */
+    function deactivateReward(uint256 rewardId) external onlyRole(ESCROW_ROLE) {
+        require(rewards[rewardId].isActive, "Reward is not active");
+
+        rewards[rewardId].isActive = false;
+        emit RewardDeactivated(rewardId);
+    }
+
+    /**
+     * @dev 보상 정보 조회
+     * @param rewardId: 보상 ID
+     * @return 보상 정보
+     */
+    function getReward(uint256 rewardId) external view returns (Reward memory) {
+        return rewards[rewardId];
+    }
+
+    /**
+     * @dev 보상 청구
+     * @param rewardId: 보상 ID
+     * @param tokenId: 토큰 ID
+     */
+    function claimReward(uint256 rewardId, uint256 tokenId) external nonReentrant whenNotPaused {
+        require(_exists(tokenId), "Token does not exist");
+        require(rewards[rewardId].rewardId != 0, "Reward does not exist");
+
+        Reward memory reward = rewards[rewardId];
+        StakedToken memory stakedToken = stakedTokens[tokenId];
+        uint256 currentTime = block.timestamp;
+
+        require(reward.isActive, "Reward is not active");
+        require(reward.activeAt <= currentTime, "Reward is not active yet");
+        require(reward.deactiveAt >= currentTime, "Reward is not active anymore");
+        require(reward.claimableStakedTime <= currentTime - stakedToken.stakedAt, "Token is not staked long enough");
+
+        require(!claimedRewards[tokenId][rewardId].isClaimed, "Reward is already claimed");
+        require(stakedToken.staker == _msgSender() || hasRole(ESCROW_ROLE, _msgSender()), "Only the staker can claim the reward");
+
+        claimedRewards[tokenId][rewardId] = ClaimedReward({
+            rewardId: rewardId,
+            tokenId: tokenId,
+            staker: ownerOf(tokenId),
+            stakedAt: stakedToken.stakedAt,
+            claimedAt: currentTime,
+            isClaimed: true,
+            isRevoked: false,
+            revokedAt: 0,
+            revokedReason: "",
+            createdAt: currentTime
+        });
+
+        emit RewardClaimed(rewardId, tokenId, ownerOf(tokenId), reward.amount, currentTime);
+    }
+
+    /**
+     * @dev 보상 청구 취소
+     * @param rewardId: 보상 ID
+     * @param reason: 취소 이유
+     * @param tokenId: 토큰 ID
+     */
+    function revokeClaimedReward(uint256 rewardId, uint256 tokenId, string memory reason) external onlyRole(ESCROW_ROLE) {
+        require(_exists(tokenId), "Token does not exist");
+        require(claimedRewards[tokenId][rewardId].isClaimed, "Reward is not claimed");
+
+        ClaimedReward memory claimedReward = claimedRewards[tokenId][rewardId];
+
+        claimedReward.isRevoked = true;
+        claimedReward.revokedAt = block.timestamp;
+        claimedReward.revokedReason = reason;
+
+        emit RewardRevoked(rewardId, tokenId, claimedReward.staker, reason, block.timestamp);
+    }
+
+    /**
+     * @dev 보상 청구 정보 조회
+     * @param tokenId: 토큰 ID
+     * @param rewardId: 보상 ID
+     * @return 청구 정보
+     */
+    function getClaimedReward(uint256 tokenId, uint256 rewardId) public view returns (ClaimedReward memory) {
+        return claimedRewards[tokenId][rewardId];
+    }
+
+    /**
+     * @dev 보상 청구 정보 조회
+     * @param tokenId: 토큰 ID
+     * @return 청구 정보
+     */
+    function getClaimedRewards(uint256 tokenId) external view returns (ClaimedReward[] memory) {
+        uint256 count = 0;
+        for (uint256 i = 0; i < nextRewardId; i++) {
+            if (claimedRewards[tokenId][i].isClaimed) {
+                count++;
+            }
+        }
+
+        ClaimedReward[] memory claimed = new ClaimedReward[](count);
+        uint256 index = 0;
+        for (uint256 i = 0; i < nextRewardId; i++) {
+            if (claimedRewards[tokenId][i].isClaimed) {
+                claimed[index++] = claimedRewards[tokenId][i];
+            }
+        }
+        return claimed;
+    }
+        
+    
+
+    /****************************************************/
+}

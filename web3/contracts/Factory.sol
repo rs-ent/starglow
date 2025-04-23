@@ -1,33 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./Collection.sol";
 
-/**
- * @title CollectionFactory
- * @dev 컬렉션 생성 팩토리 컨트랙트
- */
-contract CollectionFactory is Ownable {
-    // 컬렉션 주소 배열
+contract CollectionFactory is OwnableUpgradeable {
     address[] public collections;
+    mapping(string => bool) private _usedNames;
+    mapping(address => uint256) private _collectionIndex;
 
-    // 이름으로 컬렉션 조회
-    mapping(string => address) public collectionsByName;
+    event CollectionCreated(address indexed collectionAddress);
+    event CollectionDeleted(address indexed collectionAddress);
 
-    // 이벤트
-    event CollectionCreated(
-        address indexed collectionAddress,
-        string name,
-        string symbol,
-        address indexed owner
-    );
+    function initialize(address initialOwner) public initializer {
+        __Ownable_init(initialOwner);
+        _transferOwnership(initialOwner);
+    }
 
-    constructor(address initialOwner) Ownable(initialOwner) {}
-
-    /**
-     * @dev 새로운 NFT 컬렉션 생성
-     */
     function createCollection(
         string memory name,
         string memory symbol,
@@ -36,11 +25,10 @@ contract CollectionFactory is Ownable {
         string memory baseURI,
         string memory contractURI_
     ) external onlyOwner returns (address) {
-        // 중복 이름 체크
-        require(collectionsByName[name] == address(0), "Collection already exists");
+        require(!_usedNames[name], "NAME_TAKEN");
 
-        // 새로운 Collection 컨트랙트 배포
-        Collection newCollection = new Collection(
+        Collection newCollection = new Collection();
+        newCollection.initialize(
             name,
             symbol,
             msg.sender,
@@ -51,29 +39,33 @@ contract CollectionFactory is Ownable {
         );
 
         address collectionAddress = address(newCollection);
-
-        // 상태 업데이트
         collections.push(collectionAddress);
-        collectionsByName[name] = collectionAddress;
+        _usedNames[name] = true;
+        _collectionIndex[collectionAddress] = collections.length - 1;
 
-        // 이벤트 발생
-        emit CollectionCreated(
-            collectionAddress,
-            name,
-            symbol,
-            msg.sender
-        );
-
+        emit CollectionCreated(collectionAddress);
         return collectionAddress;
     }
 
-    /**
-     * @dev 생성된 모든 컬렉션 주소 조회
-     */
+    function deleteCollection(address collectionAddress) external onlyOwner {
+        uint256 index = _collectionIndex[collectionAddress];
+        require(collections[index] == collectionAddress, "NOT_FOUND");
+
+        uint256 lastIndex = collections.length - 1;
+        if (index != lastIndex) {
+            address lastCollection = collections[lastIndex];
+            collections[index] = lastCollection;
+            _collectionIndex[lastCollection] = index;
+        }
+
+        collections.pop();
+        delete _collectionIndex[collectionAddress];
+        delete _usedNames[Collection(collectionAddress).name()];
+
+        emit CollectionDeleted(collectionAddress);
+    }
+
     function getCollections() external view returns (address[] memory) {
         return collections;
     }
 }
-
-
-

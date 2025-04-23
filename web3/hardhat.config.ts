@@ -12,8 +12,15 @@ const config: HardhatUserConfig = {
             optimizer: {
                 enabled: true,
                 runs: 200,
+                details: {
+                    yul: true,
+                    yulDetails: {
+                        stackAllocation: true,
+                        optimizerSteps: "dhfoDgvulfnTUtnIf",
+                    },
+                },
             },
-            evmVersion: "paris",
+            viaIR: true,
         },
     },
     networks: {
