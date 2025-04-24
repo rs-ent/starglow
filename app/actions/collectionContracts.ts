@@ -23,6 +23,7 @@ import { createNFTMetadata, getMetadataByCollectionAddress } from "./metadata";
 import { deployContract } from "./blockchain";
 
 import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
+import { BytesLike, ethers } from "ethers";
 const abi = collectionJson.abi;
 
 export interface DeployCollectionInput {
@@ -1205,9 +1206,9 @@ export interface TransferTokensInput {
     tokenIds: number[];
     deadline: number;
     signatures: {
-        v: number[];
-        r: string[];
-        s: string[];
+        v: number;
+        r: string;
+        s: string;
     };
     gasOptions?: EstimateGasOptions;
 }
@@ -1286,11 +1287,7 @@ export async function transferTokens(
             };
         }
 
-        if (
-            input.signatures.v.length !== input.tokenIds.length ||
-            input.signatures.r.length !== input.tokenIds.length ||
-            input.signatures.s.length !== input.tokenIds.length
-        ) {
+        if (!input.signatures.v || !input.signatures.r || !input.signatures.s) {
             return {
                 success: false,
                 error: "Invalid signature data",
@@ -1330,23 +1327,63 @@ export async function transferTokens(
             client: walletClient,
         });
 
-        for (const tokenId of input.tokenIds) {
-            try {
-                const isLocked = await collectionContract.read.isTokenLocked([
-                    BigInt(tokenId),
-                ]);
-                if (isLocked) {
-                    return {
-                        success: false,
-                        error: `Token ${tokenId} is locked`,
-                    };
-                }
-            } catch (error) {
-                return {
-                    success: false,
-                    error: `Failed to check lock status of token ${tokenId}`,
-                };
+        // nonce 가져오기 추가
+        const currentNonce = await collectionContract.read.nonces([
+            input.fromAddress as Address,
+        ]);
+
+        // 서명 검증을 위한 structHash 생성
+        const structHash = await collectionContract.read.hashTypedDataV4([
+            ethers.utils.keccak256(
+                ethers.utils.defaultAbiCoder.encode(
+                    [
+                        "bytes32",
+                        "address",
+                        "address",
+                        "address",
+                        "bytes32",
+                        "uint256",
+                        "uint256",
+                    ],
+                    [
+                        ethers.utils.keccak256(
+                            ethers.utils.toUtf8Bytes(
+                                "Transfer(address owner,address spender,address to,uint256[] tokenIds,uint256 nonce,uint256 deadline)"
+                            )
+                        ),
+                        input.fromAddress,
+                        account.address,
+                        input.toAddress,
+                        ethers.utils.keccak256(
+                            ethers.utils.defaultAbiCoder.encode(
+                                ["uint256[]"],
+                                [input.tokenIds]
+                            )
+                        ),
+                        currentNonce,
+                        BigInt(input.deadline),
+                    ]
+                )
+            ),
+        ]);
+
+        // 서명 검증
+        const recoveredAddress = ethers.utils.recoverAddress(
+            structHash as BytesLike,
+            {
+                v: input.signatures.v,
+                r: input.signatures.r,
+                s: input.signatures.s,
             }
+        );
+
+        if (
+            recoveredAddress.toLowerCase() !== input.fromAddress.toLowerCase()
+        ) {
+            return {
+                success: false,
+                error: "Invalid signature",
+            };
         }
 
         const gasOptions = await estimateGasOptions({

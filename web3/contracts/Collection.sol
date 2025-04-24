@@ -50,6 +50,8 @@ contract Collection is
     event ContractURIUpdated(string indexed newContractURI);
     event MintPriceUpdated(uint256 newMintPrice);
 
+    event Transferred(address indexed from, address indexed to, uint256[] tokenIds);
+
     event EscrowWalletAdded(address indexed wallet);
     event EscrowWalletRemoved(address indexed wallet);
 
@@ -110,10 +112,10 @@ contract Collection is
     }
     
     function mint(uint256 quantity) external whenNotPaused nonReentrant {
+        require(quantity > 0, "INVALID_QUANTITY");
         require(_isEscrowWallet[msg.sender] || msg.sender == owner(), "NOT_ALLOWED");
         require(mintingEnabled(), "MINT_NOT_ENABLED");
         require(_totalMinted() + quantity <= maxSupply, "MAX_EXCEEDED");
-        require(quantity > 0, "INVALID_QUANTITY");
 
         uint256 startTokenId = _nextTokenId();
         _mint(msg.sender, quantity);
@@ -229,37 +231,91 @@ contract Collection is
         address owner,
         address spender,
         address to,
-        uint256[] memory tokenIds,
+        uint256[] calldata tokenIds,
         uint256 deadline,
-        uint8[] memory v,
-        bytes32[] memory r,
-        bytes32[] memory s
+        uint8 v,
+        bytes32 r,
+        bytes32 s
     ) external whenNotPaused nonReentrant {
         require(_isEscrowWallet[spender] || msg.sender == spender, "NOT_ALLOWED");
         require(block.timestamp < deadline, "EXPIRED");
-        require(tokenIds.length == v.length && tokenIds.length == r.length && tokenIds.length == s.length, "INVALID_PARAMS");
+        require(tokenIds.length > 0, "EMPTY_TX");
 
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            require(_exists(tokenIds[i]), "TOKEN_NOT_EXIST");
-            require(ownerOf(tokenIds[i]) == owner, "NOT_OWNER");
+        uint256 currentNonce = nonces[owner]++;
 
-            bytes32 structHash = keccak256(
-                abi.encode(
-                    PERMIT_TYPEHASH,
-                    owner,
-                    spender,
-                    to,
-                    tokenIds[i],
-                    nonces[owner]++,
-                    deadline
-                )
-            );
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Transfer(address owner,address spender,address to,uint256[] tokenIds,uint256 nonce,uint256 deadline)"),
+                owner,
+                spender,
+                to,
+                keccak256(abi.encodePacked(tokenIds)),
+                currentNonce,
+                deadline
+            )
+        );
 
-            bytes32 hash = _hashTypedDataV4(structHash);
-            address signer = ECDSA.recover(hash, v[i], r[i], s[i]);
-            require(signer == owner, "INVALID_SIGNATURE");
+        require(ECDSA.recover(_hashTypedDataV4(structHash), v, r, s) == owner, "INVALID_SIG");
 
-            transferFrom(owner, to, tokenIds[i]);
+        uint256 length = tokenIds.length;
+        uint256[] memory batchStarts = new uint256[](length);
+        uint256[] memory batchSizes = new uint256[](length);
+        uint256 batchCount;
+
+        {
+            uint256 batchStart = tokenIds[0];
+            uint256 batchSize = 1;
+            uint256 lastTokenId = tokenIds[0];
+            
+            require(_exists(lastTokenId), "TOKEN_NOT_EXIST");
+            require(ownerOf(lastTokenId) == owner, "NOT_OWNER");
+            require(!isTokenLocked(lastTokenId), "TOKEN_LOCKED");
+
+            for (uint256 i = 1; i < length; i++) {
+                uint256 currTokenId = tokenIds[i];
+                require(_exists(currTokenId), "TOKEN_NOT_EXIST");
+                require(ownerOf(currTokenId) == owner, "NOT_OWNER");
+                require(!isTokenLocked(currTokenId), "TOKEN_LOCKED");
+
+                if (currTokenId == lastTokenId + 1) {
+                    batchSize++;
+                } else {
+                    batchStarts[batchCount] = batchStart;
+                    batchSizes[batchCount] = batchSize;
+                    batchCount++;
+                    batchStart = currTokenId;
+                    batchSize = 1;
+                }
+                lastTokenId = currTokenId;
+            }
+            
+            // 마지막 배치 처리
+            batchStarts[batchCount] = batchStart;
+            batchSizes[batchCount] = batchSize;
+            batchCount++;
+        }
+
+        for (uint256 i = 0; i < batchCount; i++) {
+            _beforeTokenTransfers(owner, to, batchStarts[i], batchSizes[i]);
+            _transferBatch(owner, to, batchStarts[i], batchSizes[i]);
+        }
+
+        emit Transferred(owner, to, tokenIds);
+    }
+
+    function _transferBatch(
+        address from,
+        address to,
+        uint256 startTokenId,
+        uint256 quantity
+    ) internal virtual {
+        // 배치 전체에 대해 한 번만 호출
+        _beforeTokenTransfers(from, to, startTokenId, quantity);
+        
+        unchecked {
+            for(uint256 i = 0; i < quantity; i++) {
+                safeTransferFrom(from, to, startTokenId + i);
+            }
         }
     }
 }
