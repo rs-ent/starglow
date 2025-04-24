@@ -2,161 +2,146 @@
 
 "use client";
 
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { collectionKeys } from "../queryKeys";
 import {
-    CollectionStatus,
-    EstimateMintGasParams,
-    EstimateMintGasResult,
-    getCollectionContract,
-    getCollectionContracts,
-    listedCollections,
+    getTokenOwners,
+    getTokens,
+    getNonce,
     getCollectionStatus,
-    estimateMintGas,
+    getEscrowWallet,
+    getCollectionsByNetwork,
+    getCollectionSettings,
+    updateCollectionSettings,
 } from "../actions/collectionContracts";
+import type {
+    getTokenOwnersInput,
+    getTokenOwnersResult,
+    GetTokensInput,
+    GetNonceInput,
+    GetCollectionStatusInput,
+    GetEscrowWalletInput,
+    GetCollectionsByNetworkInput,
+    GetCollectionSettingsInput,
+    GetCollectionSettingsResult,
+    UpdateCollectionSettingsInput,
+    UpdateCollectionSettingsResult,
+} from "../actions/collectionContracts";
+import { NFT } from "@prisma/client";
 
-/**
- * 모든 컬렉션 컨트랙트 조회 쿼리 훅
- */
-export function useCollectionContractsQuery() {
+export const useCollectionsByNetwork = (
+    input: GetCollectionsByNetworkInput
+) => {
     return useQuery({
-        queryKey: collectionKeys.lists(),
-        queryFn: async () => {
-            try {
-                const result = await getCollectionContracts();
-                if (!result?.success || !result?.data) {
-                    throw new Error(
-                        result.error || "Failed to fetch collections"
-                    );
-                }
-                return result.data;
-            } catch (error) {
-                throw new Error("Failed to fetch collections");
-            }
-        },
+        queryKey: collectionKeys.deployment.byNetwork(input.networkId),
+        queryFn: () => getCollectionsByNetwork(input),
+        enabled: !!input.networkId,
     });
-}
+};
 
-/**
- * 특정 ID의 컬렉션 컨트랙트 조회 쿼리 훅
- */
-export function useCollectionContractQuery(id: string) {
+export const useTokenOwners = (input: getTokenOwnersInput) => {
     return useQuery({
-        queryKey: collectionKeys.detail(id),
-        queryFn: async () => {
-            try {
-                const result = await getCollectionContract(id);
-                if (!result?.success || !result?.data) {
-                    throw new Error(
-                        result.error || "Failed to fetch collection"
-                    );
-                }
-                return result;
-            } catch (error) {
-                throw new Error("Failed to fetch collection");
-            }
-        },
-        enabled: !!id,
-    });
-}
-
-/**
- * 컬렉션 컨트랙트 상태(paused, mintingEnabled) 조회 쿼리 훅
- */
-export function useCollectionStatusQuery(address: string) {
-    return useQuery({
-        queryKey: collectionKeys.status(address),
-        queryFn: async () => {
-            try {
-                const result = await getCollectionStatus(address);
-                if (!result?.success || !result?.data) {
-                    throw new Error(
-                        result.error || "Failed to fetch collection status"
-                    );
-                }
-                return result.data;
-            } catch (error) {
-                throw new Error("Failed to fetch collection status");
-            }
-        },
-        enabled: !!address,
-    });
-}
-
-/**
- * 민팅 가스비 예상 쿼리 훅
- */
-export function useEstimateMintGasQuery(params: EstimateMintGasParams) {
-    return useQuery({
-        queryKey: collectionKeys.estimateMintGas(
-            params.address,
-            params.to,
-            params.quantity
+        queryKey: collectionKeys.tokens.owners(
+            input.collectionAddress,
+            input.tokenIds
         ),
-        queryFn: async () => {
-            try {
-                const result = (await estimateMintGas(
-                    params
-                )) as EstimateMintGasResult;
-                if (!result?.success || !result?.data) {
-                    throw new Error(
-                        result.error || "Failed to estimate gas cost"
-                    );
-                }
-                return result.data;
-            } catch (error) {
-                throw new Error("Failed to estimate gas cost");
-            }
-        },
-        enabled: !!params.address && !!params.to && params.quantity > 0,
+        queryFn: () => getTokenOwners(input),
+        enabled: !!input.collectionAddress && !!input.tokenIds,
     });
-}
+};
 
-/**
- * 컬렉션 설정 조회 쿼리 훅
- */
-export interface CollectionSettings {
-    id: string;
-    price: number;
-    circulation: number;
-}
-
-export function useCollectionSettingsQuery(collectionId: string) {
+export const useTokens = (input: GetTokensInput) => {
     return useQuery({
-        queryKey: collectionKeys.settings(collectionId),
-        queryFn: async () => {
-            const result = await getCollectionContract(collectionId);
-            console.log("useCollectionSettingsQuery result", result);
-            if (!result?.success || !result?.data) {
-                throw new Error(result.error || "Failed to fetch collection");
-            }
-            const data = result.data;
-            return {
-                id: data.id,
-                price: data.price,
-                circulation: data.circulation,
-            };
-        },
-        enabled: !!collectionId,
+        queryKey: collectionKeys.tokens.filtered(
+            input.collectionAddress,
+            input.options
+        ),
+        queryFn: () => getTokens(input),
+        select: (data) => data.tokens,
+        enabled: !!input.collectionAddress,
     });
-}
+};
 
-/**
- * 목록화된 컬렉션 조회 쿼리 훅
- */
-export function useListedCollectionsQuery() {
+export const useTokenByIds = (input: GetTokensInput) => {
     return useQuery({
-        queryKey: collectionKeys.listed(),
-        queryFn: async () => {
-            try {
-                const result = await listedCollections();
-                if (!result?.length) {
-                    throw new Error("No listed collections found");
-                }
-                return result;
-            } catch (error) {
-                throw new Error("Failed to fetch listed collections");
-            }
-        },
+        queryKey: collectionKeys.tokens.byIds(
+            input.collectionAddress,
+            input.options?.tokenIds ?? []
+        ),
+        queryFn: () => getTokens(input),
+        select: (data) => data.tokens,
+        enabled: !!input.collectionAddress && !!input.options?.tokenIds,
     });
-}
+};
+
+export const useTokenByOwner = (input: GetTokensInput) => {
+    return useQuery({
+        queryKey: collectionKeys.tokens.byOwner(
+            input.collectionAddress,
+            input.options?.ownerAddress ?? ""
+        ),
+        queryFn: () => getTokens(input),
+        select: (data) => data.tokens,
+        enabled: !!input.collectionAddress && !!input.options?.ownerAddress,
+    });
+};
+
+export const useTokenByLocked = (input: GetTokensInput) => {
+    return useQuery({
+        queryKey: collectionKeys.tokens.locked(input.collectionAddress),
+        queryFn: () => getTokens(input),
+        select: (data) => data.tokens,
+        enabled: !!input.collectionAddress && !!input.options?.isLocked,
+    });
+};
+
+export const useTokenByBurned = (input: GetTokensInput) => {
+    return useQuery({
+        queryKey: collectionKeys.tokens.burned(input.collectionAddress),
+        queryFn: () => getTokens(input),
+        select: (data) => data.tokens,
+        enabled: !!input.collectionAddress && !!input.options?.isBurned,
+    });
+};
+
+export const useTokenByStaked = (input: GetTokensInput) => {
+    return useQuery({
+        queryKey: collectionKeys.tokens.staked(input.collectionAddress),
+        queryFn: () => getTokens(input),
+        select: (data) => data.tokens,
+        enabled: !!input.collectionAddress && !!input.options?.isStaked,
+    });
+};
+
+export const useCollectionStatus = (input: GetCollectionStatusInput) => {
+    return useQuery({
+        queryKey: collectionKeys.status.paused(input.collectionAddress),
+        queryFn: () => getCollectionStatus(input),
+        enabled: !!input.collectionAddress,
+    });
+};
+
+export const useEscrowWallets = (input: GetEscrowWalletInput) => {
+    return useQuery({
+        queryKey: collectionKeys.escrowWallets.all(input.collectionAddress),
+        queryFn: () => getEscrowWallet(input),
+        select: (data) => data.wallet,
+        enabled: !!input.collectionAddress,
+    });
+};
+
+export const useNonce = (input: GetNonceInput) => {
+    return useQuery({
+        queryKey: collectionKeys.tokens.nonce(input.collectionAddress),
+        queryFn: () => getNonce(input),
+        enabled: !!input.collectionAddress && !!input.walletAddress,
+    });
+};
+
+export const useCollectionSettings = (input: GetCollectionSettingsInput) => {
+    return useQuery({
+        queryKey: collectionKeys.settings.byAddress(input.collectionAddress),
+        queryFn: () => getCollectionSettings(input),
+        enabled: !!input.collectionAddress,
+    });
+};

@@ -4,28 +4,38 @@
 "use client";
 
 import { useState } from "react";
-import { useFactoryContractsManager } from "@/app/hooks/useFactoryContracts";
-import { format } from "date-fns";
 import OnChainNetwork from "./OnChain.Network";
-import OnChainFactory from "./OnChain.Factory";
+import OnChainFactory, { FactoryContract } from "./OnChain.Factory";
 import OnChainEscrowWallet from "./OnChain.EscrowWallet";
 import OnChainCollection from "./OnChain.Collection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Network, Factory, Wallet, Layers, Image } from "lucide-react";
 import OnChainNFTManager from "./OnChain.NFT";
+import { CollectionContract } from "@prisma/client";
 
 export default function OnChainDashboard() {
-    const { contracts, isLoading, error, isError } =
-        useFactoryContractsManager();
-
     const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(
         null
     );
+    const [selectedFactory, setSelectedFactory] =
+        useState<FactoryContract | null>(null);
+    const [selectedCollection, setSelectedCollection] =
+        useState<CollectionContract | null>(null);
     const [activeTab, setActiveTab] = useState("networks");
 
     const handleDeployClick = (networkId: string) => {
         setSelectedNetworkId(networkId);
         setActiveTab("contracts");
+    };
+
+    const handleSelectFactory = (factory: FactoryContract) => {
+        setSelectedFactory(factory);
+        setActiveTab("collections");
+    };
+
+    const handleViewCollectionNFTs = (collection: CollectionContract) => {
+        setSelectedCollection(collection);
+        setActiveTab("nfts");
     };
 
     return (
@@ -42,7 +52,7 @@ export default function OnChainDashboard() {
                         className="data-[state=active]:bg-background flex items-center gap-2 py-3 rounded-lg transition-all"
                     >
                         <Network className="h-4 w-4" />
-                        <span>Networks</span>
+                        <span>네트워크</span>
                     </TabsTrigger>
 
                     <TabsTrigger
@@ -50,7 +60,7 @@ export default function OnChainDashboard() {
                         className="data-[state=active]:bg-background flex items-center gap-2 py-3 rounded-lg transition-all"
                     >
                         <Wallet className="h-4 w-4" />
-                        <span>Escrow Wallets</span>
+                        <span>에스크로 지갑</span>
                     </TabsTrigger>
 
                     <TabsTrigger
@@ -58,7 +68,7 @@ export default function OnChainDashboard() {
                         className="data-[state=active]:bg-background flex items-center gap-2 py-3 rounded-lg transition-all"
                     >
                         <Factory className="h-4 w-4" />
-                        <span>Factory</span>
+                        <span>팩토리</span>
                     </TabsTrigger>
 
                     <TabsTrigger
@@ -66,7 +76,7 @@ export default function OnChainDashboard() {
                         className="data-[state=active]:bg-background flex items-center gap-2 py-3 rounded-lg transition-all"
                     >
                         <Layers className="h-4 w-4" />
-                        <span>Collections</span>
+                        <span>컬렉션</span>
                     </TabsTrigger>
 
                     <TabsTrigger
@@ -74,7 +84,7 @@ export default function OnChainDashboard() {
                         className="data-[state=active]:bg-background flex items-center gap-2 py-3 rounded-lg transition-all"
                     >
                         <Image className="h-4 w-4" />
-                        <span>NFTs</span>
+                        <span>NFT</span>
                     </TabsTrigger>
                 </TabsList>
 
@@ -89,6 +99,7 @@ export default function OnChainDashboard() {
                                 selectedNetworkId || undefined
                             }
                             onDeploySuccess={() => setSelectedNetworkId(null)}
+                            onSelectFactory={handleSelectFactory}
                         />
                     </TabsContent>
 
@@ -97,11 +108,37 @@ export default function OnChainDashboard() {
                     </TabsContent>
 
                     <TabsContent value="collections" className="p-6">
-                        <OnChainCollection />
+                        {selectedFactory ? (
+                            <OnChainCollection
+                                networkId={selectedFactory.networkId}
+                                factoryId={selectedFactory.id}
+                                onViewNFTs={handleViewCollectionNFTs}
+                            />
+                        ) : (
+                            <div className="text-center text-muted-foreground">
+                                <p>팩토리를 선택해주세요.</p>
+                            </div>
+                        )}
                     </TabsContent>
 
                     <TabsContent value="nfts" className="p-6">
-                        <OnChainNFTManager />
+                        {selectedCollection ? (
+                            <OnChainNFTManager
+                                selectedCollection={selectedCollection}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-64 text-center">
+                                <Image className="h-12 w-12 text-muted-foreground/40 mb-4" />
+                                <p className="text-muted-foreground">
+                                    컬렉션을 선택해주세요.
+                                </p>
+                                <p className="text-sm text-muted-foreground/60 max-w-md mt-2">
+                                    컬렉션 탭에서 원하는 컬렉션을 선택한 후 "NFT
+                                    목록" 버튼을 클릭하면 이 곳에서 해당
+                                    컬렉션의 NFT 목록을 볼 수 있습니다.
+                                </p>
+                            </div>
+                        )}
                     </TabsContent>
                 </div>
             </Tabs>

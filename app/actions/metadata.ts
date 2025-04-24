@@ -236,127 +236,118 @@ export async function createNFTMetadata(
             `Starting NFT metadata creation for collection: ${collection.address}`
         );
 
-        const result = await prisma.$transaction(async (tx) => {
-            const collectionMetadata = await prisma.metadata.findUnique({
-                where: {
-                    collectionAddress: collection.address,
-                    type: MetadataType.collection,
-                },
-            });
-
-            if (!collectionMetadata) {
-                throw new Error("Collection metadata not found");
-            }
-
-            const metadata = collectionMetadata.metadata as METADATA_TYPE;
-            const collectionKey = collection.key;
-            const endPoint = specificCount
-                ? tokenStartId + specificCount
-                : collection.maxSupply;
-
-            console.log(
-                `Creating metadata for tokens ${tokenStartId} to ${
-                    endPoint - 1
-                }`
-            );
-
-            const batchSize = 20;
-            const nftMetadataList = [];
-            const failedUploads: number[] = [];
-
-            for (
-                let start = tokenStartId;
-                start < endPoint;
-                start += batchSize
-            ) {
-                const end = Math.min(start + batchSize, endPoint);
-                const batch = Array.from(
-                    { length: end - start },
-                    (_, i) => start + i
-                );
-
-                console.log(`Processing batch: ${start} to ${end - 1}`);
-
-                const batchResults = await Promise.allSettled(
-                    batch.map(async (tokenId) => {
-                        try {
-                            const json = JSON.stringify({
-                                ...metadata,
-                                name: `${metadata.name} #${tokenId}`,
-                                tokenId: tokenId,
-                            });
-
-                            const blob = new Blob([json], {
-                                type: "application/json",
-                            });
-                            const { url } = await put(
-                                `${collectionKey}/${tokenId}`,
-                                blob,
-                                {
-                                    access: "public",
-                                    token: TOKEN,
-                                    addRandomSuffix: false,
-                                }
-                            );
-
-                            return {
-                                metadata: metadata,
-                                url,
-                                type: MetadataType.nft,
-                                collectionAddress: collection.address,
-                                collectionKey: collectionKey,
-                                tokenId,
-                            };
-                        } catch (error) {
-                            console.error(
-                                `Failed to upload metadata for token ${tokenId}:`,
-                                error
-                            );
-                            failedUploads.push(tokenId);
-                            throw error;
-                        }
-                    })
-                );
-
-                const successfulUploads = batchResults
-                    .filter(
-                        (result): result is PromiseFulfilledResult<any> =>
-                            result.status === "fulfilled"
-                    )
-                    .map((result) => result.value);
-
-                nftMetadataList.push(...successfulUploads);
-
-                console.log(
-                    `Batch complete. Success: ${
-                        successfulUploads.length
-                    }, Failed: ${
-                        batchResults.length - successfulUploads.length
-                    }`
-                );
-
-                if (end < endPoint) {
-                    await new Promise((resolve) => setTimeout(resolve, 1000));
-                }
-            }
-
-            if (failedUploads.length > 0) {
-                console.warn(
-                    `Failed to upload metadata for tokens: ${failedUploads.join(
-                        ", "
-                    )}`
-                );
-            }
-
-            return {
-                totalProcessed: endPoint - tokenStartId,
-                successful: endPoint - tokenStartId - failedUploads.length,
-                failed: failedUploads.length,
-                failedTokenIds: failedUploads,
-            };
+        const collectionMetadata = await prisma.metadata.findUnique({
+            where: {
+                collectionAddress: collection.address,
+                type: MetadataType.collection,
+            },
         });
 
+        if (!collectionMetadata) {
+            throw new Error("Collection metadata not found");
+        }
+
+        const metadata = collectionMetadata.metadata as METADATA_TYPE;
+        const collectionKey = collection.key;
+        const endPoint = specificCount
+            ? tokenStartId + specificCount
+            : collection.maxSupply;
+
+        console.log(
+            `Creating metadata for tokens ${tokenStartId} to ${endPoint - 1}`
+        );
+
+        const batchSize = 20;
+        const nftMetadataList = [];
+        const failedUploads: number[] = [];
+
+        for (let start = tokenStartId; start < endPoint; start += batchSize) {
+            const end = Math.min(start + batchSize, endPoint);
+            const batch = Array.from(
+                { length: end - start },
+                (_, i) => start + i
+            );
+
+            console.log(`Processing batch: ${start} to ${end - 1}`);
+
+            const batchResults = await Promise.allSettled(
+                batch.map(async (tokenId) => {
+                    try {
+                        const json = JSON.stringify({
+                            ...metadata,
+                            name: `${metadata.name} #${tokenId}`,
+                            tokenId: tokenId,
+                        });
+
+                        const blob = new Blob([json], {
+                            type: "application/json",
+                        });
+                        const { url } = await put(
+                            `${collectionKey}/${tokenId}`,
+                            blob,
+                            {
+                                access: "public",
+                                token: TOKEN,
+                                addRandomSuffix: false,
+                            }
+                        );
+
+                        return {
+                            metadata: metadata,
+                            url,
+                            type: MetadataType.nft,
+                            collectionAddress: collection.address,
+                            collectionKey: collectionKey,
+                            tokenId,
+                        };
+                    } catch (error) {
+                        console.error(
+                            `Failed to upload metadata for token ${tokenId}:`,
+                            error
+                        );
+                        failedUploads.push(tokenId);
+                        throw error;
+                    }
+                })
+            );
+
+            const successfulUploads = batchResults
+                .filter(
+                    (result): result is PromiseFulfilledResult<any> =>
+                        result.status === "fulfilled"
+                )
+                .map((result) => result.value);
+
+            nftMetadataList.push(...successfulUploads);
+
+            console.log(
+                `Batch complete. Success: ${
+                    successfulUploads.length
+                }, Failed: ${batchResults.length - successfulUploads.length}`
+            );
+
+            if (end < endPoint) {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+        }
+
+        if (failedUploads.length > 0) {
+            console.warn(
+                `Failed to upload metadata for tokens: ${failedUploads.join(
+                    ", "
+                )}`
+            );
+        }
+
+        const result = {
+            totalProcessed: endPoint - tokenStartId,
+            successful: endPoint - tokenStartId - failedUploads.length,
+            failed: failedUploads.length,
+            failedTokenIds: failedUploads,
+        };
+
         console.log("NFT metadata creation complete:", result);
+
         return result;
     } catch (error) {
         console.error("Failed to create NFT metadata:", error);

@@ -2,151 +2,125 @@
 
 "use client";
 
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-    useFactoryContracts,
-    useActiveFactoryContract,
+    useFactories,
+    useFactoryCollections,
 } from "../queries/factoryContractsQueries";
 import {
-    useSaveFactoryContract,
-    useUpdateFactoryContractCollections,
-    useDeployFactoryContract,
-    useCreateCollection,
+    useDeployFactoryMutation,
+    useUpdateFactoryMutation,
+    useCreateCollectionMutation,
+    useDeleteCollectionMutation,
 } from "../mutations/factoryContractsMutations";
+import { factoryKeys } from "../queryKeys";
 
-// 타입 정의 추가
-export interface FactoryContract {
-    id: string;
-    address: string;
+// GET 훅 (조회 기능)
+export interface UseFactoryGetProps {
+    networkId?: string;
+    factoryId?: string;
+    includeInactive?: boolean;
+    enabled?: boolean;
+}
+
+export function useFactoryGet({
+    networkId,
+    factoryId,
+    includeInactive = false,
+}: UseFactoryGetProps) {
+    // 모든 Factory 조회 (networkId가 있는 경우만)
+    const factoriesQuery = useFactories({
+        networkId: networkId || "",
+        includeInactive,
+    });
+
+    // Factory의 컬렉션 목록 조회 (factoryId가 있는 경우만)
+    const collectionsQuery = useFactoryCollections({
+        factoryId: factoryId || "",
+        networkId,
+    });
+
+    return {
+        // 데이터
+        factories: factoriesQuery.data?.data,
+        collections: collectionsQuery.data?.data,
+
+        // 상태
+        isLoading:
+            (networkId ? factoriesQuery.isLoading : false) ||
+            (factoryId ? collectionsQuery.isLoading : false),
+        error: factoriesQuery.error || collectionsQuery.error,
+
+        // 개별 쿼리 상태
+        isLoadingFactories: networkId ? factoriesQuery.isLoading : false,
+        isLoadingCollections: factoryId ? collectionsQuery.isLoading : false,
+
+        // 원본 쿼리 객체 (고급 사용 사례용)
+        factoriesQuery,
+        collectionsQuery,
+    };
+}
+
+// SET 훅 (수정 기능)
+export interface UseFactorySetProps {
     networkId: string;
-    name?: string;
-    version?: string;
-    verified?: boolean;
-    deployedAt: Date;
-    network: {
-        symbol: string;
-        name: string;
-        id: string;
-        chainId: number;
-        rpcUrl: string;
-        explorerUrl: string;
-        isTestnet: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        isActive: boolean;
-    };
+    walletId?: string;
 }
 
-/**
- * 팩토리 컨트랙트 관리를 위한 통합 훅
- */
-export function useFactoryContractsManager(networkId?: string) {
-    const [selectedContractId, setSelectedContractId] = useState<string | null>(
-        null
-    );
+export function useFactorySet({ networkId, walletId }: UseFactorySetProps) {
+    const queryClient = useQueryClient();
 
-    // 쿼리
-    const contractsQuery = useFactoryContracts(networkId);
-    const activeContractQuery = networkId
-        ? useActiveFactoryContract(networkId)
-        : { data: null, isLoading: false, error: null };
-
-    // 뮤테이션
-    const saveContractMutation = useSaveFactoryContract();
-    const updateCollectionsMutation = useUpdateFactoryContractCollections();
-    const deployContractMutation = useDeployFactoryContract();
-    const createCollectionMutation = useCreateCollection();
-
-    // 선택된 컨트랙트 얻기
-    const selectedContract = selectedContractId
-        ? contractsQuery.data?.find((c) => c.id === selectedContractId)
-        : null;
-
-    // 로딩 및 에러 상태 통합
-    const isLoading =
-        contractsQuery.isLoading ||
-        (activeContractQuery.isLoading && !!networkId) ||
-        saveContractMutation.isPending ||
-        updateCollectionsMutation.isPending ||
-        deployContractMutation.isPending ||
-        createCollectionMutation.isPending;
-
-    const error =
-        contractsQuery.error ||
-        activeContractQuery.error ||
-        saveContractMutation.error ||
-        updateCollectionsMutation.error ||
-        deployContractMutation.error ||
-        createCollectionMutation.error;
+    // Mutations
+    const deployMutation = useDeployFactoryMutation();
+    const updateMutation = useUpdateFactoryMutation();
+    const createCollectionMutation = useCreateCollectionMutation();
+    const deleteCollectionMutation = useDeleteCollectionMutation();
 
     return {
-        // 쿼리 결과
-        contracts: (contractsQuery.data || []) as FactoryContract[],
-        activeContract: activeContractQuery.data || null,
-        selectedContract,
+        // 작업 함수들
+        deployFactory: deployMutation.mutateAsync,
+        updateFactory: updateMutation.mutateAsync,
+        createCollection: createCollectionMutation.mutateAsync,
+        deleteCollection: deleteCollectionMutation.mutateAsync,
 
-        // 상태 관리
-        setSelectedContract: setSelectedContractId,
+        // 작업 상태
+        isProcessing:
+            deployMutation.isPending ||
+            updateMutation.isPending ||
+            createCollectionMutation.isPending ||
+            deleteCollectionMutation.isPending,
 
-        // 로딩 & 에러
-        isLoading,
-        error,
-        isError: !!error,
-
-        // refetch 함수 추가
-        refetch: contractsQuery.refetch,
-
-        // 뮤테이션
-        saveContract: saveContractMutation.mutate,
-        updateCollections: updateCollectionsMutation.mutate,
-        deployContract: deployContractMutation.mutate,
-        createCollection: createCollectionMutation.mutate,
-
-        // 뮤테이션 상태
-        isSavingContract: saveContractMutation.isPending,
-        isUpdatingCollections: updateCollectionsMutation.isPending,
-        isDeployingContract: deployContractMutation.isPending,
-        isCreatingCollection: createCollectionMutation.isPending,
-
-        // 리셋
-        reset: () => {
-            saveContractMutation.reset();
-            updateCollectionsMutation.reset();
-            deployContractMutation.reset();
-            createCollectionMutation.reset();
-        },
-    };
-}
-
-/**
- * 팩토리 컨트랙트 배포를 위한 독립 훅
- */
-export function useDeployFactory() {
-    const deployMutation = useDeployFactoryContract();
-
-    return {
-        deployFactory: deployMutation.mutate,
+        // 개별 작업 상태
         isDeploying: deployMutation.isPending,
-        error: deployMutation.error,
-        isError: !!deployMutation.error,
-        reset: deployMutation.reset,
-        data: deployMutation.data,
-    };
-}
+        isUpdating: updateMutation.isPending,
+        isCreatingCollection: createCollectionMutation.isPending,
+        isDeletingCollection: deleteCollectionMutation.isPending,
 
-/**
- * 팩토리를 통한 컬렉션 생성을 위한 독립 훅
- */
-export function useFactoryCreateCollection() {
-    const createMutation = useCreateCollection();
+        // 에러
+        error:
+            deployMutation.error ||
+            updateMutation.error ||
+            createCollectionMutation.error ||
+            deleteCollectionMutation.error,
 
-    return {
-        createCollection: createMutation.mutate,
-        mutateAsync: createMutation.mutateAsync,
-        isCreating: createMutation.isPending,
-        error: createMutation.error,
-        isError: !!createMutation.error,
-        reset: createMutation.reset,
-        data: createMutation.data,
+        // 원본 mutation 객체들 (고급 사용 사례용)
+        deployMutation,
+        updateMutation,
+        createCollectionMutation,
+        deleteCollectionMutation,
+
+        // 캐시 갱신
+        refresh: async () => {
+            if (networkId) {
+                await queryClient.invalidateQueries({
+                    queryKey: factoryKeys.byNetwork(networkId),
+                });
+            } else {
+                // networkId가 없으면 모든 팩토리 쿼리 무효화
+                await queryClient.invalidateQueries({
+                    queryKey: factoryKeys.all,
+                });
+            }
+        },
     };
 }

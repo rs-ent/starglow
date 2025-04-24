@@ -2,16 +2,28 @@
 
 "use client";
 
-import { useListedCollections } from "@/app/hooks/useCollectionContracts";
+import { useFactoryGet } from "@/app/hooks/useFactoryContracts";
 import { CollectionContract } from "@prisma/client";
 import CollectionList from "@/components/organisms/NFTs.CollectionList";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Loader2 } from "lucide-react";
 import NavBar from "../organisms/NavBar";
+import { useMemo } from "react";
 
 export default function NFTs() {
-    const { listedCollections, isLoading, isError, error, isEmpty, refetch } =
-        useListedCollections();
+    // 매개변수 없이 호출하여 모든 컬렉션 가져오기
+    const { collections, isLoading, error, factoriesQuery, collectionsQuery } =
+        useFactoryGet({});
+
+    // isListed가 true인 컬렉션만 필터링
+    const listedCollections = useMemo(() => {
+        if (!collections || collections.length === 0) return [];
+        return collections.filter((collection) => collection.isListed);
+    }, [collections]);
+
+    // 컬렉션이 비어있는지 확인
+    const isEmpty = !listedCollections || listedCollections.length === 0;
+    const isError = !!error || collectionsQuery.isError;
 
     if (isLoading) {
         return (
@@ -25,9 +37,11 @@ export default function NFTs() {
         return (
             <Alert variant="destructive">
                 <AlertDescription>
-                    {error?.message || "Failed to load collections"}
+                    {error?.message ||
+                        collectionsQuery.error?.message ||
+                        "Failed to load collections"}
                     <button
-                        onClick={() => refetch()}
+                        onClick={() => collectionsQuery.refetch()}
                         className="ml-2 underline"
                     >
                         Try again
@@ -53,7 +67,7 @@ export default function NFTs() {
                         No collections available at the moment
                     </div>
                 ) : (
-                    <CollectionList collections={listedCollections || []} />
+                    <CollectionList collections={listedCollections} />
                 )}
             </div>
         </>

@@ -7,15 +7,20 @@ import "hardhat/types/artifacts";
 import type { GetContractReturnType } from "@nomicfoundation/hardhat-viem/types";
 
 import { Collection$Type } from "./Collection";
+import { IERC721Permit$Type } from "./IERC721Permit";
 
 declare module "hardhat/types/artifacts" {
   interface ArtifactsMap {
     ["Collection"]: Collection$Type;
+    ["IERC721Permit"]: IERC721Permit$Type;
     ["contracts/Collection.sol:Collection"]: Collection$Type;
+    ["contracts/Collection.sol:IERC721Permit"]: IERC721Permit$Type;
   }
 
   interface ContractTypesMap {
     ["Collection"]: GetContractReturnType<Collection$Type["abi"]>;
+    ["IERC721Permit"]: GetContractReturnType<IERC721Permit$Type["abi"]>;
     ["contracts/Collection.sol:Collection"]: GetContractReturnType<Collection$Type["abi"]>;
+    ["contracts/Collection.sol:IERC721Permit"]: GetContractReturnType<IERC721Permit$Type["abi"]>;
   }
 }

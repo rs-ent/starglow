@@ -2,1436 +2,2210 @@
 
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { createWalletClient, http, parseGwei, createPublicClient } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { COLLECTION_ABI } from "../blockchain/abis/Collection";
-import { getBlockchainNetworkById } from "./blockchain";
+import {
+    createPublicClient,
+    createWalletClient,
+    http,
+    getContract,
+    Address,
+    Hash,
+} from "viem";
 import { prisma } from "@/lib/prisma/client";
-import { createNFTMetadata } from "./metadata";
-import { CollectionContract } from "@prisma/client";
+import {
+    estimateGasOptions,
+    getChain,
+    getEscrowWalletWithPrivateKey,
+    EstimateGasOptions,
+} from "./blockchain";
+import { BlockchainNetwork, CollectionContract, NFT } from "@prisma/client";
+import { privateKeyToAccount } from "viem/accounts";
+import { createNFTMetadata, getMetadataByCollectionAddress } from "./metadata";
+import { deployContract } from "./blockchain";
 
-interface SaveCollectionContractParams {
-    collectionKey: string;
-    address: string;
-    factoryAddress: string;
+import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
+const abi = collectionJson.abi;
+
+export interface DeployCollectionInput {
+    networkId: string;
+    factoryId: string;
+    walletId: string;
     name: string;
     symbol: string;
     maxSupply: number;
-    mintPrice: string;
+    mintPrice: number;
     baseURI: string;
     contractURI: string;
-    networkId: string;
-    createdBy?: string;
-    transactionHash?: string;
+    collectionKey: string;
 }
 
-export async function saveCollectionContract(
-    params: SaveCollectionContractParams
-) {
-    try {
-        // Factory 조회
-        const factory = await prisma.factoryContract.findFirst({
-            where: {
-                address: params.factoryAddress,
-                networkId: params.networkId,
-            },
-        });
+export interface DeployCollectionResult {
+    success: boolean;
+    data?: CollectionContract;
+    error?: string;
+}
 
-        if (!factory) {
-            return {
-                success: false,
-                error: `Factory not found with address ${params.factoryAddress} on network ${params.networkId}`,
-            };
+export async function deployCollection(
+    input: DeployCollectionInput
+): Promise<DeployCollectionResult> {
+    try {
+        // 1. 네트워크 확인
+        const network = await prisma.blockchainNetwork.findUnique({
+            where: { id: input.networkId },
+        });
+        if (!network) {
+            return { success: false, error: "Network not found" };
         }
 
-        // Collection 저장
+        // 2. 지갑 정보 가져오기
+        const escrowWallet = await getEscrowWalletWithPrivateKey(
+            input.walletId
+        );
+        if (!escrowWallet.success || !escrowWallet.data) {
+            return { success: false, error: "Escrow wallet not found" };
+        }
+
+        // 3. Collection 컨트랙트 직접 배포
+        const { hash, contractAddress } = await deployContract({
+            walletId: input.walletId,
+            network,
+            abi,
+            bytecode: collectionJson.bytecode as `0x${string}`,
+            args: [], // constructor가 없으므로 빈 배열
+        });
+
+        // 4. 블록체인 설정
+        const chain = await getChain(network);
+        const privateKey = escrowWallet.data.privateKey;
+        const formattedPrivateKey = privateKey.startsWith("0x")
+            ? privateKey
+            : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedPrivateKey as Address);
+
+        // 5. 클라이언트 설정
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(),
+        });
+
+        // 6. 컨트랙트 객체 생성
+        const collectionContract = getContract({
+            address: contractAddress as Address,
+            abi,
+            client: walletClient,
+        });
+
+        // 7. 컨트랙트 초기화
+        console.log("Initializing collection with params:", {
+            name: input.name,
+            symbol: input.symbol,
+            owner: escrowWallet.data.address,
+            maxSupply: input.maxSupply,
+            mintPrice: input.mintPrice,
+            baseURI: input.baseURI,
+            contractURI: input.contractURI,
+        });
+
+        const initTx = await collectionContract.write.initialize([
+            input.name,
+            input.symbol,
+            escrowWallet.data.address,
+            BigInt(input.maxSupply),
+            BigInt(input.mintPrice),
+            input.baseURI,
+            input.contractURI,
+        ]);
+
+        await publicClient.waitForTransactionReceipt({ hash: initTx });
+
+        // 8. DB에 컬렉션 정보 저장
         const collection = await prisma.collectionContract.create({
             data: {
-                key: params.collectionKey,
-                address: params.address,
-                name: params.name,
-                symbol: params.symbol,
-                maxSupply: params.maxSupply,
-                mintPrice: params.mintPrice,
-                baseURI: params.baseURI,
-                contractURI: params.contractURI,
-                factoryId: factory.id,
-                networkId: params.networkId,
-                createdBy: params.createdBy || "admin",
-                txHash: params.transactionHash,
+                key: input.collectionKey,
+                factoryId: input.factoryId,
+                address: contractAddress,
+                name: input.name,
+                symbol: input.symbol,
+                maxSupply: input.maxSupply,
+                mintPrice: input.mintPrice.toString(),
+                baseURI: input.baseURI,
+                contractURI: input.contractURI,
+                networkId: input.networkId,
+                createdBy: input.walletId,
+                txHash: hash,
+                isListed: false,
+                circulation: input.maxSupply,
+                abi,
+                bytecode: collectionJson.bytecode as `0x${string}`,
             },
         });
 
-        // Factory collections 배열에 컬렉션 주소 추가
-        await prisma.factoryContract.update({
-            where: { id: factory.id },
-            data: {
-                collections: {
-                    push: params.address,
-                },
-            },
-        });
-
-        return { success: true, data: collection };
+        return {
+            success: true,
+            data: collection,
+        };
     } catch (error) {
-        console.error("Failed to save collection contract:", error);
+        console.error("Error deploying collection:", error);
         return {
             success: false,
             error:
                 error instanceof Error
                     ? error.message
-                    : "Failed to save collection contract",
+                    : "Failed to deploy collection",
         };
     }
 }
 
-export async function getCollectionContracts() {
+export interface GetCollectionsByNetworkInput {
+    networkId: string;
+}
+
+export interface GetCollectionsByNetworkResult {
+    collections: CollectionContract[];
+}
+
+export async function getCollectionsByNetwork(
+    input: GetCollectionsByNetworkInput
+): Promise<GetCollectionsByNetworkResult> {
     try {
         const collections = await prisma.collectionContract.findMany({
-            include: {
-                network: true,
-                factory: true,
-            },
-            orderBy: {
-                createdAt: "desc",
-            },
+            where: { networkId: input.networkId },
         });
 
-        return { success: true, data: collections };
+        return { collections };
     } catch (error) {
-        console.error("Error fetching collection contracts:", error);
-        return {
-            success: false,
-            error: "Failed to fetch collection contracts",
-        };
+        console.error("Error getting collections by network:", error);
+        return { collections: [] };
     }
 }
 
-export async function getCollectionContract(id: string) {
+export interface getTokenOwnersInput {
+    collectionAddress: string;
+    tokenIds: number[];
+}
+
+export interface getTokenOwnersResult {
+    owners: string[];
+}
+
+export async function getTokenOwners(
+    input: getTokenOwnersInput
+): Promise<getTokenOwnersResult> {
     try {
         const collection = await prisma.collectionContract.findUnique({
-            where: { id },
-            include: {
-                network: true,
-                factory: true,
-            },
+            where: { address: input.collectionAddress },
+            include: { network: true },
         });
 
-        if (!collection) {
-            return { success: false, error: "Collection not found" };
+        if (!collection || !collection.network) {
+            return { owners: [] };
         }
 
-        return { success: true, data: collection };
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: input.collectionAddress as Address,
+            abi,
+            client: publicClient,
+        });
+
+        const owners: string[] = [];
+        for (const tokenId of input.tokenIds) {
+            try {
+                const owner = await collectionContract.read.ownerOf([
+                    BigInt(tokenId),
+                ]);
+                owners.push(owner as string);
+
+                await prisma.nFT.update({
+                    where: {
+                        collectionId_tokenId: {
+                            collectionId: collection.id,
+                            tokenId: tokenId,
+                        },
+                    },
+                    data: { currentOwnerAddress: owner as string },
+                });
+            } catch (error) {
+                console.error(
+                    "Error getting owner for tokenId:",
+                    tokenId,
+                    error
+                );
+                owners.push("");
+            }
+        }
+
+        return { owners };
     } catch (error) {
-        console.error("Error fetching collection contract:", error);
-        return { success: false, error: "Failed to fetch collection contract" };
+        console.error("Error getting token owners:", error);
+        return { owners: [] };
     }
 }
 
-export async function getCollectionContractByAddress(address: string) {
-    try {
-        const collection = await prisma.collectionContract.findUnique({
-            where: { address },
-            include: {
-                network: true,
-                metadata: true,
-            },
-        });
-
-        if (!collection) {
-            return { success: false, error: "Collection not found" };
-        }
-
-        return { success: true, data: collection };
-    } catch (error) {
-        console.error("Error fetching collection contract:", error);
-        return { success: false, error: "Failed to fetch collection contract" };
-    }
+export interface SetURIInput {
+    collectionAddress: string;
+    walletId: string;
+    baseURI: string;
+    contractURI: string;
+    gasOptions?: EstimateGasOptions;
 }
 
-// Export interfaces for use in mutations
-export interface EstimateMintGasParams {
-    address: string;
-    to: string;
-    quantity: number;
-    privateKey?: string;
-}
-
-export interface EstimateMintGasResult {
+export interface SetURIResult {
     success: boolean;
-    data?: {
-        gasLimit: bigint;
-        gasPrice: bigint;
-        estimatedGasCost: bigint;
-        estimatedGasCostInEth: string;
-        estimatedGasCostInUsd?: string;
-        networkSymbol: string;
-    };
+    baseURIHash?: Hash;
+    contractURIHash?: Hash;
     error?: string;
 }
 
-/**
- * Estimates gas cost for minting tokens
- */
-export async function estimateMintGas(
-    params: EstimateMintGasParams
-): Promise<EstimateMintGasResult> {
+export async function setURI(input: SetURIInput): Promise<SetURIResult> {
     try {
-        const { address, to, quantity, privateKey } = params;
-        // 1. 파라미터 검증
-        if (!address?.startsWith("0x")) {
-            return {
-                success: false,
-                error: "Invalid collection address format - must start with 0x",
-            };
-        }
-        if (!to?.startsWith("0x")) {
-            return {
-                success: false,
-                error: "Invalid recipient address format - must start with 0x",
-            };
-        }
-        if (quantity <= 0) {
-            return {
-                success: false,
-                error: "Quantity must be greater than 0",
-            };
-        }
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
 
-        console.log("===== estimateMintGas: Starting gas estimation =====");
-        console.log("=== estimateMintGas: address", address);
-        console.log("=== estimateMintGas: to", to);
-        console.log("=== estimateMintGas: quantity", quantity);
-        console.log("=== estimateMintGas: privateKey", privateKey);
-        const collection = await getCollectionContractByAddress(address);
-        console.log("=== estimateMintGas: collection", collection);
-        if (!collection.success || !collection.data) {
+        if (!collection || !collection.network) {
             return {
                 success: false,
                 error: "Collection not found",
             };
         }
 
-        console.log("=== estimateMintGas: collection", collection);
-        const network = await getBlockchainNetworkById(
-            collection.data.networkId
+        const escrowWallet = await getEscrowWalletWithPrivateKey(
+            input.walletId
         );
-        console.log("=== estimateMintGas: network", network);
-        if (!network.success || !network.data) {
+        if (!escrowWallet.success || !escrowWallet.data) {
             return {
                 success: false,
-                error: "Network not found",
+                error: "Escrow wallet not found",
             };
         }
 
-        // 3. 가스 예상 계산
+        const chain = await getChain(collection.network);
         const publicClient = createPublicClient({
-            transport: http(network.data.rpcUrl),
+            chain,
+            transport: http(),
         });
 
-        // 3.1 현재 가스 가격 가져오기
-        const gasPrice = await publicClient.getGasPrice();
-        console.log("=== estimateMintGas: gasPrice", gasPrice);
+        const privateKey = escrowWallet.data.privateKey;
+        const formattedPrivateKey = privateKey.startsWith("0x")
+            ? privateKey
+            : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedPrivateKey as Address);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(),
+        });
 
-        // 개인키가 제공된 경우 해당 계정으로 시뮬레이션
-        let accountToUse = undefined;
-        if (params.privateKey) {
-            let formattedPrivateKey = params.privateKey;
-            if (!formattedPrivateKey.startsWith("0x")) {
-                formattedPrivateKey = `0x${formattedPrivateKey}`;
+        const collectionContract = getContract({
+            address: collection.address as Address,
+            abi,
+            client: walletClient,
+        });
+
+        const gasOptions = await estimateGasOptions({
+            publicClient,
+            walletClient,
+            contractAddress: collection.address as Address,
+            abi,
+            transactions: [
+                { functionName: "setBaseURI", args: [input.baseURI] },
+                { functionName: "setContractURI", args: [input.contractURI] },
+            ],
+            customOptions: input.gasOptions,
+        });
+
+        const baseURIHash = await collectionContract.write.setBaseURI(
+            [input.baseURI],
+            {
+                ...gasOptions,
+                gasLimit: gasOptions.gasLimit / 2n,
             }
-            accountToUse = privateKeyToAccount(
-                formattedPrivateKey as `0x${string}`
-            );
-        }
-
-        console.log("=== estimateMintGas: accountToUse", accountToUse);
-        console.log(
-            "=== estimateMintGas: privateKey has been provided",
-            !!privateKey
         );
+        await publicClient.waitForTransactionReceipt({ hash: baseURIHash });
 
-        // 가스 사용량 예상 (계정 정보 포함)
-        const gasLimit = await publicClient.estimateContractGas({
-            address: address as `0x${string}`,
-            abi: COLLECTION_ABI,
-            functionName: "batchMint",
-            args: [to as `0x${string}`, BigInt(quantity), BigInt(1000000000)],
-            account: accountToUse,
+        const contractURIHash = await collectionContract.write.setContractURI(
+            [input.contractURI],
+            {
+                ...gasOptions,
+                gasLimit: gasOptions.gasLimit / 2n,
+            }
+        );
+        await publicClient.waitForTransactionReceipt({ hash: contractURIHash });
+
+        await prisma.collectionContract.update({
+            where: { address: input.collectionAddress },
+            data: {
+                ...(input.baseURI && { baseURI: input.baseURI }),
+                ...(input.contractURI && { contractURI: input.contractURI }),
+            },
         });
-
-        console.log("=== estimateMintGas: gasLimit", gasLimit);
-
-        // 3.3 총 가스 비용 계산
-        const estimatedGasCost = gasLimit * gasPrice;
-
-        // 3.4 ETH 단위로 변환 (wei → ether)
-        const estimatedGasCostInEth =
-            (estimatedGasCost / BigInt(10 ** 18)).toString() +
-            "." +
-            (estimatedGasCost % BigInt(10 ** 18))
-                .toString()
-                .padStart(18, "0")
-                .substring(0, 6);
-
-        console.log(
-            "=== estimateMintGas: estimatedGasCostInEth",
-            estimatedGasCostInEth
-        );
 
         return {
             success: true,
-            data: {
-                gasLimit,
-                gasPrice,
-                estimatedGasCost,
-                estimatedGasCostInEth,
-                networkSymbol: network.data.symbol,
-            },
+            baseURIHash,
+            contractURIHash,
         };
     } catch (error) {
-        console.error("Error estimating gas:", error);
+        if (error instanceof Error) {
+            if (error.message.includes("insufficient funds")) {
+                return {
+                    success: false,
+                    error: "Insufficient funds for gas",
+                };
+            }
+            if (error.message.includes("gas required exceeds allowance")) {
+                return {
+                    success: false,
+                    error: "Gas limit too low",
+                };
+            }
+        }
+        console.error("Error in operation:", error);
         return {
             success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to estimate gas cost",
+            error: error instanceof Error ? error.message : "Operation failed",
         };
     }
 }
 
-export interface MintTokensParams {
+export interface MintTokensInput {
     collectionAddress: string;
-    networkId: string;
-    to: string;
+    walletId: string;
     quantity: number;
-    privateKey: string;
-    gasMaxFee?: string;
-    gasMaxPriorityFee?: string;
-    gasLimit?: string;
+    gasOptions?: {
+        maxFeePerGas?: bigint; // 지불할 최대 가스 가격
+        maxPriorityFeePerGas?: bigint; // 채굴자에게 지불할 팁
+        gasLimit?: bigint; // 사용할 최대 가스 합계
+    };
 }
 
 export interface MintTokensResult {
     success: boolean;
-    data?: {
-        transactionHash: string;
-        startTokenId: number;
-        quantity: number;
-        tokenIdRange: {
-            start: number;
-            end: number;
-        };
-        nftIds: string[];
-        blockNumber: number;
-        explorerUrl: string;
-    };
+    data?: NFT[];
     error?: string;
 }
 
-/**
- * Mints new tokens in a collection
- */
 export async function mintTokens(
-    params: MintTokensParams
+    input: MintTokensInput
 ): Promise<MintTokensResult> {
     try {
-        console.log("===== mintTokens: Starting token minting =====");
-        const {
-            collectionAddress,
-            networkId,
-            to,
-            quantity,
-            privateKey,
-            gasMaxFee,
-            gasMaxPriorityFee,
-            gasLimit,
-        } = params;
-
-        // 1. 기본 파라미터 검증
-        if (!collectionAddress?.startsWith("0x")) {
-            return {
-                success: false,
-                error: "Invalid collection address format",
-            };
-        }
-        if (!to?.startsWith("0x")) {
-            return {
-                success: false,
-                error: "Invalid recipient address format",
-            };
-        }
-        if (quantity <= 0) {
-            return { success: false, error: "Quantity must be greater than 0" };
-        }
-
-        // 2. Collection 데이터 검증
         const collection = await prisma.collectionContract.findUnique({
-            where: { address: collectionAddress },
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            return {
+                success: false,
+                error: "Collection not found",
+            };
+        }
+
+        if (!collection.baseURI) {
+            return {
+                success: false,
+                error: "Collection baseURI not set",
+            };
+        }
+
+        if (!collection.contractURI) {
+            return {
+                success: false,
+                error: "Collection contractURI not set",
+            };
+        }
+
+        const escrowWallet = await getEscrowWalletWithPrivateKey(
+            input.walletId
+        );
+
+        if (!escrowWallet.success || !escrowWallet.data) {
+            return {
+                success: false,
+                error: "Escrow wallet not found",
+            };
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const privateKey = escrowWallet.data.privateKey;
+        const formattedPrivateKey = privateKey.startsWith("0x")
+            ? privateKey
+            : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedPrivateKey as Address);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: collection.address as Address,
+            abi,
+            client: walletClient,
+        });
+
+        const gasOptions = await estimateGasOptions({
+            publicClient,
+            walletClient,
+            contractAddress: collection.address as Address,
+            abi,
+            transactions: [
+                { functionName: "mint", args: [BigInt(input.quantity)] },
+            ],
+            customOptions: input.gasOptions,
+        });
+
+        const hash = await collectionContract.write.mint(
+            [BigInt(input.quantity)],
+            {
+                ...gasOptions,
+                gasLimit: gasOptions.gasLimit,
+            }
+        );
+
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        const TOKEN_MINTED_EVENT_TOPIC =
+            "0xc0268504b7f19691951d6e4e0f6a77c6d432f0276be23b1250142315f1429a60";
+        const event = receipt.logs.find(
+            (log) => log.topics[0] === TOKEN_MINTED_EVENT_TOPIC
+        );
+
+        if (!event) {
+            return {
+                success: false,
+                error: "Token minted event not found",
+            };
+        }
+
+        const metadata = await getMetadataByCollectionAddress(
+            input.collectionAddress
+        );
+        if (!metadata) {
+            return {
+                success: false,
+                error: "Collection metadata not found",
+            };
+        }
+
+        const startTokenId = Number(event.topics[1]);
+        await createNFTMetadata(collection, input.quantity, startTokenId);
+
+        // Prisma에 저장
+        const result = await prisma.$transaction(async (tx) => {
+            const nfts: NFT[] = [];
+
+            for (let i = 0; i < input.quantity; i++) {
+                const tokenId = startTokenId + i;
+                const nft = await tx.nFT.create({
+                    data: {
+                        tokenId,
+                        collectionId: collection.id,
+                        ownerAddress: account.address,
+                        name: collection.name,
+                        currentOwnerAddress: account.address,
+                        networkId: collection.networkId,
+                        transactionHash: receipt.transactionHash,
+                        mintedBy: account.address,
+                        mintPrice: collection.mintPrice,
+                        metadataUri: `${collection.baseURI}${
+                            collection.baseURI.endsWith("/") ? "" : "/"
+                        }${tokenId}`,
+                        isListed: false,
+                        isBurned: false,
+                        transferCount: 0,
+                    },
+                });
+                nfts.push(nft);
+            }
+
+            const mintEvents = nfts.map((nft) => ({
+                nftId: nft.id,
+                collectionId: collection.id,
+                eventType: "MINT",
+                fromAddress: account.address,
+                transactionHash: receipt.transactionHash,
+                timestamp: new Date(),
+            }));
+
+            await tx.nFTEvent.createMany({
+                data: mintEvents,
+            });
+
+            await tx.collectionContract.update({
+                where: { address: input.collectionAddress },
+                data: {
+                    mintedCount: {
+                        increment: input.quantity,
+                    },
+                },
+            });
+
+            return nfts;
+        });
+
+        return {
+            success: true,
+            data: result,
+        };
+    } catch (error) {
+        if (error instanceof Error) {
+            if (error.message.includes("insufficient funds")) {
+                return {
+                    success: false,
+                    error: "Insufficient funds for gas",
+                };
+            }
+            if (error.message.includes("gas required exceeds allowance")) {
+                return {
+                    success: false,
+                    error: "Gas limit too low",
+                };
+            }
+        }
+        console.error("Error in operation:", error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "Operation failed",
+        };
+    }
+}
+
+export interface BurnTokensInput {
+    collectionAddress: string;
+    walletId: string;
+    tokenIds: number[];
+    gasOptions?: EstimateGasOptions;
+}
+
+export interface BurnTokensResult {
+    success: boolean;
+    transactionHash?: Hash;
+    error?: string;
+}
+
+export async function burnTokens(
+    input: BurnTokensInput
+): Promise<BurnTokensResult> {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            return {
+                success: false,
+                error: "Collection not found",
+            };
+        }
+
+        const tokens = await prisma.nFT.findMany({
+            where: {
+                collectionId: collection.id,
+                tokenId: { in: input.tokenIds },
+                isBurned: false,
+            },
+        });
+
+        if (tokens.length !== input.tokenIds.length) {
+            return {
+                success: false,
+                error: "Some tokens not found or already burned",
+            };
+        }
+
+        const invalidTokens = tokens.filter(
+            (token) => token.currentOwnerAddress !== input.walletId
+        );
+        if (invalidTokens.length > 0) {
+            return {
+                success: false,
+                error: `Not owner of tokens: ${invalidTokens
+                    .map((t) => t.tokenId)
+                    .join(", ")}`,
+            };
+        }
+
+        const escrowWallet = await getEscrowWalletWithPrivateKey(
+            input.walletId
+        );
+        if (!escrowWallet.success || !escrowWallet.data) {
+            return {
+                success: false,
+                error: "Escrow wallet not found",
+            };
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const privateKey = escrowWallet.data.privateKey;
+        const formattedPrivateKey = privateKey.startsWith("0x")
+            ? privateKey
+            : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedPrivateKey as Address);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: collection.address as Address,
+            abi,
+            client: walletClient,
+        });
+
+        const gasOptions = await estimateGasOptions({
+            publicClient,
+            walletClient,
+            contractAddress: collection.address as Address,
+            abi,
+            transactions: [{ functionName: "burn", args: [input.tokenIds] }],
+            customOptions: input.gasOptions,
+        });
+
+        const hash = await collectionContract.write.burn(
+            [input.tokenIds],
+            gasOptions
+        );
+
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+        const TOKEN_BURNED_EVENT_TOPIC =
+            "0x43ce8febc9822756d8f34b35cd628db23dc57fe810cb077080d7c740fcc6988f";
+        const events = receipt.logs.filter(
+            (log) => log.topics[0] === TOKEN_BURNED_EVENT_TOPIC
+        );
+
+        if (events.length !== input.tokenIds.length) {
+            return {
+                success: false,
+                error: "Some tokens were not burned successfully",
+            };
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.collectionContract.update({
+                where: { address: input.collectionAddress },
+                data: {
+                    mintedCount: {
+                        decrement: input.tokenIds.length,
+                    },
+                },
+            });
+
+            // 각 토큰의 상태 업데이트
+            await tx.nFT.deleteMany({
+                where: {
+                    collectionId: collection.id,
+                    tokenId: { in: input.tokenIds },
+                },
+            });
+
+            const burnEvents = tokens.map((token) => ({
+                nftId: token.id,
+                collectionId: collection.id,
+                eventType: "BURN",
+                fromAddress: input.walletId,
+                transactionHash: receipt.transactionHash,
+                timestamp: new Date(),
+            }));
+
+            await tx.nFTEvent.createMany({
+                data: burnEvents,
+            });
+        });
+
+        return {
+            success: true,
+            transactionHash: receipt.transactionHash,
+        };
+    } catch (error) {
+        if (error instanceof Error) {
+            if (error.message.includes("insufficient funds")) {
+                return {
+                    success: false,
+                    error: "Insufficient funds for gas",
+                };
+            }
+            if (error.message.includes("gas required exceeds allowance")) {
+                return {
+                    success: false,
+                    error: "Gas limit too low",
+                };
+            }
+        }
+        console.error("Error burning tokens:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to burn tokens",
+        };
+    }
+}
+
+export interface GetTokenOptions {
+    tokenIds?: number[];
+    ownerAddress?: string;
+    isBurned?: boolean;
+    isLocked?: boolean;
+    isStaked?: boolean;
+}
+export interface GetTokensInput {
+    collectionAddress: string;
+    options?: GetTokenOptions;
+}
+
+export interface GetTokensResult {
+    tokens: NFT[];
+}
+
+export async function getTokens(
+    input: GetTokensInput
+): Promise<GetTokensResult> {
+    const collection = await prisma.collectionContract.findUnique({
+        where: { address: input.collectionAddress },
+        include: { network: true },
+    });
+
+    if (!collection || !collection.network) {
+        return {
+            tokens: [],
+        };
+    }
+
+    const tokens = await prisma.nFT.findMany({
+        where: {
+            collectionId: collection.id,
+            ...(input.options?.tokenIds && {
+                tokenId: { in: input.options.tokenIds },
+            }),
+            ...(input.options?.ownerAddress && {
+                currentOwnerAddress: input.options.ownerAddress,
+            }),
+            ...(input.options?.isBurned !== undefined && {
+                isBurned: input.options.isBurned,
+            }),
+            ...(input.options?.isLocked !== undefined && {
+                isLocked: input.options.isLocked,
+            }),
+            ...(input.options?.isStaked !== undefined && {
+                isStaked: input.options.isStaked,
+            }),
+        },
+    });
+
+    return {
+        tokens,
+    };
+}
+
+export interface LockTokensInput {
+    collectionAddress: string;
+    walletId: string;
+    tokenIds: number[];
+    unlockScheduledAt: number;
+    gasOptions?: EstimateGasOptions;
+}
+
+export interface LockTokensResult {
+    success: boolean;
+    transactionHash?: Hash;
+    error?: string;
+}
+
+export async function lockTokens(
+    input: LockTokensInput
+): Promise<LockTokensResult> {
+    try {
+        if (
+            input.unlockScheduledAt > 0 &&
+            input.unlockScheduledAt <= Math.floor(Date.now() / 1000)
+        ) {
+            return {
+                success: false,
+                error: "Unlock time must be in the future",
+            };
+        }
+
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            return {
+                success: false,
+                error: "Collection not found",
+            };
+        }
+
+        const tokens = await prisma.nFT.findMany({
+            where: {
+                collectionId: collection.id,
+                tokenId: { in: input.tokenIds },
+                isBurned: false,
+                isLocked: false,
+            },
+        });
+
+        if (tokens.length !== input.tokenIds.length) {
+            return {
+                success: false,
+                error: "Some tokens not found, burned, or already locked",
+            };
+        }
+
+        const escrowWallet = await getEscrowWalletWithPrivateKey(
+            input.walletId
+        );
+        if (!escrowWallet.success || !escrowWallet.data) {
+            return {
+                success: false,
+                error: "Escrow wallet not found",
+            };
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const privateKey = escrowWallet.data.privateKey;
+        const formattedPrivateKey = privateKey.startsWith("0x")
+            ? privateKey
+            : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedPrivateKey as Address);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: collection.address as Address,
+            abi,
+            client: walletClient,
+        });
+
+        const gasOptions = await estimateGasOptions({
+            publicClient,
+            walletClient,
+            contractAddress: collection.address as Address,
+            abi,
+            transactions: [
+                {
+                    functionName: "lockTokens",
+                    args: [input.tokenIds, BigInt(input.unlockScheduledAt)],
+                },
+            ],
+            customOptions: input.gasOptions,
+        });
+
+        const hash = await collectionContract.write.lockTokens(
+            [input.tokenIds, BigInt(input.unlockScheduledAt)],
+            gasOptions
+        );
+
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+        const TOKEN_LOCKED_EVENT_TOPIC =
+            "0xf25fd82f8bf40df41b90b95a0159c55596f50b182d7b7dff1d3e04a5a16ac7c4";
+        const events = receipt.logs.filter(
+            (log) => log.topics[0] === TOKEN_LOCKED_EVENT_TOPIC
+        );
+
+        if (events.length !== input.tokenIds.length) {
+            return {
+                success: false,
+                error: "Some tokens were not locked successfully",
+            };
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.nFT.updateMany({
+                where: {
+                    collectionId: collection.id,
+                    tokenId: { in: input.tokenIds },
+                },
+                data: {
+                    isLocked: true,
+                    lockedAt: new Date(),
+                    unlockScheduledAt: new Date(input.unlockScheduledAt * 1000),
+                    lockTransactionHash: receipt.transactionHash,
+                },
+            });
+
+            const lockEvents = tokens.map((token) => ({
+                nftId: token.id,
+                collectionId: collection.id,
+                eventType: "LOCK",
+                fromAddress: input.walletId,
+                transactionHash: receipt.transactionHash,
+                timestamp: new Date(),
+                metadata: {
+                    unlockScheduledAt: input.unlockScheduledAt,
+                },
+            }));
+
+            await tx.nFTEvent.createMany({
+                data: lockEvents,
+            });
+        });
+
+        return {
+            success: true,
+            transactionHash: receipt.transactionHash,
+        };
+    } catch (error) {
+        if (error instanceof Error) {
+            if (error.message.includes("insufficient funds")) {
+                return {
+                    success: false,
+                    error: "Insufficient funds for gas",
+                };
+            }
+            if (error.message.includes("gas required exceeds allowance")) {
+                return {
+                    success: false,
+                    error: "Gas limit too low",
+                };
+            }
+        }
+        console.error("Error locking tokens:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to lock tokens",
+        };
+    }
+}
+
+export interface UnlockTokensInput {
+    collectionAddress: string;
+    walletId: string;
+    tokenIds: number[];
+    gasOptions?: EstimateGasOptions;
+}
+
+export interface UnlockTokensResult {
+    success: boolean;
+    transactionHash?: Hash;
+    error?: string;
+}
+
+export async function unlockTokens(
+    input: UnlockTokensInput
+): Promise<UnlockTokensResult> {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            return {
+                success: false,
+                error: "Collection not found",
+            };
+        }
+
+        const tokens = await prisma.nFT.findMany({
+            where: {
+                collectionId: collection.id,
+                tokenId: { in: input.tokenIds },
+                isBurned: false,
+            },
+            select: {
+                id: true,
+                tokenId: true,
+                currentOwnerAddress: true,
+            },
+        });
+
+        if (tokens.length !== input.tokenIds.length) {
+            return {
+                success: false,
+                error: "Some tokens not found or burned",
+            };
+        }
+
+        const invalidTokens = tokens.filter(
+            (token) => token.currentOwnerAddress !== input.walletId
+        );
+        if (invalidTokens.length > 0) {
+            return {
+                success: false,
+                error: `Not owner of tokens: ${invalidTokens
+                    .map((t) => t.tokenId)
+                    .join(", ")}`,
+            };
+        }
+
+        const escrowWallet = await getEscrowWalletWithPrivateKey(
+            input.walletId
+        );
+        if (!escrowWallet.success || !escrowWallet.data) {
+            return {
+                success: false,
+                error: "Escrow wallet not found",
+            };
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const privateKey = escrowWallet.data.privateKey;
+        const formattedPrivateKey = privateKey.startsWith("0x")
+            ? privateKey
+            : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedPrivateKey as Address);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: collection.address as Address,
+            abi,
+            client: walletClient,
+        });
+
+        const gasOptions = await estimateGasOptions({
+            publicClient,
+            walletClient,
+            contractAddress: collection.address as Address,
+            abi,
+            transactions: [
+                {
+                    functionName: "unlockTokens",
+                    args: [input.tokenIds, true],
+                },
+            ],
+            customOptions: input.gasOptions,
+        });
+
+        const hash = await collectionContract.write.unlockTokens(
+            [input.tokenIds, true],
+            gasOptions
+        );
+
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+        const TOKEN_UNLOCKED_EVENT_TOPIC =
+            "0x0f7cd4952f541f9f3db6c639f784e95428c45f6ca7eb587d0bc3b6be3f619957";
+        const events = receipt.logs.filter(
+            (log) => log.topics[0] === TOKEN_UNLOCKED_EVENT_TOPIC
+        );
+
+        if (events.length !== input.tokenIds.length) {
+            return {
+                success: false,
+                error: "Some tokens were not unlocked successfully",
+            };
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.nFT.updateMany({
+                where: {
+                    id: { in: tokens.map((t) => t.id) },
+                },
+                data: {
+                    isLocked: false,
+                    unlockAt: new Date(),
+                },
+            });
+
+            // NFT 이벤트 생성
+            const unlockEvents = tokens.map((token) => ({
+                nftId: token.id,
+                collectionId: collection.id,
+                eventType: "UNLOCK",
+                fromAddress: input.walletId,
+                transactionHash: receipt.transactionHash,
+                timestamp: new Date(),
+            }));
+
+            await tx.nFTEvent.createMany({
+                data: unlockEvents,
+            });
+        });
+
+        return {
+            success: true,
+            transactionHash: receipt.transactionHash,
+        };
+    } catch (error) {
+        if (error instanceof Error) {
+            if (error.message.includes("insufficient funds")) {
+                return {
+                    success: false,
+                    error: "Insufficient funds for gas",
+                };
+            }
+            if (error.message.includes("gas required exceeds allowance")) {
+                return {
+                    success: false,
+                    error: "Gas limit too low",
+                };
+            }
+            if (error.message.includes("not locked")) {
+                return {
+                    success: false,
+                    error: "One or more tokens are not locked",
+                };
+            }
+        }
+        console.error("Error unlocking tokens:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to unlock tokens",
+        };
+    }
+}
+
+export interface TransferTokensInput {
+    collectionAddress: string;
+    walletId: string;
+    fromAddress: string;
+    toAddress: string;
+    tokenIds: number[];
+    deadline: number;
+    signatures: {
+        v: number[];
+        r: string[];
+        s: string[];
+    };
+    gasOptions?: EstimateGasOptions;
+}
+
+export interface TransferTokensResult {
+    success: boolean;
+    transactionHash?: Hash;
+    error?: string;
+}
+
+export async function transferTokens(
+    input: TransferTokensInput
+): Promise<TransferTokensResult> {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            return {
+                success: false,
+                error: "Collection not found",
+            };
+        }
+
+        const tokens = await prisma.nFT.findMany({
+            where: {
+                collectionId: collection.id,
+                tokenId: { in: input.tokenIds },
+                isBurned: false,
+            },
+            select: {
+                id: true,
+                tokenId: true,
+                isLocked: true,
+            },
+        });
+
+        if (tokens.length !== input.tokenIds.length) {
+            return {
+                success: false,
+                error: "Some tokens not found or burned",
+            };
+        }
+
+        if (input.deadline <= Math.floor(Date.now() / 1000)) {
+            return {
+                success: false,
+                error: "Transfer deadline has passed",
+            };
+        }
+
+        const tokenOwners = await getTokenOwners({
+            collectionAddress: input.collectionAddress,
+            tokenIds: input.tokenIds,
+        });
+
+        const invalidTokens = tokenOwners.owners.filter(
+            (owner) => owner.toLowerCase() !== input.fromAddress.toLowerCase()
+        );
+        if (invalidTokens.length > 0) {
+            return {
+                success: false,
+                error: `One or more tokens are not owned by the from address: ${invalidTokens.join(
+                    ", "
+                )}`,
+            };
+        }
+
+        const lockedTokens = tokens.filter((token) => token.isLocked);
+        if (lockedTokens.length > 0) {
+            return {
+                success: false,
+                error: "One or more tokens are locked",
+            };
+        }
+
+        if (
+            input.signatures.v.length !== input.tokenIds.length ||
+            input.signatures.r.length !== input.tokenIds.length ||
+            input.signatures.s.length !== input.tokenIds.length
+        ) {
+            return {
+                success: false,
+                error: "Invalid signature data",
+            };
+        }
+
+        const escrowWallet = await getEscrowWalletWithPrivateKey(
+            input.walletId
+        );
+        if (!escrowWallet.success || !escrowWallet.data) {
+            return {
+                success: false,
+                error: "Escrow wallet not found",
+            };
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const privateKey = escrowWallet.data.privateKey;
+        const formattedPrivateKey = privateKey.startsWith("0x")
+            ? privateKey
+            : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedPrivateKey as Address);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: collection.address as Address,
+            abi,
+            client: walletClient,
+        });
+
+        for (const tokenId of input.tokenIds) {
+            try {
+                const isLocked = await collectionContract.read.isTokenLocked([
+                    BigInt(tokenId),
+                ]);
+                if (isLocked) {
+                    return {
+                        success: false,
+                        error: `Token ${tokenId} is locked`,
+                    };
+                }
+            } catch (error) {
+                return {
+                    success: false,
+                    error: `Failed to check lock status of token ${tokenId}`,
+                };
+            }
+        }
+
+        const gasOptions = await estimateGasOptions({
+            publicClient,
+            walletClient,
+            contractAddress: collection.address as Address,
+            abi,
+            transactions: [
+                {
+                    functionName: "escrowTransfer",
+                    args: [
+                        input.fromAddress as Address,
+                        account.address,
+                        input.toAddress as Address,
+                        input.tokenIds,
+                        BigInt(input.deadline),
+                        input.signatures.v,
+                        input.signatures.r,
+                        input.signatures.s,
+                    ],
+                },
+            ],
+            customOptions: input.gasOptions,
+        });
+
+        const hash = await collectionContract.write.escrowTransfer(
+            [
+                input.fromAddress as Address,
+                account.address,
+                input.toAddress as Address,
+                input.tokenIds,
+                BigInt(input.deadline),
+                input.signatures.v,
+                input.signatures.r,
+                input.signatures.s,
+            ],
+            gasOptions
+        );
+
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+        const TRANSFER_EVENT_TOPIC =
+            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+        const events = receipt.logs.filter(
+            (log) => log.topics[0] === TRANSFER_EVENT_TOPIC
+        );
+
+        if (events.length !== input.tokenIds.length) {
+            return {
+                success: false,
+                error: "Some tokens were not transferred successfully",
+            };
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.nFT.updateMany({
+                where: {
+                    id: { in: tokens.map((t) => t.id) },
+                },
+                data: {
+                    ownerAddress: input.toAddress,
+                    currentOwnerAddress: input.toAddress,
+                    transferCount: {
+                        increment: 1,
+                    },
+                    lastTransferredAt: new Date(),
+                },
+            });
+
+            // NFT 이벤트 생성
+            const transferEvents = tokens.map((token) => ({
+                nftId: token.id,
+                collectionId: collection.id,
+                eventType: "TRANSFER",
+                fromAddress: input.fromAddress,
+                toAddress: input.toAddress,
+                transactionHash: receipt.transactionHash,
+                timestamp: new Date(),
+            }));
+
+            await tx.nFTEvent.createMany({
+                data: transferEvents,
+            });
+        });
+
+        return {
+            success: true,
+            transactionHash: receipt.transactionHash,
+        };
+    } catch (error) {
+        if (error instanceof Error) {
+            if (error.message.includes("insufficient funds")) {
+                return {
+                    success: false,
+                    error: "Insufficient funds for gas",
+                };
+            }
+            if (error.message.includes("gas required exceeds allowance")) {
+                return {
+                    success: false,
+                    error: "Gas limit too low",
+                };
+            }
+            if (error.message.includes("EXPIRED")) {
+                return {
+                    success: false,
+                    error: "Transfer deadline expired",
+                };
+            }
+            if (error.message.includes("INVALID_SIGNATURE")) {
+                return {
+                    success: false,
+                    error: "Invalid transfer signature",
+                };
+            }
+        }
+        console.error("Error transferring tokens:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to transfer tokens",
+        };
+    }
+}
+
+export interface GetNonceInput {
+    collectionAddress: string;
+    walletAddress: string;
+}
+
+export interface GetNonceResult {
+    nonce: bigint;
+}
+
+export async function getNonce(input: GetNonceInput): Promise<GetNonceResult> {
+    const collection = await prisma.collectionContract.findUnique({
+        where: { address: input.collectionAddress },
+        include: { network: true },
+    });
+
+    if (!collection || !collection.network) {
+        throw new Error("Collection not found");
+    }
+
+    const chain = await getChain(collection.network);
+    const publicClient = createPublicClient({
+        chain,
+        transport: http(),
+    });
+
+    const collectionContract = getContract({
+        address: input.collectionAddress as Address,
+        abi,
+        client: publicClient,
+    });
+
+    const nonce = await collectionContract.read.nonces([
+        input.walletAddress as Address,
+    ]);
+
+    return { nonce: nonce as bigint };
+}
+
+export interface PauseInput {
+    collectionAddress: string;
+    walletId: string;
+    gasOptions?: EstimateGasOptions;
+}
+
+export interface PauseResult {
+    success: boolean;
+    transactionHash?: Hash;
+    error?: string;
+}
+
+export async function pauseCollection(input: PauseInput): Promise<PauseResult> {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            return {
+                success: false,
+                error: "Collection not found",
+            };
+        }
+
+        const escrowWallet = await getEscrowWalletWithPrivateKey(
+            input.walletId
+        );
+        if (!escrowWallet.success || !escrowWallet.data) {
+            return {
+                success: false,
+                error: "Escrow wallet not found",
+            };
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const privateKey = escrowWallet.data.privateKey;
+        const formattedPrivateKey = privateKey.startsWith("0x")
+            ? privateKey
+            : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedPrivateKey as Address);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: collection.address as Address,
+            abi,
+            client: walletClient,
+        });
+
+        const gasOptions = await estimateGasOptions({
+            publicClient,
+            walletClient,
+            contractAddress: collection.address as Address,
+            abi,
+            transactions: [{ functionName: "pause", args: [] }],
+            customOptions: input.gasOptions,
+        });
+
+        const hash = await collectionContract.write.pause([], gasOptions);
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+        // DB 업데이트
+        await prisma.collectionContract.update({
+            where: { address: input.collectionAddress },
+            data: {
+                isPaused: true,
+                pauseAt: new Date(),
+            },
+        });
+
+        return {
+            success: true,
+            transactionHash: receipt.transactionHash,
+        };
+    } catch (error) {
+        if (error instanceof Error) {
+            if (error.message.includes("insufficient funds")) {
+                return {
+                    success: false,
+                    error: "Insufficient funds for gas",
+                };
+            }
+            if (error.message.includes("gas required exceeds allowance")) {
+                return {
+                    success: false,
+                    error: "Gas limit too low",
+                };
+            }
+            if (error.message.includes("NOT_ALLOWED")) {
+                return {
+                    success: false,
+                    error: "Not authorized to pause collection",
+                };
+            }
+            if (error.message.includes("Pausable: paused")) {
+                return {
+                    success: false,
+                    error: "Collection is already paused",
+                };
+            }
+        }
+        console.error("Error pausing collection:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to pause collection",
+        };
+    }
+}
+
+export interface UnpauseInput {
+    collectionAddress: string;
+    walletId: string;
+    gasOptions?: EstimateGasOptions;
+}
+
+export interface UnpauseResult {
+    success: boolean;
+    transactionHash?: Hash;
+    error?: string;
+}
+
+export async function unpauseCollection(
+    input: UnpauseInput
+): Promise<UnpauseResult> {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            return {
+                success: false,
+                error: "Collection not found",
+            };
+        }
+
+        const escrowWallet = await getEscrowWalletWithPrivateKey(
+            input.walletId
+        );
+        if (!escrowWallet.success || !escrowWallet.data) {
+            return {
+                success: false,
+                error: "Escrow wallet not found",
+            };
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const privateKey = escrowWallet.data.privateKey;
+        const formattedPrivateKey = privateKey.startsWith("0x")
+            ? privateKey
+            : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedPrivateKey as Address);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: collection.address as Address,
+            abi,
+            client: walletClient,
+        });
+
+        const gasOptions = await estimateGasOptions({
+            publicClient,
+            walletClient,
+            contractAddress: collection.address as Address,
+            abi,
+            transactions: [{ functionName: "unpause", args: [] }],
+            customOptions: input.gasOptions,
+        });
+
+        const hash = await collectionContract.write.unpause([], gasOptions);
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+        await prisma.collectionContract.update({
+            where: { address: input.collectionAddress },
+            data: {
+                isPaused: false,
+                unpauseAt: new Date(),
+            },
+        });
+
+        return {
+            success: true,
+            transactionHash: receipt.transactionHash,
+        };
+    } catch (error) {
+        if (error instanceof Error) {
+            if (error.message.includes("insufficient funds")) {
+                return {
+                    success: false,
+                    error: "Insufficient funds for gas",
+                };
+            }
+            if (error.message.includes("gas required exceeds allowance")) {
+                return {
+                    success: false,
+                    error: "Gas limit too low",
+                };
+            }
+            if (error.message.includes("NOT_ALLOWED")) {
+                return {
+                    success: false,
+                    error: "Not authorized to unpause collection",
+                };
+            }
+            if (error.message.includes("Pausable: not paused")) {
+                return {
+                    success: false,
+                    error: "Collection is not paused",
+                };
+            }
+        }
+        console.error("Error unpausing collection:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to unpause collection",
+        };
+    }
+}
+export interface AddEscrowWalletInput {
+    collectionAddress: string;
+    walletId: string;
+    escrowWalletAddress: string;
+    gasOptions?: EstimateGasOptions;
+}
+
+export interface AddEscrowWalletResult {
+    success: boolean;
+    transactionHash?: Hash;
+    error?: string;
+}
+
+export async function addEscrowWallet(
+    input: AddEscrowWalletInput
+): Promise<AddEscrowWalletResult> {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            return {
+                success: false,
+                error: "Collection not found",
+            };
+        }
+
+        const escrowWallet = await getEscrowWalletWithPrivateKey(
+            input.walletId
+        );
+        if (!escrowWallet.success || !escrowWallet.data) {
+            return {
+                success: false,
+                error: "Escrow wallet not found",
+            };
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const privateKey = escrowWallet.data.privateKey;
+        const formattedPrivateKey = privateKey.startsWith("0x")
+            ? privateKey
+            : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedPrivateKey as Address);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: collection.address as Address,
+            abi,
+            client: walletClient,
+        });
+
+        // 이미 에스크로 지갑인지 확인
+        const isAlreadyEscrow = await collectionContract.read.isEscrowWallet([
+            input.escrowWalletAddress as Address,
+        ]);
+
+        if (isAlreadyEscrow) {
+            return {
+                success: false,
+                error: "Wallet is already an escrow wallet",
+            };
+        }
+
+        const gasOptions = await estimateGasOptions({
+            publicClient,
+            walletClient,
+            contractAddress: collection.address as Address,
+            abi,
+            transactions: [
+                {
+                    functionName: "addEscrowWallet",
+                    args: [input.escrowWalletAddress as Address],
+                },
+            ],
+            customOptions: input.gasOptions,
+        });
+
+        const hash = await collectionContract.write.addEscrowWallet(
+            [input.escrowWalletAddress as Address],
+            gasOptions
+        );
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+        return {
+            success: true,
+            transactionHash: receipt.transactionHash,
+        };
+    } catch (error) {
+        if (error instanceof Error) {
+            if (error.message.includes("insufficient funds")) {
+                return {
+                    success: false,
+                    error: "Insufficient funds for gas",
+                };
+            }
+            if (error.message.includes("gas required exceeds allowance")) {
+                return {
+                    success: false,
+                    error: "Gas limit too low",
+                };
+            }
+            if (error.message.includes("NOT_ALLOWED")) {
+                return {
+                    success: false,
+                    error: "Not authorized to add escrow wallet",
+                };
+            }
+            if (error.message.includes("ALREADY_ADDED")) {
+                return {
+                    success: false,
+                    error: "Wallet is already an escrow wallet",
+                };
+            }
+        }
+        console.error("Error adding escrow wallet:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to add escrow wallet",
+        };
+    }
+}
+
+export interface RemoveEscrowWalletInput {
+    collectionAddress: string;
+    walletId: string;
+    escrowWalletAddress: string;
+    gasOptions?: EstimateGasOptions;
+}
+
+export interface RemoveEscrowWalletResult {
+    success: boolean;
+    transactionHash?: Hash;
+    error?: string;
+}
+
+export async function removeEscrowWallet(
+    input: RemoveEscrowWalletInput
+): Promise<RemoveEscrowWalletResult> {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            return {
+                success: false,
+                error: "Collection not found",
+            };
+        }
+
+        const escrowWallet = await getEscrowWalletWithPrivateKey(
+            input.walletId
+        );
+        if (!escrowWallet.success || !escrowWallet.data) {
+            return {
+                success: false,
+                error: "Escrow wallet not found",
+            };
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const privateKey = escrowWallet.data.privateKey;
+        const formattedPrivateKey = privateKey.startsWith("0x")
+            ? privateKey
+            : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedPrivateKey as Address);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: collection.address as Address,
+            abi,
+            client: walletClient,
+        });
+
+        // 에스크로 지갑인지 확인
+        const isEscrow = await collectionContract.read.isEscrowWallet([
+            input.escrowWalletAddress as Address,
+        ]);
+
+        if (!isEscrow) {
+            return {
+                success: false,
+                error: "Address is not an escrow wallet",
+            };
+        }
+
+        const gasOptions = await estimateGasOptions({
+            publicClient,
+            walletClient,
+            contractAddress: collection.address as Address,
+            abi,
+            transactions: [
+                {
+                    functionName: "removeEscrowWallet",
+                    args: [input.escrowWalletAddress as Address],
+                },
+            ],
+            customOptions: input.gasOptions,
+        });
+
+        const hash = await collectionContract.write.removeEscrowWallet(
+            [input.escrowWalletAddress as Address],
+            gasOptions
+        );
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+        return {
+            success: true,
+            transactionHash: receipt.transactionHash,
+        };
+    } catch (error) {
+        if (error instanceof Error) {
+            if (error.message.includes("insufficient funds")) {
+                return {
+                    success: false,
+                    error: "Insufficient funds for gas",
+                };
+            }
+            if (error.message.includes("gas required exceeds allowance")) {
+                return {
+                    success: false,
+                    error: "Gas limit too low",
+                };
+            }
+            if (error.message.includes("NOT_ALLOWED")) {
+                return {
+                    success: false,
+                    error: "Not authorized to remove escrow wallet",
+                };
+            }
+            if (error.message.includes("NOT_FOUND")) {
+                return {
+                    success: false,
+                    error: "Address is not an escrow wallet",
+                };
+            }
+        }
+        console.error("Error removing escrow wallet:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to remove escrow wallet",
+        };
+    }
+}
+
+export interface GetCollectionStatusInput {
+    collectionAddress: string;
+}
+
+export interface GetCollectionStatusResult {
+    isPaused: boolean;
+    isMintingEnabled: boolean;
+}
+
+export async function getCollectionStatus(
+    input: GetCollectionStatusInput
+): Promise<GetCollectionStatusResult> {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            throw new Error("Collection not found");
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: input.collectionAddress as Address,
+            abi,
+            client: publicClient,
+        });
+
+        const [isPaused, isMintingEnabled] = await Promise.all([
+            collectionContract.read.paused([]),
+            collectionContract.read.mintingEnabled([]),
+        ]);
+
+        return {
+            isPaused: isPaused as boolean,
+            isMintingEnabled: isMintingEnabled as boolean,
+        };
+    } catch (error) {
+        console.error("Error getting collection status:", error);
+        return {
+            isPaused: false,
+            isMintingEnabled: false,
+        };
+    }
+}
+
+export interface GetEscrowWalletInput {
+    collectionAddress: string;
+}
+
+export interface GetEscrowWalletResult {
+    wallet: string;
+}
+
+export async function getEscrowWallet(
+    input: GetEscrowWalletInput
+): Promise<GetEscrowWalletResult> {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            throw new Error("Collection not found");
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: input.collectionAddress as Address,
+            abi,
+            client: publicClient,
+        });
+
+        const owner = await collectionContract.read.owner([]);
+        return { wallet: owner as string };
+    } catch (error) {
+        console.error("Error getting escrow wallet:", error);
+        return { wallet: "" };
+    }
+}
+
+export interface IsEscrowWalletInput {
+    collectionAddress: string;
+    walletAddress: string;
+}
+
+export interface IsEscrowWalletResult {
+    isEscrow: boolean;
+}
+
+export async function isEscrowWallet(
+    input: IsEscrowWalletInput
+): Promise<IsEscrowWalletResult> {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            throw new Error("Collection not found");
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const collectionContract = getContract({
+            address: input.collectionAddress as Address,
+            abi,
+            client: publicClient,
+        });
+
+        const isEscrow = await collectionContract.read.isEscrowWallet([
+            input.walletAddress as Address,
+        ]);
+
+        return { isEscrow: isEscrow as boolean };
+    } catch (error) {
+        console.error("Error checking escrow wallet:", error);
+        return { isEscrow: false };
+    }
+}
+
+export interface GetCollectionSettingsInput {
+    collectionAddress: string;
+}
+
+export interface GetCollectionSettingsResult {
+    id: string;
+    address: string;
+    price: number;
+    circulation: number;
+    isListed: boolean;
+}
+
+export async function getCollectionSettings(
+    input: GetCollectionSettingsInput
+): Promise<GetCollectionSettingsResult> {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            select: {
+                id: true,
+                address: true,
+                price: true,
+                circulation: true,
+                isListed: true,
+            },
         });
 
         if (!collection) {
-            return {
-                success: false,
-                error: "Collection not found in database",
-            };
+            throw new Error("Collection not found");
         }
 
-        // URI 존재 여부만 확인
-        if (!collection.baseURI) {
-            return { success: false, error: "Collection baseURI is not set" };
-        }
-
-        // 3. 네트워크 설정
-        const networkResult = await getBlockchainNetworkById(networkId);
-        if (!networkResult.success || !networkResult.data) {
-            return { success: false, error: `Network not found: ${networkId}` };
-        }
-        const networkData = networkResult.data;
-
-        // 4. 클라이언트 설정
-        const account = privateKeyToAccount(
-            (privateKey.startsWith("0x")
-                ? privateKey
-                : `0x${privateKey}`) as `0x${string}`
-        );
-
-        const chain = {
-            id: networkData.chainId,
-            name: networkData.name,
-            nativeCurrency: {
-                name: networkData.name,
-                symbol: networkData.symbol,
-                decimals: 18,
-            },
-            rpcUrls: {
-                default: { http: [networkData.rpcUrl] },
-            },
-        } as const;
-
-        const walletClient = createWalletClient({
-            account,
-            chain,
-            transport: http(),
-        });
-
-        const publicClient = createPublicClient({
-            chain,
-            transport: http(),
-        });
-
-        // 5. 가스 옵션 설정
-        const gasOptions: any = {
-            ...(gasMaxFee && { maxFeePerGas: parseGwei(gasMaxFee) }),
-            ...(gasMaxPriorityFee && {
-                maxPriorityFeePerGas: parseGwei(gasMaxPriorityFee),
-            }),
-            ...(gasLimit && { gas: BigInt(gasLimit) }),
-        };
-
-        // 6. 컨트랙트 존재 여부 확인
-        const code = await publicClient.getCode({
-            address: collectionAddress as `0x${string}`,
-        });
-
-        if (!code || code === "0x") {
-            return {
-                success: false,
-                error: "Collection contract does not exist at the provided address",
-            };
-        }
-
-        // 7. 컨트랙트 상태 검증
-        const [mintingEnabled, isPaused, owner, totalSupply, maxSupply] =
-            await Promise.all([
-                publicClient
-                    .readContract({
-                        address: collectionAddress as `0x${string}`,
-                        abi: COLLECTION_ABI,
-                        functionName: "mintingEnabled",
-                    })
-                    .catch(() => false),
-                publicClient
-                    .readContract({
-                        address: collectionAddress as `0x${string}`,
-                        abi: COLLECTION_ABI,
-                        functionName: "paused",
-                    })
-                    .catch(() => true),
-                publicClient
-                    .readContract({
-                        address: collectionAddress as `0x${string}`,
-                        abi: COLLECTION_ABI,
-                        functionName: "owner",
-                    })
-                    .catch(() => null),
-                publicClient.readContract({
-                    address: collectionAddress as `0x${string}`,
-                    abi: COLLECTION_ABI,
-                    functionName: "totalSupply",
-                }),
-                publicClient.readContract({
-                    address: collectionAddress as `0x${string}`,
-                    abi: COLLECTION_ABI,
-                    functionName: "maxSupply",
-                }),
-            ]);
-
-        // 8. 상태 검증
-        if (!mintingEnabled) {
-            return { success: false, error: "Minting is currently disabled" };
-        }
-        if (isPaused) {
-            return { success: false, error: "Contract is paused" };
-        }
-        if (totalSupply + BigInt(quantity) > maxSupply) {
-            return {
-                success: false,
-                error: `Only ${Number(
-                    maxSupply - totalSupply
-                )} tokens available`,
-            };
-        }
-
-        const baseURI = collection.baseURI;
-        const correctedBaseURI = baseURI.replace("contract.json", "");
-        const setBaseURITx = await walletClient.writeContract({
-            address: collectionAddress as `0x${string}`,
-            abi: COLLECTION_ABI,
-            functionName: "setBaseURI",
-            args: [correctedBaseURI],
-            ...gasOptions,
-        });
-
-        console.log(`BaseURI update transaction sent: ${setBaseURITx}`);
-
-        // 트랜잭션 완료 대기
-        await publicClient.waitForTransactionReceipt({
-            hash: setBaseURITx,
-        });
-
-        console.log(`Successfully BaseURI set to ${correctedBaseURI}`);
-
-        // 9. 민팅 실행
-        const mintHash = await walletClient.writeContract({
-            address: collectionAddress as `0x${string}`,
-            abi: COLLECTION_ABI,
-            functionName: "batchMint",
-            args: [to as `0x${string}`, BigInt(quantity), BigInt(1000000000)],
-            ...gasOptions,
-        });
-
-        const mintReceipt = await publicClient.waitForTransactionReceipt({
-            hash: mintHash,
-        });
-
-        if (mintReceipt.status !== "success") {
-            return { success: false, error: "Minting transaction failed" };
-        }
-
-        // 10. DB 업데이트
-        const startTokenId = Number(totalSupply);
-        const tokenIds = Array.from(
-            { length: quantity },
-            (_, i) => startTokenId + i
-        );
-
-        // 메타데이터 생성
-        try {
-            console.log(
-                `Generating metadata for tokens: ${startTokenId} to ${
-                    startTokenId + quantity - 1
-                }`
-            );
-            await createNFTMetadata(collection, quantity, startTokenId);
-        } catch (metadataError) {
-            console.error("Error generating metadata:", metadataError);
-        }
-
-        const savedNfts = await prisma.$transaction(async (tx) => {
-            // NFT 데이터 생성
-            await tx.nFT.createMany({
-                data: tokenIds.map((tokenId) => ({
-                    tokenId,
-                    collectionId: collection.id,
-                    ownerAddress: to,
-                    metadataUri: `${collection.baseURI.replace(
-                        "contract.json",
-                        ""
-                    )}${tokenId}`,
-                    networkId,
-                    transactionHash: mintHash,
-                    mintedBy: to,
-                    mintPrice: collection.mintPrice,
-                    name: `${collection.name} #${tokenId}`,
-                })),
-            });
-
-            // NFT 조회
-            const saved = await tx.nFT.findMany({
-                where: {
-                    collectionId: collection.id,
-                    tokenId: { in: tokenIds },
-                },
-                select: { id: true, tokenId: true },
-            });
-
-            // 이벤트 생성
-            await tx.nFTEvent.createMany({
-                data: saved.map((nft) => ({
-                    nftId: nft.id,
-                    collectionId: collection.id,
-                    eventType: "Mint",
-                    fromAddress: "0x0000000000000000000000000000000000000000",
-                    toAddress: to,
-                    price: collection.mintPrice,
-                    transactionHash: mintHash,
-                    blockNumber: Number(mintReceipt.blockNumber),
-                })),
-            });
-
-            // Collection 업데이트
-            await tx.collectionContract.update({
-                where: { id: collection.id },
-                data: { mintedCount: { increment: quantity } },
-            });
-
-            return saved;
-        });
-
-        revalidatePath("/admin/onchain");
-
-        return {
-            success: true,
-            data: {
-                transactionHash: mintHash,
-                startTokenId,
-                quantity,
-                tokenIdRange: {
-                    start: startTokenId,
-                    end: startTokenId + quantity - 1,
-                },
-                nftIds: savedNfts.map((nft) => nft.id),
-                blockNumber: Number(mintReceipt.blockNumber),
-                explorerUrl: `${networkData.explorerUrl}/tx/${mintHash}`,
-            },
-        };
+        return collection;
     } catch (error) {
-        console.error("Error minting tokens:", error);
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-        };
-    }
-}
-
-export interface SetBaseURIParams {
-    collectionAddress: string;
-    networkId: string;
-    baseURI: string;
-    privateKey: string;
-    gasMaxFee?: string;
-    gasMaxPriorityFee?: string;
-    gasLimit?: string;
-}
-
-export interface SetBaseURIResult {
-    success: boolean;
-    data?: {
-        transactionHash: string;
-        baseURI: string;
-    };
-    error?: string;
-}
-
-/**
- * Sets the base URI for a collection
- */
-export async function setBaseURI(
-    params: SetBaseURIParams
-): Promise<SetBaseURIResult> {
-    try {
-        console.log("===== setBaseURI: Updating collection base URI =====");
-        const {
-            collectionAddress,
-            networkId,
-            baseURI,
-            privateKey,
-            gasMaxFee,
-            gasMaxPriorityFee,
-            gasLimit,
-        } = params;
-
-        // Validate parameters
-        if (!collectionAddress || !baseURI) {
-            return {
-                success: false,
-                error: "Invalid parameters: address and baseURI are required",
-            };
-        }
-
-        // Get network information
-        const networkResult = await getBlockchainNetworkById(networkId);
-        if (!networkResult.success || !networkResult.data) {
-            return {
-                success: false,
-                error: `Network not found: ${networkId}`,
-            };
-        }
-        const networkData = networkResult.data;
-
-        // Format private key
-        let formattedPrivateKey = privateKey;
-        if (!formattedPrivateKey.startsWith("0x")) {
-            formattedPrivateKey = `0x${formattedPrivateKey}`;
-        }
-
-        // Create account
-        const account = privateKeyToAccount(
-            formattedPrivateKey as `0x${string}`
-        );
-        console.log(`Using account: ${account.address}`);
-
-        // Create chain configuration
-        const chain = {
-            id: networkData.chainId,
-            name: networkData.name,
-            nativeCurrency: {
-                name: networkData.name,
-                symbol: networkData.symbol,
-                decimals: 18,
-            },
-            rpcUrls: {
-                default: {
-                    http: [networkData.rpcUrl],
-                },
-            },
-        } as const;
-
-        // Create wallet client
-        const walletClient = createWalletClient({
-            account,
-            chain,
-            transport: http(),
-        });
-
-        // Create public client for read operations
-        const publicClient = createPublicClient({
-            chain,
-            transport: http(),
-        });
-
-        // Check if the collection exists
-        console.log(`Checking collection at ${collectionAddress}`);
-        const code = await publicClient.getCode({
-            address: collectionAddress as `0x${string}`,
-        });
-        if (!code || code === "0x") {
-            return {
-                success: false,
-                error: "Collection contract does not exist at the provided address",
-            };
-        }
-
-        // Check if the account is the owner of the contract
-        try {
-            const owner = await publicClient.readContract({
-                address: collectionAddress as `0x${string}`,
-                abi: COLLECTION_ABI,
-                functionName: "owner",
-            });
-
-            if (owner !== account.address) {
-                return {
-                    success: false,
-                    error: "Only the owner can set the base URI",
-                };
-            }
-        } catch (error) {
-            console.warn("Could not check contract owner:", error);
-            return {
-                success: false,
-                error: "Failed to verify contract ownership",
-            };
-        }
-
-        // Set up gas options
-        const gasOptions: any = {};
-        if (gasMaxFee) {
-            gasOptions.maxFeePerGas = parseGwei(gasMaxFee);
-        }
-        if (gasMaxPriorityFee) {
-            gasOptions.maxPriorityFeePerGas = parseGwei(gasMaxPriorityFee);
-        }
-        if (gasLimit) {
-            gasOptions.gas = BigInt(gasLimit);
-        }
-
-        // Call setBaseURI
-        console.log(`Setting base URI to: ${baseURI}`);
-        const hash = await walletClient.writeContract({
-            address: collectionAddress as `0x${string}`,
-            abi: COLLECTION_ABI,
-            functionName: "setBaseURI",
-            args: [baseURI],
-            ...gasOptions,
-        });
-
-        console.log(`Transaction sent! Hash: ${hash}`);
-
-        // Wait for transaction confirmation
-        const receipt = await publicClient.waitForTransactionReceipt({
-            hash,
-        });
-
-        console.log(`Transaction mined in block ${receipt.blockNumber}`);
-
-        // Verify transaction was successful
-        if (receipt.status !== "success") {
-            return {
-                success: false,
-                error: "Transaction failed to execute successfully",
-            };
-        }
-
-        // Revalidate paths
-        revalidatePath("/admin/onchain");
-
-        return {
-            success: true,
-            data: {
-                transactionHash: hash,
-                baseURI,
-            },
-        };
-    } catch (error) {
-        console.error("Error setting base URI:", error);
-        return {
-            success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Unknown error setting base URI",
-        };
-    }
-}
-
-export interface TogglePauseParams {
-    collectionAddress: string;
-    networkId: string;
-    pause: boolean;
-    privateKey: string;
-    gasMaxFee?: string;
-    gasMaxPriorityFee?: string;
-    gasLimit?: string;
-}
-
-export interface TogglePauseResult {
-    success: boolean;
-    data?: {
-        transactionHash: string;
-        paused: boolean;
-    };
-    error?: string;
-}
-
-/**
- * Pauses or unpauses a collection
- */
-export async function togglePause(
-    params: TogglePauseParams
-): Promise<TogglePauseResult> {
-    try {
-        const {
-            collectionAddress,
-            networkId,
-            pause,
-            privateKey,
-            gasMaxFee,
-            gasMaxPriorityFee,
-            gasLimit,
-        } = params;
-
-        const operation = pause ? "pause" : "unpause";
-        console.log(`===== togglePause: ${operation} collection =====`);
-
-        // Get network information
-        const networkResult = await getBlockchainNetworkById(networkId);
-        if (!networkResult.success || !networkResult.data) {
-            return {
-                success: false,
-                error: `Network not found: ${networkId}`,
-            };
-        }
-        const networkData = networkResult.data;
-
-        // Format private key
-        let formattedPrivateKey = privateKey;
-        if (!formattedPrivateKey.startsWith("0x")) {
-            formattedPrivateKey = `0x${formattedPrivateKey}`;
-        }
-
-        // Create account
-        const account = privateKeyToAccount(
-            formattedPrivateKey as `0x${string}`
-        );
-        console.log(`Using account: ${account.address}`);
-
-        // Create chain configuration
-        const chain = {
-            id: networkData.chainId,
-            name: networkData.name,
-            nativeCurrency: {
-                name: networkData.name,
-                symbol: networkData.symbol,
-                decimals: 18,
-            },
-            rpcUrls: {
-                default: {
-                    http: [networkData.rpcUrl],
-                },
-            },
-        } as const;
-
-        // Create wallet client
-        const walletClient = createWalletClient({
-            account,
-            chain,
-            transport: http(),
-        });
-
-        // Create public client for read operations
-        const publicClient = createPublicClient({
-            chain,
-            transport: http(),
-        });
-
-        // Check if the collection exists
-        console.log(`Checking collection at ${collectionAddress}`);
-        const code = await publicClient.getCode({
-            address: collectionAddress as `0x${string}`,
-        });
-        if (!code || code === "0x") {
-            return {
-                success: false,
-                error: "Collection contract does not exist at the provided address",
-            };
-        }
-
-        // Check if the account is the owner of the contract
-        try {
-            const owner = await publicClient.readContract({
-                address: collectionAddress as `0x${string}`,
-                abi: COLLECTION_ABI,
-                functionName: "owner",
-            });
-
-            if (owner !== account.address) {
-                return {
-                    success: false,
-                    error: "Only the owner can pause/unpause the contract",
-                };
-            }
-        } catch (error) {
-            console.warn("Could not check contract owner:", error);
-            return {
-                success: false,
-                error: "Failed to verify contract ownership",
-            };
-        }
-
-        // Check current pause state
-        const currentState = (await publicClient.readContract({
-            address: collectionAddress as `0x${string}`,
-            abi: COLLECTION_ABI,
-            functionName: "paused",
-        })) as boolean;
-
-        // If already in the desired state, return early
-        if (currentState === pause) {
-            return {
-                success: true,
-                data: {
-                    transactionHash: "0x0", // No transaction needed
-                    paused: currentState,
-                },
-                error: `Contract is already ${pause ? "paused" : "unpaused"}`,
-            };
-        }
-
-        // Set up gas options
-        const gasOptions: any = {};
-        if (gasMaxFee) {
-            gasOptions.maxFeePerGas = parseGwei(gasMaxFee);
-        }
-        if (gasMaxPriorityFee) {
-            gasOptions.maxPriorityFeePerGas = parseGwei(gasMaxPriorityFee);
-        }
-        if (gasLimit) {
-            gasOptions.gas = BigInt(gasLimit);
-        }
-
-        // Call pause or unpause
-        console.log(`${operation} the collection`);
-        const hash = await walletClient.writeContract({
-            address: collectionAddress as `0x${string}`,
-            abi: COLLECTION_ABI,
-            functionName: operation,
-            args: [],
-            ...gasOptions,
-        });
-
-        console.log(`Transaction sent! Hash: ${hash}`);
-
-        // Wait for transaction confirmation
-        const receipt = await publicClient.waitForTransactionReceipt({
-            hash,
-        });
-
-        console.log(`Transaction mined in block ${receipt.blockNumber}`);
-
-        // Verify transaction was successful
-        if (receipt.status !== "success") {
-            return {
-                success: false,
-                error: "Transaction failed to execute successfully",
-            };
-        }
-
-        // Revalidate paths
-        revalidatePath("/admin/onchain");
-
-        return {
-            success: true,
-            data: {
-                transactionHash: hash,
-                paused: pause,
-            },
-        };
-    } catch (error) {
-        console.error(
-            `Error ${params.pause ? "pausing" : "unpausing"} collection:`,
-            error
-        );
-        return {
-            success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Unknown error updating pause state",
-        };
-    }
-}
-
-export interface ToggleMintingParams {
-    collectionAddress: string;
-    networkId: string;
-    enabled: boolean;
-    privateKey: string;
-    gasMaxFee?: string;
-    gasMaxPriorityFee?: string;
-    gasLimit?: string;
-}
-
-export interface ToggleMintingResult {
-    success: boolean;
-    data?: {
-        transactionHash: string;
-        mintingEnabled: boolean;
-    };
-    error?: string;
-}
-
-/**
- * Enables or disables minting for a collection
- */
-export async function toggleMinting(
-    params: ToggleMintingParams
-): Promise<ToggleMintingResult> {
-    try {
-        const {
-            collectionAddress,
-            networkId,
-            enabled,
-            privateKey,
-            gasMaxFee,
-            gasMaxPriorityFee,
-            gasLimit,
-        } = params;
-
-        console.log(
-            `===== toggleMinting: ${
-                enabled ? "Enable" : "Disable"
-            } minting =====`
-        );
-
-        // Get network information
-        const networkResult = await getBlockchainNetworkById(networkId);
-        if (!networkResult.success || !networkResult.data) {
-            return {
-                success: false,
-                error: `Network not found: ${networkId}`,
-            };
-        }
-        const networkData = networkResult.data;
-
-        // Format private key
-        let formattedPrivateKey = privateKey;
-        if (!formattedPrivateKey.startsWith("0x")) {
-            formattedPrivateKey = `0x${formattedPrivateKey}`;
-        }
-
-        // Create account
-        const account = privateKeyToAccount(
-            formattedPrivateKey as `0x${string}`
-        );
-        console.log(`Using account: ${account.address}`);
-
-        // Create chain configuration
-        const chain = {
-            id: networkData.chainId,
-            name: networkData.name,
-            nativeCurrency: {
-                name: networkData.name,
-                symbol: networkData.symbol,
-                decimals: 18,
-            },
-            rpcUrls: {
-                default: {
-                    http: [networkData.rpcUrl],
-                },
-            },
-        } as const;
-
-        // Create wallet client
-        const walletClient = createWalletClient({
-            account,
-            chain,
-            transport: http(),
-        });
-
-        // Create public client for read operations
-        const publicClient = createPublicClient({
-            chain,
-            transport: http(),
-        });
-
-        // Check if the collection exists
-        console.log(`Checking collection at ${collectionAddress}`);
-        const code = await publicClient.getCode({
-            address: collectionAddress as `0x${string}`,
-        });
-        if (!code || code === "0x") {
-            return {
-                success: false,
-                error: "Collection contract does not exist at the provided address",
-            };
-        }
-
-        // Check if the account is the owner of the contract
-        try {
-            const owner = await publicClient.readContract({
-                address: collectionAddress as `0x${string}`,
-                abi: COLLECTION_ABI,
-                functionName: "owner",
-            });
-
-            if (owner !== account.address) {
-                return {
-                    success: false,
-                    error: "Only the owner can enable/disable minting",
-                };
-            }
-        } catch (error) {
-            console.warn("Could not check contract owner:", error);
-            return {
-                success: false,
-                error: "Failed to verify contract ownership",
-            };
-        }
-
-        // Check current minting state
-        const currentState = (await publicClient.readContract({
-            address: collectionAddress as `0x${string}`,
-            abi: COLLECTION_ABI,
-            functionName: "mintingEnabled",
-        })) as boolean;
-
-        // If already in the desired state, return early
-        if (currentState === enabled) {
-            return {
-                success: true,
-                data: {
-                    transactionHash: "0x0", // No transaction needed
-                    mintingEnabled: currentState,
-                },
-                error: `Minting is already ${enabled ? "enabled" : "disabled"}`,
-            };
-        }
-
-        // Set up gas options
-        const gasOptions: any = {};
-        if (gasMaxFee) {
-            gasOptions.maxFeePerGas = parseGwei(gasMaxFee);
-        }
-        if (gasMaxPriorityFee) {
-            gasOptions.maxPriorityFeePerGas = parseGwei(gasMaxPriorityFee);
-        }
-        if (gasLimit) {
-            gasOptions.gas = BigInt(gasLimit);
-        }
-
-        // Call setMintingEnabled
-        console.log(`Setting minting enabled to: ${enabled}`);
-        const hash = await walletClient.writeContract({
-            address: collectionAddress as `0x${string}`,
-            abi: COLLECTION_ABI,
-            functionName: "setMintingEnabled",
-            args: [enabled],
-            ...gasOptions,
-        });
-
-        console.log(`Transaction sent! Hash: ${hash}`);
-
-        // Wait for transaction confirmation
-        const receipt = await publicClient.waitForTransactionReceipt({
-            hash,
-        });
-
-        console.log(`Transaction mined in block ${receipt.blockNumber}`);
-
-        // Verify transaction was successful
-        if (receipt.status !== "success") {
-            return {
-                success: false,
-                error: "Transaction failed to execute successfully",
-            };
-        }
-
-        // Revalidate paths
-        revalidatePath("/admin/onchain");
-
-        return {
-            success: true,
-            data: {
-                transactionHash: hash,
-                mintingEnabled: enabled,
-            },
-        };
-    } catch (error) {
-        console.error(
-            `Error ${params.enabled ? "enabling" : "disabling"} minting:`,
-            error
-        );
-        return {
-            success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Unknown error updating minting state",
-        };
-    }
-}
-
-// Export the status interface for use in other files
-export interface CollectionStatus {
-    paused: boolean;
-    mintingEnabled: boolean;
-}
-
-export interface SetContractURIParams {
-    collectionAddress: string;
-    networkId: string;
-    contractURI: string;
-    privateKey: string;
-    gasMaxFee?: string;
-    gasMaxPriorityFee?: string;
-    gasLimit?: string;
-}
-
-export interface SetContractURIResult {
-    success: boolean;
-    data?: {
-        transactionHash: string;
-        contractURI: string;
-    };
-    error?: string;
-}
-
-export async function setContractURI(
-    params: SetContractURIParams
-): Promise<SetContractURIResult> {
-    try {
-        console.log(
-            "===== setContractURI: Updating collection contract URI ====="
-        );
-        const {
-            collectionAddress,
-            networkId,
-            contractURI,
-            privateKey,
-            gasMaxFee,
-            gasMaxPriorityFee,
-            gasLimit,
-        } = params;
-
-        // Validate parameters
-        if (!collectionAddress || !contractURI) {
-            return {
-                success: false,
-                error: "Invalid parameters: address and contractURI are required",
-            };
-        }
-
-        // Get network information
-        const networkResult = await getBlockchainNetworkById(networkId);
-        if (!networkResult.success || !networkResult.data) {
-            return {
-                success: false,
-                error: `Network not found: ${networkId}`,
-            };
-        }
-        const networkData = networkResult.data;
-
-        // Format private key
-        let formattedPrivateKey = privateKey;
-        if (!formattedPrivateKey.startsWith("0x")) {
-            formattedPrivateKey = `0x${formattedPrivateKey}`;
-        }
-
-        // Create account
-        const account = privateKeyToAccount(
-            formattedPrivateKey as `0x${string}`
-        );
-        console.log(`Using account: ${account.address}`);
-
-        // Create chain configuration
-        const chain = {
-            id: networkData.chainId,
-            name: networkData.name,
-            nativeCurrency: {
-                name: networkData.name,
-                symbol: networkData.symbol,
-                decimals: 18,
-            },
-            rpcUrls: {
-                default: {
-                    http: [networkData.rpcUrl],
-                },
-            },
-        } as const;
-
-        // Create wallet client
-        const walletClient = createWalletClient({
-            account,
-            chain,
-            transport: http(),
-        });
-
-        // Create public client for read operations
-        const publicClient = createPublicClient({
-            chain,
-            transport: http(),
-        });
-
-        // Check if the collection exists
-        console.log(`Checking collection at ${collectionAddress}`);
-        const code = await publicClient.getCode({
-            address: collectionAddress as `0x${string}`,
-        });
-        if (!code || code === "0x") {
-            return {
-                success: false,
-                error: "Collection contract does not exist at the provided address",
-            };
-        }
-
-        // Check if the account is the owner of the contract
-        try {
-            const owner = await publicClient.readContract({
-                address: collectionAddress as `0x${string}`,
-                abi: COLLECTION_ABI,
-                functionName: "owner",
-            });
-
-            if (owner !== account.address) {
-                return {
-                    success: false,
-                    error: "Only the owner can set the contract URI",
-                };
-            }
-        } catch (error) {
-            console.warn("Could not check contract owner:", error);
-            return {
-                success: false,
-                error: "Failed to verify contract ownership",
-            };
-        }
-
-        // Set up gas options
-        const gasOptions: any = {};
-        if (gasMaxFee) {
-            gasOptions.maxFeePerGas = parseGwei(gasMaxFee);
-        }
-        if (gasMaxPriorityFee) {
-            gasOptions.maxPriorityFeePerGas = parseGwei(gasMaxPriorityFee);
-        }
-        if (gasLimit) {
-            gasOptions.gas = BigInt(gasLimit);
-        }
-
-        // Call setContractURI
-        console.log(`Setting contract URI to: ${contractURI}`);
-        const hash = await walletClient.writeContract({
-            address: collectionAddress as `0x${string}`,
-            abi: COLLECTION_ABI,
-            functionName: "setContractURI",
-            args: [contractURI],
-            ...gasOptions,
-        });
-
-        console.log(`Transaction sent! Hash: ${hash}`);
-
-        // Wait for transaction confirmation
-        const receipt = await publicClient.waitForTransactionReceipt({
-            hash,
-        });
-
-        console.log(`Transaction mined in block ${receipt.blockNumber}`);
-
-        // Verify transaction was successful
-        if (receipt.status !== "success") {
-            return {
-                success: false,
-                error: "Transaction failed to execute successfully",
-            };
-        }
-
-        // Revalidate paths
-        revalidatePath("/admin/onchain");
-
-        return {
-            success: true,
-            data: {
-                transactionHash: hash,
-                contractURI,
-            },
-        };
-    } catch (error) {
-        console.error("Error setting contract URI:", error);
-        return {
-            success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Unknown error setting contract URI",
-        };
+        console.error("Error getting collection settings:", error);
+        throw new Error("Failed to get collection settings");
     }
 }
 
 export interface UpdateCollectionSettingsInput {
-    collectionId: string;
+    collectionAddress: string;
     price: number;
     circulation: number;
     isListed: boolean;
@@ -1441,6 +2215,7 @@ export interface UpdateCollectionSettingsResult {
     success: boolean;
     data?: {
         id: string;
+        address: string;
         price: number;
         circulation: number;
         isListed: boolean;
@@ -1452,10 +2227,10 @@ export async function updateCollectionSettings(
     input: UpdateCollectionSettingsInput
 ): Promise<UpdateCollectionSettingsResult> {
     try {
-        const { collectionId, price, circulation, isListed } = input;
+        const { collectionAddress, price, circulation, isListed } = input;
 
         const updatedCollection = await prisma.collectionContract.update({
-            where: { id: collectionId },
+            where: { address: collectionAddress },
             data: {
                 price,
                 circulation,
@@ -1463,6 +2238,7 @@ export async function updateCollectionSettings(
             },
             select: {
                 id: true,
+                address: true,
                 price: true,
                 circulation: true,
                 isListed: true,
@@ -1481,64 +2257,6 @@ export async function updateCollectionSettings(
                 error instanceof Error
                     ? error.message
                     : "Unknown error updating collection settings",
-        };
-    }
-}
-
-export async function listedCollections() {
-    const collections = await prisma.collectionContract.findMany({
-        where: {
-            isListed: true,
-        },
-    });
-    return collections;
-}
-
-export async function getCollectionStatus(
-    address: string
-): Promise<{ success: boolean; data?: CollectionStatus; error?: string }> {
-    try {
-        const collection = await getCollectionContractByAddress(address);
-        if (!collection.success || !collection.data) {
-            return {
-                success: false,
-                error: "Collection not found",
-            };
-        }
-        const rpcUrl = collection.data.network.rpcUrl;
-
-        const publicClient = createPublicClient({
-            transport: http(rpcUrl),
-        });
-
-        const [paused, mintingEnabled] = await Promise.all([
-            publicClient.readContract({
-                address: address as `0x${string}`,
-                abi: COLLECTION_ABI,
-                functionName: "paused",
-            }),
-            publicClient.readContract({
-                address: address as `0x${string}`,
-                abi: COLLECTION_ABI,
-                functionName: "mintingEnabled",
-            }),
-        ]);
-
-        return {
-            success: true,
-            data: {
-                paused: paused as boolean,
-                mintingEnabled: mintingEnabled as boolean,
-            },
-        };
-    } catch (error) {
-        console.error("Error reading collection status:", error);
-        return {
-            success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to read collection status",
         };
     }
 }

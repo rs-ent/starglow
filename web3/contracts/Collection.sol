@@ -1,17 +1,40 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "erc721a/contracts/ERC721A.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
-contract Collection is ERC721AUpgradeable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
+interface IERC721Permit {
+    function permit(
+        address owner,
+        address spender,
+        uint256 tokenId,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
+}
+
+contract Collection is 
+    ERC721A, 
+    Ownable, 
+    Pausable, 
+    ReentrancyGuard, 
+    EIP712 
+{
     string private _baseTokenURI;
     string private _contractURI;
     uint256 public maxSupply;
     uint256 public mintPrice;
-    bool public mintingEnabled;
+    
+    uint256 private _flags;
+    uint256 private constant MINTING_ENABLED_FLAG = 1;
+    mapping(address => bool) private _isEscrowWallet;
 
     struct Lockup {
         uint256 lockedAt;
@@ -21,17 +44,24 @@ contract Collection is ERC721AUpgradeable, OwnableUpgradeable, PausableUpgradeab
     }
     mapping(uint256 => Lockup) public lockups;
 
-    event TokenMinted(uint256 indexed tokenId);
-    event TokenBurned(uint256 indexed tokenId);
+    event TokenMinted(uint256 indexed startTokenId, uint256 quantity, uint256 mintedAt);
+    event TokenBurned(uint256 indexed tokenId, uint256 burnedAt);
     event BaseURIUpdated(string indexed newBaseURI);
     event ContractURIUpdated(string indexed newContractURI);
-    event MintingEnabled(bool enabled);
     event MintPriceUpdated(uint256 newMintPrice);
-    event BatchMinted(address indexed minter, uint256 quantity, uint256 gasPrice);
+
+    event EscrowWalletAdded(address indexed wallet);
+    event EscrowWalletRemoved(address indexed wallet);
+
     event TokenLocked(uint256 indexed tokenId, uint256 lockedAt, uint256 unlockScheduledAt);
     event TokenUnlocked(uint256 indexed tokenId, uint256 lockedAt, uint256 unlockScheduledAt, uint256 unlockedAt);
 
-    function initialize(
+    mapping(address => uint256) public nonces;
+    bytes32 public constant PERMIT_TYPEHASH = keccak256(
+        "Permit(address owner,address spender,address to,uint256 tokenId,uint256 nonce,uint256 deadline)"
+    );
+
+    constructor(
         string memory name,
         string memory symbol,
         address initialOwner,
@@ -39,44 +69,66 @@ contract Collection is ERC721AUpgradeable, OwnableUpgradeable, PausableUpgradeab
         uint256 initialMintPrice,
         string memory baseURI,
         string memory contractURI_
-    ) public initializer {
-        __ERC721A_init(name, symbol);
-        __Ownable_init(initialOwner);
-        __Pausable_init();
-        __ReentrancyGuard_init();
-
-        _transferOwnership(initialOwner);
+    ) ERC721A(name, symbol) Ownable(initialOwner) EIP712(name, "1") {
         maxSupply = _maxSupply;
         mintPrice = initialMintPrice;
         _baseTokenURI = baseURI;
         _contractURI = contractURI_;
-        mintingEnabled = true;
+        _setMintingEnabled(true);
+        _isEscrowWallet[initialOwner] = true;
+        emit EscrowWalletAdded(initialOwner);
+    }
+    
+    function mintingEnabled() public view returns (bool) {
+        return _flags & MINTING_ENABLED_FLAG != 0;
     }
 
-    function mint(uint256 quantity, uint256 gasFee) external onlyOwner whenNotPaused nonReentrant {
-        require(mintingEnabled, "MINT_NOT_ENABLED");
+    function _setMintingEnabled(bool enabled) internal {
+        if (enabled) {
+            _flags |= MINTING_ENABLED_FLAG;
+        } else {
+            _flags &= ~MINTING_ENABLED_FLAG;
+        }
+    }
+
+    function isEscrowWallet(address wallet) public view returns (bool) {
+        return _isEscrowWallet[wallet];
+    }
+
+    function addEscrowWallet(address wallet) external {
+        require(msg.sender == owner() || _isEscrowWallet[msg.sender], "NOT_ALLOWED");
+        require(!_isEscrowWallet[wallet], "ALREADY_ADDED");
+        _isEscrowWallet[wallet] = true;
+        emit EscrowWalletAdded(wallet);
+    }
+
+    function removeEscrowWallet(address wallet) external {
+        require(msg.sender == owner() || _isEscrowWallet[msg.sender], "NOT_ALLOWED");
+        require(_isEscrowWallet[wallet], "NOT_FOUND");
+        _isEscrowWallet[wallet] = false;
+        emit EscrowWalletRemoved(wallet);
+    }
+    
+    function mint(uint256 quantity) external whenNotPaused nonReentrant {
+        require(_isEscrowWallet[msg.sender] || msg.sender == owner(), "NOT_ALLOWED");
+        require(mintingEnabled(), "MINT_NOT_ENABLED");
         require(_totalMinted() + quantity <= maxSupply, "MAX_EXCEEDED");
         require(quantity > 0, "INVALID_QUANTITY");
-        require(gasFee >= 0, "INVALID_GAS_FEE");
 
-        uint256 gasPrice = gasFee * 1e9;
         uint256 startTokenId = _nextTokenId();
         _mint(msg.sender, quantity);
 
-        for (uint256 i = 0; i < quantity; i++) {
-            emit TokenMinted(startTokenId + i);
-        }
-
-        emit BatchMinted(msg.sender, quantity, gasPrice);
+        emit TokenMinted(startTokenId, quantity, block.timestamp);
     }
 
-    function burn(uint256[] memory tokenIds) external onlyOwner whenNotPaused nonReentrant {
+    function burn(uint256[] memory tokenIds) external whenNotPaused nonReentrant {
+        require(_isEscrowWallet[msg.sender] || msg.sender == owner(), "NOT_ALLOWED");
         for (uint256 i = 0; i < tokenIds.length; i++) {
             require(_exists(tokenIds[i]), "TOKEN_DOES_NOT_EXIST");
             require(_isApprovedOrOwner(tokenIds[i], msg.sender), "NOT_APPROVED");
 
             _burn(tokenIds[i]);
-            emit TokenBurned(tokenIds[i]);
+            emit TokenBurned(tokenIds[i], block.timestamp);
         }
     }
 
@@ -84,7 +136,8 @@ contract Collection is ERC721AUpgradeable, OwnableUpgradeable, PausableUpgradeab
         return lockups[tokenId].isLocked;
     }
 
-    function lockTokens(uint256[] memory tokenIds, uint256 unlockScheduledAt) external onlyOwner whenNotPaused nonReentrant {
+    function lockTokens(uint256[] memory tokenIds, uint256 unlockScheduledAt) external whenNotPaused nonReentrant {
+        require(_isEscrowWallet[msg.sender] || msg.sender == owner() || ownerOf(tokenIds[0]) == msg.sender, "NOT_ALLOWED");
         for (uint256 i = 0; i < tokenIds.length; i++) {
             require(_exists(tokenIds[i]), "TOKEN_NOT_EXIST");
             require(!lockups[tokenIds[i]].isLocked, "ALREADY_LOCKED");
@@ -100,7 +153,8 @@ contract Collection is ERC721AUpgradeable, OwnableUpgradeable, PausableUpgradeab
         }
     }
 
-    function unlockTokens(uint256[] memory tokenIds, bool forceUnlock) external onlyOwner whenNotPaused nonReentrant {
+    function unlockTokens(uint256[] memory tokenIds, bool forceUnlock) external whenNotPaused nonReentrant {
+        require(_isEscrowWallet[msg.sender] || msg.sender == owner() || ownerOf(tokenIds[0]) == msg.sender, "NOT_ALLOWED");
         for (uint256 i = 0; i < tokenIds.length; i++) {
             require(lockups[tokenIds[i]].isLocked, "NOT_LOCKED");
             require(forceUnlock || block.timestamp >= lockups[tokenIds[i]].unlockScheduledAt, "SCHEDULED_LOCKUP");
@@ -112,20 +166,22 @@ contract Collection is ERC721AUpgradeable, OwnableUpgradeable, PausableUpgradeab
         }
     }
 
-    function _beforeTokenTransfer(
+    function _beforeTokenTransfers(
         address from,
         address to,
-        uint256 tokenId
-    ) internal override {
-        require(!isTokenLocked(tokenId), "TOKEN_LOCKED");
-        super._beforeTokenTransfer(from, to, tokenId);
+        uint256 firstTokenId,
+        uint256 batchSize
+    ) internal virtual override {
+        require(!isTokenLocked(firstTokenId), "TOKEN_LOCKED");
+        super._beforeTokenTransfers(from, to, firstTokenId, batchSize);
     }
 
     function _baseURI() internal view override returns (string memory) {
         return _baseTokenURI;
     }
 
-    function setBaseURI(string memory baseURI_) external onlyOwner {
+    function setBaseURI(string memory baseURI_) external {
+        require(msg.sender == owner() || _isEscrowWallet[msg.sender], "NOT_ALLOWED");
         _baseTokenURI = baseURI_;
         emit BaseURIUpdated(baseURI_);
     }
@@ -134,26 +190,25 @@ contract Collection is ERC721AUpgradeable, OwnableUpgradeable, PausableUpgradeab
         return _contractURI;
     }
 
-    function setContractURI(string memory contractURI_) external onlyOwner {
+    function setContractURI(string memory contractURI_) external {
+        require(msg.sender == owner() || _isEscrowWallet[msg.sender], "NOT_ALLOWED");
         _contractURI = contractURI_;
         emit ContractURIUpdated(contractURI_);
     }
 
-    function setMintingEnabled(bool enabled) external onlyOwner {
-        mintingEnabled = enabled;
-        emit MintingEnabled(enabled);
-    }
-
-    function setMintPrice(uint256 newMintPrice) external onlyOwner {
+    function setMintPrice(uint256 newMintPrice) external {
+        require(msg.sender == owner() || _isEscrowWallet[msg.sender], "NOT_ALLOWED");
         mintPrice = newMintPrice;
         emit MintPriceUpdated(newMintPrice);
     }
 
-    function pause() external onlyOwner {
+    function pause() external {
+        require(msg.sender == owner() || _isEscrowWallet[msg.sender], "NOT_ALLOWED");
         _pause();
     }
 
-    function unpause() external onlyOwner {
+    function unpause() external {
+        require(msg.sender == owner() || _isEscrowWallet[msg.sender], "NOT_ALLOWED");
         _unpause();
     }
 
@@ -168,5 +223,43 @@ contract Collection is ERC721AUpgradeable, OwnableUpgradeable, PausableUpgradeab
 
     function _exists(uint256 tokenId) internal view override returns (bool) {
         return _startTokenId() <= tokenId && tokenId < _nextTokenId();
+    }
+
+    function escrowTransfer(
+        address owner,
+        address spender,
+        address to,
+        uint256[] memory tokenIds,
+        uint256 deadline,
+        uint8[] memory v,
+        bytes32[] memory r,
+        bytes32[] memory s
+    ) external whenNotPaused nonReentrant {
+        require(_isEscrowWallet[spender] || msg.sender == spender, "NOT_ALLOWED");
+        require(block.timestamp < deadline, "EXPIRED");
+        require(tokenIds.length == v.length && tokenIds.length == r.length && tokenIds.length == s.length, "INVALID_PARAMS");
+
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            require(_exists(tokenIds[i]), "TOKEN_NOT_EXIST");
+            require(ownerOf(tokenIds[i]) == owner, "NOT_OWNER");
+
+            bytes32 structHash = keccak256(
+                abi.encode(
+                    PERMIT_TYPEHASH,
+                    owner,
+                    spender,
+                    to,
+                    tokenIds[i],
+                    nonces[owner]++,
+                    deadline
+                )
+            );
+
+            bytes32 hash = _hashTypedDataV4(structHash);
+            address signer = ECDSA.recover(hash, v[i], r[i], s[i]);
+            require(signer == owner, "INVALID_SIGNATURE");
+
+            transferFrom(owner, to, tokenIds[i]);
+        }
     }
 }

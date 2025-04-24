@@ -8,15 +8,17 @@ import {
     useBlockchainNetworksManager,
     useEscrowWalletManager,
 } from "@/app/hooks/useBlockchain";
-import { useDeployFactory } from "@/app/hooks/useFactoryContracts";
-import { type DeployFactoryParams } from "@/app/actions/factoryContracts";
+import { useFactorySet } from "@/app/hooks/useFactoryContracts";
+import type {
+    DeployFactoryInput,
+    DeployFactoryResult,
+} from "@/app/actions/factoryContracts";
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
     CardDescription,
-    CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,46 +30,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import {
-    Loader2,
-    Check,
-    AlertTriangle,
-    Server,
-    Shield,
-    Settings,
-    Key,
-    Eye,
-    EyeOff,
-    HelpCircle,
-} from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, Server, Shield, Key, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/app/hooks/useToast";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
-
-interface DeploymentResult {
-    success: boolean;
-    address?: string;
-    transactionHash?: string;
-    error?: string;
-    owner?: string;
-}
 
 interface FactoryDeployProps {
     preSelectedNetworkId?: string;
     onCancel: () => void;
-    onDeploySuccess: (result: {
-        address: string;
-        transactionHash: string;
-        networkId: string;
-        owner?: string;
-    }) => void;
+    onDeploySuccess: (result: DeployFactoryResult) => void;
 }
 
 export default function FactoryDeploy({
@@ -77,12 +47,15 @@ export default function FactoryDeploy({
 }: FactoryDeployProps) {
     const { networks, isLoading: isLoadingNetworks } =
         useBlockchainNetworksManager();
+
     const {
         deployFactory,
         isDeploying,
         error: deployError,
-        data,
-    } = useDeployFactory();
+    } = useFactorySet({
+        networkId: preSelectedNetworkId || "",
+    });
+
     const { wallets, getWalletWithPrivateKey } = useEscrowWalletManager();
     const toast = useToast();
 
@@ -94,6 +67,8 @@ export default function FactoryDeploy({
     );
     const [selectedWalletId, setSelectedWalletId] = useState<string>("");
     const [showPrivateKey, setShowPrivateKey] = useState(false);
+    const [deploymentResult, setDeploymentResult] =
+        useState<DeployFactoryResult | null>(null);
     const [deploymentConfig, setDeploymentConfig] = useState({
         useDefaultGas: true,
         gasSettings: {
@@ -152,44 +127,29 @@ export default function FactoryDeploy({
                 throw new Error("Please select a network.");
             }
 
-            // Prepare deployment parameters
-            const deployParams: Partial<DeployFactoryParams> = {
-                network: selectedNetworkObj.name,
-                privateKey: deploymentConfig.privateKey,
-                useDefaultGas: deploymentConfig.useDefaultGas,
-            };
-
-            // Add gas parameters only if not using defaults
-            if (!deploymentConfig.useDefaultGas) {
-                deployParams.gasMaxFee = deploymentConfig.gasSettings.maxFee;
-                deployParams.gasMaxPriorityFee =
-                    deploymentConfig.gasSettings.maxPriorityFee;
-                deployParams.gasLimit = deploymentConfig.gasSettings.gasLimit;
+            if (!selectedWalletId) {
+                throw new Error("Please select a wallet.");
             }
 
-            // Call the deployment function - need to convert to a complete DeployFactoryParams
-            await deployFactory(deployParams as DeployFactoryParams);
+            // Prepare deployment parameters
+            const deployInput: DeployFactoryInput = {
+                networkId: selectedNetwork,
+                walletId: selectedWalletId,
+            };
 
-            // After successful deployment, data will be updated in the hook result
-            // This waits for the mutation to complete and avoids using the return value directly
-            if (!data) {
-                throw new Error(
-                    "Deployment succeeded but no data was returned"
-                );
+            const result = await deployFactory(deployInput);
+            setDeploymentResult(result);
+
+            if (!result.success || !result.data) {
+                throw new Error(result.error || "Deployment failed");
             }
 
             setDeploymentProgress(100);
 
-            onDeploySuccess({
-                address: data.address,
-                transactionHash: data.transactionHash,
-                networkId: selectedNetworkObj.id,
-                owner: data.owner,
-            });
-
-            toast.success("Factory contract deployed successfully!");
+            onDeploySuccess(result);
         } catch (error) {
             console.error("Deployment error:", error);
+            setDeploymentProgress(0);
         }
     };
 
@@ -198,11 +158,20 @@ export default function FactoryDeploy({
             {/* 배포 진행 상태 */}
             <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                    <span>Deployment Progress</span>
+                    <span>팩토리 배포 진행 상태</span>
                     <span>{deploymentProgress}%</span>
                 </div>
                 <Progress value={deploymentProgress} className="h-2" />
             </div>
+
+            {/* 에러 메시지 표시 */}
+            {deployError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm">
+                    {deployError instanceof Error
+                        ? deployError.message
+                        : String(deployError)}
+                </div>
+            )}
 
             {/* 단계별 배포 프로세스 */}
             <div className="grid gap-6">
@@ -215,10 +184,10 @@ export default function FactoryDeploy({
                     <CardHeader>
                         <div className="flex items-center gap-2">
                             <Server className="h-5 w-5" />
-                            <CardTitle>1. Select Network</CardTitle>
+                            <CardTitle>1. 네트워크 선택</CardTitle>
                         </div>
                         <CardDescription>
-                            Choose the blockchain network for deployment
+                            배포할 블록체인 네트워크를 선택하세요
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -263,21 +232,21 @@ export default function FactoryDeploy({
                     <CardHeader>
                         <div className="flex items-center gap-2">
                             <Key className="h-5 w-5" />
-                            <CardTitle>2. Select Wallet</CardTitle>
+                            <CardTitle>2. 지갑 선택</CardTitle>
                         </div>
                         <CardDescription>
-                            Choose a wallet to deploy the contract
+                            배포할 컨트랙트의 어드민(에스크로) 지갑을 선택하세요
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label>Select Wallet</Label>
+                            <Label>지갑 선택</Label>
                             <Select
                                 value={selectedWalletId}
                                 onValueChange={handleWalletSelect}
                             >
                                 <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select a wallet" />
+                                    <SelectValue placeholder="지갑 선택" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {wallets?.map((wallet) => (
@@ -344,10 +313,6 @@ export default function FactoryDeploy({
                                     disabled
                                     className="font-mono"
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    Private key is securely loaded from the
-                                    selected wallet
-                                </p>
                             </div>
                         )}
                     </CardContent>
@@ -360,19 +325,21 @@ export default function FactoryDeploy({
                         onClick={onCancel}
                         disabled={isDeploying}
                     >
-                        Cancel
+                        취소
                     </Button>
                     <Button
                         onClick={handleDeploy}
-                        disabled={!selectedNetwork || isDeploying}
+                        disabled={
+                            !selectedNetwork || !selectedWalletId || isDeploying
+                        }
                     >
                         {isDeploying ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Deploying...
+                                배포 중...
                             </>
                         ) : (
-                            "Deploy Factory"
+                            "팩토리 배포"
                         )}
                     </Button>
                 </div>

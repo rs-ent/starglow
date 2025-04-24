@@ -46,7 +46,13 @@ const nextConfig = {
         // web3 관련 폴더들을 무시하도록 설정
         config.module.rules.push({
             test: /[\\/](web3|typechain-types)[\\/]/,
+            exclude: /[\\/]web3[\\/]artifacts[\\/]/,
             loader: "ignore-loader",
+        });
+
+        config.module.rules.push({
+            test: /\.json$/,
+            type: "json",
         });
 
         return config;

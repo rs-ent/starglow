@@ -8,6 +8,7 @@ import { useState } from "react";
 import NFTsCollectionDetails from "../molecules/NFTs.CollectionDetails";
 import NFTsCollectionPayment from "../molecules/NFTs.CollectionPayment";
 
+// metadata가 항상 존재함을 명시적으로 타입에 표시
 interface CollectionProps {
     collection: CollectionContract & { metadata: Metadata };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState, useCallback } from "react";
-import { useCollectionContractsManager } from "@/app/hooks/useCollectionContracts";
+import { useFactoryGet } from "@/app/hooks/useFactoryContracts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Table,
@@ -18,11 +18,11 @@ import { format } from "date-fns";
 import {
     ExternalLink,
     Code,
-    RefreshCw,
     ChevronDown,
     ChevronUp,
     AlertTriangle,
     Clock,
+    Image,
 } from "lucide-react";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import CollectionFunctions from "./OnChain.CollectionFunctions";
@@ -30,9 +30,21 @@ import { CollectionContract } from "@prisma/client";
 import { cn } from "@/lib/utils/tailwind";
 import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
 
-export default function OnChainCollection() {
-    const { collections, isLoading, error, isError, refetch } =
-        useCollectionContractsManager();
+interface OnChainCollectionProps {
+    networkId: string;
+    factoryId: string;
+    onViewNFTs?: (collection: CollectionContract) => void;
+}
+
+export default function OnChainCollection({
+    networkId,
+    factoryId,
+    onViewNFTs,
+}: OnChainCollectionProps) {
+    const { collections, isLoading, error } = useFactoryGet({
+        networkId,
+        factoryId,
+    });
 
     const { networks } = useBlockchainNetworksManager();
 
@@ -65,14 +77,11 @@ export default function OnChainCollection() {
         }
     }
 
-    function handleCollectionUpdated(updatedCollection: CollectionContract) {
-        // Refresh the collections list to reflect the changes
-        refetch();
-    }
-
-    function handleRefreshCollection(collectionId: string) {
-        // Refresh all collections for now
-        refetch();
+    // NFT 목록 보기 핸들러
+    function handleViewNFTs(collection: CollectionContract) {
+        if (onViewNFTs) {
+            onViewNFTs(collection);
+        }
     }
 
     return (
@@ -81,17 +90,8 @@ export default function OnChainCollection() {
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-2xl flex items-center gap-2">
                         <Code className="h-6 w-6 text-primary" />
-                        NFT Collections
+                        컬렉션
                     </CardTitle>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => refetch()}
-                        className="hover:bg-muted/50 transition-colors"
-                    >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Refresh All
-                    </Button>
                 </div>
             </CardHeader>
 
@@ -100,7 +100,7 @@ export default function OnChainCollection() {
                     <div className="flex justify-center items-center py-12">
                         <PartialLoading text="Loading collections..." />
                     </div>
-                ) : isError ? (
+                ) : error ? (
                     <Alert
                         variant="destructive"
                         className="bg-red-500/5 border-red-500/20"
@@ -119,7 +119,7 @@ export default function OnChainCollection() {
                                 <Code className="h-10 w-10 text-primary" />
                             </div>
                             <p className="text-muted-foreground">
-                                No NFT collections have been deployed yet.
+                                아직 배포된 컬렉션이 없습니다.
                             </p>
                         </div>
                     </div>
@@ -129,28 +129,28 @@ export default function OnChainCollection() {
                             <TableHeader>
                                 <TableRow className="bg-muted/50">
                                     <TableHead className="font-semibold">
-                                        Name
+                                        이름
                                     </TableHead>
                                     <TableHead className="font-semibold">
-                                        Symbol
+                                        심볼
                                     </TableHead>
                                     <TableHead className="font-semibold">
-                                        Network
+                                        네트워크
                                     </TableHead>
                                     <TableHead className="font-semibold">
-                                        Address
+                                        주소
                                     </TableHead>
                                     <TableHead className="font-semibold">
-                                        Max Supply
+                                        최대 공급량
                                     </TableHead>
                                     <TableHead className="font-semibold">
-                                        Mint Price
+                                        발행 가격
                                     </TableHead>
                                     <TableHead className="font-semibold">
-                                        Created At
+                                        생성 일시
                                     </TableHead>
                                     <TableHead className="font-semibold">
-                                        Actions
+                                        기능
                                     </TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -178,7 +178,7 @@ export default function OnChainCollection() {
                                                             variant="outline"
                                                             className="bg-primary/5"
                                                         >
-                                                            {network?.symbol}
+                                                            {collection.symbol}
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell>
@@ -280,7 +280,7 @@ export default function OnChainCollection() {
                                                                 }
                                                             >
                                                                 <Code className="h-4 w-4" />
-                                                                Functions
+                                                                관리
                                                                 {openAccordion ===
                                                                 collection.id ? (
                                                                     <ChevronUp className="h-4 w-4" />
@@ -288,17 +288,19 @@ export default function OnChainCollection() {
                                                                     <ChevronDown className="h-4 w-4" />
                                                                 )}
                                                             </Button>
+
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
+                                                                className="flex items-center gap-2"
                                                                 onClick={() =>
-                                                                    handleRefreshCollection(
-                                                                        collection.id
+                                                                    handleViewNFTs(
+                                                                        collection
                                                                     )
                                                                 }
-                                                                className="hover:bg-muted/50 transition-colors"
                                                             >
-                                                                <RefreshCw className="h-4 w-4" />
+                                                                <Image className="h-4 w-4" />
+                                                                NFT 목록
                                                             </Button>
                                                         </div>
                                                     </TableCell>
@@ -323,9 +325,13 @@ export default function OnChainCollection() {
                                                                                 null
                                                                             )
                                                                         }
-                                                                        onCollectionUpdated={
-                                                                            handleCollectionUpdated
-                                                                        }
+                                                                        onCollectionUpdated={(
+                                                                            updatedCollection
+                                                                        ) => {
+                                                                            setSelectedCollection(
+                                                                                updatedCollection
+                                                                            );
+                                                                        }}
                                                                     />
                                                                 )}
                                                             </div>

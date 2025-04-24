@@ -55,35 +55,6 @@ export const queryKeys = {
         byNetwork: (network: string) =>
             ["defaultWallets", "network", network] as const,
     },
-    contracts: {
-        factory: {
-            collections: ["contracts", "factory", "collections"] as const,
-            collectionByName: (name: string) =>
-                ["contracts", "factory", "collectionByName", name] as const,
-        },
-    },
-    /*ipfs: {
-        files: {
-            all: ["ipfs", "files"] as const,
-            byGroup: (groupId: string) =>
-                ["ipfs", "files", "group", groupId] as const,
-            byId: (id: string) => ["ipfs", "files", id] as const,
-        },
-        metadata: {
-            all: ["ipfs", "metadata"] as const,
-            byId: (id: string) => ["ipfs", "metadata", id] as const,
-            linkable: ["ipfs", "metadata", "linkable"] as const,
-            byCollection: (collectionId: string) =>
-                ["ipfs", "metadata", "collection", collectionId] as const,
-            folder: (metadataId: string) =>
-                [...queryKeys.ipfs.metadata.all, "folder", metadataId] as const,
-        },
-        groups: {
-            all: ["ipfs", "groups"] as const,
-            byId: (id: string) => ["ipfs", "groups", id] as const,
-            byName: (name: string) => ["ipfs", "groups", "name", name] as const,
-        },
-    },*/
     nft: {
         all: ["nft"] as const,
         byId: (id: string) => ["nft", id] as const,
@@ -134,26 +105,267 @@ export const QUERY_KEYS = {
     NFT_EVENTS: "nft-events",
 } as const;
 
+// Factory query keys 기본 배열 정의
+const FACTORY_BASE_KEY = ["factories"] as const;
+
+// Factory query keys 타입 정의
+type FactoryKeysType = {
+    all: readonly ["factories"];
+    lists: () => readonly ["factories", "list"];
+    byNetwork: (networkId: string) => readonly ["factories", "network", string];
+    byId: (id: string) => readonly ["factories", "detail", string];
+    status: {
+        active: (
+            networkId: string
+        ) => readonly ["factories", "status", "active", string];
+        inactive: (
+            networkId: string
+        ) => readonly ["factories", "status", "inactive", string];
+    };
+    collections: {
+        all: (
+            factoryId: string
+        ) => readonly ["factories", "collections", string];
+        byAddress: (
+            factoryId: string,
+            address: string
+        ) => readonly ["factories", "collections", string, string];
+        byNetwork: (
+            networkId: string
+        ) => readonly ["factories", "collections", "network", string];
+        global: readonly ["factories", "collections", "all"];
+    };
+    deployment: {
+        pending: (
+            networkId: string
+        ) => readonly ["factories", "deployment", "pending", string];
+        completed: (
+            networkId: string
+        ) => readonly ["factories", "deployment", "completed", string];
+    };
+};
+
+// Factory query keys
+export const factoryKeys: FactoryKeysType = {
+    all: FACTORY_BASE_KEY,
+    lists: () => [...FACTORY_BASE_KEY, "list"] as const,
+    byNetwork: (networkId: string) =>
+        [...FACTORY_BASE_KEY, "network", networkId] as const,
+    byId: (id: string) => [...FACTORY_BASE_KEY, "detail", id] as const,
+
+    // Factory 상태 관련
+    status: {
+        active: (networkId: string) =>
+            [...FACTORY_BASE_KEY, "status", "active", networkId] as const,
+        inactive: (networkId: string) =>
+            [...FACTORY_BASE_KEY, "status", "inactive", networkId] as const,
+    },
+
+    // Factory가 생성한 컬렉션 관련
+    collections: {
+        all: (factoryId: string) =>
+            [...FACTORY_BASE_KEY, "collections", factoryId] as const,
+        byAddress: (factoryId: string, address: string) =>
+            [...FACTORY_BASE_KEY, "collections", factoryId, address] as const,
+        // 네트워크별 모든 컬렉션
+        byNetwork: (networkId: string) =>
+            [...FACTORY_BASE_KEY, "collections", "network", networkId] as const,
+        // 전체 컬렉션 (필터 없음)
+        global: [...FACTORY_BASE_KEY, "collections", "all"] as const,
+    },
+
+    // 배포 관련
+    deployment: {
+        pending: (networkId: string) =>
+            [...FACTORY_BASE_KEY, "deployment", "pending", networkId] as const,
+        completed: (networkId: string) =>
+            [
+                ...FACTORY_BASE_KEY,
+                "deployment",
+                "completed",
+                networkId,
+            ] as const,
+    },
+} as const;
+
 // Collection query keys
 export const collectionKeys = {
     all: ["collections"] as const,
     lists: () => [...collectionKeys.all, "list"] as const,
-    detail: (id: string) => [...collectionKeys.all, "detail", id] as const,
-    settings: (id: string) => [...collectionKeys.all, "settings", id] as const,
-    status: (address: string) =>
-        [...collectionKeys.all, "status", address] as const,
-    estimateMintGas: (address: string, to: string, quantity: number) =>
-        [
-            ...collectionKeys.all,
-            "estimateMintGas",
-            address,
-            to,
-            quantity,
-        ] as const,
-    listed: () => [...collectionKeys.all, "listed"] as const,
-    byAddress: (address: string) =>
-        [...collectionKeys.all, "address", address] as const,
-};
+    detail: (address: string) =>
+        [...collectionKeys.all, "detail", address] as const,
+
+    deployment: {
+        pending: (networkId: string) =>
+            [
+                ...collectionKeys.all,
+                "deployment",
+                "pending",
+                networkId,
+            ] as const,
+        completed: (networkId: string) =>
+            [
+                ...collectionKeys.all,
+                "deployment",
+                "completed",
+                networkId,
+            ] as const,
+        byNetwork: (networkId: string) =>
+            [
+                ...collectionKeys.all,
+                "deployment",
+                "network",
+                networkId,
+            ] as const,
+    },
+
+    // 컬렉션 상태 관련
+    status: {
+        paused: (address: string) =>
+            [...collectionKeys.all, "status", "paused", address] as const,
+        mintingEnabled: (address: string) =>
+            [
+                ...collectionKeys.all,
+                "status",
+                "minting-enabled",
+                address,
+            ] as const,
+    },
+
+    // 토큰(NFT) 관련
+    tokens: {
+        all: (address: string) =>
+            [...collectionKeys.all, "tokens", address] as const,
+        byOwner: (address: string, owner: string) =>
+            [...collectionKeys.all, "tokens", address, "owner", owner] as const,
+        byIds: (address: string, tokenIds: number[]) =>
+            [
+                ...collectionKeys.all,
+                "tokens",
+                address,
+                "ids",
+                tokenIds,
+            ] as const,
+        locked: (address: string) =>
+            [...collectionKeys.all, "tokens", "locked", address] as const,
+        burned: (address: string) =>
+            [...collectionKeys.all, "tokens", "burned", address] as const,
+        staked: (address: string) =>
+            [...collectionKeys.all, "tokens", "staked", address] as const,
+        filtered: (
+            address: string,
+            options?: {
+                tokenIds?: number[];
+                ownerAddress?: string;
+                isBurned?: boolean;
+                isLocked?: boolean;
+                isStaked?: boolean;
+            }
+        ) =>
+            [
+                ...collectionKeys.all,
+                "tokens",
+                "filtered",
+                address,
+                options,
+            ] as const,
+        owners: (address: string, tokenIds: number[]) =>
+            [
+                ...collectionKeys.all,
+                "tokens",
+                "owners",
+                address,
+                tokenIds,
+            ] as const,
+        nonce: (address: string) =>
+            [...collectionKeys.all, "tokens", "nonce", address] as const,
+    },
+
+    // 이벤트 관련
+    events: {
+        all: (address: string) =>
+            [...collectionKeys.all, "events", address] as const,
+        byType: (address: string, eventType: string) =>
+            [...collectionKeys.all, "events", address, eventType] as const,
+        byToken: (address: string, tokenId: number) =>
+            [
+                ...collectionKeys.all,
+                "events",
+                address,
+                "token",
+                tokenId,
+            ] as const,
+    },
+
+    // 에스크로 지갑 관련
+    escrowWallets: {
+        all: (address: string) =>
+            [...collectionKeys.all, "escrow-wallets", address] as const,
+        isEscrow: (address: string, wallet: string) =>
+            [
+                ...collectionKeys.all,
+                "escrow-wallets",
+                "is-escrow",
+                address,
+                wallet,
+            ] as const,
+    },
+
+    // URI 관련
+    uri: {
+        base: (address: string) =>
+            [...collectionKeys.all, "uri", "base", address] as const,
+        contract: (address: string) =>
+            [...collectionKeys.all, "uri", "contract", address] as const,
+    },
+
+    // 가스 예측 관련
+    gas: {
+        mint: (address: string, quantity: number) =>
+            [...collectionKeys.all, "gas", "mint", address, quantity] as const,
+        burn: (address: string, tokenIds: number[]) =>
+            [...collectionKeys.all, "gas", "burn", address, tokenIds] as const,
+        transfer: (address: string, tokenIds: number[]) =>
+            [
+                ...collectionKeys.all,
+                "gas",
+                "transfer",
+                address,
+                tokenIds,
+            ] as const,
+        lock: (address: string, tokenIds: number[]) =>
+            [...collectionKeys.all, "gas", "lock", address, tokenIds] as const,
+        unlock: (address: string, tokenIds: number[]) =>
+            [
+                ...collectionKeys.all,
+                "gas",
+                "unlock",
+                address,
+                tokenIds,
+            ] as const,
+    },
+
+    // 메타데이터 관련
+    metadata: {
+        token: (address: string, tokenId: number) =>
+            [...collectionKeys.all, "metadata", address, tokenId] as const,
+        batch: (address: string, tokenIds: number[]) =>
+            [
+                ...collectionKeys.all,
+                "metadata",
+                "batch",
+                address,
+                tokenIds,
+            ] as const,
+    },
+
+    settings: {
+        all: (address: string) =>
+            [...collectionKeys.all, "settings", address] as const,
+        byAddress: (address: string) =>
+            [...collectionKeys.all, "settings", address] as const,
+    },
+} as const;
 
 export const metadataKeys = {
     all: ["metadata"] as const,

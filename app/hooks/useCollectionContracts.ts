@@ -2,277 +2,233 @@
 
 "use client";
 
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-    useCollectionContractsQuery,
-    useCollectionContractQuery,
-    useCollectionStatusQuery,
-    useCollectionSettingsQuery,
-    useEstimateMintGasQuery,
-    useListedCollectionsQuery,
+    useTokens,
+    useTokenOwners,
+    useCollectionStatus,
+    useEscrowWallets,
+    useNonce,
+    useCollectionsByNetwork,
+    useCollectionSettings,
 } from "../queries/collectionContractsQueries";
 import {
     useMintTokensMutation,
-    useSetBaseURIMutation,
-    useTogglePauseMutation,
-    useToggleMintingMutation,
+    useBurnTokensMutation,
+    useLockTokensMutation,
+    useUnlockTokensMutation,
+    useTransferTokensMutation,
+    usePauseCollectionMutation,
+    useUnpauseCollectionMutation,
+    useAddEscrowWalletMutation,
+    useRemoveEscrowWalletMutation,
+    useDeployCollectionMutation,
     useUpdateCollectionSettingsMutation,
 } from "../mutations/collectionContractsMutations";
-import type {
-    MintTokensParams,
-    TogglePauseParams,
-    ToggleMintingParams,
-    EstimateMintGasParams,
-} from "../actions/collectionContracts";
-import type { CollectionContract } from "@prisma/client";
-import { useToast } from "./useToast";
+import { collectionKeys } from "../queryKeys";
 
-export function useCollectionContractsManager() {
-    const [selectedCollection, setSelectedCollection] =
-        useState<CollectionContract | null>(null);
-    const [privateKey, setPrivateKey] = useState("");
+// GET 훅 (조회 기능)
+export interface UseCollectionGetProps {
+    collectionAddress?: string;
+    walletId?: string;
+    options?: {
+        tokenIds?: number[];
+        ownerAddress?: string;
+        isBurned?: boolean;
+        isLocked?: boolean;
+        isStaked?: boolean;
+    };
+}
 
-    const collectionsQuery = useCollectionContractsQuery();
-    const selectedCollectionQuery = useCollectionContractQuery(
-        selectedCollection?.id || ""
-    );
+export function useCollectionGet({
+    collectionAddress = "",
+    walletId,
+    options,
+}: UseCollectionGetProps = {}) {
+    // 기본 토큰 조회
+    const tokensQuery = useTokens({
+        collectionAddress,
+        options,
+    });
 
-    const mintTokensMutation = useMintTokensMutation();
-    const setBaseURIMutation = useSetBaseURIMutation();
-    const togglePauseMutation = useTogglePauseMutation();
-    const toggleMintingMutation = useToggleMintingMutation();
+    // 컬렉션 상태
+    const statusQuery = useCollectionStatus({
+        collectionAddress,
+    });
 
-    const isLoading =
-        collectionsQuery.isLoading ||
-        selectedCollectionQuery.isLoading ||
-        mintTokensMutation.isPending ||
-        setBaseURIMutation.isPending ||
-        togglePauseMutation.isPending ||
-        toggleMintingMutation.isPending;
+    // 에스크로 지갑
+    const escrowWalletsQuery = useEscrowWallets({
+        collectionAddress,
+    });
 
-    const error =
-        collectionsQuery.error ||
-        selectedCollectionQuery.error ||
-        mintTokensMutation.error ||
-        setBaseURIMutation.error ||
-        togglePauseMutation.error ||
-        toggleMintingMutation.error;
+    // 논스 (지갑 주소가 있을 때만)
+    const nonceQuery = useNonce({
+        collectionAddress,
+        walletAddress: walletId || "",
+    });
+
+    // 컬렉션 설정
+    const collectionSettingsQuery = useCollectionSettings({
+        collectionAddress,
+    });
+
+    const hasCollectionAddress = !!collectionAddress;
 
     return {
-        // Data
-        collections: collectionsQuery.data,
-        selectedCollection: selectedCollectionQuery.data,
-        setSelectedCollection,
+        // 데이터
+        tokens: tokensQuery.data,
+        status: statusQuery.data,
+        escrowWallets: escrowWalletsQuery.data,
+        nonce: nonceQuery.data,
+        settings: collectionSettingsQuery.data,
 
-        // State
-        isLoading,
-        error,
-        isError: !!error,
+        // 상태
+        isLoading:
+            (hasCollectionAddress && tokensQuery.isLoading) ||
+            (hasCollectionAddress && statusQuery.isLoading) ||
+            (hasCollectionAddress && escrowWalletsQuery.isLoading) ||
+            (hasCollectionAddress && collectionSettingsQuery.isLoading) ||
+            (hasCollectionAddress && walletId ? nonceQuery.isLoading : false),
+        error:
+            tokensQuery.error ||
+            statusQuery.error ||
+            escrowWalletsQuery.error ||
+            collectionSettingsQuery.error ||
+            (walletId ? nonceQuery.error : undefined),
 
-        // Wallet
-        setPrivateKey,
-        privateKey,
+        // 개별 쿼리 상태
+        isLoadingTokens: hasCollectionAddress && tokensQuery.isLoading,
+        isLoadingStatus: hasCollectionAddress && statusQuery.isLoading,
+        isLoadingEscrow: hasCollectionAddress && escrowWalletsQuery.isLoading,
+        isLoadingNonce:
+            hasCollectionAddress && walletId ? nonceQuery.isLoading : false,
+        isLoadingSettings:
+            hasCollectionAddress && collectionSettingsQuery.isLoading,
 
-        // Utilities
-        refetch: collectionsQuery.refetch,
-        reset: () => {
-            mintTokensMutation.reset();
-            setBaseURIMutation.reset();
-            togglePauseMutation.reset();
-            toggleMintingMutation.reset();
+        // 원본 쿼리 객체 (고급 사용 사례용)
+        tokensQuery,
+        statusQuery,
+        escrowWalletsQuery,
+        nonceQuery,
+        collectionSettingsQuery,
+    };
+}
+
+export interface UseCollectionSetProps {
+    collectionAddress?: string;
+    walletId?: string;
+}
+
+export function useCollectionSet({
+    collectionAddress = "",
+    walletId,
+}: UseCollectionSetProps = {}) {
+    const queryClient = useQueryClient();
+
+    // Mutations
+    const mintMutation = useMintTokensMutation();
+    const burnMutation = useBurnTokensMutation();
+    const lockMutation = useLockTokensMutation();
+    const unlockMutation = useUnlockTokensMutation();
+    const transferMutation = useTransferTokensMutation();
+    const pauseMutation = usePauseCollectionMutation();
+    const unpauseMutation = useUnpauseCollectionMutation();
+    const addEscrowMutation = useAddEscrowWalletMutation();
+    const removeEscrowMutation = useRemoveEscrowWalletMutation();
+    const updateSettingsMutation = useUpdateCollectionSettingsMutation();
+
+    return {
+        // 작업 함수들
+        mint: mintMutation.mutateAsync,
+        burn: burnMutation.mutateAsync,
+        lock: lockMutation.mutateAsync,
+        unlock: unlockMutation.mutateAsync,
+        transfer: transferMutation.mutateAsync,
+        pause: pauseMutation.mutateAsync,
+        unpause: unpauseMutation.mutateAsync,
+        addEscrow: addEscrowMutation.mutateAsync,
+        removeEscrow: removeEscrowMutation.mutateAsync,
+        updateSettings: updateSettingsMutation.mutateAsync,
+
+        // 작업 상태
+        isProcessing:
+            mintMutation.isPending ||
+            burnMutation.isPending ||
+            lockMutation.isPending ||
+            unlockMutation.isPending ||
+            transferMutation.isPending ||
+            pauseMutation.isPending ||
+            unpauseMutation.isPending ||
+            addEscrowMutation.isPending ||
+            removeEscrowMutation.isPending ||
+            updateSettingsMutation.isPending,
+
+        // 개별 작업 상태
+        isMinting: mintMutation.isPending,
+        isBurning: burnMutation.isPending,
+        isLocking: lockMutation.isPending,
+        isUnlocking: unlockMutation.isPending,
+        isTransferring: transferMutation.isPending,
+        isPausing: pauseMutation.isPending,
+        isUnpausing: unpauseMutation.isPending,
+        isAddingEscrow: addEscrowMutation.isPending,
+        isRemovingEscrow: removeEscrowMutation.isPending,
+        isUpdatingSettings: updateSettingsMutation.isPending,
+
+        // 에러
+        error:
+            mintMutation.error ||
+            burnMutation.error ||
+            lockMutation.error ||
+            unlockMutation.error ||
+            transferMutation.error ||
+            pauseMutation.error ||
+            unpauseMutation.error ||
+            addEscrowMutation.error ||
+            removeEscrowMutation.error ||
+            updateSettingsMutation.error,
+
+        // 원본 mutation 객체들 (고급 사용 사례용)
+        mintMutation,
+        burnMutation,
+        lockMutation,
+        unlockMutation,
+        transferMutation,
+        pauseMutation,
+        unpauseMutation,
+        addEscrowMutation,
+        removeEscrowMutation,
+        updateSettingsMutation,
+
+        // 캐시 갱신
+        refresh: async () => {
+            if (!collectionAddress) return;
+
+            await queryClient.invalidateQueries({
+                queryKey: collectionKeys.tokens.all(collectionAddress),
+            });
+            await queryClient.invalidateQueries({
+                queryKey: collectionKeys.status.paused(collectionAddress),
+            });
+            await queryClient.invalidateQueries({
+                queryKey: collectionKeys.escrowWallets.all(collectionAddress),
+            });
+            await queryClient.invalidateQueries({
+                queryKey: collectionKeys.settings.byAddress(collectionAddress),
+            });
         },
     };
 }
 
-export function useCollectionSettings(collectionId: string) {
-    const toast = useToast();
-    const { data: settings, isLoading } =
-        useCollectionSettingsQuery(collectionId);
-    const updateSettingsMutation = useUpdateCollectionSettingsMutation();
-
-    const updateSettings = async (
-        price: number,
-        circulation: number,
-        isListed: boolean
-    ) => {
-        try {
-            const result = await updateSettingsMutation.mutateAsync({
-                collectionId,
-                price,
-                circulation,
-                isListed,
-            });
-
-            toast.success("Collection settings updated successfully");
-            return result;
-        } catch (error) {
-            const message =
-                error instanceof Error
-                    ? error.message
-                    : "Failed to update settings";
-            toast.error(message);
-            throw error;
-        }
-    };
+export function useCollectionDeployment() {
+    const deployMutation = useDeployCollectionMutation();
 
     return {
-        settings,
-        isLoading,
-        updateSettings,
-        isUpdating: updateSettingsMutation.isPending,
-    };
-}
+        deploy: deployMutation.mutateAsync,
 
-type OperationResult = {
-    success: boolean;
-    message: string;
-    txHash?: string;
-};
+        isDeploying: deployMutation.isPending,
+        error: deployMutation.error,
 
-export function useCollectionFunctions(collection: CollectionContract) {
-    const toast = useToast();
-    const [lastOperation, setLastOperation] = useState<OperationResult | null>(
-        null
-    );
-
-    const { data: status, isLoading: isStatusLoading } =
-        useCollectionStatusQuery(collection.address);
-    const mintTokensMutation = useMintTokensMutation();
-    const togglePauseMutation = useTogglePauseMutation();
-    const toggleMintingMutation = useToggleMintingMutation();
-
-    const handleOperationResult = (result: any, successMessage: string) => {
-        const operationResult: OperationResult = {
-            success: true,
-            message: successMessage,
-            txHash: result.transactionHash,
-        };
-        setLastOperation(operationResult);
-        toast.success(successMessage);
-    };
-
-    const handleOperationError = (error: unknown, operation: string) => {
-        const message =
-            error instanceof Error
-                ? error.message
-                : `Unknown error ${operation}`;
-        const operationResult: OperationResult = {
-            success: false,
-            message,
-        };
-        setLastOperation(operationResult);
-        toast.error(message);
-    };
-
-    const mintTokens = async (params: MintTokensParams) => {
-        try {
-            const result = await mintTokensMutation.mutateAsync({
-                ...params,
-            });
-
-            handleOperationResult(
-                result,
-                `Successfully minted ${params.quantity} tokens`
-            );
-            return result;
-        } catch (error) {
-            handleOperationError(error, "minting tokens");
-            throw error;
-        }
-    };
-
-    const togglePause = async (params: TogglePauseParams) => {
-        try {
-            const result = await togglePauseMutation.mutateAsync({
-                ...params,
-            });
-
-            handleOperationResult(
-                result,
-                `Successfully ${
-                    params.pause ? "paused" : "unpaused"
-                } the collection`
-            );
-            return result;
-        } catch (error) {
-            handleOperationError(
-                error,
-                `${params.pause ? "pausing" : "unpausing"} collection`
-            );
-            throw error;
-        }
-    };
-
-    const toggleMinting = async (params: ToggleMintingParams) => {
-        try {
-            const result = await toggleMintingMutation.mutateAsync({
-                ...params,
-            });
-
-            handleOperationResult(
-                result,
-                `Successfully ${
-                    params.enabled ? "enabled" : "disabled"
-                } minting`
-            );
-            return result;
-        } catch (error) {
-            handleOperationError(
-                error,
-                `${params.enabled ? "enabling" : "disabling"} minting`
-            );
-            throw error;
-        }
-    };
-
-    return {
-        // Status
-        status,
-        lastOperation,
-
-        // Operations
-        mintTokens,
-        togglePause,
-        toggleMinting,
-
-        // Mutation states
-        isMinting: mintTokensMutation.isPending,
-        isTogglingPause: togglePauseMutation.isPending,
-        isTogglingMinting: toggleMintingMutation.isPending,
-        isStatusLoading,
-
-        // Reset
-        resetLastOperation: () => setLastOperation(null),
-    };
-}
-
-export function useListedCollections() {
-    const {
-        data: listedCollections,
-        isLoading,
-        isError,
-        error,
-        refetch,
-    } = useListedCollectionsQuery();
-
-    return {
-        listedCollections,
-        isLoading,
-        isError,
-        error,
-        refetch,
-        isEmpty: !listedCollections?.length,
-    };
-}
-
-export function useEstimateMintGas(params: EstimateMintGasParams) {
-    const { data: gasEstimate, isLoading: isGasEstimateLoading } =
-        useEstimateMintGasQuery(params);
-
-    console.log("gasEstimate", gasEstimate);
-
-    return {
-        gasEstimate,
-        isGasEstimateLoading,
+        deployMutation,
     };
 }

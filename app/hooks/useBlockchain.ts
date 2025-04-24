@@ -3,8 +3,6 @@
 import {
     useBlockchainNetworks,
     useBlockchainNetwork,
-} from "../queries/blockchainQueries";
-import {
     useEscrowWallets,
     useActiveEscrowWallet,
 } from "../queries/blockchainQueries";
@@ -17,6 +15,7 @@ import {
     useGenerateWallet,
     useGetWalletBalance,
     useGetEscrowWalletWithPrivateKey,
+    useEstimateGas,
 } from "../mutations/blockchainMutations";
 import { useState } from "react";
 
@@ -158,5 +157,85 @@ export function useWalletBalance() {
         error: getBalanceMutation.error,
         isError: !!getBalanceMutation.error,
         reset: getBalanceMutation.reset,
+    };
+}
+
+/**
+ * 민팅 가스 추정을 위한 특화 훅
+ */
+export function useEstimateMintGas() {
+    const estimateGasMutation = useEstimateGas();
+    const [isEstimating, setIsEstimating] = useState(false);
+
+    const estimate = async ({
+        collectionAddress,
+        walletId,
+        quantity,
+    }: {
+        collectionAddress: string;
+        walletId: string;
+        quantity: number;
+    }) => {
+        if (!collectionAddress || !walletId || quantity <= 0) {
+            return null;
+        }
+
+        setIsEstimating(true);
+        try {
+            return await estimateGasMutation.mutateAsync({
+                collectionAddress,
+                walletId,
+                transactions: [{ functionName: "mint", args: [quantity] }],
+            });
+        } finally {
+            setIsEstimating(false);
+        }
+    };
+
+    return {
+        estimate,
+        isEstimating: isEstimating || estimateGasMutation.isPending,
+        error: estimateGasMutation.error,
+        reset: estimateGasMutation.reset,
+    };
+}
+
+/**
+ * 소각 가스 추정을 위한 특화 훅
+ */
+export function useEstimateBurnGas() {
+    const estimateGasMutation = useEstimateGas();
+    const [isEstimating, setIsEstimating] = useState(false);
+
+    const estimate = async ({
+        collectionAddress,
+        walletId,
+        tokenIds,
+    }: {
+        collectionAddress: string;
+        walletId: string;
+        tokenIds: number[];
+    }) => {
+        if (!collectionAddress || !walletId || tokenIds.length === 0) {
+            return null;
+        }
+
+        setIsEstimating(true);
+        try {
+            return await estimateGasMutation.mutateAsync({
+                collectionAddress,
+                walletId,
+                transactions: [{ functionName: "burn", args: [tokenIds] }],
+            });
+        } finally {
+            setIsEstimating(false);
+        }
+    };
+
+    return {
+        estimate,
+        isEstimating: isEstimating || estimateGasMutation.isPending,
+        error: estimateGasMutation.error,
+        reset: estimateGasMutation.reset,
     };
 }

@@ -47,7 +47,6 @@ restore-original.js
 
 # Hardhat
 /cache
-/artifacts
 /typechain-types
 /typechain
 /coverage

@@ -25,10 +25,10 @@ model User {
   lastLoginAt   DateTime?
   accounts      Account[]
   loginAttempts LoginAttemptLog[] @relation("UserLoginAttempts")
+  payments      Payment[]
   player        Player?
   sessions      Session[]
   wallets       Wallet[]
-  payments      Payment[]
 
   @@index([email, active])
   @@index([role, active])
@@ -65,25 +65,21 @@ model Session {
 }
 
 model Wallet {
-  id         String   @id @default(cuid())
-  userId     String
-  address    String   @unique
-  privateKey String?  @db.Text
-  keyHash    String?
-  nonce      String?
-  network    String
-  default    Boolean  @default(false)
-  primary    Int?     @default(0)
-
+  id             String       @id @default(cuid())
+  userId         String
+  address        String       @unique
+  privateKey     String?
+  network        String
+  createdAt      DateTime     @default(now())
+  default        Boolean      @default(false)
+  primary        Int?         @default(0)
+  lastAccessedAt DateTime     @updatedAt
   nickname       String?
   status         WalletStatus @default(ACTIVE)
-
-  payments Payment[]
-  
-  createdAt      DateTime @default(now())
-  lastAccessedAt DateTime @updatedAt
-
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keyHash        String?
+  nonce          String?
+  payments       Payment[]
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, network, default])
   @@index([address, network])
@@ -309,6 +305,378 @@ model LoginAttemptLog {
   @@index([ipAddress, timestamp])
 }
 
+model Payment {
+  id                     String            @id @default(cuid())
+  userId                 String?
+  productTable           String
+  productId              String
+  productName            String
+  productDefaultCurrency String
+  amount                 Int
+  quantity               Int
+  currency               String
+  payMethod              String
+  easyPayProvider        String?
+  cardProvider           String?
+  cardInstallmentMonths  Int?
+  cardInterestFree       Boolean?
+  cardApproveNumber      String?
+  cardNumber             String?
+  status                 PaymentStatus     @default(PENDING)
+  statusReason           String?
+  paidAt                 DateTime?
+  cancelledAt            DateTime?
+  failedAt               DateTime?
+  pgResponse             Json?
+  metadata               Json?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  channelKey             String
+  storeId                String
+  promotionCode          String?
+  isPromotionApplied     Boolean           @default(false)
+  convertedPrice         Int?
+  exchangeRate           Float?
+  exchangeRateProvider   String?
+  exchangeRateTimestamp  DateTime?
+  originalProductPrice   Int?
+  refundedAt             DateTime?
+  cancelAmount           Int?
+  redirectUrl            String?
+  code                   String?
+  message                String?
+  paymentId              String?
+  pgCode                 String?
+  pgMessage              String?
+  transactionType        String?
+  txId                   String?
+  postProcessResult      Json?
+  postProcessResultAt    DateTime?
+  receiverWalletAddress  String?
+  needWallet             Boolean           @default(false)
+  completedAt            DateTime?
+  promotion              PaymentPromotion? @relation(fields: [promotionCode], references: [code])
+  receiverWallet         Wallet?           @relation(fields: [receiverWalletAddress], references: [address])
+  user                   User?             @relation(fields: [userId], references: [id])
+  virtualAccount         VirtualAccount?
+  webhookEvents          WebhookEvent[]
+
+  @@index([userId])
+  @@index([userId, status])
+}
+
+model PaymentPromotion {
+  id            String                       @id @default(cuid())
+  code          String                       @unique
+  startDate     DateTime
+  endDate       DateTime
+  discountType  PaymentPromotionDiscountType @default(percentage)
+  discountValue Int
+  isActive      Boolean                      @default(true)
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
+  payments      Payment[]
+
+  @@index([code])
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  paymentId   String?
+  payload     Json?
+  createdAt   DateTime @default(now())
+  description String?
+  payment     Payment? @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+}
+
+model VirtualAccount {
+  id            String    @id @default(cuid())
+  paymentId     String    @unique
+  bankCode      String
+  accountNumber String
+  holderName    String
+  expiresAt     DateTime
+  depositedAt   DateTime?
+  depositorName String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  payment       Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([accountNumber])
+}
+
+model ExchangeRate {
+  id           String   @id @default(cuid())
+  fromCurrency String
+  toCurrency   String
+  rate         Float
+  provider     String
+  createdAt    DateTime @default(now())
+
+  @@index([fromCurrency, toCurrency])
+}
+
+model BlockchainNetwork {
+  id                  String               @id @default(cuid())
+  name                String               @unique
+  chainId             Int                  @unique
+  rpcUrl              String
+  explorerUrl         String
+  symbol              String
+  isTestnet           Boolean              @default(true)
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  multicallAddress    String?
+  collectionContracts CollectionContract[]
+  factoryContracts    FactoryContract[]
+  nfts                NFT[]
+
+  @@index([isTestnet, isActive])
+}
+
+model FactoryContract {
+  id                  String               @id @default(cuid())
+  address             String
+  networkId           String
+  deployedAt          DateTime             @default(now())
+  deployedBy          String?
+  transactionHash     String?
+  isActive            Boolean              @default(true)
+  collections         String[]             @default([])
+  abi                 Json?
+  bytecode            String?
+  collectionContracts CollectionContract[]
+  network             BlockchainNetwork    @relation(fields: [networkId], references: [id])
+
+  @@unique([address, networkId])
+  @@index([networkId, isActive])
+}
+
+model EscrowWallet {
+  id         String   @id @default(cuid())
+  address    String   @unique
+  privateKey String
+  keyHash    String
+  networkIds String[] @default([])
+  isActive   Boolean  @default(true)
+  balance    Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  nonce      String
+
+  @@index([isActive])
+}
+
+model IpfsGroup {
+  id        String     @id @default(cuid())
+  pinataId  String     @unique @default(uuid())
+  name      String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  files     IpfsFile[]
+
+  @@index([name])
+  @@index([pinataId])
+}
+
+model IpfsFile {
+  id            String     @id @default(cuid())
+  type          String     @default("nft-metadata")
+  pinataId      String
+  name          String
+  cid           String
+  size          Int
+  numberOfFiles Int
+  mimeType      String
+  groupId       String?
+  keyvalues     Json?
+  vectorized    Boolean    @default(false)
+  network       String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  gateway       String     @default("ipfs://")
+  url           String     @default("ipfs://")
+  group         IpfsGroup? @relation(fields: [groupId], references: [pinataId])
+
+  @@index([pinataId])
+  @@index([url])
+  @@index([name])
+  @@index([groupId])
+  @@index([cid])
+}
+
+model Metadata {
+  id                 String              @id @default(cuid())
+  metadata           Json
+  url                String              @default("ipfs://")
+  collectionAddress  String?             @unique
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  type               MetadataType        @default(collection)
+  tokenId            Int?
+  collectionKey      String
+  collectionContract CollectionContract? @relation("CollectionContractMetadata", fields: [collectionAddress], references: [address])
+
+  @@unique([collectionAddress, tokenId])
+  @@index([collectionAddress, tokenId])
+  @@index([collectionAddress])
+  @@index([url])
+}
+
+model CollectionContract {
+  id          String            @id @default(cuid())
+  address     String            @unique
+  name        String
+  symbol      String
+  maxSupply   Int
+  mintPrice   String
+  baseURI     String
+  contractURI String
+  factoryId   String
+  networkId   String
+  createdBy   String            @default("admin")
+  txHash      String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  price       Int               @default(0)
+  circulation Int               @default(1000)
+  mintedCount Int               @default(0)
+  artistId    String?
+  key         String            @unique
+  isListed    Boolean           @default(false)
+  isPaused    Boolean           @default(false)
+  pauseAt     DateTime?
+  unpauseAt   DateTime?
+  abi         Json?
+  bytecode    String?
+  artist      Artist?           @relation(fields: [artistId], references: [id])
+  factory     FactoryContract   @relation(fields: [factoryId], references: [id])
+  network     BlockchainNetwork @relation(fields: [networkId], references: [id])
+  metadata    Metadata?         @relation("CollectionContractMetadata")
+  nfts        NFT[]
+  events      NFTEvent[]
+
+  @@index([address, networkId])
+  @@index([factoryId])
+}
+
+model NFT {
+  id                  String             @id @default(cuid())
+  tokenId             Int
+  collectionId        String
+  ownerAddress        String
+  metadataUri         String?
+  mintedAt            DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  transactionHash     String
+  networkId           String
+  name                String?
+  description         String?
+  imageUrl            String?
+  attributes          Json?
+  isLocked            Boolean            @default(false)
+  lockedAt            DateTime?
+  unlockScheduledAt   DateTime?
+  unlockAt            DateTime?
+  isStaked            Boolean            @default(false)
+  stakedAt            DateTime?
+  unstakeScheduledAt  DateTime?
+  unstakedAt          DateTime?
+  lockTransactionHash String?
+  isListed            Boolean            @default(false)
+  listingPrice        String?
+  lastTransferredAt   DateTime?
+  transferCount       Int                @default(0)
+  isBurned            Boolean            @default(false)
+  rarity              Float?
+  tags                String[]
+  category            String?
+  creatorInfo         String?
+  externalUrl         String?
+  mintPrice           String?
+  mintedBy            String?
+  royaltyInfo         Json?
+  currentOwnerAddress String?
+  collection          CollectionContract @relation(fields: [collectionId], references: [id])
+  network             BlockchainNetwork  @relation(fields: [networkId], references: [id])
+  events              NFTEvent[]
+
+  @@unique([collectionId, tokenId])
+  @@index([collectionId, tokenId])
+  @@index([collectionId])
+  @@index([tokenId])
+  @@index([currentOwnerAddress])
+  @@index([ownerAddress])
+}
+
+model NFTEvent {
+  id              String             @id @default(cuid())
+  nftId           String
+  collectionId    String
+  eventType       String
+  fromAddress     String?
+  toAddress       String?
+  price           String?
+  transactionHash String
+  timestamp       DateTime           @default(now())
+  blockNumber     Int?
+  collection      CollectionContract @relation(fields: [collectionId], references: [id])
+  nft             NFT                @relation(fields: [nftId], references: [id])
+
+  @@index([nftId])
+  @@index([eventType])
+  @@index([fromAddress, toAddress])
+}
+
+model Artist {
+  id                  String               @id @default(cuid())
+  name                String
+  description         String?
+  imageUrl            String?
+  externalUrl         String?
+  reportUrl           String?
+  company             String?
+  sns                 String[]             @default([])
+  gallery             String[]             @default([])
+  videos              String[]             @default([])
+  music               String[]             @default([])
+  events              String[]             @default([])
+  additionalInfo      Json?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  members             ArtistMember[]
+  collectionContracts CollectionContract[]
+
+  @@index([name])
+}
+
+model ArtistMember {
+  id             String    @id @default(cuid())
+  artistId       String
+  name           String
+  role           String
+  imageUrl       String?
+  externalUrl    String?
+  description    String?
+  realName       String?
+  birthDate      DateTime?
+  birthPlace     String?
+  nationality    String?
+  height         Int?
+  weight         Int?
+  bloodType      String?
+  constellation  String?
+  sns            String[]  @default([])
+  gallery        String[]  @default([])
+  videos         String[]  @default([])
+  music          String[]  @default([])
+  additionalInfo Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  artist         Artist    @relation(fields: [artistId], references: [id])
+}
+
 enum PaymentStatus {
   PENDING
   AWAITING_DEPOSIT
@@ -316,150 +684,14 @@ enum PaymentStatus {
   CANCELLED
   FAILED
   EXPIRED
-  REFUNDED
   PARTIALLY_CANCELLED
+  REFUNDED
   COMPLETED
-}
-
-model Payment {
-  id            String          @id @default(cuid())
-  userId        String?
-  user          User?           @relation(fields: [userId], references: [id])
-
-  storeId String
-  channelKey String
-  
-  productTable  String
-  productId     String
-  productName     String
-  productDefaultCurrency String // 상품 기본 화폐
-
-  amount      Int
-  quantity    Int
-  currency    String // 결제 화폐
-  payMethod   String
-  easyPayProvider String?
-  cardProvider String?
-
-  cardInstallmentMonths Int?
-  cardInterestFree      Boolean?
-  cardApproveNumber     String?
-  cardNumber            String?
-
-  promotionCode String?
-  promotion PaymentPromotion? @relation(fields: [promotionCode], references: [code])
-  isPromotionApplied Boolean @default(false)
-  
-  exchangeRate Float?
-  exchangeRateProvider String?
-  exchangeRateTimestamp DateTime?
-  originalProductPrice Int?
-  convertedPrice Int?
-
-  status      PaymentStatus @default(PENDING)
-  statusReason String?
-
-  paidAt      DateTime?
-  cancelledAt DateTime?
-  failedAt    DateTime?
-  refundedAt  DateTime?
-  completedAt DateTime?
-
-  cancelAmount Int?
-  
-  code      String? // 결제 플랫폼 코드
-  message   String? // 결제 플랫폼 메시지
-  paymentId String? // 결제 플랫폼 결제 아이디
-  pgCode    String? // 결제 플랫폼 코드
-  pgMessage String? // 결제 플랫폼 메시지
-  transactionType String? // 결제 플랫폼 거래 타입
-  txId      String? // 결제 플랫폼 거래 아이디
-  pgResponse  Json? // 결제 플랫폼 응답
-
-  virtualAccount VirtualAccount? // 가상 계좌
-
-  needWallet Boolean @default(false)
-  receiverWalletAddress String?
-  receiverWallet Wallet? @relation(fields: [receiverWalletAddress], references: [address])
-
-  postProcessResult Json?
-  postProcessResultAt DateTime?
-
-  webhookEvents WebhookEvent[]
-
-  metadata Json?
-
-  redirectUrl String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([userId, status])  
 }
 
 enum PaymentPromotionDiscountType {
   percentage
   amount
-}
-
-model PaymentPromotion {
-  id String @id @default(cuid())
-  code String @unique
-  startDate DateTime
-  endDate DateTime
-  discountType PaymentPromotionDiscountType @default(percentage)
-  discountValue Int
-  isActive Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  payments Payment[]
-
-  @@index([code])
-}
-
-model WebhookEvent {
-    id              String    @id @default(cuid())
-    paymentId       String?
-    payment         Payment?   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-
-    description     String?
-    
-    payload         Json?      // Webhook 원본 데이터
-    
-    createdAt       DateTime  @default(now())
-}
-
-model VirtualAccount {
-    id              String    @id @default(cuid())
-    paymentId       String    @unique  
-    payment         Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-    
-    bankCode        String    
-    accountNumber   String    
-    holderName      String    
-    expiresAt       DateTime  
-    
-    // 입금 정보
-    depositedAt     DateTime?  // 입금 완료 시간
-    depositorName   String?    // 실제 입금자명
-    
-    createdAt       DateTime  @default(now())
-    updatedAt       DateTime  @updatedAt
-
-    @@index([accountNumber])
-}
-
-model ExchangeRate {
-    id          String   @id @default(cuid())
-    fromCurrency String
-    toCurrency   String
-    rate        Float
-    provider    String
-    createdAt   DateTime @default(now())
-
-    @@index([fromCurrency, toCurrency])
 }
 
 enum RewardCurrency {
@@ -490,257 +722,7 @@ enum WalletStatus {
   LOCKED
 }
 
-model BlockchainNetwork {
-  id               String               @id @default(cuid())
-  name             String               @unique
-  chainId          Int                  @unique
-  rpcUrl           String
-  explorerUrl      String
-  symbol           String
-  isTestnet        Boolean              @default(true)
-  isActive         Boolean              @default(true)
-  multicallAddress String?
-  factoryContracts FactoryContract[]
-  collectionContracts CollectionContract[]
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  nfts             NFT[]
-
-  @@index([isTestnet, isActive])
-}
-
-model FactoryContract {
-  id              String              @id @default(cuid())
-  address         String
-  networkId       String
-  network         BlockchainNetwork   @relation(fields: [networkId], references: [id])
-  deployedAt      DateTime            @default(now())
-  deployedBy      String?
-  transactionHash String?
-  isActive        Boolean             @default(true)
-  collections     String[]            @default([])
-  collectionContracts CollectionContract[]
-  
-  @@unique([address, networkId])
-  @@index([networkId, isActive])
-}
-
-model EscrowWallet {
-  id              String            @id @default(cuid())
-  address         String            @unique
-  privateKey      String            @db.Text
-  keyHash         String
-  nonce           String
-  networkIds      String[]          @default([])
-  isActive        Boolean           @default(true)
-  balance         Json?             // Store balance per network
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  
-  @@index([isActive])
-}
-
-
-model IpfsGroup {
-  id          String    @id @default(cuid())
-  pinataId    String    @unique @default(uuid())
-  name        String    @unique
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  files       IpfsFile[]
-
-  @@index([name])
-  @@index([pinataId])
-}
-
-model IpfsFile {
-  id          String    @id @default(cuid())
-  type        String    @default("nft-metadata")
-  url         String    @default("ipfs://")
-  pinataId    String
-  name        String
-  cid         String
-  size          Int
-  numberOfFiles Int
-  mimeType    String
-  groupId     String?
-  group       IpfsGroup? @relation(fields: [groupId], references: [pinataId])
-  keyvalues   Json?
-  vectorized  Boolean   @default(false)
-  network     String?
-  gateway     String    @default("ipfs://")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([pinataId])
-  @@index([url])
-  @@index([name])
-  @@index([groupId])
-  @@index([cid])
-}
-
 enum MetadataType {
   collection
   nft
-}
-
-model Metadata {
-  id          String   @id @default(cuid())
-  collectionKey String
-  metadata   Json
-  url        String   @default("ipfs://")
-
-  type MetadataType @default(collection)
-  tokenId Int?
-
-  collectionAddress String?  @unique
-  collectionContract CollectionContract? @relation("CollectionContractMetadata", fields: [collectionAddress], references: [address])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([collectionAddress, tokenId])
-  @@index([collectionAddress, tokenId])
-  @@index([collectionAddress])
-  @@index([url])
-}
-
-model CollectionContract {
-  id          String   @id @default(cuid())
-  key         String   @unique
-  address     String   @unique
-  name        String
-  symbol      String
-  maxSupply   Int
-  mintPrice   String
-  baseURI     String
-  contractURI String
-  factoryId   String
-  factory     FactoryContract  @relation(fields: [factoryId], references: [id])
-  networkId   String
-  network     BlockchainNetwork @relation(fields: [networkId], references: [id])
-  createdBy   String   @default("admin")
-  txHash      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  nfts        NFT[]
-  events      NFTEvent[]
-  price       Int      @default(0)
-  circulation  Int      @default(1000)
-  mintedCount  Int      @default(0)
-  isListed     Boolean  @default(false)
-  artistId     String?
-  artist       Artist?  @relation(fields: [artistId], references: [id])
-
-  metadata Metadata? @relation("CollectionContractMetadata")
-
-  @@index([address, networkId])
-  @@index([factoryId])
-}
-
-model NFT {
-  id             String   @id @default(cuid())
-  tokenId        Int
-  collectionId   String
-  collection     CollectionContract @relation(fields: [collectionId], references: [id])
-  ownerAddress   String
-  currentOwnerAddress String?
-  metadataUri    String?
-  mintedAt       DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  transactionHash String
-  networkId      String
-  network        BlockchainNetwork @relation(fields: [networkId], references: [id])
-  name           String?
-  description    String?
-  imageUrl       String?
-  attributes     Json?
-  isListed         Boolean  @default(false)
-  listingPrice     String?
-  lastTransferredAt DateTime?
-  transferCount    Int      @default(0)
-  isBurned         Boolean  @default(false)
-  rarity           Float?
-  tags             String[]
-  category         String?
-  creatorInfo      String?
-  externalUrl      String?
-  mintPrice        String?
-  mintedBy         String?
-  royaltyInfo      Json?
-  events           NFTEvent[]
-
-  @@index([collectionId])
-  @@index([tokenId])
-  @@index([currentOwnerAddress])
-  @@index([ownerAddress])
-}
-
-model NFTEvent {
-  id             String   @id @default(cuid())
-  nftId          String
-  nft            NFT      @relation(fields: [nftId], references: [id])
-  collectionId   String
-  collection     CollectionContract @relation(fields: [collectionId], references: [id])
-  eventType      String   // Transfer, Approval, Listing, Sale 등
-  fromAddress    String?
-  toAddress      String?
-  price          String?  // 거래 가격
-  transactionHash String
-  timestamp      DateTime @default(now())
-  blockNumber    Int?
-  
-  @@index([nftId])
-  @@index([eventType])
-  @@index([fromAddress, toAddress])
-}
-
-model Artist {
-  id        String   @id @default(cuid())
-  name      String
-  description String?
-  imageUrl  String?
-  externalUrl String?
-  reportUrl   String?
-  members     ArtistMember[]
-  company     String?
-  sns         String[] @default([])
-  gallery     String[] @default([])
-  videos      String[] @default([])
-  music       String[] @default([])
-  events      String[] @default([])
-  additionalInfo Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  collectionContracts CollectionContract[]
-
-
-  @@index([name])
-}
-
-model ArtistMember {
-  id        String   @id @default(cuid())
-  artistId  String
-  artist    Artist   @relation(fields: [artistId], references: [id])
-  name      String
-  role      String
-  imageUrl  String?
-  externalUrl String?
-  description String?
-  realName    String?
-  birthDate   DateTime?
-  birthPlace  String?
-  nationality String?
-  height      Int?
-  weight      Int?
-  bloodType   String?
-  constellation String?
-  sns         String[] @default([])
-  gallery     String[] @default([])
-  videos      String[] @default([])
-  music       String[] @default([])
-  additionalInfo Json?  
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }

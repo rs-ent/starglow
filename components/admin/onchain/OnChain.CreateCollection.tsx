@@ -6,7 +6,6 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Card,
     CardContent,
@@ -28,7 +27,7 @@ import {
     Cog,
 } from "lucide-react";
 import { useToast } from "@/app/hooks/useToast";
-import { useFactoryCreateCollection } from "@/app/hooks/useFactoryContracts";
+import { useFactorySet } from "@/app/hooks/useFactoryContracts";
 import { useEscrowWalletManager } from "@/app/hooks/useBlockchain";
 import { OnChainMetadata } from "./OnChain.Metadata";
 import { Switch } from "@/components/ui/switch";
@@ -99,6 +98,9 @@ export default function CreateCollection({
         mintPrice: "0",
     });
 
+    // 로딩 상태를 관리하기 위한 상태 추가
+    const [isCreating, setIsCreating] = useState(false);
+
     // Hooks
     const {
         wallets,
@@ -106,7 +108,9 @@ export default function CreateCollection({
         getWalletWithPrivateKey,
     } = useEscrowWalletManager();
     const { networks } = useBlockchainNetworksManager();
-    const createCollectionMutation = useFactoryCreateCollection();
+    const { createCollection } = useFactorySet({
+        networkId: factory.networkId,
+    });
 
     // 메타데이터가 로드되면 컬렉션 폼을 업데이트
     useEffect(() => {
@@ -163,83 +167,87 @@ export default function CreateCollection({
     // Collection 생성 핸들러
     const handleCreateCollection = async () => {
         if (!selectedMetadata) {
-            toast.error("Please select or create metadata first");
+            toast.error("메타데이터를 먼저 선택해주세요");
             return;
         }
 
         try {
+            setIsCreating(true); // 로딩 시작
             setCollectionResult(null);
 
-            const result = await createCollectionMutation.mutateAsync({
-                collectionKey: selectedMetadata.collectionKey,
-                factoryAddress: factory.address,
-                networkId: factory.networkId,
-                name: collectionForm.name,
-                symbol: collectionForm.symbol,
-                maxSupply: parseInt(collectionForm.maxSupply),
-                mintPrice: collectionForm.mintPrice,
-                baseURI: selectedMetadata.url,
-                contractURI: selectedMetadata.url,
-                privateKey,
-                useDefaultGas,
-                gasMaxFee: !useDefaultGas ? gasForm.gasMaxFee : undefined,
-                gasMaxPriorityFee: !useDefaultGas
-                    ? gasForm.gasMaxPriorityFee
-                    : undefined,
-                gasLimit: !useDefaultGas ? gasForm.gasLimit : undefined,
+            const result = await createCollection({
+                factoryId: factory.id,
+                walletId: selectedWalletId,
+                params: {
+                    name: collectionForm.name,
+                    symbol: collectionForm.symbol,
+                    maxSupply: parseInt(collectionForm.maxSupply),
+                    mintPrice: parseInt(collectionForm.mintPrice),
+                    baseURI: selectedMetadata.url,
+                    contractURI: selectedMetadata.url,
+                    collectionKey: selectedMetadata.collectionKey,
+                },
             });
+
+            if (!result.success || !result.data) {
+                throw new Error(result.error || "컬렉션 생성 실패");
+            }
 
             const creationResult = {
                 success: true,
-                message: "Collection created successfully",
-                collectionAddress: result.collectionAddress,
-                transactionHash: result.transactionHash,
+                message: "컬렉션이 성공적으로 생성되었습니다",
+                collectionAddress: result.data.address,
+                transactionHash: result.data.txHash || "",
                 name: collectionForm.name,
                 symbol: collectionForm.symbol,
             };
 
             // 메타데이터 링크 시도
             try {
-                if (!result.collectionAddress) {
-                    throw new Error("No collection address received");
+                if (!result.data.address) {
+                    throw new Error("컬렉션 주소를 받지 못했습니다");
                 }
 
                 const linkedMetadata = await linkMetadata({
                     metadataId: selectedMetadata.id,
-                    collectionAddress: result.collectionAddress,
+                    collectionAddress: result.data.address,
                 });
 
                 toast.success(
-                    `Successfully linked metadata to collection: ${linkedMetadata}`
+                    `메타데이터가 컬렉션에 성공적으로 연결되었습니다: ${linkedMetadata}`
                 );
             } catch (linkError) {
-                console.error("Metadata linking error:", linkError);
-                toast.error("Collection created but metadata linking failed");
-                creationResult.message += " (but metadata linking failed)";
+                console.error("메타데이터 연결 오류:", linkError);
+                toast.error(
+                    "컬렉션은 생성되었지만 메타데이터 연결에 실패했습니다"
+                );
+                creationResult.message += " (메타데이터 연결 실패)";
             }
 
             setCollectionResult(creationResult);
             toast.success(
-                `Successfully created collection "${collectionForm.name}" (${collectionForm.symbol})`
+                `"${collectionForm.name}" (${collectionForm.symbol}) 컬렉션이 성공적으로 생성되었습니다`
             );
 
             if (onSuccess) {
                 onSuccess(creationResult);
             }
         } catch (error) {
-            console.error("Collection creation error:", error);
+            console.error("컬렉션 생성 오류:", error);
             const errorMessage =
                 error instanceof Error
                     ? error.message
-                    : "Unknown error occurred";
+                    : "알 수 없는 오류가 발생했습니다";
 
             setCollectionResult({
                 success: false,
-                message: "Collection creation failed",
+                message: "컬렉션 생성에 실패했습니다",
                 error: errorMessage,
             });
 
-            toast.error(`Failed to create collection: ${errorMessage}`);
+            toast.error(`컬렉션 생성 실패: ${errorMessage}`);
+        } finally {
+            setIsCreating(false); // 로딩 종료
         }
     };
 
@@ -250,8 +258,8 @@ export default function CreateCollection({
             const result = await getWalletWithPrivateKey(walletId);
             setPrivateKey(result.privateKey);
         } catch (error) {
-            console.error("Error fetching private key:", error);
-            toast.error("Failed to get wallet private key");
+            console.error("프라이빗 키 가져오기 실패:", error);
+            toast.error("프라이빗 키를 가져오는데 실패했습니다");
         }
     };
 
@@ -263,11 +271,9 @@ export default function CreateCollection({
                 </div>
                 <div>
                     <h3 className="text-2xl font-bold tracking-tight">
-                        Create New NFT Collection
+                        새로운 NFT 컬렉션 생성
                     </h3>
-                    <p className="text-muted-foreground">
-                        Configure and deploy your NFT collection
-                    </p>
+                    <p className="text-muted-foreground">컬렉션 설정 및 배포</p>
                 </div>
             </div>
 
@@ -279,9 +285,9 @@ export default function CreateCollection({
                             <FileText className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                            <CardTitle>1. Select Metadata</CardTitle>
+                            <CardTitle>1. 메타데이터 선택</CardTitle>
                             <CardDescription>
-                                Choose the metadata for your NFT collection
+                                컬렉션에 사용할 메타데이터를 선택하세요
                             </CardDescription>
                         </div>
                     </div>
@@ -302,10 +308,9 @@ export default function CreateCollection({
                             <Eye className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                            <CardTitle>2. Verify Metadata</CardTitle>
+                            <CardTitle>2. 메타데이터 확인</CardTitle>
                             <CardDescription>
-                                Review the metadata that will be linked to your
-                                collection
+                                컬렉션에 연결될 메타데이터를 확인하세요
                             </CardDescription>
                         </div>
                     </div>
@@ -316,7 +321,7 @@ export default function CreateCollection({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <h4 className="font-medium text-sm text-primary">
-                                        Metadata URL
+                                        메타데이터 URL
                                     </h4>
                                     <div className="p-3 bg-muted/10 rounded-lg">
                                         <pre className="font-mono text-xs break-all overflow-x-auto">
@@ -326,7 +331,7 @@ export default function CreateCollection({
                                 </div>
                                 <div className="space-y-2">
                                     <h4 className="font-medium text-sm text-primary">
-                                        Preview
+                                        미리보기
                                     </h4>
                                     <a
                                         href={selectedMetadata.url}
@@ -334,7 +339,7 @@ export default function CreateCollection({
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
                                     >
-                                        View metadata{" "}
+                                        메타데이터 보기{" "}
                                         <ExternalLink className="h-4 w-4 ml-2" />
                                     </a>
                                 </div>
@@ -343,7 +348,7 @@ export default function CreateCollection({
                             {selectedMetadata.metadata && (
                                 <div className="space-y-2">
                                     <h4 className="font-medium text-sm text-primary">
-                                        Metadata Contents
+                                        메타데이터 내용
                                     </h4>
                                     <div className="p-4 bg-muted/10 rounded-lg max-h-48 overflow-y-auto">
                                         <pre className="text-xs">
@@ -364,11 +369,10 @@ export default function CreateCollection({
                         >
                             <AlertTriangle className="h-5 w-5 text-destructive" />
                             <AlertTitle className="font-semibold">
-                                Metadata Not Selected
+                                메타데이터가 선택되지 않았습니다
                             </AlertTitle>
                             <AlertDescription>
-                                Please select a metadata in Step 1 before
-                                proceeding.
+                                먼저 1단계에서 메타데이터를 선택하세요
                             </AlertDescription>
                         </Alert>
                     )}
@@ -383,9 +387,9 @@ export default function CreateCollection({
                             <Settings className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                            <CardTitle>3. Collection Details</CardTitle>
+                            <CardTitle>3. 컬렉션 설정</CardTitle>
                             <CardDescription>
-                                Configure your collection settings
+                                컬렉션 설정을 구성하세요
                             </CardDescription>
                         </div>
                     </div>
@@ -397,7 +401,7 @@ export default function CreateCollection({
                                 htmlFor="collection-name"
                                 className="text-sm font-medium"
                             >
-                                Collection Name
+                                컬렉션 이름
                             </Label>
                             <Input
                                 id="collection-name"
@@ -417,7 +421,7 @@ export default function CreateCollection({
                                 htmlFor="collection-symbol"
                                 className="text-sm font-medium"
                             >
-                                Symbol
+                                심볼
                             </Label>
                             <Input
                                 id="collection-symbol"
@@ -440,7 +444,8 @@ export default function CreateCollection({
                                 htmlFor="max-supply"
                                 className="text-sm font-medium"
                             >
-                                Max Supply
+                                최대 민팅 가능 수량 (안정성을 위해 공급량의 2배
+                                선택해주세요)
                             </Label>
                             <Input
                                 id="max-supply"
@@ -461,7 +466,7 @@ export default function CreateCollection({
                                 htmlFor="mint-price"
                                 className="text-sm font-medium"
                             >
-                                Mint Price (wei)
+                                민팅 가격 (wei)
                             </Label>
                             <Input
                                 id="mint-price"
@@ -491,9 +496,9 @@ export default function CreateCollection({
                             <Cog className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                            <CardTitle>4. Deployment Settings</CardTitle>
+                            <CardTitle>4. 배포 설정</CardTitle>
                             <CardDescription>
-                                Configure deployment options
+                                배포 옵션을 구성하세요
                             </CardDescription>
                         </div>
                     </div>
@@ -508,7 +513,7 @@ export default function CreateCollection({
                                 onCheckedChange={setUseDefaultGas}
                             />
                             <Label htmlFor="use-default-gas">
-                                Use default gas settings
+                                기본 가스 설정 사용
                             </Label>
                         </div>
 
@@ -516,7 +521,7 @@ export default function CreateCollection({
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="gas-max-fee">
-                                        Max Fee (Gwei)
+                                        최대 수수료 (Gwei)
                                     </Label>
                                     <Input
                                         id="gas-max-fee"
@@ -533,7 +538,7 @@ export default function CreateCollection({
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="gas-max-priority-fee">
-                                        Max Priority Fee (Gwei)
+                                        최대 우선 수수료 (Gwei)
                                     </Label>
                                     <Input
                                         id="gas-max-priority-fee"
@@ -550,7 +555,7 @@ export default function CreateCollection({
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="gas-limit">Gas Limit</Label>
+                                    <Label htmlFor="gas-limit">가스 한도</Label>
                                     <Input
                                         id="gas-limit"
                                         value={gasForm.gasLimit}
@@ -571,7 +576,7 @@ export default function CreateCollection({
                     {/* Wallet Selection */}
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <Label>Select Wallet</Label>
+                            <Label>지갑 선택</Label>
                             <select
                                 className="w-full p-2 rounded-md border bg-card"
                                 value={selectedWalletId}
@@ -668,16 +673,16 @@ export default function CreateCollection({
                 <Button
                     type="button"
                     onClick={handleCreateCollection}
-                    disabled={!selectedMetadata || !privateKey}
+                    disabled={!selectedMetadata || !privateKey || isCreating}
                     className="bg-primary hover:bg-primary/90 transition-colors"
                 >
-                    {createCollectionMutation.isCreating ? (
+                    {isCreating ? (
                         <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Creating...
+                            생성 중...
                         </>
                     ) : (
-                        "Create Collection"
+                        "컬렉션 생성"
                     )}
                 </Button>
             </div>

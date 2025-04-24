@@ -27,8 +27,7 @@ contract CollectionFactory is OwnableUpgradeable {
     ) external onlyOwner returns (address) {
         require(!_usedNames[name], "NAME_TAKEN");
 
-        Collection newCollection = new Collection();
-        newCollection.initialize(
+        Collection newCollection = new Collection(
             name,
             symbol,
             msg.sender,

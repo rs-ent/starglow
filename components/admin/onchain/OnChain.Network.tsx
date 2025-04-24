@@ -92,7 +92,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                 <div className="flex flex-col items-center gap-3">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     <span className="text-muted-foreground">
-                        Loading networks...
+                        네트워크 로드 중...
                     </span>
                 </div>
             </div>
@@ -107,7 +107,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                     <span>
                         {error instanceof Error
                             ? error.message
-                            : "Failed to load network data"}
+                            : "네트워크 데이터 로드 실패"}
                     </span>
                 </AlertDescription>
             </Alert>
@@ -121,12 +121,8 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6 border-b">
                     <div className="space-y-1">
                         <CardTitle className="text-2xl font-bold">
-                            Blockchain Networks
+                            블록체인 네트워크
                         </CardTitle>
-                        <CardDescription className="text-base">
-                            Configure and manage your blockchain network
-                            connections
-                        </CardDescription>
                     </div>
                     <Button
                         variant={showAddForm ? "secondary" : "default"}
@@ -136,12 +132,12 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                         {showAddForm ? (
                             <div className="flex items-center gap-2">
                                 <X className="h-4 w-4" />
-                                <span>Cancel</span>
+                                <span>취소</span>
                             </div>
                         ) : (
                             <div className="flex items-center gap-2">
                                 <PlusCircle className="h-4 w-4" />
-                                <span>Add Network</span>
+                                <span>네트워크 추가</span>
                             </div>
                         )}
                     </Button>
@@ -152,19 +148,19 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                             <TableHeader>
                                 <TableRow className="bg-muted/50">
                                     <TableHead className="font-semibold">
-                                        Name
+                                        네트워크명
                                     </TableHead>
                                     <TableHead className="font-semibold">
-                                        Chain ID
+                                        체인 ID
                                     </TableHead>
                                     <TableHead className="font-semibold">
-                                        Type
+                                        유형
                                     </TableHead>
                                     <TableHead className="font-semibold">
                                         Explorer
                                     </TableHead>
                                     <TableHead className="font-semibold text-right">
-                                        Actions
+                                        기능
                                     </TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -217,7 +213,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                                     className="h-8"
                                                 >
                                                     <Edit className="h-3 w-3 mr-1" />
-                                                    Edit
+                                                    수정
                                                 </Button>
                                                 <Button
                                                     size="sm"
@@ -228,7 +224,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                                     }
                                                     className="h-8"
                                                 >
-                                                    Deploy to
+                                                    네트워크 선택
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -241,7 +237,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                             className="h-32 text-center text-muted-foreground"
                                         >
                                             <div className="flex flex-col items-center gap-2">
-                                                <p>No networks available</p>
+                                                <p>네트워크가 없습니다</p>
                                                 <Button
                                                     variant="outline"
                                                     onClick={() =>
@@ -250,7 +246,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                                     className="mt-2"
                                                 >
                                                     <PlusCircle className="h-4 w-4 mr-2" />
-                                                    Add Your First Network
+                                                    첫 번째 네트워크 추가
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -267,10 +263,10 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                 <Card className="lg:col-span-2 border-2 border-primary/10 bg-muted/5">
                     <CardHeader className="space-y-1">
                         <CardTitle className="text-xl">
-                            Add New Network
+                            새로운 네트워크 추가
                         </CardTitle>
                         <CardDescription>
-                            Configure a new blockchain network connection
+                            새로운 블록체인 네트워크 연결 구성
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleAddNetwork}>
@@ -282,7 +278,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                         htmlFor="name"
                                         className="font-medium"
                                     >
-                                        Network Name
+                                        네트워크명
                                     </Label>
                                     <Input
                                         id="name"
@@ -299,7 +295,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                         htmlFor="symbol"
                                         className="font-medium"
                                     >
-                                        Symbol
+                                        심볼
                                     </Label>
                                     <Input
                                         id="symbol"
@@ -319,7 +315,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                         htmlFor="chainId"
                                         className="font-medium"
                                     >
-                                        Chain ID
+                                        체인 ID
                                     </Label>
                                     <Input
                                         id="chainId"
@@ -356,7 +352,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                         htmlFor="explorerUrl"
                                         className="font-medium"
                                     >
-                                        Block Explorer URL
+                                        Explorer URL
                                     </Label>
                                     <Input
                                         id="explorerUrl"
@@ -374,14 +370,17 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                         htmlFor="multicallAddress"
                                         className="font-medium flex items-center justify-between"
                                     >
-                                        <span>Multicall Contract Address</span>
+                                        <span>Multicall 컨트랙트 주소</span>
                                         <a
                                             href="https://www.multicall3.com/deployments"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
                                         >
-                                            <span>View all deployments</span>
+                                            <span>
+                                                Multicall 주소는 여기서 확인
+                                                가능합니다.
+                                            </span>
                                             <ExternalLink className="h-3 w-3" />
                                         </a>
                                     </Label>
@@ -395,12 +394,13 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                     />
                                     <div className="text-sm text-muted-foreground space-y-1">
                                         <p>
-                                            Default Multicall3 address:
+                                            기본 Multicall3 주소:
                                             0xcA11bde05977b3631167028862bE2a173976CA11
                                         </p>
                                         <p>
-                                            Visit multicall3.com/deployments to
-                                            check network-specific addresses
+                                            multicall3.com/deployments 에서
+                                            네트워크별 주소를 확인할 수
+                                            있습니다.
                                         </p>
                                     </div>
                                 </div>
@@ -423,7 +423,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                     htmlFor="isTestnet"
                                     className="font-medium cursor-pointer"
                                 >
-                                    This is a testnet
+                                    이 네트워크는 테스트넷입니다.
                                 </Label>
                             </div>
 
@@ -433,7 +433,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                         {addNetworkMutation.error instanceof
                                         Error
                                             ? addNetworkMutation.error.message
-                                            : "Failed to add network"}
+                                            : "네트워크 추가 실패"}
                                     </AlertDescription>
                                 </Alert>
                             )}
@@ -444,7 +444,7 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                 variant="outline"
                                 onClick={() => setShowAddForm(false)}
                             >
-                                Cancel
+                                취소
                             </Button>
                             <Button
                                 type="submit"
@@ -453,10 +453,10 @@ export default function OnChainNetwork({ onDeployClick }: OnChainNetworkProps) {
                                 {addNetworkMutation.isPending ? (
                                     <div className="flex items-center gap-2">
                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                        <span>Adding...</span>
+                                        <span>추가 중...</span>
                                     </div>
                                 ) : (
-                                    "Add Network"
+                                    "네트워크 추가"
                                 )}
                             </Button>
                         </CardFooter>

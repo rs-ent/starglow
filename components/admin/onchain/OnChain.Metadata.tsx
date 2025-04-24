@@ -107,7 +107,7 @@ function MetadataPreviewDialog({
                                 {metadata.name}
                             </DialogTitle>
                             <DialogDescription className="text-base">
-                                Preview and verify metadata content
+                                메타데이터 미리보기 및 검증
                             </DialogDescription>
                         </div>
                     </div>
@@ -118,7 +118,7 @@ function MetadataPreviewDialog({
                     <div className="space-y-4">
                         <h3 className="font-semibold text-lg flex items-center gap-2">
                             <Image className="h-5 w-5 text-primary" />
-                            Preview Image
+                            미리보기 이미지
                         </h3>
                         <div className="aspect-square w-full bg-black/5 rounded-xl overflow-hidden border shadow-sm hover:shadow-md transition-shadow">
                             <img
@@ -134,12 +134,12 @@ function MetadataPreviewDialog({
                         <div className="space-y-4">
                             <h3 className="font-semibold text-lg flex items-center gap-2">
                                 <FileText className="h-5 w-5 text-primary" />
-                                Details
+                                상세 정보
                             </h3>
                             <div className="grid gap-4">
                                 <div className="p-4 bg-muted/10 rounded-lg space-y-2">
                                     <p className="text-sm font-medium text-primary">
-                                        Description
+                                        설명
                                     </p>
                                     <p className="text-sm">
                                         {metadata.description}
@@ -147,7 +147,7 @@ function MetadataPreviewDialog({
                                 </div>
                                 <div className="p-4 bg-muted/10 rounded-lg space-y-2">
                                     <p className="text-sm font-medium text-primary">
-                                        External URL
+                                        외부 URL
                                     </p>
                                     <p className="text-sm font-mono break-all hover:text-primary transition-colors">
                                         {metadata.external_url}
@@ -156,7 +156,7 @@ function MetadataPreviewDialog({
                                 {metadata.animation_url && (
                                     <div className="p-4 bg-muted/10 rounded-lg space-y-2">
                                         <p className="text-sm font-medium text-primary">
-                                            Animation URL
+                                            애니메이션 URL
                                         </p>
                                         <p className="text-sm font-mono break-all hover:text-primary transition-colors">
                                             {metadata.animation_url}
@@ -172,7 +172,7 @@ function MetadataPreviewDialog({
                                 <div className="space-y-4">
                                     <h3 className="font-semibold text-lg flex items-center gap-2">
                                         <Tags className="h-5 w-5 text-primary" />
-                                        Attributes
+                                        속성
                                     </h3>
                                     <div className="grid grid-cols-2 gap-3">
                                         {metadata.attributes.map(
@@ -203,7 +203,7 @@ function MetadataPreviewDialog({
                         className="hover:bg-muted/50 transition-colors"
                     >
                         <X className="h-4 w-4 mr-2" />
-                        Close Preview
+                        미리보기 닫기
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -230,7 +230,7 @@ function AttributeFormField({
                     <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
                         <Tag className="h-3 w-3 text-primary" />
                     </div>
-                    <h4 className="font-medium">Attribute #{index + 1}</h4>
+                    <h4 className="font-medium">속성 #{index + 1}</h4>
                 </div>
                 <Button
                     type="button"
@@ -251,7 +251,7 @@ function AttributeFormField({
                         <FormItem className="flex-1">
                             <FormControl>
                                 <Input
-                                    placeholder="Trait Type"
+                                    placeholder="속성 유형"
                                     {...field}
                                     className="bg-background/50"
                                 />
@@ -272,19 +272,19 @@ function AttributeFormField({
                                 value={field.value}
                             >
                                 <SelectTrigger className="bg-background/50">
-                                    <SelectValue placeholder="Select Type" />
+                                    <SelectValue placeholder="유형 선택" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="string">
                                         <span className="flex items-center gap-2">
                                             <Type className="h-4 w-4" />
-                                            Text
+                                            텍스트
                                         </span>
                                     </SelectItem>
                                     <SelectItem value="number">
                                         <span className="flex items-center gap-2">
                                             <Hash className="h-4 w-4" />
-                                            Number
+                                            숫자
                                         </span>
                                     </SelectItem>
                                     <SelectItem value="boost_number">
@@ -296,13 +296,13 @@ function AttributeFormField({
                                     <SelectItem value="boost_percentage">
                                         <span className="flex items-center gap-2">
                                             <Percent className="h-4 w-4" />
-                                            Percentage
+                                            백분율
                                         </span>
                                     </SelectItem>
                                     <SelectItem value="date">
                                         <span className="flex items-center gap-2">
                                             <Calendar className="h-4 w-4" />
-                                            Date
+                                            날짜
                                         </span>
                                     </SelectItem>
                                 </SelectContent>
@@ -344,7 +344,7 @@ function AttributeFormField({
                                                             )
                                                         ) : (
                                                             <span>
-                                                                Pick a date
+                                                                날짜 선택
                                                             </span>
                                                         )}
                                                         <Calendar className="ml-auto h-4 w-4 opacity-50" />
@@ -399,7 +399,7 @@ function AttributeFormField({
                                             <FormControl>
                                                 <Input
                                                     type="number"
-                                                    placeholder="Value"
+                                                    placeholder="값"
                                                     {...field}
                                                     onChange={(e) => {
                                                         field.onChange(
@@ -428,7 +428,7 @@ function AttributeFormField({
                                                         <FormControl>
                                                             <Input
                                                                 type="number"
-                                                                placeholder="Max Value"
+                                                                placeholder="최대값"
                                                                 {...maxValueField}
                                                                 onChange={(
                                                                     e
@@ -459,7 +459,7 @@ function AttributeFormField({
                             return (
                                 <FormItem className="flex-1">
                                     <FormControl>
-                                        <Input placeholder="Value" {...field} />
+                                        <Input placeholder="값" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -548,9 +548,9 @@ function MetadataListTab({
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Available Metadata</CardTitle>
+                <CardTitle>사용 가능한 메타데이터</CardTitle>
                 <CardDescription>
-                    Select metadata to link with your collection
+                    컬렉션과 연결할 메타데이터 선택
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -558,15 +558,13 @@ function MetadataListTab({
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-[50px]">
-                                    Select
-                                </TableHead>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead>IPFS URL</TableHead>
-                                <TableHead>Created At</TableHead>
+                                <TableHead className="w-[50px]">선택</TableHead>
+                                <TableHead>이름</TableHead>
+                                <TableHead>설명</TableHead>
+                                <TableHead>메타데이터 URL</TableHead>
+                                <TableHead>생성 일시</TableHead>
                                 <TableHead className="w-[100px]">
-                                    Actions
+                                    기능
                                 </TableHead>
                             </TableRow>
                         </TableHeader>
@@ -619,10 +617,10 @@ function MetadataListTab({
                     </Table>
                 ) : (
                     <div className="text-center py-8 text-muted-foreground">
-                        <p>No metadata available.</p>
+                        <p>사용 가능한 메타데이터가 없습니다.</p>
                         <p className="text-sm mt-2">
-                            Create new metadata in the &apos;Create
-                            Metadata&apos; tab.
+                            &apos;Create Metadata&apos; 탭에서 새로운
+                            메타데이터를 생성하세요.
                         </p>
                     </div>
                 )}
@@ -652,10 +650,8 @@ function MetadataCreationForm({
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Create NFT Metadata</CardTitle>
-                <CardDescription>
-                    Create metadata for your NFT collection
-                </CardDescription>
+                <CardTitle>새로운 메타데이터 생성하기</CardTitle>
+                <CardDescription>NFT 컬렉션의 메타데이터 생성</CardDescription>
             </CardHeader>
             <CardContent>
                 <Form {...form}>
@@ -663,7 +659,7 @@ function MetadataCreationForm({
                         onSubmit={form.handleSubmit(onSubmit, (errors) => {
                             console.log("Form validation failed", errors);
                             toast.error(
-                                `Please fix the form errors before submitting`
+                                `메타데이터 생성 전에 폼 오류를 수정해주세요`
                             );
                         })}
                         className="space-y-6"
@@ -673,22 +669,23 @@ function MetadataCreationForm({
                             <div className="space-y-4 border-b pb-4">
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-md font-medium">
-                                        1. Collection Key
+                                        1. 컬렉션 키 (메타데이터가 저장되는
+                                        폴더명으로 사용됨)
                                     </h3>
                                     {form.watch("collectionKey") && (
                                         <Badge
                                             variant="outline"
                                             className="text-green-500"
                                         >
-                                            Collection Key Ready
+                                            컬렉션 키 준비 완료
                                         </Badge>
                                     )}
                                 </div>
                                 <FormItem>
-                                    <FormLabel>Collection Key</FormLabel>
+                                    <FormLabel>컬렉션 키</FormLabel>
                                     <FormControl>
                                         <Input
-                                            placeholder="Enter collection key"
+                                            placeholder="컬렉션 키 입력"
                                             {...form.register("collectionKey")}
                                         />
                                     </FormControl>
@@ -702,11 +699,11 @@ function MetadataCreationForm({
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>
-                                                        Collection Contract Name
+                                                        컬렉션 컨트랙트 이름
                                                     </FormLabel>
                                                     <FormControl>
                                                         <Input
-                                                            placeholder="Enter collection name"
+                                                            placeholder="컬렉션 이름 입력"
                                                             {...field}
                                                         />
                                                     </FormControl>
@@ -720,7 +717,7 @@ function MetadataCreationForm({
                             {/* Step 2: NFT Metadata */}
                             <div className="space-y-4">
                                 <h3 className="text-md font-medium">
-                                    2. NFT Metadata
+                                    2. NFT 메타데이터
                                 </h3>
 
                                 <FormField
@@ -729,11 +726,11 @@ function MetadataCreationForm({
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>
-                                                NFT Name (metadata.name)
+                                                NFT 이름 (metadata.name)
                                             </FormLabel>
                                             <FormControl>
                                                 <Input
-                                                    placeholder="Enter NFT name"
+                                                    placeholder="NFT 이름 입력"
                                                     {...field}
                                                 />
                                             </FormControl>
@@ -747,10 +744,12 @@ function MetadataCreationForm({
                                     name="description"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Description</FormLabel>
+                                            <FormLabel>
+                                                설명 (metadata.description)
+                                            </FormLabel>
                                             <FormControl>
                                                 <Textarea
-                                                    placeholder="Description of the collection and metadata"
+                                                    placeholder="컬렉션 및 메타데이터 설명"
                                                     {...field}
                                                 />
                                             </FormControl>
@@ -760,7 +759,7 @@ function MetadataCreationForm({
                                 />
 
                                 <div className="space-y-2">
-                                    <FormLabel>Image</FormLabel>
+                                    <FormLabel>이미지</FormLabel>
                                     <FileUploader
                                         purpose="metadata-image"
                                         onComplete={handleFileUpload}
@@ -774,10 +773,10 @@ function MetadataCreationForm({
                                     name="image"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Image URL</FormLabel>
+                                            <FormLabel>이미지 URL</FormLabel>
                                             <FormControl>
                                                 <Input
-                                                    placeholder="IPFS URL or HTTP URL"
+                                                    placeholder="IPFS URL 또는 HTTP URL"
                                                     {...field}
                                                 />
                                             </FormControl>
@@ -791,7 +790,7 @@ function MetadataCreationForm({
                                     name="external_url"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>External URL</FormLabel>
+                                            <FormLabel>외부 URL</FormLabel>
                                             <FormControl>
                                                 <Input
                                                     placeholder="https://..."
@@ -799,7 +798,7 @@ function MetadataCreationForm({
                                                 />
                                             </FormControl>
                                             <FormDescription>
-                                                External website URL for the NFT
+                                                외부 웹사이트 URL (NFT)
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>
@@ -812,7 +811,8 @@ function MetadataCreationForm({
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>
-                                                Background Color
+                                                배경색
+                                                (metadata.background_color)
                                             </FormLabel>
                                             <FormControl>
                                                 <Input
@@ -822,8 +822,8 @@ function MetadataCreationForm({
                                                 />
                                             </FormControl>
                                             <FormDescription>
-                                                Background color for NFT display
-                                                (optional)
+                                                배경색 (NFT 표시에 사용) (선택
+                                                사항)
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>
@@ -835,7 +835,10 @@ function MetadataCreationForm({
                                     name="animation_url"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Animation URL</FormLabel>
+                                            <FormLabel>
+                                                애니메이션 URL
+                                                (metadata.animation_url)
+                                            </FormLabel>
                                             <FormControl>
                                                 <Input
                                                     placeholder="https://..."
@@ -843,8 +846,8 @@ function MetadataCreationForm({
                                                 />
                                             </FormControl>
                                             <FormDescription>
-                                                URL to a multimedia attachment
-                                                (optional)
+                                                멀티미디어 첨부파일 URL (선택
+                                                사항)
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>
@@ -854,7 +857,7 @@ function MetadataCreationForm({
                                 {/* Attributes Section */}
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
-                                        <FormLabel>Attributes</FormLabel>
+                                        <FormLabel>속성</FormLabel>
                                         <Button
                                             type="button"
                                             variant="outline"
@@ -862,7 +865,7 @@ function MetadataCreationForm({
                                             onClick={addAttribute}
                                         >
                                             <Plus className="h-4 w-4 mr-1" />
-                                            Add Attribute
+                                            속성 추가
                                         </Button>
                                     </div>
 
@@ -886,9 +889,7 @@ function MetadataCreationForm({
                                 disabled={isUploading}
                                 className="w-full"
                             >
-                                {isUploading
-                                    ? "Creating..."
-                                    : "Create Metadata"}
+                                {isUploading ? "생성 중..." : "메타데이터 생성"}
                             </Button>
                         </div>
                     </form>
@@ -1020,8 +1021,8 @@ export function OnChainMetadata({
         <>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="create">Create Metadata</TabsTrigger>
-                    <TabsTrigger value="list">Select Metadata</TabsTrigger>
+                    <TabsTrigger value="create">메타데이터 생성</TabsTrigger>
+                    <TabsTrigger value="list">메타데이터 선택</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="create">

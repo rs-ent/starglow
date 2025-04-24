@@ -6,12 +6,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-    Loader2,
     Check,
-    AlertTriangle,
     Plus,
-    RefreshCw,
     X,
+    Trash2,
+    RefreshCw,
+    Loader2,
+    AlertTriangle,
+    Key,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/app/hooks/useToast";
@@ -23,11 +25,37 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import CreateCollection from "./OnChain.CreateCollection";
 import { CreateCollectionResult } from "./OnChain.Factory";
 import { Factory } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
+import { useFactoryGet, useFactorySet } from "@/app/hooks/useFactoryContracts";
+import { useEscrowWalletManager } from "@/app/hooks/useBlockchain";
+import { CollectionContract } from "@prisma/client";
 interface FactoryFunctionsProps {
     factory: {
         address: string;
@@ -48,9 +76,37 @@ export default function FactoryFunctions({
         useState<CreateCollectionResult | null>(null);
     const toast = useToast();
 
+    // 컬렉션 삭제 관련 상태
+    const [collectionToDelete, setCollectionToDelete] = useState<string | null>(
+        null
+    );
+    const [selectedWalletId, setSelectedWalletId] = useState<string>("");
+
+    // 에스크로 지갑 관리자 가져오기
+    const { wallets, getWalletWithPrivateKey } = useEscrowWalletManager();
+
+    // useFactoryGet hook 사용하여 Factory의 컬렉션 목록 가져오기
+    const { collections, isLoadingCollections } = useFactoryGet({
+        networkId: factory.networkId,
+        factoryId: factory.id,
+    });
+
+    // useFactorySet hook 사용하여 Factory의 작업 수행
+    const {
+        updateFactory,
+        deleteCollection,
+        refresh,
+        isProcessing,
+        isDeletingCollection,
+    } = useFactorySet({
+        networkId: factory.networkId,
+    });
+
+    // 컬렉션 생성 완료 시 처리
     const handleCollectionCreated = (result: CreateCollectionResult) => {
         setLastCreatedCollection(result);
         setShowCreateCollection(false);
+        refresh(); // 컬렉션 목록 새로고침
 
         if (onCollectionCreated) {
             onCollectionCreated({
@@ -64,6 +120,48 @@ export default function FactoryFunctions({
         }
     };
 
+    // 지갑 선택 핸들러
+    const handleWalletSelect = async (walletId: string) => {
+        setSelectedWalletId(walletId);
+    };
+
+    // 컬렉션 삭제 처리
+    const handleDeleteCollection = async () => {
+        if (!collectionToDelete || !selectedWalletId) {
+            toast.error("Please select a wallet first");
+            return;
+        }
+
+        try {
+            const result = await deleteCollection({
+                factoryId: factory.id,
+                walletId: selectedWalletId,
+                collectionAddress: collectionToDelete,
+            });
+
+            if (result.success) {
+                toast.success("Collection deleted successfully");
+                setCollectionToDelete(null);
+                setSelectedWalletId("");
+                refresh(); // 컬렉션 목록 새로고침
+            } else {
+                toast.error(`Failed to delete collection: ${result.error}`);
+            }
+        } catch (error) {
+            toast.error(
+                `Error: ${
+                    error instanceof Error ? error.message : String(error)
+                }`
+            );
+        }
+    };
+
+    // 컬렉션 목록 새로고침
+    const handleRefresh = () => {
+        refresh();
+        toast.success("Collections list refreshed");
+    };
+
     return (
         <div className="rounded-2xl bg-gradient-to-b from-muted/10 to-muted/5 p-8 space-y-8">
             {/* Header Section */}
@@ -71,16 +169,13 @@ export default function FactoryFunctions({
                 <div className="flex items-center gap-2">
                     <Factory className="h-6 w-6 text-primary" />
                     <h2 className="text-2xl font-bold tracking-tight">
-                        Factory Management
+                        팩토리 관리
                     </h2>
                 </div>
                 <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                        Manage and interact with this Factory contract
-                    </p>
                     <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg font-mono text-xs">
                         <span className="text-muted-foreground">
-                            Contract Address:
+                            컨트랙트 주소:
                         </span>
                         <code className="text-primary">{factory.address}</code>
                     </div>
@@ -96,19 +191,19 @@ export default function FactoryFunctions({
                         </div>
                         <div className="space-y-2 flex-1">
                             <AlertTitle className="text-green-500 font-semibold text-lg">
-                                Collection Created Successfully
+                                컬렉션 생성 성공
                             </AlertTitle>
                             <AlertDescription>
                                 <div className="space-y-4">
                                     <p className="text-sm">
-                                        Your new collection "
-                                        {lastCreatedCollection.name}" has been
-                                        created and is ready to use.
+                                        새로운 컬렉션 "
+                                        {lastCreatedCollection.name}"이
+                                        생성되었습니다.
                                     </p>
                                     <div className="grid gap-4 text-sm">
                                         <div className="space-y-1.5">
                                             <span className="text-muted-foreground text-xs">
-                                                Collection Address
+                                                컬렉션 주소
                                             </span>
                                             <code className="block w-full p-2 bg-muted/30 rounded-md font-mono">
                                                 {
@@ -118,7 +213,7 @@ export default function FactoryFunctions({
                                         </div>
                                         <div className="space-y-1.5">
                                             <span className="text-muted-foreground text-xs">
-                                                Transaction Hash
+                                                트랜잭션 해시
                                             </span>
                                             <code className="block w-full p-2 bg-muted/30 rounded-md font-mono">
                                                 {
@@ -144,52 +239,25 @@ export default function FactoryFunctions({
                             </div>
                             <div>
                                 <CardTitle className="text-xl">
-                                    Create New Collection
+                                    새로운 컬렉션 생성
                                 </CardTitle>
-                                <CardDescription className="text-base mt-1">
-                                    Deploy a new ERC-721 compatible NFT
-                                    collection
-                                </CardDescription>
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <p className="text-sm text-muted-foreground">
-                                Create a customizable NFT collection with
-                                advanced features and metadata support.
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                <Badge
-                                    variant="outline"
-                                    className="bg-muted/30"
-                                >
-                                    ERC-721
-                                </Badge>
-                                <Badge
-                                    variant="outline"
-                                    className="bg-muted/30"
-                                >
-                                    Metadata Support
-                                </Badge>
-                                <Badge
-                                    variant="outline"
-                                    className="bg-muted/30"
-                                >
-                                    Customizable
-                                </Badge>
-                            </div>
-                        </div>
-                    </CardContent>
                     <CardFooter>
                         <Button
                             onClick={() => setShowCreateCollection(true)}
                             className="w-full relative overflow-hidden group"
                             size="lg"
+                            disabled={isProcessing}
                         >
                             <span className="relative z-10 flex items-center justify-center gap-2">
-                                <Plus className="h-4 w-4" />
-                                Start Collection Creation
+                                {isProcessing ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Plus className="h-4 w-4" />
+                                )}
+                                새로운 컬렉션 생성하기
                             </span>
                             <div className="absolute inset-0 bg-primary/10 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                         </Button>
@@ -210,18 +278,106 @@ export default function FactoryFunctions({
                 </div>
             )}
 
-            {/* Footer */}
-            <div className="flex justify-end pt-6 border-t">
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={onClose}
-                    className="px-6 hover:bg-muted/50 transition-colors"
-                >
-                    <X className="h-4 w-4 mr-2" />
-                    Close Factory Manager
-                </Button>
-            </div>
+            {/* Delete Collection Confirmation Dialog */}
+            <Dialog
+                open={!!collectionToDelete}
+                onOpenChange={(open) => !open && setCollectionToDelete(null)}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>컬렉션 삭제 확인</DialogTitle>
+                        <DialogDescription>
+                            이 컬렉션을 삭제하시겠습니까? 이 작업은 취소할 수
+                            없습니다.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4">
+                        <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-md">
+                            <p className="text-sm font-semibold mb-1">
+                                컬렉션 주소:
+                            </p>
+                            <code className="text-red-500 font-mono text-sm block break-all">
+                                {collectionToDelete}
+                            </code>
+                        </div>
+
+                        {/* Wallet Selection for Delete Action */}
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <Key className="h-4 w-4 text-muted-foreground" />
+                                <Label>삭제를 위한 지갑 선택</Label>
+                            </div>
+                            <Select
+                                value={selectedWalletId}
+                                onValueChange={handleWalletSelect}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="지갑 선택" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {wallets?.map((wallet) => (
+                                        <SelectItem
+                                            key={wallet.id}
+                                            value={wallet.id}
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className="font-mono text-sm">
+                                                    {wallet.address.substring(
+                                                        0,
+                                                        6
+                                                    )}
+                                                    ...
+                                                    {wallet.address.substring(
+                                                        wallet.address.length -
+                                                            4
+                                                    )}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                                    {wallet.networkIds.join(
+                                                        ", "
+                                                    )}
+                                                </span>
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                이 컬렉션을 삭제하기 위해서는 해당 컬렉션을
+                                생성한 지갑 또는 팩토리를 생성한 지갑을 선택해야
+                                합니다.
+                            </p>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setCollectionToDelete(null);
+                                setSelectedWalletId("");
+                            }}
+                            disabled={isDeletingCollection}
+                        >
+                            취소
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteCollection}
+                            disabled={isDeletingCollection || !selectedWalletId}
+                        >
+                            {isDeletingCollection ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    삭제 중...
+                                </>
+                            ) : (
+                                "컬렉션 삭제"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -11,13 +11,10 @@ import {
     AlertTriangle,
     Pause,
     Play,
-    RefreshCw,
-    Upload,
     Eye,
     EyeOff,
     Copy,
     ExternalLink,
-    FileJson,
     Settings,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -36,14 +33,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     useEscrowWalletManager,
     useBlockchainNetworksManager,
+    useEstimateMintGas,
 } from "@/app/hooks/useBlockchain";
 import {
-    useCollectionFunctions,
-    useCollectionSettings,
-    useEstimateMintGas,
+    useCollectionGet,
+    useCollectionSet,
 } from "@/app/hooks/useCollectionContracts";
 import { Switch } from "@/components/ui/switch";
 import { CollectionContract } from "@prisma/client";
+import { useUpdateCollectionSettingsMutation } from "@/app/mutations/collectionContractsMutations";
 
 interface CollectionFunctionsProps {
     collection: CollectionContract;
@@ -58,6 +56,7 @@ export default function CollectionFunctions({
 }: CollectionFunctionsProps) {
     const toast = useToast();
 
+    // 상태 관리
     const [mintQuantity, setMintQuantity] = useState("1");
     const [mintAddress, setMintAddress] = useState("");
     const [privateKey, setPrivateKey] = useState("");
@@ -68,19 +67,46 @@ export default function CollectionFunctions({
     const [gasPrice, setGasPrice] = useState("");
     const [showGasSettings, setShowGasSettings] = useState(false);
     const [isListed, setIsListed] = useState(collection.isListed);
+    const [gasEstimateData, setGasEstimateData] = useState<any>(null);
+    const [lastOperation, setLastOperation] = useState<{
+        success: boolean;
+        message: string;
+        txHash?: string;
+    } | null>(null);
+
+    // 설정 상태
+    const [price, setPrice] = useState(collection.price?.toString() || "0");
+    const [circulation, setCirculation] = useState(
+        collection.circulation?.toString() || "0"
+    );
+
+    // 컬렉션 데이터 및 작업
+    const {
+        tokens,
+        status,
+        isLoading: isLoadingCollection,
+    } = useCollectionGet({
+        collectionAddress: collection.address,
+        walletId: selectedWalletId,
+    });
 
     const {
-        status,
-        lastOperation,
-        mintTokens,
-        togglePause,
-        toggleMinting,
+        mint,
+        burn,
+        pause,
+        unpause,
+        isProcessing,
         isMinting,
-        isTogglingPause,
-        isTogglingMinting,
-        isStatusLoading,
-    } = useCollectionFunctions(collection);
+        isBurning,
+        isPausing,
+        isUnpausing,
+        refresh,
+    } = useCollectionSet({
+        collectionAddress: collection.address,
+        walletId: selectedWalletId,
+    });
 
+    // 지갑 및 네트워크 관리
     const {
         wallets,
         isLoading: isLoadingWallets,
@@ -88,32 +114,52 @@ export default function CollectionFunctions({
     } = useEscrowWalletManager();
     const { networks } = useBlockchainNetworksManager();
 
-    const {
-        settings,
-        isLoading: isLoadingSettings,
-        updateSettings,
-        isUpdating: isUpdatingSettings,
-    } = useCollectionSettings(collection.id);
+    // 가스 추정
+    const { estimate, isEstimating: isGasEstimateLoading } =
+        useEstimateMintGas();
 
-    const { gasEstimate, isGasEstimateLoading } = useEstimateMintGas({
-        address: collection.address,
-        to: mintAddress,
-        quantity: parseInt(mintQuantity) || 1,
-        privateKey,
-    });
+    // 컬렉션 설정 업데이트
+    const updateSettingsMutation = useUpdateCollectionSettingsMutation();
+    const isUpdatingSettings = updateSettingsMutation.isPending;
 
-    const [price, setPrice] = useState(collection.price.toString());
-    const [circulation, setCirculation] = useState(
-        collection.circulation.toString()
-    );
-
+    // 가스 추정 업데이트 (민팅 관련 입력 변경시)
     useEffect(() => {
-        if (gasEstimate && !customGasSettings && privateKey) {
-            setGasLimit(gasEstimate.gasLimit.toString());
-            setGasPrice(gasEstimate.gasPrice.toString());
+        if (selectedWalletId && mintAddress && parseInt(mintQuantity) > 0) {
+            handleEstimateGas();
         }
-    }, [gasEstimate, customGasSettings, privateKey]);
+    }, [selectedWalletId, mintAddress, mintQuantity]);
 
+    // 가스 추정 결과를 사용하여 가스 설정 필드 업데이트
+    useEffect(() => {
+        if (gasEstimateData && !customGasSettings && privateKey) {
+            setGasLimit(gasEstimateData.gasLimit || "");
+            setGasPrice(gasEstimateData.maxFeePerGas || "");
+        }
+    }, [gasEstimateData, customGasSettings, privateKey]);
+
+    // 가스 추정 함수
+    const handleEstimateGas = async () => {
+        if (!selectedWalletId || !mintAddress || parseInt(mintQuantity) <= 0) {
+            return;
+        }
+
+        try {
+            const result = await estimate({
+                collectionAddress: collection.address,
+                walletId: selectedWalletId,
+                quantity: parseInt(mintQuantity),
+            });
+
+            if (result) {
+                setGasEstimateData(result);
+            }
+        } catch (error) {
+            console.error("Error estimating gas:", error);
+            toast.error("Failed to estimate gas");
+        }
+    };
+
+    // 지갑 선택 핸들러
     const handleWalletSelect = async (walletId: string) => {
         try {
             setSelectedWalletId(walletId);
@@ -128,9 +174,11 @@ export default function CollectionFunctions({
             }
         } catch (error) {
             console.error("Error fetching private key:", error);
+            toast.error("Failed to fetch wallet private key");
         }
     };
 
+    // 민팅 핸들러
     const handleMint = async () => {
         if (!mintAddress || !privateKey) return;
 
@@ -138,89 +186,179 @@ export default function CollectionFunctions({
         if (isNaN(quantity) || quantity <= 0) return;
 
         try {
-            const result = await mintTokens({
+            const result = await mint({
                 collectionAddress: collection.address,
-                networkId: collection.networkId,
-                to: mintAddress,
+                walletId: selectedWalletId,
                 quantity,
-                privateKey,
-                ...(customGasSettings && {
-                    gasLimit,
-                    gasPrice,
-                }),
+                gasOptions: customGasSettings
+                    ? {
+                          gasLimit: BigInt(gasLimit),
+                          maxFeePerGas: BigInt(gasPrice),
+                      }
+                    : undefined,
             });
 
-            if (result?.transactionHash && onCollectionUpdated) {
-                onCollectionUpdated({
-                    ...collection,
+            if (result.success) {
+                let txHash = undefined;
+                if (
+                    result.data &&
+                    Array.isArray(result.data) &&
+                    result.data.length > 0 &&
+                    "transactionHash" in result.data[0]
+                ) {
+                    txHash = result.data[0].transactionHash;
+                }
+
+                setLastOperation({
+                    success: true,
+                    message: `Successfully minted ${quantity} tokens`,
+                    txHash: txHash,
                 });
+
+                await refresh();
+
+                if (onCollectionUpdated) {
+                    onCollectionUpdated({
+                        ...collection,
+                        mintedCount: (collection.mintedCount || 0) + quantity,
+                    });
+                }
+
+                toast.success(`Successfully minted ${quantity} tokens`);
+            } else {
+                setLastOperation({
+                    success: false,
+                    message: result.error || "Failed to mint tokens",
+                });
+                toast.error(result.error || "Failed to mint tokens");
             }
         } catch (error) {
             console.error("Error minting tokens:", error);
+            toast.error("Error minting tokens");
+            setLastOperation({
+                success: false,
+                message:
+                    error instanceof Error ? error.message : "Unknown error",
+            });
         }
     };
 
+    // 일시 중지/해제 핸들러
     const handleTogglePause = async () => {
         if (!privateKey) return;
 
         try {
-            const currentPauseState = status?.paused;
-            const result = await togglePause({
-                collectionAddress: collection.address,
-                networkId: collection.networkId,
-                pause: !currentPauseState,
-                privateKey,
-            });
-
-            if (result?.transactionHash && onCollectionUpdated) {
-                onCollectionUpdated({
-                    ...collection,
+            if (status?.isPaused) {
+                const result = await unpause({
+                    collectionAddress: collection.address,
+                    walletId: selectedWalletId,
                 });
+
+                if (result.success) {
+                    setLastOperation({
+                        success: true,
+                        message: "Collection unpaused successfully",
+                        txHash: result.transactionHash,
+                    });
+
+                    if (onCollectionUpdated) {
+                        onCollectionUpdated({
+                            ...collection,
+                        });
+                    }
+
+                    toast.success("Collection unpaused successfully");
+                } else {
+                    setLastOperation({
+                        success: false,
+                        message: result.error || "Failed to unpause collection",
+                    });
+                    toast.error(result.error || "Failed to unpause collection");
+                }
+            } else {
+                const result = await pause({
+                    collectionAddress: collection.address,
+                    walletId: selectedWalletId,
+                });
+
+                if (result.success) {
+                    setLastOperation({
+                        success: true,
+                        message: "Collection paused successfully",
+                        txHash: result.transactionHash,
+                    });
+
+                    if (onCollectionUpdated) {
+                        onCollectionUpdated({
+                            ...collection,
+                        });
+                    }
+
+                    toast.success("Collection paused successfully");
+                } else {
+                    setLastOperation({
+                        success: false,
+                        message: result.error || "Failed to pause collection",
+                    });
+                    toast.error(result.error || "Failed to pause collection");
+                }
             }
         } catch (error) {
             console.error("Error toggling pause:", error);
-        }
-    };
-
-    const handleToggleMinting = async () => {
-        if (!privateKey) return;
-
-        try {
-            const currentMintingState = status?.mintingEnabled;
-            const result = await toggleMinting({
-                collectionAddress: collection.address,
-                networkId: collection.networkId,
-                enabled: !currentMintingState,
-                privateKey,
+            toast.error("Error toggling pause state");
+            setLastOperation({
+                success: false,
+                message:
+                    error instanceof Error ? error.message : "Unknown error",
             });
-
-            if (result?.transactionHash && onCollectionUpdated) {
-                onCollectionUpdated({
-                    ...collection,
-                });
-            }
-        } catch (error) {
-            console.error("Error toggling minting:", error);
         }
     };
 
+    // 설정 업데이트 핸들러
     const handleUpdateSettings = async () => {
         try {
-            await updateSettings(Number(price), Number(circulation), isListed);
+            const result = await updateSettingsMutation.mutateAsync({
+                collectionAddress: collection.address,
+                price: Number(price),
+                circulation: Number(circulation),
+                isListed: isListed,
+            });
 
-            if (onCollectionUpdated) {
-                onCollectionUpdated({
-                    ...collection,
-                    price: Number(price),
-                    circulation: Number(circulation),
-                    isListed: isListed,
+            if (result.success) {
+                setLastOperation({
+                    success: true,
+                    message: "Collection settings updated successfully",
                 });
+
+                if (onCollectionUpdated) {
+                    onCollectionUpdated({
+                        ...collection,
+                        price: Number(price),
+                        circulation: Number(circulation),
+                        isListed: isListed,
+                    });
+                }
+
+                toast.success("Collection settings updated successfully");
+            } else {
+                setLastOperation({
+                    success: false,
+                    message: result.error || "Failed to update settings",
+                });
+                toast.error(result.error || "Failed to update settings");
             }
         } catch (error) {
             console.error("Failed to update settings:", error);
+            toast.error("Failed to update settings");
+            setLastOperation({
+                success: false,
+                message:
+                    error instanceof Error ? error.message : "Unknown error",
+            });
         }
     };
 
+    // 유틸리티 함수들
     const getNetworkNames = (networkIds: string[]) => {
         if (!networks) return "None";
         return networkIds
@@ -248,13 +386,7 @@ export default function CollectionFunctions({
         window.open(url, "_blank", "noopener,noreferrer");
     };
 
-    useEffect(() => {
-        if (settings) {
-            setPrice(settings.price.toString());
-            setCirculation(settings.circulation.toString());
-        }
-    }, [settings]);
-
+    // 설정 카드 컴포넌트
     const settingsCard = (
         <Card>
             <CardHeader>
@@ -272,7 +404,7 @@ export default function CollectionFunctions({
                         value={price}
                         onChange={(e) => setPrice(e.target.value)}
                         placeholder="Enter price in wei"
-                        disabled={isLoadingSettings}
+                        disabled={isUpdatingSettings}
                     />
                 </div>
                 <div className="space-y-2">
@@ -283,7 +415,7 @@ export default function CollectionFunctions({
                         value={circulation}
                         onChange={(e) => setCirculation(e.target.value)}
                         placeholder="Enter maximum circulation"
-                        disabled={isLoadingSettings}
+                        disabled={isUpdatingSettings}
                     />
                 </div>
                 <div className="space-y-2">
@@ -298,7 +430,7 @@ export default function CollectionFunctions({
             <CardFooter>
                 <Button
                     onClick={handleUpdateSettings}
-                    disabled={isUpdatingSettings || isLoadingSettings}
+                    disabled={isUpdatingSettings}
                     className="w-full"
                 >
                     {isUpdatingSettings ? (
@@ -488,7 +620,7 @@ export default function CollectionFunctions({
 
                                 {mintAddress && parseInt(mintQuantity) > 0 ? (
                                     <div className="text-sm space-y-1">
-                                        {!privateKey ? (
+                                        {!selectedWalletId ? (
                                             <div className="text-yellow-500">
                                                 <AlertTriangle className="h-3 w-3 inline mr-1" />
                                                 Please select a wallet with
@@ -499,7 +631,7 @@ export default function CollectionFunctions({
                                                 <Loader2 className="h-3 w-3 mr-2 animate-spin" />
                                                 Estimating gas...
                                             </div>
-                                        ) : gasEstimate ? (
+                                        ) : gasEstimateData ? (
                                             <>
                                                 <div className="flex justify-between">
                                                     <span className="text-muted-foreground">
@@ -507,17 +639,19 @@ export default function CollectionFunctions({
                                                     </span>
                                                     <span className="font-mono">
                                                         {
-                                                            gasEstimate.estimatedGasCostInEth
+                                                            gasEstimateData.estimatedGasCostInEth
                                                         }{" "}
                                                         {
-                                                            gasEstimate.networkSymbol
+                                                            gasEstimateData.networkSymbol
                                                         }
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between text-xs text-muted-foreground">
                                                     <span>Gas Limit:</span>
                                                     <span className="font-mono">
-                                                        {gasEstimate.gasLimit.toString()}
+                                                        {
+                                                            gasEstimateData.gasLimit
+                                                        }
                                                     </span>
                                                 </div>
                                             </>
@@ -606,9 +740,7 @@ export default function CollectionFunctions({
                         <CardFooter>
                             <Button
                                 onClick={handleMint}
-                                disabled={
-                                    !status?.mintingEnabled || !privateKey
-                                }
+                                disabled={status?.isPaused || !selectedWalletId}
                                 className="w-full"
                             >
                                 {isMinting ? (
@@ -741,31 +873,35 @@ export default function CollectionFunctions({
                                 <p className="text-sm text-muted-foreground">
                                     Current status:{" "}
                                     <span className="font-semibold">
-                                        {status?.paused ? "Paused" : "Active"}
+                                        {status?.isPaused ? "Paused" : "Active"}
                                     </span>
                                 </p>
                             </CardContent>
                             <CardFooter>
                                 <Button
                                     onClick={handleTogglePause}
-                                    disabled={isTogglingPause || !privateKey}
+                                    disabled={
+                                        isPausing ||
+                                        isUnpausing ||
+                                        !selectedWalletId
+                                    }
                                     variant={
-                                        status?.paused
+                                        status?.isPaused
                                             ? "default"
                                             : "destructive"
                                     }
                                     className="w-full"
                                 >
-                                    {isTogglingPause ? (
+                                    {isPausing || isUnpausing ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            {status?.paused
+                                            {status?.isPaused
                                                 ? "Unpausing..."
                                                 : "Pausing..."}
                                         </>
                                     ) : (
                                         <>
-                                            {status?.paused ? (
+                                            {status?.isPaused ? (
                                                 <>
                                                     <Play className="mr-2 h-4 w-4" />
                                                     Unpause Contract
@@ -776,52 +912,6 @@ export default function CollectionFunctions({
                                                     Pause Contract
                                                 </>
                                             )}
-                                        </>
-                                    )}
-                                </Button>
-                            </CardFooter>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Minting Status</CardTitle>
-                                <CardDescription>
-                                    Enable or disable minting functionality
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground">
-                                    Current status:{" "}
-                                    <span className="font-semibold">
-                                        {status?.mintingEnabled
-                                            ? "Enabled"
-                                            : "Disabled"}
-                                    </span>
-                                </p>
-                            </CardContent>
-                            <CardFooter>
-                                <Button
-                                    onClick={handleToggleMinting}
-                                    disabled={isTogglingMinting || !privateKey}
-                                    variant={
-                                        status?.mintingEnabled
-                                            ? "destructive"
-                                            : "default"
-                                    }
-                                    className="w-full"
-                                >
-                                    {isTogglingMinting ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            {status?.mintingEnabled
-                                                ? "Disabling..."
-                                                : "Enabling..."}
-                                        </>
-                                    ) : (
-                                        <>
-                                            {status?.mintingEnabled
-                                                ? "Disable Minting"
-                                                : "Enable Minting"}
                                         </>
                                     )}
                                 </Button>

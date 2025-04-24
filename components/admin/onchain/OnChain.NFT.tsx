@@ -1,4 +1,4 @@
-/// components\organisms\OnChain.NFT.tsx
+/// components\admin\onchain\OnChain.NFT.tsx
 
 "use client";
 
@@ -36,9 +36,15 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, Search, ArrowUpDown, MoreVertical } from "lucide-react";
+import {
+    Loader2,
+    Search,
+    ArrowUpDown,
+    MoreVertical,
+    Layers,
+} from "lucide-react";
 import { CollectionContract, NFT } from "@prisma/client";
-import { useCollectionContractsManager } from "@/app/hooks/useCollectionContracts";
+import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import {
     useNFTs,
     useNFTDetails,
@@ -46,6 +52,8 @@ import {
 } from "@/app/hooks/useNFTs";
 import { NFTFilters, NFTPaginationParams } from "./OnChain.types";
 import { useToast } from "@/app/hooks/useToast";
+import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
+import { useCollectionsByNetwork } from "@/app/queries/collectionContractsQueries";
 
 function CollectionList({
     collections,
@@ -92,7 +100,7 @@ function CollectionList({
     );
 }
 
-function NFTList({ collection }: { collection: CollectionContract }) {
+export function NFTList({ collection }: { collection: CollectionContract }) {
     const toast = useToast();
 
     const [filters, setFilters] = useState<NFTFilters & { address: string }>({
@@ -115,6 +123,57 @@ function NFTList({ collection }: { collection: CollectionContract }) {
         navigator.clipboard.writeText(text);
         setCopied(true);
         toast.success(`Copied to clipboard: ${text}`);
+    };
+
+    const { data: owners, isLoading: isLoadingOwners } = useGetOwnerByTokenIds({
+        contractAddress: collection.address,
+        tokenIds: nfts?.items.map((nft) => nft.tokenId.toString()) || [],
+        networkId: collection.networkId,
+    });
+
+    const [nftList, setNftList] = useState<NFT[]>(nfts?.items || []);
+    const [filteredNftList, setFilteredNftList] = useState<NFT[]>(
+        nftList || []
+    );
+
+    useEffect(() => {
+        if (nfts?.items) {
+            setNftList(nfts.items);
+            setFilteredNftList(nfts.items);
+        }
+    }, [nfts]);
+
+    useEffect(() => {
+        if (nfts && nfts.items && owners) {
+            const updatedNfts = nfts.items.map((nft) => {
+                const owner = owners.find(
+                    (owner) => owner.tokenId === nft.tokenId.toString()
+                );
+                return {
+                    ...nft,
+                    currentOwnerAddress: owner?.ownerAddress || null,
+                };
+            });
+            setNftList(updatedNfts);
+            setFilteredNftList(updatedNfts);
+        }
+    }, [owners, nfts]);
+
+    const handleSearchFilter = (searchText: string) => {
+        setFilters({
+            ...filters,
+            address: searchText,
+        });
+
+        setFilteredNftList(
+            searchText
+                ? nftList.filter(
+                      (nft) =>
+                          nft.currentOwnerAddress?.includes(searchText) ||
+                          nft.ownerAddress.includes(searchText)
+                  )
+                : nftList
+        );
     };
 
     const FilterBar = () => (
@@ -141,53 +200,11 @@ function NFTList({ collection }: { collection: CollectionContract }) {
             <Input
                 placeholder="Search by owner address..."
                 value={filters.address || ""}
-                onChange={(e) => {
-                    setFilters({
-                        ...filters,
-                        address: e.target.value,
-                    });
-                    setFilteredNftList(
-                        e.target.value
-                            ? nftList.filter(
-                                  (nft) =>
-                                      nft.currentOwnerAddress?.includes(
-                                          e.target.value
-                                      ) ||
-                                      nft.ownerAddress.includes(e.target.value)
-                              )
-                            : nftList
-                    );
-                }}
+                onChange={(e) => handleSearchFilter(e.target.value)}
                 className="w-[300px]"
             />
         </div>
     );
-
-    const { data: owners, isLoading: isLoadingOwners } = useGetOwnerByTokenIds({
-        contractAddress: collection.address,
-        tokenIds: nfts?.items.map((nft) => nft.tokenId.toString()) || [],
-        networkId: collection.networkId,
-    });
-
-    const [nftList, setNftList] = useState<NFT[]>(nfts?.items || []);
-    const [filteredNftList, setFilteredNftList] = useState<NFT[]>(
-        nftList || []
-    );
-    useEffect(() => {
-        if (nfts && nfts.items && owners) {
-            const updatedNfts = nfts.items.map((nft) => {
-                const owner = owners.find(
-                    (owner) => owner.tokenId === nft.tokenId.toString()
-                );
-                return {
-                    ...nft,
-                    currentOwnerAddress: owner?.ownerAddress || null,
-                };
-            });
-            setNftList(updatedNfts);
-            setFilteredNftList(updatedNfts);
-        }
-    }, [isLoadingOwners]);
 
     const PaginationUI = () => {
         if (!nfts || nfts.pageCount <= 1) return null;
@@ -349,6 +366,17 @@ function NFTList({ collection }: { collection: CollectionContract }) {
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                     </TableCell>
                                 </TableRow>
+                            ) : filteredNftList.length === 0 ? (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={6}
+                                        className="text-center py-8"
+                                    >
+                                        <div className="text-muted-foreground">
+                                            No NFTs found
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
                             ) : (
                                 filteredNftList.map((nft) => (
                                     <TableRow key={nft.id}>
@@ -435,34 +463,26 @@ function NFTList({ collection }: { collection: CollectionContract }) {
     );
 }
 
-export default function OnChainNFTManager() {
-    const { collections, selectedCollection, setSelectedCollection } =
-        useCollectionContractsManager();
-
+export default function OnChainNFTManager({
+    selectedCollection,
+}: {
+    selectedCollection: CollectionContract;
+}) {
     return (
-        <div className="container mx-auto p-4">
-            <div className="grid grid-cols-1 gap-6">
-                {/* Collection 목록 */}
-                <div className="lg:col-span-1">
-                    <h2 className="text-lg font-semibold mb-4">Collections</h2>
-                    <CollectionList
-                        collections={collections || []}
-                        selectedCollection={selectedCollection?.data || null}
-                        onSelectCollection={setSelectedCollection}
-                    />
-                </div>
-
-                {/* NFT 목록 */}
-                <div className="lg:col-span-3 mt-8">
-                    {selectedCollection ? (
-                        <NFTList collection={selectedCollection.data} />
-                    ) : (
-                        <div className="flex justify-center items-center h-64 text-muted-foreground">
-                            Select a collection to view NFTs
-                        </div>
-                    )}
+        <div className="space-y-6">
+            <div className="bg-muted/20 p-4 rounded-lg mb-6">
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <Layers className="h-4 w-4" />
+                    <span>
+                        선택된 컬렉션:{" "}
+                        <span className="font-semibold text-foreground">
+                            {selectedCollection.name}
+                        </span>
+                    </span>
                 </div>
             </div>
+
+            <NFTList collection={selectedCollection} />
         </div>
     );
 }

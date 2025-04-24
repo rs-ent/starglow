@@ -231,17 +231,6 @@ export default function OnChainEscrowWallet() {
         }
     }
 
-    function getNetworkNames(networkIds: string[]) {
-        if (!networks) return "None";
-
-        return networkIds
-            .map((id) => {
-                const network = networks.find((n) => n.id === id);
-                return network?.name || "Unknown";
-            })
-            .join(", ");
-    }
-
     function formatBalance(balance: JsonValue, networkIds: string[] = []) {
         if (
             !balance ||
@@ -286,12 +275,8 @@ export default function OnChainEscrowWallet() {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
                     <div className="space-y-1">
                         <CardTitle className="text-2xl font-bold">
-                            Escrow Wallets
+                            에스크로 지갑
                         </CardTitle>
-                        <CardDescription>
-                            Manage and monitor your escrow wallets across
-                            multiple networks
-                        </CardDescription>
                     </div>
                     <Button
                         variant={showAddForm ? "secondary" : "default"}
@@ -301,12 +286,12 @@ export default function OnChainEscrowWallet() {
                         {showAddForm ? (
                             <div className="flex items-center gap-2">
                                 <X className="h-4 w-4" />
-                                <span>Cancel</span>
+                                <span>취소</span>
                             </div>
                         ) : (
                             <div className="flex items-center gap-2">
                                 <PlusCircle className="h-4 w-4" />
-                                <span>Add Wallet</span>
+                                <span>지갑 추가</span>
                             </div>
                         )}
                     </Button>
@@ -317,18 +302,14 @@ export default function OnChainEscrowWallet() {
                         <Card className="mb-8 border-2 border-primary/10 bg-muted/5">
                             <CardHeader className="space-y-1">
                                 <CardTitle className="text-xl">
-                                    New Escrow Wallet
+                                    새로운 에스크로 지갑 추가
                                 </CardTitle>
-                                <CardDescription>
-                                    Add a new wallet to manage your escrow
-                                    transactions
-                                </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 {/* Generate Wallet Section */}
                                 <div className="p-4 bg-muted/50 rounded-lg space-y-3">
                                     <Label className="text-base font-medium">
-                                        Quick Setup
+                                        퀵뷰
                                     </Label>
                                     <Button
                                         variant="outline"
@@ -339,18 +320,17 @@ export default function OnChainEscrowWallet() {
                                         {isGeneratingWallet ? (
                                             <div className="flex items-center gap-2">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                                <span>Generating...</span>
+                                                <span>생성 중...</span>
                                             </div>
                                         ) : (
                                             <div className="flex items-center gap-2">
                                                 <RefreshCw className="h-4 w-4" />
-                                                <span>Generate New Wallet</span>
+                                                <span>새로운 지갑 생성</span>
                                             </div>
                                         )}
                                     </Button>
                                     <p className="text-sm text-muted-foreground">
-                                        Automatically generate a secure wallet
-                                        with address and private key
+                                        주소와 개인키가 자동으로 생성됩니다
                                     </p>
                                 </div>
 
@@ -362,7 +342,7 @@ export default function OnChainEscrowWallet() {
                                             htmlFor="address"
                                             className="text-sm font-medium"
                                         >
-                                            Wallet Address
+                                            지갑 주소
                                         </Label>
                                         <div className="flex gap-2">
                                             <Input
@@ -420,12 +400,12 @@ export default function OnChainEscrowWallet() {
                                                 {revealPrivateKey ? (
                                                     <div className="flex items-center gap-2">
                                                         <EyeOff className="h-4 w-4" />
-                                                        <span>Hide</span>
+                                                        <span>숨김</span>
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-2">
                                                         <Eye className="h-4 w-4" />
-                                                        <span>Show</span>
+                                                        <span>표시시</span>
                                                     </div>
                                                 )}
                                             </Button>
@@ -447,20 +427,20 @@ export default function OnChainEscrowWallet() {
                                             className="font-mono text-sm"
                                         />
                                         <p className="text-xs text-muted-foreground">
-                                            Private key will be securely
-                                            encrypted before storage
+                                            개인키는 저장 전에 안전하게
+                                            암호화됩니다
                                         </p>
                                     </div>
 
                                     {/* Networks Selection */}
                                     <div className="space-y-3">
                                         <Label className="text-sm font-medium">
-                                            Supported Networks
+                                            지원되는 네트워크
                                         </Label>
                                         {isLoadingNetworks ? (
                                             <div className="flex items-center justify-center p-4 bg-muted/30 rounded-lg">
                                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                <span>Loading networks...</span>
+                                                <span>네트워크 로드 중...</span>
                                             </div>
                                         ) : (
                                             <div className="grid sm:grid-cols-2 gap-3 p-4 bg-muted/30 rounded-lg">
@@ -529,10 +509,10 @@ export default function OnChainEscrowWallet() {
                                     {isSavingWallet ? (
                                         <div className="flex items-center gap-2">
                                             <Loader2 className="h-4 w-4 animate-spin" />
-                                            <span>Saving...</span>
+                                            <span>저장 중...</span>
                                         </div>
                                     ) : (
-                                        "Add Wallet"
+                                        "지갑 추가"
                                     )}
                                 </Button>
                             </CardFooter>
@@ -542,7 +522,7 @@ export default function OnChainEscrowWallet() {
                     {/* Wallets Table Section */}
                     {isLoading ? (
                         <div className="flex justify-center items-center py-12">
-                            <PartialLoading text="Loading wallets..." />
+                            <PartialLoading text="지갑 로드 중..." />
                         </div>
                     ) : isError ? (
                         <Alert variant="destructive" className="mb-6">
@@ -555,7 +535,7 @@ export default function OnChainEscrowWallet() {
                     ) : !wallets || wallets.length === 0 ? (
                         <div className="text-center py-12 space-y-4">
                             <p className="text-muted-foreground">
-                                No escrow wallets have been added yet.
+                                아직 지갑이 추가되지 않았습니다.
                             </p>
                             <Button
                                 variant="outline"
@@ -563,7 +543,7 @@ export default function OnChainEscrowWallet() {
                                 className="gap-2"
                             >
                                 <PlusCircle className="h-4 w-4" />
-                                <span>Add Your First Wallet</span>
+                                <span>첫 번째 지갑을 추가해보세요!</span>
                             </Button>
                         </div>
                     ) : (
@@ -571,14 +551,14 @@ export default function OnChainEscrowWallet() {
                             <Table>
                                 <TableHeader>
                                     <TableRow className="bg-muted/50">
-                                        <TableHead>Address</TableHead>
-                                        <TableHead>Networks</TableHead>
-                                        <TableHead>Balance</TableHead>
-                                        <TableHead>Created</TableHead>
-                                        <TableHead>Updated</TableHead>
-                                        <TableHead>Status</TableHead>
+                                        <TableHead>주소</TableHead>
+                                        <TableHead>네트워크</TableHead>
+                                        <TableHead>잔액</TableHead>
+                                        <TableHead>생성일</TableHead>
+                                        <TableHead>업데이트일</TableHead>
+                                        <TableHead>상태</TableHead>
                                         <TableHead className="text-right">
-                                            Actions
+                                            작업
                                         </TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -669,8 +649,8 @@ export default function OnChainEscrowWallet() {
                                                     }
                                                 >
                                                     {wallet.isActive
-                                                        ? "Active"
-                                                        : "Inactive"}
+                                                        ? "활성"
+                                                        : "비활성"}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
@@ -687,7 +667,7 @@ export default function OnChainEscrowWallet() {
                                                             }
                                                             className="h-8"
                                                         >
-                                                            Set Active
+                                                            활성화
                                                         </Button>
                                                     )}
                                                     <Button
@@ -711,7 +691,7 @@ export default function OnChainEscrowWallet() {
                                                             <div className="flex items-center gap-2">
                                                                 <RefreshCw className="h-4 w-4" />
                                                                 <span>
-                                                                    Update
+                                                                    업데이트
                                                                 </span>
                                                             </div>
                                                         )}

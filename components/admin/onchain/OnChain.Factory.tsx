@@ -6,6 +6,7 @@
 import { useState } from "react";
 import FactoryList from "./OnChain.FactoryList";
 import FactoryDeploy from "./OnChain.FactoryDeploy";
+import { DeployFactoryResult } from "@/app/actions/factoryContracts";
 import { Card } from "@/components/ui/card";
 
 export interface CreateCollectionResult {
@@ -44,32 +45,22 @@ export interface FactoryContract {
 
 interface OnChainFactoryProps {
     preSelectedNetworkId?: string;
-    onDeploySuccess?: (result: {
-        address: string;
-        transactionHash: string;
-        networkId: string;
-        owner?: string;
-    }) => void;
+    onDeploySuccess?: (result: DeployFactoryResult) => void;
+    onSelectFactory?: (factory: FactoryContract) => void;
 }
 
 export default function OnChainFactory({
     preSelectedNetworkId,
     onDeploySuccess,
+    onSelectFactory,
 }: OnChainFactoryProps) {
-    const [showDeployForm, setShowDeployForm] = useState(
-        preSelectedNetworkId ? true : false
-    );
+    const [showDeployForm, setShowDeployForm] = useState(false);
 
     function handleDeployClick() {
         setShowDeployForm(true);
     }
 
-    function handleDeploySuccess(result: {
-        address: string;
-        transactionHash: string;
-        networkId: string;
-        owner?: string;
-    }) {
+    function handleDeploySuccess(result: DeployFactoryResult) {
         setShowDeployForm(false);
         if (onDeploySuccess) {
             onDeploySuccess(result);
@@ -93,10 +84,20 @@ export default function OnChainFactory({
                             onDeploySuccess={handleDeploySuccess}
                         />
                     </div>
-                ) : (
-                    // List Mode
+                ) : // List Mode
+                preSelectedNetworkId ? (
                     <div className="p-6">
-                        <FactoryList onDeployClick={handleDeployClick} />
+                        <FactoryList
+                            networkId={preSelectedNetworkId}
+                            onDeployClick={handleDeployClick}
+                            onSelectFactory={(factory) =>
+                                onSelectFactory?.(factory)
+                            }
+                        />
+                    </div>
+                ) : (
+                    <div className="p-6 text-center">
+                        <p>네트워크를 선택해주세요.</p>
                     </div>
                 )}
             </div>
@@ -105,9 +106,9 @@ export default function OnChainFactory({
             {!showDeployForm && (
                 <Card className="p-4 bg-blue-500/5 border-blue-500/20">
                     <p className="text-sm text-blue-500">
-                        Deploy new factory contracts or manage existing ones.
-                        Factory contracts allow you to create and manage NFT
-                        collections.
+                        새로운 팩토리 컨트랙트를 배포하거나 기존 팩토리
+                        컨트랙트를 관리하세요. 팩토리 컨트랙트는 NFT 컬렉션을
+                        생성하고 관리할 수 있습니다.
                     </p>
                 </Card>
             )}

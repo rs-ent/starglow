@@ -4,124 +4,141 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-    saveFactoryContract,
-    saveFactoryContractParams,
-    updateFactoryContractCollections,
-    deployFactoryContract,
+    deployFactory,
+    updateFactory,
     createCollection,
-    DeployFactoryParams,
-    CreateCollectionParams,
+    deleteCollection,
 } from "../actions/factoryContracts";
-import { QUERY_KEYS } from "../queryKeys";
+import { factoryKeys, collectionKeys } from "../queryKeys";
+import { useToast } from "../hooks/useToast";
 
-/**
- * 팩토리 컨트랙트 저장 뮤테이션 훅
- */
-export function useSaveFactoryContract() {
+export function useDeployFactoryMutation() {
     const queryClient = useQueryClient();
+    const toast = useToast();
 
     return useMutation({
-        mutationFn: async (params: saveFactoryContractParams) => {
-            const result = await saveFactoryContract(params);
-            if (!result.success || !result.data) {
-                throw new Error(
-                    result.error || "Failed to save factory contract"
-                );
+        mutationFn: deployFactory,
+        onSuccess: (data, variables) => {
+            if (data.success) {
+                // Factory 목록 무효화
+                queryClient.invalidateQueries({
+                    queryKey: factoryKeys.byNetwork(variables.networkId),
+                });
+                // 배포 완료 상태 무효화
+                queryClient.invalidateQueries({
+                    queryKey: factoryKeys.deployment.completed(
+                        variables.networkId
+                    ),
+                });
+
+                toast.success("Factory 컨트랙트 배포 성공");
+            } else {
+                toast.error(`Factory 배포 실패: ${data.error}`);
             }
-            return result.data;
         },
-        onSuccess: (data) => {
-            // Invalidate factory contract list queries
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.FACTORY_CONTRACTS],
-            });
-            queryClient.invalidateQueries({
-                queryKey: [
-                    QUERY_KEYS.FACTORY_CONTRACTS,
-                    "active",
-                    data.networkId,
-                ],
-            });
+        onError: (error) => {
+            toast.error(`Factory 배포 실패: ${error}`);
         },
     });
 }
 
-/**
- * 팩토리 컨트랙트 컬렉션 목록 업데이트 뮤테이션 훅
- */
-export function useUpdateFactoryContractCollections() {
+export function useUpdateFactoryMutation() {
     const queryClient = useQueryClient();
+    const toast = useToast();
 
     return useMutation({
-        mutationFn: async (params: { id: string; collections: string[] }) => {
-            const result = await updateFactoryContractCollections(
-                params.id,
-                params.collections
-            );
-            if (!result.success || !result.data) {
-                throw new Error(
-                    result.error ||
-                        "Failed to update factory contract collections"
-                );
+        mutationFn: updateFactory,
+        onSuccess: (data, variables) => {
+            if (data.success) {
+                // Factory 목록 무효화
+                queryClient.invalidateQueries({
+                    queryKey: factoryKeys.all,
+                });
+                // Factory 상태 관련 쿼리도 무효화
+                if (data.data?.isActive) {
+                    queryClient.invalidateQueries({
+                        queryKey: factoryKeys.status.active(
+                            data.data.networkId
+                        ),
+                    });
+                } else {
+                    queryClient.invalidateQueries({
+                        queryKey: factoryKeys.status.inactive(
+                            data.data?.networkId || ""
+                        ),
+                    });
+                }
+
+                toast.success("Factory 상태 업데이트 성공");
+            } else {
+                toast.error(`Factory 업데이트 실패: ${data.error}`);
             }
-            return result.data;
         },
-        onSuccess: () => {
-            // Invalidate factory contract list queries
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.FACTORY_CONTRACTS],
-            });
+        onError: (error) => {
+            toast.error(`Factory 업데이트 실패: ${error}`);
         },
     });
 }
 
-/**
- * 팩토리 컨트랙트 배포 뮤테이션 훅
- */
-export function useDeployFactoryContract() {
+export function useCreateCollectionMutation() {
     const queryClient = useQueryClient();
+    const toast = useToast();
 
     return useMutation({
-        mutationFn: async (params: DeployFactoryParams) => {
-            const result = await deployFactoryContract(params);
-            if (!result.success || !result.data) {
-                throw new Error(
-                    result.error || "Failed to deploy factory contract"
-                );
+        mutationFn: createCollection,
+        onSuccess: (data, variables) => {
+            if (data.success) {
+                // Factory의 컬렉션 목록 무효화
+                queryClient.invalidateQueries({
+                    queryKey: factoryKeys.collections.all(variables.factoryId),
+                });
+                // 전체 컬렉션 목록도 무효화
+                queryClient.invalidateQueries({
+                    queryKey: collectionKeys.all,
+                });
+
+                toast.success(`${variables.params.name} 컬렉션 생성 성공`);
+            } else {
+                toast.error(`컬렉션 생성 실패: ${data.error}`);
             }
-            return result.data;
         },
-        onSuccess: () => {
-            // Invalidate factory contract list queries
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.FACTORY_CONTRACTS],
-            });
+        onError: (error) => {
+            toast.error(`컬렉션 생성 실패: ${error}`);
         },
     });
 }
 
-/**
- * 컬렉션 생성 뮤테이션 훅
- */
-export function useCreateCollection() {
+export function useDeleteCollectionMutation() {
     const queryClient = useQueryClient();
+    const toast = useToast();
 
     return useMutation({
-        mutationFn: async (params: CreateCollectionParams) => {
-            const result = await createCollection(params);
-            if (!result.success || !result.data) {
-                throw new Error(result.error || "Failed to create collection");
+        mutationFn: deleteCollection,
+        onSuccess: (data, variables) => {
+            if (data.success) {
+                // Factory의 컬렉션 목록 무효화
+                queryClient.invalidateQueries({
+                    queryKey: factoryKeys.collections.all(variables.factoryId),
+                });
+                // 삭제된 컬렉션의 특정 쿼리 무효화
+                queryClient.invalidateQueries({
+                    queryKey: factoryKeys.collections.byAddress(
+                        variables.factoryId,
+                        variables.collectionAddress
+                    ),
+                });
+                // 전체 컬렉션 목록도 무효화
+                queryClient.invalidateQueries({
+                    queryKey: collectionKeys.all,
+                });
+
+                toast.success("컬렉션 삭제 성공");
+            } else {
+                toast.error(`컬렉션 삭제 실패: ${data.error}`);
             }
-            return result.data;
         },
-        onSuccess: () => {
-            // Invalidate collection and factory contract queries
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.COLLECTION_CONTRACTS],
-            });
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.FACTORY_CONTRACTS],
-            });
+        onError: (error) => {
+            toast.error(`컬렉션 삭제 실패: ${error}`);
         },
     });
 }

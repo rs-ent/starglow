@@ -12,6 +12,8 @@ import {
     generateWallet,
     getWalletBalance,
     getEscrowWalletWithPrivateKey,
+    estimateGasForTransactions,
+    EstimateGasForTransactionsInput,
 } from "../actions/blockchain";
 import { QUERY_KEYS } from "../queryKeys";
 
@@ -199,6 +201,21 @@ export function useGetEscrowWalletWithPrivateKey() {
                 throw new Error(
                     result.error || "Failed to get wallet private key"
                 );
+            }
+            return result.data;
+        },
+    });
+}
+
+/**
+ * 가스 추정을 위한 뮤테이션 훅
+ */
+export function useEstimateGas() {
+    return useMutation({
+        mutationFn: async (params: EstimateGasForTransactionsInput) => {
+            const result = await estimateGasForTransactions(params);
+            if (!result.success || !result.data) {
+                throw new Error(result.error || "Failed to estimate gas");
             }
             return result.data;
         },

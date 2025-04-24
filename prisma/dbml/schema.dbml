@@ -14,10 +14,10 @@ Table User {
   lastLoginAt DateTime
   accounts Account [not null]
   loginAttempts LoginAttemptLog [not null]
+  payments Payment [not null]
   player Player
   sessions Session [not null]
   wallets Wallet [not null]
-  payments Payment [not null]
 }
 
 Table Account {
@@ -53,16 +53,16 @@ Table Wallet {
   userId String [not null]
   address String [unique, not null]
   privateKey String
-  keyHash String
-  nonce String
   network String [not null]
+  createdAt DateTime [default: `now()`, not null]
   default Boolean [not null, default: false]
   primary Int [default: 0]
+  lastAccessedAt DateTime [not null]
   nickname String
   status WalletStatus [not null, default: 'ACTIVE']
+  keyHash String
+  nonce String
   payments Payment [not null]
-  createdAt DateTime [default: `now()`, not null]
-  lastAccessedAt DateTime [not null]
   user User [not null]
 }
 
@@ -260,9 +260,6 @@ Table LoginAttemptLog {
 Table Payment {
   id String [pk]
   userId String
-  user User
-  storeId String [not null]
-  channelKey String [not null]
   productTable String [not null]
   productId String [not null]
   productName String [not null]
@@ -277,22 +274,27 @@ Table Payment {
   cardInterestFree Boolean
   cardApproveNumber String
   cardNumber String
-  promotionCode String
-  promotion PaymentPromotion
-  isPromotionApplied Boolean [not null, default: false]
-  exchangeRate Float
-  exchangeRateProvider String
-  exchangeRateTimestamp DateTime
-  originalProductPrice Int
-  convertedPrice Int
   status PaymentStatus [not null, default: 'PENDING']
   statusReason String
   paidAt DateTime
   cancelledAt DateTime
   failedAt DateTime
+  pgResponse Json
+  metadata Json
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  channelKey String [not null]
+  storeId String [not null]
+  promotionCode String
+  isPromotionApplied Boolean [not null, default: false]
+  convertedPrice Int
+  exchangeRate Float
+  exchangeRateProvider String
+  exchangeRateTimestamp DateTime
+  originalProductPrice Int
   refundedAt DateTime
-  completedAt DateTime
   cancelAmount Int
+  redirectUrl String
   code String
   message String
   paymentId String
@@ -300,18 +302,16 @@ Table Payment {
   pgMessage String
   transactionType String
   txId String
-  pgResponse Json
-  virtualAccount VirtualAccount
-  needWallet Boolean [not null, default: false]
-  receiverWalletAddress String
-  receiverWallet Wallet
   postProcessResult Json
   postProcessResultAt DateTime
+  receiverWalletAddress String
+  needWallet Boolean [not null, default: false]
+  completedAt DateTime
+  promotion PaymentPromotion
+  receiverWallet Wallet
+  user User
+  virtualAccount VirtualAccount
   webhookEvents WebhookEvent [not null]
-  metadata Json
-  redirectUrl String
-  createdAt DateTime [default: `now()`, not null]
-  updatedAt DateTime [not null]
 }
 
 Table PaymentPromotion {
@@ -330,16 +330,15 @@ Table PaymentPromotion {
 Table WebhookEvent {
   id String [pk]
   paymentId String
-  payment Payment
-  description String
   payload Json
   createdAt DateTime [default: `now()`, not null]
+  description String
+  payment Payment
 }
 
 Table VirtualAccount {
   id String [pk]
   paymentId String [unique, not null]
-  payment Payment [not null]
   bankCode String [not null]
   accountNumber String [not null]
   holderName String [not null]
@@ -348,6 +347,7 @@ Table VirtualAccount {
   depositorName String
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  payment Payment [not null]
 }
 
 Table ExchangeRate {
@@ -368,11 +368,11 @@ Table BlockchainNetwork {
   symbol String [not null]
   isTestnet Boolean [not null, default: true]
   isActive Boolean [not null, default: true]
-  multicallAddress String
-  factoryContracts FactoryContract [not null]
-  collectionContracts CollectionContract [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  multicallAddress String
+  collectionContracts CollectionContract [not null]
+  factoryContracts FactoryContract [not null]
   nfts NFT [not null]
 }
 
@@ -380,13 +380,15 @@ Table FactoryContract {
   id String [pk]
   address String [not null]
   networkId String [not null]
-  network BlockchainNetwork [not null]
   deployedAt DateTime [default: `now()`, not null]
   deployedBy String
   transactionHash String
   isActive Boolean [not null, default: true]
   collections String[] [not null]
+  abi Json
+  bytecode String
   collectionContracts CollectionContract [not null]
+  network BlockchainNetwork [not null]
 
   indexes {
     (address, networkId) [unique]
@@ -398,12 +400,12 @@ Table EscrowWallet {
   address String [unique, not null]
   privateKey String [not null]
   keyHash String [not null]
-  nonce String [not null]
   networkIds String[] [not null]
   isActive Boolean [not null, default: true]
   balance Json
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  nonce String [not null]
 }
 
 Table IpfsGroup {
@@ -418,7 +420,6 @@ Table IpfsGroup {
 Table IpfsFile {
   id String [pk]
   type String [not null, default: 'nft-metadata']
-  url String [not null, default: 'ipfs://']
   pinataId String [not null]
   name String [not null]
   cid String [not null]
@@ -426,26 +427,27 @@ Table IpfsFile {
   numberOfFiles Int [not null]
   mimeType String [not null]
   groupId String
-  group IpfsGroup
   keyvalues Json
   vectorized Boolean [not null, default: false]
   network String
-  gateway String [not null, default: 'ipfs://']
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  gateway String [not null, default: 'ipfs://']
+  url String [not null, default: 'ipfs://']
+  group IpfsGroup
 }
 
 Table Metadata {
   id String [pk]
-  collectionKey String [not null]
   metadata Json [not null]
   url String [not null, default: 'ipfs://']
-  type MetadataType [not null, default: 'collection']
-  tokenId Int
   collectionAddress String [unique]
-  collectionContract CollectionContract
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  type MetadataType [not null, default: 'collection']
+  tokenId Int
+  collectionKey String [not null]
+  collectionContract CollectionContract
 
   indexes {
     (collectionAddress, tokenId) [unique]
@@ -454,7 +456,6 @@ Table Metadata {
 
 Table CollectionContract {
   id String [pk]
-  key String [unique, not null]
   address String [unique, not null]
   name String [not null]
   symbol String [not null]
@@ -463,41 +464,53 @@ Table CollectionContract {
   baseURI String [not null]
   contractURI String [not null]
   factoryId String [not null]
-  factory FactoryContract [not null]
   networkId String [not null]
-  network BlockchainNetwork [not null]
   createdBy String [not null, default: 'admin']
   txHash String
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
-  nfts NFT [not null]
-  events NFTEvent [not null]
   price Int [not null, default: 0]
   circulation Int [not null, default: 1000]
   mintedCount Int [not null, default: 0]
-  isListed Boolean [not null, default: false]
   artistId String
+  key String [unique, not null]
+  isListed Boolean [not null, default: false]
+  isPaused Boolean [not null, default: false]
+  pauseAt DateTime
+  unpauseAt DateTime
+  abi Json
+  bytecode String
   artist Artist
+  factory FactoryContract [not null]
+  network BlockchainNetwork [not null]
   metadata Metadata
+  nfts NFT [not null]
+  events NFTEvent [not null]
 }
 
 Table NFT {
   id String [pk]
   tokenId Int [not null]
   collectionId String [not null]
-  collection CollectionContract [not null]
   ownerAddress String [not null]
-  currentOwnerAddress String
   metadataUri String
   mintedAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   transactionHash String [not null]
   networkId String [not null]
-  network BlockchainNetwork [not null]
   name String
   description String
   imageUrl String
   attributes Json
+  isLocked Boolean [not null, default: false]
+  lockedAt DateTime
+  unlockScheduledAt DateTime
+  unlockAt DateTime
+  isStaked Boolean [not null, default: false]
+  stakedAt DateTime
+  unstakeScheduledAt DateTime
+  unstakedAt DateTime
+  lockTransactionHash String
   isListed Boolean [not null, default: false]
   listingPrice String
   lastTransferredAt DateTime
@@ -511,15 +524,20 @@ Table NFT {
   mintPrice String
   mintedBy String
   royaltyInfo Json
+  currentOwnerAddress String
+  collection CollectionContract [not null]
+  network BlockchainNetwork [not null]
   events NFTEvent [not null]
+
+  indexes {
+    (collectionId, tokenId) [unique]
+  }
 }
 
 Table NFTEvent {
   id String [pk]
   nftId String [not null]
-  nft NFT [not null]
   collectionId String [not null]
-  collection CollectionContract [not null]
   eventType String [not null]
   fromAddress String
   toAddress String
@@ -527,6 +545,8 @@ Table NFTEvent {
   transactionHash String [not null]
   timestamp DateTime [default: `now()`, not null]
   blockNumber Int
+  collection CollectionContract [not null]
+  nft NFT [not null]
 }
 
 Table Artist {
@@ -536,7 +556,6 @@ Table Artist {
   imageUrl String
   externalUrl String
   reportUrl String
-  members ArtistMember [not null]
   company String
   sns String[] [not null]
   gallery String[] [not null]
@@ -546,13 +565,13 @@ Table Artist {
   additionalInfo Json
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  members ArtistMember [not null]
   collectionContracts CollectionContract [not null]
 }
 
 Table ArtistMember {
   id String [pk]
   artistId String [not null]
-  artist Artist [not null]
   name String [not null]
   role String [not null]
   imageUrl String
@@ -573,6 +592,7 @@ Table ArtistMember {
   additionalInfo Json
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  artist Artist [not null]
 }
 
 Enum PaymentStatus {
@@ -582,8 +602,8 @@ Enum PaymentStatus {
   CANCELLED
   FAILED
   EXPIRED
-  REFUNDED
   PARTIALLY_CANCELLED
+  REFUNDED
   COMPLETED
 }
 
@@ -653,11 +673,11 @@ Ref: RewardsLog.questLogId > QuestLog.id
 
 Ref: LoginAttemptLog.userId > User.id [delete: Cascade]
 
-Ref: Payment.userId > User.id
-
 Ref: Payment.promotionCode > PaymentPromotion.code
 
 Ref: Payment.receiverWalletAddress > Wallet.address
+
+Ref: Payment.userId > User.id
 
 Ref: WebhookEvent.paymentId > Payment.id [delete: Cascade]
 
@@ -669,18 +689,18 @@ Ref: IpfsFile.groupId > IpfsGroup.pinataId
 
 Ref: Metadata.collectionAddress - CollectionContract.address
 
+Ref: CollectionContract.artistId > Artist.id
+
 Ref: CollectionContract.factoryId > FactoryContract.id
 
 Ref: CollectionContract.networkId > BlockchainNetwork.id
-
-Ref: CollectionContract.artistId > Artist.id
 
 Ref: NFT.collectionId > CollectionContract.id
 
 Ref: NFT.networkId > BlockchainNetwork.id
 
-Ref: NFTEvent.nftId > NFT.id
-
 Ref: NFTEvent.collectionId > CollectionContract.id
+
+Ref: NFTEvent.nftId > NFT.id
 
 Ref: ArtistMember.artistId > Artist.id

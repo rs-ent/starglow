@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useNFTsByWallets, useVerifyNFTOwnership } from "@/app/hooks/useNFTs";
+import { useNFTsByWallets } from "@/app/hooks/useNFTs";
 import { User, Wallet, NFT, CollectionContract } from "@prisma/client";
 import { H3 } from "@/components/atoms/Typography";
 import { Wallet as WalletIcon } from "lucide-react";
@@ -11,17 +11,40 @@ import Icon from "@/components/atoms/Icon";
 import { useWalletsByUserId } from "@/app/hooks/useWallet";
 import CollectionCard from "../molecules/NFTs.CollectionCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { verifyOwnership } from "@/app/actions/nfts"; // server action 직접 import
 
 interface UserMyAssetsProps {
     user: User;
 }
 
+interface NFTWithCollection extends NFT {
+    collection: CollectionContract;
+}
+
+interface GroupedNFTs {
+    contractAddress: string;
+    networkId: string;
+    nfts: {
+        nft: NFTWithCollection;
+        ownerAddress: string;
+    }[];
+}
+
+interface VerifiedCollection {
+    collection: CollectionContract;
+    nfts: NFTWithCollection[];
+}
+
 export default function UserMyAssets({ user }: UserMyAssetsProps) {
+    const [verifiedCollections, setVerifiedCollections] = useState<
+        Record<string, VerifiedCollection>
+    >({});
+    const [isVerifying, setIsVerifying] = useState(false);
+
     const { wallets, isLoading: isLoadingWallets } = useWalletsByUserId(
         user.id
     );
 
-    // NFT 쿼리 설정 - 모든 지갑의 NFT를 한번에 가져옴
     const {
         data: nftData,
         isLoading: isLoadingNFTs,
@@ -34,30 +57,94 @@ export default function UserMyAssets({ user }: UserMyAssetsProps) {
         sortDirection: "desc",
     });
 
-    const { data: ownershipData, isLoading: isCheckingOwnership } =
-        useVerifyNFTOwnership({
-            contractAddress: nftData?.items[0]?.collection.address || "",
-            tokenIds: nftData?.items.map((nft) => nft.tokenId.toString()) || [],
-            ownerAddress: nftData?.items[0]?.ownerAddress || "",
-            networkId: nftData?.items[0]?.networkId || "",
-        });
+    useEffect(() => {
+        async function verifyNFTs() {
+            if (!nftData?.items.length) return;
 
-    // NFT를 컬렉션별로 그룹화
-    const groupedNFTs =
-        nftData?.items
-            .filter((nft, index) => ownershipData?.[index]?.isOwner)
-            .reduce((acc, nft) => {
-                const collectionAddress = nft.collection.address;
-                if (!acc[collectionAddress]) {
-                    acc[collectionAddress] = {
-                        collection: nft.collection,
-                        nfts: [],
-                    };
-                }
-                acc[collectionAddress].nfts.push(nft);
-                return acc;
-            }, {} as Record<string, { collection: CollectionContract; nfts: NFT[] }>) ||
-        {};
+            setIsVerifying(true);
+            try {
+                // NFT를 컨트랙트와 네트워크로 그룹화
+                const groupedNFTs = nftData.items.reduce(
+                    (groups: GroupedNFTs[], nft) => {
+                        const key = `${nft.collection.address}-${nft.networkId}`;
+                        const existingGroup = groups.find(
+                            (g) =>
+                                g.contractAddress === nft.collection.address &&
+                                g.networkId === nft.networkId
+                        );
+
+                        if (existingGroup) {
+                            existingGroup.nfts.push({
+                                nft: nft as NFTWithCollection,
+                                ownerAddress: nft.ownerAddress,
+                            });
+                        } else {
+                            groups.push({
+                                contractAddress: nft.collection.address,
+                                networkId: nft.networkId,
+                                nfts: [
+                                    {
+                                        nft: nft as NFTWithCollection,
+                                        ownerAddress: nft.ownerAddress,
+                                    },
+                                ],
+                            });
+                        }
+                        return groups;
+                    },
+                    []
+                );
+
+                // 각 그룹별로 소유권 검증
+                const verifiedResults = await Promise.all(
+                    groupedNFTs.map(async (group) => {
+                        const ownershipResult = await verifyOwnership({
+                            contractAddress: group.contractAddress,
+                            tokenIds: group.nfts.map(({ nft }) =>
+                                nft.tokenId.toString()
+                            ),
+                            ownerAddress: group.nfts[0].ownerAddress,
+                            networkId: group.networkId,
+                        });
+
+                        const verifiedNFTs = group.nfts.filter(
+                            (nftData, index) => ownershipResult[index]?.isOwner
+                        );
+
+                        if (verifiedNFTs.length > 0) {
+                            return {
+                                collectionAddress: group.contractAddress,
+                                collection: verifiedNFTs[0].nft.collection,
+                                nfts: verifiedNFTs.map((v) => v.nft),
+                            };
+                        }
+                        return null;
+                    })
+                );
+
+                // 검증 결과를 컬렉션별로 정리
+                const collections = verifiedResults.reduce((acc, result) => {
+                    if (result) {
+                        acc[result.collectionAddress] = {
+                            collection: result.collection,
+                            nfts: result.nfts,
+                        };
+                    }
+                    return acc;
+                }, {} as Record<string, VerifiedCollection>);
+
+                setVerifiedCollections(collections);
+            } catch (error) {
+                console.error("Error verifying NFTs:", error);
+            } finally {
+                setIsVerifying(false);
+            }
+        }
+
+        verifyNFTs();
+    }, [nftData?.items]);
+
+    const isLoading = isLoadingNFTs || isVerifying;
 
     return (
         <div className="bg-card/10 backdrop-blur-md p-6 rounded-2xl border border-border/5">
@@ -74,7 +161,7 @@ export default function UserMyAssets({ user }: UserMyAssetsProps) {
                 <H3 size={20} className="mb-4">
                     NFT Collections
                 </H3>
-                {isLoadingNFTs || isCheckingOwnership ? (
+                {isLoading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {[1, 2, 3].map((i) => (
                             <Skeleton key={i} className="h-[300px] w-full" />
@@ -84,9 +171,9 @@ export default function UserMyAssets({ user }: UserMyAssetsProps) {
                     <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg">
                         Error loading NFTs: {nftError.message}
                     </div>
-                ) : Object.keys(groupedNFTs).length > 0 ? (
+                ) : Object.keys(verifiedCollections).length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {Object.entries(groupedNFTs).map(
+                        {Object.entries(verifiedCollections).map(
                             ([address, { collection, nfts }]) => (
                                 <CollectionCard
                                     key={address}
@@ -95,7 +182,7 @@ export default function UserMyAssets({ user }: UserMyAssetsProps) {
                                     showPrice={false}
                                     showSharePercentage={false}
                                     showCirculation={false}
-                                    isVerified={false}
+                                    isVerified={true}
                                 />
                             )
                         )}

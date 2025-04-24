@@ -6,6 +6,20 @@ import { prisma } from "@/lib/prisma/client";
 import { revalidatePath } from "next/cache";
 import { encryptPrivateKey, decryptPrivateKey } from "@/lib/utils/encryption";
 import { ethers } from "ethers";
+import {
+    createPublicClient,
+    createWalletClient,
+    http,
+    Chain,
+    Address,
+    Hash,
+    WalletClient,
+    PublicClient,
+    getContract,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { BlockchainNetwork } from "@prisma/client";
+import { GetContractReturnType } from "viem";
 
 // 블록체인 네트워크 관련 함수
 export async function getBlockchainNetworks(includeInactive = false) {
@@ -442,6 +456,262 @@ export async function getWalletBalance(params: {
             success: false,
             error: "Failed to get wallet balance",
             details: error instanceof Error ? error.message : String(error),
+        };
+    }
+}
+
+export interface DeployContractInput {
+    walletId: string;
+    network: BlockchainNetwork;
+    abi: any;
+    bytecode: `0x${string}`;
+    args?: any[];
+}
+
+export interface DeployContractResult {
+    hash: Hash;
+    contractAddress: Address;
+}
+
+const chainCache = new Map<string, Chain>();
+export async function getChain(network: BlockchainNetwork): Promise<Chain> {
+    const cacheKey = network.id;
+    if (chainCache.has(cacheKey)) {
+        return chainCache.get(cacheKey)!;
+    }
+
+    const chain: Chain = {
+        id: network.chainId,
+        name: network.name,
+        nativeCurrency: {
+            name: network.symbol,
+            symbol: network.symbol,
+            decimals: 18,
+        },
+        rpcUrls: {
+            default: { http: [network.rpcUrl] },
+            public: { http: [network.rpcUrl] },
+        },
+        blockExplorers: {
+            default: { name: "Explorer", url: network.explorerUrl },
+        },
+    };
+
+    chainCache.set(cacheKey, chain);
+    return chain;
+}
+
+export async function deployContract(
+    input: DeployContractInput
+): Promise<DeployContractResult> {
+    const { walletId, network, abi, bytecode, args } = input;
+    const chain = await getChain(network);
+
+    const publicClient = createPublicClient({
+        chain,
+        transport: http(),
+    });
+
+    const escrowWallet = await getEscrowWalletWithPrivateKey(walletId);
+    if (!escrowWallet.success || !escrowWallet.data) {
+        throw new Error("Escrow wallet not found");
+    }
+
+    const privateKey = escrowWallet.data.privateKey;
+    const formattedPrivateKey = privateKey.startsWith("0x")
+        ? privateKey
+        : `0x${privateKey}`;
+    const account = privateKeyToAccount(formattedPrivateKey as Address);
+
+    const walletClient = createWalletClient({
+        account,
+        chain,
+        transport: http(),
+    });
+
+    const hash = await walletClient.deployContract({
+        abi,
+        bytecode,
+        args: args || [],
+    });
+
+    const receipt = await publicClient.waitForTransactionReceipt({
+        hash,
+    });
+
+    return {
+        hash,
+        contractAddress: receipt.contractAddress as Address,
+    };
+}
+
+export interface TransactionToEstimate {
+    functionName: string;
+    args: any[];
+}
+
+export interface EstimateGasOptionsInput {
+    publicClient: PublicClient;
+    walletClient: WalletClient;
+    contractAddress: Address;
+    abi: any;
+    transactions: TransactionToEstimate[];
+    customOptions?: {
+        maxFeePerGas?: bigint;
+        maxPriorityFeePerGas?: bigint;
+        gasLimit?: bigint;
+    };
+}
+
+export interface EstimateGasOptions {
+    maxFeePerGas: bigint;
+    maxPriorityFeePerGas: bigint;
+    gasLimit: bigint;
+}
+
+export async function estimateGasOptions(
+    input: EstimateGasOptionsInput
+): Promise<EstimateGasOptions> {
+    try {
+        const { publicClient, walletClient, transactions, customOptions } =
+            input;
+
+        const contract = getContract({
+            address: input.contractAddress,
+            abi: input.abi,
+            client: walletClient,
+        });
+
+        const gasPrice = await publicClient.getGasPrice();
+        let totalEstimatedGas = 0n;
+        for (const tx of transactions) {
+            const estimatedGas = await contract.estimateGas[tx.functionName](
+                tx.args,
+                { account: walletClient.account }
+            );
+            totalEstimatedGas += estimatedGas as unknown as bigint;
+        }
+
+        const gasOptions: EstimateGasOptions = {
+            maxFeePerGas: customOptions?.maxFeePerGas || gasPrice * 2n,
+            maxPriorityFeePerGas:
+                customOptions?.maxPriorityFeePerGas || gasPrice / 2n,
+            gasLimit:
+                customOptions?.gasLimit || (totalEstimatedGas * 12n) / 10n,
+        };
+
+        return gasOptions;
+    } catch (error) {
+        console.error("Error estimating gas options:", error);
+        throw new Error("Failed to estimate gas options");
+    }
+}
+
+export interface EstimateGasForTransactionsInput {
+    collectionAddress: string;
+    walletId: string;
+    transactions: TransactionToEstimate[];
+}
+
+export interface EstimateGasForTransactionsResult {
+    success: boolean;
+    data?: {
+        maxFeePerGas: string; // bigint를 string으로 변환
+        maxPriorityFeePerGas: string;
+        gasLimit: string;
+        estimatedGasCostInWei: string;
+        estimatedGasCostInEth: number;
+        networkSymbol: string;
+        networkName: string;
+    };
+    error?: string;
+}
+
+export async function estimateGasForTransactions(
+    input: EstimateGasForTransactionsInput
+): Promise<EstimateGasForTransactionsResult> {
+    try {
+        const { collectionAddress, walletId, transactions } = input;
+
+        // 1. 컬렉션 정보 가져오기
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            return {
+                success: false,
+                error: "Collection or network not found",
+            };
+        }
+
+        // 2. 지갑 정보 가져오기
+        const walletResult = await getEscrowWalletWithPrivateKey(walletId);
+        if (!walletResult.success || !walletResult.data) {
+            return {
+                success: false,
+                error: "Failed to get wallet with private key",
+            };
+        }
+
+        // 3. 체인 설정
+        const chain = await getChain(collection.network);
+
+        // 4. 클라이언트 설정
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const privateKey = walletResult.data.privateKey;
+        const formattedPrivateKey = privateKey.startsWith("0x")
+            ? privateKey
+            : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedPrivateKey as Address);
+
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(),
+        });
+
+        // 5. 가스 추정
+        const gasOptions = await estimateGasOptions({
+            publicClient,
+            walletClient,
+            contractAddress: collectionAddress as Address,
+            abi: collection.abi,
+            transactions,
+            customOptions: undefined,
+        });
+
+        // 6. 가스 비용 계산 (이더 단위)
+        const estimatedGasCostInWei =
+            gasOptions.gasLimit * gasOptions.maxFeePerGas;
+        const estimatedGasCostInEth = Number(estimatedGasCostInWei) / 1e18;
+
+        return {
+            success: true,
+            data: {
+                maxFeePerGas: gasOptions.maxFeePerGas.toString(),
+                maxPriorityFeePerGas:
+                    gasOptions.maxPriorityFeePerGas.toString(),
+                gasLimit: gasOptions.gasLimit.toString(),
+                estimatedGasCostInWei: estimatedGasCostInWei.toString(),
+                estimatedGasCostInEth,
+                networkSymbol: collection.network.symbol,
+                networkName: collection.network.name,
+            },
+        };
+    } catch (error) {
+        console.error("Error estimating gas:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to estimate gas",
         };
     }
 }

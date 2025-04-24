@@ -246,8 +246,6 @@ export async function getNFTsByWallets({
     }
 }
 
-
-
 export async function getOwnerByTokenIds({
     contractAddress,
     tokenIds,

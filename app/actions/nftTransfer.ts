@@ -10,8 +10,10 @@ import {
     Chain,
     defineChain,
 } from "viem";
+import { getEscrowWallet } from "./collectionContracts";
 import { privateKeyToAccount } from "viem/accounts";
 import { decryptPrivateKey } from "@/lib/utils/encryption";
+import { getChain } from "./blockchain";
 
 // 로깅 유틸리티 직접 정의
 const logger = {
@@ -72,231 +74,6 @@ export interface TransferNFTError {
 
 export type TransferNFTResponse = TransferNFTSuccess | TransferNFTError;
 
-interface ChainClients {
-    publicClient: ReturnType<typeof createPublicClient>;
-    chain: Chain;
-}
-
-// 블록체인 네트워크 캐시 (메모리에 보관하여 DB 조회 최소화)
-const chainClientsCache = new Map<string, ChainClients>();
-
-/**
- * 네트워크 ID에 해당하는 Chain 객체와 클라이언트를 가져옵니다.
- */
-async function getChainClients(
-    networkId: string
-): Promise<ChainClients | null> {
-    // 캐시에 있으면 반환
-    if (chainClientsCache.has(networkId)) {
-        return chainClientsCache.get(networkId)!;
-    }
-
-    try {
-        // DB에서 네트워크 정보 조회
-        const network = await prisma.blockchainNetwork.findUnique({
-            where: { id: networkId, isActive: true },
-        });
-
-        if (!network) {
-            logger.error(
-                `Network with ID ${networkId} not found or not active`
-            );
-            return null;
-        }
-
-        // Chain 객체 생성
-        const chain = defineChain({
-            id: network.chainId,
-            name: network.name,
-            rpcUrls: {
-                default: {
-                    http: [network.rpcUrl],
-                },
-            },
-            nativeCurrency: {
-                name: network.symbol,
-                symbol: network.symbol,
-                decimals: 18,
-            },
-        });
-
-        // 클라이언트 생성
-        const publicClient = createPublicClient({
-            chain,
-            transport: http(network.rpcUrl),
-        });
-
-        // 결과 캐싱
-        const clients = { publicClient, chain };
-        chainClientsCache.set(networkId, clients);
-
-        return clients;
-    } catch (error) {
-        logger.error(`Error getting chain clients for network ${networkId}`, {
-            error,
-        });
-        return null;
-    }
-}
-
-/**
- * 충분한 잔액을 가진 에스크로 지갑을 찾아 반환합니다.
- */
-async function findEligibleEscrowWallet(
-    networkId: string,
-    minBalance: number = 0.01
-): Promise<{
-    wallet: {
-        id: string;
-        address: string;
-        privateKey: string;
-        balance: Record<string, string>;
-    };
-    account: ReturnType<typeof privateKeyToAccount>;
-    walletClient: ReturnType<typeof createWalletClient>;
-} | null> {
-    try {
-        // 1. 네트워크 정보 및 클라이언트 가져오기
-        const chainClients = await getChainClients(networkId);
-        if (!chainClients) {
-            console.error(
-                `Failed to get chain clients for network ${networkId}`
-            );
-            return null;
-        }
-
-        // 네트워크 symbol 가져오기
-        const network = await prisma.blockchainNetwork.findUnique({
-            where: { id: networkId },
-            select: { symbol: true },
-        });
-
-        if (!network) {
-            console.error(`Network with ID ${networkId} not found`);
-            return null;
-        }
-
-        // 2. 사용 가능한 에스크로 지갑 조회
-        const escrowWallets = await prisma.escrowWallet.findMany({
-            where: {
-                isActive: true,
-                networkIds: {
-                    has: networkId,
-                },
-            },
-            select: {
-                id: true,
-                address: true,
-                privateKey: true,
-                balance: true,
-                keyHash: true,
-                nonce: true,
-            },
-        });
-
-        if (escrowWallets.length === 0) {
-            console.error(
-                `No active escrow wallets found for network ${networkId}`
-            );
-            return null;
-        }
-
-        // 3. 충분한 잔액을 가진 지갑 선택
-        // 3. 충분한 잔액을 가진 지갑 선택
-        const eligibleWallet = escrowWallets.find((wallet) => {
-            const balanceData =
-                (wallet.balance as Record<string, string>) || {};
-            const balance = Object.entries(balanceData).find(([key]) =>
-                key.includes(network.symbol)
-            );
-
-            if (!balance) return false;
-
-            const balanceValue = parseFloat(balance[1].split(" ")[0]);
-            return balanceValue >= minBalance;
-        });
-
-        if (!eligibleWallet) {
-            console.error(
-                `No escrow wallet with sufficient balance found for network ${networkId}`
-            );
-            return null;
-        }
-
-        // 4. 지갑 객체 생성
-        const decryptedKey = await decryptPrivateKey({
-            dbPart: eligibleWallet.privateKey,
-            blobPart: eligibleWallet.keyHash,
-            keyHash: eligibleWallet.keyHash,
-            nonce: eligibleWallet.nonce,
-        });
-
-        const account = privateKeyToAccount(
-            decryptedKey.startsWith("0x")
-                ? (decryptedKey as `0x${string}`)
-                : (`0x${decryptedKey}` as `0x${string}`)
-        );
-
-        const walletClient = createWalletClient({
-            account,
-            chain: chainClients.chain,
-            transport: http(),
-        });
-
-        return {
-            wallet: {
-                id: eligibleWallet.id,
-                address: eligibleWallet.address,
-                privateKey: eligibleWallet.privateKey,
-                balance:
-                    (eligibleWallet.balance as Record<string, string>) || {},
-            },
-            account,
-            walletClient,
-        };
-    } catch (error) {
-        logger.error("Error finding eligible escrow wallet", { error });
-        return null;
-    }
-}
-
-/**
- * 에스크로 지갑 잔액 업데이트
- */
-async function updateEscrowWalletBalance(
-    walletId: string,
-    networkId: string,
-    newBalance: number
-): Promise<void> {
-    try {
-        const escrowWallet = await prisma.escrowWallet.findUnique({
-            where: { id: walletId },
-            select: { balance: true },
-        });
-
-        if (!escrowWallet) return;
-
-        const currentBalance =
-            (escrowWallet.balance as Record<string, number>) || {};
-
-        await prisma.escrowWallet.update({
-            where: { id: walletId },
-            data: {
-                balance: {
-                    ...currentBalance,
-                    [networkId]: newBalance,
-                },
-            },
-        });
-    } catch (error) {
-        logger.error("Failed to update escrow wallet balance", {
-            error,
-            walletId,
-            networkId,
-        });
-    }
-}
-
 export async function transferNFTToUser(
     input: TransferNFTInput
 ): Promise<TransferNFTResponse> {
@@ -350,14 +127,7 @@ export async function transferNFTToUser(
             // 5. NFT 및 네트워크 정보 조회 (먼저 실행)
             const collection = await prisma.collectionContract.findFirst({
                 where: { id: payment.productId },
-                select: {
-                    id: true,
-                    networkId: true,
-                    address: true,
-                    network: {
-                        select: { name: true },
-                    },
-                },
+                include: { network: true },
             });
 
             if (!collection) {
@@ -371,35 +141,116 @@ export async function transferNFTToUser(
                 };
             }
 
-            // 7. 에스크로 지갑 선택
-            const escrowWalletData = await findEligibleEscrowWallet(
-                collection.networkId
-            );
+            // 7. 컬렉션에 등록된 에스크로 지갑 목록 가져오기
+            const { wallet: registeredEscrowWallet } = await getEscrowWallet({
+                collectionAddress: collection.address,
+            });
 
-            if (!escrowWalletData) {
-                scope.log("No eligible escrow wallet found");
+            if (!registeredEscrowWallet) {
+                scope.log("No escrow wallets registered in collection");
+                return {
+                    success: false,
+                    error: {
+                        code: "ESCROW_WALLET_NOT_FOUND",
+                        message: "No escrow wallets registered in collection",
+                    },
+                };
+            }
+
+            // DB에서 해당 에스크로 지갑 정보 가져오기
+            const escrowWalletFromDB = await prisma.escrowWallet.findFirst({
+                where: {
+                    address: registeredEscrowWallet,
+                    isActive: true,
+                    networkIds: {
+                        has: collection.networkId,
+                    },
+                },
+                select: {
+                    id: true,
+                    address: true,
+                    privateKey: true,
+                    balance: true,
+                    keyHash: true,
+                    nonce: true,
+                },
+            });
+
+            if (!escrowWalletFromDB) {
+                scope.log("Registered escrow wallet not found in database");
                 return {
                     success: false,
                     error: {
                         code: "ESCROW_WALLET_NOT_FOUND",
                         message:
-                            "No escrow wallet with sufficient balance found",
+                            "Registered escrow wallet not found in database",
                     },
                 };
             }
 
-            const {
-                wallet: escrowWallet,
-                account: escrowAccount,
-                walletClient,
-            } = escrowWalletData;
+            // 네트워크 클라이언트 가져오기
+            const chain = await getChain(collection.network);
 
-            // NFTs 조회
+            // 네트워크 RPC URL 가져오기
+            const network = await prisma.blockchainNetwork.findUnique({
+                where: { id: collection.networkId },
+                select: { rpcUrl: true },
+            });
+
+            if (!network || !network.rpcUrl) {
+                return {
+                    success: false,
+                    error: {
+                        code: "NETWORK_NOT_FOUND",
+                        message: "Network RPC URL not found",
+                    },
+                };
+            }
+
+            const publicClient = createPublicClient({
+                chain,
+                transport: http(network.rpcUrl),
+            });
+
+            const decryptedKey = await decryptPrivateKey({
+                dbPart: escrowWalletFromDB.privateKey,
+                blobPart: escrowWalletFromDB.keyHash,
+                keyHash: escrowWalletFromDB.keyHash,
+                nonce: escrowWalletFromDB.nonce,
+            });
+
+            const account = privateKeyToAccount(
+                decryptedKey.startsWith("0x")
+                    ? (decryptedKey as `0x${string}`)
+                    : (`0x${decryptedKey}` as `0x${string}`)
+            );
+
+            const walletClient = createWalletClient({
+                account,
+                chain,
+                transport: http(network.rpcUrl),
+            });
+
+            const escrowWalletData = {
+                wallet: {
+                    id: escrowWalletFromDB.id,
+                    address: escrowWalletFromDB.address,
+                    privateKey: escrowWalletFromDB.privateKey,
+                    balance:
+                        (escrowWalletFromDB.balance as Record<
+                            string,
+                            string
+                        >) || {},
+                },
+                account,
+                walletClient,
+            };
+
+            // NFTs 조회 (에스크로 지갑이 소유한 NFT)
             const nfts = await prisma.nFT.findMany({
                 where: {
                     collectionId: collection.id,
-                    mintedBy: escrowAccount.address,
-                    ownerAddress: escrowAccount.address,
+                    ownerAddress: escrowWalletData.account.address,
                     isBurned: false,
                 },
                 take: payment.quantity,
@@ -419,18 +270,6 @@ export async function transferNFTToUser(
                         message: `Not enough available NFTs. Required: ${
                             payment.quantity
                         }, Available: ${nfts?.length || 0}`,
-                    },
-                };
-            }
-
-            // 6. 네트워크 클라이언트 가져오기
-            const chainClients = await getChainClients(collection.networkId);
-            if (!chainClients) {
-                return {
-                    success: false,
-                    error: {
-                        code: "NETWORK_NOT_FOUND",
-                        message: `Blockchain network with ID ${collection.networkId} not found or not active`,
                     },
                 };
             }
@@ -459,20 +298,18 @@ export async function transferNFTToUser(
                         ],
                         functionName: "transferFrom",
                         args: [
-                            escrowAccount.address,
+                            escrowWalletData.account.address,
                             payment.receiverWalletAddress as `0x${string}`,
                             BigInt(nft.tokenId),
                         ],
-                        chain: chainClients.chain,
-                        account: escrowAccount,
+                        chain,
+                        account: escrowWalletData.account,
                     });
 
                     const receipt =
-                        await chainClients.publicClient.waitForTransactionReceipt(
-                            {
-                                hash,
-                            }
-                        );
+                        await publicClient.waitForTransactionReceipt({
+                            hash,
+                        });
                     lastReceipt = receipt;
 
                     // NFT 소유자 정보 업데이트
@@ -491,7 +328,7 @@ export async function transferNFTToUser(
                             nftId: nft.id,
                             collectionId: collection.id,
                             eventType: "Transfer",
-                            fromAddress: escrowAccount.address,
+                            fromAddress: escrowWalletData.account.address,
                             toAddress: payment.receiverWalletAddress,
                             transactionHash: receipt.transactionHash,
                             timestamp: new Date(),
@@ -542,12 +379,12 @@ export async function transferNFTToUser(
                         type: "NFT_TRANSFER",
                         success: true,
                         txHash: lastReceipt.transactionHash,
-                        from: escrowAccount.address,
+                        from: escrowWalletData.account.address,
                         to: payment.receiverWalletAddress,
                         tokenId: payment.productId,
                         networkId: collection.networkId,
                         networkName: collection.network.name,
-                        escrowWalletId: escrowWallet.id,
+                        escrowWalletId: escrowWalletData.wallet.id,
                     },
                     postProcessResultAt: new Date(),
                 },
@@ -556,7 +393,7 @@ export async function transferNFTToUser(
             scope.log("NFT transfer successful", {
                 txHash: lastReceipt.transactionHash,
                 receiver: payment.receiverWalletAddress,
-                escrowWallet: escrowWallet.address,
+                escrowWallet: escrowWalletData.wallet.address,
                 networkName: collection.network.name,
             });
 
@@ -672,134 +509,282 @@ export async function escrowTransferNFT(
         }
 
         try {
-            // 6. NFT 및 네트워크 정보 조회
-            const nft = await prisma.nFT.findFirst({
-                where: { tokenId: parseInt(payment.productId) },
-                select: {
-                    networkId: true,
-                    network: {
-                        select: {
-                            name: true,
-                        },
-                    },
-                },
+            // 6. NFT 및 네트워크 정보 조회 및 컬렉션 정보 조회
+            const collection = await prisma.collectionContract.findFirst({
+                where: { id: payment.productId },
+                include: { network: true },
             });
 
-            if (!nft) {
-                scope.log("NFT not found");
+            if (!collection) {
+                scope.log("Collection not found");
                 return {
                     success: false,
                     error: {
-                        code: "WALLET_NOT_FOUND",
-                        message: "NFT data not found",
+                        code: "COLLECTION_NOT_FOUND",
+                        message: "Collection data not found",
                     },
                 };
             }
 
             // 7. 네트워크 클라이언트 가져오기
-            const chainClients = await getChainClients(nft.networkId);
-            if (!chainClients) {
+            const chain = await getChain(collection.network);
+            if (!chain) {
                 return {
                     success: false,
                     error: {
                         code: "NETWORK_NOT_FOUND",
-                        message: `Blockchain network with ID ${nft.networkId} not found or not active`,
+                        message: `Blockchain network with ID ${collection.networkId} not found or not active`,
                     },
                 };
             }
 
-            // 8. 에스크로 지갑 선택
-            const escrowWalletData = await findEligibleEscrowWallet(
-                nft.networkId
-            );
+            // 컬렉션의 등록된 에스크로 지갑 목록 가져오기
+            const { wallet: registeredEscrowWallet } = await getEscrowWallet({
+                collectionAddress: collection.address,
+            });
 
-            if (!escrowWalletData) {
-                scope.log("No eligible escrow wallet found");
+            if (!registeredEscrowWallet) {
+                scope.log("No escrow wallets registered in collection");
+                return {
+                    success: false,
+                    error: {
+                        code: "ESCROW_WALLET_NOT_FOUND",
+                        message: "No escrow wallets registered in collection",
+                    },
+                };
+            }
+
+            // DB에서 해당 에스크로 지갑 정보 가져오기
+            const escrowWalletFromDB = await prisma.escrowWallet.findFirst({
+                where: {
+                    address: registeredEscrowWallet,
+                    isActive: true,
+                    networkIds: {
+                        has: collection.networkId,
+                    },
+                },
+                select: {
+                    id: true,
+                    address: true,
+                    privateKey: true,
+                    balance: true,
+                    keyHash: true,
+                    nonce: true,
+                },
+            });
+
+            if (!escrowWalletFromDB) {
+                scope.log("Registered escrow wallet not found in database");
                 return {
                     success: false,
                     error: {
                         code: "ESCROW_WALLET_NOT_FOUND",
                         message:
-                            "No escrow wallet with sufficient balance found",
+                            "Registered escrow wallet not found in database",
                     },
                 };
             }
 
-            const { wallet: escrowWallet, walletClient } = escrowWalletData;
-            const nftContractAddress = process.env
-                .NFT_CONTRACT_ADDRESS as `0x${string}`;
-            const fromAddress = senderWalletAddress as `0x${string}`;
-            const toAddress = payment.receiverWalletAddress as `0x${string}`;
-            const tokenId = BigInt(payment.productId);
+            // 네트워크 RPC URL 가져오기
+            const network = await prisma.blockchainNetwork.findUnique({
+                where: { id: collection.networkId },
+                select: { rpcUrl: true },
+            });
 
-            // 9. 최소 가스비 설정 (gwei 단위)
-            const gasFee = BigInt(5);
+            if (!network || !network.rpcUrl) {
+                return {
+                    success: false,
+                    error: {
+                        code: "NETWORK_NOT_FOUND",
+                        message: "Network RPC URL not found",
+                    },
+                };
+            }
 
-            // 10. escrowTransfer 함수 호출
+            // 지갑 객체 생성
+            const decryptedKey = await decryptPrivateKey({
+                dbPart: escrowWalletFromDB.privateKey,
+                blobPart: escrowWalletFromDB.keyHash,
+                keyHash: escrowWalletFromDB.keyHash,
+                nonce: escrowWalletFromDB.nonce,
+            });
+
+            const account = privateKeyToAccount(
+                decryptedKey.startsWith("0x")
+                    ? (decryptedKey as `0x${string}`)
+                    : (`0x${decryptedKey}` as `0x${string}`)
+            );
+
+            const publicClient = createPublicClient({
+                chain,
+                transport: http(network.rpcUrl),
+            });
+
+            const walletClient = createWalletClient({
+                account,
+                chain,
+                transport: http(network.rpcUrl),
+            });
+
+            const escrowWalletData = {
+                wallet: {
+                    id: escrowWalletFromDB.id,
+                    address: escrowWalletFromDB.address,
+                    privateKey: escrowWalletFromDB.privateKey,
+                    balance:
+                        (escrowWalletFromDB.balance as Record<
+                            string,
+                            string
+                        >) || {},
+                },
+                account,
+                walletClient,
+            };
+
+            // 9. NFTs 조회
+            const nfts = await prisma.nFT.findMany({
+                where: {
+                    collectionId: collection.id,
+                    ownerAddress: senderWalletAddress,
+                    isBurned: false,
+                    isLocked: false,
+                    isStaked: false,
+                },
+                take: payment.quantity,
+                select: {
+                    id: true,
+                    tokenId: true,
+                    networkId: true,
+                },
+            });
+
+            if (!nfts || nfts.length < payment.quantity) {
+                scope.log("Not enough available NFTs for transfer");
+                return {
+                    success: false,
+                    error: {
+                        code: "TRANSFER_FAILED",
+                        message: `Not enough available NFTs. Required: ${
+                            payment.quantity
+                        }, Available: ${nfts?.length || 0}`,
+                    },
+                };
+            }
+
+            const { wallet: escrowWallet } = escrowWalletData;
+            const owner = senderWalletAddress as `0x${string}`; // 실제 소유자
+            const spender = escrowWalletData.account.address; // 에스크로 지갑 (가스비 대납 주체)
+            const to = payment.receiverWalletAddress as `0x${string}`;
+            const collectionAddr = collection.address as `0x${string}`;
+
+            const deadline = Math.floor(Date.now() / 1000) + 3600;
+            const tokenIds = nfts.map((nft) => BigInt(nft.tokenId));
+
+            const signature = input.signature.slice(2);
+
+            const vs: number[] = [];
+            const rs: `0x${string}`[] = [];
+            const ss: `0x${string}`[] = [];
+
+            for (let i = 0; i < tokenIds.length; i++) {
+                const r = `0x${signature.substring(0, 64)}` as `0x${string}`;
+                const s = `0x${signature.substring(64, 128)}` as `0x${string}`;
+                const v = parseInt(signature.substring(128, 130), 16);
+
+                vs.push(v);
+                rs.push(r);
+                ss.push(s);
+            }
+
             const hash = await walletClient.writeContract({
-                address: nftContractAddress,
+                address: collectionAddr,
                 abi: [
                     {
                         name: "escrowTransfer",
                         type: "function",
                         stateMutability: "nonpayable",
                         inputs: [
-                            { name: "from", type: "address" },
+                            { name: "owner", type: "address" },
+                            { name: "spender", type: "address" },
                             { name: "to", type: "address" },
-                            { name: "tokenId", type: "uint256" },
-                            { name: "signature", type: "bytes" },
-                            { name: "gasFee", type: "uint256" },
+                            { name: "tokenIds", type: "uint256[]" },
+                            { name: "deadline", type: "uint256" },
+                            { name: "v", type: "uint8[]" },
+                            { name: "r", type: "bytes32[]" },
+                            { name: "s", type: "bytes32[]" },
                         ],
                         outputs: [],
                     },
                 ],
                 functionName: "escrowTransfer",
                 args: [
-                    fromAddress,
-                    toAddress,
-                    tokenId,
-                    input.signature,
-                    gasFee,
+                    owner,
+                    spender,
+                    to,
+                    tokenIds,
+                    BigInt(deadline),
+                    vs,
+                    rs,
+                    ss,
                 ],
-                chain: chainClients.chain,
+                chain,
                 account: escrowWalletData.account,
             });
 
-            // 11. 트랜잭션 영수증 대기
-            const receipt =
-                await chainClients.publicClient.waitForTransactionReceipt({
-                    hash,
+            const receipt = await publicClient.waitForTransactionReceipt({
+                hash,
+            });
+
+            for (const nft of nfts) {
+                await prisma.nFT.update({
+                    where: { id: nft.id },
+                    data: {
+                        ownerAddress: payment.receiverWalletAddress,
+                        lastTransferredAt: new Date(),
+                        transferCount: { increment: 1 },
+                    },
                 });
 
-            // 13. NFT 이벤트 생성
-            await prisma.nFTEvent.create({
+                // NFT 이벤트 생성
+                await prisma.nFTEvent.create({
+                    data: {
+                        nftId: nft.id,
+                        collectionId: collection.id,
+                        eventType: "EscrowTransfer",
+                        fromAddress: owner,
+                        toAddress: to,
+                        transactionHash: receipt.transactionHash,
+                        timestamp: new Date(),
+                    },
+                });
+            }
+
+            await prisma.payment.update({
+                where: { id: payment.id },
                 data: {
-                    nftId:
-                        (
-                            await prisma.nFT.findFirst({
-                                where: { tokenId: parseInt(payment.productId) },
-                            })
-                        )?.id || "",
-                    collectionId:
-                        (
-                            await prisma.nFT.findFirst({
-                                where: { tokenId: parseInt(payment.productId) },
-                            })
-                        )?.collectionId || "",
-                    eventType: "EscrowTransfer",
-                    fromAddress: fromAddress,
-                    toAddress: toAddress,
-                    transactionHash: receipt.transactionHash,
-                    timestamp: new Date(),
+                    status: "COMPLETED",
+                    completedAt: new Date(),
+                    postProcessResult: {
+                        type: "NFT_ESCROW_TRANSFER",
+                        success: true,
+                        txHash: receipt.transactionHash,
+                        from: owner,
+                        to: payment.receiverWalletAddress,
+                        tokenIds: nfts.map((nft) => nft.tokenId),
+                        networkId: collection.networkId,
+                        networkName: collection.network.name,
+                        escrowWalletId: escrowWallet.id,
+                    },
+                    postProcessResultAt: new Date(),
                 },
             });
 
             scope.log("NFT escrow transfer successful", {
                 txHash: receipt.transactionHash,
-                from: fromAddress,
-                to: toAddress,
+                from: owner,
+                to: to,
                 escrowWallet: escrowWallet.address,
-                networkName: nft.network.name,
+                networkName: collection.network.name,
             });
 
             return {
@@ -807,13 +792,15 @@ export async function escrowTransferNFT(
                 data: {
                     txHash: receipt.transactionHash,
                     receiverAddress: payment.receiverWalletAddress,
-                    networkName: nft.network.name,
+                    networkName: collection.network.name,
                     transferDetails: {
-                        from: escrowWalletData.wallet.address,
+                        from: owner,
                         to: payment.receiverWalletAddress,
-                        tokenId: payment.productId,
-                        networkId: nft.networkId,
-                        networkName: nft.network.name,
+                        tokenId: nfts
+                            .map((nft) => nft.tokenId.toString())
+                            .join(","),
+                        networkId: collection.networkId,
+                        networkName: collection.network.name,
                         escrowWalletId: escrowWallet.id,
                     },
                 },
@@ -852,72 +839,112 @@ export async function escrowTransferNFT(
  */
 export async function generateMessageHashForNFT(
     fromAddress: string,
+    spenderAddress: string,
     toAddress: string,
-    tokenId: number
-): Promise<string> {
+    tokenId: number,
+    deadline: number = Math.floor(Date.now() / 1000) + 3600 // 기본 1시간
+): Promise<any> {
     try {
         // 1. NFT 네트워크 확인
         const nft = await prisma.nFT.findFirst({
             where: { tokenId },
-            select: { networkId: true },
+            select: {
+                networkId: true,
+                collectionId: true,
+                collection: {
+                    select: {
+                        address: true,
+                    },
+                },
+            },
         });
 
         if (!nft) {
             throw new Error(`NFT with tokenId ${tokenId} not found`);
         }
 
+        const collection = await prisma.collectionContract.findUnique({
+            where: { id: nft.collectionId },
+            include: { network: true },
+        });
+
+        if (!collection) {
+            throw new Error(`Collection with ID ${nft.collectionId} not found`);
+        }
+
         // 2. 네트워크 클라이언트 가져오기
-        const chainClients = await getChainClients(nft.networkId);
-        if (!chainClients) {
+        const chain = await getChain(collection.network);
+        if (!chain) {
             throw new Error(
                 `Network with ID ${nft.networkId} not found or not active`
             );
         }
 
-        const nftContractAddress = process.env
-            .NFT_CONTRACT_ADDRESS as `0x${string}`;
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(collection.network.rpcUrl),
+        });
+
+        const collectionAddress = nft.collection.address as `0x${string}`;
 
         // 3. 현재 nonce 값 가져오기
-        const nonce = await chainClients.publicClient.readContract({
-            address: nftContractAddress,
+        const nonce = await publicClient.readContract({
+            address: collectionAddress,
             abi: [
                 {
-                    name: "nonce",
+                    name: "nonces",
                     type: "function",
                     stateMutability: "view",
                     inputs: [{ name: "owner", type: "address" }],
                     outputs: [{ name: "", type: "uint256" }],
                 },
             ],
-            functionName: "nonce",
+            functionName: "nonces",
             args: [fromAddress as `0x${string}`],
         });
 
-        // 4. 메시지 해시 생성
-        const messageHash = await chainClients.publicClient.readContract({
-            address: nftContractAddress,
-            abi: [
-                {
-                    name: "getMessageHash",
-                    type: "function",
-                    stateMutability: "view",
-                    inputs: [
-                        { name: "from", type: "address" },
-                        { name: "to", type: "address" },
-                        { name: "tokenId", type: "uint256" },
+        // 4. EIP-712 해시 생성
+        const typedData = {
+            domain: {
+                name: await publicClient.readContract({
+                    address: collectionAddress,
+                    abi: [
+                        {
+                            name: "name",
+                            type: "function",
+                            stateMutability: "view",
+                            inputs: [],
+                            outputs: [{ name: "", type: "string" }],
+                        },
                     ],
-                    outputs: [{ name: "", type: "bytes32" }],
-                },
-            ],
-            functionName: "getMessageHash",
-            args: [
-                fromAddress as `0x${string}`,
-                toAddress as `0x${string}`,
-                BigInt(tokenId),
-            ],
-        });
+                    functionName: "name",
+                }),
+                version: "1",
+                chainId: chain.id,
+                verifyingContract: collectionAddress,
+            },
+            types: {
+                Permit: [
+                    { name: "owner", type: "address" },
+                    { name: "spender", type: "address" },
+                    { name: "to", type: "address" },
+                    { name: "tokenId", type: "uint256" },
+                    { name: "nonce", type: "uint256" },
+                    { name: "deadline", type: "uint256" },
+                ],
+            },
+            primaryType: "Permit",
+            message: {
+                owner: fromAddress,
+                spender: spenderAddress,
+                to: toAddress,
+                tokenId: BigInt(tokenId),
+                nonce: nonce,
+                deadline: BigInt(deadline),
+            },
+        };
 
-        return messageHash as string;
+        return typedData;
     } catch (error) {
         throw new Error(
             `Failed to generate message hash: ${
