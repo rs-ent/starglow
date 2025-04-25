@@ -536,6 +536,7 @@ model CollectionContract {
   factoryId   String
   networkId   String
   createdBy   String            @default("admin")
+  creatorAddress String          @default("0x58E1F072A8f41e1d476F06d73a6cB7b866e6f63B") 
   txHash      String?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
@@ -545,11 +546,11 @@ model CollectionContract {
   artistId    String?
   key         String            @unique
   isListed    Boolean           @default(false)
+  abi         Json?
+  bytecode    String?
   isPaused    Boolean           @default(false)
   pauseAt     DateTime?
   unpauseAt   DateTime?
-  abi         Json?
-  bytecode    String?
   artist      Artist?           @relation(fields: [artistId], references: [id])
   factory     FactoryContract   @relation(fields: [factoryId], references: [id])
   network     BlockchainNetwork @relation(fields: [networkId], references: [id])
@@ -575,15 +576,6 @@ model NFT {
   description         String?
   imageUrl            String?
   attributes          Json?
-  isLocked            Boolean            @default(false)
-  lockedAt            DateTime?
-  unlockScheduledAt   DateTime?
-  unlockAt            DateTime?
-  isStaked            Boolean            @default(false)
-  stakedAt            DateTime?
-  unstakeScheduledAt  DateTime?
-  unstakedAt          DateTime?
-  lockTransactionHash String?
   isListed            Boolean            @default(false)
   listingPrice        String?
   lastTransferredAt   DateTime?
@@ -598,6 +590,15 @@ model NFT {
   mintedBy            String?
   royaltyInfo         Json?
   currentOwnerAddress String?
+  isLocked            Boolean            @default(false)
+  lockedAt            DateTime?
+  unlockAt            DateTime?
+  unlockScheduledAt   DateTime?
+  lockTransactionHash String?
+  isStaked            Boolean            @default(false)
+  stakedAt            DateTime?
+  unstakeScheduledAt  DateTime?
+  unstakedAt          DateTime?
   collection          CollectionContract @relation(fields: [collectionId], references: [id])
   network             BlockchainNetwork  @relation(fields: [networkId], references: [id])
   events              NFTEvent[]

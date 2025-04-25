@@ -231,6 +231,60 @@ contract Collection is
         address owner,
         address spender,
         address to,
+        uint256[] calldata tokenIds
+    ) external whenNotPaused nonReentrant {
+        require(_isEscrowWallet[spender] || msg.sender == spender, "NOT_ALLOWED");
+
+        uint256 length = tokenIds.length;
+        uint256[] memory batchStarts = new uint256[](length);
+        uint256[] memory batchSizes = new uint256[](length);
+        uint256 batchCount;
+
+        {
+            uint256 batchStart = tokenIds[0];
+            uint256 batchSize = 1;
+            uint256 lastTokenId = tokenIds[0];
+            
+            require(_exists(lastTokenId), "TOKEN_NOT_EXIST");
+            require(ownerOf(lastTokenId) == owner, "NOT_OWNER");
+            require(!isTokenLocked(lastTokenId), "TOKEN_LOCKED");
+
+            for (uint256 i = 1; i < length; i++) {
+                uint256 currTokenId = tokenIds[i];
+                require(_exists(currTokenId), "TOKEN_NOT_EXIST");
+                require(ownerOf(currTokenId) == owner, "NOT_OWNER");
+                require(!isTokenLocked(currTokenId), "TOKEN_LOCKED");
+
+                if (currTokenId == lastTokenId + 1) {
+                    batchSize++;
+                } else {
+                    batchStarts[batchCount] = batchStart;
+                    batchSizes[batchCount] = batchSize;
+                    batchCount++;
+                    batchStart = currTokenId;
+                    batchSize = 1;
+                }
+                lastTokenId = currTokenId;
+            }
+            
+            // 마지막 배치 처리
+            batchStarts[batchCount] = batchStart;
+            batchSizes[batchCount] = batchSize;
+            batchCount++;
+        }
+
+        for (uint256 i = 0; i < batchCount; i++) {
+            _beforeTokenTransfers(owner, to, batchStarts[i], batchSizes[i]);
+            _transferBatch(owner, to, batchStarts[i], batchSizes[i]);
+        }
+
+        emit Transferred(owner, to, tokenIds);
+    }
+
+    function escrowTransferWithSignature(
+        address owner,
+        address spender,
+        address to,
         uint256[] calldata tokenIds,
         uint256 deadline,
         uint8 v,

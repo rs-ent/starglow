@@ -555,7 +555,16 @@ export async function createPayment(
                         tx,
                     });
 
-                if (!productPrice || !defaultCurrency || !productName) {
+                console.log("Product Price", productPrice);
+                console.log("Default Currency", defaultCurrency);
+                console.log("Product Name", productName);
+
+                if (
+                    productPrice === null ||
+                    productPrice === undefined ||
+                    !defaultCurrency ||
+                    !productName
+                ) {
                     txScope.log(`Product not found or invalid`);
                     txScope.end({ success: false, code: "INVALID_PRODUCT" });
                     return {
@@ -1186,7 +1195,8 @@ export async function verifyPayment(
                             });
 
                             if (
-                                !productPrice ||
+                                productPrice === null ||
+                                productPrice === undefined ||
                                 !defaultCurrency ||
                                 !productName
                             ) {
@@ -1401,18 +1411,33 @@ async function verifyPaymentWithPortOne(
                 }
             }
 
-            const paymentResponse = await fetchWithRetry(
-                `https://api.portone.io/payments/${encodeURIComponent(
-                    paymentId
-                )}`,
-                {
-                    headers: {
-                        Authorization: `PortOne ${process.env.PORTONE_V2_API_SECRET}`,
-                        "Content-Type": "application/json",
-                    },
-                    signal: controller.signal,
-                }
-            );
+            let paymentResponse: Response;
+            if (payment.amount === 0) {
+                paymentResponse = {
+                    status: 200,
+                    ok: true,
+                    json: async () => ({
+                        status: "PAID",
+                        paidAt: new Date().toISOString(),
+                        amount: {
+                            total: 0,
+                        },
+                    }),
+                } as Response;
+            } else {
+                paymentResponse = await fetchWithRetry(
+                    `https://api.portone.io/payments/${encodeURIComponent(
+                        paymentId
+                    )}`,
+                    {
+                        headers: {
+                            Authorization: `PortOne ${process.env.PORTONE_V2_API_SECRET}`,
+                            "Content-Type": "application/json",
+                        },
+                        signal: controller.signal,
+                    }
+                );
+            }
 
             logDebug(
                 `PortOne API response received in ${

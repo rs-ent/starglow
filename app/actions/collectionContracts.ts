@@ -15,7 +15,9 @@ import {
     estimateGasOptions,
     getChain,
     getEscrowWalletWithPrivateKey,
+    getEscrowWalletWithPrivateKeyByAddress,
     EstimateGasOptions,
+    getWalletBalance,
 } from "./blockchain";
 import { BlockchainNetwork, CollectionContract, NFT } from "@prisma/client";
 import { privateKeyToAccount } from "viem/accounts";
@@ -510,32 +512,47 @@ export async function mintTokens(
 
         // Prisma에 저장
         const result = await prisma.$transaction(async (tx) => {
-            const nfts: NFT[] = [];
-
-            for (let i = 0; i < input.quantity; i++) {
+            // 모든 NFT 데이터 준비
+            const nftData = Array.from({ length: input.quantity }, (_, i) => {
                 const tokenId = startTokenId + i;
-                const nft = await tx.nFT.create({
-                    data: {
-                        tokenId,
-                        collectionId: collection.id,
-                        ownerAddress: account.address,
-                        name: collection.name,
-                        currentOwnerAddress: account.address,
-                        networkId: collection.networkId,
-                        transactionHash: receipt.transactionHash,
-                        mintedBy: account.address,
-                        mintPrice: collection.mintPrice,
-                        metadataUri: `${collection.baseURI}${
-                            collection.baseURI.endsWith("/") ? "" : "/"
-                        }${tokenId}`,
-                        isListed: false,
-                        isBurned: false,
-                        transferCount: 0,
-                    },
-                });
-                nfts.push(nft);
-            }
+                return {
+                    tokenId,
+                    collectionId: collection.id,
+                    ownerAddress: account.address,
+                    name: collection.name,
+                    currentOwnerAddress: account.address,
+                    networkId: collection.networkId,
+                    transactionHash: receipt.transactionHash,
+                    mintedBy: account.address,
+                    mintPrice: collection.mintPrice,
+                    metadataUri: `${collection.baseURI}${
+                        collection.baseURI.endsWith("/") ? "" : "/"
+                    }${tokenId}`,
+                    isListed: false,
+                    isBurned: false,
+                    transferCount: 0,
+                };
+            });
 
+            // 모든 NFT를 한 번에 생성
+            await tx.nFT.createMany({
+                data: nftData,
+            });
+
+            // 생성된 NFT들의 ID를 가져오기
+            const nfts = await tx.nFT.findMany({
+                where: {
+                    collectionId: collection.id,
+                    tokenId: {
+                        in: Array.from(
+                            { length: input.quantity },
+                            (_, i) => startTokenId + i
+                        ),
+                    },
+                },
+            });
+
+            // NFT 이벤트 생성
             const mintEvents = nfts.map((nft) => ({
                 nftId: nft.id,
                 collectionId: collection.id,
@@ -1200,16 +1217,10 @@ export async function unlockTokens(
 
 export interface TransferTokensInput {
     collectionAddress: string;
-    walletId: string;
     fromAddress: string;
+    spenderAddress: string;
     toAddress: string;
     tokenIds: number[];
-    deadline: number;
-    signatures: {
-        v: number;
-        r: string;
-        s: string;
-    };
     gasOptions?: EstimateGasOptions;
 }
 
@@ -1255,13 +1266,6 @@ export async function transferTokens(
             };
         }
 
-        if (input.deadline <= Math.floor(Date.now() / 1000)) {
-            return {
-                success: false,
-                error: "Transfer deadline has passed",
-            };
-        }
-
         const tokenOwners = await getTokenOwners({
             collectionAddress: input.collectionAddress,
             tokenIds: input.tokenIds,
@@ -1270,6 +1274,7 @@ export async function transferTokens(
         const invalidTokens = tokenOwners.owners.filter(
             (owner) => owner.toLowerCase() !== input.fromAddress.toLowerCase()
         );
+
         if (invalidTokens.length > 0) {
             return {
                 success: false,
@@ -1287,16 +1292,10 @@ export async function transferTokens(
             };
         }
 
-        if (!input.signatures.v || !input.signatures.r || !input.signatures.s) {
-            return {
-                success: false,
-                error: "Invalid signature data",
-            };
-        }
-
-        const escrowWallet = await getEscrowWalletWithPrivateKey(
-            input.walletId
+        const escrowWallet = await getEscrowWalletWithPrivateKeyByAddress(
+            input.spenderAddress
         );
+
         if (!escrowWallet.success || !escrowWallet.data) {
             return {
                 success: false,
@@ -1305,16 +1304,17 @@ export async function transferTokens(
         }
 
         const chain = await getChain(collection.network);
-        const publicClient = createPublicClient({
-            chain,
-            transport: http(),
-        });
-
         const privateKey = escrowWallet.data.privateKey;
         const formattedPrivateKey = privateKey.startsWith("0x")
             ? privateKey
             : `0x${privateKey}`;
         const account = privateKeyToAccount(formattedPrivateKey as Address);
+
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
         const walletClient = createWalletClient({
             account,
             chain,
@@ -1326,65 +1326,6 @@ export async function transferTokens(
             abi,
             client: walletClient,
         });
-
-        // nonce 가져오기 추가
-        const currentNonce = await collectionContract.read.nonces([
-            input.fromAddress as Address,
-        ]);
-
-        // 서명 검증을 위한 structHash 생성
-        const structHash = await collectionContract.read.hashTypedDataV4([
-            ethers.utils.keccak256(
-                ethers.utils.defaultAbiCoder.encode(
-                    [
-                        "bytes32",
-                        "address",
-                        "address",
-                        "address",
-                        "bytes32",
-                        "uint256",
-                        "uint256",
-                    ],
-                    [
-                        ethers.utils.keccak256(
-                            ethers.utils.toUtf8Bytes(
-                                "Transfer(address owner,address spender,address to,uint256[] tokenIds,uint256 nonce,uint256 deadline)"
-                            )
-                        ),
-                        input.fromAddress,
-                        account.address,
-                        input.toAddress,
-                        ethers.utils.keccak256(
-                            ethers.utils.defaultAbiCoder.encode(
-                                ["uint256[]"],
-                                [input.tokenIds]
-                            )
-                        ),
-                        currentNonce,
-                        BigInt(input.deadline),
-                    ]
-                )
-            ),
-        ]);
-
-        // 서명 검증
-        const recoveredAddress = ethers.utils.recoverAddress(
-            structHash as BytesLike,
-            {
-                v: input.signatures.v,
-                r: input.signatures.r,
-                s: input.signatures.s,
-            }
-        );
-
-        if (
-            recoveredAddress.toLowerCase() !== input.fromAddress.toLowerCase()
-        ) {
-            return {
-                success: false,
-                error: "Invalid signature",
-            };
-        }
 
         const gasOptions = await estimateGasOptions({
             publicClient,
@@ -1399,10 +1340,6 @@ export async function transferTokens(
                         account.address,
                         input.toAddress as Address,
                         input.tokenIds,
-                        BigInt(input.deadline),
-                        input.signatures.v,
-                        input.signatures.r,
-                        input.signatures.s,
                     ],
                 },
             ],
@@ -1415,59 +1352,11 @@ export async function transferTokens(
                 account.address,
                 input.toAddress as Address,
                 input.tokenIds,
-                BigInt(input.deadline),
-                input.signatures.v,
-                input.signatures.r,
-                input.signatures.s,
             ],
             gasOptions
         );
 
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        const TRANSFER_EVENT_TOPIC =
-            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-        const events = receipt.logs.filter(
-            (log) => log.topics[0] === TRANSFER_EVENT_TOPIC
-        );
-
-        if (events.length !== input.tokenIds.length) {
-            return {
-                success: false,
-                error: "Some tokens were not transferred successfully",
-            };
-        }
-
-        await prisma.$transaction(async (tx) => {
-            await tx.nFT.updateMany({
-                where: {
-                    id: { in: tokens.map((t) => t.id) },
-                },
-                data: {
-                    ownerAddress: input.toAddress,
-                    currentOwnerAddress: input.toAddress,
-                    transferCount: {
-                        increment: 1,
-                    },
-                    lastTransferredAt: new Date(),
-                },
-            });
-
-            // NFT 이벤트 생성
-            const transferEvents = tokens.map((token) => ({
-                nftId: token.id,
-                collectionId: collection.id,
-                eventType: "TRANSFER",
-                fromAddress: input.fromAddress,
-                toAddress: input.toAddress,
-                transactionHash: receipt.transactionHash,
-                timestamp: new Date(),
-            }));
-
-            await tx.nFTEvent.createMany({
-                data: transferEvents,
-            });
-        });
 
         return {
             success: true,
@@ -1487,12 +1376,6 @@ export async function transferTokens(
                     error: "Gas limit too low",
                 };
             }
-            if (error.message.includes("EXPIRED")) {
-                return {
-                    success: false,
-                    error: "Transfer deadline expired",
-                };
-            }
             if (error.message.includes("INVALID_SIGNATURE")) {
                 return {
                     success: false,
@@ -1508,6 +1391,107 @@ export async function transferTokens(
                     ? error.message
                     : "Failed to transfer tokens",
         };
+    }
+}
+
+export interface GenerateMessageHashForTransferInput {
+    fromAddress: `0x${string}`;
+    spenderAddress: `0x${string}`;
+    toAddress: `0x${string}`;
+    tokenId: number;
+    collectionAddress: `0x${string}`;
+    network: BlockchainNetwork;
+}
+
+export async function generateMessageHashForTransfer(
+    input: GenerateMessageHashForTransferInput
+): Promise<any> {
+    try {
+        const {
+            fromAddress,
+            spenderAddress,
+            toAddress,
+            tokenId,
+            collectionAddress,
+            network,
+        } = input;
+
+        const deadline = Math.floor(Date.now() / 1000) + 3600;
+
+        const chain = await getChain(network);
+        if (!chain) {
+            throw new Error(
+                `Network with ID ${network} not found or not active`
+            );
+        }
+
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(chain.rpcUrls.default.http[0]),
+        });
+
+        const nonce = await publicClient.readContract({
+            address: collectionAddress,
+            abi: [
+                {
+                    inputs: [{ name: "", type: "address" }],
+                    name: "nonces",
+                    outputs: [{ name: "", type: "uint256" }],
+                    stateMutability: "view",
+                    type: "function",
+                },
+            ],
+            functionName: "nonces",
+            args: [fromAddress as `0x${string}`],
+        });
+
+        const typedData = {
+            domain: {
+                name: await publicClient.readContract({
+                    address: collectionAddress,
+                    abi: [
+                        {
+                            name: "name",
+                            type: "function",
+                            stateMutability: "view",
+                            inputs: [],
+                            outputs: [{ name: "", type: "string" }],
+                        },
+                    ],
+                    functionName: "name",
+                }),
+                version: "1",
+                chainId: chain.id,
+                verifyingContract: collectionAddress,
+            },
+            types: {
+                Permit: [
+                    { name: "owner", type: "address" },
+                    { name: "spender", type: "address" },
+                    { name: "to", type: "address" },
+                    { name: "tokenId", type: "uint256" },
+                    { name: "nonce", type: "uint256" },
+                    { name: "deadline", type: "uint256" },
+                ],
+            },
+            primaryType: "Permit",
+            message: {
+                owner: fromAddress,
+                spender: spenderAddress,
+                to: toAddress,
+                tokenId: BigInt(tokenId),
+                nonce: nonce,
+                deadline: BigInt(deadline),
+            },
+        };
+
+        return { typedData, deadline };
+    } catch (error) {
+        throw new Error(
+            `Failed to generate message hash: ${
+                error instanceof Error ? error.message : "Unknown error"
+            }`
+        );
     }
 }
 

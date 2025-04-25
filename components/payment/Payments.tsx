@@ -34,6 +34,8 @@ import {
 import Icon from "@/components/atoms/Icon";
 import Badge from "@/components/atoms/Badge";
 import { cn } from "@/lib/utils/tailwind";
+import Button from "@/components/atoms/Button";
+import FreePayButton from "./FreePayButton";
 
 interface PaymentProps {
     payment: Payment;
@@ -518,8 +520,22 @@ export default function Payments({ payment, userId }: PaymentProps) {
                                             <div>
                                                 {showPaymentButton ? (
                                                     <div className="flex justify-center w-full">
-                                                        {payment.payMethod ===
-                                                        "PAYPAL" ? (
+                                                        {payment.amount ===
+                                                        0 ? (
+                                                            <FreePayButton
+                                                                payment={
+                                                                    payment
+                                                                }
+                                                                disabled={
+                                                                    isProcessing ||
+                                                                    isVerifyingPayment
+                                                                }
+                                                                onPaymentProceed={
+                                                                    handlePaymentProceed
+                                                                }
+                                                            />
+                                                        ) : payment.payMethod ===
+                                                          "PAYPAL" ? (
                                                             <div className="w-full my-6">
                                                                 <PayPalButton
                                                                     payment={

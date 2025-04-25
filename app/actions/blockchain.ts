@@ -324,6 +324,42 @@ export async function getEscrowWalletWithPrivateKey(id: string) {
     }
 }
 
+export async function getEscrowWalletWithPrivateKeyByAddress(address: string) {
+    try {
+        const wallet = await prisma.escrowWallet.findUnique({
+            where: { address },
+        });
+
+        if (!wallet || !wallet.privateKey) {
+            return {
+                success: false,
+                error: "Escrow wallet or private key not found",
+            };
+        }
+
+        const decryptedKey = await decryptPrivateKey({
+            dbPart: wallet.privateKey,
+            blobPart: wallet.keyHash,
+            keyHash: wallet.keyHash,
+            nonce: wallet.nonce,
+        });
+
+        return {
+            success: true,
+            data: {
+                ...wallet,
+                privateKey: decryptedKey,
+            },
+        };
+    } catch (error) {
+        console.error("Error fetching escrow wallet with private key:", error);
+        return {
+            success: false,
+            error: "Failed to fetch escrow wallet with private key",
+        };
+    }
+}
+
 export async function lookupBlockchainNetwork(params: {
     name?: string;
     chainId?: number;

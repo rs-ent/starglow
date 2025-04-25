@@ -10,6 +10,7 @@ import { Ticket, AlertCircle, CheckCircle2 } from "lucide-react";
 import PaymentModule from "../payment/PaymentModule";
 import { Currency } from "@/lib/types/payment";
 import { formatCurrency } from "@/lib/utils/format";
+import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 
 interface CollectionPaymentProps {
     collection: CollectionContract & { metadata: Metadata };
@@ -30,12 +31,24 @@ export default function CollectionPayment({
     );
     const [currency, setCurrency] = useState<Currency>(initialCurrency);
 
+    const { tokens } = useCollectionGet({
+        collectionAddress: collection.address,
+        options: {
+            ownerAddress: collection.creatorAddress,
+        },
+    });
+
+    const availableTokens = Math.min(
+        tokens?.length ?? collection.circulation,
+        collection.circulation
+    );
+
     const handleDisplayPriceChange = (displayPrice: number) => {
         setDisplayPrice(displayPrice);
     };
 
     // NFT 구매 가능 여부 체크
-    const isSoldOut = collection.mintedCount >= collection.circulation;
+    const isSoldOut = availableTokens <= 0;
     const isNotActive = collection.isListed !== true;
 
     // 구매 가능 여부 확인
@@ -70,7 +83,8 @@ export default function CollectionPayment({
                 <div className="flex justify-between items-center mb-2">
                     <span className="text-foreground/70">Available NFTs</span>
                     <span className="font-main">
-                        {collection.circulation - collection.mintedCount} of{" "}
+                        {availableTokens}
+                        {" of "}
                         {collection.circulation}
                     </span>
                 </div>
@@ -101,18 +115,10 @@ export default function CollectionPayment({
                             <button
                                 onClick={() =>
                                     setQuantity(
-                                        Math.min(
-                                            collection.circulation -
-                                                collection.mintedCount,
-                                            quantity + 1
-                                        )
+                                        Math.min(quantity + 1, availableTokens)
                                     )
                                 }
-                                disabled={
-                                    quantity >=
-                                    collection.circulation -
-                                        collection.mintedCount
-                                }
+                                disabled={quantity >= availableTokens}
                                 className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border border-border/50 rounded-r-lg disabled:opacity-50"
                                 aria-label="Increase quantity"
                             >

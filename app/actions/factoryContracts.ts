@@ -13,6 +13,7 @@ import {
 import { prisma } from "@/lib/prisma/client";
 import {
     deployContract,
+    estimateGasOptions,
     getChain,
     getEscrowWalletWithPrivateKey,
 } from "./blockchain";
@@ -274,14 +275,47 @@ export async function createCollection(
 
         console.log("Input params:", input.params);
 
-        const hash = await factoryContract.write.createCollection([
-            input.params.name,
-            input.params.symbol,
-            BigInt(input.params.maxSupply),
-            BigInt(input.params.mintPrice),
-            `${input.params.baseURI}`,
-            `${input.params.contractURI}`,
-        ]);
+        const gasOptions = await estimateGasOptions({
+            publicClient,
+            walletClient,
+            contractAddress: factory.address as Address,
+            abi,
+            transactions: [
+                {
+                    functionName: "createCollection",
+                    args: [
+                        input.params.name,
+                        input.params.symbol,
+                        BigInt(input.params.maxSupply),
+                        BigInt(input.params.mintPrice),
+                        `${input.params.baseURI}`,
+                        `${input.params.contractURI}`,
+                    ],
+                },
+            ],
+        });
+
+        console.log("Estimated gas options:", {
+            maxFeePerGas: gasOptions.maxFeePerGas.toString(),
+            maxPriorityFeePerGas: gasOptions.maxPriorityFeePerGas.toString(),
+            gasLimit: gasOptions.gasLimit.toString(),
+        });
+
+        const hash = await factoryContract.write.createCollection(
+            [
+                input.params.name,
+                input.params.symbol,
+                BigInt(input.params.maxSupply),
+                BigInt(input.params.mintPrice),
+                `${input.params.baseURI}`,
+                `${input.params.contractURI}`,
+            ],
+            {
+                gas: gasOptions.gasLimit,
+                maxFeePerGas: gasOptions.maxFeePerGas,
+                maxPriorityFeePerGas: gasOptions.maxPriorityFeePerGas,
+            }
+        );
 
         console.log("Hash:", hash);
 
@@ -322,6 +356,7 @@ export async function createCollection(
                 factoryId: input.factoryId,
                 networkId: factory.networkId,
                 createdBy: input.walletId,
+                creatorAddress: escrowWallet.data.address,
                 txHash: receipt.transactionHash,
                 isListed: false,
                 circulation: input.params.maxSupply,

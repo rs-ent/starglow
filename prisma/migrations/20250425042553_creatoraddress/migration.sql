@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "CollectionContract" ADD COLUMN     "creatorAddress" TEXT NOT NULL DEFAULT '0x58E1F072A8f41e1d476F06d73a6cB7b866e6f63B';
