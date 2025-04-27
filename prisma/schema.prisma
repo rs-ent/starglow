@@ -149,47 +149,137 @@ model QuestLog {
   @@index([completedAt, rewardCurrency])
 }
 
-model Poll {
-  id                      String       @id @default(cuid())
-  title                   String
-  titleShorten            String?
-  options                 String[]     @default([])
-  optionsShorten          String[]     @default([])
-  bannerImg               String?
-  startDate               DateTime     @default(now())
-  endDate                 DateTime     @default(now())
-  exposeInScheduleTab     Boolean      @default(false)
-  openPromotionText       String?
-  openPromotionImg        String?
-  resultPromotionText     String?
-  resultPromotionImg      String?
-  totalVotes              Int          @default(0)
-  totalVotesByOption      Int[]        @default([])
-  totalBetsAmount         Int          @default(0)
-  totalBetsAmountByOption Int[]        @default([])
-  results                 Int[]        @default([])
-  createdAt               DateTime     @default(now())
-  updatedAt               DateTime     @updatedAt
-  pollLogs                PollLog[]
-  rewardLogs              RewardsLog[]
+enum PollStatus {
+  UPCOMING
+  ACTIVE
+  ENDED
+  CANCELLED
+  CALCULATING_RESULTS
+}
 
-  @@index([startDate, endDate, exposeInScheduleTab])
-  @@index([totalVotes, totalBetsAmount])
+enum PollCategory {
+  GENERAL
+  NFT
+}
+
+model Poll {
+  id                String       @id @default(cuid())
+  
+  // 기본 정보
+  title             String
+  titleShorten      String?
+  description       String?
+  category          PollCategory @default(GENERAL)
+  status            PollStatus   @default(UPCOMING)
+  
+  // 옵션 정보 (JSON 형태로 저장)
+  options           Json[]       // [{optionId: string, option: string, optionShorten: string?, description: string?, imgUrl: string?, youtubeUrl: string?}]
+  optionsOrder      String[]     @default([]) // [optionId, optionId, optionId, ...]
+  
+  // 미디어
+  imgUrl            String?
+  youtubeUrl        String?
+  
+  // 일정
+  startDate         DateTime     @default(now())
+  endDate           DateTime
+  
+  // 노출 설정
+  exposeInScheduleTab Boolean    @default(true)
+  hideResults        Boolean     @default(false)
+  resultVisibleDate  DateTime?
+  
+  // 프로모션
+  prePromoText      String?      // richText
+  prePromoImg       String?
+  postPromoText     String?      // richText
+  postPromoImg      String?
+  
+  // 참여 조건
+  needToken         Boolean      @default(true)
+  needTokenAddress  String?
+  minimumPoints     Int?
+  minimumSGP        Int?
+  minimumSGT        Int?
+  requiredQuests    String[]     @default([])
+  
+  // 투표 설정
+  allowMultipleVote Boolean      @default(false)
+  voteLimit         Int?
+  
+  // 베팅 설정
+  bettingMode       Boolean      @default(false)
+  minimumBet        Int          @default(1000)
+  maximumBet        Int          @default(10000)
+  
+  // 보상 설정
+  participationRewards Int?
+  winnerRewards       Int?
+  rewardCurrency      RewardCurrency @default(points)
+  
+  // 통계
+  viewCount          Int          @default(0)
+  uniqueVoters       Int          @default(0)
+  totalVotes         Int          @default(0)
+  totalBetsAmount    Int          @default(0)
+  customResults      Int[]        @default([])
+  
+  // 검증
+  verificationHash   String?
+  verifiedAt        DateTime?
+  verifiedBy        String?
+  
+  // 메타데이터
+  tags              String[]      @default([])
+  metadata          Json?
+  
+  // 타임스탬프
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  // 관계
+  pollLogs          PollLog[]
+  rewardLogs        RewardsLog[]
+
+  // 인덱스
+  @@index([status, startDate, endDate])
+  @@index([category, status])
+  @@index([needToken, status])
+  @@index([bettingMode, status])
 }
 
 model PollLog {
   id         String       @id @default(cuid())
   playerId   String
   pollId     String
-  option     String
-  betAmount  Int          @default(0)
-  createdAt  DateTime     @default(now())
-  player     Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  poll       Poll         @relation(fields: [pollId], references: [id])
+  
+  // 투표 정보
+  optionId   String      // options 배열 내 optionId와 매칭
+  option     Json      // 실제 선택한 옵션 텍스트 (히스토리 추적용)
+  
+  // 베팅 정보
+  betAmount  Int         @default(0)
+  
+  // 검증 정보
+  ipAddress  String?
+  userAgent  String?
+  
+  // 타임스탬프
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  // 메타데이터
+  record   Json?
+  
+  // 관계
+  player     Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  poll       Poll        @relation(fields: [pollId], references: [id])
   rewardLogs RewardsLog[]
 
+  // 인덱스
   @@index([playerId, pollId])
-  @@index([pollId, option])
+  @@index([pollId, optionId])
+  @@index([createdAt])
 }
 
 model RewardsLog {

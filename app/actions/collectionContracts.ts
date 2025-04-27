@@ -189,7 +189,7 @@ export async function getCollectionsByNetwork(
 
 export interface getTokenOwnersInput {
     collectionAddress: string;
-    tokenIds: number[];
+    tokenIds?: number[];
 }
 
 export interface getTokenOwnersResult {
@@ -221,8 +221,21 @@ export async function getTokenOwners(
             client: publicClient,
         });
 
+        let tokenIds: number[] = [];
+        if (input.tokenIds) {
+            tokenIds = input.tokenIds;
+        } else {
+            const tokens = await prisma.nFT.findMany({
+                where: { collectionId: collection.id },
+                select: {
+                    tokenId: true,
+                },
+            });
+            tokenIds = tokens.map((token) => token.tokenId);
+        }
+
         const owners: string[] = [];
-        for (const tokenId of input.tokenIds) {
+        for (const tokenId of tokenIds) {
             try {
                 const owner = await collectionContract.read.ownerOf([
                     BigInt(tokenId),

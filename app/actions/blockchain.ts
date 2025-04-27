@@ -20,6 +20,8 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { BlockchainNetwork } from "@prisma/client";
 import { GetContractReturnType } from "viem";
+import { getTokenOwners } from "./collectionContracts";
+import { User2 } from "lucide-react";
 
 // 블록체인 네트워크 관련 함수
 export async function getBlockchainNetworks(includeInactive = false) {
@@ -748,6 +750,122 @@ export async function estimateGasForTransactions(
                 error instanceof Error
                     ? error.message
                     : "Failed to estimate gas",
+        };
+    }
+}
+
+export interface TokenGateInput {
+    userId: string;
+    tokenType: "Collection" | "SGT";
+    tokenAddress: string;
+}
+
+export interface TokenGateResult {
+    success: boolean;
+    data?: {
+        hasToken: boolean;
+        tokenCount: number;
+        ownerWallets: string[];
+    };
+    error?: string;
+}
+
+export async function tokenGate(
+    input: TokenGateInput
+): Promise<TokenGateResult> {
+    try {
+        const { userId, tokenType, tokenAddress } = input;
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                wallets: {
+                    where: {
+                        status: "ACTIVE",
+                    },
+                    select: {
+                        address: true,
+                    },
+                },
+            },
+        });
+
+        if (!user) {
+            return {
+                success: false,
+                error: "User not found",
+                data: {
+                    hasToken: false,
+                    tokenCount: 0,
+                    ownerWallets: [],
+                },
+            };
+        }
+
+        if (user.wallets.length === 0) {
+            return {
+                success: false,
+                error: "User has no active wallets",
+            };
+        }
+
+        const walletAddresses = user.wallets.map((w) =>
+            w.address.toLowerCase()
+        );
+
+        switch (tokenType) {
+            case "Collection": {
+                const tokenOwners = await getTokenOwners({
+                    collectionAddress: tokenAddress,
+                });
+
+                const ownerMatches = tokenOwners.owners
+                    .map((owner) => owner.toLowerCase())
+                    .filter((owner) => walletAddresses.includes(owner));
+
+                return {
+                    success: ownerMatches.length > 0,
+                    data: {
+                        hasToken: ownerMatches.length > 0,
+                        tokenCount: ownerMatches.length,
+                        ownerWallets: ownerMatches,
+                    },
+                };
+            }
+
+            case "SGT": {
+                return {
+                    success: false,
+                    error: "SGT gating not implemented yet",
+                    data: {
+                        hasToken: false,
+                        tokenCount: 0,
+                        ownerWallets: [],
+                    },
+                };
+            }
+
+            default:
+                return {
+                    success: false,
+                    error: "Invalid token type",
+                    data: {
+                        hasToken: false,
+                        tokenCount: 0,
+                        ownerWallets: [],
+                    },
+                };
+        }
+    } catch (error) {
+        console.error("Error in token gate:", error);
+        return {
+            success: false,
+            error: "Failed to check token ownership",
+            data: {
+                hasToken: false,
+                tokenCount: 0,
+                ownerWallets: [],
+            },
         };
     }
 }

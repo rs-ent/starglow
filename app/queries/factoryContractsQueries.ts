@@ -36,6 +36,16 @@ export function useFactoryCollections(input: GetCollectionInput) {
     return useQuery({
         queryKey: getQueryKey(),
         queryFn: () => getCollections(input),
+        enabled: !!input,
+    });
+}
+
+export function useEveryCollections() {
+    const queryKey = factoryKeys.collections.global;
+
+    return useQuery({
+        queryKey,
+        queryFn: () => getCollections(),
         enabled: true,
     });
 }

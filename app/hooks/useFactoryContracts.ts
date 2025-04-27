@@ -4,6 +4,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import {
+    useEveryCollections,
     useFactories,
     useFactoryCollections,
 } from "../queries/factoryContractsQueries";
@@ -20,7 +21,6 @@ export interface UseFactoryGetProps {
     networkId?: string;
     factoryId?: string;
     includeInactive?: boolean;
-    enabled?: boolean;
 }
 
 export function useFactoryGet({
@@ -40,24 +40,33 @@ export function useFactoryGet({
         networkId,
     });
 
+    const everyCollectionsQuery = useEveryCollections();
+
     return {
         // 데이터
         factories: factoriesQuery.data?.data,
         collections: collectionsQuery.data?.data,
+        everyCollections: everyCollectionsQuery.data?.data,
 
         // 상태
         isLoading:
             (networkId ? factoriesQuery.isLoading : false) ||
-            (factoryId ? collectionsQuery.isLoading : false),
-        error: factoriesQuery.error || collectionsQuery.error,
+            (factoryId ? collectionsQuery.isLoading : false) ||
+            everyCollectionsQuery.isLoading,
+        error:
+            factoriesQuery.error ||
+            collectionsQuery.error ||
+            everyCollectionsQuery.error,
 
         // 개별 쿼리 상태
         isLoadingFactories: networkId ? factoriesQuery.isLoading : false,
         isLoadingCollections: factoryId ? collectionsQuery.isLoading : false,
+        isLoadingEveryCollections: everyCollectionsQuery.isLoading,
 
         // 원본 쿼리 객체 (고급 사용 사례용)
         factoriesQuery,
         collectionsQuery,
+        everyCollectionsQuery,
     };
 }
 

@@ -389,9 +389,20 @@ export interface GetCollectionResult {
 }
 
 export async function getCollections(
-    input: GetCollectionInput
+    input?: GetCollectionInput
 ): Promise<GetCollectionResult> {
     try {
+        if (!input) {
+            const collections = await prisma.collectionContract.findMany({
+                orderBy: { createdAt: "desc" },
+            });
+
+            return {
+                success: true,
+                data: collections,
+            };
+        }
+
         if (input.factoryId) {
             const factory = await prisma.factoryContract.findUnique({
                 where: { id: input.factoryId },

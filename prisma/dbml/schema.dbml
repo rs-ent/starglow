@@ -123,21 +123,46 @@ Table Poll {
   id String [pk]
   title String [not null]
   titleShorten String
-  options String[] [not null]
-  optionsShorten String[] [not null]
-  bannerImg String
+  description String
+  category PollCategory [not null, default: 'GENERAL']
+  status PollStatus [not null, default: 'UPCOMING']
+  options Json[] [not null]
+  optionsOrder String[] [not null]
+  imgUrl String
+  youtubeUrl String
   startDate DateTime [default: `now()`, not null]
-  endDate DateTime [default: `now()`, not null]
-  exposeInScheduleTab Boolean [not null, default: false]
-  openPromotionText String
-  openPromotionImg String
-  resultPromotionText String
-  resultPromotionImg String
+  endDate DateTime [not null]
+  exposeInScheduleTab Boolean [not null, default: true]
+  hideResults Boolean [not null, default: false]
+  resultVisibleDate DateTime
+  prePromoText String
+  prePromoImg String
+  postPromoText String
+  postPromoImg String
+  needToken Boolean [not null, default: true]
+  needTokenAddress String
+  minimumPoints Int
+  minimumSGP Int
+  minimumSGT Int
+  requiredQuests String[] [not null]
+  allowMultipleVote Boolean [not null, default: false]
+  voteLimit Int
+  bettingMode Boolean [not null, default: false]
+  minimumBet Int [not null, default: 1000]
+  maximumBet Int [not null, default: 10000]
+  participationRewards Int
+  winnerRewards Int
+  rewardCurrency RewardCurrency [not null, default: 'points']
+  viewCount Int [not null, default: 0]
+  uniqueVoters Int [not null, default: 0]
   totalVotes Int [not null, default: 0]
-  totalVotesByOption Int[] [not null]
   totalBetsAmount Int [not null, default: 0]
-  totalBetsAmountByOption Int[] [not null]
-  results Int[] [not null]
+  customResults Int[] [not null]
+  verificationHash String
+  verifiedAt DateTime
+  verifiedBy String
+  tags String[] [not null]
+  metadata Json
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   pollLogs PollLog [not null]
@@ -148,9 +173,14 @@ Table PollLog {
   id String [pk]
   playerId String [not null]
   pollId String [not null]
-  option String [not null]
+  optionId String [not null]
+  option Json [not null]
   betAmount Int [not null, default: 0]
+  ipAddress String
+  userAgent String
   createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  record Json
   player Player [not null]
   poll Poll [not null]
   rewardLogs RewardsLog [not null]
@@ -594,6 +624,19 @@ Table ArtistMember {
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   artist Artist [not null]
+}
+
+Enum PollStatus {
+  UPCOMING
+  ACTIVE
+  ENDED
+  CANCELLED
+  CALCULATING_RESULTS
+}
+
+Enum PollCategory {
+  GENERAL
+  NFT
 }
 
 Enum PaymentStatus {
