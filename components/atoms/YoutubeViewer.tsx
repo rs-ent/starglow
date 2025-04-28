@@ -53,14 +53,23 @@ export default function YoutubeViewer({
                         title={`${artist} - ${title}`}
                     />
                 </div>
-                <div className="flex items-start justify-between mt-2">
-                    <div className="text-start flex-grow mt-1">
-                        <H3 size={20}>{title}</H3>
-                        <Paragraph size={10} className="text-muted-foreground">
-                            {artist}
-                        </Paragraph>
+                {title || artist ? (
+                    <div className="flex items-start justify-between mt-2">
+                        {title && (
+                            <div className="text-start flex-grow mt-1">
+                                <H3 size={20}>{title}</H3>
+                                {artist && (
+                                    <Paragraph
+                                        size={10}
+                                        className="text-muted-foreground"
+                                    >
+                                        {artist}
+                                    </Paragraph>
+                                )}
+                            </div>
+                        )}
                     </div>
-                </div>
+                ) : null}
             </div>
         </div>
     );

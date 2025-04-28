@@ -124,7 +124,7 @@ Table Poll {
   title String [not null]
   titleShorten String
   description String
-  category PollCategory [not null, default: 'GENERAL']
+  category PollCategory [not null, default: 'PUBLIC']
   status PollStatus [not null, default: 'UPCOMING']
   options Json[] [not null]
   optionsOrder String[] [not null]
@@ -635,8 +635,8 @@ Enum PollStatus {
 }
 
 Enum PollCategory {
-  GENERAL
-  NFT
+  PUBLIC
+  PRIVATE
 }
 
 Enum PaymentStatus {

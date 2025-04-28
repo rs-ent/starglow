@@ -14,6 +14,10 @@ const nextConfig = {
                 protocol: "https",
                 hostname: "pv9tnti4kdvwxlot.public.blob.vercel-storage.com",
             },
+            {
+                protocol: "https",
+                hostname: "i3.ytimg.com",
+            },
         ],
     },
 

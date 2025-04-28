@@ -25,6 +25,7 @@ interface CollectionCardProps {
     showSharePercentage?: boolean;
     showCirculation?: boolean;
     isVerified?: boolean;
+    isLinked?: boolean;
 }
 
 export default function CollectionCard({
@@ -34,6 +35,7 @@ export default function CollectionCard({
     showSharePercentage = true,
     showCirculation = true,
     isVerified = false,
+    isLinked = true,
 }: CollectionCardProps) {
     const { metadataByCollectionAddress } = useMetadata({
         collectionAddress: collection.address,
@@ -45,7 +47,7 @@ export default function CollectionCard({
     )?.value;
 
     return (
-        <Link href={`/collections/${collection.address}`}>
+        <Link href={isLinked ? `/collections/${collection.address}` : ""}>
             <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 bg-card/50 hover:bg-card">
                 {/* 이미지 섹션 */}
                 <div className="relative aspect-[4/3] overflow-hidden bg-muted">

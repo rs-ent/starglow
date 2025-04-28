@@ -158,8 +158,8 @@ enum PollStatus {
 }
 
 enum PollCategory {
-  GENERAL
-  NFT
+  PUBLIC
+  PRIVATE
 }
 
 model Poll {
@@ -169,7 +169,7 @@ model Poll {
   title             String
   titleShorten      String?
   description       String?
-  category          PollCategory @default(GENERAL)
+  category          PollCategory @default(PUBLIC)
   status            PollStatus   @default(UPCOMING)
   
   // 옵션 정보 (JSON 형태로 저장)
