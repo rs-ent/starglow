@@ -16,8 +16,8 @@ import { tokenGate } from "./blockchain";
 
 export interface PollOption {
     optionId: string;
-    option: string;
-    optionShorten?: string;
+    name: string;
+    shorten?: string;
     description?: string;
     imgUrl?: string;
     youtubeUrl?: string;
@@ -145,8 +145,8 @@ export interface UpdatePollInput {
     status?: PollStatus;
     options?: {
         optionId: string;
-        option: string;
-        optionShorten?: string;
+        name: string;
+        shorten?: string;
         description?: string;
         imgUrl?: string;
         youtubeUrl?: string;
@@ -464,8 +464,8 @@ export interface GetPollResultResponse {
 
 export interface PollOptionResult {
     optionId: string;
-    option: string;
-    optionShorten?: string;
+    name: string;
+    shorten?: string;
     description?: string;
     imgUrl?: string;
     youtubeUrl?: string;
@@ -616,8 +616,8 @@ export interface UpdateUserSelectionInput {
     pollLogId: string;
     selectedOption: {
         optionId: string;
-        option: string;
-        optionShorten?: string;
+        name: string;
+        shorten?: string;
         description?: string;
         imgUrl?: string;
         youtubeUrl?: string;

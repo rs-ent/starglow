@@ -23,12 +23,17 @@ import type {
     GetUserSelectionInput,
 } from "../actions/polls";
 
-export function usePollsGet(
-    getPollsInput?: GetPollsInput,
-    tokenGatingInput?: TokenGatingInput,
-    pollResultInput?: GetPollResultInput,
-    userSelectionInput?: GetUserSelectionInput
-) {
+export function usePollsGet({
+    getPollsInput,
+    tokenGatingInput,
+    pollResultInput,
+    userSelectionInput,
+}: {
+    getPollsInput?: GetPollsInput;
+    tokenGatingInput?: TokenGatingInput;
+    pollResultInput?: GetPollResultInput;
+    userSelectionInput?: GetUserSelectionInput;
+}) {
     const {
         data: polls,
         isLoading: isLoadingPolls,

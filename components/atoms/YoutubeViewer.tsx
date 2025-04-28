@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils/tailwind";
 import { useRef } from "react";
 
 export interface YoutubeViewerProps {
-    videoId: string;
-    artist: string;
-    title: string;
+    videoId: string | undefined;
+    artist?: string;
+    title?: string;
     className?: string;
     framePadding?: number;
     isShowing?: boolean;
@@ -24,6 +24,8 @@ export default function YoutubeViewer({
     autoPlay = true,
 }: YoutubeViewerProps) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
+
+    if (!videoId) return null;
 
     return (
         <div

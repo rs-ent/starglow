@@ -37,6 +37,7 @@ import FileUploader from "@/components/atoms/FileUploader";
 import Image from "next/image";
 import { useLoading } from "@/app/hooks/useLoading";
 import { useToast } from "@/app/hooks/useToast";
+import { getYoutubeVideoId, getYoutubeThumbnailUrl } from "@/lib/utils/youtube";
 
 const pollSchemaShape = z.object({
     id: z
@@ -50,31 +51,54 @@ const pollSchemaShape = z.object({
     titleShorten: z
         .string()
         .max(20, "제목 줄임말은 20자를 넘을 수 없습니다")
+        .transform((val) => (val === "" ? undefined : val))
         .optional(),
     description: z
         .string()
         .max(400, "설명은 400자를 넘을 수 없습니다")
+        .transform((val) => (val === "" ? undefined : val))
         .optional(),
     category: z.nativeEnum(PollCategory),
     status: z.nativeEnum(PollStatus),
     options: z.array(
         z.object({
             optionId: z.string(),
-            option: z.string().min(1, "옵션 내용을 입력해주세요"),
-            optionShorten: z.string().optional(),
-            description: z.string().optional(),
-            imgUrl: z.string().optional(),
-            youtubeUrl: z.string().optional(),
+            name: z.string().min(1, "옵션 내용을 입력해주세요"),
+            shorten: z
+                .string()
+                .transform((val) => (val === "" ? undefined : val))
+                .optional(),
+            description: z
+                .string()
+                .transform((val) => (val === "" ? undefined : val))
+                .optional(),
+            imgUrl: z
+                .string()
+                .transform((val) => (val === "" ? undefined : val))
+                .optional(),
+            youtubeUrl: z
+                .string()
+                .transform((val) => (val === "" ? undefined : val))
+                .optional(),
         })
     ),
     optionsOrder: z.array(z.string()),
-    imgUrl: z.string().optional(),
-    youtubeUrl: z.string().url("유튜브 URL이 올바르지 않습니다").optional(),
+    imgUrl: z
+        .string()
+        .transform((val) => (val === "" ? undefined : val))
+        .optional(),
+    youtubeUrl: z
+        .string()
+        .transform((val) => (val === "" ? undefined : val))
+        .optional(),
     startDate: z.date(),
     endDate: z.date(),
     exposeInScheduleTab: z.boolean(),
     needToken: z.boolean(),
-    needTokenAddress: z.string().optional(),
+    needTokenAddress: z
+        .string()
+        .transform((val) => (val === "" ? undefined : val))
+        .optional(),
     bettingMode: z.boolean().optional(),
     minimumBet: z.number().min(0).optional(),
     maximumBet: z.number().min(0).optional(),
@@ -106,7 +130,7 @@ export default function PollCreateModal({
         polls,
         isLoading: isLoadingPolls,
         error: errorPolls,
-    } = usePollsGet();
+    } = usePollsGet({});
     const { createPoll, updatePoll, isLoading, error } = usePollsSet();
     const { everyCollections, isLoading: isLoadingEveryCollections } =
         useFactoryGet({});
@@ -121,6 +145,7 @@ export default function PollCreateModal({
         formState: { errors: formErrors },
         setValue,
         watch,
+        reset,
     } = useForm<z.infer<typeof pollSchemaShape>>({
         resolver: zodResolver(pollSchemaShape),
         defaultValues: initialData || {
@@ -161,7 +186,11 @@ export default function PollCreateModal({
         },
     });
 
-    console.log(formErrors);
+    useEffect(() => {
+        if (open && initialData) {
+            reset(initialData);
+        }
+    }, [open, initialData, reset]);
 
     useEffect(() => {
         const subscription = watch((value, { name }) => {
@@ -191,7 +220,7 @@ export default function PollCreateModal({
             }
 
             const invalidOptions = data.options.filter((option) => {
-                if (!option.option) {
+                if (!option.name) {
                     toast.error("옵션 이름을 입력해주세요.");
                     return true;
                 }
@@ -451,11 +480,11 @@ export default function PollCreateModal({
                                                 {field.value && (
                                                     <div className="w-[350px]">
                                                         <YoutubeViewer
-                                                            videoId={getYoutubeVideoId(
-                                                                field.value
-                                                            )}
-                                                            artist=""
-                                                            title=""
+                                                            videoId={
+                                                                getYoutubeVideoId(
+                                                                    field.value
+                                                                ) || undefined
+                                                            }
                                                             autoPlay={false}
                                                             framePadding={0}
                                                         />
@@ -887,16 +916,16 @@ function PollOptionsField({
         initialOptions || [
             {
                 optionId: `option${new Date().getTime()}`,
-                option: "",
-                optionShorten: "",
+                name: "",
+                shorten: "",
                 description: "",
                 imgUrl: "",
                 youtubeUrl: "",
             },
             {
                 optionId: `option${new Date().getTime() + 1}`,
-                option: "",
-                optionShorten: "",
+                name: "",
+                shorten: "",
                 description: "",
                 imgUrl: "",
                 youtubeUrl: "",
@@ -964,8 +993,8 @@ function PollOptionsField({
             ...options,
             {
                 optionId: newId,
-                option: "",
-                optionShorten: "",
+                name: "",
+                shorten: "",
                 description: "",
                 imgUrl: "",
                 youtubeUrl: "",
@@ -975,8 +1004,8 @@ function PollOptionsField({
             ...options,
             {
                 optionId: newId,
-                option: "",
-                optionShorten: "",
+                name: "",
+                shorten: "",
                 description: "",
                 imgUrl: "",
                 youtubeUrl: "",
@@ -1030,7 +1059,7 @@ function PollOptionsField({
                                 <div className="flex items-center gap-2 w-full">
                                     <SortableOption id={option.optionId}>
                                         <div className="p-4 bg-background border rounded-lg shadow-sm">
-                                            {option.option || option.optionId}
+                                            {option.name || option.optionId}
                                         </div>
                                     </SortableOption>
                                     <Button
@@ -1120,11 +1149,11 @@ function OptionCard({
             <div className="space-y-8">
                 <FormField label="선택지 내용" required>
                     <Input
-                        value={editedOption.option}
+                        value={editedOption.name}
                         onChange={(e) =>
                             setEditedOption({
                                 ...editedOption,
-                                option: e.target.value,
+                                name: e.target.value,
                             })
                         }
                         disabled={!isEditing}
@@ -1133,11 +1162,11 @@ function OptionCard({
 
                 <FormField label="짧은 선택지 내용">
                     <Input
-                        value={editedOption.optionShorten}
+                        value={editedOption.shorten}
                         onChange={(e) =>
                             setEditedOption({
                                 ...editedOption,
-                                optionShorten: e.target.value,
+                                shorten: e.target.value,
                             })
                         }
                         disabled={!isEditing}
@@ -1223,11 +1252,11 @@ function OptionCard({
                             {editedOption.youtubeUrl && (
                                 <div className="w-[350px]">
                                     <YoutubeViewer
-                                        videoId={getYoutubeVideoId(
-                                            editedOption.youtubeUrl
-                                        )}
-                                        artist=""
-                                        title=""
+                                        videoId={
+                                            getYoutubeVideoId(
+                                                editedOption.youtubeUrl
+                                            ) || undefined
+                                        }
                                         autoPlay={false}
                                         framePadding={0}
                                     />
@@ -1275,29 +1304,4 @@ function OptionCard({
             </div>
         </div>
     );
-}
-
-function getYoutubeVideoId(url: string): string {
-    const regExp =
-        /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
-    return match && match[2].length === 11 ? match[2] : "";
-}
-
-async function getYoutubeThumbnailUrl(url: string): Promise<string> {
-    const videoId = getYoutubeVideoId(url);
-    if (!videoId) return "";
-
-    const maxresUrl = `https://i3.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
-    const hqdefaultUrl = `https://i3.ytimg.com/vi/${videoId}/hqdefault.jpg`;
-
-    try {
-        const response = await fetch(maxresUrl);
-        if (response.ok) {
-            return maxresUrl;
-        }
-        return hqdefaultUrl;
-    } catch {
-        return hqdefaultUrl;
-    }
 }

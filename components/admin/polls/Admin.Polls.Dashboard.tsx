@@ -8,9 +8,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import PollCreateModal from "./Admin.Polls.CreateModal";
+import AdminPollsList from "./Admin.Polls.List";
 
 export default function AdminPollsDashboard() {
-    const { polls, isLoading, error } = usePollsGet();
+    const { polls, isLoading, error } = usePollsGet({});
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [viewType, setViewType] = useState<"table" | "card">("table");
 
@@ -50,13 +51,7 @@ export default function AdminPollsDashboard() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {viewType === "table" ? (
-                        // Table 뷰: 미디어 없이, 상태 Badge, 액션 버튼
-                        <div>Table View (구현 예정)</div>
-                    ) : (
-                        // Card 뷰: 미디어 썸네일, 상태 Badge, 액션 버튼
-                        <div>Card View (구현 예정)</div>
-                    )}
+                    <AdminPollsList viewType={viewType} />
                 </CardContent>
             </Card>
         </>
