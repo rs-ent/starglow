@@ -19,29 +19,51 @@ interface SinglePollProps {
     poll: Poll;
 }
 
+interface TokenGatingData {
+    hasToken: boolean;
+    ownerWallets: string[];
+    tokenCount: number;
+}
+
 export default function SinglePoll({ poll }: SinglePollProps) {
     const { startLoading, endLoading } = useLoading();
     const { user } = useRequireAuth();
 
     const [selection, setSelection] = useState<PollOption | null>(null);
+    const [tokenGatingData, setTokenGatingData] =
+        useState<TokenGatingData | null>(null);
     const { tokenGating, isLoading, error } = usePollsGet({
         tokenGatingInput: {
             pollId: poll.id,
             userId: user?.id || "",
         },
     });
-    const { participatePoll } = usePollsSet();
+
+    useEffect(() => {
+        if (tokenGating && tokenGating.success && tokenGating.data) {
+            toast.info("Token Gating data loaded");
+            setTokenGatingData(tokenGating.data);
+        }
+    }, [tokenGating]);
+
+    const {
+        participatePoll,
+        isLoading: isParticipating,
+        error: participateError,
+    } = usePollsSet();
 
     const toast = useToast();
     const options = poll.options as unknown as PollOption[];
 
     useEffect(() => {
-        if (isLoading) {
+        if (isParticipating) {
+            toast.info("Participating...");
             startLoading();
-        } else {
+        } else if (participateError) {
+            toast.error("Error participating");
             endLoading();
         }
-    }, [isLoading]);
+    }, [isParticipating, participateError]);
 
     const handleSubmit = () => {
         if (!selection) {
@@ -49,7 +71,14 @@ export default function SinglePoll({ poll }: SinglePollProps) {
             return;
         }
 
-        if (!tokenGating?.success || !tokenGating?.data?.hasToken) {
+        if (!tokenGatingData) {
+            toast.error(
+                "Please wait for the token gating process to complete."
+            );
+            return;
+        }
+
+        if (!tokenGatingData?.hasToken) {
             toast.error(
                 "This polls is need an authentication. Please purchase the NFT before participation."
             );

@@ -778,22 +778,18 @@ export async function tokenGate(
 
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            include: {
+            select: {
                 wallets: {
-                    where: {
-                        status: "ACTIVE",
-                    },
-                    select: {
-                        address: true,
-                    },
+                    where: { status: "ACTIVE" },
+                    select: { address: true },
                 },
             },
         });
 
-        if (!user) {
+        if (!user?.wallets?.length) {
             return {
                 success: false,
-                error: "User not found",
+                error: user ? "User has no active wallets" : "User not found",
                 data: {
                     hasToken: false,
                     tokenCount: 0,
@@ -802,15 +798,8 @@ export async function tokenGate(
             };
         }
 
-        if (user.wallets.length === 0) {
-            return {
-                success: false,
-                error: "User has no active wallets",
-            };
-        }
-
-        const walletAddresses = user.wallets.map((w) =>
-            w.address.toLowerCase()
+        const walletAddresses = new Set(
+            user.wallets.map((w) => w.address.toLowerCase())
         );
 
         switch (tokenType) {
@@ -821,7 +810,7 @@ export async function tokenGate(
 
                 const ownerMatches = tokenOwners.owners
                     .map((owner) => owner.toLowerCase())
-                    .filter((owner) => walletAddresses.includes(owner));
+                    .filter((owner) => walletAddresses.has(owner));
 
                 return {
                     success: ownerMatches.length > 0,

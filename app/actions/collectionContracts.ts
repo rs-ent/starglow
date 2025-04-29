@@ -221,47 +221,40 @@ export async function getTokenOwners(
             client: publicClient,
         });
 
-        let tokenIds: number[] = [];
-        if (input.tokenIds) {
-            tokenIds = input.tokenIds;
-        } else {
-            const tokens = await prisma.nFT.findMany({
-                where: { collectionId: collection.id },
-                select: {
-                    tokenId: true,
-                },
-            });
-            tokenIds = tokens.map((token) => token.tokenId);
+        const tokenIds =
+            input.tokenIds ||
+            (
+                await prisma.nFT.findMany({
+                    where: { collectionId: collection.id },
+                    select: { tokenId: true },
+                })
+            ).map((token) => token.tokenId);
+
+        if (!tokenIds.length) {
+            return { owners: [] };
         }
 
-        const owners: string[] = [];
-        for (const tokenId of tokenIds) {
+        const ownerPromises = tokenIds.map(async (tokenId) => {
             try {
                 const owner = await collectionContract.read.ownerOf([
                     BigInt(tokenId),
                 ]);
-                owners.push(owner as string);
-
-                await prisma.nFT.update({
-                    where: {
-                        collectionId_tokenId: {
-                            collectionId: collection.id,
-                            tokenId: tokenId,
-                        },
-                    },
-                    data: { currentOwnerAddress: owner as string },
-                });
+                return { tokenId, owner: owner as string, success: true };
             } catch (error) {
                 console.error(
                     "Error getting owner for tokenId:",
                     tokenId,
                     error
                 );
-                owners.push("");
+                return { tokenId, owner: "", success: false };
             }
-        }
+        });
 
-        return { owners };
+        const results = await Promise.all(ownerPromises);
+
+        return {
+            owners: results.map((result) => result.owner),
+        };
     } catch (error) {
         console.error("Error getting token owners:", error);
         return { owners: [] };
