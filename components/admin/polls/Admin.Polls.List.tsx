@@ -3,45 +3,76 @@
 "use client";
 
 import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
-import { getYoutubeVideoId, getYoutubeThumbnailUrl } from "@/lib/utils/youtube";
+import { usePollsResultsQuery } from "@/app/queries/pollsQueries";
 import { Poll } from "@prisma/client";
-import PollThumbnail from "@/components/atoms/PollThumbnail";
+import PollThumbnail from "@/components/atoms/Polls.Thumbnail";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-async function getThumbnail(poll: Poll) {
-    if (poll.imgUrl) return poll.imgUrl;
-    if (poll.youtubeUrl) {
-        const videoId = getYoutubeVideoId(poll.youtubeUrl);
-        if (videoId) {
-            return await getYoutubeThumbnailUrl(videoId);
-        }
-    }
-    return null;
-}
 import PollCreateModal from "./Admin.Polls.CreateModal";
 import { formatDate } from "@/lib/utils/format";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface PollListProps {
     viewType: "table" | "card";
 }
 
 export default function AdminPollsList({ viewType }: PollListProps) {
-    const { polls, isLoading, error } = usePollsGet({});
-    const { deletePoll } = usePollsSet();
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        itemsPerPage: 50,
+    });
     const [editPoll, setEditPoll] = useState<Poll | null>(null);
+    const [open, setOpen] = useState(false);
     const router = useRouter();
 
-    const [open, setOpen] = useState(false);
+    const { pollsList, isLoading, error } = usePollsGet({
+        pagination,
+    });
+
+    const { deletePoll } = usePollsSet();
+
+    const polls = pollsList?.items;
+    const pollIds = polls?.map((poll) => poll.id) || [];
+    const totalItems = pollsList?.totalItems;
+    const totalPages = pollsList?.totalPages;
+
+    const { data: pollsResults } = usePollsResultsQuery({
+        pollIds,
+    });
+
+    const resultsData = pollsResults?.results;
+    console.log("resultsData", resultsData);
+
     const handleEditPoll = (poll: Poll) => {
         setEditPoll(poll);
         setOpen(true);
     };
 
+    const handlePageChange = (page: number) => {
+        setPagination((prev) => ({
+            ...prev,
+            currentPage: page,
+        }));
+    };
+
+    const handleDeletePoll = async (pollId: string) => {
+        if (window.confirm("정말 삭제하시겠습니까?")) {
+            await deletePoll(pollId);
+            router.refresh();
+        }
+    };
+
     if (isLoading) return <div>로딩 중</div>;
     if (error) return <div>오류 발생: {error.message}</div>;
-
-    console.log(polls);
 
     return (
         <div>
@@ -73,23 +104,24 @@ export default function AdminPollsList({ viewType }: PollListProps) {
                         </thead>
                         <tbody className="align-middle divide-y text-sm divide-[rgba(255,255,255,0.2)]">
                             {polls?.map((poll) => {
-                                const pollResult = PollResult({ poll });
-                                const pollResultData = pollResult?.results.map(
+                                const result = resultsData?.find(
+                                    (result) => result.pollId === poll.id
+                                );
+                                const pollResultData = result?.results?.map(
                                     (option) =>
                                         `${option.voteRate}% (${option.name})`
                                 );
                                 return (
                                     <tr
                                         key={poll.id}
-                                        className="divide-x divide-[rgba(255,255,255,0.1)] h-[100px]"
+                                        className="divide-x divide-[rgba(255,255,255,0.1)] h-[70px]"
                                     >
                                         <td className="px-2 py-2 align-middle">
-                                            <div className="flex justify-center items-center h-full w-full">
+                                            <div className="flex justify-center items-center w-[90px] h-[60px]">
                                                 <PollThumbnail
                                                     poll={poll}
-                                                    width={100}
-                                                    height={50}
                                                     quality={100}
+                                                    imageClassName="rounded-sm"
                                                 />
                                             </div>
                                         </td>
@@ -109,7 +141,7 @@ export default function AdminPollsList({ viewType }: PollListProps) {
                                             {formatDate(poll.endDate)}
                                         </td>
                                         <td className="px-4 py-2 align-middle">
-                                            {pollResult?.totalVotes}
+                                            {result?.totalVotes}
                                         </td>
                                         <td className="px-4 py-2 align-middle">
                                             {pollResultData?.join(" : ")}
@@ -128,18 +160,11 @@ export default function AdminPollsList({ viewType }: PollListProps) {
                                                 <Button
                                                     size="sm"
                                                     variant="destructive"
-                                                    onClick={async () => {
-                                                        if (
-                                                            window.confirm(
-                                                                "정말 삭제하시겠습니까?"
-                                                            )
-                                                        ) {
-                                                            await deletePoll(
-                                                                poll.id
-                                                            );
-                                                            router.refresh();
-                                                        }
-                                                    }}
+                                                    onClick={async () =>
+                                                        handleDeletePoll(
+                                                            poll.id
+                                                        )
+                                                    }
                                                 >
                                                     삭제
                                                 </Button>
@@ -154,6 +179,51 @@ export default function AdminPollsList({ viewType }: PollListProps) {
             ) : (
                 <div>카드 뷰</div>
             )}
+
+            {/* Pagination */}
+            <div className="flex justify-center mt-4">
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                            <PaginationPrevious
+                                onClick={() =>
+                                    handlePageChange(pagination.currentPage - 1)
+                                }
+                                className={
+                                    pagination.currentPage === 1
+                                        ? "pointer-events-none opacity-50"
+                                        : ""
+                                }
+                            />
+                        </PaginationItem>
+                        {Array.from(
+                            { length: totalPages || 0 },
+                            (_, i) => i + 1
+                        ).map((page) => (
+                            <PaginationItem key={page}>
+                                <PaginationLink
+                                    isActive={pagination.currentPage === page}
+                                    onClick={() => handlePageChange(page)}
+                                >
+                                    {page}
+                                </PaginationLink>
+                            </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                            <PaginationNext
+                                onClick={() =>
+                                    handlePageChange(pagination.currentPage + 1)
+                                }
+                                className={
+                                    pagination.currentPage === totalPages
+                                        ? "pointer-events-none opacity-50"
+                                        : ""
+                                }
+                            />
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </div>
             <PollCreateModal
                 open={open}
                 onClose={() => setOpen(false)}
@@ -189,19 +259,4 @@ function mapPollToInitialData(poll: Poll | null) {
         participationRewards: poll.participationRewards ?? undefined,
         options,
     };
-}
-
-function PollResult({ poll }: { poll: Poll }) {
-    const {
-        pollResult,
-        isLoading: isLoadingPollResult,
-        error: errorPollResult,
-    } = usePollsGet({
-        pollResultInput: {
-            pollId: poll.id,
-        },
-    });
-
-    console.log(pollResult);
-    return pollResult;
 }

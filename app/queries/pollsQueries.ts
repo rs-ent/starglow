@@ -14,16 +14,37 @@ import {
     getPollResult,
     GetPollResultResponse,
     GetPollResultInput,
+    getPollsResults,
+    GetPollsResultsInput,
+    GetPollsResultsResponse,
     getUserSelection,
     GetUserSelectionInput,
     GetUserSelectionResponse,
+    PaginationInput,
 } from "../actions/polls";
 import { Poll } from "@prisma/client";
 
-export function usePollsQuery(input?: GetPollsInput) {
-    return useQuery<Poll[]>({
-        queryKey: pollKeys.list(input),
-        queryFn: () => getPolls(input || {}),
+export function usePollsQuery({
+    input,
+    pagination,
+}: {
+    input?: GetPollsInput;
+    pagination?: PaginationInput;
+}) {
+    return useQuery<{
+        items: Poll[];
+        totalItems: number;
+        totalPages: number;
+    }>({
+        queryKey: pollKeys.list(input, pagination),
+        queryFn: () =>
+            getPolls({
+                input: input || {},
+                pagination: pagination || {
+                    currentPage: 1,
+                    itemsPerPage: Number.MAX_SAFE_INTEGER,
+                },
+            }),
     });
 }
 
@@ -51,10 +72,17 @@ export function usePollResultQuery(input?: GetPollResultInput) {
     });
 }
 
+export function usePollsResultsQuery(input?: GetPollsResultsInput) {
+    return useQuery<GetPollsResultsResponse>({
+        queryKey: pollKeys.results(input?.pollIds || []),
+        queryFn: () => getPollsResults(input),
+        refetchInterval: 1000 * 60 * 5,
+    });
+}
+
 export function useUserSelectionQuery(input?: GetUserSelectionInput) {
     return useQuery<GetUserSelectionResponse>({
         queryKey: pollKeys.selection(input?.pollId || ""),
         queryFn: () => getUserSelection(input),
     });
 }
-

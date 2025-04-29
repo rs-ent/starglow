@@ -127,10 +127,11 @@ export default function PollCreateModal({
     const { startLoading, endLoading } = useLoading();
     const toast = useToast();
     const {
-        polls,
+        pollsList,
         isLoading: isLoadingPolls,
         error: errorPolls,
     } = usePollsGet({});
+    const polls = pollsList?.items;
     const { createPoll, updatePoll, isLoading, error } = usePollsSet();
     const { everyCollections, isLoading: isLoadingEveryCollections } =
         useFactoryGet({});

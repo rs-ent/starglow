@@ -1,6 +1,10 @@
 /// app/queryKeys.ts
 import * as PortOne from "@portone/browser-sdk/v2";
-import { GetPollsInput, TokenGatingInput } from "./actions/polls";
+import {
+    GetPollsInput,
+    PaginationInput,
+    TokenGatingInput,
+} from "./actions/polls";
 
 export const queryKeys = {
     quests: {
@@ -431,8 +435,8 @@ export const paymentPostProcessorKeys = {
 export const pollKeys = {
     all: ["polls"] as const,
     lists: () => [...pollKeys.all, "list"] as const,
-    list: (filters?: GetPollsInput) =>
-        [...pollKeys.all, "list", filters] as const,
+    list: (input?: GetPollsInput, pagination?: PaginationInput) =>
+        [...pollKeys.all, "list", input, pagination] as const,
     detail: (id: string) => [...pollKeys.all, "detail", id] as const,
     byId: (id: string) => ["polls", id] as const,
     byStatus: (status: string) => ["polls", "status", status] as const,
@@ -449,6 +453,8 @@ export const pollKeys = {
     logByUser: (pollId: string, playerId: string) =>
         [...pollKeys.all, "logs", pollId, playerId] as const,
     result: (pollId: string) => [...pollKeys.all, "result", pollId] as const,
+    results: (pollIds: string[]) =>
+        [...pollKeys.all, "results", pollIds] as const,
     selection: (pollId: string) =>
         [...pollKeys.all, "selection", pollId] as const,
 } as const;

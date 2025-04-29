@@ -14,31 +14,38 @@ import {
     usePollQuery,
     useTokenGatingQuery,
     usePollResultQuery,
+    usePollsResultsQuery,
     useUserSelectionQuery,
 } from "../queries/pollsQueries";
 import type {
     GetPollsInput,
     GetPollResultInput,
+    GetPollsResultsInput,
     TokenGatingInput,
     GetUserSelectionInput,
+    PaginationInput,
 } from "../actions/polls";
 
 export function usePollsGet({
     getPollsInput,
     tokenGatingInput,
     pollResultInput,
+    pollsResultsInput,
     userSelectionInput,
+    pagination,
 }: {
     getPollsInput?: GetPollsInput;
     tokenGatingInput?: TokenGatingInput;
     pollResultInput?: GetPollResultInput;
+    pollsResultsInput?: GetPollsResultsInput;
     userSelectionInput?: GetUserSelectionInput;
+    pagination?: PaginationInput;
 }) {
     const {
-        data: polls,
+        data: pollsList,
         isLoading: isLoadingPolls,
         error: pollsError,
-    } = usePollsQuery(getPollsInput);
+    } = usePollsQuery({ input: getPollsInput, pagination });
 
     const {
         data: poll,
@@ -59,6 +66,12 @@ export function usePollsGet({
     } = usePollResultQuery(pollResultInput);
 
     const {
+        data: pollsResults,
+        isLoading: isLoadingPollsResults,
+        error: pollsResultsError,
+    } = usePollsResultsQuery(pollsResultsInput);
+
+    const {
         data: userSelection,
         isLoading: isLoadingUserSelection,
         error: userSelectionError,
@@ -69,21 +82,24 @@ export function usePollsGet({
         isLoadingPoll ||
         isLoadingTokenGating ||
         isLoadingPollResult ||
+        isLoadingPollsResults ||
         isLoadingUserSelection;
     const error =
         pollsError ||
         pollError ||
         tokenGatingError ||
         pollResultError ||
+        pollsResultsError ||
         userSelectionError;
 
     return {
-        polls,
+        pollsList,
         isLoading,
         error,
         poll,
         tokenGating,
         pollResult,
+        pollsResults,
         userSelection,
     };
 }

@@ -74,8 +74,6 @@ export const getResponsiveClass = (
         70: "w-[70px] h-[70px]  sm:w-[81px] sm:h-[81px]  md:w-[91px] md:h-[91px] lg:w-[102px] lg:h-[102px] xl:w-[112px] xl:h-[112px]",
     };
 
-
-
     const textClass = texts[size as keyof typeof texts];
     const paddingClass = paddings[size as keyof typeof paddings];
     const frameClass = frames[size as keyof typeof frames];

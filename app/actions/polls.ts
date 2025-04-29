@@ -14,6 +14,13 @@ import {
 } from "@prisma/client";
 import { tokenGate } from "./blockchain";
 
+export type PaginationInput = {
+    currentPage: number;
+    itemsPerPage: number;
+    totalItems?: number;
+    totalPages?: number;
+};
+
 export interface PollOption {
     optionId: string;
     name: string;
@@ -83,36 +90,57 @@ export interface GetPollsInput {
     bettingMode?: boolean;
 }
 
-export async function getPolls(input: GetPollsInput): Promise<Poll[]> {
+export async function getPolls({
+    input,
+    pagination,
+}: {
+    input?: GetPollsInput;
+    pagination: PaginationInput;
+}): Promise<{
+    items: Poll[];
+    totalItems: number;
+    totalPages: number;
+}> {
     try {
         const where: Prisma.PollWhereInput = {};
 
-        if (input.id) where.id = input.id;
-        if (input.category) where.category = input.category;
-        if (input.status) where.status = input.status;
-        if (input.needToken) where.needToken = input.needToken;
-        if (input.needTokenAddress)
+        if (input?.id) where.id = input.id;
+        if (input?.category) where.category = input.category;
+        if (input?.status) where.status = input.status;
+        if (input?.needToken) where.needToken = input.needToken;
+        if (input?.needTokenAddress)
             where.needTokenAddress = input.needTokenAddress;
-        if (input.startDate)
+        if (input?.startDate)
             where.startDate = {
-                gte: input.startDate,
+                lte: input.startDate,
             };
-        if (input.endDate)
+        if (input?.endDate)
             where.endDate = {
-                lte: input.endDate,
+                gte: input.endDate,
             };
-        if (input.exposeInScheduleTab)
+        if (input?.exposeInScheduleTab)
             where.exposeInScheduleTab = input.exposeInScheduleTab;
-        if (input.bettingMode) where.bettingMode = input.bettingMode;
+        if (input?.bettingMode) where.bettingMode = input.bettingMode;
 
-        const polls = await prisma.poll.findMany({
-            where,
-            orderBy: {
-                startDate: "desc",
-            },
-        });
+        const [items, totalItems] = await Promise.all([
+            prisma.poll.findMany({
+                where,
+                orderBy: {
+                    startDate: "desc",
+                },
+                skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
+                take: pagination.itemsPerPage,
+            }),
+            prisma.poll.count({ where }),
+        ]);
 
-        return polls;
+        const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
+
+        return {
+            items,
+            totalItems,
+            totalPages,
+        };
     } catch (error) {
         console.error("Error getting polls:", error);
         throw new Error("Failed to get polls");
@@ -222,7 +250,7 @@ export async function tokenGating(
             return {
                 success: true,
                 data: {
-                    hasToken: true,
+                    hasToken: false,
                     tokenCount: 0,
                     ownerWallets: [],
                 },
@@ -458,6 +486,7 @@ export interface GetPollResultInput {
 }
 
 export interface GetPollResultResponse {
+    pollId: string;
     totalVotes: number;
     results: PollOptionResult[];
 }
@@ -480,6 +509,7 @@ export async function getPollResult(
 
     if (!pollId) {
         return {
+            pollId: "",
             totalVotes: 0,
             results: [],
         };
@@ -495,6 +525,7 @@ export async function getPollResult(
 
         if (!poll) {
             return {
+                pollId,
                 totalVotes: 0,
                 results: [],
             };
@@ -525,12 +556,44 @@ export async function getPollResult(
         });
 
         return {
+            pollId,
             totalVotes,
             results,
         };
     });
 
     return result;
+}
+
+export interface GetPollsResultsInput {
+    pollIds: string[];
+}
+
+export interface GetPollsResultsResponse {
+    results: GetPollResultResponse[];
+}
+
+export async function getPollsResults(
+    input?: GetPollsResultsInput
+): Promise<GetPollsResultsResponse> {
+    const { pollIds } = input || {};
+
+    if (!pollIds) {
+        return {
+            results: [],
+        };
+    }
+
+    const results = await Promise.all(
+        pollIds.map(async (pollId) => {
+            const result = await getPollResult({ pollId });
+            return result;
+        })
+    );
+
+    return {
+        results,
+    };
 }
 
 export interface GetUserSelectionInput {
