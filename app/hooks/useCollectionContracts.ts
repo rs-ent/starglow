@@ -11,6 +11,7 @@ import {
     useNonce,
     useCollectionsByNetwork,
     useCollectionSettings,
+    useCollection,
 } from "../queries/collectionContractsQueries";
 import {
     useMintTokensMutation,
@@ -45,6 +46,10 @@ export function useCollectionGet({
     walletId,
     options,
 }: UseCollectionGetProps = {}) {
+    const collectionQuery = useCollection({
+        collectionAddress,
+    });
+
     // 기본 토큰 조회
     const tokensQuery = useTokens({
         collectionAddress,
@@ -76,6 +81,7 @@ export function useCollectionGet({
 
     return {
         // 데이터
+        collection: collectionQuery.data,
         tokens: tokensQuery.data,
         status: statusQuery.data,
         escrowWallets: escrowWalletsQuery.data,
@@ -84,12 +90,14 @@ export function useCollectionGet({
 
         // 상태
         isLoading:
+            collectionQuery.isLoading ||
             (hasCollectionAddress && tokensQuery.isLoading) ||
             (hasCollectionAddress && statusQuery.isLoading) ||
             (hasCollectionAddress && escrowWalletsQuery.isLoading) ||
             (hasCollectionAddress && collectionSettingsQuery.isLoading) ||
             (hasCollectionAddress && walletId ? nonceQuery.isLoading : false),
         error:
+            collectionQuery.error ||
             tokensQuery.error ||
             statusQuery.error ||
             escrowWalletsQuery.error ||
@@ -97,6 +105,7 @@ export function useCollectionGet({
             (walletId ? nonceQuery.error : undefined),
 
         // 개별 쿼리 상태
+        isLoadingCollection: collectionQuery.isLoading,
         isLoadingTokens: hasCollectionAddress && tokensQuery.isLoading,
         isLoadingStatus: hasCollectionAddress && statusQuery.isLoading,
         isLoadingEscrow: hasCollectionAddress && escrowWalletsQuery.isLoading,
@@ -106,6 +115,7 @@ export function useCollectionGet({
             hasCollectionAddress && collectionSettingsQuery.isLoading,
 
         // 원본 쿼리 객체 (고급 사용 사례용)
+        collectionQuery,
         tokensQuery,
         statusQuery,
         escrowWalletsQuery,

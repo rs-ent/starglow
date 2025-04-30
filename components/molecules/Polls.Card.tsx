@@ -7,7 +7,8 @@ import PollThumbnail from "@/components/atoms/Polls.Thumbnail";
 import { formatDate } from "@/lib/utils/format";
 import { usePollsGet } from "@/app/hooks/usePolls";
 import PollBar from "@/components/atoms/Polls.Bar";
-import Image from "next/image";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
 
 interface PollsCardProps {
     poll: Poll;
@@ -54,7 +55,12 @@ export default function PollsCard({ poll }: PollsCardProps) {
                     <h2 className="text-2xl text-[rgba(255,255,255,0.95)]">
                         #{poll.id.replace(/^p0+/, "")}
                     </h2>
-                    <h2 className="text-xl leading-none text-[rgba(255,255,255,0.8)]">
+                    <h2
+                        className={cn(
+                            "leading-none text-[rgba(255,255,255,0.8)] break-all",
+                            "text-xl"
+                        )}
+                    >
                         {poll.title}
                     </h2>
                     <p className="text-xs text-[rgba(255,255,255,0.6)]">

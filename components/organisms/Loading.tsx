@@ -16,7 +16,7 @@ export default function Loading() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 bg-[rgba(0,0,0,0.3)] flex items-center justify-center flex-col backdrop-blur-sm"
+                    className="fixed inset-0 z-50 bg-[rgba(0,0,0,0.2)] flex items-center justify-center flex-col backdrop-blur-xs"
                 >
                     <LoaderCircle className="animate-spin h-16 w-16 text-white" />
                 </motion.div>

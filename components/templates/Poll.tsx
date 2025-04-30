@@ -14,6 +14,8 @@ import { usePollsSet, usePollsGet } from "@/app/hooks/usePolls";
 import { useToast } from "@/app/hooks/useToast";
 import { useRequireAuth } from "@/app/auth/authUtils.Client";
 import { useLoading } from "@/app/hooks/useLoading";
+import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
+import Image from "next/image";
 
 interface SinglePollProps {
     poll: Poll;
@@ -29,6 +31,8 @@ export default function SinglePoll({ poll }: SinglePollProps) {
     const { startLoading, endLoading } = useLoading();
     const { user } = useRequireAuth();
 
+    const [showOptions, setShowOptions] = useState(false);
+    const [isNotStarted, setIsNotStarted] = useState(false);
     const [selection, setSelection] = useState<PollOption | null>(null);
     const [tokenGatingData, setTokenGatingData] =
         useState<TokenGatingData | null>(null);
@@ -39,12 +43,50 @@ export default function SinglePoll({ poll }: SinglePollProps) {
         },
     });
 
+    const { collection } = useCollectionGet({
+        collectionAddress: poll.needTokenAddress || "",
+    });
+
     useEffect(() => {
-        if (tokenGating && tokenGating.success && tokenGating.data) {
-            toast.info("Token Gating data loaded");
+        const now = new Date();
+        if (poll.startDate > now) {
+            setShowOptions(false);
+            setIsNotStarted(true);
+            toast.info(
+                `The poll will be open in ${poll.startDate.toLocaleString()}`
+            );
+        } else if (poll.endDate < now) {
+            setShowOptions(false);
+            setIsNotStarted(false);
+            toast.info(`The poll is ended at ${poll.endDate.toLocaleString()}`);
+        } else {
+            setShowOptions(true);
+            setIsNotStarted(false);
+        }
+
+        if (poll.needToken || poll.needTokenAddress) {
+            if (collection) {
+                toast.info(
+                    `This poll is need a ${collection.data?.name} NFT to participate. We will check your NFT balance and process the participation.`
+                );
+            }
+            if (tokenGating && tokenGating.success && tokenGating.data) {
+                toast.info("Token Gating data loaded");
+                setTokenGatingData(tokenGating.data);
+                if (tokenGating.data.hasToken) {
+                    toast.success(
+                        "You have the NFT. You can participate in this poll!"
+                    );
+                } else {
+                    toast.error(
+                        "You don't have the NFT. Please purchase the NFT before participation."
+                    );
+                }
+            }
+        } else if (tokenGating && tokenGating.success && tokenGating.data) {
             setTokenGatingData(tokenGating.data);
         }
-    }, [tokenGating]);
+    }, [poll, tokenGating, collection]);
 
     const {
         participatePoll,
@@ -59,9 +101,15 @@ export default function SinglePoll({ poll }: SinglePollProps) {
         if (isParticipating) {
             toast.info("Participating...");
             startLoading();
-        } else if (participateError) {
-            toast.error("Error participating");
+        } else {
             endLoading();
+            if (participateError) {
+                toast.error(participateError.message);
+            } else if (selection) {
+                toast.success(
+                    `Participation successful! You have voted for [${selection?.name}]`
+                );
+            }
         }
     }, [isParticipating, participateError]);
 
@@ -89,6 +137,7 @@ export default function SinglePoll({ poll }: SinglePollProps) {
             pollId: poll.id,
             userId: user!.id,
             optionId: selection.optionId,
+            tokenGating: tokenGating,
             ipAddress: "127.0.0.1",
             userAgent: "test",
         });
@@ -108,19 +157,23 @@ export default function SinglePoll({ poll }: SinglePollProps) {
                         getResponsiveClass(15).textClass
                     )}
                 >
-                    RESULT OPEN IN
+                    {isNotStarted ? `POLL OPEN IN` : `RESULT OPEN IN`}
                 </h2>
                 <h2 className="text-center text-4xl">
                     <Countdown
-                        endDate={new Date(poll.endDate)}
+                        endDate={
+                            isNotStarted
+                                ? new Date(poll.startDate)
+                                : new Date(poll.endDate)
+                        }
                         size={45}
                         className="text-outline-1"
                     />
                 </h2>
                 <h2
                     className={cn(
-                        "text-3xl px-3 text-center mt-14 max-w-[800px]",
-                        getResponsiveClass(35).textClass
+                        "text-3xl px-3 text-center mt-14 max-w-[1000px] leading-0.5",
+                        getResponsiveClass(40).textClass
                     )}
                 >
                     {poll.title || ""}
@@ -128,63 +181,96 @@ export default function SinglePoll({ poll }: SinglePollProps) {
 
                 <div
                     className="
-                        max-w-[600px] w-full aspect-[2.0625/1] 
+                        max-w-[800px] w-full aspect-[2.0625/1] 
                         bg-gradient-to-br from-[rgba(255,255,255,0.7)] to-[rgba(0,0,0,0.8)] 
-                        rounded-3xl p-[1px] shadow-sm
+                        rounded-3xl p-[1px] shadow-sm my-10
                     "
                 >
                     <PollThumbnail
                         poll={poll}
                         quality={100}
                         imageClassName="rounded-3xl"
+                        showAvailableVideo={true}
                     />
                 </div>
-                <div className="grid grid-cols-1 gap-3 mt-6 p-2">
-                    {options.map((option: PollOption) => (
-                        <div
-                            key={option.optionId}
-                            onClick={() => setSelection(option)}
-                            className={cn(
-                                "flex items-center gap-4 mb-0.5 w-[800px] h-[60px] p-4 rounded-2xl",
-                                "bg-[rgba(0,0,0,0.15)] inner-shadow",
-                                "transition-all duration-300",
-                                "hover:bg-[rgba(0,0,0,0.25)]",
-                                "cursor-pointer"
-                            )}
-                        >
-                            {/* Radio Button */}
+
+                {showOptions && (
+                    <div className="grid grid-cols-1 gap-3 my-6 p-2 w-full">
+                        {options.map((option: PollOption) => (
                             <div
+                                key={option.optionId}
+                                onClick={() => setSelection(option)}
                                 className={cn(
-                                    "w-6 h-6 rounded-full",
-                                    "border-2 border-[rgba(255,255,255,0.3)]",
-                                    "relative",
+                                    "flex items-center justify-between w-[90%] p-4 rounded-2xl",
+                                    "bg-[rgba(0,0,0,0.05)] inner-shadow",
                                     "transition-all duration-300",
-                                    "transform hover:scale-110",
-                                    selection === option &&
-                                        "bg-[rgba(255,255,255,0.2)]"
+                                    "hover:bg-[rgba(0,0,0,0.35)]",
+                                    "cursor-pointer",
+                                    "relative overflow-hidden",
+                                    "mx-auto"
                                 )}
                             >
-                                {selection === option && (
+                                <div className="flex-1 flex items-center gap-4">
                                     <div
-                                        className="
-                                            absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                                            w-3 h-3 rounded-full
-                                            bg-white
-                                            shadow-[0_0_8px_rgba(255,255,255,0.8)]
-                                        "
-                                    />
-                                )}
+                                        className={cn(
+                                            "w-6 h-6 rounded-full z-10",
+                                            "border-2 border-[rgba(255,255,255,0.3)]",
+                                            "relative",
+                                            "transition-all duration-300",
+                                            "transform hover:scale-110",
+                                            getResponsiveClass(25).frameClass,
+                                            selection === option &&
+                                                "bg-[rgba(255,255,255,0.2)]"
+                                        )}
+                                    >
+                                        {selection === option && (
+                                            <div
+                                                className="
+                                absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                                w-3 h-3 rounded-full
+                                bg-white
+                                shadow-[0_0_8px_rgba(255,255,255,0.8)]
+                            "
+                                            />
+                                        )}
+                                    </div>
+
+                                    <h1
+                                        className={cn(
+                                            "text-[rgba(255,255,255,0.9)] z-10 leading-0",
+                                            getResponsiveClass(20).textClass
+                                        )}
+                                    >
+                                        {option.name}
+                                    </h1>
+                                </div>
+
+                                <div
+                                    className="absolute inset-0 z-0 inner-shadow"
+                                    style={{
+                                        backgroundImage: option.imgUrl
+                                            ? `url(${option.imgUrl})`
+                                            : "none",
+                                        backgroundSize: "cover",
+                                        backgroundPosition: "center",
+                                        backgroundRepeat: "no-repeat",
+                                        opacity: 0.6,
+                                        mixBlendMode: "overlay",
+                                    }}
+                                />
                             </div>
+                        ))}
+                    </div>
+                )}
 
-                            <h1 className="text-xl text-[rgba(255,255,255,0.85)]">
-                                {option.name}
-                            </h1>
-                        </div>
-                    ))}
-                </div>
+                {!tokenGatingData && (
+                    <div className="my-6 text-center text-xs text-[rgba(255,255,255,0.4)] animate-pulse">
+                        Validating...
+                    </div>
+                )}
 
-                {selection && (
-                    <div className="my-6">
+                {selection && tokenGatingData?.hasToken && (
+                    <div className="mb-12">
                         <Button
                             onClick={handleSubmit}
                             variant="space"
@@ -200,14 +286,5 @@ export default function SinglePoll({ poll }: SinglePollProps) {
 }
 
 /*
-{option.imgUrl && (
-                                <div className="relative w-[30px] h-[30px] rounded-full overflow-hidden">
-                                    <Image
-                                        src={option.imgUrl || ""}
-                                        alt={option.name}
-                                        fill
-                                        className="object-cover"
-                                    />
-                                </div>
-                            )}
+
 */

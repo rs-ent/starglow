@@ -85,7 +85,11 @@ export interface GetPollsInput {
     needToken?: boolean;
     needTokenAddress?: string;
     startDate?: Date;
+    startDateBefore?: Date;
+    startDateAfter?: Date;
     endDate?: Date;
+    endDateBefore?: Date;
+    endDateAfter?: Date;
     exposeInScheduleTab?: boolean;
     bettingMode?: boolean;
 }
@@ -110,17 +114,62 @@ export async function getPolls({
         if (input?.needToken) where.needToken = input.needToken;
         if (input?.needTokenAddress)
             where.needTokenAddress = input.needTokenAddress;
-        if (input?.startDate)
+        if (
+            input?.startDate &&
+            !input.startDateBefore &&
+            !input.startDateAfter
+        ) {
             where.startDate = {
                 lte: input.startDate,
             };
-        if (input?.endDate)
+        } else if (
+            input?.startDateBefore &&
+            !input.startDateAfter &&
+            !input.startDate
+        ) {
+            where.startDate = {
+                lt: input.startDateBefore,
+            };
+        } else if (
+            input?.startDateAfter &&
+            !input.startDateBefore &&
+            !input.startDate
+        ) {
+            where.startDate = {
+                gt: input.startDateAfter,
+            };
+        }
+
+        if (input?.endDate && !input.endDateBefore && !input.endDateAfter) {
             where.endDate = {
                 gte: input.endDate,
             };
+        } else if (
+            input?.endDateBefore &&
+            !input.endDateAfter &&
+            !input.endDate
+        ) {
+            where.endDate = {
+                lt: input.endDateBefore,
+            };
+        } else if (
+            input?.endDateAfter &&
+            !input.endDateBefore &&
+            !input.endDate
+        ) {
+            where.endDate = {
+                gt: input.endDateAfter,
+            };
+        }
+
         if (input?.exposeInScheduleTab)
             where.exposeInScheduleTab = input.exposeInScheduleTab;
         if (input?.bettingMode) where.bettingMode = input.bettingMode;
+
+        console.log("================");
+        console.log("where");
+        console.log(where);
+        console.log("================");
 
         const [items, totalItems] = await Promise.all([
             prisma.poll.findMany({
@@ -133,6 +182,11 @@ export async function getPolls({
             }),
             prisma.poll.count({ where }),
         ]);
+
+        console.log("================");
+        console.log("items");
+        console.log(items);
+        console.log("================");
 
         const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
 
@@ -278,6 +332,10 @@ export async function tokenGating(
         }
 
         if (!poll.needToken || !poll.needTokenAddress) {
+            console.log("================");
+            console.log("no need token gating");
+            console.log("================");
+
             return {
                 success: true,
                 data: {
@@ -324,6 +382,7 @@ export interface ParticipatePollInput {
     pollId: string;
     userId: string;
     optionId: string;
+    tokenGating?: TokenGatingResult;
     ipAddress?: string;
     userAgent?: string;
 }
@@ -339,8 +398,32 @@ export async function participatePoll(
 ): Promise<ParticipatePollResult> {
     try {
         const { pollId, userId, optionId } = input;
+        console.log("================");
+        console.log("input");
+        console.log(input);
+        console.log("================");
+
+        const poll = await prisma.poll.findUnique({
+            where: { id: pollId },
+        });
+
+        if (!poll) {
+            return {
+                success: false,
+                error: "Poll not found",
+            };
+        }
+
+        console.log("================");
+        console.log("poll");
+        console.log(poll);
+        console.log("================");
 
         const result = await prisma.$transaction(async (tx) => {
+            console.log("================");
+            console.log("transaction");
+            console.log("================");
+
             const player = await tx.player.findUnique({
                 where: { userId },
                 select: {
@@ -351,37 +434,43 @@ export async function participatePoll(
             if (!player) {
                 return {
                     success: false,
-                    error: "PLAYER_NOT_FOUND",
+                    error: "Player not found. Please refresh the page or sign in again.",
                 };
             }
+
+            console.log("================");
+            console.log("player");
+            console.log(player);
+            console.log("================");
 
             const playerId = player.id;
 
-            const poll = await tx.poll.findUnique({
-                where: { id: pollId },
-            });
-
-            if (!poll) {
+            const now = new Date();
+            if (now < poll.startDate) {
                 return {
                     success: false,
-                    error: "Poll not found",
+                    error: `This poll is not active yet. The poll starts at ${poll.startDate.toLocaleString()}.`,
                 };
             }
 
-            const now = new Date();
-            if (now < poll.startDate || now > poll.endDate) {
+            if (now > poll.endDate) {
                 return {
                     success: false,
-                    error: "NOT_ACTIVE",
+                    error: `This poll has ended. The poll ended at ${poll.endDate.toLocaleString()}.`,
                 };
             }
 
             if (!poll.options) {
                 return {
                     success: false,
-                    error: "NO_OPTIONS",
+                    error: "No options found. Please contact technical support.",
                 };
             }
+
+            console.log("================");
+            console.log("poll.options");
+            console.log(poll.options);
+            console.log("================");
 
             const options = poll.options;
             const validOption = options.find(
@@ -390,35 +479,66 @@ export async function participatePoll(
             if (!validOption) {
                 return {
                     success: false,
-                    error: "INVALID_OPTION",
+                    error: "Invalid option. Please try again or contact technical support.",
                 };
             }
 
+            console.log("================");
+            console.log("validOption");
+            console.log(validOption);
+            console.log("================");
+
             if (poll.needToken && poll.needTokenAddress) {
-                const gating = await tokenGating({ pollId, userId });
-                if (!gating.success) {
+                console.log("================");
+                console.log("poll.needToken && poll.needTokenAddress");
+                console.log("================");
+
+                if (!input.tokenGating) {
                     return {
                         success: false,
-                        error: "TOKEN_GATING_FAILED",
+                        error: "Token gating required. Please try again or contact technical support.",
+                    };
+                }
+
+                if (
+                    !input.tokenGating.success ||
+                    !input.tokenGating.data?.hasToken
+                ) {
+                    return {
+                        success: false,
+                        error: "Token gating failed. Please check your token balance. If the problem persists, please contact technical support.",
                     };
                 }
             }
 
-            if (!poll.allowMultipleVote) {
-                const existingLog = await prisma.pollLog.findFirst({
-                    where: {
-                        pollId,
-                        playerId,
-                    },
-                });
+            console.log("================");
+            console.log("poll.allowMultipleVote");
+            console.log(poll.allowMultipleVote);
+            console.log("================");
 
-                if (existingLog) {
-                    return {
-                        success: false,
-                        error: "ALREADY_VOTED",
-                    };
-                }
+            const existingLog = await tx.pollLog.findFirst({
+                where: {
+                    pollId,
+                    playerId,
+                },
+            });
+
+            console.log("================");
+            console.log("existingLog");
+            console.log(existingLog);
+            console.log("================");
+
+            if (!poll.allowMultipleVote && existingLog) {
+                return {
+                    success: false,
+                    error: `You have already voted for this poll at ${existingLog.createdAt.toLocaleString()}.`,
+                };
             }
+
+            console.log("================");
+            console.log("poll.endDate");
+            console.log(poll.endDate);
+            console.log("================");
 
             if (
                 poll.endDate &&
@@ -426,7 +546,7 @@ export async function participatePoll(
             ) {
                 return {
                     success: false,
-                    error: "POLL_ENDED",
+                    error: `This poll has ended. The poll ended at ${poll.endDate.toLocaleString()}.`,
                 };
             }
 
@@ -445,6 +565,39 @@ export async function participatePoll(
                     record,
                 },
             });
+
+            if (!existingLog) {
+                await tx.poll.update({
+                    where: { id: pollId },
+                    data: {
+                        uniqueVoters: {
+                            increment: 1,
+                        },
+                        totalVotes: {
+                            increment: 1,
+                        },
+                    },
+                });
+
+                console.log("================");
+                console.log("poll.uniqueVoters");
+                console.log(poll.uniqueVoters);
+                console.log("================");
+            } else {
+                await tx.poll.update({
+                    where: { id: pollId },
+                    data: {
+                        totalVotes: {
+                            increment: 1,
+                        },
+                    },
+                });
+
+                console.log("================");
+                console.log("poll.totalVotes");
+                console.log(poll.totalVotes);
+                console.log("================");
+            }
 
             if (!poll.bettingMode && poll.participationRewards) {
                 await tx.rewardsLog.create({

@@ -72,6 +72,9 @@ export function useParticipatePollMutation() {
     return useMutation({
         mutationFn: participatePoll,
         onSuccess: (data, variables) => {
+            if (!data.success) {
+                throw new Error(data.error || "Error participating in poll");
+            }
             queryClient.invalidateQueries({
                 queryKey: pollKeys.logs(variables.pollId),
             });
@@ -87,6 +90,7 @@ export function useParticipatePollMutation() {
         },
         onError: (error) => {
             console.error("Error creating poll log:", error);
+            throw error;
         },
     });
 }

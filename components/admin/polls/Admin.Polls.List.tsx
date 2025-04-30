@@ -42,7 +42,6 @@ export default function AdminPollsList({ viewType }: PollListProps) {
 
     const polls = pollsList?.items;
     const pollIds = polls?.map((poll) => poll.id) || [];
-    const totalItems = pollsList?.totalItems;
     const totalPages = pollsList?.totalPages;
 
     const { data: pollsResults } = usePollsResultsQuery({
@@ -98,6 +97,9 @@ export default function AdminPollsList({ viewType }: PollListProps) {
                                 <th className="px-4 py-2 align-middle">
                                     총 투표 수
                                 </th>
+                                <th className="px-4 py-2 align-middle">
+                                    고유 투표자 수
+                                </th>
                                 <th className="px-4 py-2 align-middle">결과</th>
                                 <th className="px-4 py-2 align-middle">기능</th>
                             </tr>
@@ -109,7 +111,9 @@ export default function AdminPollsList({ viewType }: PollListProps) {
                                 );
                                 const pollResultData = result?.results?.map(
                                     (option) =>
-                                        `${option.voteRate}% (${option.name})`
+                                        `${option.voteRate.toFixed(2)}% (${
+                                            option.name
+                                        })`
                                 );
                                 return (
                                     <tr
@@ -141,7 +145,11 @@ export default function AdminPollsList({ viewType }: PollListProps) {
                                             {formatDate(poll.endDate)}
                                         </td>
                                         <td className="px-4 py-2 align-middle">
-                                            {result?.totalVotes}
+                                            {result?.totalVotes.toLocaleString()}
+                                        </td>
+                                        <td className="px-4 py-2 align-middle">
+                                            {poll.uniqueVoters.toLocaleString()}
+                                            명
                                         </td>
                                         <td className="px-4 py-2 align-middle">
                                             {pollResultData?.join(" : ")}

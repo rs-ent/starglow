@@ -64,7 +64,11 @@ export async function getAuthUserClient(): Promise<User | null> {
  * @param callbackUrl 인증 후 리다이렉트할 URL
  * @returns { user: User | null, loading: boolean, authenticated: boolean, redirectToSignIn: () => void }
  */
-export function useRequireAuth(callbackUrl: string = window.location.href) {
+export function useRequireAuth(
+    callbackUrl: string = typeof window !== "undefined"
+        ? window.location.href
+        : ""
+) {
     const { data: session, status } = useSession();
     const router = useRouter();
     const loading = status === "loading";

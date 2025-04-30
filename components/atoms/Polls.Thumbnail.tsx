@@ -7,6 +7,7 @@ import { Poll } from "@prisma/client";
 import { getYoutubeVideoId, getYoutubeThumbnailUrl } from "@/lib/utils/youtube";
 import Image from "next/image";
 import { cn } from "@/lib/utils/tailwind";
+import YoutubeViewer from "./YoutubeViewer";
 
 interface PollThumbnailProps {
     poll: Poll;
@@ -14,6 +15,7 @@ interface PollThumbnailProps {
     imageClassName?: string;
     fallbackSrc?: string;
     quality?: number;
+    showAvailableVideo?: boolean;
 }
 
 export default function PollThumbnail({
@@ -22,8 +24,10 @@ export default function PollThumbnail({
     imageClassName = "",
     fallbackSrc = "/default-image.jpg",
     quality = 100,
+    showAvailableVideo = false,
 }: PollThumbnailProps) {
     const [src, setSrc] = useState<string>(poll.imgUrl || fallbackSrc);
+    const [videoId, setVideoId] = useState<string | null>(null);
     const { ref, isVisible } = useIntersectionObserver();
 
     useEffect(() => {
@@ -33,9 +37,18 @@ export default function PollThumbnail({
 
             if (poll.imgUrl) {
                 setSrc(poll.imgUrl);
+                if (showAvailableVideo && poll.youtubeUrl) {
+                    const videoId = getYoutubeVideoId(poll.youtubeUrl);
+                    if (videoId) {
+                        console.log("videoId", videoId);
+                        setVideoId(videoId);
+                    }
+                }
             } else if (poll.youtubeUrl) {
                 const videoId = getYoutubeVideoId(poll.youtubeUrl);
                 if (videoId) {
+                    setVideoId(videoId);
+                    console.log("videoId", videoId);
                     const url = await getYoutubeThumbnailUrl(videoId);
                     if (mounted) setSrc(url || fallbackSrc);
                 } else {
@@ -53,14 +66,19 @@ export default function PollThumbnail({
 
     return (
         <div ref={ref} className={cn("relative w-full h-full", className)}>
-            <Image
-                src={src}
-                alt={poll.title || "썸네일"}
-                fill
-                className={cn("object-cover", imageClassName)}
-                quality={quality}
-                loading="lazy"
-            />
+            {showAvailableVideo && videoId ? (
+                <YoutubeViewer videoId={videoId} framePadding={1} />
+            ) : (
+                <Image
+                    src={src}
+                    alt={poll.title || "썸네일"}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 60vw"
+                    className={cn("object-cover", imageClassName)}
+                    quality={quality}
+                    loading="lazy"
+                />
+            )}
         </div>
     );
 }

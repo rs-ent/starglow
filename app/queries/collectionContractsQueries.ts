@@ -5,6 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { collectionKeys } from "../queryKeys";
 import {
+    getCollection,
     getTokenOwners,
     getTokens,
     getNonce,
@@ -15,6 +16,8 @@ import {
     updateCollectionSettings,
 } from "../actions/collectionContracts";
 import type {
+    GetCollectionInput,
+    GetCollectionResult,
     getTokenOwnersInput,
     getTokenOwnersResult,
     GetTokensInput,
@@ -28,6 +31,14 @@ import type {
     UpdateCollectionSettingsResult,
 } from "../actions/collectionContracts";
 import { NFT } from "@prisma/client";
+
+export const useCollection = (input: GetCollectionInput) => {
+    return useQuery({
+        queryKey: collectionKeys.byAddress(input.collectionAddress),
+        queryFn: () => getCollection(input),
+        enabled: !!input.collectionAddress,
+    });
+};
 
 export const useCollectionsByNetwork = (
     input: GetCollectionsByNetworkInput
@@ -43,7 +54,7 @@ export const useTokenOwners = (input: getTokenOwnersInput) => {
     return useQuery({
         queryKey: collectionKeys.tokens.owners(
             input.collectionAddress,
-            input.tokenIds
+            input.tokenIds ?? []
         ),
         queryFn: () => getTokenOwners(input),
         enabled: !!input.collectionAddress && !!input.tokenIds,

@@ -9,6 +9,7 @@ import {
     getContract,
     Address,
     Hash,
+    AbiFunction,
 } from "viem";
 import { prisma } from "@/lib/prisma/client";
 import {
@@ -27,6 +28,35 @@ import { deployContract } from "./blockchain";
 import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
 import { BytesLike, ethers } from "ethers";
 const abi = collectionJson.abi;
+
+export interface GetCollectionInput {
+    collectionAddress: string;
+}
+
+export interface GetCollectionResult {
+    success: boolean;
+    data?: CollectionContract;
+    error?: string;
+}
+
+export async function getCollection(
+    input: GetCollectionInput
+): Promise<GetCollectionResult> {
+    const collection = await prisma.collectionContract.findUnique({
+        where: { address: input.collectionAddress },
+        include: { network: true },
+    });
+
+    if (!collection) {
+        return { success: false, error: "Collection not found" };
+    }
+
+    if (!collection.network) {
+        return { success: false, error: "Network not found" };
+    }
+
+    return { success: true, data: collection };
+}
 
 export interface DeployCollectionInput {
     networkId: string;
@@ -215,12 +245,6 @@ export async function getTokenOwners(
             transport: http(),
         });
 
-        const collectionContract = getContract({
-            address: input.collectionAddress as Address,
-            abi,
-            client: publicClient,
-        });
-
         const tokenIds =
             input.tokenIds ||
             (
@@ -234,23 +258,72 @@ export async function getTokenOwners(
             return { owners: [] };
         }
 
-        const ownerPromises = tokenIds.map(async (tokenId) => {
-            try {
-                const owner = await collectionContract.read.ownerOf([
-                    BigInt(tokenId),
-                ]);
-                return { tokenId, owner: owner as string, success: true };
-            } catch (error) {
-                console.error(
-                    "Error getting owner for tokenId:",
-                    tokenId,
-                    error
-                );
-                return { tokenId, owner: "", success: false };
-            }
-        });
+        const BATCH_SIZE = 50;
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY = 1000;
+        const batches = [];
 
-        const results = await Promise.all(ownerPromises);
+        for (let i = 0; i < tokenIds.length; i += BATCH_SIZE) {
+            batches.push(tokenIds.slice(i, i + BATCH_SIZE));
+        }
+
+        const batchResults = await Promise.all(
+            batches.map(async (batch) => {
+                let retryCount = 0;
+                while (retryCount < MAX_RETRIES) {
+                    try {
+                        const owners = await publicClient.multicall({
+                            contracts: batch.map((tokenId) => ({
+                                address: input.collectionAddress as Address,
+                                abi: abi as AbiFunction[],
+                                functionName: "ownerOf",
+                                args: [BigInt(tokenId)],
+                            })),
+                            multicallAddress: collection.network
+                                .multicallAddress as Address,
+                        });
+
+                        return batch.map((tokenId, index) => {
+                            const result = owners[index];
+                            return {
+                                tokenId,
+                                owner:
+                                    result.status === "success"
+                                        ? (result.result as unknown as string)
+                                        : "",
+                                success: result.status === "success",
+                            };
+                        });
+                    } catch (error) {
+                        retryCount++;
+                        if (retryCount === MAX_RETRIES) {
+                            console.error(
+                                "Error in batch after retries:",
+                                error
+                            );
+                            return batch.map((tokenId) => ({
+                                tokenId,
+                                owner: "",
+                                success: false,
+                            }));
+                        }
+                        console.log(
+                            `Retrying batch (attempt ${retryCount}/${MAX_RETRIES})`
+                        );
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, RETRY_DELAY)
+                        );
+                    }
+                }
+                return batch.map((tokenId) => ({
+                    tokenId,
+                    owner: "",
+                    success: false,
+                }));
+            })
+        );
+
+        const results = batchResults.flat();
 
         return {
             owners: results.map((result) => result.owner),

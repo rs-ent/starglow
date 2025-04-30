@@ -68,7 +68,7 @@ export function usePollResultQuery(input?: GetPollResultInput) {
     return useQuery<GetPollResultResponse>({
         queryKey: pollKeys.result(input?.pollId || ""),
         queryFn: () => getPollResult(input),
-        refetchInterval: 2000,
+        refetchInterval: 1000 * 60 * 1,
     });
 }
 

@@ -196,6 +196,8 @@ export const factoryKeys: FactoryKeysType = {
 // Collection query keys
 export const collectionKeys = {
     all: ["collections"] as const,
+    byAddress: (address: string) =>
+        [...collectionKeys.all, "address", address] as const,
     lists: () => [...collectionKeys.all, "list"] as const,
     detail: (address: string) =>
         [...collectionKeys.all, "detail", address] as const,
