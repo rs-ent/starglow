@@ -15,9 +15,6 @@ export default function Main() {
                 className="absolute inset-0 w-full h-full object-cover object-top -z-10"
             />
 
-            <div className="sticky top-0 z-10 backdrop-blur-md">
-                <NavBar />
-            </div>
             <main className="flex flex-col flex-1">
                 <HeroGitbook />
                 <HeroFollowUs />

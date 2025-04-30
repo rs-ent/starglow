@@ -583,6 +583,42 @@ export async function participatePoll(
                 console.log("poll.uniqueVoters");
                 console.log(poll.uniqueVoters);
                 console.log("================");
+
+                if (!poll.bettingMode && poll.participationRewards) {
+                    console.log("================");
+                    console.log("Participation Rewards Granted");
+                    console.log("================");
+
+                    const rewardsLog = await tx.rewardsLog.create({
+                        data: {
+                            playerId,
+                            pollId,
+                            pollLogId: pollLog.id,
+                            amount: poll.participationRewards,
+                            reason: "Poll Participation Reward",
+                            currency: poll.rewardCurrency,
+                        },
+                    });
+
+                    console.log("================");
+                    console.log("rewardsLog");
+                    console.log(rewardsLog);
+                    console.log("================");
+
+                    const updatedPlayer = await tx.player.update({
+                        where: { id: playerId },
+                        data: {
+                            [poll.rewardCurrency]: {
+                                increment: poll.participationRewards,
+                            },
+                        },
+                    });
+
+                    console.log("================");
+                    console.log("updatedPlayer");
+                    console.log(updatedPlayer);
+                    console.log("================");
+                }
             } else {
                 await tx.poll.update({
                     where: { id: pollId },
@@ -597,28 +633,6 @@ export async function participatePoll(
                 console.log("poll.totalVotes");
                 console.log(poll.totalVotes);
                 console.log("================");
-            }
-
-            if (!poll.bettingMode && poll.participationRewards) {
-                await tx.rewardsLog.create({
-                    data: {
-                        playerId,
-                        pollId,
-                        pollLogId: pollLog.id,
-                        amount: poll.participationRewards,
-                        reason: "Poll Participation Reward",
-                        currency: poll.rewardCurrency,
-                    },
-                });
-
-                await tx.player.update({
-                    where: { id: playerId },
-                    data: {
-                        [poll.rewardCurrency]: {
-                            increment: poll.participationRewards,
-                        },
-                    },
-                });
             }
 
             return {

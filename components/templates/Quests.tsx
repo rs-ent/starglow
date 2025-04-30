@@ -5,7 +5,6 @@
 import { useState } from "react";
 import QuestUtilBar from "@/components/organisms/QuestUtilBar";
 import QuestContents from "@/components/organisms/QuestContents";
-import QuestNavBar from "@/components/organisms/QuestNavBar";
 import { Player } from "@prisma/client";
 import { usePlayer } from "@/app/hooks/usePlayer";
 import PartialLoading from "@/components/atoms/PartialLoading";
@@ -15,7 +14,7 @@ interface QuestsProps {
 }
 
 export default function Quests({ player }: QuestsProps) {
-    const [contentType, setContentType] = useState<string>("Today");
+    const [contentType, setContentType] = useState<string>("Missions");
     const { player: playerData, isLoading: isLoadingPlayer } = usePlayer(
         player.id
     );
@@ -87,24 +86,6 @@ export default function Quests({ player }: QuestsProps) {
                         playerId={player.id}
                     />
                 )}
-            </div>
-
-            <div
-                className="
-                    fixed bottom-0 inset-x-0 bg-card border-t border-border z-50 h-auto
-                    px-[5px] py-[15px]
-                    sm:px-[30px] sm:py-[20px]
-                    md:px-[60px] md:py-[20px]
-                    lg:px-[120px] lg:py-[px]
-                    xl:px-[200px] xl:py-[15px]
-                "
-            >
-                <QuestNavBar
-                    contentType={contentType}
-                    onActiveChange={(type) => {
-                        setContentType(type);
-                    }}
-                />
             </div>
         </div>
     );

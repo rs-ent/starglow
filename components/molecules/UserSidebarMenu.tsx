@@ -37,7 +37,7 @@ export default function UserSidebarMenu({
     buttonGap = 10,
     isMobile = false,
 }: UserSidebarMenuProps) {
-    if (isMobile) {
+    /*if (isMobile) {
         return (
             <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-muted flex justify-around items-center py-3 px-2 z-50">
                 {items.map((item) => (
@@ -58,7 +58,7 @@ export default function UserSidebarMenu({
                 ))}
             </div>
         );
-    }
+    }*/
 
     return (
         <div className={cn("flex flex-col", `gap-[${buttonGap}px]`)}>

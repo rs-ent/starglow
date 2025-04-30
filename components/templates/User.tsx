@@ -59,10 +59,6 @@ export default function User({
 
     return (
         <div className="relative min-h-screen bg-background">
-            <div className="sticky top-0 z-10 backdrop-blur-md">
-                <NavBar />
-            </div>
-
             {/* Main Content Area */}
             <div className="flex h-screen">
                 {/* Desktop Sidebar */}

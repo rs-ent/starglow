@@ -6,6 +6,7 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { Paragraph } from "./Typography";
 import Image from "next/image";
+import Link from "next/link";
 
 interface VerticalButtonProps {
     icon?: LucideIcon;
@@ -18,8 +19,16 @@ interface VerticalButtonProps {
     frameSize?: number;
     gapSize?: number;
     isActive?: boolean;
-    variant?: "default" | "space" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+    variant?:
+        | "default"
+        | "space"
+        | "destructive"
+        | "outline"
+        | "secondary"
+        | "ghost"
+        | "link";
     onClick?: () => void;
+    href?: string;
     className?: string;
 }
 
@@ -35,6 +44,7 @@ export default function VerticalButton({
     gapSize = 5,
     isActive = false,
     variant = "ghost",
+    href,
     onClick,
     className = "",
 }: VerticalButtonProps) {
@@ -44,51 +54,69 @@ export default function VerticalButton({
     const { gapClass } = getResponsiveClass(gapSize);
 
     return (
-        <ShadcnButton
-            variant={variant}
-            onClick={isActive ? undefined : onClick}
-            className={cn(
-                "flex flex-col h-auto items-center justify-center transition-all",
-                isActive ? "opacity-100" : "cursor-point opacity-50",
-                paddingClass,
-                gapClass,
-                className,
-            )}
-        >
-            {Icon && !img && (
-                <div className={cn(frameClass, "flex items-center justify-center")}>
-                    <Icon
-                        strokeWidth={2}
-                        className={cn("w-full h-full min-w-full min-h-full", iconSpinning && "animate-spin")}
-                    />
-                </div>
-            )}
+        <Link href={href || ""}>
+            <ShadcnButton
+                variant={variant}
+                onClick={isActive ? undefined : onClick}
+                className={cn(
+                    "flex flex-col h-auto items-center justify-center transition-all",
+                    isActive ? "opacity-100" : "cursor-point opacity-50",
+                    paddingClass,
+                    gapClass,
+                    className
+                )}
+            >
+                {Icon && !img && (
+                    <div
+                        className={cn(
+                            frameClass,
+                            "flex items-center justify-center"
+                        )}
+                    >
+                        <Icon
+                            strokeWidth={2}
+                            className={cn(
+                                "w-full h-full min-w-full min-h-full",
+                                iconSpinning && "animate-spin"
+                            )}
+                        />
+                    </div>
+                )}
 
-            {img && !Icon && (
-                img.endsWith('.svg') ? (
-                    <img
-                        src={img}
-                        alt="Button Image"
-                        className={cn(frameClass, imgSpinning && "animate-spin")}
-                        style={{ width: `${frameSize}px`, height: 'auto' }}
-                    />
-                ) : (
-                    <Image
-                        src={img}
-                        alt="Button Image"
-                        width={frameSize}
-                        height={frameSize}
-                        className={cn(frameClass, imgSpinning && "animate-spin")}
-                        style={{ objectFit: 'contain' }}
-                    />
-                )
-            )}
+                {img &&
+                    !Icon &&
+                    (img.endsWith(".svg") ? (
+                        <img
+                            src={img}
+                            alt="Button Image"
+                            className={cn(
+                                frameClass,
+                                imgSpinning && "animate-spin"
+                            )}
+                            style={{ width: `${frameSize}px`, height: "auto" }}
+                        />
+                    ) : (
+                        <Image
+                            src={img}
+                            alt="Button Image"
+                            width={frameSize}
+                            height={frameSize}
+                            className={cn(
+                                frameClass,
+                                imgSpinning && "animate-spin"
+                            )}
+                            style={{ objectFit: "contain" }}
+                        />
+                    ))}
 
-            {label && (
-                <Paragraph className={cn(textClass, "text-center")}>
-                    {label}
-                </Paragraph>
-            )}
-        </ShadcnButton>
-    )
+                {label && (
+                    <Paragraph
+                        className={cn(textClass, "text-center text-foreground")}
+                    >
+                        {label}
+                    </Paragraph>
+                )}
+            </ShadcnButton>
+        </Link>
+    );
 }
