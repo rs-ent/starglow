@@ -11,8 +11,11 @@ import {
     RewardsLog,
     RewardCurrency,
     Prisma,
+    Player,
 } from "@prisma/client";
 import { tokenGate } from "./blockchain";
+import { validatePlayerAsset } from "./playerAssets";
+import { updatePlayerAsset } from "./playerAssets";
 
 export type PaginationInput = {
     currentPage: number;
@@ -46,11 +49,12 @@ export interface CreatePollInput {
     needToken: boolean;
     needTokenAddress?: string;
     bettingMode?: boolean;
+    bettingAssetId?: string;
     minimumBet?: number;
     maximumBet?: number;
     allowMultipleVote?: boolean;
-    participationRewards?: number;
-    rewardCurrency?: RewardCurrency;
+    participationRewardAssetId?: string;
+    participationRewardAmount?: number;
     minimumPoints?: number;
     minimumSGP?: number;
     minimumSGT?: number;
@@ -59,6 +63,26 @@ export interface CreatePollInput {
 
 export async function createPoll(input: CreatePollInput): Promise<Poll> {
     try {
+        if (input.bettingMode && input.bettingAssetId) {
+            const bettingAsset = await prisma.asset.findUnique({
+                where: { id: input.bettingAssetId },
+            });
+
+            if (!bettingAsset || !bettingAsset.isActive) {
+                throw new Error("Invalid betting asset");
+            }
+        }
+
+        if (input.participationRewardAssetId) {
+            const rewardAsset = await prisma.asset.findUnique({
+                where: { id: input.participationRewardAssetId },
+            });
+
+            if (!rewardAsset || !rewardAsset.isActive) {
+                throw new Error("Invalid reward asset");
+            }
+        }
+
         const poll = await prisma.poll.create({
             data: {
                 ...input,
@@ -92,6 +116,8 @@ export interface GetPollsInput {
     endDateAfter?: Date;
     exposeInScheduleTab?: boolean;
     bettingMode?: boolean;
+    bettingAssetId?: string;
+    participationRewardAssetId?: string;
 }
 
 export async function getPolls({
@@ -166,6 +192,10 @@ export async function getPolls({
             where.exposeInScheduleTab = input.exposeInScheduleTab;
         if (input?.bettingMode) where.bettingMode = input.bettingMode;
 
+        if (input?.bettingAssetId) where.bettingAssetId = input.bettingAssetId;
+        if (input?.participationRewardAssetId)
+            where.participationRewardAssetId = input.participationRewardAssetId;
+
         console.log("================");
         console.log("where");
         console.log(where);
@@ -208,6 +238,8 @@ export async function getPoll(id: string): Promise<Poll | null> {
             include: {
                 rewardLogs: true,
                 pollLogs: true,
+                bettingAsset: true,
+                participationRewardAsset: true,
             },
         });
 
@@ -225,14 +257,7 @@ export interface UpdatePollInput {
     description?: string;
     category?: PollCategory;
     status?: PollStatus;
-    options?: {
-        optionId: string;
-        name: string;
-        shorten?: string;
-        description?: string;
-        imgUrl?: string;
-        youtubeUrl?: string;
-    }[];
+    options?: PollOption[];
     imgUrl?: string;
     youtubeUrl?: string;
     startDate?: Date;
@@ -241,20 +266,50 @@ export interface UpdatePollInput {
     needToken?: boolean;
     needTokenAddress?: string;
     bettingMode?: boolean;
+    bettingAssetId?: string;
     minimumBet?: number;
     maximumBet?: number;
-    participationRewards?: number;
-    rewardCurrency?: RewardCurrency;
+    allowMultipleVote?: boolean;
+    participationRewardAssetId?: string;
+    participationRewardAmount?: number;
+    minimumPoints?: number;
+    minimumSGP?: number;
+    minimumSGT?: number;
+    requiredQuests?: string[];
 }
 
 export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
     try {
         const { id, ...data } = input;
 
+        if (input.bettingMode && input.bettingAssetId) {
+            const bettingAsset = await prisma.asset.findUnique({
+                where: { id: input.bettingAssetId },
+            });
+
+            if (!bettingAsset || !bettingAsset.isActive) {
+                throw new Error("Invalid betting asset");
+            }
+        }
+
+        if (input.participationRewardAssetId) {
+            const rewardAsset = await prisma.asset.findUnique({
+                where: { id: input.participationRewardAssetId },
+            });
+
+            if (!rewardAsset || !rewardAsset.isActive) {
+                throw new Error("Invalid reward asset");
+            }
+        }
+
         const poll = await prisma.poll.update({
             where: { id },
             data: {
                 ...data,
+                options: data.options?.map((option) => ({
+                    ...option,
+                    option: JSON.stringify(option),
+                })),
                 optionsOrder: data.options?.map((option) => option.optionId),
             },
         });
@@ -379,8 +434,8 @@ export async function tokenGating(
 }
 
 export interface ParticipatePollInput {
-    pollId: string;
-    userId: string;
+    poll: Poll;
+    player: Player;
     optionId: string;
     tokenGating?: TokenGatingResult;
     ipAddress?: string;
@@ -397,251 +452,128 @@ export async function participatePoll(
     input: ParticipatePollInput
 ): Promise<ParticipatePollResult> {
     try {
-        const { pollId, userId, optionId } = input;
-        console.log("================");
-        console.log("input");
-        console.log(input);
-        console.log("================");
-
-        const poll = await prisma.poll.findUnique({
-            where: { id: pollId },
-        });
-
-        if (!poll) {
+        const { poll, player, optionId } = input;
+        if (!poll) return { success: false, error: "Poll not found" };
+        if (!player)
             return {
                 success: false,
-                error: "Poll not found",
+                error: "Player not found. Please refresh the page or sign in again.",
             };
-        }
 
-        console.log("================");
-        console.log("poll");
-        console.log(poll);
-        console.log("================");
+        if (!poll.options)
+            return {
+                success: false,
+                error: "No options found. Please contact technical support.",
+            };
+        const validOption = poll.options.find(
+            (option: any) => option.optionId === optionId
+        );
+        if (!validOption)
+            return {
+                success: false,
+                error: "Invalid option. Please try again or contact technical support.",
+            };
 
-        const result = await prisma.$transaction(async (tx) => {
-            console.log("================");
-            console.log("transaction");
-            console.log("================");
+        const now = new Date();
+        if (now < poll.startDate)
+            return {
+                success: false,
+                error: `This poll is not active yet. The poll starts at ${poll.startDate.toLocaleString()}.`,
+            };
+        if (now > poll.endDate)
+            return {
+                success: false,
+                error: `This poll has ended. The poll ended at ${poll.endDate.toLocaleString()}.`,
+            };
 
-            const player = await tx.player.findUnique({
-                where: { userId },
-                select: {
-                    id: true,
-                },
-            });
-
-            if (!player) {
+        if (poll.needToken && poll.needTokenAddress) {
+            if (!input.tokenGating)
                 return {
                     success: false,
-                    error: "Player not found. Please refresh the page or sign in again.",
+                    error: "Token gating required. Please try again or contact technical support.",
                 };
-            }
-
-            console.log("================");
-            console.log("player");
-            console.log(player);
-            console.log("================");
-
-            const playerId = player.id;
-
-            const now = new Date();
-            if (now < poll.startDate) {
-                return {
-                    success: false,
-                    error: `This poll is not active yet. The poll starts at ${poll.startDate.toLocaleString()}.`,
-                };
-            }
-
-            if (now > poll.endDate) {
-                return {
-                    success: false,
-                    error: `This poll has ended. The poll ended at ${poll.endDate.toLocaleString()}.`,
-                };
-            }
-
-            if (!poll.options) {
-                return {
-                    success: false,
-                    error: "No options found. Please contact technical support.",
-                };
-            }
-
-            console.log("================");
-            console.log("poll.options");
-            console.log(poll.options);
-            console.log("================");
-
-            const options = poll.options;
-            const validOption = options.find(
-                (option: any) => option.optionId === optionId
-            );
-            if (!validOption) {
-                return {
-                    success: false,
-                    error: "Invalid option. Please try again or contact technical support.",
-                };
-            }
-
-            console.log("================");
-            console.log("validOption");
-            console.log(validOption);
-            console.log("================");
-
-            if (poll.needToken && poll.needTokenAddress) {
-                console.log("================");
-                console.log("poll.needToken && poll.needTokenAddress");
-                console.log("================");
-
-                if (!input.tokenGating) {
-                    return {
-                        success: false,
-                        error: "Token gating required. Please try again or contact technical support.",
-                    };
-                }
-
-                if (
-                    !input.tokenGating.success ||
-                    !input.tokenGating.data?.hasToken
-                ) {
-                    return {
-                        success: false,
-                        error: "Token gating failed. Please check your token balance. If the problem persists, please contact technical support.",
-                    };
-                }
-            }
-
-            console.log("================");
-            console.log("poll.allowMultipleVote");
-            console.log(poll.allowMultipleVote);
-            console.log("================");
-
-            const existingLog = await tx.pollLog.findFirst({
-                where: {
-                    pollId,
-                    playerId,
-                },
-            });
-
-            console.log("================");
-            console.log("existingLog");
-            console.log(existingLog);
-            console.log("================");
-
-            if (!poll.allowMultipleVote && existingLog) {
-                return {
-                    success: false,
-                    error: `You have already voted for this poll at ${existingLog.createdAt.toLocaleString()}.`,
-                };
-            }
-
-            console.log("================");
-            console.log("poll.endDate");
-            console.log(poll.endDate);
-            console.log("================");
-
             if (
-                poll.endDate &&
-                new Date(poll.endDate).getTime() + 1000 * 60 * 30 < Date.now()
+                !input.tokenGating.success ||
+                !input.tokenGating.data?.hasToken
             ) {
                 return {
                     success: false,
-                    error: `This poll has ended. The poll ended at ${poll.endDate.toLocaleString()}.`,
+                    error: "Token gating failed. Please check your token balance. If the problem persists, please contact technical support.",
                 };
             }
+        }
 
-            const record = {
-                [now.toString()]: optionId,
-            };
-
-            const pollLog = await tx.pollLog.create({
-                data: {
-                    pollId,
-                    playerId,
-                    optionId,
-                    option: validOption,
-                    ipAddress: input.ipAddress || "",
-                    userAgent: input.userAgent || "",
-                    record,
-                },
-            });
-
-            if (!existingLog) {
-                await tx.poll.update({
-                    where: { id: pollId },
-                    data: {
-                        uniqueVoters: {
-                            increment: 1,
-                        },
-                        totalVotes: {
-                            increment: 1,
-                        },
-                    },
-                });
-
-                console.log("================");
-                console.log("poll.uniqueVoters");
-                console.log(poll.uniqueVoters);
-                console.log("================");
-
-                if (!poll.bettingMode && poll.participationRewards) {
-                    console.log("================");
-                    console.log("Participation Rewards Granted");
-                    console.log("================");
-
-                    const rewardsLog = await tx.rewardsLog.create({
-                        data: {
-                            playerId,
-                            pollId,
-                            pollLogId: pollLog.id,
-                            amount: poll.participationRewards,
-                            reason: "Poll Participation Reward",
-                            currency: poll.rewardCurrency,
-                        },
-                    });
-
-                    console.log("================");
-                    console.log("rewardsLog");
-                    console.log(rewardsLog);
-                    console.log("================");
-
-                    const updatedPlayer = await tx.player.update({
-                        where: { id: playerId },
-                        data: {
-                            [poll.rewardCurrency]: {
-                                increment: poll.participationRewards,
-                            },
-                        },
-                    });
-
-                    console.log("================");
-                    console.log("updatedPlayer");
-                    console.log(updatedPlayer);
-                    console.log("================");
-                }
-            } else {
-                await tx.poll.update({
-                    where: { id: pollId },
-                    data: {
-                        totalVotes: {
-                            increment: 1,
-                        },
-                    },
-                });
-
-                console.log("================");
-                console.log("poll.totalVotes");
-                console.log(poll.totalVotes);
-                console.log("================");
-            }
-
+        const existingLog = await prisma.pollLog.findFirst({
+            where: { pollId: poll.id, playerId: player.id },
+        });
+        if (!poll.allowMultipleVote && existingLog) {
             return {
-                success: true,
-                data: pollLog,
+                success: false,
+                error: `You have already voted for this poll at ${existingLog.createdAt.toLocaleString()}.`,
             };
+        }
+        if (
+            poll.endDate &&
+            new Date(poll.endDate).getTime() + 1000 * 60 * 30 < Date.now()
+        ) {
+            return {
+                success: false,
+                error: `This poll has ended. The poll ended at ${poll.endDate.toLocaleString()}.`,
+            };
+        }
+
+        const pollLog = await prisma.pollLog.create({
+            data: {
+                pollId: poll.id,
+                playerId: player.id,
+                optionId,
+                option: validOption,
+                ipAddress: input.ipAddress || "",
+                userAgent: input.userAgent || "",
+                record: { [now.toString()]: optionId },
+            },
         });
 
-        return result;
+        if (!existingLog) {
+            if (
+                !poll.bettingMode &&
+                poll.participationRewardAssetId &&
+                poll.participationRewardAmount
+            ) {
+                const updateResult = await updatePlayerAsset({
+                    transaction: {
+                        playerId: player.id,
+                        assetId: poll.participationRewardAssetId,
+                        amount: poll.participationRewardAmount,
+                        operation: "ADD",
+                        reason: "Poll Participation Reward",
+                        pollId: poll.id,
+                        pollLogId: pollLog.id,
+                    },
+                });
+                if (!updateResult.success) {
+                    return {
+                        success: false,
+                        error: `Failed to give participation reward: ${updateResult.error}`,
+                    };
+                }
+            }
+
+            await prisma.poll.update({
+                where: { id: poll.id },
+                data: {
+                    uniqueVoters: { increment: 1 },
+                    totalVotes: { increment: 1 },
+                },
+            });
+        } else {
+            await prisma.poll.update({
+                where: { id: poll.id },
+                data: { totalVotes: { increment: 1 } },
+            });
+        }
+
+        return { success: true, data: pollLog };
     } catch (error) {
         console.error("Error creating poll log:", error);
         throw new Error("Failed to create poll log");

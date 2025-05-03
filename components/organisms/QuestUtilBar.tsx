@@ -32,16 +32,7 @@ export default function QuestUtilBar({ points }: QuestUtilBarProps) {
                         className="text-foreground cursor-pointer"
                     />
                 </div>
-                <div className="flex items-center">
-                    <Funds
-                        funds={points}
-                        fundsLabel="Points"
-                        fundsIcon="/funds/point.svg"
-                        frameSize={20}
-                        textSize={15}
-                        gapSize={10}
-                    />
-                </div>
+                
             </div>
 
             <Popup width="350px" open={showPopup} onClose={handleCancel}>

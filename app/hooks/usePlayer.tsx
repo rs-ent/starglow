@@ -2,95 +2,66 @@
 
 "use client";
 
-import { useState } from "react";
-import { Player } from "@prisma/client";
-import type { RewardCurrency } from "@/app/types/player";
+import { usePlayerQuery } from "@/app/queries/playerQueries";
 import {
-    usePlayerQuery,
-    usePlayerCurrencyQuery,
-} from "@/app/queries/playerQueries";
-import {
-    useSetPlayer,
-    useUpdatePlayerCurrency,
+    useSetPlayerMutation,
+    useInvitePlayerMutation,
 } from "@/app/mutations/playerMutations";
-import { useToast } from "./useToast";
-import type { User } from "next-auth";
-export function usePlayer(playerId?: string) {
-    const [isProcessing, setIsProcessing] = useState(false);
-    const toast = useToast();
+import {
+    GetPlayerInput,
+    InvitePlayerParams,
+    SetPlayerInput,
+} from "@/app/actions/player";
 
+export function usePlayerGet({
+    getPlayerInput,
+}: {
+    getPlayerInput?: GetPlayerInput;
+}) {
     const {
         data: player,
-        isLoading: isLoadingPlayer,
+        isLoading: isPlayerLoading,
         error: playerError,
-    } = usePlayerQuery(playerId || "");
-
-    const setPlayerMutation = useSetPlayer();
-    const updatePlayerCurrencyMutation = useUpdatePlayerCurrency();
-
-    const getPlayerCurrency = (currency: RewardCurrency) => {
-        if (!playerId) return { amount: 0, isLoading: false, error: null };
-
-        const {
-            data: amount = 0,
-            isLoading: isLoadingCurrency,
-            error: currencyError,
-        } = usePlayerCurrencyQuery(playerId, currency);
-
-        return { amount, isLoading: isLoadingCurrency, error: currencyError };
-    };
-
-    const updateCurrency = async (
-        currency: RewardCurrency,
-        amount: number
-    ): Promise<Player> => {
-        if (!playerId) throw new Error("Player ID is required");
-        setIsProcessing(true);
-
-        try {
-            const result = await updatePlayerCurrencyMutation.mutateAsync({
-                playerId,
-                currency,
-                amount,
-            });
-
-            const actionText = amount > 0 ? "Added" : "Removed";
-            toast.success(`${actionText} ${amount} ${currency}`);
-            return result;
-        } catch (error) {
-            console.error("Error updating player currency:", error);
-            toast.error("Failed to update currency");
-            throw error;
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const setPlayer = async (request: {
-        user?: User;
-        telegramId?: string;
-    }): Promise<Player> => {
-        setIsProcessing(true);
-
-        try {
-            const result = await setPlayerMutation.mutateAsync(request);
-            return result;
-        } catch (error) {
-            console.error("Error setting player:", error);
-            toast.error("Failed to set player");
-            throw error;
-        } finally {
-            setIsProcessing(false);
-        }
-    };
+    } = usePlayerQuery(getPlayerInput);
 
     return {
         player,
-        isLoading: isLoadingPlayer,
-        error: playerError,
-        isProcessing,
-        getPlayerCurrency,
-        updateCurrency,
+        isPlayerLoading,
+        playerError,
+
+        usePlayerQuery,
+    };
+}
+
+export function usePlayerSet({
+    setPlayerInput,
+    invitePlayerInput,
+}: {
+    setPlayerInput?: SetPlayerInput;
+    invitePlayerInput?: InvitePlayerParams;
+}) {
+    const {
+        mutateAsync: setPlayer,
+        isPending: isSetPlayerPending,
+        error: setPlayerError,
+    } = useSetPlayerMutation(setPlayerInput);
+
+    const {
+        mutateAsync: invitePlayer,
+        isPending: isInvitePlayerPending,
+        error: invitePlayerError,
+    } = useInvitePlayerMutation(invitePlayerInput);
+
+    return {
         setPlayer,
+        isSetPlayerPending,
+        setPlayerError,
+
+        invitePlayer,
+        isInvitePlayerPending,
+        invitePlayerError,
+
+        useSetPlayerMutation,
+        useInvitePlayerMutation,
     };
 }

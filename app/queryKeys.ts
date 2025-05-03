@@ -5,6 +5,8 @@ import {
     PaginationInput,
     TokenGatingInput,
 } from "./actions/polls";
+import { GetPlayerAssetsFilter } from "./actions/playerAssets";
+import { GetAssetsContractsInput } from "./actions/assets";
 
 export const queryKeys = {
     quests: {
@@ -14,12 +16,6 @@ export const queryKeys = {
             ["quests", "completed", playerId] as const,
         daily: () => ["quests", "daily"] as const,
         missions: () => ["quests", "missions"] as const,
-    },
-    player: {
-        all: ["player"] as const,
-        byId: (id: string) => ["player", id] as const,
-        currency: (playerId: string, currencyType: string) =>
-            ["player", playerId, "currency", currencyType] as const,
     },
     currency: ["currency"] as const,
     rewards: ["rewards"] as const,
@@ -98,6 +94,38 @@ export const queryKeys = {
                 networkId,
             ] as const,
     },
+};
+
+export const playerKeys = {
+    all: ["player"] as const,
+    byId: (id: string) => ["player", id] as const,
+};
+
+export const assetKeys = {
+    all: ["assets"] as const,
+    byId: (id: string) => ["assets", id] as const,
+    byName: (name: string) => ["assets", "name", name] as const,
+    bySymbol: (symbol: string) => ["assets", "symbol", symbol] as const,
+    byContractAddress: (contractAddress: string) =>
+        ["assets", "contractAddress", contractAddress] as const,
+    contracts: (filters?: any) =>
+        [...assetKeys.all, "contracts", filters] as const,
+    contract: (address: string) =>
+        [...assetKeys.all, "contract", address] as const,
+};
+
+export const playerAssetsKeys = {
+    all: ["playerAssets"] as const,
+    balance: (playerId: string, assetId: string) =>
+        [...playerAssetsKeys.all, "balance", playerId, assetId] as const,
+    balances: (playerId: string, assetIds: string[]) =>
+        [...playerAssetsKeys.all, "balances", playerId, assetIds] as const,
+    lists: () => [...playerAssetsKeys.all, "list"] as const,
+    list: (filters: GetPlayerAssetsFilter) =>
+        [...playerAssetsKeys.lists(), filters] as const,
+    details: () => [...playerAssetsKeys.all, "detail"] as const,
+    detail: (playerId: string, assetId: string) =>
+        [...playerAssetsKeys.details(), playerId, assetId] as const,
 };
 
 export const QUERY_KEYS = {

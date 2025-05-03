@@ -6,7 +6,7 @@ import { useState } from "react";
 import QuestUtilBar from "@/components/organisms/QuestUtilBar";
 import QuestContents from "@/components/organisms/QuestContents";
 import { Player } from "@prisma/client";
-import { usePlayer } from "@/app/hooks/usePlayer";
+import { usePlayerGet } from "@/app/hooks/usePlayer";
 import PartialLoading from "@/components/atoms/PartialLoading";
 
 interface QuestsProps {
@@ -15,10 +15,15 @@ interface QuestsProps {
 
 export default function Quests({ player }: QuestsProps) {
     const [contentType, setContentType] = useState<string>("Missions");
-    const { player: playerData, isLoading: isLoadingPlayer } = usePlayer(
-        player.id
-    );
-    const points = playerData?.points || 0;
+    const {
+        player: playerData,
+        isPlayerLoading,
+        playerError,
+    } = usePlayerGet({
+        getPlayerInput: {
+            playerId: player.id,
+        },
+    });
 
     return (
         <div className="relative flex flex-col w-full">
@@ -64,9 +69,7 @@ export default function Quests({ player }: QuestsProps) {
                     lg:px-[20px] lg:py-[8px]
                     xl:px-[20px] xl:py-[8px]
                 "
-            >
-                <QuestUtilBar points={points} />
-            </div>
+            ></div>
             <div
                 className="
                     flex justify-center items-center min-h-[80vh]
@@ -78,7 +81,7 @@ export default function Quests({ player }: QuestsProps) {
                     xl:px-[80px] xl:py-[5px] xl:mt-[100px] xl:mb-[160px]
                 "
             >
-                {isLoadingPlayer ? (
+                {isPlayerLoading ? (
                     <PartialLoading text="Loading player data..." />
                 ) : (
                     <QuestContents

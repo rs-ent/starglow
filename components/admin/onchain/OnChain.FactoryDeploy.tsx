@@ -118,6 +118,19 @@ export default function FactoryDeploy({
     };
 
     const handleDeploy = async () => {
+        const confirmed = window.confirm(
+            "⚠️ 중요 안내\n\n" +
+                "새로운 팩토리 컨트랙트 배포를 진행하시겠습니까?\n\n" +
+                "- 관리자와 상의하셨나요?\n" +
+                "- 새로운 배포가 필요한 이유가 명확한가요?\n" +
+                "- 기존 컨트랙트와의 호환성을 검토하셨나요?\n\n" +
+                "진행하시려면 '확인'을 눌러주세요."
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
         try {
             setDeploymentProgress(0);
             const selectedNetworkObj = networks?.find(

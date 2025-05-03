@@ -13,6 +13,7 @@ interface FundsProps {
     frameSize?: number;
     textSize?: number;
     gapSize?: number;
+    paddingSize?: number;
     className?: string;
 }
 
@@ -23,16 +24,19 @@ export default function Funds({
     frameSize = 20,
     textSize = 20,
     gapSize = 20,
+    paddingSize = 10,
     className = "",
 }: FundsProps) {
     const { textClass } = getResponsiveClass(textSize);
     const { frameClass } = getResponsiveClass(frameSize);
     const { gapClass } = getResponsiveClass(gapSize);
+    const { paddingClass } = getResponsiveClass(paddingSize);
 
     return (
         <div
             className={cn(
-                "flex items-center justify-center cursor-pointer bg-muted rounded-full transition-all py-1 px-2 shadow-lg",
+                "flex items-center justify-center cursor-pointer bg-muted rounded-full transition-all shadow-lg",
+                paddingClass,
                 className
             )}
         >

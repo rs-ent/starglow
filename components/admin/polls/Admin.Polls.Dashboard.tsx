@@ -11,7 +11,7 @@ import PollCreateModal from "./Admin.Polls.CreateModal";
 import AdminPollsList from "./Admin.Polls.List";
 
 export default function AdminPollsDashboard() {
-    const { polls, isLoading, error } = usePollsGet({});
+    const { pollsList, isLoading, error } = usePollsGet({});
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [viewType, setViewType] = useState<"table" | "card">("table");
 

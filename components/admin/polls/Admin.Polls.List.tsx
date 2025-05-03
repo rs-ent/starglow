@@ -264,7 +264,10 @@ function mapPollToInitialData(poll: Poll | null) {
         minimumPoints: poll.minimumPoints ?? undefined,
         minimumSGP: poll.minimumSGP ?? undefined,
         minimumSGT: poll.minimumSGT ?? undefined,
-        participationRewards: poll.participationRewards ?? undefined,
+        participationRewardAssetId:
+            poll.participationRewardAssetId ?? undefined,
+        participationRewardAmount: poll.participationRewardAmount ?? undefined,
+        bettingAssetId: poll.bettingAssetId ?? undefined,
         options,
     };
 }

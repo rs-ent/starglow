@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Poll } from "@prisma/client";
+import { Player, Poll } from "@prisma/client";
 import Countdown from "@/components/atoms/Countdown";
 import { PollOption } from "@/app/actions/polls";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -15,10 +15,11 @@ import { useToast } from "@/app/hooks/useToast";
 import { useRequireAuth } from "@/app/auth/authUtils.Client";
 import { useLoading } from "@/app/hooks/useLoading";
 import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
-import Image from "next/image";
+import { usePlayerSet } from "@/app/hooks/usePlayer";
 
 interface SinglePollProps {
     poll: Poll;
+    givenPlayer?: Player;
 }
 
 interface TokenGatingData {
@@ -27,7 +28,7 @@ interface TokenGatingData {
     tokenCount: number;
 }
 
-export default function SinglePoll({ poll }: SinglePollProps) {
+export default function SinglePoll({ poll, givenPlayer }: SinglePollProps) {
     const { startLoading, endLoading } = useLoading();
     const { user } = useRequireAuth();
 
@@ -43,9 +44,28 @@ export default function SinglePoll({ poll }: SinglePollProps) {
         },
     });
 
+    const [player, setPlayer] = useState<Player | null>(givenPlayer ?? null);
+    const { setPlayer: setPlayerFromSession } = usePlayerSet({});
+
     const { collection } = useCollectionGet({
         collectionAddress: poll.needTokenAddress || "",
     });
+
+    useEffect(() => {
+        async function ensurePlayer() {
+            startLoading();
+            if (user && !givenPlayer) {
+                const foundPlayer = await setPlayerFromSession({
+                    user: user,
+                });
+                setPlayer(foundPlayer ?? null);
+            } else {
+                setPlayer(givenPlayer ?? null);
+            }
+            endLoading();
+        }
+        ensurePlayer();
+    }, [user, givenPlayer, setPlayerFromSession]);
 
     useEffect(() => {
         const now = new Date();
@@ -114,6 +134,11 @@ export default function SinglePoll({ poll }: SinglePollProps) {
     }, [isParticipating, participateError]);
 
     const handleSubmit = () => {
+        if (!player) {
+            toast.error("Please sign in to participate in this poll.");
+            return;
+        }
+
         if (!selection) {
             toast.info("Please select an option");
             return;
@@ -134,8 +159,8 @@ export default function SinglePoll({ poll }: SinglePollProps) {
         }
 
         participatePoll({
-            pollId: poll.id,
-            userId: user!.id,
+            poll,
+            player,
             optionId: selection.optionId,
             tokenGating: tokenGating,
             ipAddress: "127.0.0.1",

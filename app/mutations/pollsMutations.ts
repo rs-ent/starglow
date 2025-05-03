@@ -11,6 +11,7 @@ import {
     participatePoll,
     updateUserSelection,
 } from "../actions/polls";
+import { playerAssetsKeys } from "../queryKeys";
 
 export function useCreatePollMutation() {
     const queryClient = useQueryClient();
@@ -76,16 +77,24 @@ export function useParticipatePollMutation() {
                 throw new Error(data.error || "Error participating in poll");
             }
             queryClient.invalidateQueries({
-                queryKey: pollKeys.logs(variables.pollId),
+                queryKey: pollKeys.logs(variables.poll.id),
             });
             queryClient.invalidateQueries({
                 queryKey: pollKeys.log(data.data?.id || ""),
             });
             queryClient.invalidateQueries({
                 queryKey: pollKeys.logByUser(
-                    variables.pollId,
-                    data.data?.playerId || ""
+                    variables.poll.id,
+                    variables.player.id
                 ),
+            });
+            queryClient.invalidateQueries({
+                queryKey: pollKeys.result(variables.poll.id),
+            });
+            queryClient.invalidateQueries({
+                queryKey: playerAssetsKeys.balances(variables.player.id, [
+                    variables.poll.participationRewardAssetId || "",
+                ]),
             });
         },
         onError: (error) => {

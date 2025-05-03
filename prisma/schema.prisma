@@ -90,9 +90,6 @@ model Player {
   userId            String?      @unique
   telegramId        String?      @unique
   name              String?
-  points            Int          @default(0)
-  SGP               Int          @default(0)
-  SGT               Int          @default(0)
   recommendedCount  Int          @default(0)
   recommenderId     String?
   recommenderName   String?
@@ -100,13 +97,36 @@ model Player {
   createdAt         DateTime     @default(now())
   lastConnectedAt   DateTime     @updatedAt
   user              User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playerAssets      PlayerAsset[]
   pollLogs          PollLog[]
   questLogs         QuestLog[]
   rewardLogs        RewardsLog[]
 
   @@index([userId, telegramId])
-  @@index([points, SGP, SGT])
   @@index([recommenderId])
+}
+
+enum PlayerAssetStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+  FROZEN
+}
+
+model PlayerAsset {
+  id             String         @id @default(cuid())
+  playerId       String
+  assetId        String
+  balance        Int            @default(0)
+  player         Player         @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  asset          Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  status         PlayerAssetStatus @default(ACTIVE)
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([playerId, assetId])
+  @@index([playerId])
+  @@index([assetId])
+  @@index([status])
 }
 
 model Quest {
@@ -115,8 +135,9 @@ model Quest {
   description    String?
   url            String?
   icon           String?
-  rewards        Int            @default(800)
-  rewardCurrency RewardCurrency @default(points)
+  rewardAssetId    String?      
+  rewardAmount     Int?
+  rewardAsset      Asset?       @relation("QuestRewardAsset", fields: [rewardAssetId], references: [id])
   startDate      DateTime?
   endDate        DateTime?
   permanent      Boolean        @default(false)
@@ -209,13 +230,14 @@ model Poll {
   
   // 베팅 설정
   bettingMode       Boolean      @default(false)
+  bettingAssetId    String?      
+  bettingAsset      Asset?       @relation("PollBettingAsset", fields: [bettingAssetId], references: [id])
   minimumBet        Int          @default(1000)
   maximumBet        Int          @default(10000)
-  
-  // 보상 설정
-  participationRewards Int?
-  winnerRewards       Int?
-  rewardCurrency      RewardCurrency @default(points)
+
+  participationRewardAssetId String?
+  participationRewardAmount  Int?
+  participationRewardAsset   Asset?    @relation("PollParticipationReward", fields: [participationRewardAssetId], references: [id])
   
   // 통계
   viewCount          Int          @default(0)
@@ -285,21 +307,28 @@ model PollLog {
 model RewardsLog {
   id         String         @id @default(cuid())
   playerId   String
+
+  // Asset 관련 필드 추가
+  assetId        String?        // Asset ID
+  balanceBefore  Int?          // 보상 전 잔액
+  balanceAfter   Int?          // 보상 후 잔액
+
   questId    String?
   questLogId String?
   pollId     String?
   pollLogId  String?
   amount     Int
-  currency   RewardCurrency @default(points)
   reason     String?
   createdAt  DateTime       @default(now())
+
   player     Player         @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  asset          Asset?         @relation(fields: [assetId], references: [id])
   poll       Poll?          @relation(fields: [pollId], references: [id])
   pollLog    PollLog?       @relation(fields: [pollLogId], references: [id])
   quest      Quest?         @relation(fields: [questId], references: [id])
   questLog   QuestLog?      @relation(fields: [questLogId], references: [id])
 
-  @@index([playerId, currency, createdAt])
+  @@index([playerId, assetId])
   @@index([questId, pollId])
 }
 
@@ -521,8 +550,97 @@ model BlockchainNetwork {
   collectionContracts CollectionContract[]
   factoryContracts    FactoryContract[]
   nfts                NFT[]
-
+  assets              Asset[]
+  assetsContracts     AssetsContract[]
   @@index([isTestnet, isActive])
+}
+
+model AssetsContract {
+  id String @id @default(cuid())
+  address String @unique
+  version String
+  description String?
+  abi Json?
+  bytecode String?
+
+  networkId String
+  network BlockchainNetwork @relation(fields: [networkId], references: [id])
+
+  assets Asset[]
+
+  creatorAddress String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([networkId])
+}
+
+enum AssetType {
+  ONCHAIN
+  OFFCHAIN
+}
+
+model Asset {
+  id              String    @id @default(cuid())
+  name            String
+  symbol          String
+  description     String?
+  iconUrl         String?
+  imageUrl        String?
+  metadata        Json?     // JSON 형태로 메타데이터 저장
+  assetType       AssetType
+  contractAddress String?   // ONCHAIN인 경우 필수
+  isActive        Boolean   @default(true)
+  
+  // Asset Function 관련
+  selectors       String[]  @default([])  // bytes4를 string으로 저장
+  abis            Json?     // {selector: abi} 형태로 저장
+
+  // 관리자 정보
+  creatorAddress String?
+
+  // 에셋 컨트랙트
+  assetId String?
+  assetsContractAddress String?
+  assetsContract AssetsContract? @relation(fields: [assetsContractAddress], references: [address])
+  
+  // 네트워크 정보
+  networkId       String?
+  network         BlockchainNetwork? @relation(fields: [networkId], references: [id])
+
+  // 플레이어 정보
+  playerAssets    PlayerAsset[]
+  rewardsLogs     RewardsLog[]
+
+  // 사용처
+  pollBettingAssets Poll[] @relation("PollBettingAsset")
+  pollParticipationRewardAssets Poll[] @relation("PollParticipationReward")
+  questRewardAssets Quest[] @relation("QuestRewardAsset")
+  
+  // 타임스탬프
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // 인덱스
+  @@index([assetType, isActive])
+  @@index([contractAddress])
+  @@index([networkId])
+}
+
+model AssetTransaction {
+  id          String   @id @default(cuid())
+  success     Boolean
+  assetId     String
+  description String?
+  metadata    Json?
+  amount      Int?
+  receiverAddress String?
+  transactionHash String @unique
+  createdAt   DateTime @default(now())
+  
+  @@index([assetId, success])
+  @@index([transactionHash])
 }
 
 model FactoryContract {

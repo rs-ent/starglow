@@ -3,40 +3,59 @@
 
 import LinkButton from "../atoms/LinkButton";
 import AuthButton from "../atoms/AuthButton";
-import Hamburger from "../atoms/Hamburger";
-import { useMobileMenu } from "@/app/hooks/useMobileMenu";
 import { useSession } from "next-auth/react";
-import { motion, AnimatePresence } from "framer-motion";
 import VerticalButton from "../atoms/VerticalButton";
-import { useState } from "react";
-import Link from "next/link";
-const menuItems = [
+import { useState, useEffect } from "react";
+import RewardPanel from "../molecules/RewardPanel";
+import { usePlayerSet } from "@/app/hooks/usePlayer";
+import { cn } from "@/lib/utils/tailwind";
+
+const defaultMenuItems = [
     { name: "Home", href: "/", icon: "/ui/link.svg" },
     { name: "Quests", href: "/quests", icon: "/ui/ribbon-badge.svg" },
     { name: "Polls", href: "/polls", icon: "/ui/vote.svg" },
     { name: "NFTs", href: "/nfts", icon: "/ui/assets.svg" },
 ];
 
+const myPage = (userId: string) => [
+    {
+        name: "My Page",
+        href: `/user/${userId}`,
+        icon: "/ui/integration.svg",
+    },
+];
+
 export default function NavBar() {
-    const { isOpen, toggle, close } = useMobileMenu();
     const { data: session } = useSession();
     const [active, setActive] = useState<string>("");
+    const [menu, setMenu] = useState(defaultMenuItems);
+    const [playerId, setPlayerId] = useState<string | null>(null);
+
+    const user = session?.user;
+    const { setPlayer, isSetPlayerPending } = usePlayerSet({});
+
+    useEffect(() => {
+        async function ensurePlayer() {
+            if (session?.user) {
+                if (!menu.find((item) => item.name === "My Page")) {
+                    setMenu([...menu, ...myPage(session.user.id)]);
+                }
+
+                const player = await setPlayer({
+                    user: session.user,
+                });
+                setPlayerId(player?.id ?? null);
+            } else {
+                setPlayerId(null);
+            }
+        }
+        ensurePlayer();
+    }, [session, setPlayer]);
 
     const handleActiveChange = (name: string) => {
         setActive(name);
     };
 
-    if (
-        session &&
-        session.user &&
-        !menuItems.find((item) => item.name === "My Page")
-    ) {
-        menuItems.push({
-            name: "My Page",
-            href: `/user/${session.user.id}`,
-            icon: "/ui/integration.svg",
-        });
-    }
     return (
         <>
             <nav
@@ -66,7 +85,7 @@ export default function NavBar() {
                 </LinkButton>
                 {/* Desktop Menu */}
                 <div className="hidden lg:flex items-center justify-end space-x-2 md:space-x-4 lg:space-x-9 xl:space-x-16">
-                    {menuItems.map(({ name, href }) => (
+                    {menu.map(({ name, href }) => (
                         <LinkButton
                             key={name}
                             href={href}
@@ -83,6 +102,9 @@ export default function NavBar() {
                         gapSize={10}
                         showUserCard={false}
                     />
+                    {playerId && (
+                        <RewardPanel playerId={playerId} assetNames={["SGP"]} />
+                    )}
                 </div>
 
                 {/* Mobile Hamburger Icon
@@ -125,37 +147,59 @@ export default function NavBar() {
             </nav>
 
             {/* Mobile Menu */}
-            <nav
-                className="
+            <div className="lg:hidden">
+                <div
+                    className={cn(
+                        "fixed top-0 left-0 right-0 inset-x-0 z-40",
+                        "flex justify-between items-center",
+                        "px-[10px] py-[10px]",
+                        "sm:px-[16px] sm:py-[14px]",
+                        "md:px-[20px] md:py-[17px]"
+                    )}
+                >
+                    <LinkButton
+                        href="/"
+                        className="flex justify-start w-[25px] sm:w-[35px]"
+                        paddingSize={0}
+                        gapSize={0}
+                    >
+                        <img src="/logo/l-white.svg" alt="Starglow" />
+                    </LinkButton>
+                    {playerId && (
+                        <RewardPanel playerId={playerId} assetNames={["SGP"]} />
+                    )}
+                </div>
+                <nav
+                    className="
                     fixed bottom-0 left-0 right-0 inset-x-0 z-40
-                    bg-background/50 backdrop-blur-sm border-t border-muted
+                    bg-background/30 backdrop-blur-sm border-t border-muted
                     px-[5px] py-[7px]
                     sm:px-[30px] sm:py-[9px]
                     md:px-[60px] md:py-[10px]
-                    lg:hidden
                     flex justify-around items-center
                 "
-            >
-                {menuItems.map(({ name, href, icon }) => (
-                    <VerticalButton
-                        key={name}
-                        img={icon}
-                        label={name}
-                        isActive={active === name}
-                        textSize={10}
-                        paddingSize={0}
-                        frameSize={20}
-                        gapSize={5}
-                        onClick={() => handleActiveChange(name)}
-                        href={href}
-                        className={
-                            active === name
-                                ? "hover:bg-[rgba(0,0,0,0)]"
-                                : "hover:bg-[rgba(0,0,0,0)] hover:opacity-100"
-                        }
-                    />
-                ))}
-            </nav>
+                >
+                    {menu.map(({ name, href, icon }) => (
+                        <VerticalButton
+                            key={name}
+                            img={icon}
+                            label={name}
+                            isActive={active === name}
+                            textSize={10}
+                            paddingSize={0}
+                            frameSize={20}
+                            gapSize={5}
+                            onClick={() => handleActiveChange(name)}
+                            href={href}
+                            className={
+                                active === name
+                                    ? "hover:bg-[rgba(0,0,0,0)]"
+                                    : "hover:bg-[rgba(0,0,0,0)] hover:opacity-100"
+                            }
+                        />
+                    ))}
+                </nav>
+            </div>
         </>
     );
 }

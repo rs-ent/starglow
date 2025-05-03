@@ -71,9 +71,6 @@ Table Player {
   userId String [unique]
   telegramId String [unique]
   name String
-  points Int [not null, default: 0]
-  SGP Int [not null, default: 0]
-  SGT Int [not null, default: 0]
   recommendedCount Int [not null, default: 0]
   recommenderId String
   recommenderName String
@@ -81,9 +78,25 @@ Table Player {
   createdAt DateTime [default: `now()`, not null]
   lastConnectedAt DateTime [not null]
   user User
+  playerAssets PlayerAsset [not null]
   pollLogs PollLog [not null]
   questLogs QuestLog [not null]
   rewardLogs RewardsLog [not null]
+}
+
+Table PlayerAsset {
+  id String [pk]
+  playerId String [not null]
+  assetId String [not null]
+  balance Int [not null, default: 0]
+  player Player [not null]
+  asset Asset [not null]
+  status PlayerAssetStatus [not null, default: 'ACTIVE']
+  updatedAt DateTime [not null]
+
+  indexes {
+    (playerId, assetId) [unique]
+  }
 }
 
 Table Quest {
@@ -92,8 +105,9 @@ Table Quest {
   description String
   url String
   icon String
-  rewards Int [not null, default: 800]
-  rewardCurrency RewardCurrency [not null, default: 'points']
+  rewardAssetId String
+  rewardAmount Int
+  rewardAsset Asset
   startDate DateTime
   endDate DateTime
   permanent Boolean [not null, default: false]
@@ -148,11 +162,13 @@ Table Poll {
   allowMultipleVote Boolean [not null, default: false]
   voteLimit Int
   bettingMode Boolean [not null, default: false]
+  bettingAssetId String
+  bettingAsset Asset
   minimumBet Int [not null, default: 1000]
   maximumBet Int [not null, default: 10000]
-  participationRewards Int
-  winnerRewards Int
-  rewardCurrency RewardCurrency [not null, default: 'points']
+  participationRewardAssetId String
+  participationRewardAmount Int
+  participationRewardAsset Asset
   viewCount Int [not null, default: 0]
   uniqueVoters Int [not null, default: 0]
   totalVotes Int [not null, default: 0]
@@ -189,15 +205,18 @@ Table PollLog {
 Table RewardsLog {
   id String [pk]
   playerId String [not null]
+  assetId String
+  balanceBefore Int
+  balanceAfter Int
   questId String
   questLogId String
   pollId String
   pollLogId String
   amount Int [not null]
-  currency RewardCurrency [not null, default: 'points']
   reason String
   createdAt DateTime [default: `now()`, not null]
   player Player [not null]
+  asset Asset
   poll Poll
   pollLog PollLog
   quest Quest
@@ -404,6 +423,63 @@ Table BlockchainNetwork {
   collectionContracts CollectionContract [not null]
   factoryContracts FactoryContract [not null]
   nfts NFT [not null]
+  assets Asset [not null]
+  assetsContracts AssetsContract [not null]
+}
+
+Table AssetsContract {
+  id String [pk]
+  address String [unique, not null]
+  version String [not null]
+  description String
+  abi Json
+  bytecode String
+  networkId String [not null]
+  network BlockchainNetwork [not null]
+  assets Asset [not null]
+  creatorAddress String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table Asset {
+  id String [pk]
+  name String [not null]
+  symbol String [not null]
+  description String
+  iconUrl String
+  imageUrl String
+  metadata Json
+  assetType AssetType [not null]
+  contractAddress String
+  isActive Boolean [not null, default: true]
+  selectors String[] [not null]
+  abis Json
+  creatorAddress String
+  assetId String
+  assetsContractAddress String
+  assetsContract AssetsContract
+  networkId String
+  network BlockchainNetwork
+  playerAssets PlayerAsset [not null]
+  rewardsLogs RewardsLog [not null]
+  pollBettingAssets Poll [not null]
+  pollParticipationRewardAssets Poll [not null]
+  questRewardAssets Quest [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table AssetTransaction {
+  id String [pk]
+  success Boolean [not null]
+  assetId String [not null]
+  description String
+  metadata Json
+  amount Int
+  receiverAddress String
+  transactionHash String [unique, not null]
+  createdAt DateTime [default: `now()`, not null]
 }
 
 Table FactoryContract {
@@ -626,6 +702,13 @@ Table ArtistMember {
   artist Artist [not null]
 }
 
+Enum PlayerAssetStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+  FROZEN
+}
+
 Enum PollStatus {
   UPCOMING
   ACTIVE
@@ -637,6 +720,11 @@ Enum PollStatus {
 Enum PollCategory {
   PUBLIC
   PRIVATE
+}
+
+Enum AssetType {
+  ONCHAIN
+  OFFCHAIN
 }
 
 Enum PaymentStatus {
@@ -697,15 +785,27 @@ Ref: Wallet.userId > User.id [delete: Cascade]
 
 Ref: Player.userId - User.id [delete: Cascade]
 
+Ref: PlayerAsset.playerId > Player.id [delete: Cascade]
+
+Ref: PlayerAsset.assetId > Asset.id [delete: Cascade]
+
+Ref: Quest.rewardAssetId > Asset.id
+
 Ref: QuestLog.playerId > Player.id [delete: Cascade]
 
 Ref: QuestLog.questId > Quest.id
+
+Ref: Poll.bettingAssetId > Asset.id
+
+Ref: Poll.participationRewardAssetId > Asset.id
 
 Ref: PollLog.playerId > Player.id [delete: Cascade]
 
 Ref: PollLog.pollId > Poll.id
 
 Ref: RewardsLog.playerId > Player.id [delete: Cascade]
+
+Ref: RewardsLog.assetId > Asset.id
 
 Ref: RewardsLog.pollId > Poll.id
 
@@ -726,6 +826,12 @@ Ref: Payment.userId > User.id
 Ref: WebhookEvent.paymentId > Payment.id [delete: Cascade]
 
 Ref: VirtualAccount.paymentId - Payment.id [delete: Cascade]
+
+Ref: AssetsContract.networkId > BlockchainNetwork.id
+
+Ref: Asset.assetsContractAddress > AssetsContract.address
+
+Ref: Asset.networkId > BlockchainNetwork.id
 
 Ref: FactoryContract.networkId > BlockchainNetwork.id
 

@@ -1,0 +1,522 @@
+/// app/actions/playerAssets.ts
+
+"use server";
+
+import { prisma } from "@/lib/prisma/client";
+import { getAsset } from "./assets";
+import { getPlayer } from "./player";
+import {
+    Prisma,
+    PlayerAsset,
+    AssetType,
+    PlayerAssetStatus,
+    Asset,
+} from "@prisma/client";
+import type { AssetStatusChangeEvent } from "./assets";
+
+export interface PlayerAssetResult<T> {
+    success: boolean;
+    data: T;
+    error?: string;
+}
+
+export interface PlayerAssetOperation {
+    playerId: string;
+    assetId: string;
+    amount: number;
+    operation: "ADD" | "SUBTRACT" | "SET";
+}
+
+export interface PlayerAssetTransactionInput {
+    playerId: string;
+    assetId: string;
+    amount: number;
+    operation: "ADD" | "SUBTRACT" | "SET";
+    reason?: string;
+    metadata?: any;
+    questId?: string;
+    questLogId?: string;
+    pollId?: string;
+    pollLogId?: string;
+}
+
+export interface GetPlayerAssetsFilter {
+    playerId?: string;
+    assetId?: string;
+    assetIds?: string[];
+    assetType?: AssetType;
+    isActive?: boolean;
+}
+
+export interface GetPlayerAssetsInput {
+    filter: GetPlayerAssetsFilter;
+}
+
+export async function getPlayerAssets(
+    input?: GetPlayerAssetsInput
+): Promise<PlayerAssetResult<PlayerAsset[]>> {
+    if (!input) {
+        return {
+            success: false,
+            data: [],
+            error: "No input",
+        };
+    }
+
+    const where: Prisma.PlayerAssetWhereInput = {};
+    const assetWhere: Prisma.AssetWhereInput = {};
+
+    if (input?.filter.playerId) {
+        where.playerId = input.filter.playerId;
+    }
+
+    if (input?.filter.assetId) {
+        where.assetId = input.filter.assetId;
+    }
+
+    if (input?.filter.assetIds) {
+        where.assetId = { in: input.filter.assetIds };
+    }
+
+    if (input?.filter.assetType) {
+        assetWhere.assetType = input.filter.assetType;
+    }
+
+    if (input?.filter.isActive !== undefined) {
+        assetWhere.isActive = input.filter.isActive;
+    }
+
+    if (Object.keys(assetWhere).length > 0) {
+        where.asset = assetWhere;
+    }
+
+    const playerAssets = await prisma.playerAsset.findMany({
+        where,
+        include: {
+            asset: true,
+            player: true,
+        },
+    });
+
+    return {
+        success: true,
+        data: playerAssets,
+    };
+}
+
+export interface GetPlayerAssetInput {
+    playerId: string;
+    assetId: string;
+}
+
+export async function getPlayerAsset(
+    input?: GetPlayerAssetInput
+): Promise<PlayerAssetResult<PlayerAsset | null>> {
+    if (!input) {
+        return {
+            success: false,
+            data: null,
+            error: "No input",
+        };
+    }
+
+    const playerAsset = await prisma.playerAsset.findUnique({
+        where: {
+            playerId_assetId: {
+                playerId: input.playerId,
+                assetId: input.assetId,
+            },
+        },
+        include: {
+            asset: true,
+            player: true,
+        },
+    });
+
+    return {
+        success: true,
+        data: playerAsset,
+    };
+}
+
+export interface UpdatePlayerAssetInput {
+    transaction: PlayerAssetTransactionInput;
+}
+
+export async function updatePlayerAsset(
+    input?: UpdatePlayerAssetInput,
+    trx?: Prisma.TransactionClient
+): Promise<PlayerAssetResult<PlayerAsset | null>> {
+    if (!input) {
+        return {
+            success: false,
+            data: null,
+            error: "No input",
+        };
+    }
+
+    const tx = trx || prisma;
+    const playerAsset = await tx.playerAsset.findUnique({
+        where: {
+            playerId_assetId: {
+                playerId: input.transaction.playerId,
+                assetId: input.transaction.assetId,
+            },
+        },
+    });
+
+    if (playerAsset) {
+        switch (playerAsset.status) {
+            case PlayerAssetStatus.INACTIVE:
+                return {
+                    success: false,
+                    data: null,
+                    error: "Asset is inactive",
+                };
+            case PlayerAssetStatus.FROZEN:
+                return { success: false, data: null, error: "Asset is frozen" };
+            case PlayerAssetStatus.DELETED:
+                return {
+                    success: false,
+                    data: null,
+                    error: "Asset is deleted",
+                };
+        }
+    }
+
+    const oldBalance = playerAsset?.balance || 0;
+    let newBalance: number;
+
+    switch (input.transaction.operation) {
+        case "ADD":
+            newBalance = oldBalance + input.transaction.amount;
+            break;
+        case "SUBTRACT":
+            newBalance = oldBalance - input.transaction.amount;
+            if (newBalance < 0) {
+                return {
+                    success: false,
+                    data: null,
+                    error: "Insufficient balance",
+                };
+            }
+            break;
+        case "SET":
+            newBalance = input.transaction.amount;
+            break;
+    }
+
+    const updatedAsset = await tx.playerAsset.upsert({
+        where: {
+            playerId_assetId: {
+                playerId: input.transaction.playerId,
+                assetId: input.transaction.assetId,
+            },
+        },
+        create: {
+            playerId: input.transaction.playerId,
+            assetId: input.transaction.assetId,
+            balance: newBalance,
+        },
+        update: {
+            balance: newBalance,
+        },
+    });
+
+    if (
+        input.transaction.operation === "ADD" ||
+        input.transaction.operation === "SUBTRACT"
+    ) {
+        await tx.rewardsLog.create({
+            data: {
+                playerId: input.transaction.playerId,
+                assetId: input.transaction.assetId,
+                amount: input.transaction.amount,
+                balanceBefore: oldBalance,
+                balanceAfter: newBalance,
+                questId: input.transaction.questId,
+                questLogId: input.transaction.questLogId,
+                pollId: input.transaction.pollId,
+                pollLogId: input.transaction.pollLogId,
+                reason: input.transaction.reason,
+            },
+        });
+    }
+
+    return { success: true, data: updatedAsset };
+}
+
+export interface BatchUpdatePlayerAssetInput {
+    txs: PlayerAssetTransactionInput[];
+}
+
+export async function batchUpdatePlayerAsset(
+    inputs?: BatchUpdatePlayerAssetInput
+): Promise<
+    PlayerAssetResult<{
+        results: PlayerAsset[];
+        failed: PlayerAssetTransactionInput[];
+    }>
+> {
+    if (!inputs) {
+        return {
+            success: false,
+            data: {
+                results: [],
+                failed: [],
+            },
+            error: "No input",
+        };
+    }
+
+    return prisma.$transaction(async (tx) => {
+        const results: PlayerAsset[] = [];
+        const failed: PlayerAssetTransactionInput[] = [];
+        const promises = inputs.txs.map(async (input) => {
+            const result = await updatePlayerAsset({ transaction: input });
+            if (result.success && result.data) {
+                results.push(result.data);
+            } else {
+                failed.push(input);
+            }
+        });
+        await Promise.all(promises);
+
+        return {
+            success: true,
+            data: {
+                results,
+                failed,
+            },
+        };
+    });
+}
+
+export interface DeletePlayerAssetInput {
+    playerId: string;
+    assetId: string;
+}
+
+export async function deletePlayerAsset(
+    input?: DeletePlayerAssetInput
+): Promise<PlayerAssetResult<boolean>> {
+    try {
+        if (!input) {
+            return {
+                success: false,
+                data: false,
+                error: "No input",
+            };
+        }
+
+        await prisma.playerAsset.update({
+            where: {
+                playerId_assetId: {
+                    playerId: input.playerId,
+                    assetId: input.assetId,
+                },
+            },
+            data: {
+                status: PlayerAssetStatus.DELETED,
+            },
+        });
+
+        return {
+            success: true,
+            data: true,
+        };
+    } catch (error) {
+        console.error(error);
+        return {
+            success: false,
+            data: false,
+            error: "Failed to delete player asset",
+        };
+    }
+}
+
+export async function updatePlayerAssetsOnAssetChange(
+    event: AssetStatusChangeEvent
+): Promise<PlayerAssetResult<void>> {
+    try {
+        const { assetId, newStatus } = event;
+
+        const affectedPlayerAssets = await prisma.playerAsset.findMany({
+            where: {
+                assetId,
+                status: PlayerAssetStatus.ACTIVE,
+            },
+            include: { asset: true },
+        });
+
+        if (affectedPlayerAssets.length === 0) {
+            return {
+                success: true,
+                data: undefined,
+            };
+        }
+
+        await prisma.$transaction(async (tx) => {
+            if (!newStatus.isActive) {
+                // Asset이 비활성화된 경우
+                await tx.playerAsset.updateMany({
+                    where: { assetId },
+                    data: {
+                        status: PlayerAssetStatus.INACTIVE,
+                    },
+                });
+            }
+
+            // Asset 타입이 변경된 경우
+            if (event.previousStatus.assetType !== newStatus.assetType) {
+                await tx.playerAsset.updateMany({
+                    where: { assetId },
+                    data: {
+                        status: PlayerAssetStatus.FROZEN,
+                    },
+                });
+            }
+
+            // 로그 기록
+            for (const playerAsset of affectedPlayerAssets) {
+                await tx.rewardsLog.create({
+                    data: {
+                        playerId: playerAsset.playerId,
+                        assetId: playerAsset.assetId,
+                        amount: 0,
+                        balanceBefore: playerAsset.balance,
+                        balanceAfter: playerAsset.balance,
+                        reason: !newStatus.isActive
+                            ? "Asset deactivated"
+                            : "Asset type changed",
+                    },
+                });
+            }
+        });
+
+        return {
+            success: true,
+            data: undefined,
+        };
+    } catch (error) {
+        console.error("Failed to update player assets on asset change:", error);
+        return {
+            success: false,
+            data: undefined,
+            error: "Failed to update player assets on asset change",
+        };
+    }
+}
+
+export interface ValidatePlayerAssetInput {
+    playerId: string;
+    assetId: string;
+    requiredAmount?: number;
+    requiredStatus?: PlayerAssetStatus;
+}
+
+export interface ValidatePlayerAssetResult {
+    success: boolean;
+    playerAsset: PlayerAsset | null;
+    error?: string;
+    isNew?: boolean;
+}
+
+export async function validatePlayerAsset(
+    input?: ValidatePlayerAssetInput,
+    externalTx?: Prisma.TransactionClient
+): Promise<ValidatePlayerAssetResult> {
+    if (!input) {
+        return {
+            success: false,
+            playerAsset: null,
+            error: "No input",
+        };
+    }
+
+    try {
+        const tx = externalTx || prisma;
+        const asset = await tx.asset.findUnique({
+            where: { id: input.assetId },
+        });
+
+        if (!asset) {
+            return {
+                success: false,
+                playerAsset: null,
+                error: "Asset not found",
+            };
+        }
+
+        if (!asset.isActive) {
+            return {
+                success: false,
+                playerAsset: null,
+                error: "Asset is not active",
+            };
+        }
+
+        if (asset.assetType === "ONCHAIN" && !asset.contractAddress) {
+            return {
+                success: false,
+                playerAsset: null,
+                error: "Invalid ONCHAIN asset configuration",
+            };
+        }
+
+        const playerAsset = await tx.playerAsset.upsert({
+            where: {
+                playerId_assetId: {
+                    playerId: input.playerId,
+                    assetId: input.assetId,
+                },
+            },
+            create: {
+                playerId: input.playerId,
+                assetId: input.assetId,
+                balance: 0,
+                status: PlayerAssetStatus.ACTIVE,
+            },
+            update: {},
+            include: {
+                asset: true,
+            },
+        });
+
+        if (
+            input.requiredStatus &&
+            playerAsset.status !== input.requiredStatus
+        ) {
+            return {
+                success: false,
+                playerAsset,
+                error: `Asset is ${playerAsset.status.toLowerCase()}`,
+            };
+        }
+
+        if (
+            input.requiredAmount &&
+            playerAsset.balance < input.requiredAmount
+        ) {
+            return {
+                success: false,
+                playerAsset,
+                isNew: !playerAsset.balance,
+                error: "Insufficient balance",
+            };
+        }
+
+        return {
+            success: true,
+            playerAsset,
+            isNew: !playerAsset.balance,
+        };
+    } catch (error) {
+        console.error("Failed to validate player asset:", error);
+        return {
+            success: false,
+            playerAsset: null,
+            error: "Failed to validate player asset",
+        };
+    }
+}

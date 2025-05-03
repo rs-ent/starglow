@@ -3,53 +3,37 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updatePlayerCurrency, setPlayer } from "@/app/actions/player";
-import type { RewardCurrency } from "@/app/types/player";
-import { queryKeys } from "@/app/queryKeys";
-import { Player } from "@prisma/client";
-import type { User } from "next-auth";
-type SetPlayerRequest = {
-    user?: User;
-    telegramId?: string;
-};
+import {
+    setPlayer,
+    SetPlayerInput,
+    invitePlayer,
+    InvitePlayerParams,
+} from "@/app/actions/player";
+import { playerKeys } from "@/app/queryKeys";
 
-export function useSetPlayer() {
+export function useSetPlayerMutation(input?: SetPlayerInput) {
     const queryClient = useQueryClient();
 
-    return useMutation<Player, Error, SetPlayerRequest>({
-        mutationFn: async ({ user, telegramId }) => {
-            return setPlayer(user, telegramId);
-        },
+    return useMutation({
+        mutationFn: setPlayer,
         onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: playerKeys.all });
             queryClient.invalidateQueries({
-                queryKey: queryKeys.player.byId(data.id),
+                queryKey: playerKeys.byId(data?.id || ""),
             });
         },
     });
 }
 
-type UpdateCurrencyRequest = {
-    playerId: string;
-    currency: RewardCurrency;
-    amount: number;
-};
-
-export function useUpdatePlayerCurrency() {
+export function useInvitePlayerMutation(input?: InvitePlayerParams) {
     const queryClient = useQueryClient();
 
-    return useMutation<Player, Error, UpdateCurrencyRequest>({
-        mutationFn: async ({ playerId, currency, amount }) => {
-            return updatePlayerCurrency(playerId, currency, amount);
-        },
+    return useMutation({
+        mutationFn: invitePlayer,
         onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: playerKeys.all });
             queryClient.invalidateQueries({
-                queryKey: queryKeys.player.byId(variables.playerId),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.player.currency(
-                    variables.playerId,
-                    variables.currency
-                ),
+                queryKey: playerKeys.byId(variables?.referralId || ""),
             });
         },
     });

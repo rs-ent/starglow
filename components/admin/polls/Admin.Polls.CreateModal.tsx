@@ -14,6 +14,7 @@ import {
 import { PollCategory, PollStatus, RewardCurrency } from "@prisma/client";
 import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
 import { useFactoryGet } from "@/app/hooks/useFactoryContracts";
+import { useAssetsGet } from "@/app/hooks/useAssets";
 import {
     Dialog,
     DialogContent,
@@ -99,12 +100,13 @@ const pollSchemaShape = z.object({
         .string()
         .transform((val) => (val === "" ? undefined : val))
         .optional(),
+    participationRewardAssetId: z.string().optional(),
+    participationRewardAmount: z.number().min(0).optional(),
     bettingMode: z.boolean().optional(),
+    bettingAssetId: z.string().optional(),
     minimumBet: z.number().min(0).optional(),
     maximumBet: z.number().min(0).optional(),
     allowMultipleVote: z.boolean().optional(),
-    participationRewards: z.number().min(0).optional(),
-    rewardCurrency: z.nativeEnum(RewardCurrency).optional(),
     minimumPoints: z.number().min(0).optional(),
     minimumSGP: z.number().min(0).optional(),
     minimumSGT: z.number().min(0).optional(),
@@ -135,10 +137,16 @@ export default function PollCreateModal({
     const { createPoll, updatePoll, isLoading, error } = usePollsSet();
     const { everyCollections, isLoading: isLoadingEveryCollections } =
         useFactoryGet({});
-    console.log(everyCollections);
     const newPollId = `p${((polls?.length ?? 0) + 1)
         .toString()
         .padStart(4, "0")}`;
+
+    const { assets, isLoading: isLoadingAssets } = useAssetsGet({
+        getAssetsInput: {
+            isActive: true,
+        },
+    });
+    console.log(assets);
 
     const {
         control,
@@ -175,11 +183,12 @@ export default function PollCreateModal({
             needToken: false,
             needTokenAddress: "",
             bettingMode: false,
+            bettingAssetId: undefined,
             minimumBet: 0,
             maximumBet: 0,
             allowMultipleVote: false,
-            participationRewards: 800,
-            rewardCurrency: RewardCurrency.SGP,
+            participationRewardAssetId: undefined,
+            participationRewardAmount: undefined,
             minimumPoints: 0,
             minimumSGP: 0,
             minimumSGT: 0,
@@ -250,9 +259,12 @@ export default function PollCreateModal({
                 return;
             }
 
-            if (data.participationRewards && !data.rewardCurrency) {
+            if (
+                data.participationRewardAmount &&
+                !data.participationRewardAssetId
+            ) {
                 toast.error(
-                    "참여 보상을 설정할 때는 보상 화폐를 선택해주세요."
+                    "보상 수량을 설정할 때는 보상 에셋을 선택해주세요."
                 );
                 return;
             }
@@ -720,15 +732,99 @@ export default function PollCreateModal({
                             />
 
                             {/* Participation Rewards */}
-                            <div className="flex gap-2 w-full">
+                            <div className="flex flex-row gap-4 w-full">
                                 <Controller
-                                    name="participationRewards"
+                                    name="participationRewardAssetId"
+                                    control={control}
+                                    render={({ field }) => {
+                                        return (
+                                            <FormField
+                                                label="참여 보상 에셋"
+                                                error={
+                                                    formErrors
+                                                        .participationRewardAssetId
+                                                        ?.message
+                                                }
+                                            >
+                                                <div className="space-y-4">
+                                                    <Select
+                                                        value={field.value}
+                                                        onValueChange={
+                                                            field.onChange
+                                                        }
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="보상 에셋을 선택하세요" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {isLoadingAssets ? (
+                                                                <SelectItem value="">
+                                                                    로딩 중...
+                                                                </SelectItem>
+                                                            ) : (
+                                                                assets?.assets?.map(
+                                                                    (asset) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                asset.id
+                                                                            }
+                                                                            value={
+                                                                                asset.id
+                                                                            }
+                                                                        >
+                                                                            <div className="flex items-center gap-2">
+                                                                                {asset.iconUrl && (
+                                                                                    <Image
+                                                                                        src={
+                                                                                            asset.iconUrl
+                                                                                        }
+                                                                                        alt={
+                                                                                            asset.name
+                                                                                        }
+                                                                                        width={
+                                                                                            24
+                                                                                        }
+                                                                                        height={
+                                                                                            24
+                                                                                        }
+                                                                                        className="rounded-full"
+                                                                                    />
+                                                                                )}
+                                                                                <span>
+                                                                                    {
+                                                                                        asset.name
+                                                                                    }
+                                                                                </span>
+                                                                                <span className="text-muted-foreground">
+                                                                                    (
+                                                                                    {
+                                                                                        asset.symbol
+                                                                                    }
+
+                                                                                    )
+                                                                                </span>
+                                                                            </div>
+                                                                        </SelectItem>
+                                                                    )
+                                                                )
+                                                            )}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </FormField>
+                                        );
+                                    }}
+                                />
+
+                                <Controller
+                                    name="participationRewardAmount"
                                     control={control}
                                     render={({ field }) => (
                                         <FormField
-                                            label="참여 보상"
+                                            label="보상 수량"
                                             error={
-                                                formErrors.participationRewards
+                                                formErrors
+                                                    .participationRewardAmount
                                                     ?.message
                                             }
                                             className="flex-1"
@@ -741,7 +837,6 @@ export default function PollCreateModal({
                                                 onChange={(e) => {
                                                     const value =
                                                         e.target.value;
-                                                    // 숫자만 입력 가능하도록 처리
                                                     if (
                                                         value === "" ||
                                                         /^\d+$/.test(value)
@@ -755,55 +850,14 @@ export default function PollCreateModal({
                                                 }}
                                                 maxLength={20}
                                                 className="w-full py-3"
-                                                placeholder="참여 보상을 입력하세요"
+                                                placeholder="보상 수량을 입력하세요"
                                                 type="number"
+                                                disabled={
+                                                    !watch(
+                                                        "participationRewardAssetId"
+                                                    )
+                                                }
                                             />
-                                        </FormField>
-                                    )}
-                                />
-
-                                <Controller
-                                    name="rewardCurrency"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <FormField
-                                            label="보상 화폐"
-                                            error={
-                                                formErrors.rewardCurrency
-                                                    ?.message
-                                            }
-                                        >
-                                            <Select
-                                                value={field.value}
-                                                onValueChange={field.onChange}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="보상 화폐를 선택하세요" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem
-                                                        value={
-                                                            RewardCurrency.SGP
-                                                        }
-                                                    >
-                                                        SGP
-                                                    </SelectItem>
-                                                    <SelectItem
-                                                        value={
-                                                            RewardCurrency.SGT
-                                                        }
-                                                    >
-                                                        SGT
-                                                    </SelectItem>
-                                                    <SelectItem
-                                                        value={
-                                                            RewardCurrency.points
-                                                        }
-                                                    >
-                                                        POINTS
-                                                    </SelectItem>
-                                                </SelectContent>
-                                            </Select>
                                         </FormField>
                                     )}
                                 />

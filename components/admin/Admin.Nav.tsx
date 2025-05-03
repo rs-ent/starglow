@@ -20,6 +20,7 @@ export default function AdminNav() {
         { href: "/admin", label: "Dashboard", icon: HomeIcon },
         { href: "/admin/quests", label: "Quests", icon: BriefcaseIcon },
         { href: "/admin/polls", label: "Polls", icon: VoteIcon },
+        { href: "/admin/assets", label: "Assets", icon: PartyPopperIcon },
         { href: "/admin/onchain", label: "On Chain", icon: PartyPopperIcon },
         { href: "/admin/users", label: "Users", icon: UsersIcon },
         { href: "/admin/settings", label: "Settings", icon: CogIcon },

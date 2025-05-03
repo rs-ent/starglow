@@ -6,6 +6,7 @@ import SinglePoll from "@/components/templates/Poll";
 export default async function PollPage({ params }: { params: { id: string } }) {
     const { id } = await params;
     const poll = await getPoll(id);
+    console.log("poll", poll);
 
     if (!poll) {
         return <div>Poll not found</div>;

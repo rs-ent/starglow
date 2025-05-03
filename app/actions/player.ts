@@ -3,103 +3,93 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import { Player } from "@prisma/client";
+import { Prisma, Player, PlayerAsset, AssetType } from "@prisma/client";
 import type { RewardCurrency } from "@/app/types/player";
 import type { User } from "next-auth";
-export async function getPlayer(playerId: string) {
+
+export interface GetPlayerInput {
+    playerId: string;
+}
+
+export async function getPlayer(
+    input?: GetPlayerInput
+): Promise<Player | null> {
+    if (!input) {
+        return null;
+    }
+
     const player = await prisma.player.findUnique({
-        where: { id: playerId },
+        where: { id: input.playerId },
     });
 
     if (!player) {
-        throw new Error("Player not found");
+        return null;
     }
 
     return player;
+}
+
+export interface SetPlayerInput {
+    user?: User;
+    telegramId?: string;
 }
 
 export async function setPlayer(
-    user?: User,
-    telegramId?: string
-): Promise<Player> {
+    input?: SetPlayerInput
+): Promise<Player | null> {
+    if (!input || (!input.user && !input.telegramId)) {
+        return null;
+    }
+
     try {
-        let player;
-
-        if (user) {
-            player = await prisma.player.findUnique({
-                where: { userId: user.id },
+        if (input.user?.id) {
+            const playerByUserId = await prisma.player.findUnique({
+                where: { userId: input.user.id },
             });
+
+            if (playerByUserId) {
+                return playerByUserId;
+            }
         }
 
-        if (telegramId) {
-            player = await prisma.player.findUnique({
-                where: { telegramId },
+        if (input.telegramId) {
+            const playerByTelegramId = await prisma.player.findUnique({
+                where: { telegramId: input.telegramId },
             });
+
+            if (playerByTelegramId) {
+                return playerByTelegramId;
+            }
         }
 
-        if (!player) {
-            player = await prisma.player.create({
-                data: {
-                    name: user?.name || "New Player",
-                    userId: user?.id || null,
-                    telegramId: telegramId || null,
-                },
-            });
-        }
-
-        return player;
+        return await prisma.player.create({
+            data: {
+                name: input.user?.name || input.telegramId || "New Player",
+                userId: input.user?.id || null,
+                telegramId: input.telegramId || null,
+            },
+        });
     } catch (error) {
         console.error("[setPlayer] Error:", error);
-        throw error;
+        return null;
     }
 }
 
-export async function getPlayerCurrency(
-    playerId: string,
-    currency: RewardCurrency
-): Promise<number> {
-    const player = await prisma.player.findUnique({
-        where: { id: playerId },
-        select: {
-            [currency]: true,
-        },
-    });
-
-    if (!player) {
-        throw new Error("Player not found");
-    }
-
-    return Number(player[currency]) || 0;
-}
-
-export async function updatePlayerCurrency(
-    playerId: string,
-    currency: RewardCurrency,
-    amount: number
-): Promise<Player> {
-    const player = await prisma.player.update({
-        where: { id: playerId },
-        data: {
-            [currency]: {
-                increment: amount,
-            },
-        },
-    });
-
-    return player;
-}
-
-interface InvitePlayerParams {
+export interface InvitePlayerParams {
     currentUser: User;
     referralId: string;
     method: "Telegram" | "Web App";
 }
 
-export async function invitePlayer({
-    currentUser,
-    referralId,
-    method,
-}: InvitePlayerParams): Promise<Player> {
+export async function invitePlayer(
+    input?: InvitePlayerParams
+): Promise<Player | null> {
+    if (!input) {
+        return null;
+    }
+
+    const { currentUser, referralId, method } = input;
+
     try {
         // 1. Get or create current player
         const currentPlayer = await prisma.player.upsert({
