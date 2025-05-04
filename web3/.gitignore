@@ -3,6 +3,11 @@ cache/
 typechain-types/
 artifacts/
 ignition/
+!artifacts/contracts/Collection.sol/Collection.json
+!artifacts/contracts/Factory.sol/Factory.json
+!artifacts/contracts/Assets.sol/Assets.json
+!artifacts/contracts/Staking.sol/Staking.json
+
 # Dependencies
 node_modules/
 
