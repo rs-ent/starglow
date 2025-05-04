@@ -105,18 +105,27 @@ Table Quest {
   description String
   url String
   icon String
+  imgUrl String
+  youtubeUrl String
   rewardAssetId String
   rewardAmount Int
   rewardAsset Asset
   startDate DateTime
   endDate DateTime
+  needToken Boolean [not null, default: false]
+  needTokenAddress String
+  repeatable Boolean [not null, default: false]
+  repeatableCount Int
+  repeatableInterval Int
   permanent Boolean [not null, default: false]
-  visible Boolean [not null, default: true]
-  primary Int [default: 0]
+  isActive Boolean [not null, default: true]
+  order Int [default: 0]
   effects String
   type String
   questLogs QuestLog [not null]
   rewardLogs RewardsLog [not null]
+  artistId String
+  artist Artist
 }
 
 Table QuestLog {
@@ -125,9 +134,12 @@ Table QuestLog {
   questId String [not null]
   completed Boolean [not null, default: false]
   completedAt DateTime [default: `now()`, not null]
-  rewards Int [not null, default: 0]
-  rewardCurrency RewardCurrency [not null, default: 'points']
+  rewardAssetId String
+  rewardAmount Int
+  rewardAsset Asset
   createdAt DateTime [default: `now()`, not null]
+  isClaimed Boolean [not null, default: false]
+  claimedAt DateTime
   player Player [not null]
   quest Quest [not null]
   rewardLogs RewardsLog [not null]
@@ -181,6 +193,8 @@ Table Poll {
   metadata Json
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  artistId String
+  artist Artist
   pollLogs PollLog [not null]
   rewardLogs RewardsLog [not null]
 }
@@ -196,6 +210,9 @@ Table PollLog {
   userAgent String
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  rewardAssetId String
+  rewardAmount Int
+  rewardAsset Asset
   record Json
   player Player [not null]
   poll Poll [not null]
@@ -466,6 +483,8 @@ Table Asset {
   pollBettingAssets Poll [not null]
   pollParticipationRewardAssets Poll [not null]
   questRewardAssets Quest [not null]
+  pollLogRewardAssets PollLog [not null]
+  questLogRewardAssets QuestLog [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
 }
@@ -660,6 +679,7 @@ Table Artist {
   id String [pk]
   name String [not null]
   description String
+  logoUrl String
   imageUrl String
   externalUrl String
   reportUrl String
@@ -674,6 +694,9 @@ Table Artist {
   updatedAt DateTime [not null]
   members ArtistMember [not null]
   collectionContracts CollectionContract [not null]
+  messages ArtistMessage [not null]
+  polls Poll [not null]
+  quests Quest [not null]
 }
 
 Table ArtistMember {
@@ -697,6 +720,20 @@ Table ArtistMember {
   videos String[] [not null]
   music String[] [not null]
   additionalInfo Json
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  artist Artist [not null]
+}
+
+Table ArtistMessage {
+  id String [pk]
+  artistId String [not null]
+  bannerUrl String
+  externalUrl String
+  isActive Boolean [not null, default: true]
+  startDate DateTime
+  endDate DateTime
+  message String [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   artist Artist [not null]
@@ -791,6 +828,10 @@ Ref: PlayerAsset.assetId > Asset.id [delete: Cascade]
 
 Ref: Quest.rewardAssetId > Asset.id
 
+Ref: Quest.artistId > Artist.id
+
+Ref: QuestLog.rewardAssetId > Asset.id
+
 Ref: QuestLog.playerId > Player.id [delete: Cascade]
 
 Ref: QuestLog.questId > Quest.id
@@ -798,6 +839,10 @@ Ref: QuestLog.questId > Quest.id
 Ref: Poll.bettingAssetId > Asset.id
 
 Ref: Poll.participationRewardAssetId > Asset.id
+
+Ref: Poll.artistId > Artist.id
+
+Ref: PollLog.rewardAssetId > Asset.id
 
 Ref: PollLog.playerId > Player.id [delete: Cascade]
 
@@ -854,3 +899,5 @@ Ref: NFTEvent.collectionId > CollectionContract.id
 Ref: NFTEvent.nftId > NFT.id
 
 Ref: ArtistMember.artistId > Artist.id
+
+Ref: ArtistMessage.artistId > Artist.id

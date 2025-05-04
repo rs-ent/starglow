@@ -1,22 +1,25 @@
 /// app/queryKeys.ts
-import * as PortOne from "@portone/browser-sdk/v2";
 import {
     GetPollsInput,
     PaginationInput,
     TokenGatingInput,
 } from "./actions/polls";
+import {
+    CompleteQuestInput,
+    GetQuestLogsInput,
+    GetClaimableQuestLogsInput,
+    TokenGatingInput as QuestTokenGatingInput,
+    GetClaimedQuestLogsInput,
+} from "./actions/quests";
 import { GetPlayerAssetsFilter } from "./actions/playerAssets";
-import { GetAssetsContractsInput } from "./actions/assets";
+import { GetQuestInput, GetQuestsInput } from "./actions/quests";
+import {
+    GetArtistInput,
+    GetArtistMessagesInput,
+    GetArtistsInput,
+} from "./actions/artists";
 
 export const queryKeys = {
-    quests: {
-        all: ["quests"] as const,
-        byId: (id: string) => ["quests", id] as const,
-        completed: (playerId: string) =>
-            ["quests", "completed", playerId] as const,
-        daily: () => ["quests", "daily"] as const,
-        missions: () => ["quests", "missions"] as const,
-    },
     currency: ["currency"] as const,
     rewards: ["rewards"] as const,
     banners: () => ["banners"] as const,
@@ -488,3 +491,41 @@ export const pollKeys = {
     selection: (pollId: string) =>
         [...pollKeys.all, "selection", pollId] as const,
 } as const;
+
+export const questKeys = {
+    all: ["quests"] as const,
+    list: (input?: GetQuestsInput, pagination?: PaginationInput) =>
+        [...questKeys.all, "list", input, pagination] as const,
+    detail: (input?: GetQuestInput) =>
+        [...questKeys.all, "detail", input] as const,
+    tokenGating: (input?: QuestTokenGatingInput) =>
+        [
+            ...questKeys.all,
+            "token-gating",
+            input?.quest.id,
+            input?.user.id,
+        ] as const,
+    complete: (input?: CompleteQuestInput) =>
+        [
+            ...questKeys.all,
+            "complete",
+            input?.quest.id,
+            input?.player.id,
+        ] as const,
+    logs: (input?: GetQuestLogsInput, pagination?: PaginationInput) =>
+        [...questKeys.all, "logs", input, pagination] as const,
+    claimableLogs: (input?: GetClaimableQuestLogsInput) =>
+        [...questKeys.all, "claimable-logs", input] as const,
+    claimedLogs: (input?: GetClaimedQuestLogsInput) =>
+        [...questKeys.all, "claimed-logs", input] as const,
+};
+
+export const artistKeys = {
+    all: ["artists"] as const,
+    list: (input?: GetArtistsInput) =>
+        [...artistKeys.all, "list", input] as const,
+    detail: (input?: GetArtistInput) =>
+        [...artistKeys.all, "detail", input] as const,
+    messages: (input?: GetArtistMessagesInput) =>
+        [...artistKeys.all, "messages", input] as const,
+};

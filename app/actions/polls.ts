@@ -59,6 +59,7 @@ export interface CreatePollInput {
     minimumSGP?: number;
     minimumSGT?: number;
     requiredQuests?: string[];
+    artistId?: string;
 }
 
 export async function createPoll(input: CreatePollInput): Promise<Poll> {
@@ -196,11 +197,6 @@ export async function getPolls({
         if (input?.participationRewardAssetId)
             where.participationRewardAssetId = input.participationRewardAssetId;
 
-        console.log("================");
-        console.log("where");
-        console.log(where);
-        console.log("================");
-
         const [items, totalItems] = await Promise.all([
             prisma.poll.findMany({
                 where,
@@ -212,11 +208,6 @@ export async function getPolls({
             }),
             prisma.poll.count({ where }),
         ]);
-
-        console.log("================");
-        console.log("items");
-        console.log(items);
-        console.log("================");
 
         const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
 
@@ -276,6 +267,7 @@ export interface UpdatePollInput {
     minimumSGP?: number;
     minimumSGT?: number;
     requiredQuests?: string[];
+    artistId?: string;
 }
 
 export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
@@ -530,6 +522,8 @@ export async function participatePoll(
                 option: validOption,
                 ipAddress: input.ipAddress || "",
                 userAgent: input.userAgent || "",
+                rewardAssetId: poll.participationRewardAssetId,
+                rewardAmount: poll.participationRewardAmount,
                 record: { [now.toString()]: optionId },
             },
         });

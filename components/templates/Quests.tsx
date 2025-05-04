@@ -3,11 +3,12 @@
 "use client";
 
 import { useState } from "react";
-import QuestUtilBar from "@/components/organisms/QuestUtilBar";
-import QuestContents from "@/components/organisms/QuestContents";
 import { Player } from "@prisma/client";
 import { usePlayerGet } from "@/app/hooks/usePlayer";
 import PartialLoading from "@/components/atoms/PartialLoading";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+import QuestsContents from "@/components/organisms/Quests.Contents";
 
 interface QuestsProps {
     player: Player;
@@ -26,68 +27,57 @@ export default function Quests({ player }: QuestsProps) {
     });
 
     return (
-        <div className="relative flex flex-col w-full">
-            <div className="bg">
-                <img
-                    src="/bg/blur-galaxy.svg"
-                    alt="Background"
-                    className="fixed inset-0 w-full h-full object-cover object-center -z-50"
-                />
-                <div className="fixed -top-100 -right-100 -z-30">
-                    <img
-                        src="/elements/blur.svg"
-                        alt="Blur Element"
-                        style={{ width: "1000px", height: "auto" }}
-                    />
-                </div>
-
-                <div className="fixed -bottom-20 -left-20 -z-10">
+        <div className="relative flex flex-col w-full h-screen">
+            <>
+                <div className="absolute inset-0 bg-gradient-to-b from-[#09011b] to-[#311473] -z-20" />
+                <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -z-10">
                     <img
                         src="/elements/donut.svg"
                         alt="Donut"
-                        style={{ width: "500px", height: "auto" }}
+                        style={{ width: "600px", height: "auto" }}
+                        className={`
+                            scale-150 rotate-90 md:scale-125 md:rotate-0 lg:scale-100 lg:rotate-0
+                            transition-all duration-1000
+                            loading-lazy
+                        `}
                     />
                 </div>
 
-                <div className="fixed top-10 -right-10 -z-10 blur-sm">
+                <div className="fixed inset-0 -z-20">
                     <img
-                        src="/logo/3d.svg"
+                        src="/elements/bg-quest-blur.svg"
                         alt="Logo"
-                        style={{ width: "200px", height: "auto" }}
+                        className={`
+                            w-full h-full object-cover 
+                            scale-125 lg:scale-100 
+                            bg-blend-overlay 
+                            transition-all duration-1000
+                            loading-lazy
+                        `}
                     />
                 </div>
+            </>
 
-                <div className="fixed bottom-0 bg-gradient-to-b from-[rgba(0,0,0,0)] to-[rgba(0,0,0,1)] w-full h-[50%] -z-20 blur-2xl" />
-            </div>
+            <h2
+                className={cn(
+                    "text-center text-4xl",
+                    "mt-[70px] md:mt-[80px] lg:mt-[20px]",
+                    getResponsiveClass(45).textClass
+                )}
+            >
+                Quest
+            </h2>
 
             <div
-                className="
-                    fixed top-0 inset-x-0 border-b border-border/30 z-50 h-auto
-                    px-[15px] py-[7px]
-                    sm:px-[16px] sm:py-[7px]
-                    md:px-[18px] md:py-[8px]
-                    lg:px-[20px] lg:py-[8px]
-                    xl:px-[20px] xl:py-[8px]
-                "
-            ></div>
-            <div
-                className="
-                    flex justify-center items-center min-h-[80vh]
-                    px-[5px] py-[5px] 
-                    mt-[60px] mb-[100px]
-                    sm:px-[10px] sm:py-[5px] sm:mt-[70px] sm:mb-[120px]
-                    md:px-[20px] md:py-[5px] md:mt-[80px] md:mb-[140px]
-                    lg:px-[40px] lg:py-[5px] lg:mt-[90px] lg:mb-[150px]
-                    xl:px-[80px] xl:py-[5px] xl:mt-[100px] xl:mb-[160px]
-                "
+                className={cn(
+                    "flex justify-center items-center",
+                    "mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]"
+                )}
             >
                 {isPlayerLoading ? (
                     <PartialLoading text="Loading player data..." />
                 ) : (
-                    <QuestContents
-                        contentType={contentType}
-                        playerId={player.id}
-                    />
+                    <QuestsContents />
                 )}
             </div>
         </div>

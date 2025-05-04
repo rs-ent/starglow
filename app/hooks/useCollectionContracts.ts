@@ -46,7 +46,11 @@ export function useCollectionGet({
     walletId,
     options,
 }: UseCollectionGetProps = {}) {
-    const collectionQuery = useCollection({
+    const {
+        data: collection,
+        isLoading: isCollectionLoading,
+        error: collectionError,
+    } = useCollection({
         collectionAddress,
     });
 
@@ -81,7 +85,7 @@ export function useCollectionGet({
 
     return {
         // 데이터
-        collection: collectionQuery.data,
+        collection,
         tokens: tokensQuery.data,
         status: statusQuery.data,
         escrowWallets: escrowWalletsQuery.data,
@@ -90,14 +94,14 @@ export function useCollectionGet({
 
         // 상태
         isLoading:
-            collectionQuery.isLoading ||
+            isCollectionLoading ||
             (hasCollectionAddress && tokensQuery.isLoading) ||
             (hasCollectionAddress && statusQuery.isLoading) ||
             (hasCollectionAddress && escrowWalletsQuery.isLoading) ||
             (hasCollectionAddress && collectionSettingsQuery.isLoading) ||
             (hasCollectionAddress && walletId ? nonceQuery.isLoading : false),
         error:
-            collectionQuery.error ||
+            collectionError ||
             tokensQuery.error ||
             statusQuery.error ||
             escrowWalletsQuery.error ||
@@ -105,7 +109,7 @@ export function useCollectionGet({
             (walletId ? nonceQuery.error : undefined),
 
         // 개별 쿼리 상태
-        isLoadingCollection: collectionQuery.isLoading,
+        isLoadingCollection: isCollectionLoading,
         isLoadingTokens: hasCollectionAddress && tokensQuery.isLoading,
         isLoadingStatus: hasCollectionAddress && statusQuery.isLoading,
         isLoadingEscrow: hasCollectionAddress && escrowWalletsQuery.isLoading,
@@ -115,7 +119,6 @@ export function useCollectionGet({
             hasCollectionAddress && collectionSettingsQuery.isLoading,
 
         // 원본 쿼리 객체 (고급 사용 사례용)
-        collectionQuery,
         tokensQuery,
         statusQuery,
         escrowWalletsQuery,

@@ -11,7 +11,13 @@ export default async function QuestPage() {
     const user = await requireAuthUser("/quests");
 
     try {
-        const player = await setPlayer(user);
+        const player = await setPlayer({
+            user: user,
+        });
+
+        if (!player) {
+            return notFound();
+        }
 
         return <Quests player={player} />;
     } catch (error) {

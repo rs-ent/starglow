@@ -135,22 +135,32 @@ model Quest {
   description    String?
   url            String?
   icon           String?
+  imgUrl         String?
+  youtubeUrl     String?
   rewardAssetId    String?      
   rewardAmount     Int?
   rewardAsset      Asset?       @relation("QuestRewardAsset", fields: [rewardAssetId], references: [id])
   startDate      DateTime?
   endDate        DateTime?
+  needToken         Boolean      @default(false)
+  needTokenAddress  String?
+  repeatable     Boolean        @default(false)
+  repeatableCount Int?
+  repeatableInterval Int?
   permanent      Boolean        @default(false)
-  visible        Boolean        @default(true)
-  primary        Int?           @default(0)
+  isActive       Boolean        @default(true)
+  order          Int?           @default(0)
   effects        String?
   type           String?
   questLogs      QuestLog[]
   rewardLogs     RewardsLog[]
 
-  @@index([permanent, visible, startDate])
-  @@index([type, visible])
-  @@index([primary, visible])
+  artistId   String?
+  artist     Artist?     @relation("ArtistQuests", fields: [artistId], references: [id])
+
+  @@index([permanent, isActive, startDate])
+  @@index([type, isActive])
+  @@index([order, isActive])
 }
 
 model QuestLog {
@@ -159,15 +169,18 @@ model QuestLog {
   questId        String
   completed      Boolean        @default(false)
   completedAt    DateTime       @default(now())
-  rewards        Int            @default(0)
-  rewardCurrency RewardCurrency @default(points)
+  rewardAssetId  String?
+  rewardAmount   Int?
+  rewardAsset    Asset?         @relation("QuestLogRewardAsset", fields: [rewardAssetId], references: [id])
   createdAt      DateTime       @default(now())
+  isClaimed      Boolean        @default(false)
+  claimedAt      DateTime?
   player         Player         @relation(fields: [playerId], references: [id], onDelete: Cascade)
   quest          Quest          @relation(fields: [questId], references: [id])
   rewardLogs     RewardsLog[]
 
   @@index([playerId, questId, completed])
-  @@index([completedAt, rewardCurrency])
+  @@index([completedAt])
 }
 
 enum PollStatus {
@@ -260,6 +273,8 @@ model Poll {
   updatedAt         DateTime      @updatedAt
   
   // 관계
+  artistId   String?
+  artist     Artist?     @relation("ArtistPolls", fields: [artistId], references: [id])
   pollLogs          PollLog[]
   rewardLogs        RewardsLog[]
 
@@ -289,6 +304,11 @@ model PollLog {
   // 타임스탬프
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
+
+  // 참여보상
+  rewardAssetId String?
+  rewardAmount  Int?
+  rewardAsset   Asset? @relation("PollLogRewardAsset", fields: [rewardAssetId], references: [id])
 
   // 메타데이터
   record   Json?
@@ -617,6 +637,8 @@ model Asset {
   pollBettingAssets Poll[] @relation("PollBettingAsset")
   pollParticipationRewardAssets Poll[] @relation("PollParticipationReward")
   questRewardAssets Quest[] @relation("QuestRewardAsset")
+  pollLogRewardAssets PollLog[] @relation("PollLogRewardAsset")
+  questLogRewardAssets QuestLog[] @relation("QuestLogRewardAsset")
   
   // 타임스탬프
   createdAt       DateTime  @default(now())
@@ -842,6 +864,7 @@ model Artist {
   id                  String               @id @default(cuid())
   name                String
   description         String?
+  logoUrl             String?
   imageUrl            String?
   externalUrl         String?
   reportUrl           String?
@@ -856,6 +879,9 @@ model Artist {
   updatedAt           DateTime             @updatedAt
   members             ArtistMember[]
   collectionContracts CollectionContract[]
+  messages            ArtistMessage[]
+  polls               Poll[]               @relation("ArtistPolls")
+  quests              Quest[]              @relation("ArtistQuests")
 
   @@index([name])
 }
@@ -881,6 +907,20 @@ model ArtistMember {
   videos         String[]  @default([])
   music          String[]  @default([])
   additionalInfo Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  artist         Artist    @relation(fields: [artistId], references: [id])
+}
+
+model ArtistMessage {
+  id             String    @id @default(cuid())
+  artistId       String
+  bannerUrl      String?
+  externalUrl    String?
+  isActive       Boolean   @default(true)
+  startDate      DateTime?
+  endDate        DateTime?
+  message        String
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   artist         Artist    @relation(fields: [artistId], references: [id])

@@ -1,101 +1,189 @@
-/// app\hooks\useQuest.tsx
+/// app/hooks/useQuest.ts
 
 "use client";
 
-import { useState } from "react";
-import type { RewardCurrency } from "@/app/types/player";
 import {
-    useDailyQuests,
-    useMissions,
-    useQuestById,
-    useCompletedQuests,
-} from "@/app/queries/questsQueries";
-import {
-    useCompleteQuest,
-    useAddRewards,
+    useCreateQuestMutation,
+    useUpdateQuestMutation,
+    useDeleteQuestMutation,
+    useTokenGatingMutation,
+    useCompleteQuestMutation,
+    useClaimQuestRewardMutation,
 } from "@/app/mutations/questsMutations";
-import { useToast } from "./useToast";
+import {
+    GetQuestsInput,
+    PaginationInput,
+    GetQuestLogsInput,
+    GetClaimableQuestLogsInput,
+    GetClaimedQuestLogsInput,
+} from "../actions/quests";
+import {
+    useQuestsQuery,
+    useQuestLogsQuery,
+    useClaimableQuestLogsQuery,
+    useClaimedQuestLogsQuery,
+} from "@/app/queries/questsQueries";
 
-export function useQuests() {
-    const [isProcessing, setIsProcessing] = useState(false);
-    const toast = useToast();
+export function useQuestGet({
+    getQuestsInput,
+    getQuestLogsInput,
+    getClaimableQuestLogsInput,
+    getClaimedQuestLogsInput,
+    pagination,
+}: {
+    getQuestsInput?: GetQuestsInput;
+    getQuestLogsInput?: GetQuestLogsInput;
+    getClaimableQuestLogsInput?: GetClaimableQuestLogsInput;
+    getClaimedQuestLogsInput?: GetClaimedQuestLogsInput;
+    pagination?: PaginationInput;
+}) {
+    const {
+        data: quests,
+        isLoading: isLoadingQuests,
+        error: questsError,
+    } = useQuestsQuery({ input: getQuestsInput, pagination });
 
-    const completedQuestMutation = useCompleteQuest();
-    const addRewardsMutation = useAddRewards();
+    const {
+        data: questLogs,
+        isLoading: isLoadingQuestLogs,
+        error: questLogsError,
+    } = useQuestLogsQuery({ input: getQuestLogsInput, pagination });
 
-    const getDailyQuests = () => {
-        const { data: quests = [], isLoading } = useDailyQuests();
-        return { quests, isLoading };
-    };
+    const {
+        data: claimableQuestLogs,
+        isLoading: isLoadingClaimableQuestLogs,
+        error: claimableQuestLogsError,
+    } = useClaimableQuestLogsQuery({ input: getClaimableQuestLogsInput });
 
-    const getMissions = () => {
-        const { data: missions = [], isLoading } = useMissions();
-        return { missions, isLoading };
-    };
+    const {
+        data: claimedQuestLogs,
+        isLoading: isLoadingClaimedQuestLogs,
+        error: claimedQuestLogsError,
+    } = useClaimedQuestLogsQuery({ input: getClaimedQuestLogsInput });
 
-    const getQuestById = (id: string) => {
-        const { data: quest = null, isLoading } = useQuestById(id);
-        return { quest, isLoading };
-    };
+    const isLoading =
+        isLoadingQuests ||
+        isLoadingQuestLogs ||
+        isLoadingClaimableQuestLogs ||
+        isLoadingClaimedQuestLogs;
 
-    const getCompletedQuests = (playerId: string) => {
-        const { data: completedQuests = [], isLoading } =
-            useCompletedQuests(playerId);
-        return { completedQuests, isLoading };
-    };
-
-    const completeQuest = async (
-        playerId: string,
-        questId: string,
-        rewards: number,
-        rewardCurrency: RewardCurrency
-    ) => {
-        setIsProcessing(true);
-        try {
-            const result = await completedQuestMutation.mutateAsync({
-                playerId,
-                questId,
-                rewards,
-                rewardCurrency,
-            });
-            toast.success("Quest Completed successfully!");
-            return result;
-        } catch (error) {
-            toast.error("Failed to complete quest. Please try again.");
-            throw error;
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const addPlayerRewards = async (params: {
-        playerId: string;
-        questId: string;
-        questLogId: string;
-        amount: number;
-        currency: RewardCurrency;
-        reason?: string;
-        pollId?: string;
-        pollLogId?: string;
-    }) => {
-        try {
-            const result = await addRewardsMutation.mutateAsync(params);
-            toast.success("Rewards added successfully");
-            return result;
-        } catch (error) {
-            console.error("Error adding rewards:", error);
-            toast.error("Failed to add rewards");
-            throw error;
-        }
-    };
+    const error =
+        questsError ||
+        questLogsError ||
+        claimableQuestLogsError ||
+        claimedQuestLogsError;
 
     return {
-        isProcessing,
-        getDailyQuests,
-        getMissions,
-        getQuestById,
-        getCompletedQuests,
+        quests,
+        isLoadingQuests,
+        questsError,
+
+        questLogs,
+        isLoadingQuestLogs,
+        questLogsError,
+
+        claimableQuestLogs,
+        isLoadingClaimableQuestLogs,
+        claimableQuestLogsError,
+
+        claimedQuestLogs,
+        isLoadingClaimedQuestLogs,
+        claimedQuestLogsError,
+
+        isLoading,
+        error,
+
+        useQuestsQuery,
+    };
+}
+
+export function useQuestSet() {
+    const {
+        mutateAsync: createQuest,
+        isPending: isCreating,
+        error: createError,
+    } = useCreateQuestMutation();
+
+    const {
+        mutateAsync: updateQuest,
+        isPending: isUpdating,
+        error: updateError,
+    } = useUpdateQuestMutation();
+
+    const {
+        mutateAsync: deleteQuest,
+        isPending: isDeleting,
+        error: deleteError,
+    } = useDeleteQuestMutation();
+
+    const {
+        mutateAsync: tokenGating,
+        isPending: isTokenGating,
+        error: tokenGatingError,
+    } = useTokenGatingMutation();
+
+    const {
+        mutateAsync: completeQuest,
+        isPending: isCompleting,
+        error: completeError,
+    } = useCompleteQuestMutation();
+
+    const {
+        mutateAsync: claimQuestReward,
+        isPending: isClaimingQuestReward,
+        error: claimQuestRewardError,
+    } = useClaimQuestRewardMutation();
+
+    const isLoading =
+        isCreating ||
+        isUpdating ||
+        isDeleting ||
+        isTokenGating ||
+        isCompleting ||
+        isClaimingQuestReward;
+
+    const error =
+        createError ||
+        updateError ||
+        deleteError ||
+        tokenGatingError ||
+        completeError ||
+        claimQuestRewardError;
+
+    return {
+        createQuest,
+        isCreating,
+        createError,
+
+        updateQuest,
+        isUpdating,
+        updateError,
+
+        deleteQuest,
+        isDeleting,
+        deleteError,
+
+        tokenGating,
+        isTokenGating,
+        tokenGatingError,
+
         completeQuest,
-        addPlayerRewards,
+        isCompleting,
+        completeError,
+
+        claimQuestReward,
+        isClaimingQuestReward,
+        claimQuestRewardError,
+
+        isLoading,
+
+        error,
+
+        useCreateQuestMutation,
+        useUpdateQuestMutation,
+        useDeleteQuestMutation,
+        useTokenGatingMutation,
+        useCompleteQuestMutation,
+        useClaimQuestRewardMutation,
     };
 }

@@ -3,84 +3,139 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { completeQuest, addRewards } from "@/app/actions/quests";
-import type { RewardCurrency } from "@/app/types/player";
-import { queryKeys } from "@/app/queryKeys";
+import { questKeys } from "../queryKeys";
+import {
+    createQuest,
+    deleteQuest,
+    updateQuest,
+    tokenGating,
+    completeQuest,
+    claimQuestReward,
+} from "../actions/quests";
 
-type CompleteQuestRequest = {
-    playerId: string;
-    questId: string;
-    rewards: number;
-    rewardCurrency: RewardCurrency;
-};
-
-export function useCompleteQuest() {
+export function useCreateQuestMutation() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({
-            playerId,
-            questId,
-            rewards,
-            rewardCurrency,
-        }: CompleteQuestRequest) => {
-            return completeQuest(playerId, questId, rewards, rewardCurrency);
-        },
+        mutationFn: createQuest,
         onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: questKeys.all });
             queryClient.invalidateQueries({
-                queryKey: queryKeys.quests.completed(variables.playerId),
+                queryKey: questKeys.list(),
             });
             queryClient.invalidateQueries({
-                queryKey: queryKeys.player.currency(
-                    variables.playerId,
-                    variables.rewardCurrency
-                ),
+                queryKey: questKeys.detail({ id: data?.id }),
+            });
+        },
+        onError: (error) => {
+            console.error("Error creating quest:", error);
+        },
+    });
+}
+
+export function useUpdateQuestMutation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: updateQuest,
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: questKeys.all });
+            queryClient.invalidateQueries({
+                queryKey: questKeys.list(),
             });
             queryClient.invalidateQueries({
-                queryKey: queryKeys.player.byId(variables.playerId),
+                queryKey: questKeys.detail({ id: variables.id }),
+            });
+        },
+        onError: (error) => {
+            console.error("Error updating quest:", error);
+        },
+    });
+}
+
+export function useDeleteQuestMutation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: deleteQuest,
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: questKeys.all });
+            queryClient.invalidateQueries({
+                queryKey: questKeys.list(),
+            });
+            queryClient.invalidateQueries({
+                queryKey: questKeys.detail({ id: variables.id }),
+            });
+        },
+        onError: (error) => {
+            console.error("Error deleting quest:", error);
+        },
+    });
+}
+
+export function useTokenGatingMutation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: tokenGating,
+        onSuccess: (data, variables) => {
+            if (variables?.quest?.id && variables?.user?.id) {
+                queryClient.invalidateQueries({
+                    queryKey: questKeys.tokenGating({
+                        quest: { id: variables.quest.id } as any,
+                        user: { id: variables.user.id } as any,
+                    }),
+                });
+            }
+        },
+    });
+}
+
+export function useCompleteQuestMutation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: completeQuest,
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: questKeys.all });
+            queryClient.invalidateQueries({
+                queryKey: questKeys.list(),
+            });
+            queryClient.invalidateQueries({
+                queryKey: questKeys.detail({
+                    id: variables?.quest?.id,
+                }),
+            });
+            queryClient.invalidateQueries({
+                queryKey: questKeys.complete({
+                    quest: variables?.quest?.id as any,
+                    player: variables?.player?.id as any,
+                }),
             });
         },
     });
 }
 
-type AddRewardsRequest = {
-    playerId: string;
-    amount: number;
-    currency: RewardCurrency;
-    reason?: string;
-    questId?: string;
-    pollId?: string;
-};
-export function useAddRewards() {
+export function useClaimQuestRewardMutation() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({
-            playerId,
-            amount,
-            currency,
-            reason = "Additional Reward",
-            questId,
-            pollId,
-        }: AddRewardsRequest) => {
-            return addRewards(
-                playerId,
-                amount,
-                currency,
-                reason,
-                questId,
-                pollId
-            );
-        },
+        mutationFn: claimQuestReward,
         onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: questKeys.all });
             queryClient.invalidateQueries({
-                queryKey: queryKeys.player.currency(
-                    variables.playerId,
-                    variables.currency
-                ),
+                queryKey: questKeys.list(),
             });
             queryClient.invalidateQueries({
-                queryKey: queryKeys.player.byId(variables.playerId),
+                queryKey: questKeys.detail({
+                    id: variables?.questLog?.questId,
+                }),
+            });
+            queryClient.invalidateQueries({
+                queryKey: questKeys.complete({
+                    quest: variables?.questLog?.questId as any,
+                    player: variables?.questLog?.playerId as any,
+                }),
             });
         },
     });

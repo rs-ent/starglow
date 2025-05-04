@@ -9,6 +9,7 @@ import {
     UsersIcon,
     VoteIcon,
     PartyPopperIcon,
+    UserIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -18,6 +19,7 @@ export default function AdminNav() {
 
     const navItems = [
         { href: "/admin", label: "Dashboard", icon: HomeIcon },
+        { href: "/admin/artists", label: "Artists", icon: UserIcon },
         { href: "/admin/quests", label: "Quests", icon: BriefcaseIcon },
         { href: "/admin/polls", label: "Polls", icon: VoteIcon },
         { href: "/admin/assets", label: "Assets", icon: PartyPopperIcon },
