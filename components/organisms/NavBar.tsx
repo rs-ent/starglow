@@ -11,7 +11,6 @@ import { usePlayerSet } from "@/app/hooks/usePlayer";
 import { cn } from "@/lib/utils/tailwind";
 
 const defaultMenuItems = [
-    { name: "Home", href: "/", icon: "/ui/link.svg" },
     { name: "Quests", href: "/quests", icon: "/ui/ribbon-badge.svg" },
     { name: "Polls", href: "/polls", icon: "/ui/vote.svg" },
     { name: "NFTs", href: "/nfts", icon: "/ui/assets.svg" },

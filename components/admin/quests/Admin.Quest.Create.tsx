@@ -736,7 +736,7 @@ export default function AdminQuestCreate({
                                 <div className="w-full mb-8 flex flex-col gap-4">
                                     <div>
                                         <Label className="mb-2 block">
-                                            최대 반복 횟수
+                                            수행 횟수
                                         </Label>
                                         <Input
                                             type="number"
@@ -746,12 +746,13 @@ export default function AdminQuestCreate({
                                                     Number(e.target.value)
                                                 )
                                             }
-                                            min={-1}
-                                            placeholder="-1 입력 시 무제한"
+                                            min={2}
+                                            placeholder="횟수"
                                             className="w-40"
                                         />
                                         <div className="text-xs text-muted-foreground mt-1">
-                                            -1 입력 시 반복 횟수 제한 없음
+                                            횟수만큼 퀘스트 수행 시 퀘스트가
+                                            완료됩니다.
                                         </div>
                                     </div>
                                     <div>

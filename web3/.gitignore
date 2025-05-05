@@ -8,6 +8,7 @@ ignition/
 !artifacts/contracts/Assets.sol/Assets.json
 !artifacts/contracts/Staking.sol/Staking.json
 
+
 # Dependencies
 node_modules/
 
@@ -23,7 +24,7 @@ deployments/hardhat/
 deployments/localhost/
 
 # Ignition deployment files
-ignition/deployments/
+ignition/
 
 # IDE
 .vscode/

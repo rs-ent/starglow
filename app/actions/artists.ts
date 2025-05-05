@@ -3,7 +3,14 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import { Prisma, Artist, ArtistMessage, Poll, Quest } from "@prisma/client";
+import {
+    Prisma,
+    Artist,
+    ArtistMessage,
+    User,
+    CollectionContract,
+} from "@prisma/client";
+import { advancedTokenGate, AdvancedTokenGateResult } from "./blockchain";
 
 export interface CreateArtistInput {
     name: string;
@@ -287,5 +294,73 @@ export async function updateArtistMessage(
     } catch (error) {
         console.error(error);
         throw new Error("Failed to update artist message");
+    }
+}
+
+export interface TokenGatingInput {
+    artist: Artist | null;
+    user: User | null;
+}
+
+export async function tokenGating(
+    input?: TokenGatingInput
+): Promise<AdvancedTokenGateResult> {
+    try {
+        const { artist, user } = input || {};
+
+        if (!artist || !user) {
+            return {
+                success: false,
+                data: {
+                    hasToken: {},
+                    tokenCount: {},
+                    ownerWallets: {},
+                },
+            };
+        }
+
+        const artistDB = await prisma.artist.findUnique({
+            where: { id: artist.id },
+            include: {
+                collectionContracts: true,
+            },
+        });
+
+        if (!artistDB) {
+            return {
+                success: false,
+                data: {
+                    hasToken: {},
+                    tokenCount: {},
+                    ownerWallets: {},
+                },
+            };
+        }
+
+        if (artistDB?.collectionContracts.length === 0) {
+            return {
+                success: true,
+                data: {
+                    hasToken: {},
+                    tokenCount: {},
+                    ownerWallets: {},
+                },
+            };
+        }
+
+        const tokens = artistDB.collectionContracts.map(
+            (collectionContract) => ({
+                tokenType: "Collection" as const,
+                tokenAddress: collectionContract.address,
+            })
+        );
+
+        return advancedTokenGate({ userId: user.id, tokens });
+    } catch (error) {
+        console.error("Error in token gating:", error);
+        return {
+            success: false,
+            error: "Failed to check token ownership",
+        };
     }
 }

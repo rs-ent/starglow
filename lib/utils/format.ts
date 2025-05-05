@@ -19,3 +19,20 @@ export function formatDate(date: Date) {
     const min = String(d.getMinutes()).padStart(2, "0");
     return `${yyyy}.${mm}.${dd} ${hh}:${min}`;
 }
+
+export function formatWaitTime(seconds: number): string {
+    if (seconds <= 0) return "now";
+    const days = Math.floor(seconds / (24 * 3600));
+    seconds %= 24 * 3600;
+    const hours = Math.floor(seconds / 3600);
+    seconds %= 3600;
+    const minutes = Math.floor(seconds / 60);
+    seconds %= 60;
+
+    const parts = [];
+    if (days) parts.push(`${days} Days`);
+    if (hours) parts.push(`${hours} Hours`);
+    if (minutes) parts.push(`${minutes} Minutes`);
+    if (seconds) parts.push(`${seconds} Seconds`);
+    return parts.join(" ");
+}

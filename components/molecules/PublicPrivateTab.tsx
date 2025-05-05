@@ -33,7 +33,7 @@ export default function PublicPrivateTab({
                 className
             )}
         >
-            <div className="grid grid-cols-2 gap-x-2">
+            <div className="grid grid-cols-2 gap-[15px] cursor-pointer">
                 <PublicPrivateButton
                     title="World"
                     isPublic={true}
@@ -66,7 +66,6 @@ export default function PublicPrivateTab({
                 )}
             >
                 <div className="w-[95%] relative h-[20px]">
-                    {/* 왼쪽에서 오른쪽으로 그라디언트 (Public) */}
                     <div
                         className={`absolute top-0 left-0 w-full h-full transition-opacity duration-700 ${
                             isPublic ? "opacity-100" : "opacity-0"

@@ -7,6 +7,7 @@ import AdminArtistsCreate from "./Admin.Artists.Create";
 import { Artist } from "@prisma/client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function AdminArtistsList() {
     const { artists, isLoading, error } = useArtistsGet({});
@@ -121,16 +122,28 @@ export default function AdminArtistsList() {
                                         {artist.polls && artist.polls.length}
                                     </td>
                                     <td className="px-4 py-2 text-center align-middle">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                                setSelectedArtist(artist);
-                                                setCreateOpen(true);
-                                            }}
-                                        >
-                                            수정
-                                        </Button>
+                                        <div className="flex gap-2 justify-center items-center">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedArtist(artist);
+                                                    setCreateOpen(true);
+                                                }}
+                                            >
+                                                수정
+                                            </Button>
+                                            <Link
+                                                href={`/artists/manage/${artist.id}`}
+                                            >
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                >
+                                                    관리
+                                                </Button>
+                                            </Link>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

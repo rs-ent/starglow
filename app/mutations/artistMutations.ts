@@ -10,6 +10,7 @@ import {
     updateArtist,
     createArtistMessage,
     updateArtistMessage,
+    tokenGating,
 } from "../actions/artists";
 
 export function useCreateArtist() {
@@ -97,6 +98,18 @@ export function useUpdateArtistMessage() {
                     }),
                 });
             }
+        },
+    });
+}
+
+export function useTokenGating() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: tokenGating,
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: artistKeys.tokenGating(variables),
+            });
         },
     });
 }

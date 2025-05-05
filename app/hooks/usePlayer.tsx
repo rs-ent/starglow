@@ -2,7 +2,10 @@
 
 "use client";
 
-import { usePlayerQuery } from "@/app/queries/playerQueries";
+import {
+    useDBUserFromPlayerQuery,
+    usePlayerQuery,
+} from "@/app/queries/playerQueries";
 import {
     useSetPlayerMutation,
     useInvitePlayerMutation,
@@ -11,12 +14,15 @@ import {
     GetPlayerInput,
     InvitePlayerParams,
     SetPlayerInput,
+    GetDBUserFromPlayerInput,
 } from "@/app/actions/player";
 
 export function usePlayerGet({
     getPlayerInput,
+    getDBUserFromPlayerInput,
 }: {
     getPlayerInput?: GetPlayerInput;
+    getDBUserFromPlayerInput?: GetDBUserFromPlayerInput;
 }) {
     const {
         data: player,
@@ -24,12 +30,23 @@ export function usePlayerGet({
         error: playerError,
     } = usePlayerQuery(getPlayerInput);
 
+    const {
+        data: user,
+        isLoading: isUserLoading,
+        error: userError,
+    } = useDBUserFromPlayerQuery(getDBUserFromPlayerInput);
+
     return {
         player,
         isPlayerLoading,
         playerError,
 
+        user,
+        isUserLoading,
+        userError,
+
         usePlayerQuery,
+        useDBUserFromPlayerQuery,
     };
 }
 

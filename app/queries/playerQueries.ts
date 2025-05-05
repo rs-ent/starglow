@@ -3,14 +3,25 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { playerKeys } from "@/app/queryKeys";
-import { getPlayer } from "@/app/actions/player";
-import type { GetPlayerInput } from "@/app/actions/player";
+import { playerKeys, queryKeys } from "@/app/queryKeys";
+import { getDBUserFromPlayer, getPlayer } from "@/app/actions/player";
+import type {
+    GetDBUserFromPlayerInput,
+    GetPlayerInput,
+} from "@/app/actions/player";
 
 export function usePlayerQuery(input?: GetPlayerInput) {
     return useQuery({
         queryKey: playerKeys.byId(input?.playerId || ""),
         queryFn: () => getPlayer(input),
+        enabled: Boolean(input?.playerId),
+    });
+}
+
+export function useDBUserFromPlayerQuery(input?: GetDBUserFromPlayerInput) {
+    return useQuery({
+        queryKey: queryKeys.user.byPlayerId(input),
+        queryFn: () => getDBUserFromPlayer(input),
         enabled: Boolean(input?.playerId),
     });
 }

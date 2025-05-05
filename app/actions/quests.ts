@@ -4,9 +4,9 @@
 
 import { prisma } from "@/lib/prisma/client";
 import { Prisma, Quest, Asset, Player, QuestLog, User } from "@prisma/client";
-import { questKeys } from "../queryKeys";
 import { updatePlayerAsset } from "./playerAssets";
 import { tokenGate } from "./blockchain";
+import { formatWaitTime } from "@/lib/utils/format";
 
 export type PaginationInput = {
     currentPage: number;
@@ -74,6 +74,8 @@ export interface GetQuestsInput {
     repeatable?: boolean;
     repeatableCount?: number;
     repeatableInterval?: number;
+    artistId?: string;
+    isPublic?: boolean;
 }
 
 export async function getQuests({
@@ -175,6 +177,16 @@ export async function getQuests({
 
         if (input.repeatableInterval) {
             where.repeatableInterval = input.repeatableInterval;
+        }
+
+        if (input.artistId) {
+            where.artistId = input.artistId;
+        }
+
+        if (input.isPublic) {
+            where.artistId = null;
+            where.needToken = false;
+            where.needTokenAddress = null;
         }
 
         const [items, totalItems] = await Promise.all([
@@ -410,28 +422,37 @@ export async function completeQuest(
             }
         }
 
-        const logs = await prisma.questLog.findMany({
+        const log = await prisma.questLog.findUnique({
             where: {
-                questId: input.quest.id,
-                playerId: input.player.id,
-            },
-            orderBy: {
-                completedAt: "desc",
+                playerId_questId: {
+                    playerId: input.player.id,
+                    questId: input.quest.id,
+                },
             },
         });
 
-        if (!input.quest.repeatable && logs.length > 0) {
+        if (log?.completed && log.completedAt) {
             return {
                 success: false,
-                error: `You have already completed this quest at ${logs[0].completedAt.toLocaleString()}.`,
+                error: `You have already completed this quest at ${log.completedAt.toLocaleString()}.`,
             };
         }
 
-        if (input.quest.repeatable) {
+        if (log?.isClaimed && log.claimedAt) {
+            return {
+                success: false,
+                error: `You have already claimed the reward for this quest at ${log.claimedAt?.toLocaleString()}.`,
+            };
+        }
+
+        if (
+            input.quest.repeatable &&
+            input.quest.repeatableCount &&
+            input.quest.repeatableCount > 1
+        ) {
             if (
-                input.quest.repeatableCount &&
-                input.quest.repeatableCount !== -1 &&
-                logs.length >= input.quest.repeatableCount
+                log?.repeatCount &&
+                log.repeatCount >= input.quest.repeatableCount
             ) {
                 return {
                     success: false,
@@ -439,8 +460,15 @@ export async function completeQuest(
                 };
             }
 
-            if (input.quest.repeatableInterval && logs.length > 0) {
-                const lastCompletedAt = logs[0].completedAt.getTime();
+            if (input.quest.repeatableInterval) {
+                const lastCompletedAt =
+                    log?.completedDates && log.completedDates.length > 0
+                        ? Math.max(
+                              ...log.completedDates.map((date) =>
+                                  new Date(date).getTime()
+                              )
+                          )
+                        : 0;
                 const now = Date.now();
                 if (now - lastCompletedAt < input.quest.repeatableInterval) {
                     const waitSeconds = Math.ceil(
@@ -452,27 +480,64 @@ export async function completeQuest(
                         success: false,
                         error: `You can complete this quest again ${formatWaitTime(
                             waitSeconds
-                        )}.`,
+                        )} seconds after the last completion.`,
                     };
                 }
             }
         }
 
-        let isClaimed = false;
-        if (!input.quest.rewardAssetId || !input.quest.rewardAmount) {
-            isClaimed = true;
+        const data: {
+            questId: string;
+            playerId: string;
+            completed: boolean;
+            completedAt: Date | null;
+            rewardAssetId?: string;
+            rewardAmount?: number;
+            repeatCount: number;
+            isClaimed: boolean;
+            completedDates: Date[];
+        } = {
+            questId: input.quest.id,
+            playerId: input.player.id,
+            completed: false,
+            completedAt: null,
+            rewardAssetId: input.quest.rewardAssetId || undefined,
+            rewardAmount: input.quest.rewardAmount || undefined,
+            repeatCount: log?.repeatCount ? log.repeatCount + 1 : 1,
+            isClaimed: false,
+            completedDates: log?.completedDates ? [...log.completedDates] : [],
+        };
+
+        data.completedDates.push(new Date());
+
+        if (
+            !input.quest.repeatable ||
+            !input.quest.repeatableCount ||
+            (input.quest.repeatableCount && input.quest.repeatableCount <= 1)
+        ) {
+            data.completed = true;
+            data.completedAt = new Date();
+        } else if (
+            input.quest.repeatableCount &&
+            data.repeatCount >= input.quest.repeatableCount
+        ) {
+            data.completed = true;
+            data.completedAt = new Date();
         }
 
-        const questLog = await prisma.questLog.create({
-            data: {
-                questId: input.quest.id,
-                playerId: input.player.id,
-                completed: true,
-                completedAt: new Date(),
-                rewardAssetId: input.quest.rewardAssetId,
-                rewardAmount: input.quest.rewardAmount,
-                isClaimed,
+        if (!input.quest.rewardAssetId) {
+            data.isClaimed = true;
+        }
+
+        const questLog = await prisma.questLog.upsert({
+            where: {
+                playerId_questId: {
+                    playerId: input.player.id,
+                    questId: input.quest.id,
+                },
             },
+            update: data,
+            create: data,
         });
 
         return {
@@ -556,27 +621,12 @@ export async function claimQuestReward(
     }
 }
 
-function formatWaitTime(seconds: number): string {
-    if (seconds <= 0) return "now";
-    const days = Math.floor(seconds / (24 * 3600));
-    seconds %= 24 * 3600;
-    const hours = Math.floor(seconds / 3600);
-    seconds %= 3600;
-    const minutes = Math.floor(seconds / 60);
-    seconds %= 60;
-
-    const parts = [];
-    if (days) parts.push(`${days} Days`);
-    if (hours) parts.push(`${hours} Hours`);
-    if (minutes) parts.push(`${minutes} Minutes`);
-    if (seconds) parts.push(`${seconds} Seconds`);
-    return parts.join(" ");
-}
-
 export interface GetQuestLogsInput {
     questId?: string;
+    artistId?: string;
     playerId?: string;
     isClaimed?: boolean;
+    isPublic?: boolean;
 }
 
 export async function getQuestLogs({
@@ -630,6 +680,20 @@ export async function getQuestLogs({
             where.isClaimed = input.isClaimed;
         }
 
+        if (input.artistId) {
+            where.quest = {
+                artistId: input.artistId,
+            };
+        }
+
+        if (input.isPublic) {
+            where.quest = {
+                artistId: null,
+                needToken: false,
+                needTokenAddress: null,
+            };
+        }
+
         const questLogs = await prisma.questLog.findMany({
             where,
             orderBy: {
@@ -656,6 +720,7 @@ export async function getQuestLogs({
 
 export interface GetClaimableQuestLogsInput {
     playerId: string;
+    artistId?: string;
 }
 
 export async function getClaimableQuestLogs(
@@ -664,6 +729,17 @@ export async function getClaimableQuestLogs(
     try {
         if (!input) {
             return [];
+        }
+
+        const where: Prisma.QuestLogWhereInput = {
+            playerId: input.playerId,
+            isClaimed: false,
+        };
+
+        if (input.artistId) {
+            where.quest = {
+                artistId: input.artistId,
+            };
         }
 
         const questLogs = await prisma.questLog.findMany({
@@ -682,6 +758,7 @@ export async function getClaimableQuestLogs(
 
 export interface GetClaimedQuestLogsInput {
     playerId: string;
+    artistId?: string;
 }
 
 export async function getClaimedQuestLogs(
@@ -690,6 +767,17 @@ export async function getClaimedQuestLogs(
     try {
         if (!input) {
             return [];
+        }
+
+        const where: Prisma.QuestLogWhereInput = {
+            playerId: input.playerId,
+            isClaimed: true,
+        };
+
+        if (input.artistId) {
+            where.quest = {
+                artistId: input.artistId,
+            };
         }
 
         const questLogs = await prisma.questLog.findMany({

@@ -3,7 +3,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { questKeys } from "../queryKeys";
+import { playerAssetsKeys, questKeys } from "../queryKeys";
 import {
     createQuest,
     deleteQuest,
@@ -136,6 +136,11 @@ export function useClaimQuestRewardMutation() {
                     quest: variables?.questLog?.questId as any,
                     player: variables?.questLog?.playerId as any,
                 }),
+            });
+            queryClient.invalidateQueries({
+                queryKey: playerAssetsKeys.balances(
+                    variables?.questLog?.playerId as any
+                ),
             });
         },
     });

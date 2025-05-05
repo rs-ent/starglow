@@ -133,16 +133,22 @@ Table QuestLog {
   playerId String [not null]
   questId String [not null]
   completed Boolean [not null, default: false]
-  completedAt DateTime [default: `now()`, not null]
+  completedAt DateTime
   rewardAssetId String
   rewardAmount Int
   rewardAsset Asset
+  repeatCount Int [not null, default: 1]
+  completedDates DateTime[] [not null]
   createdAt DateTime [default: `now()`, not null]
   isClaimed Boolean [not null, default: false]
   claimedAt DateTime
   player Player [not null]
   quest Quest [not null]
   rewardLogs RewardsLog [not null]
+
+  indexes {
+    (playerId, questId) [unique]
+  }
 }
 
 Table Poll {

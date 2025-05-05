@@ -29,7 +29,7 @@ export default function Quests({ player }: QuestsProps) {
     return (
         <div className="relative flex flex-col w-full h-screen">
             <>
-                <div className="absolute inset-0 bg-gradient-to-b from-[#09011b] to-[#311473] -z-20" />
+                <div className="fixed inset-0 bg-gradient-to-b from-[#09011b] to-[#311473] -z-20" />
                 <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -z-10">
                     <img
                         src="/elements/donut.svg"
@@ -48,6 +48,7 @@ export default function Quests({ player }: QuestsProps) {
                         src="/elements/bg-quest-blur.svg"
                         alt="Logo"
                         className={`
+                            opacity-90
                             w-full h-full object-cover 
                             scale-125 lg:scale-100 
                             bg-blend-overlay 
@@ -77,7 +78,7 @@ export default function Quests({ player }: QuestsProps) {
                 {isPlayerLoading ? (
                     <PartialLoading text="Loading player data..." />
                 ) : (
-                    <QuestsContents />
+                    <QuestsContents player={player} />
                 )}
             </div>
         </div>

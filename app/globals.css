@@ -220,7 +220,7 @@
     background: linear-gradient(
       to bottom right,
       rgba(255, 255, 255, 0.8),
-      rgba(0, 0, 0, 0.15)
+      rgba(0, 0, 0, 0.65)
     );
     border-radius: inherit;
     padding: var(--gradient-border, 1px);
@@ -285,4 +285,47 @@
   .inner-shadow {
     box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.2);
   }
+
+  .text-glow-purple {
+    text-shadow: 0 0 8px rgba(71, 58, 163, 0.95);
+  }
+
+  .purple-glow {
+    box-shadow: 0 0 6px 2px rgba(91, 78, 193, 0.25);
+  }
+
+  .purple-glow-strong {
+    box-shadow: 0 0 10px 2px rgba(139, 92, 246, 0.85);
+  }
+  .morp-glass-1 {
+    box-shadow: 0 0 16px 3px rgba(255, 255, 255, 0.15) inset;
+  }
+  .morp-glass-2 {
+    box-shadow: 0 0 24px 6px rgba(255, 255, 255, 0.2) inset;
+  }
+  .morp-glass-3 {
+    box-shadow: 0 0 32px 8px rgba(255, 255, 255, 0.2) inset;
+  }
+  .morp-glass-4 {
+    box-shadow: 0 0 48px 12px rgba(255, 255, 255, 0.25) inset;
+  }
+  .morp-glass-5 {
+    box-shadow: 0 0 64px 16px rgba(255, 255, 255, 0.3) inset;
+  }
+}
+
+@keyframes spin-scale {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  80% {
+    transform: rotate(720deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(720deg) scale(1);
+  }
+}
+
+.spin-scale-3x {
+  animation: spin-scale 1s cubic-bezier(0.7, 0, 0.3, 1) 1;
 }

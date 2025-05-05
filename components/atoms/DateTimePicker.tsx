@@ -27,6 +27,8 @@ interface DateTimePickerProps {
     disabled?: boolean;
     minDate?: Date;
     maxDate?: Date;
+    align?: "start" | "center" | "end";
+    side?: "top" | "bottom" | "left" | "right";
 }
 
 export default function DateTimePicker({
@@ -42,6 +44,8 @@ export default function DateTimePicker({
     disabled = false,
     minDate,
     maxDate,
+    align = "start",
+    side = "bottom",
 }: DateTimePickerProps) {
     const initialDate =
         value instanceof Date && !isNaN(value.getTime())
@@ -101,7 +105,7 @@ export default function DateTimePicker({
                     {required && <span className="text-red-500">*</span>}
                 </label>
             )}
-            <div className="space-y-2">
+            <div className="space-y-2 overflow-visible">
                 <Popover
                     trigger={
                         <Button
@@ -121,7 +125,8 @@ export default function DateTimePicker({
                         </Button>
                     }
                     className="w-auto p-0"
-                    align="start"
+                    align={align}
+                    side={side}
                 >
                     <Calendar
                         mode="single"

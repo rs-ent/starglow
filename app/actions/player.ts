@@ -3,7 +3,13 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import { Prisma, Player, PlayerAsset, AssetType } from "@prisma/client";
+import {
+    Prisma,
+    User as DBUser,
+    Player,
+    PlayerAsset,
+    AssetType,
+} from "@prisma/client";
 import type { RewardCurrency } from "@/app/types/player";
 import type { User } from "next-auth";
 
@@ -160,5 +166,32 @@ export async function invitePlayer(
     } catch (error) {
         console.error("[invitePlayer] Error:", error);
         throw error;
+    }
+}
+
+export interface GetDBUserFromPlayerInput {
+    playerId: string;
+}
+
+export async function getDBUserFromPlayer(
+    input?: GetDBUserFromPlayerInput
+): Promise<DBUser | null> {
+    if (!input) {
+        return null;
+    }
+
+    try {
+        const user = await prisma.user.findFirst({
+            where: { player: { id: input.playerId } },
+        });
+
+        if (!user) {
+            return null;
+        }
+
+        return user;
+    } catch (error) {
+        console.error("[getDBUserFromPlayer] Error:", error);
+        return null;
     }
 }

@@ -10,6 +10,7 @@ import {
     getQuestLogs,
     getClaimableQuestLogs,
     getClaimedQuestLogs,
+    completeQuest,
 } from "../actions/quests";
 import type {
     GetQuestsInput,
@@ -18,6 +19,7 @@ import type {
     GetQuestLogsInput,
     GetClaimableQuestLogsInput,
     GetClaimedQuestLogsInput,
+    CompleteQuestInput,
 } from "../actions/quests";
 import { Quest, QuestLog } from "@prisma/client";
 

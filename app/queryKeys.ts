@@ -2,7 +2,7 @@
 import {
     GetPollsInput,
     PaginationInput,
-    TokenGatingInput,
+    TokenGatingInput as PollTokenGatingInput,
 } from "./actions/polls";
 import {
     CompleteQuestInput,
@@ -11,15 +11,22 @@ import {
     TokenGatingInput as QuestTokenGatingInput,
     GetClaimedQuestLogsInput,
 } from "./actions/quests";
+import { GetDBUserFromPlayerInput } from "./actions/player";
 import { GetPlayerAssetsFilter } from "./actions/playerAssets";
 import { GetQuestInput, GetQuestsInput } from "./actions/quests";
 import {
     GetArtistInput,
     GetArtistMessagesInput,
     GetArtistsInput,
+    TokenGatingInput as ArtistTokenGatingInput,
 } from "./actions/artists";
 
 export const queryKeys = {
+    user: {
+        byId: (id: string) => ["user", id] as const,
+        byPlayerId: (input?: GetDBUserFromPlayerInput) =>
+            ["user", "player", input?.playerId] as const,
+    },
     currency: ["currency"] as const,
     rewards: ["rewards"] as const,
     banners: () => ["banners"] as const,
@@ -121,8 +128,15 @@ export const playerAssetsKeys = {
     all: ["playerAssets"] as const,
     balance: (playerId: string, assetId: string) =>
         [...playerAssetsKeys.all, "balance", playerId, assetId] as const,
-    balances: (playerId: string, assetIds: string[]) =>
-        [...playerAssetsKeys.all, "balances", playerId, assetIds] as const,
+    balances: (playerId: string, assetIds?: string[]) =>
+        assetIds
+            ? ([
+                  ...playerAssetsKeys.all,
+                  "balances",
+                  playerId,
+                  assetIds,
+              ] as const)
+            : ([...playerAssetsKeys.all, "balances", playerId] as const),
     lists: () => [...playerAssetsKeys.all, "list"] as const,
     list: (filters: GetPlayerAssetsFilter) =>
         [...playerAssetsKeys.lists(), filters] as const,
@@ -474,7 +488,7 @@ export const pollKeys = {
     byId: (id: string) => ["polls", id] as const,
     byStatus: (status: string) => ["polls", "status", status] as const,
     byCategory: (category: string) => ["polls", "category", category] as const,
-    tokenGating: (input?: TokenGatingInput) =>
+    tokenGating: (input?: PollTokenGatingInput) =>
         [
             ...pollKeys.all,
             "token-gating",
@@ -528,4 +542,6 @@ export const artistKeys = {
         [...artistKeys.all, "detail", input] as const,
     messages: (input?: GetArtistMessagesInput) =>
         [...artistKeys.all, "messages", input] as const,
+    tokenGating: (input?: ArtistTokenGatingInput) =>
+        [...artistKeys.all, "token-gating", input] as const,
 };

@@ -36,7 +36,8 @@ export default function PublicPrivateButton({
     return (
         <div
             className={cn(
-                isActive ? "opacity-100" : "opacity-50",
+                isActive ? "opacity-100" : "opacity-40",
+                "hover:opacity-100",
                 "transition-opacity duration-500"
             )}
         >
@@ -45,24 +46,33 @@ export default function PublicPrivateButton({
                 onClick={onClick}
                 className={cn(
                     "flex items-center justify-baseline",
+                    "cursor-pointer",
                     paddingSizeClass,
                     textSizeClass,
                     gapSizeClass,
                     className
                 )}
             >
-                <h3>{title}</h3>
+                <h3 className={cn(isActive ? "text-glow-purple" : "")}>
+                    {title}
+                </h3>
                 {isPublic ? (
                     <img
                         src="/icons/world.svg"
                         alt={title}
-                        className={frameSizeClass}
+                        className={cn(
+                            frameSizeClass,
+                            isActive ? "purple-glow" : ""
+                        )}
                     />
                 ) : (
                     <img
                         src="/icons/lock.svg"
                         alt={title}
-                        className={frameSizeClass}
+                        className={cn(
+                            frameSizeClass,
+                            isActive ? "purple-glow" : ""
+                        )}
                     />
                 )}
             </button>

@@ -59,9 +59,12 @@ node_modules
 .env
 
 # Hardhat files
-/cache
-/artifacts
-
+web3/cache
+web3/artifacts
+!/web3/artifacts/contracts/Collection.sol
+!/web3/artifacts/contracts/Factory.sol
+!/web3/artifacts/contracts/Assets.sol
+!/web3/artifacts/contracts/Staking.sol
 
 # TypeChain files
 /typechain
@@ -72,25 +75,10 @@ node_modules
 /coverage.json
 
 # Hardhat Ignition default folder for deployments against a local node
-ignition/deployments/chain-31337
+web3/ignition
 
 node_modules
 .env
-
-# Hardhat files
-/cache
-/artifacts
-
-# TypeChain files
-/typechain
-/typechain-types
-
-# solidity-coverage files
-/coverage
-/coverage.json
-
-# Hardhat Ignition default folder for deployments against a local node
-ignition/deployments/chain-31337
 
 # references
 /references

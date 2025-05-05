@@ -4,11 +4,17 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { artistKeys } from "../queryKeys";
-import { getArtists, getArtist, getArtistMessages } from "../actions/artists";
+import {
+    getArtists,
+    getArtist,
+    getArtistMessages,
+    tokenGating,
+} from "../actions/artists";
 import type {
     GetArtistsInput,
     GetArtistInput,
     GetArtistMessagesInput,
+    TokenGatingInput,
 } from "../actions/artists";
 
 export function useArtists(input?: GetArtistsInput) {
@@ -31,5 +37,14 @@ export function useArtistMessages(input?: GetArtistMessagesInput) {
         queryKey: artistKeys.messages(input),
         queryFn: () => getArtistMessages(input),
         enabled: Boolean(input?.artistId),
+    });
+}
+
+export function useTokenGatingQuery(input?: TokenGatingInput) {
+    return useQuery({
+        queryKey: artistKeys.tokenGating(input),
+        queryFn: () => tokenGating(input),
+        enabled: Boolean(input?.artist && input?.user),
+        staleTime: 1000 * 60 * 60 * 1,
     });
 }

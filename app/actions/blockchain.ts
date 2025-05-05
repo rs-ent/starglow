@@ -858,3 +858,129 @@ export async function tokenGate(
         };
     }
 }
+
+export interface AdvancedTokenGateInput {
+    userId: string;
+    tokens: {
+        tokenType: "Collection" | "SGT";
+        tokenAddress: string;
+    }[];
+}
+
+export interface AdvancedTokenGateResult {
+    success: boolean;
+    data?: {
+        hasToken: {
+            [key: string]: boolean;
+        };
+        tokenCount: {
+            [key: string]: number;
+        };
+        ownerWallets: {
+            [key: string]: string[];
+        };
+    };
+    error?: string;
+}
+
+export async function advancedTokenGate(
+    input: AdvancedTokenGateInput
+): Promise<AdvancedTokenGateResult> {
+    try {
+        const { userId, tokens } = input;
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                wallets: {
+                    where: { status: "ACTIVE" },
+                    select: { address: true },
+                },
+            },
+        });
+
+        if (!user?.wallets?.length) {
+            return {
+                success: false,
+                error: user ? "User has no active wallets" : "User not found",
+                data: {
+                    hasToken: {},
+                    tokenCount: {},
+                    ownerWallets: {},
+                },
+            };
+        }
+
+        const walletAddresses = new Set(
+            user.wallets.map((w) => w.address.toLowerCase())
+        );
+
+        const results = await Promise.all(
+            tokens.map(async (token) => {
+                switch (token.tokenType) {
+                    case "Collection": {
+                        const tokenOwners = await getTokenOwners({
+                            collectionAddress: token.tokenAddress,
+                        });
+
+                        const ownerMatches = tokenOwners.owners
+                            .map((owner) => owner.toLowerCase())
+                            .filter((owner) => walletAddresses.has(owner));
+
+                        return {
+                            address: token.tokenAddress,
+                            hasToken: ownerMatches.length > 0,
+                            tokenCount: ownerMatches.length,
+                            ownerWallets: ownerMatches,
+                        };
+                    }
+                    case "SGT": {
+                        return {
+                            address: token.tokenAddress,
+                            hasToken: false,
+                            tokenCount: 0,
+                            ownerWallets: [],
+                        };
+                    }
+                    default:
+                        return {
+                            address: token.tokenAddress,
+                            hasToken: false,
+                            tokenCount: 0,
+                            ownerWallets: [],
+                        };
+                }
+            })
+        );
+
+        const hasToken: { [key: string]: boolean } = {};
+        const tokenCount: { [key: string]: number } = {};
+        const ownerWallets: { [key: string]: string[] } = {};
+
+        for (const result of results) {
+            hasToken[result.address] = result.hasToken;
+            tokenCount[result.address] = result.tokenCount;
+            ownerWallets[result.address] = result.ownerWallets;
+        }
+
+        return {
+            success: true,
+            data: {
+                hasToken,
+                tokenCount,
+                ownerWallets,
+            },
+        };
+    } catch (error) {
+        console.error("Error in advancedTokenGate:", error);
+        return {
+            success: false,
+            error: "Failed to check token ownership",
+            data: {
+                hasToken: {},
+                tokenCount: {},
+                ownerWallets: {},
+            },
+        };
+    }
+}

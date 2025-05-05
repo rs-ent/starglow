@@ -168,10 +168,12 @@ model QuestLog {
   playerId       String
   questId        String
   completed      Boolean        @default(false)
-  completedAt    DateTime       @default(now())
+  completedAt    DateTime?
   rewardAssetId  String?
   rewardAmount   Int?
   rewardAsset    Asset?         @relation("QuestLogRewardAsset", fields: [rewardAssetId], references: [id])
+  repeatCount    Int            @default(1)
+  completedDates DateTime[]
   createdAt      DateTime       @default(now())
   isClaimed      Boolean        @default(false)
   claimedAt      DateTime?
@@ -179,6 +181,7 @@ model QuestLog {
   quest          Quest          @relation(fields: [questId], references: [id])
   rewardLogs     RewardsLog[]
 
+  @@unique([playerId, questId])
   @@index([playerId, questId, completed])
   @@index([completedAt])
 }

@@ -1,58 +1,93 @@
 /// components/atoms/ImageViewer.tsx
 
-import { H3 } from "./Typography";
-import { cn } from "@/lib/utils/tailwind";
-import Image from "next/image";
+"use client";
 
-export interface ImageViewerProps {
-    url: string;
-    title: string;
-    img?: string;
-    className?: string;
+import { useState } from "react";
+import PartialLoading from "./PartialLoading";
+import { cn } from "@/lib/utils/tailwind";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+
+interface ImageViewerProps {
+    img: string;
+    title?: string;
     framePadding?: number;
+    showTitle?: boolean;
+    className?: string;
 }
 
 export default function ImageViewer({
-    url,
-    title,
     img,
-    className = "",
-    framePadding = undefined,
+    title,
+    framePadding = 1,
+    showTitle,
+    className,
 }: ImageViewerProps) {
-    const imageUrl = img || `${url}/opengraph-image.png`;
+    const [isLoading, setIsLoading] = useState(true);
+    const [isError, setIsError] = useState(false);
+    const [bgColor, setBgColor] = useState("#000000");
+
+    const handleImageLoad = () => {
+        setIsLoading(false);
+    };
+
+    const handleImageError = () => {
+        setIsError(true);
+    };
 
     return (
-        <div
-            className={cn(
-                "flex flex-col items-center justify-center h-full",
-                className
-            )}
-        >
-            <div
-                className={cn(
-                    "gradient-border rounded-2xl shadow-lg p-4 backdrop-blur-sm w-full flex flex-col",
-                    `bg-gradient-to-br from-[rgba(0,0,0,0.15)] to-[rgba(0,0,0,0.3)]`,
-                    framePadding ? `p-[${framePadding}px]` : ""
-                )}
-            >
-                <div className="relative w-full aspect-video overflow-hidden rounded-xl">
-                    <Image
-                        src={imageUrl}
-                        alt={title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover"
-                        style={{
-                            objectFit: "cover",
-                        }}
-                    />
-                </div>
-                {title && (
-                    <div className="mt-4 text-start flex-grow">
-                        <H3 size={15}>{title}</H3>
+        <div className="relative">
+            {isLoading && <PartialLoading text="Loading..." size="sm" />}
+            {isError && <div className="text-red-500">Error loading image</div>}
+            <div className="w-full">
+                <div
+                    className={cn(
+                        "rounded-3xl aspect-video",
+                        "overflow-hidden"
+                    )}
+                >
+                    <div
+                        className={cn(
+                            "w-full h-full gradient-border rounded-3xl",
+                            "bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)]",
+                            "backdrop-blur-xs morp-glass-4"
+                        )}
+                    >
+                        <TransformWrapper
+                            initialScale={1}
+                            minScale={0.5}
+                            maxScale={5}
+                            doubleClick={{ mode: "zoomIn" }}
+                            wheel={{ step: 0.2 }}
+                            panning={{ velocityDisabled: true }}
+                            limitToBounds={false}
+                        >
+                            <TransformComponent>
+                                <img
+                                    src={img}
+                                    alt={title || ""}
+                                    style={{
+                                        width: "100%",
+                                        height: "auto",
+                                        userSelect: "none",
+                                        pointerEvents: "all",
+                                        boxShadow:
+                                            "0 0 12px 2px rgba(132, 78, 236, 0.2)",
+                                    }}
+                                    draggable={false}
+                                    onLoad={handleImageLoad}
+                                    onError={handleImageError}
+                                    crossOrigin="anonymous"
+                                />
+                            </TransformComponent>
+                        </TransformWrapper>
                     </div>
-                )}
+                </div>
             </div>
+            {showTitle && title && (
+                <div className="absolute bottom-0 left-0 right-0 p-2 text-center text-white bg-black/50">
+                    {title}
+                </div>
+            )}
         </div>
     );
 }

@@ -6,6 +6,7 @@ import {
     useArtists,
     useArtist,
     useArtistMessages,
+    useTokenGatingQuery,
 } from "@/app/queries/artistQueries";
 
 import {
@@ -14,27 +15,26 @@ import {
     useDeleteArtist,
     useCreateArtistMessage,
     useUpdateArtistMessage,
+    useTokenGating,
 } from "@/app/mutations/artistMutations";
 
 import type {
     GetArtistsInput,
     GetArtistInput,
     GetArtistMessagesInput,
-    CreateArtistInput,
-    UpdateArtistInput,
-    DeleteArtistInput,
-    CreateArtistMessageInput,
-    UpdateArtistMessageInput,
+    TokenGatingInput,
 } from "@/app/actions/artists";
 
 export function useArtistsGet({
     getArtistsInput,
     getArtistInput,
     getArtistMessagesInput,
+    getTokenGatingInput,
 }: {
     getArtistsInput?: GetArtistsInput;
     getArtistInput?: GetArtistInput;
     getArtistMessagesInput?: GetArtistMessagesInput;
+    getTokenGatingInput?: TokenGatingInput;
 }) {
     const {
         data: artists,
@@ -54,9 +54,19 @@ export function useArtistsGet({
         error: artistMessagesError,
     } = useArtistMessages(getArtistMessagesInput);
 
+    const {
+        data: tokenGatingResult,
+        isLoading: isTokenGatingLoading,
+        error: tokenGatingError,
+    } = useTokenGatingQuery(getTokenGatingInput);
+
     const isLoading =
-        isArtistsLoading || isArtistLoading || isArtistMessagesLoading;
-    const error = artistsError || artistError || artistMessagesError;
+        isArtistsLoading ||
+        isArtistLoading ||
+        isArtistMessagesLoading ||
+        isTokenGatingLoading;
+    const error =
+        artistsError || artistError || artistMessagesError || tokenGatingError;
 
     return {
         artists,
@@ -70,6 +80,10 @@ export function useArtistsGet({
         artistMessages,
         isArtistMessagesLoading,
         artistMessagesError,
+
+        tokenGatingResult,
+        isTokenGatingLoading,
+        tokenGatingError,
 
         isLoading,
         error,
@@ -107,18 +121,26 @@ export function useArtistSet() {
         error: updateArtistMessageError,
     } = useUpdateArtistMessage();
 
+    const {
+        mutateAsync: tokenGating,
+        isPending: isTokenGating,
+        error: tokenGatingError,
+    } = useTokenGating();
+
     const isLoading =
         isCreating ||
         isUpdating ||
         isDeleting ||
         isCreatingArtistMessage ||
-        isUpdatingArtistMessage;
+        isUpdatingArtistMessage ||
+        isTokenGating;
     const error =
         createArtistError ||
         updateArtistError ||
         deleteArtistError ||
         createArtistMessageError ||
-        updateArtistMessageError;
+        updateArtistMessageError ||
+        tokenGatingError;
 
     return {
         createArtist,
@@ -140,6 +162,10 @@ export function useArtistSet() {
         updateArtistMessage,
         isUpdatingArtistMessage,
         updateArtistMessageError,
+
+        tokenGating,
+        isTokenGating,
+        tokenGatingError,
 
         isLoading,
         error,

@@ -1,13 +1,16 @@
 /// atoms/PartialLoading.tsx
 
 import { Loader2 } from "lucide-react";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { useEffect, useState } from "react";
 
 interface PartialLoadingProps {
     text: string;
     className?: string;
-    size?: "sm" | "md" | "lg";
+    size?: "xs" | "sm" | "md" | "lg";
+    textSize?: number;
+    gapSize?: number;
     variant?: "default" | "primary" | "secondary";
     fullScreen?: boolean;
     delay?: number;
@@ -17,6 +20,8 @@ export default function PartialLoading({
     text,
     className = "",
     size = "md",
+    textSize = 15,
+    gapSize = 5,
     variant = "default",
     fullScreen = false,
     delay = 100,
@@ -35,6 +40,7 @@ export default function PartialLoading({
     if (!isVisible) return null;
 
     const sizeClasses = {
+        xs: "w-4 h-4",
         sm: "w-8 h-8",
         md: "w-12 h-12",
         lg: "w-16 h-16",
@@ -56,25 +62,27 @@ export default function PartialLoading({
 
     return (
         <div className={containerClasses} role="status" aria-label={text}>
-            <div className="flex flex-col items-center justify-center">
+            <div
+                className={cn(
+                    "flex flex-col items-center justify-center",
+                    getResponsiveClass(gapSize).gapClass
+                )}
+            >
                 <div className="relative">
                     <Loader2
                         className={cn(
-                            "animate-spin mb-4",
+                            "animate-spin",
                             sizeClasses[size],
                             variantClasses[variant]
                         )}
                     />
-                    <div className="absolute inset-0 animate-pulse opacity-50">
-                        <Loader2
-                            className={cn(
-                                sizeClasses[size],
-                                variantClasses[variant]
-                            )}
-                        />
-                    </div>
                 </div>
-                <p className="text-lg text-muted-foreground animate-fade-in">
+                <p
+                    className={cn(
+                        "text-muted-foreground animate-fade-in",
+                        getResponsiveClass(textSize).textClass
+                    )}
+                >
                     {text}
                 </p>
             </div>
