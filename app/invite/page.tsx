@@ -9,7 +9,7 @@ export default async function InviteAuthPage({
 }: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    const { ref, method } = await searchParams;
+    const { ref, method, tgId } = await searchParams;
 
     if (!isValidParam(ref)) {
         redirect(
@@ -34,6 +34,7 @@ export default async function InviteAuthPage({
             referredUser: user,
             referrerCode: ref as string,
             method: method as string,
+            telegramId: tgId as string,
         });
 
         if (!result) {
@@ -58,6 +59,9 @@ export default async function InviteAuthPage({
                 break;
             case "SELF_INVITE_NOT_ALLOWED":
                 errorMessage = "You cannot invite yourself";
+                break;
+            case "TELEGRAM_ID_ALREADY_USED":
+                errorMessage = "This Telegram ID is already used";
                 break;
             default:
                 errorMessage = "An error occurred during invitation";

@@ -8,6 +8,19 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import QRCodeModal from "./QRCode";
 
+declare global {
+    interface Window {
+        Telegram?: {
+            WebApp?: any;
+        };
+    }
+}
+
+const isTelegramWebApp =
+    typeof window !== "undefined" &&
+    !!window.Telegram &&
+    !!window.Telegram.WebApp;
+
 const InviteFriendsModal = ({
     refUrl,
     onClose,
@@ -20,7 +33,18 @@ const InviteFriendsModal = ({
     const toast = useToast();
     const selection = [];
 
-    if (navigator.share) {
+    if (isTelegramWebApp) {
+        selection.push({
+            title: "Share",
+            icon: "/icons/share.svg",
+            onClick: () => {
+                window.Telegram?.WebApp?.showShareDialog({
+                    url: refUrl,
+                });
+                onClose();
+            },
+        });
+    } else if (navigator.share) {
         selection.push({
             title: "Share",
             icon: "/icons/share.svg",

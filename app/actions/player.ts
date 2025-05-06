@@ -71,6 +71,7 @@ export interface InvitePlayerParams {
     referredUser: User;
     referrerCode: string;
     method?: string;
+    telegramId?: string;
 }
 
 export interface InvitePlayerResult {
@@ -88,6 +89,16 @@ export async function invitePlayer(
 
     try {
         return await prisma.$transaction(async (tx) => {
+            if (input.telegramId) {
+                const existingPlayer = await tx.player.findUnique({
+                    where: { telegramId: input.telegramId },
+                });
+
+                if (existingPlayer) {
+                    throw new Error("TELEGRAM_ID_ALREADY_USED");
+                }
+            }
+
             const referredPlayer = await tx.player.findUnique({
                 where: { userId: input.referredUser.id },
             });
@@ -146,6 +157,11 @@ export async function invitePlayer(
                             method: method,
                         },
                     }),
+                    input.telegramId &&
+                        tx.player.update({
+                            where: { id: referredPlayer.id },
+                            data: { telegramId: input.telegramId },
+                        }),
                 ]);
 
             return {
