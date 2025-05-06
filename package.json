@@ -71,6 +71,7 @@
     "dompurify": "^3.2.4",
     "ethers": "^5.7.2",
     "framer-motion": "^12.6.2",
+    "html-to-image": "^1.11.13",
     "i18n-iso-countries": "^7.14.0",
     "ioredis": "^5.6.1",
     "isomorphic-dompurify": "^2.22.0",
@@ -83,6 +84,7 @@
     "pinata": "^2.2.0",
     "pinata-sdk": "^0.1.7",
     "prisma": "^6.6.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-countup": "^6.5.3",
     "react-day-picker": "8.10.1",
@@ -149,9 +151,9 @@
     "prisma-dbml-generator": "^0.12.0",
     "solidity-coverage": "^0.8.0",
     "tailwindcss": "^4.0.17",
-    "ts-node": ">=8.0.0",
+    "ts-node": "^10.9.2",
     "typechain": "^8.3.0",
-    "typescript": "~5.0.4",
+    "typescript": "^5.8.3",
     "worker-loader": "^3.0.8"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"

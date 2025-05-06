@@ -105,10 +105,12 @@ model Player {
   rewardLogs        RewardsLog[]
   referredPlayerLogs    ReferralLog[]   @relation("ReferredPlayer")
   referrerPlayerLogs    ReferralLog[]   @relation("ReferrerPlayer")
+  referralCode          String   @unique
 
   @@unique([userId, telegramId])
   @@index([userId, telegramId])
   @@index([referredBy])
+  @@index([referralCode])
 }
 
 model ReferralLog {

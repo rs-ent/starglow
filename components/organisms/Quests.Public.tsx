@@ -57,7 +57,7 @@ export default function QuestsPublic({ player }: QuestsPublicProps) {
                 )}
             >
                 <div className="my-[20px] mb-[50px] lg:my-[30px] lg:mb-[80px]">
-                    <InviteFriends />
+                    <InviteFriends player={player} />
                 </div>
                 <div className="flex justify-between items-end">
                     <div className="flex flex-row gap-2 overflow-x-auto whitespace-nowrap">

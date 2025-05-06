@@ -86,6 +86,7 @@ Table Player {
   rewardLogs RewardsLog [not null]
   referredPlayerLogs ReferralLog [not null]
   referrerPlayerLogs ReferralLog [not null]
+  referralCode String [unique, not null]
 
   indexes {
     (userId, telegramId) [unique]

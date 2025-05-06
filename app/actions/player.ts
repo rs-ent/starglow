@@ -13,6 +13,7 @@ import {
 } from "@prisma/client";
 import type { RewardCurrency } from "@/app/types/player";
 import type { User } from "next-auth";
+import { nanoid } from "nanoid";
 
 export interface GetPlayerInput {
     playerId: string;
@@ -48,6 +49,7 @@ export async function setPlayer(
     }
 
     try {
+        const referralCode = await generateReferralCode();
         return await prisma.player.upsert({
             where: { userId: input.user.id },
             update: {
@@ -56,6 +58,7 @@ export async function setPlayer(
             create: {
                 name: input.user.name || "New Player",
                 userId: input.user.id,
+                referralCode: referralCode,
             },
         });
     } catch (error) {
@@ -66,7 +69,7 @@ export async function setPlayer(
 
 export interface InvitePlayerParams {
     referredUser: User;
-    referrerPlayerId: string;
+    referrerCode: string;
     method?: string;
 }
 
@@ -79,12 +82,8 @@ export interface InvitePlayerResult {
 export async function invitePlayer(
     input?: InvitePlayerParams
 ): Promise<InvitePlayerResult | null> {
-    if (!input || !input.referredUser || !input.referrerPlayerId) {
+    if (!input || !input.referredUser || !input.referrerCode) {
         return null;
-    }
-
-    if (input.referredUser.id === input.referrerPlayerId) {
-        throw new Error("SELF_INVITE_NOT_ALLOWED");
     }
 
     try {
@@ -101,11 +100,23 @@ export async function invitePlayer(
                 throw new Error("ALREADY_INVITED");
             }
 
+            const referrerPlayer = await tx.player.findUnique({
+                where: { referralCode: input.referrerCode },
+            });
+
+            if (!referrerPlayer) {
+                throw new Error("REFERRER_NOT_FOUND");
+            }
+
+            if (referrerPlayer.id === referredPlayer.id) {
+                throw new Error("SELF_INVITE_NOT_ALLOWED");
+            }
+
             const existingLog = await tx.referralLog.findUnique({
                 where: {
                     referredPlayerId_referrerPlayerId: {
                         referredPlayerId: referredPlayer.id,
-                        referrerPlayerId: input.referrerPlayerId,
+                        referrerPlayerId: referrerPlayer.id,
                     },
                 },
             });
@@ -120,18 +131,18 @@ export async function invitePlayer(
                     tx.player.update({
                         where: { userId: input.referredUser.id },
                         data: {
-                            referredBy: input.referrerPlayerId,
+                            referredBy: referrerPlayer.id,
                             referredMethod: method,
                         },
                     }),
                     tx.player.update({
-                        where: { id: input.referrerPlayerId },
+                        where: { id: referrerPlayer.id },
                         data: { referralCount: { increment: 1 } },
                     }),
                     tx.referralLog.create({
                         data: {
                             referredPlayerId: referredPlayer.id,
-                            referrerPlayerId: input.referrerPlayerId,
+                            referrerPlayerId: referrerPlayer.id,
                             method: method,
                         },
                     }),
@@ -174,4 +185,22 @@ export async function getDBUserFromPlayer(
         console.error("[getDBUserFromPlayer] Error:", error);
         return null;
     }
+}
+
+export async function generateReferralCode(): Promise<string> {
+    let code: string;
+    let exists = true;
+    do {
+        code = nanoid(6);
+        const existingPlayer = await prisma.player.findUnique({
+            where: { referralCode: code },
+            select: { referralCode: true },
+        });
+
+        if (!existingPlayer || !existingPlayer.referralCode) {
+            exists = false;
+        }
+    } while (exists);
+
+    return code;
 }

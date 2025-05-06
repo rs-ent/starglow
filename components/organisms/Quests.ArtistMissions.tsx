@@ -132,7 +132,7 @@ export default function QuestsArtistMissions({
             )}
 
             <div className="mb-[100px] lg:mb-[0px]">
-                <InviteFriends />
+                <InviteFriends player={player} />
             </div>
         </div>
     );
