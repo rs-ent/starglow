@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import HeroGitbook from "@/components/organisms/Hero.Gitbook";
 import HeroFollowUs from "@/components/organisms/Hero.FollowUs";
 import Footer from "@/components/organisms/Footer";
+import Script from "next/script";
 
 declare global {
     interface Window {
@@ -20,16 +21,17 @@ export default function Main() {
     const router = useRouter();
 
     const [isLoading, setIsLoading] = useState(true);
+    const [telegram, setTelegram] = useState<any>(null);
 
     useEffect(() => {
         console.log("Window Telegram", window.Telegram);
         if (
-            typeof window !== "undefined" &&
-            window.Telegram?.WebApp?.initDataUnsafe
+            telegram &&
+            telegram.initDataUnsafe?.user &&
+            telegram.initDataUnsafe?.start_param
         ) {
-            const tg = window.Telegram.WebApp;
-            const telegramUser = tg.initDataUnsafe?.user;
-            const refParam = tg?.initDataUnsafe?.start_param;
+            const telegramUser = telegram.initDataUnsafe?.user;
+            const refParam = telegram.initDataUnsafe?.start_param;
             if (refParam && telegramUser?.id) {
                 const tgId = telegramUser.id.toString();
                 router.replace(
@@ -39,10 +41,19 @@ export default function Main() {
             }
         }
         setIsLoading(false);
-    }, []);
+    }, [telegram]);
 
     return (
         <>
+            <Script
+                src="https://telegram.org/js/telegram-web-app.js"
+                strategy="lazyOnload"
+                onLoad={() => {
+                    if (window.Telegram?.WebApp) {
+                        setTelegram(window.Telegram.WebApp);
+                    }
+                }}
+            />
             {isLoading && (
                 <div className="fixed inset-0 flex items-center justify-center w-screen h-screen z-50 bg-[rgba(0,0,0,0.6)] transition-all duration-700 backdrop-blur-3xl">
                     <img
