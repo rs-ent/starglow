@@ -22,6 +22,7 @@ export default function Main() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        console.log("Window Telegram", window.Telegram);
         if (
             typeof window !== "undefined" &&
             window.Telegram?.WebApp?.initDataUnsafe
