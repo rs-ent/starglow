@@ -5,6 +5,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ArtistMessageMessageProps {
     message: string;
@@ -52,73 +53,78 @@ export default function ArtistMessageMessage({
             : {};
 
     return (
-        <div
-            className="shadow-lg rounded-full mb-5"
-            style={{
-                boxShadow: `
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0, y: 100 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -100 }}
+                transition={{ duration: 0.9, ease: "easeOut" }}
+                className="shadow-lg rounded-full mb-5"
+                style={{
+                    boxShadow: `
                     0 5px 1px rgba(0,0,0,0.15),
                     0 0 24px 6px rgba(255,255,255,0.2) inset
                 `,
-                background: "transparent",
-                display: "inline-block",
-                position: "relative",
-            }}
-        >
-            <div className="absolute right-0 top-0 z-10 rotate-[15deg]">
-                <El03Icon className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6" />
-            </div>
-            <div
-                ref={containerRef}
-                className={cn(
-                    "text-sm rounded-full overflow-hidden whitespace-nowrap py-4",
-                    "backdrop-blur-xs",
-                    getResponsiveClass(size).textClass,
-                    className
-                )}
-                style={{
+                    background: "transparent",
+                    display: "inline-block",
                     position: "relative",
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.75)",
-                    WebkitMaskImage: `
-    linear-gradient(to right, transparent 0%, black 15%, black 100%),
-    linear-gradient(to left, transparent 0%, black 15%, black 100%)
-`,
-                    maskImage: `
-    linear-gradient(to right, transparent 0%, black 15%, black 100%),
-    linear-gradient(to left, transparent 0%, black 15%, black 100%)
-`,
-                    WebkitMaskRepeat: "no-repeat",
-                    maskRepeat: "no-repeat",
-                    WebkitMaskSize: "50% 100%, 50% 100%",
-                    maskSize: "50% 100%, 50% 100%",
-                    WebkitMaskPosition: "left, right",
-                    maskPosition: "left, right",
                 }}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                onTouchStart={handleTouchStart}
             >
+                <div className="absolute right-0 top-0 z-10 rotate-[15deg]">
+                    <El03Icon className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6" />
+                </div>
                 <div
+                    ref={containerRef}
+                    className={cn(
+                        "text-sm rounded-full overflow-hidden whitespace-nowrap py-4",
+                        "backdrop-blur-xs",
+                        getResponsiveClass(size).textClass,
+                        className
+                    )}
                     style={{
-                        ...marqueeStyle,
-                        display: "inline-block",
-                        whiteSpace: "nowrap",
+                        position: "relative",
+                        boxShadow: "0 4px 16px rgba(0,0,0,0.75)",
+                        WebkitMaskImage: `
+    linear-gradient(to right, transparent 0%, black 15%, black 100%),
+    linear-gradient(to left, transparent 0%, black 15%, black 100%)
+`,
+                        maskImage: `
+    linear-gradient(to right, transparent 0%, black 15%, black 100%),
+    linear-gradient(to left, transparent 0%, black 15%, black 100%)
+`,
+                        WebkitMaskRepeat: "no-repeat",
+                        maskRepeat: "no-repeat",
+                        WebkitMaskSize: "50% 100%, 50% 100%",
+                        maskSize: "50% 100%, 50% 100%",
+                        WebkitMaskPosition: "left, right",
+                        maskPosition: "left, right",
                     }}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                    onTouchStart={handleTouchStart}
                 >
-                    <span ref={spanRef} style={{ display: "inline-block" }}>
-                        {message}
-                    </span>
-                    <span
-                        aria-hidden="true"
+                    <div
                         style={{
+                            ...marqueeStyle,
                             display: "inline-block",
-                            marginLeft: gap,
+                            whiteSpace: "nowrap",
                         }}
                     >
-                        {message}
-                    </span>
-                </div>
-                {messageWidth > 0 && containerWidth > 0 && (
-                    <style>{`
+                        <span ref={spanRef} style={{ display: "inline-block" }}>
+                            {message}
+                        </span>
+                        <span
+                            aria-hidden="true"
+                            style={{
+                                display: "inline-block",
+                                marginLeft: gap,
+                            }}
+                        >
+                            {message}
+                        </span>
+                    </div>
+                    {messageWidth > 0 && containerWidth > 0 && (
+                        <style>{`
                     @keyframes marquee {
                         0% {
                             transform: translateX(${containerWidth}px);
@@ -128,9 +134,10 @@ export default function ArtistMessageMessage({
                         }
                     }
                 `}</style>
-                )}
-            </div>
-        </div>
+                    )}
+                </div>
+            </motion.div>
+        </AnimatePresence>
     );
 }
 

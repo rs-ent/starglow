@@ -6,6 +6,7 @@ import PartialLoading from "../atoms/PartialLoading";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
+import { motion } from "framer-motion";
 interface QuestsMissionsProps {
     player: Player;
     quests: Quest[];
@@ -33,8 +34,21 @@ export default function QuestsMissions({
         return <div>Error: {error.message}</div>;
     }
 
+    const containerVariants = {
+        animate: {
+            transition: {
+                staggerChildren: 0.12,
+            },
+        },
+    };
+
     return (
-        <div className="relative transition-all duration-700">
+        <motion.div
+            className="relative transition-all duration-700"
+            variants={containerVariants}
+            initial="initial"
+            animate="animate"
+        >
             {!permission && (
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30">
                     <div className="flex flex-col items-center gap-4">
@@ -76,6 +90,6 @@ export default function QuestsMissions({
                     />
                 ))}
             </div>
-        </div>
+        </motion.div>
     );
 }

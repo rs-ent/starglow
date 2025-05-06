@@ -11,6 +11,7 @@ import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
 import { usePlayerGet } from "@/app/hooks/usePlayer";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import PartialLoading from "../atoms/PartialLoading";
+import { cn } from "@/lib/utils/tailwind";
 
 interface QuestsPrivateProps {
     player: Player;
@@ -28,8 +29,7 @@ export default function QuestsPrivate({
     });
 
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
-    const [showArtistMessage, setShowArtistMessage] = useState(false);
-    const [showArtistMission, setShowArtistMission] = useState(false);
+    const [showArtistContents, setShowArtistContents] = useState(false);
     const [
         selectedArtistTokenGatingResult,
         setSelectedArtistTokenGatingResult,
@@ -51,15 +51,13 @@ export default function QuestsPrivate({
     useEffect(() => {
         setSelectedArtist(null);
         setSelectedArtistTokenGatingResult(null);
-        setShowArtistMessage(false);
-        setShowArtistMission(false);
+        setShowArtistContents(false);
     }, [privateTabClicked]);
 
     const handleArtistSelect = (artist: Artist | null) => {
         setSelectedArtist(artist);
         setSelectedArtistTokenGatingResult(null);
-        setShowArtistMessage(false);
-        setShowArtistMission(false);
+        setShowArtistContents(false);
     };
 
     useEffect(() => {
@@ -90,8 +88,7 @@ export default function QuestsPrivate({
             } catch (error) {
                 console.error(error);
             } finally {
-                setShowArtistMessage(true);
-                setShowArtistMission(true);
+                setShowArtistContents(true);
             }
         };
         fetchTokenGatingResult();
@@ -111,23 +108,28 @@ export default function QuestsPrivate({
                 </div>
             )}
             {selectedArtist && !isTokenGating && !getTokenGatingLoading && (
-                <div className="relative w-full">
-                    {showArtistMessage && (
-                        <div className="w-full z-0 relative">
+                <div className="relative w-full h-full">
+                    {showArtistContents && (
+                        <div className="w-full h-full z-0 relative">
                             <ArtistMessage
                                 artist={selectedArtist}
                                 className="mt-[20px] sm:mt-[35px] md:mt-[40px] lg:mt-[45px] xl:mt-[50px]"
                             />
+                            <div
+                                className={cn(
+                                    "w-full h-full",
+                                    "mt-[20px] sm:mt-[35px] md:mt-[40px] lg:mt-[45px] xl:mt-[50px]"
+                                )}
+                            >
+                                <QuestsArtistMissions
+                                    artist={selectedArtist}
+                                    player={player}
+                                    tokenGatingResult={
+                                        selectedArtistTokenGatingResult || null
+                                    }
+                                />
+                            </div>
                         </div>
-                    )}
-                    {showArtistMission && (
-                        <QuestsArtistMissions
-                            artist={selectedArtist}
-                            player={player}
-                            tokenGatingResult={
-                                selectedArtistTokenGatingResult || null
-                            }
-                        />
                     )}
                 </div>
             )}

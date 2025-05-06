@@ -24,7 +24,6 @@ export default function Main() {
     const [telegram, setTelegram] = useState<any>(null);
 
     useEffect(() => {
-        console.log("Window Telegram", window.Telegram);
         if (
             telegram &&
             telegram.initDataUnsafe?.user &&

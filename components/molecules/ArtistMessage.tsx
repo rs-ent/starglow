@@ -8,8 +8,8 @@ import { useArtistsGet } from "@/app/hooks/useArtists";
 import { useEffect, useState } from "react";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import ImageViewer from "../atoms/ImageViewer";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ArtistMessageProps {
     artist: Artist;
@@ -21,6 +21,7 @@ export default function ArtistMessage({
     className,
 }: ArtistMessageProps) {
     const [message, setMessage] = useState<ArtistMessageType | null>(null);
+    const [isReady, setIsReady] = useState(false);
 
     const { artistMessages, isLoading, error } = useArtistsGet({
         getArtistMessagesInput: {
@@ -34,8 +35,14 @@ export default function ArtistMessage({
         }
     }, [artistMessages]);
 
+    useEffect(() => {
+        if (message && !isLoading) {
+            setIsReady(true);
+        }
+    }, [message, isLoading]);
+
     return (
-        <>
+        <AnimatePresence>
             {isLoading && <PartialLoading text="Loading..." size="sm" />}
             {error && <div>Error: {error.message}</div>}
             {message && (
@@ -47,17 +54,23 @@ export default function ArtistMessage({
                     )}
                 >
                     {message.bannerUrl && (
-                        <ImageViewer
-                            img={message.bannerUrl}
-                            title={message.message}
-                            framePadding={1}
-                            showTitle={false}
-                        />
+                        <motion.div
+                            initial={{ opacity: 0, y: 100 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -100 }}
+                            transition={{ duration: 0.6, ease: "easeOut" }}
+                        >
+                            <ImageViewer
+                                img={message.bannerUrl}
+                                title={message.message}
+                                framePadding={1}
+                                showTitle={false}
+                            />
+                        </motion.div>
                     )}
-
                     <ArtistMessageMessage message={message.message} />
                 </div>
             )}
-        </>
+        </AnimatePresence>
     );
 }
