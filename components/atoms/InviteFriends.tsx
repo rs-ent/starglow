@@ -8,14 +8,6 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import QRCodeModal from "./QRCode";
 
-declare global {
-    interface Window {
-        Telegram?: {
-            WebApp?: any;
-        };
-    }
-}
-
 const InviteFriendsModal = ({
     refUrl,
     onClose,
@@ -28,7 +20,16 @@ const InviteFriendsModal = ({
     const toast = useToast();
     const selection = [];
 
-    if (typeof window !== "undefined" && window.Telegram?.WebApp) {
+    if (navigator.share) {
+        selection.push({
+            title: "Share",
+            icon: "/icons/share.svg",
+            onClick: async () => {
+                await navigator.share({ url: refUrl });
+                onClose();
+            },
+        });
+    } else {
         selection.push({
             title: "Share",
             icon: "/icons/share.svg",
@@ -37,15 +38,6 @@ const InviteFriendsModal = ({
                     refUrl
                 )}&text=${encodeURIComponent("🔥 Join Starglow!")}`;
                 window.open(shareUrl, "_blank");
-                onClose();
-            },
-        });
-    } else if (navigator.share) {
-        selection.push({
-            title: "Share",
-            icon: "/icons/share.svg",
-            onClick: async () => {
-                await navigator.share({ url: refUrl });
                 onClose();
             },
         });
@@ -117,12 +109,12 @@ export default function InviteFriends({ player }: InviteFriendsProps) {
 
     const refUrl = useMemo(() => {
         const code = player.referralCode;
-        if (typeof window !== "undefined" && code) {
-            if (window.Telegram?.WebApp) {
+        if (typeof window !== "undefined") {
+            if (typeof navigator.share === "function") {
+                return `${window.location.origin}/invite?ref=${code}&method=webapp`;
+            } else {
                 return `https://t.me/Waydcloud_bot?startapp=${code}`;
             }
-
-            return `${window.location.origin}/invite?ref=${code}&method=webapp`;
         }
         return "";
     }, [player?.referralCode]);
