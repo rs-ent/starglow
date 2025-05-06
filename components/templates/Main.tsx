@@ -8,6 +8,14 @@ import HeroGitbook from "@/components/organisms/Hero.Gitbook";
 import HeroFollowUs from "@/components/organisms/Hero.FollowUs";
 import Footer from "@/components/organisms/Footer";
 
+declare global {
+    interface Window {
+        Telegram?: {
+            WebApp?: any;
+        };
+    }
+}
+
 export default function Main() {
     const router = useRouter();
 
