@@ -4,39 +4,42 @@ import { redirect } from "next/navigation";
 import { requireAuthUser } from "../actions/auth";
 import { invitePlayer } from "../actions/player";
 
-type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
-type InviteMethod = "Telegram" | "Web App";
-
 export default async function InviteAuthPage({
     searchParams,
 }: {
-    searchParams: SearchParams;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    const { referral, method } = await searchParams;
+    const { referrer, method } = await searchParams;
 
-    if (!referral || typeof referral !== "string") {
+    if (!referrer) {
         redirect("/error?message=Invalid referral code&returnUrl=/");
     }
 
-    if (
-        !method ||
-        typeof method !== "string" ||
-        !["Telegram", "Web App"].includes(method)
-    ) {
+    if (!method) {
         redirect("/error?message=Invalid invitation method&returnUrl=/");
     }
 
     try {
         const user = await requireAuthUser(
-            `/invite?ref=${referral}&method=${method}`
+            `/invite?ref=${referrer}&method=${method}`
         );
 
         try {
-            await invitePlayer({
-                currentUser: user,
-                referralId: referral,
-                method: method as InviteMethod,
+            const result = await invitePlayer({
+                referredUser: user,
+                referrerPlayerId: referrer as string,
+                method: method as string,
             });
+
+            if (!result) {
+                throw new Error("Failed to invite player");
+            }
+
+            const { referredPlayer, referrerPlayer, referralLog } = result;
+
+            console.log("Referred player:", referredPlayer);
+            console.log("Referrer player:", referrerPlayer);
+            console.log("Referral log:", referralLog);
 
             redirect("/quests");
         } catch (error: any) {
@@ -52,9 +55,12 @@ export default async function InviteAuthPage({
                 case "SELF_INVITE_NOT_ALLOWED":
                     errorMessage = "You cannot invite yourself";
                     break;
+                default:
+                    errorMessage = "An error occurred during invitation";
+                    break;
             }
 
-            const returnUrl = `/invite?ref=${referral}&method=${method}`;
+            const returnUrl = `/invite?ref=${referrer}&method=${method}`;
             redirect(
                 `/error?message=${encodeURIComponent(
                     errorMessage

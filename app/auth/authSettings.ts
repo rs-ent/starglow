@@ -95,25 +95,26 @@ const authOptions: NextAuthConfig = {
         async signIn({ user }) {
             try {
                 if (user && user.id) {
-                    const player = await setPlayer(user);
-                    console.log(
-                        `Player created/found for user ${user.id}:`,
-                        player.id
-                    );
+                    const promises = [
+                        setPlayer({
+                            user: user,
+                        }),
+                        createPolygonWallet(user.id),
+                    ];
 
-                    const walletResult = await createPolygonWallet(user.id);
-                    console.log("Wallet result:", walletResult);
-                    if (walletResult.success) {
-                        console.log(
-                            `Wallet created for user ${user.id}:`,
-                            walletResult.address
-                        );
-                    } else {
-                        console.error(
-                            `Failed to create wallet for user ${user.id}:`,
-                            walletResult.message
-                        );
+                    const [player, wallet] = await Promise.all(promises);
+
+                    if (!player) {
+                        throw new Error("Failed to create player");
                     }
+
+                    console.log("Player created/found for user", player);
+
+                    if (!wallet) {
+                        throw new Error("Failed to create wallet");
+                    }
+
+                    console.log("Wallet created for user", wallet);
                 }
             } catch (error) {
                 console.error("Error in signIn event:", error);

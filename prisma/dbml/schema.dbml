@@ -71,10 +71,12 @@ Table Player {
   userId String [unique]
   telegramId String [unique]
   name String
-  recommendedCount Int [not null, default: 0]
-  recommenderId String
-  recommenderName String
-  recommenderMethod String
+  referralCount Int [not null, default: 0]
+  referredBy String
+  referrer Player
+  referredPlayers Player [not null]
+  referredMethod String
+  referredAt DateTime [default: `now()`, not null]
   createdAt DateTime [default: `now()`, not null]
   lastConnectedAt DateTime [not null]
   user User
@@ -82,6 +84,26 @@ Table Player {
   pollLogs PollLog [not null]
   questLogs QuestLog [not null]
   rewardLogs RewardsLog [not null]
+  referredPlayerLogs ReferralLog [not null]
+  referrerPlayerLogs ReferralLog [not null]
+
+  indexes {
+    (userId, telegramId) [unique]
+  }
+}
+
+Table ReferralLog {
+  id String [pk]
+  referredPlayerId String [not null]
+  referredPlayer Player [not null]
+  referrerPlayerId String [not null]
+  referrerPlayer Player [not null]
+  method String
+  createdAt DateTime [default: `now()`, not null]
+
+  indexes {
+    (referredPlayerId, referrerPlayerId) [unique]
+  }
 }
 
 Table PlayerAsset {
@@ -117,6 +139,8 @@ Table Quest {
   repeatable Boolean [not null, default: false]
   repeatableCount Int
   repeatableInterval Int
+  isReferral Boolean [not null, default: false]
+  referralCount Int
   permanent Boolean [not null, default: false]
   isActive Boolean [not null, default: true]
   order Int [default: 0]
@@ -826,7 +850,13 @@ Ref: Session.userId > User.id [delete: Cascade]
 
 Ref: Wallet.userId > User.id [delete: Cascade]
 
+Ref: Player.referredBy - Player.id
+
 Ref: Player.userId - User.id [delete: Cascade]
+
+Ref: ReferralLog.referredPlayerId > Player.id [delete: Cascade]
+
+Ref: ReferralLog.referrerPlayerId > Player.id [delete: Cascade]
 
 Ref: PlayerAsset.playerId > Player.id [delete: Cascade]
 

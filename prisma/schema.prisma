@@ -90,10 +90,12 @@ model Player {
   userId            String?      @unique
   telegramId        String?      @unique
   name              String?
-  recommendedCount  Int          @default(0)
-  recommenderId     String?
-  recommenderName   String?
-  recommenderMethod String?
+  referralCount     Int          @default(0)
+  referredBy        String?
+  referrer          Player?      @relation("Referrer", fields: [referredBy], references: [id])
+  referredPlayers   Player[]     @relation("Referrer")
+  referredMethod    String?
+  referredAt        DateTime     @default(now())
   createdAt         DateTime     @default(now())
   lastConnectedAt   DateTime     @updatedAt
   user              User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -101,9 +103,24 @@ model Player {
   pollLogs          PollLog[]
   questLogs         QuestLog[]
   rewardLogs        RewardsLog[]
+  referredPlayerLogs    ReferralLog[]   @relation("ReferredPlayer")
+  referrerPlayerLogs    ReferralLog[]   @relation("ReferrerPlayer")
 
+  @@unique([userId, telegramId])
   @@index([userId, telegramId])
-  @@index([recommenderId])
+  @@index([referredBy])
+}
+
+model ReferralLog {
+  id             String         @id @default(cuid())
+  referredPlayerId String
+  referredPlayer   Player       @relation("ReferredPlayer", fields: [referredPlayerId], references: [id], onDelete: Cascade)
+  referrerPlayerId String
+  referrerPlayer   Player       @relation("ReferrerPlayer", fields: [referrerPlayerId], references: [id], onDelete: Cascade)
+  method           String?
+  createdAt      DateTime     @default(now())
+
+  @@unique([referredPlayerId, referrerPlayerId])
 }
 
 enum PlayerAssetStatus {
@@ -147,6 +164,8 @@ model Quest {
   repeatable     Boolean        @default(false)
   repeatableCount Int?
   repeatableInterval Int?
+  isReferral     Boolean        @default(false)
+  referralCount  Int?
   permanent      Boolean        @default(false)
   isActive       Boolean        @default(true)
   order          Int?           @default(0)
