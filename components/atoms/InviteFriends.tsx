@@ -16,11 +16,6 @@ declare global {
     }
 }
 
-const isTelegramWebApp =
-    typeof window !== "undefined" &&
-    !!window.Telegram &&
-    !!window.Telegram.WebApp;
-
 const InviteFriendsModal = ({
     refUrl,
     onClose,
@@ -33,14 +28,15 @@ const InviteFriendsModal = ({
     const toast = useToast();
     const selection = [];
 
-    if (isTelegramWebApp) {
+    if (typeof window !== "undefined" && window.Telegram?.WebApp) {
         selection.push({
             title: "Share",
             icon: "/icons/share.svg",
             onClick: () => {
-                window.Telegram?.WebApp?.showShareDialog({
-                    url: refUrl,
-                });
+                const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(
+                    refUrl
+                )}&text=${encodeURIComponent("🔥 Join Starglow!")}`;
+                window.open(shareUrl, "_blank");
                 onClose();
             },
         });
@@ -120,14 +116,19 @@ export default function InviteFriends({ player }: InviteFriendsProps) {
     const [showQrCode, setShowQrCode] = useState(false);
 
     const refUrl = useMemo(() => {
-        if (typeof window !== "undefined" && player && player.referralCode) {
-            return `${window.location.origin}/invite?ref=${player.referralCode}&method=webapp`;
+        const code = player.referralCode;
+        if (typeof window !== "undefined" && code) {
+            if (window.Telegram?.WebApp) {
+                return `https://t.me/Waydcloud_bot?startapp=${code}`;
+            }
+
+            return `${window.location.origin}/invite?ref=${code}&method=webapp`;
         }
         return "";
     }, [player?.referralCode]);
 
     const handleClick = () => {
-        if (typeof window !== "undefined" && player && player.referralCode) {
+        if (typeof window !== "undefined") {
             setIsOpen(true);
         }
     };
