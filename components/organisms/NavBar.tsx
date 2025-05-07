@@ -61,7 +61,7 @@ export default function NavBar() {
                 className="
                 hidden lg:flex
                 sticky top-0 z-10 backdrop-blur-xs
-                w-screen items-center justify-between bg-gradient-to-br from-[rgba(5,1,10,0.3)] to-[rgba(1,1,2,0.7)]
+                w-full items-center justify-between bg-gradient-to-br from-[rgba(5,1,10,0.3)] to-[rgba(1,1,2,0.7)]
                 py-3 px-5
                 sm:py-4 sm:px-6
                 md:py-6 md:px-8
@@ -146,7 +146,7 @@ export default function NavBar() {
             </nav>
 
             {/* Mobile Menu */}
-            <div className="lg:hidden w-screen">
+            <div className="lg:hidden">
                 <div
                     className={cn(
                         "fixed top-0 left-0 right-0 inset-x-0 z-40",
