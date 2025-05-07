@@ -285,7 +285,24 @@ export default function QuestsButton({
                             </div>
                         </div>
                         <div className="flex flex-row items-center gap-2">
-                            {quest.repeatable && (
+                            {quest.isReferral && (
+                                <div className="flex flex-col items-end text-right gap-[2px]">
+                                    {quest.referralCount && (
+                                        <div
+                                            className={cn(
+                                                getResponsiveClass(infoTextSize)
+                                                    .textClass,
+                                                "opacity-85"
+                                            )}
+                                        >
+                                            {referralLogsCount || 0}/
+                                            {quest.referralCount}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {!quest.isReferral && quest.repeatable && (
                                 <div className="flex flex-col items-end text-right gap-[2px]">
                                     {quest.repeatableCount && (
                                         <div
@@ -310,23 +327,6 @@ export default function QuestsButton({
                                                 endDate={waitDate}
                                             />
                                         )}
-                                </div>
-                            )}
-
-                            {quest.isReferral && (
-                                <div className="flex flex-col items-end text-right gap-[2px]">
-                                    {quest.referralCount && (
-                                        <div
-                                            className={cn(
-                                                getResponsiveClass(infoTextSize)
-                                                    .textClass,
-                                                "opacity-85"
-                                            )}
-                                        >
-                                            {referralLogsCount || 0}/
-                                            {quest.referralCount}
-                                        </div>
-                                    )}
                                 </div>
                             )}
 

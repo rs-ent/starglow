@@ -638,6 +638,7 @@ export interface GetQuestLogsInput {
     playerId?: string;
     isClaimed?: boolean;
     isPublic?: boolean;
+    deprecated?: boolean;
 }
 
 export async function getQuestLogs({
@@ -703,6 +704,10 @@ export async function getQuestLogs({
                 needToken: false,
                 needTokenAddress: null,
             };
+        }
+
+        if (input.deprecated) {
+            where.deprecated = input.deprecated;
         }
 
         const questLogs = await prisma.questLog.findMany({
@@ -821,15 +826,31 @@ export async function setReferralQuestLogs(
             return false;
         }
 
-        const questLogMap = new Map(
-            input.questLogs.map((log) => [log.questId, log])
-        );
-
         const completableQuests = input.referralQuests.filter((quest) => {
-            const existingLog = questLogMap.get(quest.id);
-            if (existingLog?.isClaimed || existingLog?.completed) {
+            const existingLogs = input.questLogs.filter(
+                (log) => log.questId === quest.id && log.isClaimed
+            );
+
+            if (
+                quest.repeatable &&
+                quest.referralCount &&
+                existingLogs.length > 0
+            ) {
+                const claimedCount = existingLogs.length;
+                const remainingReferrals =
+                    input.referralLogs.length -
+                    quest.referralCount * claimedCount;
+
+                return remainingReferrals >= quest.referralCount;
+            }
+
+            if (
+                existingLogs.length > 0 ||
+                existingLogs.some((log) => log.completed)
+            ) {
                 return false;
             }
+
             return (
                 quest.referralCount &&
                 quest.referralCount <= input.referralLogs.length
@@ -841,16 +862,22 @@ export async function setReferralQuestLogs(
             return true;
         }
 
-        const newDataToCreate = completableQuests.map((quest) => ({
-            playerId: input.player.id,
-            questId: quest.id,
-            completed: true,
-            completedAt: input.referralLogs[0].createdAt,
-            rewardAssetId: quest.rewardAssetId,
-            rewardAmount: quest.rewardAmount,
-            repeatCount: input.referralLogs.length,
-            completedDates: [input.referralLogs[0].createdAt],
-        }));
+        const newDataToCreate = completableQuests.map((quest) => {
+            const existingLogs = input.questLogs.filter(
+                (log) => log.questId === quest.id && log.isClaimed
+            );
+
+            return {
+                playerId: input.player.id,
+                questId: quest.id,
+                completed: true,
+                completedAt: input.referralLogs[0].createdAt,
+                rewardAssetId: quest.rewardAssetId,
+                rewardAmount: quest.rewardAmount,
+                repeatCount: existingLogs.length + 1,
+                completedDates: [input.referralLogs[0].createdAt],
+            };
+        });
 
         await prisma.$transaction(async (tx) => {
             await tx.questLog.createMany({

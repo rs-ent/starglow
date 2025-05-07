@@ -26,6 +26,7 @@ export default function QuestsPublic({
         getQuestLogsInput: {
             playerId: player.id,
             isPublic: true,
+            deprecated: false,
         },
     });
 

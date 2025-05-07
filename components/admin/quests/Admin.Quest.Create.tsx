@@ -1346,96 +1346,14 @@ function ReferralQuestForm({
                                 반복 퀘스트
                             </Button>
                         </div>
+                        <span className="text-xs text-muted-foreground">
+                            1회성 퀘스트는 초대 횟수를 채우면 완료되며 클레임 후
+                            다시 보상을 받을 수 없습니다.
+                            <br />
+                            반복 퀘스트는 초대 횟수를 채울 때마다 보상을 받을 수
+                            있습니다.
+                        </span>
                     </div>
-
-                    {formData.repeatable && (
-                        <div className="w-full mb-8 flex flex-col gap-4">
-                            <div>
-                                <Label className="mb-2 block">수행 횟수</Label>
-                                <Input
-                                    type="number"
-                                    value={formData.repeatableCount ?? ""}
-                                    onChange={(e) =>
-                                        onChange(
-                                            "repeatableCount",
-                                            Number(e.target.value)
-                                        )
-                                    }
-                                    min={2}
-                                    placeholder="횟수"
-                                    className="w-40"
-                                />
-                                <div className="text-xs text-muted-foreground mt-1">
-                                    횟수만큼 퀘스트 수행 시 퀘스트가 완료됩니다.
-                                </div>
-                            </div>
-                            <div>
-                                <Label className="mb-2 block">반복 간격</Label>
-                                <div className="flex gap-2 items-center">
-                                    <Input
-                                        type="number"
-                                        min={0}
-                                        value={formData.intervalDays}
-                                        onChange={(e) =>
-                                            onChange(
-                                                "intervalDays",
-                                                Number(e.target.value)
-                                            )
-                                        }
-                                        className="w-20"
-                                        placeholder="0"
-                                    />
-                                    <span>일</span>
-                                    <Input
-                                        type="number"
-                                        min={0}
-                                        value={formData.intervalHours}
-                                        onChange={(e) =>
-                                            onChange(
-                                                "intervalHours",
-                                                Number(e.target.value)
-                                            )
-                                        }
-                                        className="w-20"
-                                        placeholder="0"
-                                    />
-                                    <span>시간</span>
-                                    <Input
-                                        type="number"
-                                        min={0}
-                                        value={formData.intervalMinutes}
-                                        onChange={(e) =>
-                                            onChange(
-                                                "intervalMinutes",
-                                                Number(e.target.value)
-                                            )
-                                        }
-                                        className="w-20"
-                                        placeholder="0"
-                                    />
-                                    <span>분</span>
-                                    <Input
-                                        type="number"
-                                        min={0}
-                                        value={formData.intervalSeconds}
-                                        onChange={(e) =>
-                                            onChange(
-                                                "intervalSeconds",
-                                                Number(e.target.value)
-                                            )
-                                        }
-                                        className="w-20"
-                                        placeholder="0"
-                                    />
-                                    <span>초</span>
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                    반복 간격을 입력하세요 (예: 1일 2시간 30분
-                                    10초)
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </Section>
                 <Divider />
                 <div className="flex justify-end pt-4">

@@ -196,6 +196,7 @@ model QuestLog {
   rewardAsset    Asset?         @relation("QuestLogRewardAsset", fields: [rewardAssetId], references: [id])
   repeatCount    Int            @default(1)
   completedDates DateTime[]
+  deprecated     Boolean        @default(false)
   createdAt      DateTime       @default(now())
   isClaimed      Boolean        @default(false)
   claimedAt      DateTime?
