@@ -34,21 +34,8 @@ export default function QuestsMissions({
         return <div>Error: {error.message}</div>;
     }
 
-    const containerVariants = {
-        animate: {
-            transition: {
-                staggerChildren: 0.12,
-            },
-        },
-    };
-
     return (
-        <motion.div
-            className="relative transition-all duration-700"
-            variants={containerVariants}
-            initial="initial"
-            animate="animate"
-        >
+        <div className="relative transition-all duration-700">
             {!permission && (
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30">
                     <div className="flex flex-col items-center gap-4">
@@ -77,7 +64,7 @@ export default function QuestsMissions({
                     !permission && "blur-sm"
                 )}
             >
-                {quests.map((quest) => (
+                {quests.map((quest, index) => (
                     <QuestsButton
                         key={quest.id}
                         player={player}
@@ -87,9 +74,10 @@ export default function QuestsMissions({
                         )}
                         tokenGatingResult={tokenGatingResult}
                         permission={permission}
+                        index={index}
                     />
                 ))}
             </div>
-        </motion.div>
+        </div>
     );
 }

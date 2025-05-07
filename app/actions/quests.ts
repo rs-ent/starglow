@@ -17,45 +17,48 @@ export type PaginationInput = {
 
 export interface CreateQuestInput {
     title: string;
-    description?: string;
-    url?: string;
-    icon?: string;
-    imgUrl?: string;
-    youtubeUrl?: string;
-    rewardAssetId?: string;
-    rewardAmount?: number;
-    startDate?: Date;
-    endDate?: Date;
+    description?: string | null;
+    url?: string | null;
+    icon?: string | null;
+    imgUrl?: string | null;
+    youtubeUrl?: string | null;
+    rewardAssetId?: string | null;
+    rewardAmount?: number | null;
+    startDate?: Date | null;
+    endDate?: Date | null;
     permanent?: boolean;
     repeatable?: boolean;
-    repeatableCount?: number;
-    repeatableInterval?: number;
+    repeatableCount?: number | null;
+    repeatableInterval?: number | null;
     isActive?: boolean;
-    order?: number;
-    effects?: string;
-    type?: string;
-    artistId?: string;
+    order?: number | null;
+    effects?: string | null;
+    type?: string | null;
+    artistId?: string | null;
     needToken?: boolean;
-    needTokenAddress?: string;
+    needTokenAddress?: string | null;
 }
 
 export async function createQuest(input: CreateQuestInput) {
-    const rewardAsset = await prisma.asset.findUnique({
-        where: {
-            id: input.rewardAssetId,
-        },
-    });
-
-    if (!rewardAsset || !rewardAsset.isActive) {
-        throw new Error("Reward asset not found");
+    if (input.rewardAssetId) {
+        const rewardAsset = await prisma.asset.findUnique({
+            where: { id: input.rewardAssetId },
+        });
+        if (!rewardAsset || !rewardAsset.isActive) {
+            throw new Error("Reward asset not found");
+        }
     }
+
+    const { rewardAssetId, artistId, ...rest } = input;
 
     const quest = await prisma.quest.create({
         data: {
-            ...input,
-            permanent: input.permanent || false,
-            isActive: input.isActive || true,
-            order: input.order || 0,
+            ...rest,
+            rewardAssetId: rewardAssetId || null,
+            artistId: artistId || null,
+            permanent: input.permanent ?? false,
+            isActive: input.isActive ?? true,
+            order: input.order ?? 0,
         },
     });
 

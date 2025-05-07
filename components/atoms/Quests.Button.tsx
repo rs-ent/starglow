@@ -28,6 +28,7 @@ interface QuestsButtonProps {
     arrowSize?: number;
     tokenGatingResult?: AdvancedTokenGateResult | null;
     permission?: boolean;
+    index: number;
 }
 
 export default function QuestsButton({
@@ -44,11 +45,12 @@ export default function QuestsButton({
     arrowSize = 30,
     tokenGatingResult,
     permission = false,
+    index,
 }: QuestsButtonProps) {
     const toast = useToast();
     const { startLoading, endLoading } = useLoading();
 
-    const { asset } = useAssetsGet({
+    const { asset, isLoading: isLoadingAsset } = useAssetsGet({
         getAssetInput: {
             id: quest.rewardAssetId || "",
         },
@@ -166,6 +168,17 @@ export default function QuestsButton({
         "gradient-border morp-glass-1"
     );
 
+    const [isReady, setIsReady] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (isLoadingAsset) {
+            setIsReady(false);
+            return;
+        }
+
+        setIsReady(true);
+    }, [isLoadingAsset]);
+
     useEffect(() => {
         if (questLog?.completed) {
             setStatus("completed");
@@ -211,96 +224,113 @@ export default function QuestsButton({
 
     return (
         <AnimatePresence>
-            <motion.div
-                initial={{ opacity: 0, x: 100 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -100 }}
-                transition={{ duration: 0.7, ease: [0.2, 1, 0.4, 1] }}
-            >
-                <div
-                    onClick={handleCompleteQuest}
-                    className={cn(
-                        buttonStyle,
-                        "flex flex-row items-center justify-between rounded-3xl",
-                        "cursor-pointer backdrop-blur-xs",
-                        !permission && "cursor-not-allowed",
-                        paddingClass
-                    )}
+            {isReady && (
+                <motion.div
+                    initial={{ opacity: 0, x: 100 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -100 }}
+                    transition={{
+                        duration: 0.7,
+                        ease: [0.2, 1, 0.4, 1],
+                        delay: index * 0.1,
+                    }}
                 >
-                    <div className={cn("flex flex-row items-center", gapClass)}>
-                        <img
-                            src={quest.icon || "/icons/quests/link.svg"}
-                            alt={quest.title}
-                            className={cn(frameClass)}
-                        />
-                        <div className="flex flex-col items-start gap-[3px]">
-                            <div className={cn(textClass, "break-words")}>
-                                {quest.title}
-                            </div>
-                            <div className="flex flex-row justify-center items-center gap-1 opacity-70">
-                                <div className={cn(textClass)}>
-                                    <img
-                                        src={asset?.iconUrl || "/ui/assets.svg"}
-                                        alt={asset?.name || ""}
-                                        className={cn(assetFrameClass)}
-                                    />
+                    <div
+                        onClick={handleCompleteQuest}
+                        className={cn(
+                            buttonStyle,
+                            "flex flex-row items-center justify-between rounded-3xl",
+                            "cursor-pointer backdrop-blur-xs",
+                            !permission && "cursor-not-allowed",
+                            paddingClass
+                        )}
+                    >
+                        <div
+                            className={cn(
+                                "flex flex-row items-center",
+                                gapClass
+                            )}
+                        >
+                            <img
+                                src={quest.icon || "/icons/quests/link.svg"}
+                                alt={quest.title}
+                                className={cn(frameClass)}
+                            />
+                            <div className="flex flex-col items-start gap-[3px]">
+                                <div className={cn(textClass, "break-words")}>
+                                    {quest.title}
                                 </div>
-                                <div
-                                    className={cn(assetTextClass, "font-bold")}
-                                >
-                                    {quest.rewardAmount} {asset?.name || ""}
+                                <div className="flex flex-row justify-center items-center gap-1 opacity-70">
+                                    <div className={cn(textClass)}>
+                                        <img
+                                            src={
+                                                asset?.iconUrl ||
+                                                "/ui/assets.svg"
+                                            }
+                                            alt={asset?.name || ""}
+                                            className={cn(assetFrameClass)}
+                                        />
+                                    </div>
+                                    <div
+                                        className={cn(
+                                            assetTextClass,
+                                            "font-bold"
+                                        )}
+                                    >
+                                        {quest.rewardAmount} {asset?.name || ""}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div className="flex flex-row items-center gap-2">
-                        {quest.repeatable && (
-                            <div className="flex flex-col items-end text-right gap-[2px]">
-                                {quest.repeatableCount && (
-                                    <div
-                                        className={cn(
-                                            getResponsiveClass(infoTextSize)
-                                                .textClass,
-                                            "opacity-85"
-                                        )}
-                                    >
-                                        {questLog?.repeatCount || 0}/
-                                        {quest.repeatableCount}
-                                    </div>
-                                )}
-                                {waitDate &&
-                                    quest.repeatableCount &&
-                                    quest.repeatableCount >
-                                        (questLog?.repeatCount || 0) &&
-                                    waitDate.getTime() >
-                                        new Date().getTime() && (
-                                        <Countdown
-                                            size={5}
-                                            endDate={waitDate}
-                                        />
+                        <div className="flex flex-row items-center gap-2">
+                            {quest.repeatable && (
+                                <div className="flex flex-col items-end text-right gap-[2px]">
+                                    {quest.repeatableCount && (
+                                        <div
+                                            className={cn(
+                                                getResponsiveClass(infoTextSize)
+                                                    .textClass,
+                                                "opacity-85"
+                                            )}
+                                        >
+                                            {questLog?.repeatCount || 0}/
+                                            {quest.repeatableCount}
+                                        </div>
                                     )}
-                            </div>
-                        )}
-                        {status === "completed" ? (
-                            <Button onClick={handleClaimQuestReward}>
-                                Claim
-                            </Button>
-                        ) : status === "claimed" ? (
-                            <img
-                                src="/ui/checked.svg"
-                                alt="checked"
-                                className={cn(arrowClass)}
-                            />
-                        ) : (
-                            <img
-                                src="/ui/arrow-right.svg"
-                                alt="arrow-right"
-                                className={cn(arrowClass)}
-                            />
-                        )}
+                                    {waitDate &&
+                                        quest.repeatableCount &&
+                                        quest.repeatableCount >
+                                            (questLog?.repeatCount || 0) &&
+                                        waitDate.getTime() >
+                                            new Date().getTime() && (
+                                            <Countdown
+                                                size={5}
+                                                endDate={waitDate}
+                                            />
+                                        )}
+                                </div>
+                            )}
+                            {status === "completed" ? (
+                                <Button onClick={handleClaimQuestReward}>
+                                    Claim
+                                </Button>
+                            ) : status === "claimed" ? (
+                                <img
+                                    src="/ui/checked.svg"
+                                    alt="checked"
+                                    className={cn(arrowClass)}
+                                />
+                            ) : (
+                                <img
+                                    src="/ui/arrow-right.svg"
+                                    alt="arrow-right"
+                                    className={cn(arrowClass)}
+                                />
+                            )}
+                        </div>
                     </div>
-                </div>
-            </motion.div>
+                </motion.div>
+            )}
         </AnimatePresence>
     );
 }
