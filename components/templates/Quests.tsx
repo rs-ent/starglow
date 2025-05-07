@@ -27,7 +27,7 @@ export default function Quests({ player }: QuestsProps) {
     });
 
     return (
-        <div className="relative flex flex-col w-full h-screen">
+        <div className="relative flex flex-col w-full h-screen overflow-x-hidden">
             <>
                 <div className="fixed inset-0 bg-gradient-to-b from-[#09011b] to-[#311473] -z-20" />
                 <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -z-10">
