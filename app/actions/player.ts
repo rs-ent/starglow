@@ -59,7 +59,7 @@ export async function setPlayer(
                 name: input.user.name || "New Player",
                 userId: input.user.id,
                 referralCode: referralCode,
-            },
+            }
         });
     } catch (error) {
         console.error("[setPlayer] Error:", error);

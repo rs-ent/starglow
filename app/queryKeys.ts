@@ -20,6 +20,7 @@ import {
     GetArtistsInput,
     TokenGatingInput as ArtistTokenGatingInput,
 } from "./actions/artists";
+import { GetReferralLogsInput } from "./actions/referral";
 
 export const queryKeys = {
     user: {
@@ -109,6 +110,8 @@ export const queryKeys = {
 export const playerKeys = {
     all: ["player"] as const,
     byId: (id: string) => ["player", id] as const,
+    referralLogs: (input?: GetReferralLogsInput) =>
+        ["player", "referral-logs", input?.playerId] as const,
 };
 
 export const assetKeys = {

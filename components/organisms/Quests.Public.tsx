@@ -2,19 +2,23 @@
 
 "use client";
 
-import { Player, Quest } from "@prisma/client";
-import { useEffect, useState } from "react";
+import { Player, Quest, ReferralLog } from "@prisma/client";
+import { useEffect, useState, useMemo } from "react";
 import QuestsMissions from "@/components/molecules/Quests.Missions";
-import { useQuestGet } from "@/app/hooks/useQuest";
+import { useQuestGet, useQuestSet } from "@/app/hooks/useQuest";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import InviteFriends from "../atoms/InviteFriends";
 
 interface QuestsPublicProps {
     player: Player;
+    referralLogs?: ReferralLog[];
 }
 
-export default function QuestsPublic({ player }: QuestsPublicProps) {
+export default function QuestsPublic({
+    player,
+    referralLogs,
+}: QuestsPublicProps) {
     const { quests, questLogs, isLoading, error } = useQuestGet({
         getQuestsInput: {
             isPublic: true,
@@ -25,28 +29,58 @@ export default function QuestsPublic({ player }: QuestsPublicProps) {
         },
     });
 
-    const [types, setTypes] = useState<string[]>(["All"]);
     const [selectedType, setSelectedType] = useState<string>("All");
-    const [filteredQuests, setFilteredQuests] = useState<Quest[]>([]);
+
+    const types = useMemo(
+        () => [
+            "All",
+            ...(quests?.items
+                .filter(
+                    (quest): quest is Quest & { type: string } =>
+                        quest.type !== null && quest.type !== undefined
+                )
+                .map((quest) => quest.type) || []),
+        ],
+        [quests?.items]
+    );
+    const filteredQuests = useMemo(() => {
+        if (selectedType === "All") {
+            return quests?.items || [];
+        }
+        return (
+            quests?.items.filter((quest) => quest.type === selectedType) || []
+        );
+    }, [quests?.items, selectedType]);
+
+    const referralQuestLogsData = useMemo(() => {
+        if (
+            !player?.id ||
+            !quests?.items ||
+            !questLogs?.items ||
+            !referralLogs
+        ) {
+            return null;
+        }
+
+        return {
+            player,
+            referralQuests:
+                quests.items.filter((quest) => quest.isReferral) || [],
+            questLogs: questLogs.items,
+            referralLogs: referralLogs,
+        };
+    }, [player, quests?.items, questLogs?.items, referralLogs]);
+
+    const { setReferralQuestLogs } = useQuestSet();
 
     useEffect(() => {
-        setFilteredQuests(quests?.items || []);
-
-        setTypes([
-            "All",
-            ...(quests?.items.map((quest) => quest.type || "") || []),
-        ]);
-    }, [quests]);
+        if (referralQuestLogsData) {
+            setReferralQuestLogs(referralQuestLogsData);
+        }
+    }, [referralQuestLogsData, setReferralQuestLogs]);
 
     const handleTypeClick = (type: string) => {
         setSelectedType(type);
-        if (type === "All") {
-            setFilteredQuests(quests?.items || []);
-        } else {
-            setFilteredQuests(
-                quests?.items.filter((quest) => quest.type === type) || []
-            );
-        }
     };
 
     return (
@@ -90,6 +124,7 @@ export default function QuestsPublic({ player }: QuestsPublicProps) {
                             error={error}
                             permission={true}
                             tokenGatingResult={null}
+                            referralLogsCount={referralLogs?.length}
                         />
                     </div>
                 )}

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
 import PublicPrivateTab from "@/components/molecules/PublicPrivateTab";
 import QuestsPrivate from "./Quests.Private";
-import { useQuestGet } from "@/app/hooks/useQuest";
+import { useReferralGet } from "@/app/hooks/useReferral";
 import QuestsPublic from "./Quests.Public";
 
 interface QuestsContentsProps {
@@ -16,6 +16,12 @@ interface QuestsContentsProps {
 
 export default function QuestsContents({ player }: QuestsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
+
+    const { referralLogs } = useReferralGet({
+        GetReferralLogsInput: {
+            playerId: player.id,
+        },
+    });
 
     return (
         <div
@@ -38,9 +44,13 @@ export default function QuestsContents({ player }: QuestsContentsProps) {
                 paddingSize={10}
             />
             {!isPublic ? (
-                <QuestsPrivate player={player} privateTabClicked={isPublic} />
+                <QuestsPrivate
+                    player={player}
+                    privateTabClicked={isPublic}
+                    referralLogs={referralLogs}
+                />
             ) : (
-                <QuestsPublic player={player} />
+                <QuestsPublic player={player} referralLogs={referralLogs} />
             )}
         </div>
     );

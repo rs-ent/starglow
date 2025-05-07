@@ -15,6 +15,7 @@ interface QuestsMissionsProps {
     error: Error | null;
     permission: boolean;
     tokenGatingResult?: AdvancedTokenGateResult | null;
+    referralLogsCount?: number;
 }
 
 export default function QuestsMissions({
@@ -25,6 +26,7 @@ export default function QuestsMissions({
     error = null,
     permission = false,
     tokenGatingResult,
+    referralLogsCount,
 }: QuestsMissionsProps) {
     if (isLoading) {
         return <PartialLoading text="Quest lists are loading..." size="sm" />;
@@ -75,6 +77,7 @@ export default function QuestsMissions({
                         tokenGatingResult={tokenGatingResult}
                         permission={permission}
                         index={index}
+                        referralLogsCount={referralLogsCount}
                     />
                 ))}
             </div>

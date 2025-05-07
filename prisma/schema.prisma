@@ -123,6 +123,7 @@ model ReferralLog {
   createdAt      DateTime     @default(now())
 
   @@unique([referredPlayerId, referrerPlayerId])
+  @@index([referrerPlayerId])
 }
 
 enum PlayerAssetStatus {

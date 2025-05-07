@@ -11,6 +11,7 @@ import {
     tokenGating,
     completeQuest,
     claimQuestReward,
+    setReferralQuestLogs,
 } from "../actions/quests";
 
 export function useCreateQuestMutation() {
@@ -141,6 +142,26 @@ export function useClaimQuestRewardMutation() {
                 queryKey: playerAssetsKeys.balances(
                     variables?.questLog?.playerId as any
                 ),
+            });
+        },
+    });
+}
+
+export function useSetReferralQuestLogsMutation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: setReferralQuestLogs,
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: questKeys.all });
+            queryClient.invalidateQueries({
+                queryKey: questKeys.list(),
+            });
+            queryClient.invalidateQueries({
+                queryKey: questKeys.logs({
+                    playerId: variables?.player?.id,
+                    isPublic: true,
+                }),
             });
         },
     });

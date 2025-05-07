@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Artist, Player } from "@prisma/client";
+import { Artist, Player, ReferralLog } from "@prisma/client";
 import ArtistMessage from "../molecules/ArtistMessage";
 import ArtistSlideSelector from "../molecules/ArtistSlideSelector";
 import QuestsArtistMissions from "./Quests.ArtistMissions";
@@ -16,11 +16,13 @@ import { cn } from "@/lib/utils/tailwind";
 interface QuestsPrivateProps {
     player: Player;
     privateTabClicked: boolean;
+    referralLogs?: ReferralLog[];
 }
 
 export default function QuestsPrivate({
     player,
     privateTabClicked,
+    referralLogs,
 }: QuestsPrivateProps) {
     const { user: DBUser } = usePlayerGet({
         getDBUserFromPlayerInput: {
@@ -127,6 +129,7 @@ export default function QuestsPrivate({
                                     tokenGatingResult={
                                         selectedArtistTokenGatingResult || null
                                     }
+                                    referralLogsCount={referralLogs?.length}
                                 />
                             </div>
                         </div>

@@ -3,7 +3,15 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import { Prisma, Quest, Asset, Player, QuestLog, User } from "@prisma/client";
+import {
+    Prisma,
+    Quest,
+    Asset,
+    Player,
+    QuestLog,
+    User,
+    ReferralLog,
+} from "@prisma/client";
 import { updatePlayerAsset } from "./playerAssets";
 import { tokenGate } from "./blockchain";
 import { formatWaitTime } from "@/lib/utils/format";
@@ -794,5 +802,68 @@ export async function getClaimedQuestLogs(
     } catch (error) {
         console.error(error);
         return [];
+    }
+}
+
+export interface SetReferralQuestLogsInput {
+    referralQuests: Quest[];
+    questLogs: QuestLog[];
+    referralLogs: ReferralLog[];
+    player: Player;
+}
+
+export async function setReferralQuestLogs(
+    input: SetReferralQuestLogsInput
+): Promise<boolean> {
+    try {
+        if (!input.referralQuests?.length || !input.player?.id) {
+            console.error("Invalid input: missing required data");
+            return false;
+        }
+
+        const questLogMap = new Map(
+            input.questLogs.map((log) => [log.questId, log])
+        );
+
+        const completableQuests = input.referralQuests.filter((quest) => {
+            const existingLog = questLogMap.get(quest.id);
+            if (existingLog?.isClaimed || existingLog?.completed) {
+                return false;
+            }
+            return (
+                quest.referralCount &&
+                quest.referralCount <= input.referralLogs.length
+            );
+        });
+
+        if (!completableQuests.length) {
+            console.log("No new referral quests to complete");
+            return true;
+        }
+
+        const newDataToCreate = completableQuests.map((quest) => ({
+            playerId: input.player.id,
+            questId: quest.id,
+            completed: true,
+            completedAt: input.referralLogs[0].createdAt,
+            rewardAssetId: quest.rewardAssetId,
+            rewardAmount: quest.rewardAmount,
+            repeatCount: input.referralLogs.length,
+            completedDates: [input.referralLogs[0].createdAt],
+        }));
+
+        await prisma.$transaction(async (tx) => {
+            await tx.questLog.createMany({
+                data: newDataToCreate,
+                skipDuplicates: true,
+            });
+        });
+
+        console.log(`Created ${newDataToCreate.length} new quest logs`);
+
+        return true;
+    } catch (error) {
+        console.error(error);
+        return false;
     }
 }

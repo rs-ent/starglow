@@ -9,6 +9,7 @@ import {
     useTokenGatingMutation,
     useCompleteQuestMutation,
     useClaimQuestRewardMutation,
+    useSetReferralQuestLogsMutation,
 } from "@/app/mutations/questsMutations";
 import {
     GetQuestsInput,
@@ -134,13 +135,20 @@ export function useQuestSet() {
         error: claimQuestRewardError,
     } = useClaimQuestRewardMutation();
 
+    const {
+        mutateAsync: setReferralQuestLogs,
+        isPending: isSettingReferralQuestLogs,
+        error: setReferralQuestLogsError,
+    } = useSetReferralQuestLogsMutation();
+
     const isLoading =
         isCreating ||
         isUpdating ||
         isDeleting ||
         isTokenGating ||
         isCompleting ||
-        isClaimingQuestReward;
+        isClaimingQuestReward ||
+        isSettingReferralQuestLogs;
 
     const error =
         createError ||
@@ -148,7 +156,8 @@ export function useQuestSet() {
         deleteError ||
         tokenGatingError ||
         completeError ||
-        claimQuestRewardError;
+        claimQuestRewardError ||
+        setReferralQuestLogsError;
 
     return {
         createQuest,
@@ -175,6 +184,10 @@ export function useQuestSet() {
         isClaimingQuestReward,
         claimQuestRewardError,
 
+        setReferralQuestLogs,
+        isSettingReferralQuestLogs,
+        setReferralQuestLogsError,
+
         isLoading,
 
         error,
@@ -185,5 +198,6 @@ export function useQuestSet() {
         useTokenGatingMutation,
         useCompleteQuestMutation,
         useClaimQuestRewardMutation,
+        useSetReferralQuestLogsMutation,
     };
 }

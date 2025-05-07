@@ -17,12 +17,14 @@ interface QuestsArtistMissionsProps {
     artist: Artist;
     player: Player;
     tokenGatingResult?: AdvancedTokenGateResult | null;
+    referralLogsCount?: number;
 }
 
 export default function QuestsArtistMissions({
     artist,
     player,
     tokenGatingResult,
+    referralLogsCount,
 }: QuestsArtistMissionsProps) {
     const { quests, questLogs, isLoading, error } = useQuestGet({
         getQuestsInput: {
@@ -160,6 +162,7 @@ export default function QuestsArtistMissions({
                                     error={error}
                                     permission={permission}
                                     tokenGatingResult={tokenGatingResult}
+                                    referralLogsCount={referralLogsCount}
                                 />
                             </div>
                         )}

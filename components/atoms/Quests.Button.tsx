@@ -29,6 +29,7 @@ interface QuestsButtonProps {
     tokenGatingResult?: AdvancedTokenGateResult | null;
     permission?: boolean;
     index: number;
+    referralLogsCount?: number;
 }
 
 export default function QuestsButton({
@@ -46,6 +47,7 @@ export default function QuestsButton({
     tokenGatingResult,
     permission = false,
     index,
+    referralLogsCount,
 }: QuestsButtonProps) {
     const toast = useToast();
     const { startLoading, endLoading } = useLoading();
@@ -310,6 +312,24 @@ export default function QuestsButton({
                                         )}
                                 </div>
                             )}
+
+                            {quest.isReferral && (
+                                <div className="flex flex-col items-end text-right gap-[2px]">
+                                    {quest.referralCount && (
+                                        <div
+                                            className={cn(
+                                                getResponsiveClass(infoTextSize)
+                                                    .textClass,
+                                                "opacity-85"
+                                            )}
+                                        >
+                                            {referralLogsCount || 0}/
+                                            {quest.referralCount}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {status === "completed" ? (
                                 <Button onClick={handleClaimQuestReward}>
                                     Claim
