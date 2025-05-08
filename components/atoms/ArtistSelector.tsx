@@ -61,7 +61,7 @@ export default function ArtistSelector({
                     "rounded-full",
                     frameSizeClass,
                     selected &&
-                        "scale-[1.2] z-10 transition-all duration-300 mb-[12px] sm:mb-[14px] md:mb-[16px] lg:mb-[18px] xl:mb-[20px]"
+                        "scale-[1.2] z-30 transition-all duration-300 mb-[12px] sm:mb-[14px] md:mb-[16px] lg:mb-[18px] xl:mb-[20px]"
                 )}
             >
                 <div

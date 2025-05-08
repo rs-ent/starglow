@@ -100,7 +100,7 @@ export default function QuestsPrivate({
         <div className="w-full flex flex-col items-center justify-center">
             <div className="w-full">
                 <ArtistSlideSelector
-                    className="mt-[20px] sm:mt-[35px] md:mt-[40px] lg:mt-[45px] xl:mt-[50px]"
+                    className="mt-[10px] sm:mt-[15px] md:mt-[20px] lg:mt-[25px] xl:mt-[30px]"
                     onSelect={(artist) => handleArtistSelect(artist)}
                 />
             </div>

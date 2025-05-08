@@ -5,10 +5,12 @@
 import { useArtistsGet } from "@/app/hooks/useArtists";
 import ArtistSelector from "@/components/atoms/ArtistSelector";
 import PartialLoading from "@/components/atoms/PartialLoading";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { Artist } from "@prisma/client";
 import { useState, useEffect } from "react";
+import Slider from "react-slick";
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
 
 interface ArtistSlideSelectorProps {
     className?: string;
@@ -22,6 +24,39 @@ export default function ArtistSlideSelector({
     const { artists, isLoading, error } = useArtistsGet({});
     const [duplicatedArtists, setDuplicatedArtists] = useState<Artist[]>([]);
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+
+    const sliderSettings = {
+        dots: false,
+        arrows: false,
+        infinite: false,
+        speed: 430,
+        slidesToShow: 5,
+        slidesToScroll: 1,
+        swipeToSlide: true,
+        centerMode: true,
+        focusOnSelect: true,
+        cssEase: "cubic-bezier(0.33, 1, 0.68, 1)",
+        responsive: [
+            {
+                breakpoint: 1024,
+                settings: {
+                    slidesToShow: 5,
+                },
+            },
+            {
+                breakpoint: 768,
+                settings: {
+                    slidesToShow: 4,
+                },
+            },
+            {
+                breakpoint: 480,
+                settings: {
+                    slidesToShow: 3,
+                },
+            },
+        ],
+    };
 
     useEffect(() => {
         if (artists && artists.length > 0) {
@@ -41,39 +76,45 @@ export default function ArtistSlideSelector({
     }, [artists]);
 
     return (
-        <div className="max-w-[1000px] w-screen overflow-x-hidden px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px] h-auto">
-            <div className="w-full h-full overflow-x-auto">
-                <div
-                    className={cn(
-                        "ml-5 flex flex-row items-center justify-around",
-                        "gap-8 sm:gap-9 md:gap-10 lg:gap-11 xl:gap-12",
-                        "min-w-0 overflow-visible",
-                        "transition-all duration-700",
-                        className
-                    )}
-                >
+        <div
+            className={cn(
+                "max-w-[1000px] w-screen px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px] h-auto",
+                className
+            )}
+        >
+            <div className="relative">
+                <Slider {...sliderSettings}>
                     {isLoading && (
                         <PartialLoading text="Loading..." size="sm" />
                     )}
                     {error && <div>Error: {error.message}</div>}
                     {duplicatedArtists &&
                         duplicatedArtists.map((artist: Artist) => (
-                            <ArtistSelector
+                            <div
                                 key={artist.id}
-                                artist={artist}
-                                isSelected={selectedArtist?.id === artist.id}
-                                onSelect={() => {
-                                    if (selectedArtist?.id === artist.id) {
-                                        setSelectedArtist(null);
-                                        onSelect?.(null);
-                                    } else {
-                                        setSelectedArtist(artist);
-                                        onSelect?.(artist);
+                                className={cn(
+                                    "px-2",
+                                    "pt-[20px] sm:pt-[25px] md:pt-[30px] lg:pt-[35px] xl:pt-[40px]"
+                                )}
+                            >
+                                <ArtistSelector
+                                    artist={artist}
+                                    isSelected={
+                                        selectedArtist?.id === artist.id
                                     }
-                                }}
-                            />
+                                    onSelect={() => {
+                                        if (selectedArtist?.id === artist.id) {
+                                            setSelectedArtist(null);
+                                            onSelect?.(null);
+                                        } else {
+                                            setSelectedArtist(artist);
+                                            onSelect?.(artist);
+                                        }
+                                    }}
+                                />
+                            </div>
                         ))}
-                </div>
+                </Slider>
             </div>
         </div>
     );
