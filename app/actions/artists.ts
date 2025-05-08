@@ -305,16 +305,16 @@ export async function updateArtistMessage(
 
 export interface TokenGatingInput {
     artist: Artist | null;
-    user: User | null;
+    userId: string | null;
 }
 
 export async function tokenGating(
     input?: TokenGatingInput
 ): Promise<AdvancedTokenGateResult> {
     try {
-        const { artist, user } = input || {};
+        const { artist, userId } = input || {};
 
-        if (!artist || !user) {
+        if (!artist || !userId) {
             return {
                 success: false,
                 data: {
@@ -361,7 +361,7 @@ export async function tokenGating(
             })
         );
 
-        return advancedTokenGate({ userId: user.id, tokens });
+        return advancedTokenGate({ userId, tokens });
     } catch (error) {
         console.error("Error in token gating:", error);
         return {

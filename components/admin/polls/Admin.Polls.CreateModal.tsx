@@ -39,6 +39,7 @@ import Image from "next/image";
 import { useLoading } from "@/app/hooks/useLoading";
 import { useToast } from "@/app/hooks/useToast";
 import { getYoutubeVideoId, getYoutubeThumbnailUrl } from "@/lib/utils/youtube";
+import { useArtistsGet } from "@/app/hooks/useArtists";
 
 const pollSchemaShape = z.object({
     id: z
@@ -111,6 +112,7 @@ const pollSchemaShape = z.object({
     minimumSGP: z.number().min(0).optional(),
     minimumSGT: z.number().min(0).optional(),
     requiredQuests: z.array(z.string()).optional(),
+    artistId: z.string().optional(),
 });
 
 interface PollCreateModalProps {
@@ -146,7 +148,8 @@ export default function PollCreateModal({
             isActive: true,
         },
     });
-    console.log(assets);
+
+    const { artists, isLoading: isLoadingArtists } = useArtistsGet({});
 
     const {
         control,
@@ -193,6 +196,7 @@ export default function PollCreateModal({
             minimumSGP: 0,
             minimumSGT: 0,
             requiredQuests: [],
+            artistId: undefined,
         },
     });
 
@@ -635,6 +639,65 @@ export default function PollCreateModal({
                                 )}
                             </div>
 
+                            {/* artistId */}
+                            <Controller
+                                name="artistId"
+                                control={control}
+                                render={({ field }) => (
+                                    <div className="mb-8">
+                                        <Label className="mb-2 block">
+                                            아티스트
+                                        </Label>
+                                        <div className="flex gap-4 overflow-x-auto py-2 w-full">
+                                            {/* "선택 안함" 버튼 */}
+                                            <div
+                                                onClick={() =>
+                                                    field.onChange("")
+                                                }
+                                                className={`cursor-pointer w-[150px] h-[80px] flex flex-col items-center justify-center border rounded
+            ${field.value === "" ? "ring-2 ring-primary" : ""}`}
+                                            >
+                                                <span className="text-sm text-muted-foreground">
+                                                    선택 안함
+                                                </span>
+                                            </div>
+                                            {/* 아티스트 목록 */}
+                                            {artists?.map((artist: any) => (
+                                                <div
+                                                    key={artist.id}
+                                                    onClick={() =>
+                                                        field.onChange(
+                                                            artist.id
+                                                        )
+                                                    }
+                                                    className={`p-4 cursor-pointer w-[150px] h-[80px] flex flex-col items-center justify-center border rounded
+              ${field.value === artist.id ? "ring-2 ring-primary" : ""}`}
+                                                >
+                                                    {artist.logoUrl ? (
+                                                        <img
+                                                            src={artist.logoUrl}
+                                                            alt={artist.name}
+                                                            width={30}
+                                                            height={30}
+                                                            className="mb-1"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-10 h-10 flex items-center justify-center mb-1">
+                                                            <span className="text-xs text-gray-400">
+                                                                No Image
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    <span className="text-sm">
+                                                        {artist.name}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            />
+
                             <Controller
                                 name="needToken"
                                 control={control}
@@ -934,6 +997,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown } from "lucide-react";
 import YoutubeViewer from "@/components/atoms/YoutubeViewer";
+import { Label } from "@/components/ui/label";
 
 interface SortableOptionProps {
     id: string;

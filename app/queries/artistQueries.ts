@@ -44,7 +44,7 @@ export function useTokenGatingQuery(input?: TokenGatingInput) {
     return useQuery({
         queryKey: artistKeys.tokenGating(input),
         queryFn: () => tokenGating(input),
-        enabled: Boolean(input?.artist && input?.user),
+        enabled: Boolean(input?.artist && input?.userId),
         staleTime: 1000 * 60 * 60 * 1,
     });
 }

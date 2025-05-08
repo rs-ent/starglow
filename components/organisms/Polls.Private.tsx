@@ -1,29 +1,25 @@
-/// components/organisms/Quests.Private.tsx
+///components/organisms/Polls.Private.tsx
 
 "use client";
 
-import { useEffect, useState } from "react";
-import { Artist, Player, ReferralLog } from "@prisma/client";
-import ArtistMessage from "../molecules/ArtistMessage";
+import { Artist, Player } from "@prisma/client";
+import PartialLoading from "../atoms/PartialLoading";
 import ArtistSlideSelector from "../molecules/ArtistSlideSelector";
-import QuestsArtistMissions from "./Quests.ArtistMissions";
+import PollsArtistList from "./Polls.ArtistList";
 import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
 import { usePlayerGet } from "@/app/hooks/usePlayer";
+import { useState, useEffect } from "react";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
-import PartialLoading from "../atoms/PartialLoading";
-import { cn } from "@/lib/utils/tailwind";
 
-interface QuestsPrivateProps {
+interface PollsPrivateProps {
     player: Player;
     privateTabClicked: boolean;
-    referralLogs?: ReferralLog[];
 }
 
-export default function QuestsPrivate({
+export default function PollsPrivate({
     player,
     privateTabClicked,
-    referralLogs,
-}: QuestsPrivateProps) {
+}: PollsPrivateProps) {
     const { user: DBUser } = usePlayerGet({
         getDBUserFromPlayerInput: {
             playerId: player.id,
@@ -113,25 +109,13 @@ export default function QuestsPrivate({
                 <div className="relative w-full h-full">
                     {showArtistContents && (
                         <div className="w-full h-full z-0 relative">
-                            <ArtistMessage
+                            <PollsArtistList
                                 artist={selectedArtist}
-                                className="mt-[20px] sm:mt-[35px] md:mt-[40px] lg:mt-[45px] xl:mt-[50px]"
+                                player={player}
+                                tokenGatingResult={
+                                    selectedArtistTokenGatingResult || null
+                                }
                             />
-                            <div
-                                className={cn(
-                                    "w-full h-full",
-                                    "mt-[20px] sm:mt-[35px] md:mt-[40px] lg:mt-[45px] xl:mt-[50px]"
-                                )}
-                            >
-                                <QuestsArtistMissions
-                                    artist={selectedArtist}
-                                    player={player}
-                                    tokenGatingResult={
-                                        selectedArtistTokenGatingResult || null
-                                    }
-                                    referralLogs={referralLogs || []}
-                                />
-                            </div>
                         </div>
                     )}
                 </div>

@@ -119,6 +119,7 @@ export interface GetPollsInput {
     bettingMode?: boolean;
     bettingAssetId?: string;
     participationRewardAssetId?: string;
+    artistId?: string;
 }
 
 export async function getPolls({
@@ -126,13 +127,20 @@ export async function getPolls({
     pagination,
 }: {
     input?: GetPollsInput;
-    pagination: PaginationInput;
+    pagination?: PaginationInput;
 }): Promise<{
     items: Poll[];
     totalItems: number;
     totalPages: number;
 }> {
     try {
+        if (!pagination) {
+            pagination = {
+                currentPage: 1,
+                itemsPerPage: Number.MAX_SAFE_INTEGER,
+            };
+        }
+
         const where: Prisma.PollWhereInput = {};
 
         if (input?.id) where.id = input.id;
@@ -197,11 +205,13 @@ export async function getPolls({
         if (input?.participationRewardAssetId)
             where.participationRewardAssetId = input.participationRewardAssetId;
 
+        if (input?.artistId) where.artistId = input.artistId;
+
         const [items, totalItems] = await Promise.all([
             prisma.poll.findMany({
                 where,
                 orderBy: {
-                    startDate: "desc",
+                    id: "desc",
                 },
                 skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
                 take: pagination.itemsPerPage,

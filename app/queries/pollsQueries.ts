@@ -40,10 +40,7 @@ export function usePollsQuery({
         queryFn: () =>
             getPolls({
                 input: input || {},
-                pagination: pagination || {
-                    currentPage: 1,
-                    itemsPerPage: Number.MAX_SAFE_INTEGER,
-                },
+                pagination: pagination,
             }),
     });
 }

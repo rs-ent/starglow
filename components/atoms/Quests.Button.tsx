@@ -66,6 +66,8 @@ export default function QuestsButton({
     const [isInviteFriendsModalOpen, setIsInviteFriendsModalOpen] =
         useState<boolean>(false);
 
+    const [blockFunction, setBlockFunction] = useState<boolean>(false);
+
     const handleCompleteQuest = async () => {
         if (!permission) {
             return;
@@ -140,6 +142,11 @@ export default function QuestsButton({
             } as TokenGatingResult;
         }
 
+        if (blockFunction) {
+            return;
+        }
+
+        setBlockFunction(true);
         window.open(quest.url, "_blank");
         const result = await completeQuest({
             quest,
@@ -150,6 +157,7 @@ export default function QuestsButton({
         if (result.success) {
             toast.success("Quest completed! Please claim your reward.");
         }
+        setBlockFunction(false);
     };
 
     const handleClaimQuestReward = async () => {
@@ -160,6 +168,12 @@ export default function QuestsButton({
         if (!questLog) {
             return;
         }
+
+        if (blockFunction) {
+            return;
+        }
+
+        setBlockFunction(true);
         startLoading();
         const result = await claimQuestReward({ questLog, player });
         endLoading();
@@ -316,7 +330,8 @@ export default function QuestsButton({
                                                 )}
                                             >
                                                 {Math.min(
-                                                    referralLogs.length || 0
+                                                    referralLogs.length || 0,
+                                                    quest.referralCount
                                                 )}
                                                 /{quest.referralCount}
                                             </div>
@@ -354,7 +369,10 @@ export default function QuestsButton({
                                 )}
 
                                 {status === "completed" ? (
-                                    <Button onClick={handleClaimQuestReward}>
+                                    <Button
+                                        onClick={handleClaimQuestReward}
+                                        disabled={blockFunction}
+                                    >
                                         Claim
                                     </Button>
                                 ) : status === "claimed" ? (

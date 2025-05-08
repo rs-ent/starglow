@@ -15,17 +15,6 @@ interface QuestsProps {
 }
 
 export default function Quests({ player }: QuestsProps) {
-    const [contentType, setContentType] = useState<string>("Missions");
-    const {
-        player: playerData,
-        isPlayerLoading,
-        playerError,
-    } = usePlayerGet({
-        getPlayerInput: {
-            playerId: player.id,
-        },
-    });
-
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
             <>
@@ -75,11 +64,7 @@ export default function Quests({ player }: QuestsProps) {
                     "mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]"
                 )}
             >
-                {isPlayerLoading ? (
-                    <PartialLoading text="Loading player data..." />
-                ) : (
-                    <QuestsContents player={player} />
-                )}
+                <QuestsContents player={player} />
             </div>
         </div>
     );

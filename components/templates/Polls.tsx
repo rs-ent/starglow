@@ -2,95 +2,38 @@
 
 "use client";
 
-import { usePollsGet } from "@/app/hooks/usePolls";
-import PollsList from "@/components/organisms/Polls.List";
-import { GetPollsInput, PaginationInput } from "@/app/actions/polls";
-import { useEffect, useState } from "react";
-import { useLoading } from "@/app/hooks/useLoading";
-import { useToast } from "@/app/hooks/useToast";
-import { PollCategory } from "@prisma/client";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+import { Player } from "@prisma/client";
+import PollsContents from "@/components/organisms/Polls.Contents";
 
-const today = new Date();
-today.setHours(today.getHours() + 9);
-
-const listFilter: Record<"ongoing" | "upcoming" | "ended", GetPollsInput> = {
-    ongoing: {
-        startDateBefore: today,
-        endDateAfter: today,
-    },
-    upcoming: {
-        startDateAfter: today,
-        endDateAfter: today,
-    },
-    ended: {
-        startDateBefore: today,
-        endDateBefore: today,
-    },
-};
-
-function setFilter(
-    tab: "ongoing" | "upcoming" | "ended",
-    publicTab: "public" | "private"
-) {
-    const filter = listFilter[tab];
-    const publicOrPrivateFilter = {
-        ...filter,
-        category:
-            publicTab === "public" ? PollCategory.PUBLIC : PollCategory.PRIVATE,
-    };
-
-    return publicOrPrivateFilter;
+interface PollsProps {
+    player: Player;
 }
 
-export default function Polls() {
-    const toast = useToast();
-    const { startLoading, endLoading } = useLoading();
-
-    const [visibleTab, setVisibleTab] = useState<
-        "ongoing" | "upcoming" | "ended"
-    >("ongoing");
-    const [publicTab, setPublicTab] = useState<"public" | "private">("public");
-    const [pollListFilter, setPollListFilter] = useState<GetPollsInput>(
-        setFilter("ongoing", "public")
-    );
-
-    const { pollsList, isLoading, error } = usePollsGet({
-        getPollsInput: pollListFilter,
-    });
-
-    useEffect(() => {
-        if (isLoading) {
-            startLoading();
-        } else {
-            endLoading();
-        }
-    }, [isLoading]);
-
-    if (error) {
-        toast.error(
-            "Failed to fetch polls. Please try again later. If the problem persists, please contact the administrator."
-        );
-    }
-
-    const handleTabChange = (tab: "ongoing" | "upcoming" | "ended") => {
-        setVisibleTab(tab);
-        setPollListFilter(setFilter(tab, publicTab));
-    };
-
-    const handlePublicTabChange = (tab: "public" | "private") => {
-        setPublicTab(tab);
-        setPollListFilter(setFilter(visibleTab, tab));
-    };
-
+export default function Polls({ player }: PollsProps) {
     return (
-        <div>
-            <PollsList
-                polls={pollsList?.items || []}
-                publicTab={publicTab}
-                visibleTab={visibleTab}
-                onTabChange={handleTabChange}
-                onPublicTabChange={handlePublicTabChange}
-            />
+        <div className="relative flex flex-col w-full h-full overflow-hidden">
+            <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
+
+            <h2
+                className={cn(
+                    "text-center text-4xl",
+                    "mt-[70px] md:mt-[80px] lg:mt-[20px]",
+                    getResponsiveClass(45).textClass
+                )}
+            >
+                Polls
+            </h2>
+
+            <div
+                className={cn(
+                    "flex justify-center items-center",
+                    "mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]"
+                )}
+            >
+                <PollsContents player={player} />
+            </div>
         </div>
     );
 }

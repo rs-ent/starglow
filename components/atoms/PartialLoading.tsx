@@ -64,7 +64,7 @@ export default function PartialLoading({
         <div className={containerClasses} role="status" aria-label={text}>
             <div
                 className={cn(
-                    "flex flex-col items-center justify-center",
+                    "flex flex-col items-center justify-center p-10",
                     getResponsiveClass(gapSize).gapClass
                 )}
             >
