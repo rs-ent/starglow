@@ -34,8 +34,6 @@ export default function ArtistSelector({
 
     const frameSizeClass = getResponsiveClass(frameSize).frameClass;
     const textSizeClass = getResponsiveClass(textSize).textClass;
-    const gapSizeClass = getResponsiveClass(gapSize).gapClass;
-    const paddingSizeClass = getResponsiveClass(paddingSize).paddingClass;
 
     const handleClick = () => {
         if (onSelect) {
@@ -84,8 +82,8 @@ export default function ArtistSelector({
                 <Image
                     src={artist.imageUrl ?? ""}
                     alt={artist.name}
-                    width={frameSize}
-                    height={frameSize}
+                    width={frameSize * 5}
+                    height={frameSize * 5}
                     className={cn(
                         "rounded-full object-cover",
                         "border-[1px] border-[rgba(255,255,255,1)]",
@@ -105,8 +103,8 @@ export default function ArtistSelector({
                         <Image
                             src={artist.logoUrl}
                             alt={`${artist.name} logo`}
-                            width={frameSize / 2.5}
-                            height={frameSize / 2.5}
+                            width={frameSize / 2}
+                            height={frameSize / 2}
                             className={cn("object-contain")}
                         />
                     )}

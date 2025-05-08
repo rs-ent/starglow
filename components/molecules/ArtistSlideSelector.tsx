@@ -67,13 +67,11 @@ export default function ArtistSlideSelector({
             )}
         >
             <div className="relative">
-                <Slider {...sliderSettings}>
-                    {isLoading && (
-                        <PartialLoading text="Loading..." size="sm" />
-                    )}
-                    {error && <div>Error: {error.message}</div>}
-                    {artists &&
-                        artists.map((artist: Artist) => (
+                {isLoading && <PartialLoading text="Loading..." size="sm" />}
+                {error && <div>Error: {error.message}</div>}
+                {artists && !isLoading && artists.length > 0 && (
+                    <Slider {...sliderSettings}>
+                        {artists.map((artist: Artist) => (
                             <div
                                 key={artist.id}
                                 className={cn(
@@ -98,7 +96,8 @@ export default function ArtistSlideSelector({
                                 />
                             </div>
                         ))}
-                </Slider>
+                    </Slider>
+                )}
             </div>
         </div>
     );

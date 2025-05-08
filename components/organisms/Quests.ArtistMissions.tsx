@@ -63,11 +63,6 @@ export default function QuestsArtistMissions({
     }, [questLogs]);
 
     useEffect(() => {
-        console.log("quests", quests);
-        console.log("questLogs", questLogs);
-        console.log("tokenGatingResult", tokenGatingResult);
-        console.log("isLoading", isLoading);
-
         if (quests && questLogs && tokenGatingResult && !isLoading) {
             if (quests.items.length === 0) {
                 setIsReady(false);
