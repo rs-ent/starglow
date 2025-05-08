@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { useQuestGet } from "@/app/hooks/useQuest";
-import { Artist, Player, QuestLog } from "@prisma/client";
+import { Artist, Player, QuestLog, ReferralLog } from "@prisma/client";
 import Image from "next/image";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -17,14 +17,14 @@ interface QuestsArtistMissionsProps {
     artist: Artist;
     player: Player;
     tokenGatingResult?: AdvancedTokenGateResult | null;
-    referralLogsCount?: number;
+    referralLogs: ReferralLog[];
 }
 
 export default function QuestsArtistMissions({
     artist,
     player,
     tokenGatingResult,
-    referralLogsCount,
+    referralLogs,
 }: QuestsArtistMissionsProps) {
     const { quests, questLogs, isLoading, error } = useQuestGet({
         getQuestsInput: {
@@ -162,7 +162,7 @@ export default function QuestsArtistMissions({
                                     error={error}
                                     permission={permission}
                                     tokenGatingResult={tokenGatingResult}
-                                    referralLogsCount={referralLogsCount}
+                                    referralLogs={referralLogs || []}
                                 />
                             </div>
                         )}

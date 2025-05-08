@@ -211,7 +211,7 @@ model QuestLog {
   rewardLogs     RewardsLog[]
 
   @@unique([playerId, questId])
-  @@index([playerId, questId, completed])
+  @@index([playerId, questId, deprecated])
   @@index([completedAt])
 }
 

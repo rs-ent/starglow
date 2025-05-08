@@ -129,7 +129,7 @@ export default function QuestsPrivate({
                                     tokenGatingResult={
                                         selectedArtistTokenGatingResult || null
                                     }
-                                    referralLogsCount={referralLogs?.length}
+                                    referralLogs={referralLogs || []}
                                 />
                             </div>
                         </div>

@@ -3,12 +3,19 @@
 "use client";
 
 import { Player, Quest, ReferralLog } from "@prisma/client";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import QuestsMissions from "@/components/molecules/Quests.Missions";
 import { useQuestGet, useQuestSet } from "@/app/hooks/useQuest";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import InviteFriends from "../atoms/InviteFriends";
+
+type ReferralQuestLogsDataType = {
+    player: Player;
+    referralQuests: Quest[];
+    questLogs: any[]; // 실제 타입에 맞게 조정
+    referralLogs: ReferralLog[];
+} | null;
 
 interface QuestsPublicProps {
     player: Player;
@@ -78,9 +85,15 @@ export default function QuestsPublic({
     }, [player, quests?.items, questLogs?.items, referralLogs]);
 
     const { setReferralQuestLogs } = useQuestSet();
+    const prevDataRef = useRef<ReferralQuestLogsDataType>(null);
 
     useEffect(() => {
-        if (referralQuestLogsData) {
+        if (
+            referralQuestLogsData &&
+            JSON.stringify(prevDataRef.current) !==
+                JSON.stringify(referralQuestLogsData)
+        ) {
+            prevDataRef.current = referralQuestLogsData;
             setReferralQuestLogs(referralQuestLogsData);
         }
     }, [referralQuestLogsData, setReferralQuestLogs]);
@@ -130,7 +143,7 @@ export default function QuestsPublic({
                             error={error}
                             permission={true}
                             tokenGatingResult={null}
-                            referralLogsCount={referralLogs?.length}
+                            referralLogs={referralLogs || []}
                         />
                     </div>
                 )}

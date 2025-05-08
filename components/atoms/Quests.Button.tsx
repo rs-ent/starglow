@@ -1,7 +1,7 @@
 /// components/atoms/Quests.Button.tsx
 
 import { useState, useEffect } from "react";
-import { Quest, QuestLog, Player } from "@prisma/client";
+import { Quest, QuestLog, Player, ReferralLog } from "@prisma/client";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { useAssetsGet } from "@/app/hooks/useAssets";
@@ -29,7 +29,7 @@ interface QuestsButtonProps {
     tokenGatingResult?: AdvancedTokenGateResult | null;
     permission?: boolean;
     index: number;
-    referralLogsCount?: number;
+    referralLogs: ReferralLog[];
 }
 
 export default function QuestsButton({
@@ -47,7 +47,7 @@ export default function QuestsButton({
     tokenGatingResult,
     permission = false,
     index,
-    referralLogsCount,
+    referralLogs,
 }: QuestsButtonProps) {
     const toast = useToast();
     const { startLoading, endLoading } = useLoading();
@@ -295,11 +295,7 @@ export default function QuestsButton({
                                                 "opacity-85"
                                             )}
                                         >
-                                            {Math.min(
-                                                (referralLogsCount || 0) *
-                                                    (quest.referralCount || 0),
-                                                quest.referralCount
-                                            )}
+                                            {Math.min(referralLogs.length || 0)}
                                             /{quest.referralCount}
                                         </div>
                                     )}

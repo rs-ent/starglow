@@ -1,6 +1,6 @@
 /// components/molecules/Missions.tsx
 
-import { Player, Quest, QuestLog } from "@prisma/client";
+import { Player, Quest, QuestLog, ReferralLog } from "@prisma/client";
 import QuestsButton from "../atoms/Quests.Button";
 import PartialLoading from "../atoms/PartialLoading";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -15,7 +15,7 @@ interface QuestsMissionsProps {
     error: Error | null;
     permission: boolean;
     tokenGatingResult?: AdvancedTokenGateResult | null;
-    referralLogsCount?: number;
+    referralLogs: ReferralLog[];
 }
 
 export default function QuestsMissions({
@@ -26,7 +26,7 @@ export default function QuestsMissions({
     error = null,
     permission = false,
     tokenGatingResult,
-    referralLogsCount,
+    referralLogs,
 }: QuestsMissionsProps) {
     if (isLoading) {
         return <PartialLoading text="Quest lists are loading..." size="sm" />;
@@ -66,51 +66,20 @@ export default function QuestsMissions({
                     !permission && "blur-sm"
                 )}
             >
-                {quests.map((quest, index) => {
-                    if (quest.isReferral && quest.repeatable) {
-                        const claimedQuestLogs = questLogs.filter(
-                            (log) => log.questId === quest.id && log.isClaimed
-                        );
-
-                        const remainingReferalCount =
-                            (referralLogsCount || 0) -
-                            (quest.referralCount || 0) *
-                                (claimedQuestLogs.length || 0);
-
-                        const questLog = questLogs.find(
-                            (log) => log.questId === quest.id && !log.isClaimed
-                        );
-
-                        return (
-                            <QuestsButton
-                                key={quest.id}
-                                player={player}
-                                quest={quest}
-                                questLog={questLog}
-                                tokenGatingResult={tokenGatingResult}
-                                permission={permission}
-                                index={index}
-                                referralLogsCount={remainingReferalCount}
-                            />
-                        );
-                    } else {
-                        const questLog = questLogs.find(
+                {quests.map((quest, index) => (
+                    <QuestsButton
+                        key={quest.id}
+                        player={player}
+                        quest={quest}
+                        questLog={questLogs.find(
                             (log) => log.questId === quest.id
-                        );
-                        return (
-                            <QuestsButton
-                                key={quest.id}
-                                player={player}
-                                quest={quest}
-                                questLog={questLog}
-                                tokenGatingResult={tokenGatingResult}
-                                permission={permission}
-                                index={index}
-                                referralLogsCount={referralLogsCount}
-                            />
-                        );
-                    }
-                })}
+                        )}
+                        tokenGatingResult={tokenGatingResult}
+                        permission={permission}
+                        index={index}
+                        referralLogs={referralLogs}
+                    />
+                ))}
             </div>
         </div>
     );
