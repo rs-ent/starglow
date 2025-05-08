@@ -5,6 +5,7 @@
 import {
     useCreateQuestMutation,
     useUpdateQuestMutation,
+    useUpdateQuestOrderMutation,
     useDeleteQuestMutation,
     useTokenGatingMutation,
     useCompleteQuestMutation,
@@ -112,6 +113,12 @@ export function useQuestSet() {
     } = useUpdateQuestMutation();
 
     const {
+        mutateAsync: updateQuestOrder,
+        isPending: isUpdatingOrder,
+        error: updateOrderError,
+    } = useUpdateQuestOrderMutation();
+
+    const {
         mutateAsync: deleteQuest,
         isPending: isDeleting,
         error: deleteError,
@@ -144,6 +151,7 @@ export function useQuestSet() {
     const isLoading =
         isCreating ||
         isUpdating ||
+        isUpdatingOrder ||
         isDeleting ||
         isTokenGating ||
         isCompleting ||
@@ -153,6 +161,7 @@ export function useQuestSet() {
     const error =
         createError ||
         updateError ||
+        updateOrderError ||
         deleteError ||
         tokenGatingError ||
         completeError ||
@@ -167,6 +176,10 @@ export function useQuestSet() {
         updateQuest,
         isUpdating,
         updateError,
+
+        updateQuestOrder,
+        isUpdatingOrder,
+        updateOrderError,
 
         deleteQuest,
         isDeleting,
@@ -194,6 +207,7 @@ export function useQuestSet() {
 
         useCreateQuestMutation,
         useUpdateQuestMutation,
+        useUpdateQuestOrderMutation,
         useDeleteQuestMutation,
         useTokenGatingMutation,
         useCompleteQuestMutation,

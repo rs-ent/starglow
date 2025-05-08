@@ -295,8 +295,12 @@ export default function QuestsButton({
                                                 "opacity-85"
                                             )}
                                         >
-                                            {referralLogsCount || 0}/
-                                            {quest.referralCount}
+                                            {Math.min(
+                                                (referralLogsCount || 0) *
+                                                    (quest.referralCount || 0),
+                                                quest.referralCount
+                                            )}
+                                            /{quest.referralCount}
                                         </div>
                                     )}
                                 </div>

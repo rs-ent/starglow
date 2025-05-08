@@ -90,7 +90,7 @@ export default function QuestsArtistMissions({
                     <div
                         className={cn(
                             "duration-1000 transition-all",
-                            "w-full rounded-t-3xl",
+                            "w-full rounded-3xl",
                             "py-4 px-6 sm:py-6 sm:px-8 md:py-8 md:px-12 lg:py-10 lg:px-12",
                             "bg-gradient-to-b from-[rgba(18,6,53,0.85)] to-[rgba(55,34,160,0.7)]"
                         )}

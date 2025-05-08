@@ -149,9 +149,15 @@ model PlayerAsset {
   @@index([status])
 }
 
+enum QuestType {
+  URL
+  REFERRAL
+}
+
 model Quest {
   id             String         @id @default(cuid())
   title          String
+  questType      QuestType      @default(URL)
   description    String?
   url            String?
   icon           String?

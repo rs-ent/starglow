@@ -109,6 +109,9 @@ export async function getArtists(input?: GetArtistsInput): Promise<Artist[]> {
                     quests: true,
                     polls: true,
                 },
+                orderBy: {
+                    name: "asc",
+                },
             });
         }
 
@@ -131,6 +134,9 @@ export async function getArtists(input?: GetArtistsInput): Promise<Artist[]> {
             include: {
                 collectionContracts: true,
                 messages: true,
+            },
+            orderBy: {
+                name: "asc",
             },
         });
         return artists;

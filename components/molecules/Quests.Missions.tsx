@@ -66,20 +66,51 @@ export default function QuestsMissions({
                     !permission && "blur-sm"
                 )}
             >
-                {quests.map((quest, index) => (
-                    <QuestsButton
-                        key={quest.id}
-                        player={player}
-                        quest={quest}
-                        questLog={questLogs.find(
+                {quests.map((quest, index) => {
+                    if (quest.isReferral && quest.repeatable) {
+                        const claimedQuestLogs = questLogs.filter(
+                            (log) => log.questId === quest.id && log.isClaimed
+                        );
+
+                        const remainingReferalCount =
+                            (referralLogsCount || 0) -
+                            (quest.referralCount || 0) *
+                                (claimedQuestLogs.length || 0);
+
+                        const questLog = questLogs.find(
+                            (log) => log.questId === quest.id && !log.isClaimed
+                        );
+
+                        return (
+                            <QuestsButton
+                                key={quest.id}
+                                player={player}
+                                quest={quest}
+                                questLog={questLog}
+                                tokenGatingResult={tokenGatingResult}
+                                permission={permission}
+                                index={index}
+                                referralLogsCount={remainingReferalCount}
+                            />
+                        );
+                    } else {
+                        const questLog = questLogs.find(
                             (log) => log.questId === quest.id
-                        )}
-                        tokenGatingResult={tokenGatingResult}
-                        permission={permission}
-                        index={index}
-                        referralLogsCount={referralLogsCount}
-                    />
-                ))}
+                        );
+                        return (
+                            <QuestsButton
+                                key={quest.id}
+                                player={player}
+                                quest={quest}
+                                questLog={questLog}
+                                tokenGatingResult={tokenGatingResult}
+                                permission={permission}
+                                index={index}
+                                referralLogsCount={referralLogsCount}
+                            />
+                        );
+                    }
+                })}
             </div>
         </div>
     );

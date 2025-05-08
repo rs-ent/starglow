@@ -125,6 +125,7 @@ Table PlayerAsset {
 Table Quest {
   id String [pk]
   title String [not null]
+  questType QuestType [not null, default: 'URL']
   description String
   url String
   icon String
@@ -776,6 +777,11 @@ Enum PlayerAssetStatus {
   INACTIVE
   DELETED
   FROZEN
+}
+
+Enum QuestType {
+  URL
+  REFERRAL
 }
 
 Enum PollStatus {

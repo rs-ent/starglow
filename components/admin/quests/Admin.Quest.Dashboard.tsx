@@ -6,7 +6,7 @@ import AdminQuestList from "./Admin.Quest.List";
 
 export default function AdminQuestDashboard() {
     return (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 my-4">
             <AdminQuestList />
         </div>
     );

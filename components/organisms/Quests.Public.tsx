@@ -35,15 +35,20 @@ export default function QuestsPublic({
     const types = useMemo(
         () => [
             "All",
-            ...(quests?.items
-                .filter(
-                    (quest): quest is Quest & { type: string } =>
-                        quest.type !== null && quest.type !== undefined
+            ...(Array.from(
+                new Set(
+                    quests?.items
+                        .filter(
+                            (quest): quest is Quest & { type: string } =>
+                                quest.type !== null && quest.type !== undefined
+                        )
+                        .map((quest) => quest.type)
                 )
-                .map((quest) => quest.type) || []),
+            ) || []),
         ],
         [quests?.items]
     );
+
     const filteredQuests = useMemo(() => {
         if (selectedType === "All") {
             return quests?.items || [];

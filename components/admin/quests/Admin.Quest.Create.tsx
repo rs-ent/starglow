@@ -19,7 +19,13 @@ import {
     SelectItem,
 } from "@/components/ui/select";
 import CollectionCard from "@/components/molecules/NFTs.CollectionCard";
-import { Quest, Artist, Asset, CollectionContract } from "@prisma/client";
+import {
+    Quest,
+    Artist,
+    Asset,
+    CollectionContract,
+    QuestType,
+} from "@prisma/client";
 import {
     Dialog,
     DialogContent,
@@ -64,6 +70,7 @@ interface AdminQuestCreateProps {
     mode: "create" | "edit";
     open: boolean;
     initialData?: Quest | null;
+    registeredTypes: string[];
     onClose: () => void;
 }
 
@@ -92,10 +99,18 @@ export default function AdminQuestCreate({
     mode,
     open,
     initialData,
+    registeredTypes,
     onClose,
 }: AdminQuestCreateProps) {
     const { artists } = useArtistsGet({});
-    const { createQuest, isCreating, createError } = useQuestSet();
+    const {
+        createQuest,
+        updateQuest,
+        isCreating,
+        isUpdating,
+        createError,
+        updateError,
+    } = useQuestSet();
     const { assets, isLoading: isLoadingAssets } = useAssetsGet({
         getAssetsInput: { isActive: true },
     });
@@ -105,10 +120,13 @@ export default function AdminQuestCreate({
     const toast = useToast();
 
     // 퀘스트 타입
-    const [questType, setQuestType] = useState<"URL" | "REFERRAL" | null>(null);
+    const [questType, setQuestType] = useState<QuestType | null>(
+        initialData?.questType || null
+    );
 
     const [formData, setFormData] = useState<QuestFormData>({
         title: initialData?.title || "",
+        questType: initialData?.questType || QuestType.URL,
         description: null,
         url: null,
         icon: null,
@@ -177,12 +195,19 @@ export default function AdminQuestCreate({
                 : undefined,
         };
 
-        const createQuestResult = await createQuest(submitData);
-        if (createQuestResult) {
+        const result =
+            mode === "edit" && initialData
+                ? await updateQuest({
+                      ...submitData,
+                      id: initialData.id,
+                  })
+                : await createQuest(submitData);
+
+        if (result) {
             toast.success(
                 `퀘스트가 성공적으로 ${
                     mode === "create" ? "생성" : "수정"
-                }되었습니다.\n(${createQuestResult.title})`
+                }되었습니다.\n(${result.title})`
             );
             onClose();
         }
@@ -273,8 +298,9 @@ export default function AdminQuestCreate({
         );
     }
 
-    const renderQuestForm = (selectedQuestType: "URL" | "REFERRAL" | null) => {
-        if (selectedQuestType === "URL") {
+    const renderQuestForm = (selectedQuestType: QuestType) => {
+        if (selectedQuestType === QuestType.URL) {
+            formData.questType = QuestType.URL;
             return (
                 <URLQuestForm
                     formData={formData}
@@ -285,13 +311,17 @@ export default function AdminQuestCreate({
                     onChange={handleFormChange}
                     onSubmit={handleSubmit}
                     isValid={isValid}
-                    isCreating={isCreating}
-                    createError={createError}
+                    isCreating={isCreating || isUpdating}
+                    createError={createError || updateError}
+                    mode={mode}
+                    registeredTypes={registeredTypes}
                 />
             );
         }
 
-        if (selectedQuestType === "REFERRAL") {
+        if (selectedQuestType === QuestType.REFERRAL) {
+            formData.questType = QuestType.REFERRAL;
+            formData.isReferral = true;
             return (
                 <ReferralQuestForm
                     formData={formData}
@@ -302,11 +332,15 @@ export default function AdminQuestCreate({
                     onChange={handleFormChange}
                     onSubmit={handleSubmit}
                     isValid={isValid}
-                    isCreating={isCreating}
-                    createError={createError}
+                    isCreating={isCreating || isUpdating}
+                    createError={createError || updateError}
+                    mode={mode}
+                    registeredTypes={registeredTypes}
                 />
             );
         }
+
+        return null;
     };
 
     return (
@@ -316,7 +350,7 @@ export default function AdminQuestCreate({
                     <DialogTitle className="text-xl font-bold">
                         {mode === "create"
                             ? "신규 퀘스트 생성기"
-                            : `${initialData?.id} 수정하기`}
+                            : `『${initialData?.title}』 수정하기`}
                     </DialogTitle>
                     <DialogClose asChild>
                         <Button variant="ghost" size="icon" aria-label="닫기">
@@ -329,7 +363,7 @@ export default function AdminQuestCreate({
                     <QuestTypeSelection onSelect={setQuestType} />
                 )}
 
-                {renderQuestForm(questType)}
+                {questType && renderQuestForm(questType)}
             </DialogContent>
         </Dialog>
     );
@@ -364,6 +398,8 @@ interface QuestFormProps {
     isValid: boolean;
     isCreating: boolean;
     createError: any;
+    mode: "create" | "edit";
+    registeredTypes: string[];
 }
 
 function URLQuestForm({
@@ -377,6 +413,8 @@ function URLQuestForm({
     isValid,
     isCreating,
     createError,
+    mode,
+    registeredTypes,
 }: QuestFormProps) {
     return (
         <form
@@ -820,11 +858,57 @@ function URLQuestForm({
 
                     <div className="mb-8">
                         <Label className="mb-2 block">타입/카테고리</Label>
-                        <Input
-                            value={formData.type || ""}
-                            onChange={(e) => onChange("type", e.target.value)}
-                            placeholder="타입별로 폴더링됨"
-                        />
+                        <div className="flex flex-col gap-2">
+                            <div className="flex flex-wrap gap-2">
+                                {registeredTypes.length > 0 ? (
+                                    registeredTypes
+                                        .filter((type) => type !== "")
+                                        .map((type) => (
+                                            <Button
+                                                key={type}
+                                                type="button"
+                                                variant={
+                                                    formData.type === type
+                                                        ? "default"
+                                                        : "outline"
+                                                }
+                                                onClick={() =>
+                                                    onChange("type", type)
+                                                }
+                                                className="flex-1 min-w-[100px]"
+                                            >
+                                                {type}
+                                            </Button>
+                                        ))
+                                ) : (
+                                    <div className="text-sm text-muted-foreground">
+                                        등록된 타입이 없습니다
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex gap-2">
+                                <Input
+                                    value={formData.type || ""}
+                                    onChange={(e) =>
+                                        onChange("type", e.target.value)
+                                    }
+                                    placeholder="새로운 타입 입력"
+                                    className="flex-1"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => onChange("type", null)}
+                                    className="whitespace-nowrap"
+                                >
+                                    초기화
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                            기존 타입을 선택하거나 새로운 타입을 입력할 수
+                            있습니다.
+                        </div>
                     </div>
 
                     <div className="mb-8">
@@ -956,7 +1040,13 @@ function URLQuestForm({
                 <Divider />
                 <div className="flex justify-end pt-4">
                     <Button type="submit" disabled={!isValid || isCreating}>
-                        {isCreating ? "생성 중..." : "퀘스트 생성"}
+                        {isCreating
+                            ? mode === "create"
+                                ? "생성 중..."
+                                : "수정 중..."
+                            : mode === "create"
+                            ? "퀘스트 생성"
+                            : "퀘스트 수정"}
                     </Button>
                 </div>
                 {createError && (
@@ -980,6 +1070,8 @@ function ReferralQuestForm({
     isValid,
     isCreating,
     createError,
+    mode,
+    registeredTypes,
 }: QuestFormProps) {
     useEffect(() => {
         onChange("isReferral", true);
@@ -1305,7 +1397,7 @@ function ReferralQuestForm({
                     <div className="mb-8">
                         <Label className="mb-2 block">타입/카테고리</Label>
                         <Input
-                            value={formData.type || "Referral"}
+                            value={formData.type || ""}
                             onChange={(e) => onChange("type", e.target.value)}
                             placeholder="타입별로 폴더링됨"
                         />
@@ -1358,7 +1450,13 @@ function ReferralQuestForm({
                 <Divider />
                 <div className="flex justify-end pt-4">
                     <Button type="submit" disabled={!isValid || isCreating}>
-                        {isCreating ? "생성 중..." : "퀘스트 생성"}
+                        {isCreating
+                            ? mode === "create"
+                                ? "생성 중..."
+                                : "수정 중..."
+                            : mode === "create"
+                            ? "퀘스트 생성"
+                            : "퀘스트 수정"}
                     </Button>
                 </div>
                 {createError && (

@@ -22,58 +22,42 @@ export default function ArtistSlideSelector({
     onSelect,
 }: ArtistSlideSelectorProps) {
     const { artists, isLoading, error } = useArtistsGet({});
-    const [duplicatedArtists, setDuplicatedArtists] = useState<Artist[]>([]);
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
 
     const sliderSettings = {
         dots: false,
         arrows: false,
-        infinite: false,
+        infinite: artists && artists.length > 1,
         speed: 430,
-        slidesToShow: 5,
+        slidesToShow: Math.min(5, artists?.length || 0),
         slidesToScroll: 1,
-        swipeToSlide: true,
-        centerMode: true,
+        swipeToSlide: artists && artists.length > 1,
+        centerMode: artists && artists.length > 1,
         focusOnSelect: true,
+        edgeFriction: 0.1,
+        centerPadding: "0px",
         cssEase: "cubic-bezier(0.33, 1, 0.68, 1)",
         responsive: [
             {
                 breakpoint: 1024,
                 settings: {
-                    slidesToShow: 5,
+                    slidesToShow: Math.min(5, artists?.length || 0),
                 },
             },
             {
                 breakpoint: 768,
                 settings: {
-                    slidesToShow: 4,
+                    slidesToShow: Math.min(5, artists?.length || 0),
                 },
             },
             {
                 breakpoint: 480,
                 settings: {
-                    slidesToShow: 3,
+                    slidesToShow: Math.min(5, artists?.length || 0),
                 },
             },
         ],
     };
-
-    useEffect(() => {
-        if (artists && artists.length > 0) {
-            const duplicated: Artist[] = [];
-
-            for (let i = 0; i < 15; i++) {
-                artists.forEach((artist) => {
-                    duplicated.push({
-                        ...artist,
-                        id: i === 0 ? artist.id : `${artist.id}_dup_${i}`,
-                    });
-                });
-            }
-
-            setDuplicatedArtists(duplicated);
-        }
-    }, [artists]);
 
     return (
         <div
@@ -88,8 +72,8 @@ export default function ArtistSlideSelector({
                         <PartialLoading text="Loading..." size="sm" />
                     )}
                     {error && <div>Error: {error.message}</div>}
-                    {duplicatedArtists &&
-                        duplicatedArtists.map((artist: Artist) => (
+                    {artists &&
+                        artists.map((artist: Artist) => (
                             <div
                                 key={artist.id}
                                 className={cn(

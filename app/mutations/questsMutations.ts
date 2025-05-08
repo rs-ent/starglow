@@ -12,6 +12,7 @@ import {
     completeQuest,
     claimQuestReward,
     setReferralQuestLogs,
+    updateQuestOrder,
 } from "../actions/quests";
 
 export function useCreateQuestMutation() {
@@ -54,6 +55,23 @@ export function useUpdateQuestMutation() {
     });
 }
 
+export function useUpdateQuestOrderMutation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: updateQuestOrder,
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: questKeys.all });
+            queryClient.invalidateQueries({
+                queryKey: questKeys.list(),
+            });
+        },
+        onError: (error) => {
+            console.error("Error updating quest order:", error);
+        },
+    });
+}
+
 export function useDeleteQuestMutation() {
     const queryClient = useQueryClient();
 
@@ -62,7 +80,7 @@ export function useDeleteQuestMutation() {
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: questKeys.all });
             queryClient.invalidateQueries({
-                queryKey: questKeys.list(),
+                queryKey: questKeys.list({}),
             });
             queryClient.invalidateQueries({
                 queryKey: questKeys.detail({ id: variables.id }),

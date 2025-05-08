@@ -114,7 +114,7 @@ export default function ArtistSelector({
             </div>
             <h3
                 className={cn(
-                    "text-xs mt-[4px] mb-[4px]",
+                    "text-center text-xs mt-[4px] mb-[4px]",
                     "transition-all duration-500",
                     textSizeClass,
                     selected && "font-semibold"

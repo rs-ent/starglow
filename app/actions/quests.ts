@@ -11,6 +11,8 @@ import {
     QuestLog,
     User,
     ReferralLog,
+    QuestType,
+    Artist,
 } from "@prisma/client";
 import { updatePlayerAsset } from "./playerAssets";
 import { tokenGate } from "./blockchain";
@@ -25,6 +27,7 @@ export type PaginationInput = {
 
 export interface CreateQuestInput {
     title: string;
+    questType: QuestType;
     description?: string | null;
     url?: string | null;
     icon?: string | null;
@@ -265,36 +268,58 @@ export async function getQuest(input?: GetQuestInput): Promise<Quest | null> {
 
 export interface UpdateQuestInput {
     id: string;
+    questType?: QuestType;
     title?: string;
-    description?: string;
-    url?: string;
-    icon?: string;
-    imgUrl?: string;
-    youtubeUrl?: string;
-    rewardAssetId?: string;
-    rewardAmount?: number;
-    startDate?: Date;
-    endDate?: Date;
+    description?: string | null;
+    url?: string | null;
+    icon?: string | null;
+    imgUrl?: string | null;
+    youtubeUrl?: string | null;
+    rewardAssetId?: string | null;
+    rewardAsset?: Asset | null;
+    rewardAmount?: number | null;
+    startDate?: Date | null;
+    endDate?: Date | null;
     permanent?: boolean;
     repeatable?: boolean;
-    repeatableCount?: number;
-    repeatableInterval?: number;
+    repeatableCount?: number | null;
+    repeatableInterval?: number | null;
     isActive?: boolean;
-    order?: number;
-    effects?: string;
-    type?: string;
-    artistId?: string;
+    order?: number | null;
+    effects?: string | null;
+    type?: string | null;
+    artistId?: string | null;
+    artist?: Artist | null;
     needToken?: boolean;
-    needTokenAddress?: string;
+    needTokenAddress?: string | null;
 }
 
 export async function updateQuest(
     input: UpdateQuestInput
 ): Promise<Quest | null> {
     try {
+        if (input.rewardAssetId) {
+            const rewardAsset = await prisma.asset.findUnique({
+                where: { id: input.rewardAssetId },
+            });
+            if (!rewardAsset || !rewardAsset.isActive) {
+                throw new Error("Reward asset not found");
+            }
+        }
+
+        const { id, rewardAssetId, artistId, rewardAsset, artist, ...rest } =
+            input;
+
         const quest = await prisma.quest.update({
-            where: { id: input.id },
-            data: input,
+            where: { id },
+            data: {
+                ...rest,
+                rewardAssetId: rewardAssetId || null,
+                artistId: artistId || null,
+                permanent: input.permanent ?? false,
+                isActive: input.isActive ?? true,
+                order: input.order ?? 0,
+            },
         });
 
         return quest;
@@ -304,13 +329,67 @@ export async function updateQuest(
     }
 }
 
+export interface UpdateQuestOrderInput {
+    quests: {
+        id: string;
+        order: number;
+    }[];
+}
+
+export interface UpdateQuestOrderResult {
+    data?: {
+        id: string;
+        order: number;
+    }[];
+    error?: string;
+}
+
+export async function updateQuestOrder(
+    input: UpdateQuestOrderInput
+): Promise<UpdateQuestOrderResult> {
+    try {
+        await prisma.$transaction(
+            input.quests.map((quest) =>
+                prisma.quest.update({
+                    where: { id: quest.id },
+                    data: { order: quest.order },
+                })
+            )
+        );
+
+        return {
+            data: input.quests.map((quest) => ({
+                id: quest.id,
+                order: quest.order,
+            })),
+        };
+    } catch (error) {
+        console.error("Error updating quest order:", error);
+        return {
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to update quest order",
+        };
+    }
+}
+
 export interface DeleteQuestInput {
     id: string;
 }
 
 export async function deleteQuest(input: DeleteQuestInput): Promise<boolean> {
     try {
-        await prisma.quest.delete({ where: { id: input.id } });
+        await prisma.$transaction(async (tx) => {
+            await tx.questLog.deleteMany({
+                where: { questId: input.id },
+            });
+
+            await tx.quest.delete({
+                where: { id: input.id },
+            });
+        });
+
         return true;
     } catch (error) {
         console.error(error);
