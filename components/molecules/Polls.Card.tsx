@@ -95,29 +95,32 @@ export default function PollsCard({
     };
 
     const [voteAmount, setVoteAmount] = useState(0);
-    const { alreadyVotedAmount, maxVoteAmount, permission } = useMemo(() => {
-        const permission = tokenGatingData?.data?.hasToken;
-        const alreadyVotedAmount =
-            pollLogsUsingSameToken?.reduce(
-                (acc, curr) => acc + curr.amount,
-                0
-            ) || 0;
+    const { alreadyVotedAmount, maxVoteAmount, permission, votedOptions } =
+        useMemo(() => {
+            const permission = tokenGatingData?.data?.hasToken;
+            const votedOptions = pollLogs?.map((log) => log.optionId);
+            const alreadyVotedAmount =
+                pollLogsUsingSameToken?.reduce(
+                    (acc, curr) => acc + curr.amount,
+                    0
+                ) || 0;
 
-        let maxVoteAmount = Infinity;
+            let maxVoteAmount = Infinity;
 
-        if (poll.needToken && tokenGatingData?.data) {
-            maxVoteAmount = Math.max(
-                0,
-                tokenGatingData.data.tokenCount - alreadyVotedAmount
-            );
-        }
+            if (poll.needToken && tokenGatingData?.data) {
+                maxVoteAmount = Math.max(
+                    0,
+                    tokenGatingData.data.tokenCount - alreadyVotedAmount
+                );
+            }
 
-        return {
-            alreadyVotedAmount,
-            maxVoteAmount,
-            permission,
-        };
-    }, [pollLogsUsingSameToken, tokenGatingData, poll.needToken]);
+            return {
+                alreadyVotedAmount,
+                maxVoteAmount,
+                permission,
+                votedOptions,
+            };
+        }, [pollLogsUsingSameToken, tokenGatingData, poll.needToken, pollLogs]);
 
     const handleSubmit = async () => {
         startLoading();
@@ -215,16 +218,12 @@ export default function PollsCard({
                         </div>
                     </div>
 
-                    {status !== "ENDED" && (
+                    {status !== "ENDED" && status !== "UPCOMING" && (
                         <div>
                             <Countdown
-                                endDate={
-                                    status === "UPCOMING"
-                                        ? startDateObj
-                                        : endDateObj
-                                }
+                                endDate={endDateObj}
                                 size={15}
-                                className="font-main"
+                                className="font-main opacity-50"
                             />
                         </div>
                     )}
@@ -260,6 +259,31 @@ export default function PollsCard({
                     </p>
                 </div>
 
+                {/* UPCOMING 상태일 경우 옵션 대신 COUNTDOWN 렌더링 */}
+                {status === "UPCOMING" && (
+                    <div
+                        className={cn(
+                            "my-6 flex-col items-center justify-center text-center",
+                            "rounded-[16px] p-3",
+                            "bg-gradient-to-br from-[rgba(200,180,255,0.01)] to-[rgba(160,110,250,0.1)]"
+                        )}
+                    >
+                        <h3
+                            className={cn(
+                                "text-[rgba(255,255,255,0.85)]",
+                                getResponsiveClass(15).textClass
+                            )}
+                        >
+                            OPEN IN
+                        </h3>
+                        <Countdown
+                            endDate={startDateObj}
+                            size={30}
+                            className="font-main text-center"
+                        />
+                    </div>
+                )}
+
                 {/* 옵션 섹션 */}
                 {showOptions && (
                     <div className="grid grid-cols-1 gap-3 my-6 w-full">
@@ -282,6 +306,15 @@ export default function PollsCard({
                                     "mx-auto"
                                 )}
                             >
+                                {/* 투표 확인 아이콘 */}
+                                {votedOptions?.includes(option.optionId) && (
+                                    <div className="absolute top-0 bottom-0 right-1 z-0 inner-shadow">
+                                        <VotedIcon
+                                            color="#aacde8"
+                                            className="w-full h-full opacity-30"
+                                        />
+                                    </div>
+                                )}
                                 <div className="flex-1 flex items-center gap-2">
                                     <div
                                         className={cn(
@@ -495,3 +528,71 @@ export default function PollsCard({
         </div>
     );
 }
+
+interface VotedIconProps {
+    className?: string;
+    width?: number | string;
+    height?: number | string;
+    color?: string;
+}
+
+export const VotedIcon: React.FC<VotedIconProps> = ({
+    className,
+    width = 24,
+    height = 24,
+    color = "currentColor",
+}) => {
+    return (
+        <svg
+            fill={color}
+            height={height}
+            width={width}
+            version="1.1"
+            viewBox="0 0 512 512"
+            xmlns="http://www.w3.org/2000/svg"
+            className={cn(className)}
+        >
+            <g>
+                <g>
+                    <g>
+                        <path
+                            d="M121.088,203.349c-5.525-2.048-11.669,0.704-13.739,6.229l-22.016,58.709l-22.016-58.709
+              c-2.069-5.504-8.235-8.256-13.739-6.229c-5.504,2.069-8.299,8.213-6.229,13.739l32,85.333c1.557,4.16,5.547,6.912,9.984,6.912
+              c4.437,0,8.427-2.752,9.984-6.912l32-85.333C129.387,211.563,126.592,205.419,121.088,203.349z"
+                        />
+                        <path
+                            d="M437.333,160h-21.888C379.605,106.453,320.469,74.667,256,74.667S132.373,106.453,96.555,160H74.667
+              C33.493,160,0,193.493,0,234.667v42.667C0,318.507,33.493,352,74.667,352h21.888c35.84,53.547,94.997,85.333,159.445,85.333
+              S379.605,405.547,415.445,352h21.888C478.507,352,512,318.507,512,277.333v-42.667C512,193.493,478.507,160,437.333,160z M256,96
+              c52.309,0,100.629,23.659,132.885,64H123.115C155.371,119.659,203.691,96,256,96z M256,416c-52.309,0-100.629-23.659-132.885-64
+              h265.771C356.629,392.341,308.309,416,256,416z M490.667,277.333c0,29.397-23.936,53.333-53.333,53.333H102.379c0,0,0,0-0.021,0
+              c-0.011,0-0.011,0-0.008,0H74.667c-29.397,0-53.333-23.936-53.333-53.333v-42.667c0-29.397,23.936-53.333,53.333-53.333h27.691
+              c0,0,0,0,0.021,0h334.955c29.397,0,53.333,23.936,53.333,53.333V277.333z"
+                        />
+                        <path
+                            d="M437.333,202.667H416c-5.888,0-10.667,4.779-10.667,10.667v85.333c0,5.888,4.779,10.667,10.667,10.667h21.333
+              c17.643,0,32-14.357,32-32v-42.667C469.333,217.024,454.976,202.667,437.333,202.667z M448,277.333
+              c0,5.888-4.779,10.667-10.667,10.667h-10.667v-64h10.667c5.888,0,10.667,4.779,10.667,10.667V277.333z"
+                        />
+                        <path
+                            d="M181.333,202.667c-17.643,0-32,14.357-32,32v42.667c0,17.643,14.357,32,32,32c17.643,0,32-14.357,32-32v-42.667
+              C213.333,217.024,198.976,202.667,181.333,202.667z M192,277.333c0,5.888-4.779,10.667-10.667,10.667
+              s-10.667-4.779-10.667-10.667v-42.667c0-5.888,4.779-10.667,10.667-10.667S192,228.779,192,234.667V277.333z"
+                        />
+                        <path
+                            d="M373.333,224c5.888,0,10.667-4.779,10.667-10.667s-4.779-10.667-10.667-10.667h-42.667
+              c-5.888,0-10.667,4.779-10.667,10.667v85.333c0,5.888,4.779,10.667,10.667,10.667h42.667c5.888,0,10.667-4.779,10.667-10.667
+              S379.221,288,373.333,288h-32v-21.333H352c5.888,0,10.667-4.779,10.667-10.667c0-5.888-4.779-10.667-10.667-10.667h-10.667V224
+              H373.333z"
+                        />
+                        <path
+                            d="M298.667,202.667h-64c-5.888,0-10.667,4.779-10.667,10.667S228.779,224,234.667,224H256v74.667
+              c0,5.888,4.779,10.667,10.667,10.667s10.667-4.779,10.667-10.667V224h21.333c5.888,0,10.667-4.779,10.667-10.667
+              S304.555,202.667,298.667,202.667z"
+                        />
+                    </g>
+                </g>
+            </g>
+        </svg>
+    );
+};
