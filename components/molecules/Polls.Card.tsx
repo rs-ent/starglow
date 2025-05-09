@@ -89,6 +89,10 @@ export default function PollsCard({
 
     const [animateSubmit, setAnimateSubmit] = useState(false);
     const handleOptionClick = (option: PollOption) => {
+        if (option.optionId === selection?.optionId) {
+            setSelection(null);
+            return;
+        }
         setSelection(option);
         setVoteAmount(1);
         setTimeout(() => {
@@ -97,6 +101,7 @@ export default function PollsCard({
     };
 
     const [voteAmount, setVoteAmount] = useState(0);
+    const [voteAmountInput, setVoteAmountInput] = useState("1");
     const { alreadyVotedAmount, maxVoteAmount, permission, votedOptions } =
         useMemo(() => {
             const permission = tokenGatingData?.data?.hasToken;
@@ -124,6 +129,15 @@ export default function PollsCard({
     const handleSubmit = async () => {
         startLoading();
         try {
+            if (
+                isNaN(voteAmount) ||
+                parseInt(voteAmountInput, 10) <= 0 ||
+                voteAmount <= 0
+            ) {
+                toast.error("Please enter a valid vote amount.");
+                return;
+            }
+
             if (!selection) {
                 toast.error("Please select an option");
                 return;
@@ -177,16 +191,23 @@ export default function PollsCard({
     };
 
     return (
-        <div className="relative max-w-[480px] min-w-[210px] mt-[25px]">
+        <div className="relative max-w-[480px] min-w-[120px] mt-[25px]">
+            <div
+                className={cn(
+                    "absolute inset-0 rounded-[16px] pointer-events-none transition-opacity duration-500 -z-50",
+                    isSelected ? "opacity-100" : "opacity-0"
+                )}
+                style={{
+                    background:
+                        "linear-gradient(to bottom, rgba(109,40,217,1), rgba(109,40,217,0.5))",
+                }}
+            />
             {!permission && <Doorman />}
             <div
-                onClick={() => setSelection(null)}
                 className={cn(
-                    "flex flex-col p-3 border border-[rgba(255,255,255,0.4)] rounded-[16px]",
+                    "flex flex-col p-[12px] border border-[rgba(255,255,255,0.4)] rounded-[16px]",
                     "transition-all duration-500 ease-in-out",
                     "bg-gradient-to-b from-[rgba(109,40,217,0.4)] to-[rgba(109,40,217,0.2)]",
-                    isSelected &&
-                        "bg-gradient-to-b from-[rgba(109,40,217,1)] to-[rgba(109,40,217,0.5)]",
                     !permission && "blur-sm"
                 )}
             >
@@ -202,19 +223,13 @@ export default function PollsCard({
                 </div>
 
                 {/* 폴 정보 섹션 */}
-                <div className="flex items-center justify-between mt-3">
+                <div className="flex flex-wrap items-center justify-between mt-3">
                     <div
                         className={cn(
                             "flex flex-row gap-1",
                             getResponsiveClass(10).textClass
                         )}
                     >
-                        {poll.artistId && artist && (
-                            <div className="morp-glass-1 rounded-full py-1 px-3">
-                                <h2>{artist.name}</h2>
-                            </div>
-                        )}
-
                         <div className="morp-glass-1 rounded-full py-1 px-3">
                             <h2>{status}</h2>
                         </div>
@@ -316,7 +331,7 @@ export default function PollsCard({
                                     className={cn(
                                         selection === option &&
                                             "text-glow-white-smooth white-glow-smooth border-[rgba(255,255,255,0.3)]",
-                                        "flex items-center justify-between w-full p-2 rounded-[10px]",
+                                        "flex items-center justify-between w-full py-3 px-2 rounded-[10px]",
                                         "border border-[rgba(255,255,255,0.1)]",
                                         "bg-[rgba(0,0,0,0.05)] inner-shadow",
                                         "transition-all duration-700",
@@ -434,9 +449,14 @@ export default function PollsCard({
                     <div className="mt-6">
                         {isLoading ? (
                             <div className="animate-pulse">
-                                <div className="h-[34px] bg-gray-700 rounded mb-2"></div>
-                                <div className="h-[34px] bg-gray-700 rounded mb-2"></div>
-                                <div className="h-[34px] bg-gray-700 rounded"></div>
+                                {Array.from({
+                                    length: poll.options.length,
+                                }).map((_, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="h-[34px] bg-[rgba(255,255,255,0.3)] blur-sm rounded mb-2"
+                                    ></div>
+                                ))}
                             </div>
                         ) : error ? (
                             <div className="text-red-500 text-sm">
@@ -467,14 +487,15 @@ export default function PollsCard({
 
                 {/* Submit Button */}
                 {selection && !showOngoingResults && (
-                    <div className="overflow-hidden">
+                    <div className="overflow-hidden w-full mb-[25px] sm:mb-[30px] md:mb-[35px] lg:mb-[40px] xl:mb-[45px]">
                         <div
                             className={cn(
                                 "transform transition-all duration-500 ease-out",
-                                "flex flex-row gap-3 items-center",
+                                "flex flex-col gap-3 items-center",
+                                "w-full",
                                 animateSubmit
-                                    ? "translate-x-0 opacity-100"
-                                    : "translate-x-10 opacity-0"
+                                    ? "translate-y-0 opacity-100"
+                                    : "translate-y-10 opacity-0"
                             )}
                         >
                             {poll.allowMultipleVote &&
@@ -482,109 +503,140 @@ export default function PollsCard({
                                 poll.needTokenAddress && (
                                     <div
                                         className={cn(
-                                            "flex items-center bg-[rgba(0,0,0,0.3)] overflow-hidden",
-                                            "h-auto",
-                                            "rounded-xs",
-                                            "border border-[rgba(255,255,255,0.2)]"
+                                            "flex flex-row justify-center items-center overflow-hidden mb-1",
+                                            getResponsiveClass(30).gapClass
                                         )}
                                     >
-                                        <input
-                                            type="number"
-                                            value={voteAmount}
-                                            placeholder="1"
-                                            onChange={(e) => {
-                                                const val = parseInt(
-                                                    e.target.value
+                                        <button
+                                            className={cn(
+                                                "bg-[rgba(139,92,246,0.9)] hover:bg-[rgba(139,92,246,1)]",
+                                                "rounded-full text-center",
+                                                getResponsiveClass(30)
+                                                    .frameClass,
+                                                getResponsiveClass(15).textClass
+                                            )}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const amount = Math.max(
+                                                    1,
+                                                    voteAmount - 1
                                                 );
-                                                if (!isNaN(val) && val > 0) {
-                                                    setVoteAmount(
-                                                        Math.min(
-                                                            maxVoteAmount,
-                                                            val
-                                                        )
+                                                setVoteAmount(amount);
+                                                setVoteAmountInput(
+                                                    amount.toString()
+                                                );
+                                            }}
+                                            aria-label="Decrease amount"
+                                        >
+                                            -
+                                        </button>
+
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={voteAmountInput}
+                                            placeholder="1"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                            }}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (/^\d*$/.test(val)) {
+                                                    setVoteAmountInput(val);
+                                                    const num = parseInt(
+                                                        val,
+                                                        10
                                                     );
+                                                    if (
+                                                        !isNaN(num) &&
+                                                        num > 0
+                                                    ) {
+                                                        const amount = Math.min(
+                                                            maxVoteAmount,
+                                                            num
+                                                        );
+                                                        setVoteAmount(amount);
+                                                        setVoteAmountInput(
+                                                            amount.toString()
+                                                        );
+                                                    }
                                                 }
                                             }}
                                             className={cn(
-                                                "px-[5px] py-[1px] text-center",
-                                                getResponsiveClass(20).textClass
+                                                "py-[3px] text-center",
+                                                "rounded-full border border-[rgba(255,255,255,0.8)]",
+                                                "focus:outline-none",
+                                                "focus:border-[rgba(255,255,255,0.8)]",
+                                                "focus:shadow-none",
+                                                getResponsiveClass(15).textClass
                                             )}
-                                            min="1"
-                                            max={maxVoteAmount}
+                                            style={{
+                                                width: `${Math.max(
+                                                    voteAmountInput.length,
+                                                    1
+                                                )}ch`,
+                                                minWidth: "7ch",
+                                                maxWidth: "14ch",
+                                                transition: "width 0.2s",
+                                            }}
                                         />
 
-                                        <div className="flex flex-col">
-                                            <button
-                                                className={cn(
-                                                    "px-[5px] py-[1px] hover:bg-[rgba(255,255,255,0.1)]",
-                                                    "border-l border-b border-[rgba(255,255,255,0.1)]",
-                                                    getResponsiveClass(5)
-                                                        .textClass
-                                                )}
-                                                onClick={() => {
-                                                    setVoteAmount(
-                                                        Math.min(
-                                                            maxVoteAmount,
-                                                            voteAmount + 1
-                                                        )
-                                                    );
-                                                }}
-                                                aria-label="Increase amount"
-                                            >
-                                                +
-                                            </button>
-                                            <button
-                                                className={cn(
-                                                    "px-[5px] py-[1px] hover:bg-[rgba(255,255,255,0.1)]",
-                                                    "border-l border-[rgba(255,255,255,0.1)]",
-                                                    getResponsiveClass(5)
-                                                        .textClass
-                                                )}
-                                                onClick={() =>
-                                                    setVoteAmount(
-                                                        Math.max(
-                                                            1,
-                                                            voteAmount - 1
-                                                        )
-                                                    )
-                                                }
-                                                aria-label="Decrease amount"
-                                            >
-                                                -
-                                            </button>
-                                        </div>
+                                        <button
+                                            className={cn(
+                                                "bg-[rgba(139,92,246,0.9)] hover:bg-[rgba(139,92,246,1)]",
+                                                "rounded-full text-center",
+                                                getResponsiveClass(30)
+                                                    .frameClass,
+                                                getResponsiveClass(15).textClass
+                                            )}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const amount = Math.min(
+                                                    maxVoteAmount,
+                                                    voteAmount + 1
+                                                );
+                                                setVoteAmount(amount);
+                                                setVoteAmountInput(
+                                                    amount.toString()
+                                                );
+                                            }}
+                                            aria-label="Increase amount"
+                                        >
+                                            +
+                                        </button>
                                     </div>
                                 )}
 
-                            <Button
+                            <button
                                 onClick={handleSubmit}
-                                variant="default"
-                                textSize={15}
-                                paddingSize={20}
-                                className="w-full bg-[#8b5cf6]/90 hover:bg-[#8b5cf6] hover:glow-purple rounded-full font-main"
+                                className={cn(
+                                    "w-full bg-[#8b5cf6]/90 hover:bg-[#8b5cf6] hover:glow-purple rounded-full font-main",
+                                    "transition-all duration-300 ease-in",
+                                    getResponsiveClass(15).paddingClass,
+                                    getResponsiveClass(15).textClass
+                                )}
                             >
                                 SUBMIT
-                            </Button>
+                            </button>
                         </div>
+                        {/* 토큰 게이팅이 필요한 폴의 경우 몇 개의 폴을 추가로 참여할 수 있는지 */}
+                        {poll.needToken &&
+                            poll.needTokenAddress &&
+                            tokenGatingData &&
+                            tokenGatingData.data && (
+                                <div className="my-3">
+                                    <h2 className="text-xs font-light text-[rgba(255,255,255,0.9)]">
+                                        My Vote : {maxVoteAmount - voteAmount}
+                                    </h2>
+                                </div>
+                            )}
                     </div>
                 )}
-
-                {/* 토큰 게이팅이 필요한 폴의 경우 몇 개의 폴을 추가로 참여할 수 있는지 */}
-                {poll.needToken &&
-                    poll.needTokenAddress &&
-                    tokenGatingData &&
-                    tokenGatingData.data && (
-                        <div className="my-3">
-                            <h2 className="text-xs font-light text-[rgba(255,255,255,0.9)]">
-                                My Vote : {maxVoteAmount - voteAmount}
-                            </h2>
-                        </div>
-                    )}
 
                 {/* 투표 결과 보기 버튼 */}
                 {status === "ONGOING" && (
                     <>
-                        <div className="absolute bottom-2 right-4">
+                        <div className="absolute bottom-[12px] right-[12px]">
                             <img
                                 src="/icons/charts-fill.svg"
                                 alt="charts-fill"
@@ -592,7 +644,7 @@ export default function PollsCard({
                                     showOngoingResults
                                         ? "opacity-45"
                                         : "opacity-0",
-                                    "transition-all duration-500 ease-in",
+                                    "transition-all duration-300 ease-in",
                                     getResponsiveClass(25).frameClass
                                 )}
                                 onClick={(e) => {
@@ -601,7 +653,7 @@ export default function PollsCard({
                                 }}
                             />
                         </div>
-                        <div className="absolute bottom-2 right-4">
+                        <div className="absolute bottom-[12px] right-[12px]">
                             <img
                                 src="/icons/charts-stroke.svg"
                                 alt="charts-stroke"
@@ -609,7 +661,7 @@ export default function PollsCard({
                                     !showOngoingResults
                                         ? "opacity-45"
                                         : "opacity-0",
-                                    "transition-all duration-500 ease-in",
+                                    "transition-all duration-300 ease-in",
                                     getResponsiveClass(25).frameClass
                                 )}
                                 onClick={(e) => {

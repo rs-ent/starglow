@@ -36,14 +36,23 @@ export default function PollsList({
         speed: 450,
         slidesToShow: Math.min(3, polls.length),
         slidesToScroll: 1,
+        swipe: true,
         centerMode: true,
-        cneterPadding: "0",
         responsive: [
             {
                 breakpoint: 1024,
                 settings: {
+                    slidesToShow: Math.min(2, polls.length),
+                    slidesToScroll: 1,
+                    centerMode: true,
+                },
+            },
+            {
+                breakpoint: 640,
+                settings: {
                     slidesToShow: Math.min(1, polls.length),
                     slidesToScroll: 1,
+                    centerMode: true,
                 },
             },
         ],
@@ -71,12 +80,12 @@ export default function PollsList({
             style={{
                 position: "relative",
                 WebkitMaskImage: `
-    linear-gradient(to right, transparent 0%, black 30%, black 100%),
-    linear-gradient(to left, transparent 0%, black 30%, black 100%)
+    linear-gradient(to right, transparent 0%, black 15%, black 100%),
+    linear-gradient(to left, transparent 0%, black 15%, black 100%)
 `,
                 maskImage: `
-    linear-gradient(to right, transparent 0%, black 30%, black 100%),
-    linear-gradient(to left, transparent 0%, black 30%, black 100%)
+    linear-gradient(to right, transparent 0%, black 15%, black 100%),
+    linear-gradient(to left, transparent 0%, black 15%, black 100%)
 `,
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
@@ -88,6 +97,23 @@ export default function PollsList({
         >
             <Slider {...sliderSettings}>
                 {polls.map((poll, index) => {
+                    let centerIndices: number[] = [];
+
+                    if (sliderSettings.slidesToShow === 1) {
+                        centerIndices = [currentSlide];
+                    } else if (sliderSettings.slidesToShow === 2) {
+                        centerIndices = [
+                            currentSlide,
+                            (currentSlide + 2) % polls.length,
+                        ];
+                    } else {
+                        centerIndices = [
+                            (currentSlide +
+                                Math.floor(sliderSettings.slidesToShow / 2)) %
+                                polls.length,
+                        ];
+                    }
+
                     const specificTokenGatingData: TokenGatingResult =
                         !poll.needToken ||
                         !poll.needTokenAddress ||
@@ -125,7 +151,7 @@ export default function PollsList({
                                 pollLogs={pollIdToLogs[poll.id] || []}
                                 artist={artist}
                                 tokenGatingData={specificTokenGatingData}
-                                isSelected={currentSlide === index}
+                                isSelected={centerIndices.includes(index)}
                             />
                         </div>
                     );
