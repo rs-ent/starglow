@@ -10,7 +10,7 @@ import PollsCard from "@/components/molecules/Polls.Card";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface PollsListProps {
     polls: Poll[];
@@ -27,59 +27,42 @@ export default function PollsList({
     artist,
     tokenGatingData,
 }: PollsListProps) {
+    const [currentSlide, setCurrentSlide] = useState(0);
+
     const sliderSettings = {
         dots: false,
         arrows: false,
         infinite: true,
-        speed: 500,
+        speed: 450,
         slidesToShow: Math.min(3, polls.length),
         slidesToScroll: 1,
         centerMode: true,
+        cneterPadding: "0",
         responsive: [
             {
                 breakpoint: 1024,
-                settings: {
-                    slidesToShow: Math.min(2, polls.length),
-                    slidesToScroll: 1,
-                },
-            },
-            {
-                breakpoint: 640,
                 settings: {
                     slidesToShow: Math.min(1, polls.length),
                     slidesToScroll: 1,
                 },
             },
         ],
+        beforeChange: (current: number, next: number) => {
+            setCurrentSlide(next);
+        },
     };
 
-    const { tokenAddressToPollLogs, pollIdToLogs } = useMemo(() => {
-        const tokenMap: { [tokenAddress: string]: PollLog[] } = {};
+    const pollIdToLogs = useMemo(() => {
         const pollMap: { [pollId: string]: PollLog[] } = {};
 
         if (pollLogs && polls) {
             pollLogs.forEach((log) => {
-                if (!pollMap[log.pollId]) {
-                    pollMap[log.pollId] = [];
-                }
+                pollMap[log.pollId] = pollMap[log.pollId] || [];
                 pollMap[log.pollId].push(log);
-
-                const logPoll = polls.find((p) => p.id === log.pollId);
-                const tokenAddress = logPoll?.needTokenAddress;
-
-                if (tokenAddress) {
-                    if (!tokenMap[tokenAddress]) {
-                        tokenMap[tokenAddress] = [];
-                    }
-                    tokenMap[tokenAddress].push(log);
-                }
             });
         }
 
-        return {
-            tokenAddressToPollLogs: tokenMap,
-            pollIdToLogs: pollMap,
-        };
+        return pollMap;
     }, [pollLogs, polls]);
 
     return (
@@ -104,7 +87,7 @@ export default function PollsList({
             }}
         >
             <Slider {...sliderSettings}>
-                {polls.map((poll) => {
+                {polls.map((poll, index) => {
                     const specificTokenGatingData: TokenGatingResult =
                         !poll.needToken ||
                         !poll.needTokenAddress ||
@@ -142,13 +125,7 @@ export default function PollsList({
                                 pollLogs={pollIdToLogs[poll.id] || []}
                                 artist={artist}
                                 tokenGatingData={specificTokenGatingData}
-                                pollLogsUsingSameToken={
-                                    poll.needTokenAddress
-                                        ? tokenAddressToPollLogs[
-                                              poll.needTokenAddress
-                                          ] || []
-                                        : undefined
-                                }
+                                isSelected={currentSlide === index}
                             />
                         </div>
                     );

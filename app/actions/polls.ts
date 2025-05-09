@@ -12,6 +12,8 @@ import {
     RewardCurrency,
     Prisma,
     Player,
+    Asset,
+    Artist,
 } from "@prisma/client";
 import { tokenGate } from "./blockchain";
 import { validatePlayerAsset } from "./playerAssets";
@@ -268,16 +270,19 @@ export interface UpdatePollInput {
     needTokenAddress?: string;
     bettingMode?: boolean;
     bettingAssetId?: string;
+    bettingAsset?: Asset | null;
     minimumBet?: number;
     maximumBet?: number;
     allowMultipleVote?: boolean;
     participationRewardAssetId?: string;
+    participationRewardAsset?: Asset | null;
     participationRewardAmount?: number;
     minimumPoints?: number;
     minimumSGP?: number;
     minimumSGT?: number;
     requiredQuests?: string[];
     artistId?: string;
+    artist?: Artist | null;
 }
 
 export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
@@ -304,15 +309,30 @@ export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
             }
         }
 
+        const {
+            artistId,
+            artist,
+            bettingAssetId,
+            bettingAsset,
+            participationRewardAssetId,
+            participationRewardAsset,
+            options,
+            ...rest
+        } = input;
+
         const poll = await prisma.poll.update({
             where: { id },
             data: {
-                ...data,
-                options: data.options?.map((option) => ({
+                ...rest,
+                artistId: artistId || undefined,
+                bettingAssetId: bettingAssetId || undefined,
+                participationRewardAssetId:
+                    participationRewardAssetId || undefined,
+                options: options?.map((option) => ({
                     ...option,
                     option: JSON.stringify(option),
                 })),
-                optionsOrder: data.options?.map((option) => option.optionId),
+                optionsOrder: options?.map((option) => option.optionId),
             },
         });
 
@@ -441,7 +461,7 @@ export interface ParticipatePollInput {
     optionId: string;
     amount?: number;
     tokenGating?: TokenGatingResult;
-    alreadyVotedAmountUsingSameToken?: number;
+    alreadyVotedAmount?: number;
     ipAddress?: string;
     userAgent?: string;
 }
@@ -514,7 +534,7 @@ export async function participatePoll(
 
             const remainingTokenCount =
                 input.tokenGating.data.tokenCount -
-                (amount + (input.alreadyVotedAmountUsingSameToken || 0));
+                (amount + (input.alreadyVotedAmount || 0));
             if (remainingTokenCount <= 0) {
                 return {
                     success: false,
@@ -656,58 +676,55 @@ export async function getPollResult(
         };
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-        const poll = await tx.poll.findUnique({
-            where: { id: pollId },
-            select: {
-                options: true,
-            },
-        });
+    const poll = await prisma.poll.findUnique({
+        where: { id: pollId },
+        select: {
+            options: true,
+        },
+    });
 
-        if (!poll) {
-            return {
-                pollId,
-                totalVotes: 0,
-                results: [],
-            };
-        }
-
-        const pollLogs = await tx.pollLog.findMany({
-            where: {
-                pollId,
-            },
-            select: {
-                optionId: true,
-                amount: true,
-            },
-        });
-
-        const totalVotes = pollLogs.length;
-        const pollOptions = poll.options as unknown as PollOptionResult[];
-        const results: PollOptionResult[] = pollOptions.map((option) => {
-            const voteCount = pollLogs.reduce((acc, curr) => {
-                if (curr.optionId === option.optionId) {
-                    return acc + curr.amount;
-                }
-                return acc;
-            }, 0);
-            const voteRate =
-                totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
-            return {
-                ...option,
-                voteCount,
-                voteRate,
-            };
-        });
-
+    if (!poll) {
         return {
             pollId,
-            totalVotes,
-            results,
+            totalVotes: 0,
+            results: [],
+        };
+    }
+
+    const pollLogs = await prisma.pollLog.findMany({
+        where: {
+            pollId,
+        },
+        select: {
+            optionId: true,
+            amount: true,
+        },
+    });
+
+    const totalVotes = pollLogs.reduce((acc, curr) => {
+        return acc + curr.amount;
+    }, 0);
+    const pollOptions = poll.options as unknown as PollOptionResult[];
+    const results: PollOptionResult[] = pollOptions.map((option) => {
+        const voteCount = pollLogs.reduce((acc, curr) => {
+            if (curr.optionId === option.optionId) {
+                return acc + curr.amount;
+            }
+            return acc;
+        }, 0);
+        const voteRate = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
+        return {
+            ...option,
+            voteCount,
+            voteRate,
         };
     });
 
-    return result;
+    return {
+        pollId,
+        totalVotes,
+        results,
+    };
 }
 
 export interface GetPollsResultsInput {
