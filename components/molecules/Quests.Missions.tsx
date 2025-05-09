@@ -7,6 +7,7 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import { motion } from "framer-motion";
+import Doorman from "../atoms/Doorman";
 interface QuestsMissionsProps {
     player: Player;
     quests: Quest[];
@@ -38,28 +39,7 @@ export default function QuestsMissions({
 
     return (
         <div className="relative transition-all duration-700">
-            {!permission && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30">
-                    <div className="flex flex-col items-center gap-4">
-                        <img
-                            src="/icons/lock.svg"
-                            alt="lock"
-                            className={cn(
-                                getResponsiveClass(70).frameClass,
-                                "aspect-square"
-                            )}
-                        />
-                        <p
-                            className={cn(
-                                getResponsiveClass(20).textClass,
-                                "text-center whitespace-break-spaces"
-                            )}
-                        >
-                            NFT Holder can only access to it.
-                        </p>
-                    </div>
-                </div>
-            )}
+            {!permission && <Doorman />}
             <div
                 className={cn(
                     "flex flex-col gap-4 my-4",

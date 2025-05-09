@@ -21,8 +21,10 @@ import {
     GetUserSelectionInput,
     GetUserSelectionResponse,
     PaginationInput,
+    getPollLogs,
+    GetPollLogsInput,
 } from "../actions/polls";
-import { Poll } from "@prisma/client";
+import { Poll, PollLog } from "@prisma/client";
 
 export function usePollsQuery({
     input,
@@ -81,5 +83,13 @@ export function useUserSelectionQuery(input?: GetUserSelectionInput) {
     return useQuery<GetUserSelectionResponse>({
         queryKey: pollKeys.selection(input?.pollId || ""),
         queryFn: () => getUserSelection(input),
+    });
+}
+
+export function usePlayerPollLogsQuery(input?: GetPollLogsInput) {
+    return useQuery<PollLog[]>({
+        queryKey: pollKeys.playerLogs(input?.playerId || ""),
+        queryFn: () => getPollLogs(input),
+        enabled: !!input?.playerId,
     });
 }

@@ -92,6 +92,9 @@ export function useParticipatePollMutation() {
                 queryKey: pollKeys.result(variables.poll.id),
             });
             queryClient.invalidateQueries({
+                queryKey: pollKeys.playerLogs(variables.player.id),
+            });
+            queryClient.invalidateQueries({
                 queryKey: playerAssetsKeys.balances(variables.player.id, [
                     variables.poll.participationRewardAssetId || "",
                 ]),

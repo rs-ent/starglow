@@ -238,6 +238,7 @@ Table PollLog {
   pollId String [not null]
   optionId String [not null]
   option Json [not null]
+  amount Int [not null, default: 1]
   betAmount Int [not null, default: 0]
   ipAddress String
   userAgent String
@@ -250,6 +251,10 @@ Table PollLog {
   player Player [not null]
   poll Poll [not null]
   rewardLogs RewardsLog [not null]
+
+  indexes {
+    (playerId, pollId, optionId) [unique]
+  }
 }
 
 Table RewardsLog {

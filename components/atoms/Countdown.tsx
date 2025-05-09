@@ -22,7 +22,7 @@ export default function Countdown({
     className,
 }: CountdownProps) {
     const [isBlinking, setIsBlinking] = useState(false);
-    const [timeLeft, setTimeLeft] = useState("00:00:00");
+    const [timeLeft, setTimeLeft] = useState("00:00:00:00");
 
     const responsiveClass = getResponsiveClass(size);
 
@@ -45,10 +45,12 @@ export default function Countdown({
                 setIsBlinking(false);
             }
 
-            const hours = Math.floor(diffSec / 3600);
+            const days = Math.floor(diffSec / 86400);
+            const hours = Math.floor((diffSec % 86400) / 3600);
             const minutes = Math.floor((diffSec % 3600) / 60);
             const seconds = diffSec % 60;
 
+            const dd = String(days).padStart(2, "0");
             const hh = String(hours).padStart(2, "0");
             const mm = String(minutes).padStart(2, "0");
             const ss = String(seconds).padStart(2, "0");
@@ -57,7 +59,7 @@ export default function Countdown({
                 onTick(diffSec);
             }
 
-            setTimeLeft(`${hh}:${mm}:${ss}`);
+            setTimeLeft(`${dd}:${hh}:${mm}:${ss}`);
         }, 1000);
 
         return () => clearInterval(timer);

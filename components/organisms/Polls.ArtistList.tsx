@@ -4,7 +4,7 @@
 
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import { usePollsGet } from "@/app/hooks/usePolls";
-import { Artist, Player } from "@prisma/client";
+import { Artist, Player, PollLog } from "@prisma/client";
 import PollsList from "./Polls.List";
 import PartialLoading from "../atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 interface PollsArtistListProps {
     artist: Artist;
     player: Player;
+    pollLogs?: PollLog[];
     tokenGatingResult?: AdvancedTokenGateResult | null;
     className?: string;
 }
@@ -20,6 +21,7 @@ interface PollsArtistListProps {
 export default function PollsArtistList({
     artist,
     player,
+    pollLogs,
     tokenGatingResult,
     className,
 }: PollsArtistListProps) {
@@ -62,8 +64,8 @@ export default function PollsArtistList({
         <div
             className={cn(
                 "max-w-[1400px] w-screen",
-                "px-[40px] sm:px-[40px] md:px-[40px] lg:px-[40px]",
-                "mt-[20px] sm:mt-[35px] md:mt-[40px] lg:mt-[45px] xl:mt-[50px]",
+                "px-[10px] sm:px-[10px] md:px-[20px] lg:px-[20px]",
+                "mt-[10px] sm:mt-[15px] md:mt-[20px] lg:mt-[25px] xl:mt-[30px]",
                 className
             )}
         >
@@ -76,7 +78,20 @@ export default function PollsArtistList({
                         {typeof error === "string" ? error : error.message}
                     </div>
                 ) : pollsList?.items && pollsList.items.length > 0 ? (
-                    <PollsList polls={pollsList.items} />
+                    <PollsList
+                        polls={pollsList.items}
+                        artist={artist}
+                        player={player}
+                        tokenGatingData={tokenGatingResult}
+                        pollLogs={
+                            pollLogs &&
+                            pollLogs.filter((log) =>
+                                pollsList.items.some(
+                                    (poll) => poll.id === log.pollId
+                                )
+                            )
+                        }
+                    />
                 ) : (
                     <div className="text-center text-2xl">No polls found</div>
                 )}

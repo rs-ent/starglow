@@ -439,7 +439,9 @@ export interface ParticipatePollInput {
     poll: Poll;
     player: Player;
     optionId: string;
+    amount?: number;
     tokenGating?: TokenGatingResult;
+    alreadyVotedAmountUsingSameToken?: number;
     ipAddress?: string;
     userAgent?: string;
 }
@@ -455,6 +457,8 @@ export async function participatePoll(
 ): Promise<ParticipatePollResult> {
     try {
         const { poll, player, optionId } = input;
+        const amount = input.amount || 1;
+
         if (!poll) return { success: false, error: "Poll not found" };
         if (!player)
             return {
@@ -482,11 +486,15 @@ export async function participatePoll(
                 success: false,
                 error: `This poll is not active yet. The poll starts at ${poll.startDate.toLocaleString()}.`,
             };
-        if (now > poll.endDate)
+        if (
+            poll.endDate &&
+            new Date(poll.endDate).getTime() + 1000 * 60 * 30 < Date.now()
+        ) {
             return {
                 success: false,
                 error: `This poll has ended. The poll ended at ${poll.endDate.toLocaleString()}.`,
             };
+        }
 
         if (poll.needToken && poll.needTokenAddress) {
             if (!input.tokenGating)
@@ -503,29 +511,58 @@ export async function participatePoll(
                     error: "Token gating failed. Please check your token balance. If the problem persists, please contact technical support.",
                 };
             }
+
+            const remainingTokenCount =
+                input.tokenGating.data.tokenCount -
+                (amount + (input.alreadyVotedAmountUsingSameToken || 0));
+            if (remainingTokenCount <= 0) {
+                return {
+                    success: false,
+                    error: "You've used all your tokens for this poll. Please purchase more NFTs to participate in this poll.",
+                };
+            }
         }
 
-        const existingLog = await prisma.pollLog.findFirst({
+        const existingLogs = await prisma.pollLog.findMany({
             where: { pollId: poll.id, playerId: player.id },
+            select: {
+                optionId: true,
+                createdAt: true,
+                record: true,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
         });
-        if (!poll.allowMultipleVote && existingLog) {
+
+        const isFirstTimeVote = existingLogs.length === 0;
+        if (!poll.allowMultipleVote && !isFirstTimeVote) {
             return {
                 success: false,
-                error: `You have already voted for this poll at ${existingLog.createdAt.toLocaleString()}.`,
-            };
-        }
-        if (
-            poll.endDate &&
-            new Date(poll.endDate).getTime() + 1000 * 60 * 30 < Date.now()
-        ) {
-            return {
-                success: false,
-                error: `This poll has ended. The poll ended at ${poll.endDate.toLocaleString()}.`,
+                error: `You have already voted for this poll at ${existingLogs[0].createdAt.toLocaleString()}.`,
             };
         }
 
-        const pollLog = await prisma.pollLog.create({
-            data: {
+        const targetRecord = existingLogs.find(
+            (log) => log.optionId === optionId
+        );
+
+        const pollLog = await prisma.pollLog.upsert({
+            where: {
+                playerId_pollId_optionId: {
+                    playerId: player.id,
+                    pollId: poll.id,
+                    optionId,
+                },
+            },
+            update: {
+                amount: { increment: amount },
+                record: {
+                    ...(targetRecord?.record as Record<string, string>),
+                    [now.toString()]: optionId,
+                },
+            },
+            create: {
                 pollId: poll.id,
                 playerId: player.id,
                 optionId,
@@ -535,10 +572,11 @@ export async function participatePoll(
                 rewardAssetId: poll.participationRewardAssetId,
                 rewardAmount: poll.participationRewardAmount,
                 record: { [now.toString()]: optionId },
+                amount: amount,
             },
         });
 
-        if (!existingLog) {
+        if (isFirstTimeVote) {
             if (
                 !poll.bettingMode &&
                 poll.participationRewardAssetId &&
@@ -548,7 +586,7 @@ export async function participatePoll(
                     transaction: {
                         playerId: player.id,
                         assetId: poll.participationRewardAssetId,
-                        amount: poll.participationRewardAmount,
+                        amount: poll.participationRewardAmount * amount,
                         operation: "ADD",
                         reason: "Poll Participation Reward",
                         pollId: poll.id,
@@ -567,13 +605,13 @@ export async function participatePoll(
                 where: { id: poll.id },
                 data: {
                     uniqueVoters: { increment: 1 },
-                    totalVotes: { increment: 1 },
+                    totalVotes: { increment: amount },
                 },
             });
         } else {
             await prisma.poll.update({
                 where: { id: poll.id },
-                data: { totalVotes: { increment: 1 } },
+                data: { totalVotes: { increment: amount } },
             });
         }
 
@@ -640,15 +678,19 @@ export async function getPollResult(
             },
             select: {
                 optionId: true,
+                amount: true,
             },
         });
 
         const totalVotes = pollLogs.length;
         const pollOptions = poll.options as unknown as PollOptionResult[];
         const results: PollOptionResult[] = pollOptions.map((option) => {
-            const voteCount = pollLogs.filter(
-                (log) => log.optionId === option.optionId
-            ).length;
+            const voteCount = pollLogs.reduce((acc, curr) => {
+                if (curr.optionId === option.optionId) {
+                    return acc + curr.amount;
+                }
+                return acc;
+            }, 0);
             const voteRate =
                 totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
             return {
@@ -697,6 +739,29 @@ export async function getPollsResults(
     return {
         results,
     };
+}
+
+export interface GetPollLogsInput {
+    playerId: string;
+}
+
+export async function getPollLogs(
+    input?: GetPollLogsInput
+): Promise<PollLog[]> {
+    if (!input || !input.playerId) {
+        return [];
+    }
+
+    try {
+        return await prisma.pollLog.findMany({
+            where: {
+                playerId: input.playerId,
+            },
+        });
+    } catch (error) {
+        console.error("Error getting poll logs:", error);
+        throw new Error("Failed to get poll logs");
+    }
 }
 
 export interface GetUserSelectionInput {

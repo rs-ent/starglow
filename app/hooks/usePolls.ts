@@ -16,6 +16,7 @@ import {
     usePollResultQuery,
     usePollsResultsQuery,
     useUserSelectionQuery,
+    usePlayerPollLogsQuery,
 } from "../queries/pollsQueries";
 import type {
     GetPollsInput,
@@ -24,6 +25,7 @@ import type {
     TokenGatingInput,
     GetUserSelectionInput,
     PaginationInput,
+    GetPollLogsInput,
 } from "../actions/polls";
 
 export function usePollsGet({
@@ -32,6 +34,7 @@ export function usePollsGet({
     pollResultInput,
     pollsResultsInput,
     userSelectionInput,
+    getPollLogsInput,
     pagination,
 }: {
     getPollsInput?: GetPollsInput;
@@ -39,6 +42,7 @@ export function usePollsGet({
     pollResultInput?: GetPollResultInput;
     pollsResultsInput?: GetPollsResultsInput;
     userSelectionInput?: GetUserSelectionInput;
+    getPollLogsInput?: GetPollLogsInput;
     pagination?: PaginationInput;
 }) {
     const {
@@ -72,6 +76,12 @@ export function usePollsGet({
     } = usePollsResultsQuery(pollsResultsInput);
 
     const {
+        data: pollLogs,
+        isLoading: isLoadingPollLogs,
+        error: pollLogsError,
+    } = usePlayerPollLogsQuery(getPollLogsInput);
+
+    const {
         data: userSelection,
         isLoading: isLoadingUserSelection,
         error: userSelectionError,
@@ -83,14 +93,16 @@ export function usePollsGet({
         isLoadingTokenGating ||
         isLoadingPollResult ||
         isLoadingPollsResults ||
-        isLoadingUserSelection;
+        isLoadingUserSelection ||
+        isLoadingPollLogs;
     const error =
         pollsError ||
         pollError ||
         tokenGatingError ||
         pollResultError ||
         pollsResultsError ||
-        userSelectionError;
+        userSelectionError ||
+        pollLogsError;
 
     return {
         pollsList,
@@ -101,6 +113,23 @@ export function usePollsGet({
         pollResult,
         pollsResults,
         userSelection,
+        pollLogs,
+
+        isLoadingPolls,
+        isLoadingPoll,
+        isLoadingTokenGating,
+        isLoadingPollResult,
+        isLoadingPollsResults,
+        isLoadingUserSelection,
+        isLoadingPollLogs,
+
+        pollsError,
+        pollError,
+        tokenGatingError,
+        pollResultError,
+        pollsResultsError,
+        userSelectionError,
+        pollLogsError,
     };
 }
 
@@ -124,7 +153,7 @@ export function usePollsSet() {
     } = useDeletePollMutation();
 
     const {
-        mutate: participatePoll,
+        mutateAsync: participatePoll,
         isPending: isParticipating,
         error: participateError,
     } = useParticipatePollMutation();

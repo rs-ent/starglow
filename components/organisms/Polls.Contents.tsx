@@ -4,6 +4,7 @@
 
 import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
+import { usePollsGet } from "@/app/hooks/usePolls";
 import { useState } from "react";
 import PublicPrivateTab from "../molecules/PublicPrivateTab";
 import PollsPublic from "./Polls.Public";
@@ -15,6 +16,12 @@ interface PollsContentsProps {
 
 export default function PollsContents({ player }: PollsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
+
+    const { pollLogs, isLoadingPollLogs, pollLogsError } = usePollsGet({
+        getPollLogsInput: {
+            playerId: player.id,
+        },
+    });
 
     return (
         <div
@@ -38,9 +45,13 @@ export default function PollsContents({ player }: PollsContentsProps) {
             />
 
             {isPublic ? (
-                <PollsPublic player={player} />
+                <PollsPublic player={player} pollLogs={pollLogs} />
             ) : (
-                <PollsPrivate player={player} privateTabClicked={isPublic} />
+                <PollsPrivate
+                    player={player}
+                    pollLogs={pollLogs}
+                    privateTabClicked={isPublic}
+                />
             )}
         </div>
     );

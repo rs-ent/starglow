@@ -4,7 +4,7 @@
 
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { cn } from "@/lib/utils/tailwind";
-import { Player } from "@prisma/client";
+import { Player, PollLog } from "@prisma/client";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -13,10 +13,15 @@ import PollsList from "./Polls.List";
 
 interface PollsPublicProps {
     player: Player;
+    pollLogs?: PollLog[];
     className?: string;
 }
 
-export default function PollsPublic({ player, className }: PollsPublicProps) {
+export default function PollsPublic({
+    player,
+    pollLogs,
+    className,
+}: PollsPublicProps) {
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
             category: "PUBLIC",
@@ -27,8 +32,8 @@ export default function PollsPublic({ player, className }: PollsPublicProps) {
         <div
             className={cn(
                 "max-w-[1400px] w-screen",
-                "px-[40px] sm:px-[40px] md:px-[40px] lg:px-[40px]",
-                "mt-[20px] sm:mt-[35px] md:mt-[40px] lg:mt-[45px] xl:mt-[50px]",
+                "px-[10px] sm:px-[10px] md:px-[20px] lg:px-[20px]",
+                "mt-[10px] sm:mt-[15px] md:mt-[20px] lg:mt-[25px] xl:mt-[30px]",
                 className
             )}
         >
@@ -41,7 +46,18 @@ export default function PollsPublic({ player, className }: PollsPublicProps) {
                         {typeof error === "string" ? error : error.message}
                     </div>
                 ) : pollsList?.items && pollsList.items.length > 0 ? (
-                    <PollsList polls={pollsList.items} />
+                    <PollsList
+                        polls={pollsList.items}
+                        player={player}
+                        pollLogs={
+                            pollLogs &&
+                            pollLogs.filter((log) =>
+                                pollsList.items.some(
+                                    (poll) => poll.id === log.pollId
+                                )
+                            )
+                        }
+                    />
                 ) : (
                     <div className="text-center text-2xl">No polls found</div>
                 )}

@@ -2,7 +2,7 @@
 
 "use client";
 
-import { Artist, Player } from "@prisma/client";
+import { Artist, Player, PollLog } from "@prisma/client";
 import PartialLoading from "../atoms/PartialLoading";
 import ArtistSlideSelector from "../molecules/ArtistSlideSelector";
 import PollsArtistList from "./Polls.ArtistList";
@@ -14,11 +14,13 @@ import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 interface PollsPrivateProps {
     player: Player;
     privateTabClicked: boolean;
+    pollLogs?: PollLog[];
 }
 
 export default function PollsPrivate({
     player,
     privateTabClicked,
+    pollLogs,
 }: PollsPrivateProps) {
     const { user: DBUser } = usePlayerGet({
         getDBUserFromPlayerInput: {
@@ -94,9 +96,9 @@ export default function PollsPrivate({
 
     return (
         <div className="w-full flex flex-col items-center justify-center">
-            <div className="w-full">
+            <div className="w-full flex items-center justify-center">
                 <ArtistSlideSelector
-                    className="mt-[10px] sm:mt-[15px] md:mt-[20px] lg:mt-[25px] xl:mt-[30px]"
+                    className="mt-[5px] sm:mt-[10px] md:mt-[15px] lg:mt-[20px] xl:mt-[25px]"
                     onSelect={(artist) => handleArtistSelect(artist)}
                 />
             </div>
@@ -115,6 +117,7 @@ export default function PollsPrivate({
                                 tokenGatingResult={
                                     selectedArtistTokenGatingResult || null
                                 }
+                                pollLogs={pollLogs}
                             />
                         </div>
                     )}

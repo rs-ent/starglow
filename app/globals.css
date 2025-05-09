@@ -294,6 +294,22 @@
     box-shadow: 0 0 6px 2px rgba(91, 78, 193, 0.25);
   }
 
+  .text-glow-white {
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.95);
+  }
+
+  .white-glow {
+    box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.25);
+  }
+
+  .text-glow-white-smooth {
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.75);
+  }
+
+  .white-glow-smooth {
+    box-shadow: 0 0 12px 1px rgba(255, 255, 255, 0.1);
+  }
+
   .purple-glow-strong {
     box-shadow: 0 0 10px 2px rgba(139, 92, 246, 0.85);
   }

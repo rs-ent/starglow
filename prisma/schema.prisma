@@ -311,10 +311,8 @@ model Poll {
   rewardLogs        RewardsLog[]
 
   // 인덱스
-  @@index([status, startDate, endDate])
-  @@index([category, status])
-  @@index([needToken, status])
-  @@index([bettingMode, status])
+  @@index([category])
+  @@index([artistId])
 }
 
 model PollLog {
@@ -325,6 +323,8 @@ model PollLog {
   // 투표 정보
   optionId   String      // options 배열 내 optionId와 매칭
   option     Json      // 실제 선택한 옵션 텍스트 (히스토리 추적용)
+
+  amount     Int         @default(1)
   
   // 베팅 정보
   betAmount  Int         @default(0)
@@ -351,9 +351,10 @@ model PollLog {
   rewardLogs RewardsLog[]
 
   // 인덱스
+  @@unique([playerId, pollId, optionId])
+  @@index([playerId])
+  @@index([pollId])
   @@index([playerId, pollId])
-  @@index([pollId, optionId])
-  @@index([createdAt])
 }
 
 model RewardsLog {

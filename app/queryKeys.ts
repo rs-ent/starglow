@@ -502,6 +502,8 @@ export const pollKeys = {
     log: (pollLogId: string) => [...pollKeys.all, "log", pollLogId] as const,
     logByUser: (pollId: string, playerId: string) =>
         [...pollKeys.all, "logs", pollId, playerId] as const,
+    playerLogs: (playerId: string) =>
+        [...pollKeys.all, "player-logs", playerId] as const,
     result: (pollId: string) => [...pollKeys.all, "result", pollId] as const,
     results: (pollIds: string[]) =>
         [...pollKeys.all, "results", pollIds] as const,
