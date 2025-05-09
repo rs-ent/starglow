@@ -10,7 +10,7 @@ import PollsCard from "@/components/molecules/Polls.Card";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface PollsListProps {
     polls: Poll[];
@@ -28,38 +28,41 @@ export default function PollsList({
     tokenGatingData,
 }: PollsListProps) {
     const [currentSlide, setCurrentSlide] = useState(0);
+    const [slidesToShow, setSlidesToShow] = useState(Math.min(3, polls.length));
 
     const sliderSettings = {
         dots: false,
         arrows: false,
         infinite: true,
         speed: 450,
-        slidesToShow: Math.min(3, polls.length),
+        slidesToShow: slidesToShow,
         slidesToScroll: 1,
         swipe: true,
+        swipeToSlide: true,
+        draggable: true,
         centerMode: true,
-        responsive: [
-            {
-                breakpoint: 1024,
-                settings: {
-                    slidesToShow: Math.min(2, polls.length),
-                    slidesToScroll: 1,
-                    centerMode: true,
-                },
-            },
-            {
-                breakpoint: 640,
-                settings: {
-                    slidesToShow: Math.min(1, polls.length),
-                    slidesToScroll: 1,
-                    centerMode: true,
-                },
-            },
-        ],
+        focusOnSelect: true,
+        accessibility: true,
         beforeChange: (current: number, next: number) => {
             setCurrentSlide(next);
         },
     };
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth <= 640) {
+                setSlidesToShow(Math.min(1, polls.length));
+            } else if (window.innerWidth <= 1024) {
+                setSlidesToShow(Math.min(2, polls.length));
+            } else {
+                setSlidesToShow(Math.min(3, polls.length));
+            }
+        };
+
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, [polls.length]);
 
     const pollIdToLogs = useMemo(() => {
         const pollMap: { [pollId: string]: PollLog[] } = {};
@@ -99,17 +102,16 @@ export default function PollsList({
                 {polls.map((poll, index) => {
                     let centerIndices: number[] = [];
 
-                    if (sliderSettings.slidesToShow === 1) {
+                    if (slidesToShow === 1) {
                         centerIndices = [currentSlide];
-                    } else if (sliderSettings.slidesToShow === 2) {
+                    } else if (slidesToShow === 2) {
                         centerIndices = [
                             currentSlide,
                             (currentSlide + 2) % polls.length,
                         ];
                     } else {
                         centerIndices = [
-                            (currentSlide +
-                                Math.floor(sliderSettings.slidesToShow / 2)) %
+                            (currentSlide + Math.floor(slidesToShow / 2)) %
                                 polls.length,
                         ];
                     }

@@ -199,7 +199,7 @@ export default function PollsCard({
                 )}
                 style={{
                     background:
-                        "linear-gradient(to bottom, rgba(109,40,217,1), rgba(109,40,217,0.5))",
+                        "linear-gradient(to bottom, rgba(109,40,217,1), rgba(109,40,217,0.45))",
                 }}
             />
             {!permission && <Doorman />}
@@ -207,7 +207,7 @@ export default function PollsCard({
                 className={cn(
                     "flex flex-col p-[12px] border border-[rgba(255,255,255,0.4)] rounded-[16px]",
                     "transition-all duration-500 ease-in-out",
-                    "bg-gradient-to-b from-[rgba(109,40,217,0.4)] to-[rgba(109,40,217,0.2)]",
+                    "bg-gradient-to-b from-[rgba(109,40,217,0.4)] to-[rgba(109,40,217,0.15)]",
                     !permission && "blur-sm"
                 )}
             >
