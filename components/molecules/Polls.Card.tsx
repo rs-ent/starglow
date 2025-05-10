@@ -188,7 +188,7 @@ export default function PollsCard({
     };
 
     return (
-        <div className="relative max-w-[480px] min-w-[120px] mt-[25px]">
+        <div className="relative max-w-[480px] min-w-[120px] my-[25px]">
             <div
                 className={cn(
                     "absolute inset-0 rounded-[16px] pointer-events-none transition-opacity duration-500 -z-50",
