@@ -281,7 +281,7 @@ export interface UpdatePollInput {
     minimumSGP?: number;
     minimumSGT?: number;
     requiredQuests?: string[];
-    artistId?: string;
+    artistId?: string | null;
     artist?: Artist | null;
 }
 
@@ -309,6 +309,16 @@ export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
             }
         }
 
+        if (input.artistId) {
+            const artist = await prisma.artist.findUnique({
+                where: { id: input.artistId },
+            });
+
+            if (!artist) {
+                throw new Error("Invalid artist");
+            }
+        }
+
         const {
             artistId,
             artist,
@@ -318,16 +328,27 @@ export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
             participationRewardAsset,
             options,
             ...rest
-        } = input;
+        } = data;
+
+        console.log("UPDATE POLL DATA", data);
 
         const poll = await prisma.poll.update({
             where: { id },
             data: {
                 ...rest,
-                artistId: artistId || undefined,
-                bettingAssetId: bettingAssetId || undefined,
+                artistId:
+                    artistId === null || artistId === ""
+                        ? null
+                        : artistId || undefined,
+                bettingAssetId:
+                    bettingAssetId === null || bettingAssetId === ""
+                        ? null
+                        : bettingAssetId || undefined,
                 participationRewardAssetId:
-                    participationRewardAssetId || undefined,
+                    participationRewardAssetId === null ||
+                    participationRewardAssetId === ""
+                        ? null
+                        : participationRewardAssetId || undefined,
                 options: options?.map((option) => ({
                     ...option,
                     option: JSON.stringify(option),
@@ -335,6 +356,8 @@ export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
                 optionsOrder: options?.map((option) => option.optionId),
             },
         });
+
+        console.log("UPDATED POLL", poll);
 
         return poll;
     } catch (error) {

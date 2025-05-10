@@ -314,8 +314,14 @@ export async function updateQuest(
             where: { id },
             data: {
                 ...rest,
-                rewardAssetId: rewardAssetId || null,
-                artistId: artistId || null,
+                rewardAssetId:
+                    rewardAssetId === null || rewardAssetId === ""
+                        ? null
+                        : rewardAssetId || undefined,
+                artistId:
+                    artistId === null || artistId === ""
+                        ? null
+                        : artistId || undefined,
                 permanent: input.permanent ?? false,
                 isActive: input.isActive ?? true,
                 order: input.order ?? 0,

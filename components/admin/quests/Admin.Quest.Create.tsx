@@ -526,18 +526,30 @@ function URLQuestForm({
                 <Divider />
                 <Section title="보상" bgColor="bg-muted/40">
                     <div className="mb-8">
-                        <Label className="mb-2 block">보상</Label>
+                        <Label className="mb-2 block">보상 에셋</Label>
                         <Select
                             value={formData.rewardAssetId || ""}
-                            onValueChange={(value) =>
-                                onChange("rewardAssetId", value)
-                            }
+                            onValueChange={(value) => {
+                                if (value === "none") {
+                                    onChange("rewardAssetId", "");
+                                    onChange("rewardAmount", null);
+                                } else {
+                                    onChange("rewardAssetId", value);
+                                }
+                            }}
                             disabled={isLoadingAssets}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="보상을 선택하세요" />
                             </SelectTrigger>
                             <SelectContent>
+                                {/* 보상 없음 옵션 추가 */}
+                                <SelectItem value="none">
+                                    <div className="flex items-center gap-2">
+                                        <span>보상 없음</span>
+                                    </div>
+                                </SelectItem>
+
                                 {assets?.assets?.map((asset) => (
                                     <SelectItem key={asset.id} value={asset.id}>
                                         <div className="flex items-center gap-2">
@@ -582,7 +594,7 @@ function URLQuestForm({
                             }
                             onClick={() => {
                                 onChange("needToken", false);
-                                onChange("needTokenAddress", "");
+                                onChange("needTokenAddress", undefined);
                             }}
                         >
                             Public (누구나 참여)

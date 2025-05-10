@@ -4,10 +4,10 @@
 
 import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
 import { usePollsResultsQuery } from "@/app/queries/pollsQueries";
-import { Poll } from "@prisma/client";
+import { Artist, Poll } from "@prisma/client";
 import PollThumbnail from "@/components/atoms/Polls.Thumbnail";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PollCreateModal from "./Admin.Polls.CreateModal";
 import { formatDate } from "@/lib/utils/format";
@@ -20,6 +20,21 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
+import { cn } from "@/lib/utils/tailwind";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+} from "@/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { useArtistsGet } from "@/app/hooks/useArtists";
 
 interface PollListProps {
     viewType: "table" | "card";
@@ -32,11 +47,27 @@ export default function AdminPollsList({ viewType }: PollListProps) {
     });
     const [editPoll, setEditPoll] = useState<Poll | null>(null);
     const [open, setOpen] = useState(false);
+    const [pollFilter, setPollFilter] = useState<{
+        type: "world" | "exclusive";
+        artistId: string;
+    }>({
+        type: "world",
+        artistId: "",
+    });
+
+    const [artistPopoverOpen, setArtistPopoverOpen] = useState(false);
+    const [filteredPolls, setFilteredPolls] = useState<Poll[]>([]);
     const router = useRouter();
 
     const { pollsList, isLoading, error } = usePollsGet({
         pagination,
     });
+
+    const {
+        artists,
+        isLoading: isLoadingArtists,
+        error: errorArtists,
+    } = useArtistsGet({});
 
     const { deletePoll } = usePollsSet();
 
@@ -49,7 +80,11 @@ export default function AdminPollsList({ viewType }: PollListProps) {
     });
 
     const resultsData = pollsResults?.results;
-    console.log("resultsData", resultsData);
+
+    useEffect(() => {
+        if (!polls) return;
+        filteringPolls();
+    }, [pollFilter, polls]);
 
     const handleEditPoll = (poll: Poll) => {
         setEditPoll(poll);
@@ -73,8 +108,118 @@ export default function AdminPollsList({ viewType }: PollListProps) {
     if (isLoading) return <div>로딩 중</div>;
     if (error) return <div>오류 발생: {error.message}</div>;
 
+    function filteringPolls() {
+        const filtered = polls?.filter((poll) => {
+            if (pollFilter.type === "world") {
+                return !poll.artistId;
+            } else if (pollFilter.type === "exclusive") {
+                return poll.artistId === pollFilter.artistId;
+            }
+            return true;
+        });
+
+        setFilteredPolls(filtered ?? []);
+    }
+
     return (
         <div>
+            <div className="flex gap-2 mb-4">
+                <div className="flex gap-2">
+                    <Button
+                        variant={
+                            pollFilter.type === "world" ? "default" : "outline"
+                        }
+                        onClick={() => {
+                            setPollFilter({
+                                ...pollFilter,
+                                type: "world",
+                            });
+                        }}
+                    >
+                        World
+                    </Button>
+                    <Button
+                        variant={
+                            pollFilter.type === "exclusive"
+                                ? "default"
+                                : "outline"
+                        }
+                        onClick={() => {
+                            setPollFilter({
+                                ...pollFilter,
+                                type: "exclusive",
+                            });
+                        }}
+                    >
+                        Exclusive
+                    </Button>
+                </div>
+
+                {pollFilter.type === "exclusive" &&
+                    artists &&
+                    artists.length > 0 && (
+                        <div className="flex gap-2 mb-4">
+                            <Popover
+                                open={artistPopoverOpen}
+                                onOpenChange={setArtistPopoverOpen}
+                            >
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={artistPopoverOpen}
+                                        className="w-[300px] justify-between"
+                                    >
+                                        {pollFilter.artistId
+                                            ? artists.find(
+                                                  (artist: Artist) =>
+                                                      artist.id ===
+                                                      pollFilter.artistId
+                                              )?.name
+                                            : "아티스트 선택..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[300px] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="아티스트 검색..." />
+                                        <CommandEmpty>
+                                            아티스트를 찾을 수 없습니다.
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                            {artists.map((artist: Artist) => (
+                                                <CommandItem
+                                                    key={artist.id}
+                                                    value={artist.name}
+                                                    onSelect={() => {
+                                                        setPollFilter({
+                                                            ...pollFilter,
+                                                            artistId: artist.id,
+                                                        });
+                                                        setArtistPopoverOpen(
+                                                            false
+                                                        );
+                                                    }}
+                                                >
+                                                    <Check
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            pollFilter.artistId ===
+                                                                artist.id
+                                                                ? "opacity-100"
+                                                                : "opacity-0"
+                                                        )}
+                                                    />
+                                                    {artist.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                    )}
+            </div>
             {viewType === "table" ? (
                 <div className="overflow-x-auto">
                     <table className="bg-card min-w-full border border-[rgba(255,255,255,0.2)] text-center">
@@ -105,7 +250,7 @@ export default function AdminPollsList({ viewType }: PollListProps) {
                             </tr>
                         </thead>
                         <tbody className="align-middle divide-y text-sm divide-[rgba(255,255,255,0.2)]">
-                            {polls?.map((poll) => {
+                            {filteredPolls?.map((poll) => {
                                 const result = resultsData?.find(
                                     (result) => result.pollId === poll.id
                                 );
@@ -235,39 +380,9 @@ export default function AdminPollsList({ viewType }: PollListProps) {
             <PollCreateModal
                 open={open}
                 onClose={() => setOpen(false)}
-                initialData={
-                    editPoll ? mapPollToInitialData(editPoll) : undefined
-                }
+                initialData={editPoll}
                 mode={editPoll ? "edit" : "create"}
             />
         </div>
     );
-}
-
-function mapPollToInitialData(poll: Poll | null) {
-    if (!poll) return undefined;
-    let options: any[] = [];
-    if (Array.isArray(poll.options)) {
-        options = poll.options.map((opt: any) =>
-            typeof opt === "string" ? JSON.parse(opt) : opt
-        );
-    } else if (typeof poll.options === "string") {
-        options = JSON.parse(poll.options);
-    }
-    return {
-        ...poll,
-        titleShorten: poll.titleShorten ?? undefined,
-        description: poll.description ?? undefined,
-        imgUrl: poll.imgUrl ?? undefined,
-        youtubeUrl: poll.youtubeUrl ?? undefined,
-        needTokenAddress: poll.needTokenAddress ?? undefined,
-        minimumPoints: poll.minimumPoints ?? undefined,
-        minimumSGP: poll.minimumSGP ?? undefined,
-        minimumSGT: poll.minimumSGT ?? undefined,
-        participationRewardAssetId:
-            poll.participationRewardAssetId ?? undefined,
-        participationRewardAmount: poll.participationRewardAmount ?? undefined,
-        bettingAssetId: poll.bettingAssetId ?? undefined,
-        options,
-    };
 }
