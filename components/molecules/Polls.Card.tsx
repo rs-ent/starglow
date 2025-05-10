@@ -102,29 +102,26 @@ export default function PollsCard({
 
     const [voteAmount, setVoteAmount] = useState(0);
     const [voteAmountInput, setVoteAmountInput] = useState("1");
-    const { alreadyVotedAmount, maxVoteAmount, permission, votedOptions } =
-        useMemo(() => {
-            const permission = tokenGatingData?.data?.hasToken;
-            const votedOptions = pollLogs?.map((log) => log.optionId);
-            const alreadyVotedAmount =
-                pollLogs?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
+    const { alreadyVotedAmount, maxVoteAmount, permission } = useMemo(() => {
+        const permission = tokenGatingData?.data?.hasToken;
+        const alreadyVotedAmount =
+            pollLogs?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
 
-            let maxVoteAmount = 99;
+        let maxVoteAmount = 99;
 
-            if (poll.needToken && tokenGatingData?.data) {
-                maxVoteAmount = Math.max(
-                    0,
-                    tokenGatingData.data.tokenCount - alreadyVotedAmount
-                );
-            }
+        if (poll.needToken && tokenGatingData?.data) {
+            maxVoteAmount = Math.max(
+                0,
+                tokenGatingData.data.tokenCount - alreadyVotedAmount
+            );
+        }
 
-            return {
-                alreadyVotedAmount,
-                maxVoteAmount,
-                permission,
-                votedOptions,
-            };
-        }, [tokenGatingData, poll.needToken, pollLogs]);
+        return {
+            alreadyVotedAmount,
+            maxVoteAmount,
+            permission,
+        };
+    }, [tokenGatingData, poll.needToken, pollLogs]);
 
     const handleSubmit = async () => {
         startLoading();
@@ -195,7 +192,7 @@ export default function PollsCard({
             <div
                 className={cn(
                     "absolute inset-0 rounded-[16px] pointer-events-none transition-opacity duration-500 -z-50",
-                    isSelected ? "opacity-100" : "opacity-0"
+                    permission && isSelected ? "opacity-100" : "opacity-0"
                 )}
                 style={{
                     background:
