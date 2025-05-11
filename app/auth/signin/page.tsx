@@ -6,6 +6,7 @@ import SocialAuthButton from "@/components/atoms/SocialAuthButton";
 import { Provider, ProviderType } from "@/app/types/auth";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "@/app/hooks/useToast";
+import PartialLoading from "@/components/atoms/PartialLoading";
 
 const providerIcons: Record<ProviderType, string> = {
     google: "/icons/providers/google.svg",
@@ -62,7 +63,7 @@ function SignInButtons() {
     }, [fetchProviders]);
 
     if (!providers) {
-        return <div className="animate-pulse">Loading providers...</div>;
+        return <PartialLoading text="Loading providers..." />;
     }
 
     const DONOT_SHOW_PROVIDERS = ["kakao", "twitter", "spotify", "coinbase"];

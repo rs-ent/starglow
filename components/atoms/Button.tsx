@@ -80,7 +80,8 @@ export default function Button({
                             strokeWidth={2}
                             className={cn(
                                 "w-full h-full min-w-full min-h-full",
-                                iconSpinning && "animate-spin"
+                                iconSpinning && "animate-spin",
+                                frameClass
                             )}
                         />
                     </div>

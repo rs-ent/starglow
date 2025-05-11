@@ -112,10 +112,18 @@ export default function NavigationBar({ user, player }: NavigationBarProps) {
                     >
                         <img src="/logo/l-white.svg" alt="Starglow" />
                     </LinkButton>
-                    {player && (
+                    {player ? (
                         <RewardPanel
                             playerId={player.id}
                             assetNames={["SGP"]}
+                        />
+                    ) : (
+                        <AuthButton
+                            frameSize={10}
+                            textSize={10}
+                            paddingSize={20}
+                            gapSize={20}
+                            showUserCard={false}
                         />
                     )}
                 </div>

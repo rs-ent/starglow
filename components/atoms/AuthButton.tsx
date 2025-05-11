@@ -53,18 +53,6 @@ export default function AuthButton({
         }
     }, [pathname, router, startLoading]);
 
-    const handleSignOut = useCallback(async () => {
-        try {
-            startLoading();
-            await signOut({
-                callbackUrl: "/",
-            });
-        } catch (error) {
-            console.error("Sign out error:", error);
-            router.push("/auth/error");
-        }
-    }, [router, startLoading]);
-
     if (status === "loading") {
         return (
             <Button
