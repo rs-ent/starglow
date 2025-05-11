@@ -9,7 +9,7 @@ import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import { motion } from "framer-motion";
 import Doorman from "../atoms/Doorman";
 interface QuestsMissionsProps {
-    player: Player;
+    player: Player | null;
     quests: Quest[];
     questLogs: QuestLog[];
     isLoading: boolean;

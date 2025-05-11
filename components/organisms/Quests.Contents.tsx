@@ -9,17 +9,19 @@ import PublicPrivateTab from "@/components/molecules/PublicPrivateTab";
 import QuestsPrivate from "./Quests.Private";
 import { useReferralGet } from "@/app/hooks/useReferral";
 import QuestsPublic from "./Quests.Public";
+import { User } from "next-auth";
 
 interface QuestsContentsProps {
-    player: Player;
+    user: User | null;
+    player: Player | null;
 }
 
-export default function QuestsContents({ player }: QuestsContentsProps) {
+export default function QuestsContents({ user, player }: QuestsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
 
     const { referralLogs } = useReferralGet({
         GetReferralLogsInput: {
-            playerId: player.id,
+            playerId: player?.id ?? "",
         },
     });
 
@@ -45,6 +47,7 @@ export default function QuestsContents({ player }: QuestsContentsProps) {
             />
             {!isPublic ? (
                 <QuestsPrivate
+                    user={user}
                     player={player}
                     privateTabClicked={isPublic}
                     referralLogs={referralLogs}

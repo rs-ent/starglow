@@ -18,6 +18,7 @@ Table User {
   player Player
   sessions Session [not null]
   wallets Wallet [not null]
+  provider String
 }
 
 Table Account {

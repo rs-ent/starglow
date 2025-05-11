@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import NavBar from "@/components/organisms/NavBar";
+import NavBar from "@/components/organisms/Navigation.Bar";
 import UserHeader from "@/components/organisms/UserHeader";
 import UserSidebar from "@/components/organisms/UserSidebar";
 import UserContent from "@/components/organisms/UserContent";
@@ -48,14 +48,6 @@ export default function User({
             }
         }
     }, [searchParams, toast]);
-
-    const handleSectionClick = useCallback(
-        (section: string) => {
-            setContentType(section);
-            close();
-        },
-        [close]
-    );
 
     return (
         <div className="relative min-h-screen bg-background">

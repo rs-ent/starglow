@@ -12,7 +12,7 @@ import PartialLoading from "@/components/atoms/PartialLoading";
 import PollsList from "./Polls.List";
 
 interface PollsPublicProps {
-    player: Player;
+    player: Player | null;
     pollLogs?: PollLog[];
     className?: string;
 }

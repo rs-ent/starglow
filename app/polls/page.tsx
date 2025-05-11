@@ -1,25 +1,14 @@
 /// app\polls\page.tsx
 
+import { auth } from "@/app/auth/authSettings";
 import Polls from "@/components/templates/Polls";
-import { notFound } from "next/navigation";
-import { setPlayer } from "../actions/player";
-import { requireAuthUser } from "@/app/auth/authUtils";
+
+export const dynamic = "force-dynamic";
 
 export default async function PollsPage() {
-    const user = await requireAuthUser("/polls");
+    const session = await auth();
 
-    try {
-        const player = await setPlayer({
-            user: user,
-        });
-
-        if (!player) {
-            return notFound();
-        }
-
-        return <Polls player={player} />;
-    } catch (error) {
-        console.error("[QuestPage] Error fetching player:", error);
-        return notFound();
-    }
+    return (
+        <Polls user={session?.user ?? null} player={session?.player ?? null} />
+    );
 }

@@ -3,7 +3,7 @@
 import { notFound } from "next/navigation";
 import Collection from "@/components/organisms/NFTs.Collection";
 import { CollectionContract, Metadata } from "@prisma/client";
-import NavBar from "@/components/organisms/NavBar";
+import NavBar from "@/components/organisms/Navigation.Bar";
 import { prisma } from "@/lib/prisma/client";
 
 interface CollectionPageProps {

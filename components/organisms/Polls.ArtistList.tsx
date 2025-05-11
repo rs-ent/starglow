@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 
 interface PollsArtistListProps {
     artist: Artist;
-    player: Player;
+    player: Player | null;
     pollLogs?: PollLog[];
     tokenGatingResult?: AdvancedTokenGateResult | null;
     className?: string;
@@ -31,24 +31,7 @@ export default function PollsArtistList({
         },
     });
 
-    const [permission, setPermission] = useState(false);
     const [isReady, setIsReady] = useState(false);
-
-    useEffect(() => {
-        if (
-            tokenGatingResult &&
-            tokenGatingResult.success &&
-            tokenGatingResult.data &&
-            tokenGatingResult.data.hasToken
-        ) {
-            const hasAnyToken = Object.values(
-                tokenGatingResult.data.hasToken
-            ).some(Boolean);
-            setPermission(hasAnyToken);
-        } else {
-            setPermission(false);
-        }
-    }, [tokenGatingResult]);
 
     useEffect(() => {
         if (pollsList && tokenGatingResult && !isLoading) {

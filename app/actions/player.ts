@@ -37,6 +37,25 @@ export async function getPlayer(
     return player;
 }
 
+export async function getPlayerByUserId(
+    userId: string
+): Promise<Player | null> {
+    try {
+        const player = await prisma.player.findUnique({
+            where: { userId: userId },
+        });
+
+        if (!player) {
+            return null;
+        }
+
+        return player;
+    } catch (error) {
+        console.error("[getPlayerByUserId] Error:", error);
+        return null;
+    }
+}
+
 export interface SetPlayerInput {
     user: User;
 }
@@ -59,7 +78,7 @@ export async function setPlayer(
                 name: input.user.name || "New Player",
                 userId: input.user.id,
                 referralCode: referralCode,
-            }
+            },
         });
     } catch (error) {
         console.error("[setPlayer] Error:", error);

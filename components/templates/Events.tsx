@@ -8,15 +8,13 @@ import {
 import Image from "next/image";
 import { useEvents } from "@/app/hooks/useEvents";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
 import { H2 } from "../atoms/Typography";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import Icon from "../atoms/Icon";
 import Link from "next/link";
-import NavBar from "../organisms/NavBar";
 import PartialLoading from "../atoms/PartialLoading";
-// Use Pick utility type to select only the fields we need from the Prisma model
+
 type Event = Pick<
     EventModel,
     "id" | "category" | "status" | "title" | "location" | "bannerImg"
@@ -80,9 +78,6 @@ export default function Events() {
 
     return (
         <div className="relative flex flex-col w-full">
-            <nav className="sticky top-0 z-10 backdrop-blur-md">
-                <NavBar />
-            </nav>
             <div className="flex items-center justify-center w-full h-full">
                 <div className="flex flex-col items-center justify-center w-full max-w-7xl px-4 py-12">
                     <H2

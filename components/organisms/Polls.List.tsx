@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 
 interface PollsListProps {
     polls: Poll[];
-    player: Player;
+    player: Player | null;
     pollLogs?: PollLog[];
     artist?: Artist | null;
     tokenGatingData?: AdvancedTokenGateResult | null;

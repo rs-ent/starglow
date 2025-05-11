@@ -12,24 +12,20 @@ import { usePlayerGet } from "@/app/hooks/usePlayer";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import PartialLoading from "../atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
-
+import { User } from "next-auth";
 interface QuestsPrivateProps {
-    player: Player;
+    user: User | null;
+    player: Player | null;
     privateTabClicked: boolean;
     referralLogs?: ReferralLog[];
 }
 
 export default function QuestsPrivate({
+    user,
     player,
     privateTabClicked,
     referralLogs,
 }: QuestsPrivateProps) {
-    const { user: DBUser } = usePlayerGet({
-        getDBUserFromPlayerInput: {
-            playerId: player.id,
-        },
-    });
-
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
     const [showArtistContents, setShowArtistContents] = useState(false);
     const [
@@ -44,7 +40,7 @@ export default function QuestsPrivate({
     } = useArtistsGet({
         getTokenGatingInput: {
             artist: selectedArtist,
-            userId: DBUser?.id || null,
+            userId: user?.id || null,
         },
     });
 
@@ -70,7 +66,7 @@ export default function QuestsPrivate({
                         setSelectedArtistTokenGatingResult(
                             getTokenGatingResult
                         );
-                    } else if (!DBUser) {
+                    } else if (!user || !user.id) {
                         setSelectedArtistTokenGatingResult({
                             success: false,
                             data: {
@@ -82,7 +78,7 @@ export default function QuestsPrivate({
                     } else {
                         const result = await tokenGating({
                             artist: selectedArtist,
-                            userId: DBUser.id,
+                            userId: user.id,
                         });
                         setSelectedArtistTokenGatingResult(result);
                     }

@@ -9,17 +9,18 @@ import { useState } from "react";
 import PublicPrivateTab from "../molecules/PublicPrivateTab";
 import PollsPublic from "./Polls.Public";
 import PollsPrivate from "./Polls.Private";
-
+import { User } from "next-auth";
 interface PollsContentsProps {
-    player: Player;
+    user: User | null;
+    player: Player | null;
 }
 
-export default function PollsContents({ player }: PollsContentsProps) {
+export default function PollsContents({ user, player }: PollsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
 
     const { pollLogs, isLoadingPollLogs, pollLogsError } = usePollsGet({
         getPollLogsInput: {
-            playerId: player.id,
+            playerId: player?.id ?? "",
         },
     });
 
@@ -48,6 +49,7 @@ export default function PollsContents({ player }: PollsContentsProps) {
                 <PollsPublic player={player} pollLogs={pollLogs} />
             ) : (
                 <PollsPrivate
+                    user={user}
                     player={player}
                     pollLogs={pollLogs}
                     privateTabClicked={isPublic}

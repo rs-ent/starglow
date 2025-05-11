@@ -20,7 +20,7 @@ import Doorman from "../atoms/Doorman";
 
 interface PollsCardProps {
     poll: Poll;
-    player: Player;
+    player: Player | null;
     pollLogs?: PollLog[];
     artist?: Artist | null;
     tokenGatingData?: TokenGatingResult | null;
@@ -132,6 +132,11 @@ export default function PollsCard({
                 voteAmount <= 0
             ) {
                 toast.error("Please enter a valid vote amount.");
+                return;
+            }
+
+            if (!player) {
+                toast.error("Please login to participate in this poll.");
                 return;
             }
 

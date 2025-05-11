@@ -18,7 +18,7 @@ type ReferralQuestLogsDataType = {
 } | null;
 
 interface QuestsPublicProps {
-    player: Player;
+    player: Player | null;
     referralLogs?: ReferralLog[];
 }
 
@@ -31,7 +31,7 @@ export default function QuestsPublic({
             isPublic: true,
         },
         getQuestLogsInput: {
-            playerId: player.id,
+            playerId: player?.id ?? "",
             isPublic: true,
             deprecated: false,
         },

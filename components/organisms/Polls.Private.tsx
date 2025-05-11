@@ -7,27 +7,22 @@ import PartialLoading from "../atoms/PartialLoading";
 import ArtistSlideSelector from "../molecules/ArtistSlideSelector";
 import PollsArtistList from "./Polls.ArtistList";
 import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
-import { usePlayerGet } from "@/app/hooks/usePlayer";
 import { useState, useEffect } from "react";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
-
+import { User } from "next-auth";
 interface PollsPrivateProps {
-    player: Player;
+    user: User | null;
+    player: Player | null;
     privateTabClicked: boolean;
     pollLogs?: PollLog[];
 }
 
 export default function PollsPrivate({
+    user,
     player,
     privateTabClicked,
     pollLogs,
 }: PollsPrivateProps) {
-    const { user: DBUser } = usePlayerGet({
-        getDBUserFromPlayerInput: {
-            playerId: player.id,
-        },
-    });
-
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
     const [showArtistContents, setShowArtistContents] = useState(false);
     const [
@@ -42,7 +37,7 @@ export default function PollsPrivate({
     } = useArtistsGet({
         getTokenGatingInput: {
             artist: selectedArtist,
-            userId: DBUser?.id || null,
+            userId: user?.id || null,
         },
     });
 
@@ -68,7 +63,7 @@ export default function PollsPrivate({
                         setSelectedArtistTokenGatingResult(
                             getTokenGatingResult
                         );
-                    } else if (!DBUser) {
+                    } else if (!user || !user.id) {
                         setSelectedArtistTokenGatingResult({
                             success: false,
                             data: {
@@ -80,7 +75,7 @@ export default function PollsPrivate({
                     } else {
                         const result = await tokenGating({
                             artist: selectedArtist,
-                            userId: DBUser.id,
+                            userId: user.id,
                         });
                         setSelectedArtistTokenGatingResult(result);
                     }

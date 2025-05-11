@@ -3,12 +3,12 @@
 
 import LinkButton from "../atoms/LinkButton";
 import AuthButton from "../atoms/AuthButton";
-import { useSession } from "next-auth/react";
+import { Session, User } from "next-auth";
 import VerticalButton from "../atoms/VerticalButton";
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import RewardPanel from "../molecules/RewardPanel";
-import { usePlayerSet } from "@/app/hooks/usePlayer";
 import { cn } from "@/lib/utils/tailwind";
+import { Player } from "@prisma/client";
 
 const defaultMenuItems = [
     { name: "Quests", href: "/quests", icon: "/ui/ribbon-badge.svg" },
@@ -24,36 +24,19 @@ const myPage = (userId: string) => [
     },
 ];
 
-export default function NavBar() {
-    const { data: session } = useSession();
+interface NavigationBarProps {
+    user: User | null;
+    player: Player | null;
+}
+
+export default function NavigationBar({ user, player }: NavigationBarProps) {
     const [active, setActive] = useState<string>("");
-    const [menu, setMenu] = useState(defaultMenuItems);
-    const [playerId, setPlayerId] = useState<string | null>(null);
-
-    const user = session?.user;
-    const { setPlayer, isSetPlayerPending } = usePlayerSet({});
-
-    useEffect(() => {
-        async function ensurePlayer() {
-            if (session?.user) {
-                if (!menu.find((item) => item.name === "My Page")) {
-                    setMenu([...menu, ...myPage(session.user.id)]);
-                }
-
-                const player = await setPlayer({
-                    user: session.user,
-                });
-                setPlayerId(player?.id ?? null);
-            } else {
-                setPlayerId(null);
-            }
+    const menu = useMemo(() => {
+        if (user && user.id) {
+            return [...defaultMenuItems, ...myPage(user.id)];
         }
-        ensurePlayer();
-    }, [session, setPlayer]);
-
-    const handleActiveChange = (name: string) => {
-        setActive(name);
-    };
+        return defaultMenuItems;
+    }, [user]);
 
     return (
         <>
@@ -101,48 +84,13 @@ export default function NavBar() {
                         gapSize={10}
                         showUserCard={false}
                     />
-                    {playerId && (
-                        <RewardPanel playerId={playerId} assetNames={["SGP"]} />
+                    {player && (
+                        <RewardPanel
+                            playerId={player.id}
+                            assetNames={["SGP"]}
+                        />
                     )}
                 </div>
-
-                {/* Mobile Hamburger Icon
-            <Hamburger
-                isOpen={isOpen}
-                toggle={toggle}
-                className="lg:hidden z-50"
-            />*/}
-                {/* Mobile Menu
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="fixed top-0 left-0 w-full h-screen bg-[rgba(0,0,0,0.85)] backdrop-blur-sm flex flex-col items-center justify-center space-y-12 z-40"
-                    >
-                        <AuthButton
-                            frameSize={50}
-                            paddingSize={70}
-                            gapSize={50}
-                            textSize={35}
-                            className="font-main"
-                        />
-                        {menuItems.map(({ name, href }) => (
-                            <LinkButton
-                                key={name}
-                                href={href}
-                                onClick={close}
-                                textSize={35}
-                                paddingSize={0}
-                                className="font-main"
-                            >
-                                {name}
-                            </LinkButton>
-                        ))}
-                    </motion.div>
-                )}
-            </AnimatePresence>*/}
             </nav>
 
             {/* Mobile Menu */}
@@ -164,8 +112,11 @@ export default function NavBar() {
                     >
                         <img src="/logo/l-white.svg" alt="Starglow" />
                     </LinkButton>
-                    {playerId && (
-                        <RewardPanel playerId={playerId} assetNames={["SGP"]} />
+                    {player && (
+                        <RewardPanel
+                            playerId={player.id}
+                            assetNames={["SGP"]}
+                        />
                     )}
                 </div>
                 <nav
@@ -188,7 +139,7 @@ export default function NavBar() {
                             paddingSize={0}
                             frameSize={20}
                             gapSize={5}
-                            onClick={() => handleActiveChange(name)}
+                            onClick={() => setActive(name)}
                             href={href}
                             className={
                                 active === name

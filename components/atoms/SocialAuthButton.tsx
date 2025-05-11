@@ -9,25 +9,16 @@ import { ProviderType } from "@/app/types/auth";
 interface SocialAuthButtonProps {
     providerId: ProviderType;
     providerName: string;
+    providerColor: string;
+    providerIcon: string;
     callbackUrl?: string;
 }
-
-const providerIcons: Record<ProviderType, string> = {
-    google: "/icons/providers/google.svg",
-    twitter: "/icons/providers/x.svg",
-    kakao: "/icons/providers/kakao.svg",
-};
-
-const providerColors: Record<ProviderType, string> = {
-    google: "bg-[rgba(255,255,255,1)] text-[rgba(0,0,0,1)] hover:bg-[rgba(255,255,255,1)] hover:text-[rgba(0,0,0,1)] hover:scale-105",
-    twitter:
-        "bg-[rgba(1,1,1,1)] text-[rgba(255,255,255,1)] hover:bg-[rgba(1,1,1,1)] hover:text-[rgba(255,255,255,1)] hover:scale-105",
-    kakao: "bg-[rgba(254,230,8,1)] text-[rgba(0,0,0,1)] hover:bg-[rgba(254,230,8,1)] hover:text-[rgba(0,0,0,1)] hover:scale-105",
-};
 
 export default function SocialAuthButton({
     providerId,
     providerName,
+    providerColor,
+    providerIcon,
     callbackUrl = "/",
 }: SocialAuthButtonProps) {
     const { startLoading } = useLoading();
@@ -41,10 +32,10 @@ export default function SocialAuthButton({
         <Button
             variant="outline"
             onClick={handleSignIn}
-            className={`w-full items-center justify-center ${providerColors[providerId]}`}
+            className={`w-full items-center justify-center ${providerColor}`}
         >
             <img
-                src={providerIcons[providerId]}
+                src={providerIcon}
                 alt={`${providerName} icon`}
                 style={{ width: "20px", height: "auto" }}
             />

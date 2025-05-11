@@ -27,6 +27,7 @@ export const queryKeys = {
         byId: (id: string) => ["user", id] as const,
         byPlayerId: (input?: GetDBUserFromPlayerInput) =>
             ["user", "player", input?.playerId] as const,
+        byEmail: (email: string) => ["user", "email", email] as const,
     },
     currency: ["currency"] as const,
     rewards: ["rewards"] as const,
@@ -110,6 +111,7 @@ export const queryKeys = {
 export const playerKeys = {
     all: ["player"] as const,
     byId: (id: string) => ["player", id] as const,
+    byUserId: (userId: string) => ["player", "user", userId] as const,
     referralLogs: (input?: GetReferralLogsInput) =>
         ["player", "referral-logs", input?.playerId] as const,
 };

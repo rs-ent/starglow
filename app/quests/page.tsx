@@ -1,27 +1,15 @@
 /// app/quests/page.tsx
 
+import { notFound } from "next/navigation";
+import { auth } from "@/app/auth/authSettings";
+import Quests from "@/components/templates/Quests";
+
 export const dynamic = "force-dynamic";
 
-import { notFound } from "next/navigation";
-import { setPlayer } from "@/app/actions/player";
-import Quests from "@/components/templates/Quests";
-import { requireAuthUser } from "@/app/auth/authUtils";
-
 export default async function QuestPage() {
-    const user = await requireAuthUser("/quests");
+    const session = await auth();
 
-    try {
-        const player = await setPlayer({
-            user: user,
-        });
-
-        if (!player) {
-            return notFound();
-        }
-
-        return <Quests player={player} />;
-    } catch (error) {
-        console.error("[QuestPage] Error fetching player:", error);
-        return notFound();
-    }
+    return (
+        <Quests user={session?.user ?? null} player={session?.player ?? null} />
+    );
 }

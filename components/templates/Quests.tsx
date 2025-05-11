@@ -9,12 +9,14 @@ import PartialLoading from "@/components/atoms/PartialLoading";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import QuestsContents from "@/components/organisms/Quests.Contents";
+import { User } from "next-auth";
 
 interface QuestsProps {
-    player: Player;
+    user: User | null;
+    player: Player | null;
 }
 
-export default function Quests({ player }: QuestsProps) {
+export default function Quests({ user, player }: QuestsProps) {
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
             <>
@@ -64,7 +66,7 @@ export default function Quests({ player }: QuestsProps) {
                     "mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]"
                 )}
             >
-                <QuestsContents player={player} />
+                <QuestsContents user={user} player={player} />
             </div>
         </div>
     );

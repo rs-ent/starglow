@@ -8,7 +8,7 @@ import "./globals.css";
 import Toast from "@/components/atoms/Toast";
 import Providers from "./Providers";
 import Loading from "@/components/organisms/Loading";
-import NavBar from "@/components/organisms/NavBar";
+import Navigation from "@/components/templates/Navigation";
 export const metadata: Metadata = {
     title: "Starglow",
     description: "Starglow",
@@ -27,7 +27,7 @@ export default function RootLayout({
                     <Toast />
                     <SpeedInsights />
                     <Analytics />
-                    <NavBar />
+                    <Navigation />
                     {children}
                 </Providers>
             </body>

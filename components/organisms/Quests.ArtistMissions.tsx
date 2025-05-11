@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface QuestsArtistMissionsProps {
     artist: Artist;
-    player: Player;
+    player: Player | null;
     tokenGatingResult?: AdvancedTokenGateResult | null;
     referralLogs: ReferralLog[];
 }
@@ -32,7 +32,7 @@ export default function QuestsArtistMissions({
         },
         getQuestLogsInput: {
             artistId: artist.id,
-            playerId: player.id,
+            playerId: player?.id ?? "",
         },
     });
 

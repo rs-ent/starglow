@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { H3 } from "./Typography";
 import { Player } from "@prisma/client";
 import InviteFriendsModal from "./InviteFriends.Modal";
-import QRCodeModal from "./QRCode";
 
 interface InviteFriendsProps {
-    player: Player;
+    player: Player | null;
 }
 
 export default function InviteFriends({ player }: InviteFriendsProps) {
@@ -21,7 +20,7 @@ export default function InviteFriends({ player }: InviteFriendsProps) {
 
     return (
         <div className="relative flex w-full items-center justify-center">
-            {isOpen && (
+            {player && isOpen && (
                 <InviteFriendsModal
                     player={player}
                     onClose={() => setIsOpen(false)}

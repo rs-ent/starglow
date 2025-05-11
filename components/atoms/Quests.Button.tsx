@@ -15,8 +15,9 @@ import Countdown from "@/components/atoms/Countdown";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import { motion, AnimatePresence } from "framer-motion";
 import InviteFriendsModal from "./InviteFriends.Modal";
+
 interface QuestsButtonProps {
-    player: Player;
+    player: Player | null;
     quest: Quest;
     questLog?: QuestLog | null;
     frameSize?: number;
@@ -59,7 +60,12 @@ export default function QuestsButton({
         },
     });
 
-    const { completeQuest, claimQuestReward } = useQuestSet();
+    const {
+        completeQuest,
+        isCompleting,
+        claimQuestReward,
+        isClaimingQuestReward,
+    } = useQuestSet();
 
     const [waitDate, setWaitDate] = useState<Date | null>(null);
 
@@ -69,24 +75,47 @@ export default function QuestsButton({
     const [blockFunction, setBlockFunction] = useState<boolean>(false);
 
     const handleCompleteQuest = async () => {
-        if (!permission) {
-            return;
-        }
-
-        if (status === "completed") {
-            return;
-        }
-
-        if (status === "claimed") {
-            return;
-        }
-
         if (quest.isReferral) {
+            if (!player) {
+                toast.error("Please login to invite friends.");
+                return;
+            }
+
             setIsInviteFriendsModalOpen(true);
             return;
         }
 
         if (!quest.url) {
+            return;
+        }
+
+        if (!player) {
+            toast.error("Please login to complete this quest.");
+            return;
+        }
+
+        if (!permission) {
+            toast.error("You don't have permission to complete this quest.");
+            return;
+        }
+
+        if (status === "completed") {
+            toast.error("You have already completed this quest.");
+            return;
+        }
+
+        if (isCompleting) {
+            toast.info("Please wait for the quest to complete.");
+            return;
+        }
+
+        if (status === "claimed") {
+            toast.error("You have already claimed this quest.");
+            return;
+        }
+
+        if (isClaimingQuestReward) {
+            toast.info("Please wait for the quest reward to be claimed.");
             return;
         }
 
@@ -161,15 +190,32 @@ export default function QuestsButton({
     };
 
     const handleClaimQuestReward = async () => {
-        if (!permission) {
-            return;
-        }
-
-        if (!questLog) {
+        if (!player) {
+            toast.error("Please login to claim this quest.");
             return;
         }
 
         if (blockFunction) {
+            return;
+        }
+
+        if (!permission) {
+            toast.error("You don't have permission to claim this quest.");
+            return;
+        }
+
+        if (!questLog) {
+            toast.error("You haven't completed this quest yet.");
+            return;
+        }
+
+        if (status === "claimed") {
+            toast.error("You have already claimed this quest.");
+            return;
+        }
+
+        if (isClaimingQuestReward) {
+            toast.info("Please wait for the quest reward to be claimed.");
             return;
         }
 
@@ -249,7 +295,7 @@ export default function QuestsButton({
 
     return (
         <>
-            {isInviteFriendsModalOpen && (
+            {player && isInviteFriendsModalOpen && (
                 <InviteFriendsModal
                     player={player}
                     onClose={() => setIsInviteFriendsModalOpen(false)}

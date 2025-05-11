@@ -4,10 +4,12 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import TwitterProvider from "next-auth/providers/twitter";
 import KakaoProvider from "next-auth/providers/kakao";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import SpotifyProvider from "next-auth/providers/spotify";
+import CoinbaseProvider from "next-auth/providers/coinbase";
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma/client";
 import type { NextAuthConfig } from "next-auth";
-import { setPlayer } from "../actions/player";
+import { getPlayerByUserId, setPlayer } from "../actions/player";
 import { createPolygonWallet } from "../actions/defaultWallets";
 
 const isProd = process.env.NODE_ENV === "production";
@@ -54,6 +56,14 @@ const authOptions: NextAuthConfig = {
             clientId: process.env.KAKAO_CLIENT_ID!,
             clientSecret: process.env.KAKAO_CLIENT_SECRET!,
         }),
+        SpotifyProvider({
+            clientId: process.env.SPOTIFY_CLIENT_ID!,
+            clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
+        }),
+        CoinbaseProvider({
+            clientId: process.env.COINBASE_CLIENT_ID!,
+            clientSecret: process.env.COINBASE_CLIENT_SECRET!,
+        }),
     ],
     session: {
         strategy: "database" as const,
@@ -82,6 +92,7 @@ const authOptions: NextAuthConfig = {
         async session({ session, user }: { session: any; user: any }) {
             if (session.user) {
                 session.user.id = user.id;
+                session.player = await getPlayerByUserId(session.user.id);
             }
             return session;
         },
@@ -92,32 +103,40 @@ const authOptions: NextAuthConfig = {
         },
     },
     events: {
-        async signIn({ user }) {
+        async signIn({ user, account, profile }) {
+            console.log("signIn event called", {
+                userId: user?.id,
+                provider: account?.provider,
+            });
+
             try {
-                if (user && user.id) {
+                if (user.id) {
+                    const updateData: any = { lastLoginAt: new Date() };
+
+                    if (user.email === null && profile?.email) {
+                        updateData.email = profile.email;
+                    }
+
+                    if (account?.provider) {
+                        updateData.provider = account.provider;
+                    }
+
                     const promises = [
-                        setPlayer({
-                            user: user,
+                        prisma.user.update({
+                            where: { id: user.id },
+                            data: updateData,
                         }),
+
+                        setPlayer({ user: user }),
                         createPolygonWallet(user.id),
                     ];
 
-                    const [player, wallet] = await Promise.all(promises);
-
-                    if (!player) {
-                        throw new Error("Failed to create player");
-                    }
-
-                    console.log("Player created/found for user", player);
-
-                    if (!wallet) {
-                        throw new Error("Failed to create wallet");
-                    }
-
-                    console.log("Wallet created for user", wallet);
+                    const [updatedUser, player, wallet] = await Promise.all(
+                        promises
+                    );
                 }
             } catch (error) {
-                console.error("Error in signIn event:", error);
+                console.error("Error in signIn callback:", error);
             }
         },
     },

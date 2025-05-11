@@ -11,6 +11,8 @@ interface PopupProps {
     height?: string;
     className?: string;
     open: boolean;
+    closeButton?: boolean;
+    closeButtonColor?: string;
     onClose: () => void;
 }
 
@@ -19,6 +21,8 @@ export default function Popup({
     width = "400px",
     height = "auto",
     className = "",
+    closeButton = true,
+    closeButtonColor = "text-muted-foreground",
     open,
     onClose,
 }: PopupProps) {
@@ -57,12 +61,17 @@ export default function Popup({
                         )}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <button
-                            className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
-                            onClick={onClose}
-                        >
-                            <X size={30} />
-                        </button>
+                        {closeButton && (
+                            <button
+                                className={cn(
+                                    "absolute top-2 right-2 text-muted-foreground hover:text-foreground",
+                                    closeButtonColor
+                                )}
+                                onClick={onClose}
+                            >
+                                <X size={30} />
+                            </button>
+                        )}
                         {children}
                     </motion.div>
                 </motion.div>

@@ -1,4 +1,9 @@
-export type ProviderType = "google" | "twitter" | "kakao";
+export type ProviderType =
+    | "google"
+    | "twitter"
+    | "spotify"
+    | "coinbase"
+    | "kakao";
 
 export type Provider = {
     id: ProviderType;
