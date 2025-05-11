@@ -240,6 +240,7 @@ model Poll {
   description       String?
   category          PollCategory @default(PUBLIC)
   status            PollStatus   @default(UPCOMING)
+  isActive          Boolean      @default(false)
   
   // 옵션 정보 (JSON 형태로 저장)
   options           Json[]       // [{optionId: string, option: string, optionShorten: string?, description: string?, imgUrl: string?, youtubeUrl: string?}]

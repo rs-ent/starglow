@@ -187,6 +187,7 @@ Table Poll {
   description String
   category PollCategory [not null, default: 'PUBLIC']
   status PollStatus [not null, default: 'UPCOMING']
+  isActive Boolean [not null, default: false]
   options Json[] [not null]
   optionsOrder String[] [not null]
   imgUrl String

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import {
     CreatePollInput,
@@ -97,13 +97,28 @@ export default function AdminPollsCreateModal({
         isLoading: isLoadingPolls,
         error: errorPolls,
     } = usePollsGet({});
-    const polls = pollsList?.items;
+    const { polls, newPollId } = useMemo(() => {
+        const sortedPolls = pollsList?.items
+            ?.slice()
+            .sort(
+                (a: Poll, b: Poll) =>
+                    Number(b.id.replace("p", "")) -
+                    Number(a.id.replace("p", ""))
+            );
+
+        const maxId =
+            sortedPolls && sortedPolls.length > 0
+                ? Number(sortedPolls[0].id.replace("p", ""))
+                : 0;
+
+        return {
+            polls: sortedPolls,
+            newPollId: `p${(maxId + 1).toString().padStart(4, "0")}`,
+        };
+    }, [pollsList]);
     const { createPoll, updatePoll, isLoading, error } = usePollsSet();
     const { everyCollections, isLoading: isLoadingEveryCollections } =
         useFactoryGet({});
-    const newPollId = `p${((polls?.length ?? 0) + 1)
-        .toString()
-        .padStart(4, "0")}`;
 
     const { assets, isLoading: isLoadingAssets } = useAssetsGet({
         getAssetsInput: {
@@ -215,30 +230,40 @@ export default function AdminPollsCreateModal({
 
     // Form validation
     const isFormValid = (): boolean => {
+        if (polls?.find((poll) => poll.id === formData.id)) {
+            toast.error("이미 존재하는 ID입니다.");
+            return false;
+        }
+
         if (!formData.title || formData.title.trim().length === 0) {
+            toast.error("제목을 입력해주세요.");
             return false;
         }
 
         if (!formData.options || formData.options.length < 2) {
+            toast.error("최소 2개 이상의 옵션을 입력해주세요.");
             return false;
         }
 
-        const invalidOptions = formData.options.filter(
-            (option) => !option.name
-        );
-        if (invalidOptions.length > 0) {
+        const invalidOption = formData.options.find((option) => !option.name);
+        if (invalidOption) {
+            toast.error(
+                `${invalidOption.optionId} 옵션의 이름을 입력해주세요.`
+            );
             return false;
         }
 
         if (!formData.imgUrl && !formData.youtubeUrl) {
+            toast.error("이미지 또는 유튜브 URL을 입력해주세요.");
             return false;
         }
 
         if (
             formData.startDate &&
             formData.endDate &&
-            formData.startDate >= formData.endDate
+            formData.startDate > formData.endDate
         ) {
+            toast.error("시작일이 종료일보다 이전이어야 합니다.");
             return false;
         }
 
@@ -246,6 +271,7 @@ export default function AdminPollsCreateModal({
             formData.category === PollCategory.PRIVATE &&
             !formData.needTokenAddress
         ) {
+            toast.error("토큰게이팅을 위한 컨트랙트 주소를 입력해주세요.");
             return false;
         }
 
@@ -253,6 +279,7 @@ export default function AdminPollsCreateModal({
             formData.participationRewardAmount &&
             !formData.participationRewardAssetId
         ) {
+            toast.error("보상 수량을 설정할 때는 보상 에셋을 선택해주세요.");
             return false;
         }
 
@@ -267,58 +294,6 @@ export default function AdminPollsCreateModal({
             startLoading();
 
             if (!isFormValid()) {
-                if (!formData.title) {
-                    toast.error("제목을 입력해주세요.");
-                    return;
-                }
-
-                if (!formData.options || formData.options.length < 2) {
-                    toast.error("최소 2개 이상의 옵션을 입력해주세요.");
-                    return;
-                }
-
-                const invalidOptions = formData.options.filter(
-                    (option) => !option.name
-                );
-                if (invalidOptions.length > 0) {
-                    toast.error("옵션 이름을 입력해주세요.");
-                    return;
-                }
-
-                if (!formData.imgUrl && !formData.youtubeUrl) {
-                    toast.error("이미지 또는 유튜브 URL을 입력해주세요.");
-                    return;
-                }
-
-                if (
-                    formData.startDate &&
-                    formData.endDate &&
-                    formData.startDate >= formData.endDate
-                ) {
-                    toast.error("시작일이 종료일보다 이전이어야 합니다.");
-                    return;
-                }
-
-                if (
-                    formData.category === PollCategory.PRIVATE &&
-                    !formData.needTokenAddress
-                ) {
-                    toast.error(
-                        "토큰게이팅을 위한 컨트랙트 주소를 입력해주세요."
-                    );
-                    return;
-                }
-
-                if (
-                    formData.participationRewardAmount &&
-                    !formData.participationRewardAssetId
-                ) {
-                    toast.error(
-                        "보상 수량을 설정할 때는 보상 에셋을 선택해주세요."
-                    );
-                    return;
-                }
-
                 return;
             }
 
