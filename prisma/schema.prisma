@@ -30,7 +30,9 @@ model User {
   sessions      Session[]
   wallets       Wallet[]
   provider      String?
-
+  telegramId    String?           @unique
+  
+  @@index([telegramId])
   @@index([email, active])
   @@index([role, active])
   @@index([lastLoginAt])

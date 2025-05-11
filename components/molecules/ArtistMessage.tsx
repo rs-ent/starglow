@@ -48,7 +48,7 @@ export default function ArtistMessage({
             {message && (
                 <div
                     className={cn(
-                        "max-w-[1000px] w-screen overflow-x-hidden px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px] h-auto",
+                        "max-w-[1000px] w-screen overflow-hidden px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px] h-auto",
                         "flex flex-col gap-2",
                         className
                     )}

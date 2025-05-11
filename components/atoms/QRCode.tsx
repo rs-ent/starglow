@@ -4,6 +4,8 @@ import { useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { toPng } from "html-to-image";
 import { useToast } from "@/app/hooks/useToast";
+import { cn } from "@/lib/utils/tailwind";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 
 interface QRCodeProps {
     url: string;
@@ -13,17 +15,6 @@ interface QRCodeProps {
 export default function QRCodeModal({ url, onClose }: QRCodeProps) {
     const toast = useToast();
     const qrRef = useRef<HTMLDivElement>(null);
-
-    const handleSave = async () => {
-        if (!qrRef.current) return;
-        const dataUrl = await toPng(qrRef.current);
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = "qrcode.png";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
 
     const handleCopyImage = async () => {
         if (!qrRef.current) return;
@@ -58,31 +49,24 @@ export default function QRCodeModal({ url, onClose }: QRCodeProps) {
                         handleCopyImage();
                     }}
                 >
-                    <QRCodeSVG value={url} size={180} />
+                    <QRCodeSVG value={url} size={200} />
                 </div>
             </div>
             <button
-                className="mt-1 p-0 break-all text-center text-[6px]"
+                className={cn(
+                    "mt-1 p-0 break-all text-center text-[6px] backdrop-blur-2xl",
+                    getResponsiveClass(10).textClass
+                )}
                 onClick={(e) => {
                     e.stopPropagation();
-                    navigator.clipboard.writeText(url);
-                    toast.success("Link copied to clipboard");
+                    handleCopyImage();
                 }}
             >
-                {url}
+                Click QR Code Image to Copy
             </button>
-            <div className="flex gap-2 mt-3 justify-between">
+            <div className="max-w-[180px] w-full flex gap-2 mt-3 justify-center items-center">
                 <button
-                    className="bg bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.5)] rounded-lg p-2 text-xs"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleSave();
-                    }}
-                >
-                    Save
-                </button>
-                <button
-                    className="bg bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.5)] rounded-lg p-2 text-xs"
+                    className="px-5 backdrop-blur-sm bg-[rgba(0,0,0,0.2)] border border-[rgba(255,255,255,0.5)] rounded-lg p-2 text-xs"
                     onClick={onClose}
                 >
                     Close

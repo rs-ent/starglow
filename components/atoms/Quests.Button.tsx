@@ -76,11 +76,6 @@ export default function QuestsButton({
 
     const handleCompleteQuest = async () => {
         if (quest.isReferral) {
-            if (!player) {
-                toast.error("Please login to invite friends.");
-                return;
-            }
-
             setIsInviteFriendsModalOpen(true);
             return;
         }
@@ -295,7 +290,7 @@ export default function QuestsButton({
 
     return (
         <>
-            {player && isInviteFriendsModalOpen && (
+            {isInviteFriendsModalOpen && (
                 <InviteFriendsModal
                     player={player}
                     onClose={() => setIsInviteFriendsModalOpen(false)}

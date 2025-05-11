@@ -19,6 +19,7 @@ Table User {
   sessions Session [not null]
   wallets Wallet [not null]
   provider String
+  telegramId String [unique]
 }
 
 Table Account {
