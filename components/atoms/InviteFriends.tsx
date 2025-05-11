@@ -20,7 +20,7 @@ export default function InviteFriends({ player }: InviteFriendsProps) {
 
     return (
         <div className="relative flex w-full items-center justify-center">
-            {player && isOpen && (
+            {isOpen && (
                 <InviteFriendsModal
                     player={player}
                     onClose={() => setIsOpen(false)}

@@ -10,7 +10,7 @@ import {
     getQuestLogs,
     getClaimableQuestLogs,
     getClaimedQuestLogs,
-    completeQuest,
+    getPlayerQuestLogs,
 } from "../actions/quests";
 import type {
     GetQuestsInput,
@@ -19,7 +19,7 @@ import type {
     GetQuestLogsInput,
     GetClaimableQuestLogsInput,
     GetClaimedQuestLogsInput,
-    CompleteQuestInput,
+    GetPlayerQuestLogsInput,
 } from "../actions/quests";
 import { Quest, QuestLog } from "@prisma/client";
 
@@ -86,5 +86,17 @@ export function useClaimedQuestLogsQuery({
         queryKey: questKeys.claimedLogs(input),
         queryFn: () => getClaimedQuestLogs(input),
         enabled: !!input,
+    });
+}
+
+export function usePlayerQuestLogsQuery({
+    input,
+}: {
+    input?: GetPlayerQuestLogsInput;
+}) {
+    return useQuery<QuestLog[]>({
+        queryKey: questKeys.playerLogs(input),
+        queryFn: () => getPlayerQuestLogs(input),
+        enabled: !!input?.playerId,
     });
 }

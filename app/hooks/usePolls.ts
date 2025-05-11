@@ -17,6 +17,7 @@ import {
     usePollsResultsQuery,
     useUserSelectionQuery,
     usePlayerPollLogsQuery,
+    usePollLogsQuery,
 } from "../queries/pollsQueries";
 import type {
     GetPollsInput,
@@ -26,6 +27,7 @@ import type {
     GetUserSelectionInput,
     PaginationInput,
     GetPollLogsInput,
+    GetPlayerPollLogsInput,
 } from "../actions/polls";
 
 export function usePollsGet({
@@ -35,6 +37,7 @@ export function usePollsGet({
     pollsResultsInput,
     userSelectionInput,
     getPollLogsInput,
+    getPlayerPollLogsInput,
     pagination,
 }: {
     getPollsInput?: GetPollsInput;
@@ -43,6 +46,7 @@ export function usePollsGet({
     pollsResultsInput?: GetPollsResultsInput;
     userSelectionInput?: GetUserSelectionInput;
     getPollLogsInput?: GetPollLogsInput;
+    getPlayerPollLogsInput?: GetPlayerPollLogsInput;
     pagination?: PaginationInput;
 }) {
     const {
@@ -79,7 +83,13 @@ export function usePollsGet({
         data: pollLogs,
         isLoading: isLoadingPollLogs,
         error: pollLogsError,
-    } = usePlayerPollLogsQuery(getPollLogsInput);
+    } = usePollLogsQuery(getPollLogsInput);
+
+    const {
+        data: playerPollLogs,
+        isLoading: isLoadingPlayerPollLogs,
+        error: playerPollLogsError,
+    } = usePlayerPollLogsQuery(getPlayerPollLogsInput);
 
     const {
         data: userSelection,
@@ -94,7 +104,8 @@ export function usePollsGet({
         isLoadingPollResult ||
         isLoadingPollsResults ||
         isLoadingUserSelection ||
-        isLoadingPollLogs;
+        isLoadingPollLogs ||
+        isLoadingPlayerPollLogs;
     const error =
         pollsError ||
         pollError ||
@@ -102,7 +113,8 @@ export function usePollsGet({
         pollResultError ||
         pollsResultsError ||
         userSelectionError ||
-        pollLogsError;
+        pollLogsError ||
+        playerPollLogsError;
 
     return {
         pollsList,
@@ -114,6 +126,7 @@ export function usePollsGet({
         pollsResults,
         userSelection,
         pollLogs,
+        playerPollLogs,
 
         isLoadingPolls,
         isLoadingPoll,
@@ -122,6 +135,7 @@ export function usePollsGet({
         isLoadingPollsResults,
         isLoadingUserSelection,
         isLoadingPollLogs,
+        isLoadingPlayerPollLogs,
 
         pollsError,
         pollError,
@@ -130,6 +144,7 @@ export function usePollsGet({
         pollsResultsError,
         userSelectionError,
         pollLogsError,
+        playerPollLogsError,
     };
 }
 

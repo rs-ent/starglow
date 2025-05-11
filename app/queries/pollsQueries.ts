@@ -23,6 +23,8 @@ import {
     PaginationInput,
     getPollLogs,
     GetPollLogsInput,
+    getPlayerPollLogs,
+    GetPlayerPollLogsInput,
 } from "../actions/polls";
 import { Poll, PollLog } from "@prisma/client";
 
@@ -86,10 +88,18 @@ export function useUserSelectionQuery(input?: GetUserSelectionInput) {
     });
 }
 
-export function usePlayerPollLogsQuery(input?: GetPollLogsInput) {
+export function usePollLogsQuery(input?: GetPollLogsInput) {
+    return useQuery<PollLog[]>({
+        queryKey: pollKeys.logs(input),
+        queryFn: () => getPollLogs(input),
+        enabled: !!input,
+    });
+}
+
+export function usePlayerPollLogsQuery(input?: GetPlayerPollLogsInput) {
     return useQuery<PollLog[]>({
         queryKey: pollKeys.playerLogs(input?.playerId || ""),
-        queryFn: () => getPollLogs(input),
+        queryFn: () => getPlayerPollLogs(input),
         enabled: !!input?.playerId,
     });
 }

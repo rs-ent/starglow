@@ -3,6 +3,8 @@ import {
     GetPollsInput,
     PaginationInput,
     TokenGatingInput as PollTokenGatingInput,
+    GetPlayerPollLogsInput,
+    GetPollLogsInput,
 } from "./actions/polls";
 import {
     CompleteQuestInput,
@@ -10,6 +12,7 @@ import {
     GetClaimableQuestLogsInput,
     TokenGatingInput as QuestTokenGatingInput,
     GetClaimedQuestLogsInput,
+    GetPlayerQuestLogsInput,
 } from "./actions/quests";
 import { GetDBUserFromPlayerInput } from "./actions/player";
 import { GetPlayerAssetsFilter } from "./actions/playerAssets";
@@ -114,6 +117,8 @@ export const playerKeys = {
     byUserId: (userId: string) => ["player", "user", userId] as const,
     referralLogs: (input?: GetReferralLogsInput) =>
         ["player", "referral-logs", input?.playerId] as const,
+    pollLogs: (input?: GetPlayerPollLogsInput) =>
+        ["player", "poll-logs", input?.playerId] as const,
 };
 
 export const assetKeys = {
@@ -500,7 +505,8 @@ export const pollKeys = {
             input?.pollId,
             input?.userId,
         ] as const,
-    logs: (pollId: string) => [...pollKeys.all, "logs", pollId] as const,
+    logs: (input?: GetPollLogsInput) =>
+        [...pollKeys.all, "logs", input] as const,
     log: (pollLogId: string) => [...pollKeys.all, "log", pollLogId] as const,
     logByUser: (pollId: string, playerId: string) =>
         [...pollKeys.all, "logs", pollId, playerId] as const,
@@ -535,6 +541,8 @@ export const questKeys = {
         ] as const,
     logs: (input?: GetQuestLogsInput, pagination?: PaginationInput) =>
         [...questKeys.all, "logs", input, pagination] as const,
+    playerLogs: (input?: GetPlayerQuestLogsInput) =>
+        [...questKeys.all, "player-logs", input] as const,
     claimableLogs: (input?: GetClaimableQuestLogsInput) =>
         [...questKeys.all, "claimable-logs", input] as const,
     claimedLogs: (input?: GetClaimedQuestLogsInput) =>

@@ -2,7 +2,7 @@
 
 "use client";
 
-import { Player, Quest, ReferralLog } from "@prisma/client";
+import { Player, Quest, ReferralLog, QuestLog } from "@prisma/client";
 import { useEffect, useState, useMemo, useRef } from "react";
 import QuestsMissions from "@/components/molecules/Quests.Missions";
 import { useQuestGet, useQuestSet } from "@/app/hooks/useQuest";
@@ -13,27 +13,24 @@ import InviteFriends from "../atoms/InviteFriends";
 type ReferralQuestLogsDataType = {
     player: Player;
     referralQuests: Quest[];
-    questLogs: any[]; // 실제 타입에 맞게 조정
+    questLogs: QuestLog[];
     referralLogs: ReferralLog[];
 } | null;
 
 interface QuestsPublicProps {
     player: Player | null;
+    questLogs: QuestLog[];
     referralLogs?: ReferralLog[];
 }
 
 export default function QuestsPublic({
     player,
+    questLogs,
     referralLogs,
 }: QuestsPublicProps) {
-    const { quests, questLogs, isLoading, error } = useQuestGet({
+    const { quests, isLoading, error } = useQuestGet({
         getQuestsInput: {
             isPublic: true,
-        },
-        getQuestLogsInput: {
-            playerId: player?.id ?? "",
-            isPublic: true,
-            deprecated: false,
         },
     });
 
@@ -69,7 +66,7 @@ export default function QuestsPublic({
         if (
             !player?.id ||
             !quests?.items ||
-            !questLogs?.items ||
+            questLogs.length === 0 ||
             !referralLogs
         ) {
             return null;
@@ -79,10 +76,10 @@ export default function QuestsPublic({
             player,
             referralQuests:
                 quests.items.filter((quest) => quest.isReferral) || [],
-            questLogs: questLogs.items,
+            questLogs: questLogs,
             referralLogs: referralLogs,
         };
-    }, [player, quests?.items, questLogs?.items, referralLogs]);
+    }, [player, quests?.items, questLogs, referralLogs]);
 
     const { setReferralQuestLogs } = useQuestSet();
     const prevDataRef = useRef<ReferralQuestLogsDataType>(null);
@@ -138,7 +135,7 @@ export default function QuestsPublic({
                         <QuestsMissions
                             player={player}
                             quests={filteredQuests}
-                            questLogs={questLogs.items}
+                            questLogs={questLogs}
                             isLoading={isLoading}
                             error={error}
                             permission={true}

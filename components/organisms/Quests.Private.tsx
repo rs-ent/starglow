@@ -3,12 +3,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Artist, Player, ReferralLog } from "@prisma/client";
+import { Artist, Player, ReferralLog, QuestLog } from "@prisma/client";
 import ArtistMessage from "../molecules/ArtistMessage";
 import ArtistSlideSelector from "../molecules/ArtistSlideSelector";
 import QuestsArtistMissions from "./Quests.ArtistMissions";
 import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
-import { usePlayerGet } from "@/app/hooks/usePlayer";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import PartialLoading from "../atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
@@ -16,6 +15,7 @@ import { User } from "next-auth";
 interface QuestsPrivateProps {
     user: User | null;
     player: Player | null;
+    questLogs: QuestLog[];
     privateTabClicked: boolean;
     referralLogs?: ReferralLog[];
 }
@@ -23,6 +23,7 @@ interface QuestsPrivateProps {
 export default function QuestsPrivate({
     user,
     player,
+    questLogs,
     privateTabClicked,
     referralLogs,
 }: QuestsPrivateProps) {
@@ -122,6 +123,7 @@ export default function QuestsPrivate({
                                 <QuestsArtistMissions
                                     artist={selectedArtist}
                                     player={player}
+                                    questLogs={questLogs}
                                     tokenGatingResult={
                                         selectedArtistTokenGatingResult || null
                                     }

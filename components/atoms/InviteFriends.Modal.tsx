@@ -10,7 +10,7 @@ import QRCodeModal from "./QRCode";
 import { Player } from "@prisma/client";
 
 interface InviteFriendsModalProps {
-    player: Player;
+    player: Player | null;
     onClose: () => void;
 }
 
@@ -19,12 +19,16 @@ export default function InviteFriendsModal({
     onClose,
 }: InviteFriendsModalProps) {
     const refUrl = useMemo(() => {
-        const code = player.referralCode;
+        const code = player?.referralCode || "";
         if (typeof window !== "undefined") {
             if (typeof navigator.share === "function") {
-                return `${window.location.origin}/invite?ref=${code}&method=webapp`;
+                return code
+                    ? `${window.location.origin}/invite?ref=${code}&method=webapp`
+                    : `${window.location.origin}/invite`;
             } else {
-                return `https://t.me/Waydcloud_bot?startapp=${code}`;
+                return code
+                    ? `https://t.me/Waydcloud_bot?startapp=${code}`
+                    : "https://t.me/Waydcloud_bot?startapp";
             }
         }
         return "";

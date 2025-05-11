@@ -804,6 +804,27 @@ export async function getPollLogs(
     }
 }
 
+export interface GetPlayerPollLogsInput {
+    playerId?: string;
+}
+
+export async function getPlayerPollLogs(
+    input?: GetPlayerPollLogsInput
+): Promise<PollLog[]> {
+    if (!input || !input.playerId) {
+        return [];
+    }
+
+    try {
+        return await prisma.pollLog.findMany({
+            where: { playerId: input.playerId },
+        });
+    } catch (error) {
+        console.error("Error getting player poll logs:", error);
+        return [];
+    }
+}
+
 export interface GetUserSelectionInput {
     pollId: string;
     userId: string;

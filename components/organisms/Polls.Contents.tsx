@@ -18,8 +18,8 @@ interface PollsContentsProps {
 export default function PollsContents({ user, player }: PollsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
 
-    const { pollLogs, isLoadingPollLogs, pollLogsError } = usePollsGet({
-        getPollLogsInput: {
+    const { playerPollLogs } = usePollsGet({
+        getPlayerPollLogsInput: {
             playerId: player?.id ?? "",
         },
     });
@@ -46,12 +46,12 @@ export default function PollsContents({ user, player }: PollsContentsProps) {
             />
 
             {isPublic ? (
-                <PollsPublic player={player} pollLogs={pollLogs} />
+                <PollsPublic player={player} pollLogs={playerPollLogs} />
             ) : (
                 <PollsPrivate
                     user={user}
                     player={player}
-                    pollLogs={pollLogs}
+                    pollLogs={playerPollLogs}
                     privateTabClicked={isPublic}
                 />
             )}

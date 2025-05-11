@@ -819,6 +819,31 @@ export async function getQuestLogs({
     }
 }
 
+export interface GetPlayerQuestLogsInput {
+    playerId?: string;
+}
+
+export async function getPlayerQuestLogs(
+    input?: GetPlayerQuestLogsInput
+): Promise<QuestLog[]> {
+    if (!input || !input.playerId) {
+        return [];
+    }
+
+    try {
+        const questLogs = await prisma.questLog.findMany({
+            where: {
+                playerId: input.playerId,
+            },
+        });
+
+        return questLogs;
+    } catch (error) {
+        console.error(error);
+        return [];
+    }
+}
+
 export interface GetClaimableQuestLogsInput {
     playerId: string;
     artistId?: string;

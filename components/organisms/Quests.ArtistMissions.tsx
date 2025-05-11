@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 interface QuestsArtistMissionsProps {
     artist: Artist;
     player: Player | null;
+    questLogs: QuestLog[];
     tokenGatingResult?: AdvancedTokenGateResult | null;
     referralLogs: ReferralLog[];
 }
@@ -23,16 +24,13 @@ interface QuestsArtistMissionsProps {
 export default function QuestsArtistMissions({
     artist,
     player,
+    questLogs,
     tokenGatingResult,
     referralLogs,
 }: QuestsArtistMissionsProps) {
-    const { quests, questLogs, isLoading, error } = useQuestGet({
+    const { quests, isLoading, error } = useQuestGet({
         getQuestsInput: {
             artistId: artist.id,
-        },
-        getQuestLogsInput: {
-            artistId: artist.id,
-            playerId: player?.id ?? "",
         },
     });
 
@@ -58,7 +56,7 @@ export default function QuestsArtistMissions({
 
     useEffect(() => {
         setClaimedQuestLogs(
-            questLogs?.items.filter((questLog) => questLog.isClaimed) || []
+            questLogs?.filter((questLog) => questLog.isClaimed) || []
         );
     }, [questLogs]);
 
@@ -152,7 +150,7 @@ export default function QuestsArtistMissions({
                                 <QuestsMissions
                                     player={player}
                                     quests={quests.items}
-                                    questLogs={questLogs.items}
+                                    questLogs={questLogs}
                                     isLoading={isLoading}
                                     error={error}
                                     permission={permission}

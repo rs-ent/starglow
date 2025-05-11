@@ -8,6 +8,7 @@ import { Player } from "@prisma/client";
 import PublicPrivateTab from "@/components/molecules/PublicPrivateTab";
 import QuestsPrivate from "./Quests.Private";
 import { useReferralGet } from "@/app/hooks/useReferral";
+import { useQuestGet } from "@/app/hooks/useQuest";
 import QuestsPublic from "./Quests.Public";
 import { User } from "next-auth";
 
@@ -18,6 +19,12 @@ interface QuestsContentsProps {
 
 export default function QuestsContents({ user, player }: QuestsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
+
+    const { playerQuestLogs } = useQuestGet({
+        getPlayerQuestLogsInput: {
+            playerId: player?.id ?? "",
+        },
+    });
 
     const { referralLogs } = useReferralGet({
         GetReferralLogsInput: {
@@ -49,11 +56,16 @@ export default function QuestsContents({ user, player }: QuestsContentsProps) {
                 <QuestsPrivate
                     user={user}
                     player={player}
+                    questLogs={playerQuestLogs || []}
                     privateTabClicked={isPublic}
                     referralLogs={referralLogs}
                 />
             ) : (
-                <QuestsPublic player={player} referralLogs={referralLogs} />
+                <QuestsPublic
+                    player={player}
+                    questLogs={playerQuestLogs || []}
+                    referralLogs={referralLogs}
+                />
             )}
         </div>
     );

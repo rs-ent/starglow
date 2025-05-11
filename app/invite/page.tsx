@@ -11,6 +11,10 @@ export default async function InviteAuthPage({
 }) {
     const { ref, method, tgId } = await searchParams;
 
+    if (!ref) {
+        redirect("/");
+    }
+
     if (!isValidParam(ref)) {
         redirect(
             `/error?message=${encodeURIComponent(

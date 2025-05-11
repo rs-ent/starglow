@@ -18,12 +18,14 @@ import {
     GetQuestLogsInput,
     GetClaimableQuestLogsInput,
     GetClaimedQuestLogsInput,
+    GetPlayerQuestLogsInput,
 } from "../actions/quests";
 import {
     useQuestsQuery,
     useQuestLogsQuery,
     useClaimableQuestLogsQuery,
     useClaimedQuestLogsQuery,
+    usePlayerQuestLogsQuery,
 } from "@/app/queries/questsQueries";
 
 export function useQuestGet({
@@ -31,12 +33,14 @@ export function useQuestGet({
     getQuestLogsInput,
     getClaimableQuestLogsInput,
     getClaimedQuestLogsInput,
+    getPlayerQuestLogsInput,
     pagination,
 }: {
     getQuestsInput?: GetQuestsInput;
     getQuestLogsInput?: GetQuestLogsInput;
     getClaimableQuestLogsInput?: GetClaimableQuestLogsInput;
     getClaimedQuestLogsInput?: GetClaimedQuestLogsInput;
+    getPlayerQuestLogsInput?: GetPlayerQuestLogsInput;
     pagination?: PaginationInput;
 }) {
     const {
@@ -63,17 +67,25 @@ export function useQuestGet({
         error: claimedQuestLogsError,
     } = useClaimedQuestLogsQuery({ input: getClaimedQuestLogsInput });
 
+    const {
+        data: playerQuestLogs,
+        isLoading: isLoadingPlayerQuestLogs,
+        error: playerQuestLogsError,
+    } = usePlayerQuestLogsQuery({ input: getPlayerQuestLogsInput });
+
     const isLoading =
         isLoadingQuests ||
         isLoadingQuestLogs ||
         isLoadingClaimableQuestLogs ||
-        isLoadingClaimedQuestLogs;
+        isLoadingClaimedQuestLogs ||
+        isLoadingPlayerQuestLogs;
 
     const error =
         questsError ||
         questLogsError ||
         claimableQuestLogsError ||
-        claimedQuestLogsError;
+        claimedQuestLogsError ||
+        playerQuestLogsError;
 
     return {
         quests,
@@ -92,10 +104,18 @@ export function useQuestGet({
         isLoadingClaimedQuestLogs,
         claimedQuestLogsError,
 
+        playerQuestLogs,
+        isLoadingPlayerQuestLogs,
+        playerQuestLogsError,
+
         isLoading,
         error,
 
         useQuestsQuery,
+        useQuestLogsQuery,
+        useClaimableQuestLogsQuery,
+        useClaimedQuestLogsQuery,
+        usePlayerQuestLogsQuery,
     };
 }
 
