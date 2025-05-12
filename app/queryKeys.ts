@@ -31,6 +31,8 @@ export const queryKeys = {
         byPlayerId: (input?: GetDBUserFromPlayerInput) =>
             ["user", "player", input?.playerId] as const,
         byEmail: (email: string) => ["user", "email", email] as const,
+        byTelegramId: (telegramId: string) =>
+            ["user", "telegram", telegramId] as const,
     },
     currency: ["currency"] as const,
     rewards: ["rewards"] as const,

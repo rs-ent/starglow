@@ -3,7 +3,10 @@
 "use client";
 
 import { GetUserByEmailInput } from "@/app/actions/user";
-import { useGetUserByEmail } from "@/app/mutations/userMutations";
+import {
+    useGetUserByEmail,
+    useSetUserWithTelegram,
+} from "@/app/mutations/userMutations";
 import { useUserQuery } from "../queries/userQueries";
 
 export function useUserGet({
@@ -32,14 +35,35 @@ export function useUserGet({
     };
 }
 
-export function useUserSet({
-    getUserByEmailInput,
-}: {
-    getUserByEmailInput?: GetUserByEmailInput;
-}) {
-    const { mutateAsync: getUserByEmail } = useGetUserByEmail();
+export function useUserSet() {
+    const {
+        mutateAsync: getUserByEmail,
+        isPending: isGetUserByEmailPending,
+        error: getUserByEmailError,
+    } = useGetUserByEmail();
+
+    const {
+        mutateAsync: setUserWithTelegram,
+        isPending: isSetUserWithTelegramPending,
+        error: setUserWithTelegramError,
+    } = useSetUserWithTelegram();
+
+    const isLoading = isGetUserByEmailPending || isSetUserWithTelegramPending;
+    const error = getUserByEmailError || setUserWithTelegramError;
 
     return {
         getUserByEmail,
+        isGetUserByEmailPending,
+        getUserByEmailError,
+
+        setUserWithTelegram,
+        isSetUserWithTelegramPending,
+        setUserWithTelegramError,
+
+        isLoading,
+        error,
+
+        useGetUserByEmail,
+        useSetUserWithTelegram,
     };
 }
