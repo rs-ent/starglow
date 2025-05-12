@@ -28,6 +28,7 @@ export default function PollsArtistList({
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
             artistId: artist.id,
+            isActive: true,
         },
     });
 

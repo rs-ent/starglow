@@ -35,12 +35,15 @@ import {
 } from "@/components/ui/popover";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useArtistsGet } from "@/app/hooks/useArtists";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/app/hooks/useToast";
 
 interface PollListProps {
     viewType: "table" | "card";
 }
 
 export default function AdminPollsList({ viewType }: PollListProps) {
+    const toast = useToast();
     const [pagination, setPagination] = useState({
         currentPage: 1,
         itemsPerPage: 50,
@@ -62,6 +65,12 @@ export default function AdminPollsList({ viewType }: PollListProps) {
     const { pollsList, isLoading, error } = usePollsGet({
         pagination,
     });
+
+    const {
+        updatePoll,
+        isLoading: isUpdating,
+        error: updateError,
+    } = usePollsSet();
 
     const {
         artists,
@@ -120,6 +129,25 @@ export default function AdminPollsList({ viewType }: PollListProps) {
 
         setFilteredPolls(filtered ?? []);
     }
+
+    const handleActiveChange = async (poll: Poll, checked: boolean) => {
+        if (!poll) return;
+
+        await updatePoll({
+            id: poll.id,
+            isActive: checked,
+        });
+
+        if (!isUpdating) {
+            if (updateError) {
+                toast.error(updateError.message);
+            } else {
+                toast.success(
+                    `투표가 ${checked ? "활성화" : "비활성화"}되었습니다.`
+                );
+            }
+        }
+    };
 
     return (
         <div>
@@ -240,6 +268,9 @@ export default function AdminPollsList({ viewType }: PollListProps) {
                                     종료일
                                 </th>
                                 <th className="px-4 py-2 align-middle">
+                                    활성화
+                                </th>
+                                <th className="px-4 py-2 align-middle">
                                     총 투표 수
                                 </th>
                                 <th className="px-4 py-2 align-middle">
@@ -288,6 +319,17 @@ export default function AdminPollsList({ viewType }: PollListProps) {
                                         </td>
                                         <td className="px-4 py-2 align-middle">
                                             {formatDate(poll.endDate)}
+                                        </td>
+                                        <td className="px-4 py-2 align-middle">
+                                            <Switch
+                                                checked={poll.isActive}
+                                                onCheckedChange={() =>
+                                                    handleActiveChange(
+                                                        poll,
+                                                        !poll.isActive
+                                                    )
+                                                }
+                                            />
                                         </td>
                                         <td className="px-4 py-2 align-middle">
                                             {result?.totalVotes.toLocaleString()}

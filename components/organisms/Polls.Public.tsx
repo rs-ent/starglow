@@ -25,6 +25,7 @@ export default function PollsPublic({
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
             category: "PUBLIC",
+            isActive: true,
         },
     });
 

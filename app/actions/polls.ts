@@ -62,6 +62,7 @@ export interface CreatePollInput {
     minimumSGT?: number;
     requiredQuests?: string[];
     artistId?: string;
+    isActive?: boolean;
 }
 
 export async function createPoll(input: CreatePollInput): Promise<Poll> {
@@ -122,6 +123,7 @@ export interface GetPollsInput {
     bettingAssetId?: string;
     participationRewardAssetId?: string;
     artistId?: string;
+    isActive?: boolean;
 }
 
 export async function getPolls({
@@ -283,6 +285,7 @@ export interface UpdatePollInput {
     requiredQuests?: string[];
     artistId?: string | null;
     artist?: Artist | null;
+    isActive?: boolean;
 }
 
 export async function updatePoll(input: UpdatePollInput): Promise<Poll> {

@@ -172,7 +172,10 @@ export default function AdminPollsCreateModal({
         minimumSGT: initialData?.minimumSGT || 0,
         requiredQuests: initialData?.requiredQuests || [],
         artistId: initialData?.artistId || undefined,
+        isActive: initialData?.isActive,
     });
+
+    console.log(initialData?.isActive);
 
     // Update form data when initial data changes
     useEffect(() => {
@@ -206,6 +209,7 @@ export default function AdminPollsCreateModal({
                 minimumSGT: initialData.minimumSGT || 0,
                 requiredQuests: initialData.requiredQuests || [],
                 artistId: initialData.artistId || undefined,
+                isActive: initialData.isActive,
             });
         }
     }, [open, initialData]);
@@ -230,6 +234,10 @@ export default function AdminPollsCreateModal({
 
     // Form validation
     const isFormValid = (): boolean => {
+        if (!formData.id || polls?.length === 0) {
+            return false;
+        }
+
         if (polls?.find((poll) => poll.id === formData.id)) {
             toast.error("이미 존재하는 ID입니다.");
             return false;
@@ -593,127 +601,134 @@ export default function AdminPollsCreateModal({
                         <Section title="카테고리 & 아티스트">
                             <div className="grid grid-cols-2 gap-8">
                                 {/* 카테고리 */}
-                                <div className="mb-8">
-                                    <Label className="mb-2 block">
-                                        카테고리{" "}
-                                        <span className="text-red-500">*</span>
-                                    </Label>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            type="button"
-                                            variant={
-                                                formData.category ===
-                                                PollCategory.PUBLIC
-                                                    ? "default"
-                                                    : "outline"
-                                            }
-                                            onClick={() => {
-                                                handleFormChange(
-                                                    "category",
-                                                    PollCategory.PUBLIC
-                                                );
-                                                handleFormChange(
-                                                    "needToken",
-                                                    false
-                                                );
-                                                handleFormChange(
-                                                    "needTokenAddress",
-                                                    undefined
-                                                );
-                                            }}
-                                            className="flex-1"
-                                        >
-                                            PUBLIC
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant={
-                                                formData.category ===
-                                                PollCategory.PRIVATE
-                                                    ? "default"
-                                                    : "outline"
-                                            }
-                                            onClick={() =>
-                                                handleFormChange(
-                                                    "category",
-                                                    PollCategory.PRIVATE
-                                                )
-                                            }
-                                            className="flex-1"
-                                        >
-                                            PRIVATE (토큰게이팅)
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* 토큰게이팅 주소 */}
-                                {formData.category === PollCategory.PRIVATE && (
+                                <div className="flex flex-col gap-4">
                                     <div className="mb-8">
                                         <Label className="mb-2 block">
-                                            토큰 컨트랙트 주소{" "}
+                                            카테고리{" "}
                                             <span className="text-red-500">
                                                 *
                                             </span>
                                         </Label>
-                                        <div className="space-y-4">
-                                            <Input
-                                                value={
-                                                    formData.needTokenAddress ||
-                                                    ""
+                                        <div className="flex gap-2">
+                                            <Button
+                                                type="button"
+                                                variant={
+                                                    formData.category ===
+                                                    PollCategory.PUBLIC
+                                                        ? "default"
+                                                        : "outline"
                                                 }
-                                                onChange={(e) =>
+                                                onClick={() => {
+                                                    handleFormChange(
+                                                        "category",
+                                                        PollCategory.PUBLIC
+                                                    );
+                                                    handleFormChange(
+                                                        "needToken",
+                                                        false
+                                                    );
                                                     handleFormChange(
                                                         "needTokenAddress",
-                                                        e.target.value
+                                                        undefined
+                                                    );
+                                                }}
+                                                className="flex-1"
+                                            >
+                                                PUBLIC
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant={
+                                                    formData.category ===
+                                                    PollCategory.PRIVATE
+                                                        ? "default"
+                                                        : "outline"
+                                                }
+                                                onClick={() =>
+                                                    handleFormChange(
+                                                        "category",
+                                                        PollCategory.PRIVATE
                                                     )
                                                 }
-                                                className="py-3"
-                                                placeholder="토큰 컨트랙트 주소를 입력하세요"
-                                            />
-
-                                            {/* 컬렉션 선택 UI */}
-                                            <div className="flex gap-4 overflow-auto">
-                                                {everyCollections?.map(
-                                                    (collection) => (
-                                                        <div
-                                                            key={
-                                                                collection.address
-                                                            }
-                                                            onClick={() =>
-                                                                handleFormChange(
-                                                                    "needTokenAddress",
-                                                                    collection.address
-                                                                )
-                                                            }
-                                                            className={`cursor-pointer w-[300px] h-[150px] ${
-                                                                formData.needTokenAddress ===
-                                                                collection.address
-                                                                    ? "ring-2 ring-primary"
-                                                                    : ""
-                                                            }`}
-                                                        >
-                                                            <CollectionCard
-                                                                collection={
-                                                                    collection
-                                                                }
-                                                                showPrice={
-                                                                    false
-                                                                }
-                                                                showSharePercentage={
-                                                                    false
-                                                                }
-                                                                showCirculation={
-                                                                    false
-                                                                }
-                                                                isLinked={false}
-                                                            />
-                                                        </div>
-                                                    )
-                                                )}
-                                            </div>
+                                                className="flex-1"
+                                            >
+                                                PRIVATE (토큰게이팅)
+                                            </Button>
                                         </div>
                                     </div>
-                                )}
+
+                                    {/* 토큰게이팅 주소 */}
+                                    {formData.category ===
+                                        PollCategory.PRIVATE && (
+                                        <div className="mb-8">
+                                            <Label className="mb-2 block">
+                                                토큰 컨트랙트 주소{" "}
+                                                <span className="text-red-500">
+                                                    *
+                                                </span>
+                                            </Label>
+                                            <div className="space-y-4">
+                                                <Input
+                                                    value={
+                                                        formData.needTokenAddress ||
+                                                        ""
+                                                    }
+                                                    onChange={(e) =>
+                                                        handleFormChange(
+                                                            "needTokenAddress",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="py-3"
+                                                    placeholder="토큰 컨트랙트 주소를 입력하세요"
+                                                />
+
+                                                {/* 컬렉션 선택 UI */}
+                                                <div className="flex gap-4 overflow-auto">
+                                                    {everyCollections?.map(
+                                                        (collection) => (
+                                                            <div
+                                                                key={
+                                                                    collection.address
+                                                                }
+                                                                onClick={() =>
+                                                                    handleFormChange(
+                                                                        "needTokenAddress",
+                                                                        collection.address
+                                                                    )
+                                                                }
+                                                                className={`cursor-pointer w-[300px] h-[150px] ${
+                                                                    formData.needTokenAddress ===
+                                                                    collection.address
+                                                                        ? "ring-2 ring-primary"
+                                                                        : ""
+                                                                }`}
+                                                            >
+                                                                <CollectionCard
+                                                                    collection={
+                                                                        collection
+                                                                    }
+                                                                    showPrice={
+                                                                        false
+                                                                    }
+                                                                    showSharePercentage={
+                                                                        false
+                                                                    }
+                                                                    showCirculation={
+                                                                        false
+                                                                    }
+                                                                    isLinked={
+                                                                        false
+                                                                    }
+                                                                />
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
 
                                 {/* 아티스트 */}
                                 <div className="mb-8">
@@ -1127,10 +1142,53 @@ export default function AdminPollsCreateModal({
 
                                 <Divider />
 
+                                {/* 활성화 상태 */}
+                                <div className="w-full mb-8">
+                                    <Label className="mb-2 block">
+                                        활성화 상태
+                                    </Label>
+                                    <div className="flex gap-2 w-full">
+                                        <Button
+                                            type="button"
+                                            className="flex-1"
+                                            variant={
+                                                formData.isActive
+                                                    ? "default"
+                                                    : "outline"
+                                            }
+                                            onClick={() =>
+                                                handleFormChange(
+                                                    "isActive",
+                                                    true
+                                                )
+                                            }
+                                        >
+                                            활성화
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            className="flex-1"
+                                            variant={
+                                                !formData.isActive
+                                                    ? "default"
+                                                    : "outline"
+                                            }
+                                            onClick={() =>
+                                                handleFormChange(
+                                                    "isActive",
+                                                    false
+                                                )
+                                            }
+                                        >
+                                            비활성화
+                                        </Button>
+                                    </div>
+                                </div>
+
                                 <div className="flex justify-end pt-4">
                                     <Button
                                         type="submit"
-                                        disabled={!isFormValid() || isLoading}
+                                        disabled={isLoading}
                                         className="px-8"
                                     >
                                         {isLoading
