@@ -211,6 +211,8 @@ export async function getPolls({
 
         if (input?.artistId) where.artistId = input.artistId;
 
+        if (input?.isActive) where.isActive = input.isActive;
+
         const [items, totalItems] = await Promise.all([
             prisma.poll.findMany({
                 where,

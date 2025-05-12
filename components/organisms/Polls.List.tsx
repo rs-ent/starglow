@@ -41,7 +41,6 @@ export default function PollsList({
         swipeToSlide: true,
         draggable: true,
         centerMode: true,
-        focusOnSelect: true,
         accessibility: true,
         beforeChange: (current: number, next: number) => {
             setCurrentSlide(next);

@@ -29,6 +29,8 @@ export default function PollsPublic({
         },
     });
 
+    console.log(pollsList);
+
     return (
         <div
             className={cn(
