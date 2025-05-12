@@ -8,6 +8,7 @@ import HeroGitbook from "@/components/organisms/Hero.Gitbook";
 import HeroFollowUs from "@/components/organisms/Hero.FollowUs";
 import Footer from "@/components/organisms/Footer";
 import Script from "next/script";
+import { useSession } from "next-auth/react";
 
 declare global {
     interface Window {
@@ -19,6 +20,7 @@ declare global {
 
 export default function Main() {
     const router = useRouter();
+    const { data: session } = useSession();
 
     const [isLoading, setIsLoading] = useState(true);
     const [telegram, setTelegram] = useState<any>(null);
@@ -31,6 +33,8 @@ export default function Main() {
         ) {
             const telegramUser = telegram.initDataUnsafe?.user;
             const refParam = telegram.initDataUnsafe?.start_param;
+            console.log("telegram", telegram);
+            console.log("session", session);
             if (refParam && telegramUser?.id) {
                 const tgId = telegramUser.id.toString();
                 router.replace(
