@@ -7,6 +7,7 @@ Table User {
   name String
   email String [unique]
   emailVerified DateTime
+  password String
   image String
   role String [not null, default: 'user']
   active Boolean [not null, default: true]
@@ -39,6 +40,16 @@ Table Account {
 
   indexes {
     (provider, providerAccountId) [unique]
+  }
+}
+
+Table VerificationToken {
+  identifier String [not null]
+  token String [unique, not null]
+  expires DateTime [not null]
+
+  indexes {
+    (identifier, token) [unique]
   }
 }
 

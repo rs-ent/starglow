@@ -18,6 +18,7 @@ model User {
   name          String?
   email         String?           @unique 
   emailVerified DateTime?
+  password      String?
   image         String?
   role          String            @default("user")
   active        Boolean           @default(true)
@@ -55,6 +56,14 @@ model Account {
 
   @@unique([provider, providerAccountId])
   @@index([userId, provider])
+}
+
+model VerificationToken {
+  identifier String
+  token     String      @unique
+  expires   DateTime
+
+  @@unique([identifier, token])
 }
 
 model Session {

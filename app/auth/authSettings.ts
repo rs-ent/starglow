@@ -1,16 +1,19 @@
 // app/auth/authSettings.ts
 
 import NextAuth from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import TwitterProvider from "next-auth/providers/twitter";
-import KakaoProvider from "next-auth/providers/kakao";
-import SpotifyProvider from "next-auth/providers/spotify";
-import CoinbaseProvider from "next-auth/providers/coinbase";
+import Google from "next-auth/providers/google";
+import Twitter from "next-auth/providers/twitter";
+import Kakao from "next-auth/providers/kakao";
+import Spotify from "next-auth/providers/spotify";
+import Coinbase from "next-auth/providers/coinbase";
+import Resend from "next-auth/providers/resend";
+import { sendVerificationRequest } from "./authSendRequest";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma/client";
 import type { NextAuthConfig } from "next-auth";
 import { getPlayerByUserId, setPlayer } from "../actions/player";
 import { createPolygonWallet } from "../actions/defaultWallets";
+import crypto from "crypto";
 
 const isProd = process.env.NODE_ENV === "production";
 const isVercelPreview = process.env.VERCEL_ENV === "preview";
@@ -37,7 +40,7 @@ const cookieOptions = {
 const authOptions: NextAuthConfig = {
     adapter: PrismaAdapter(prisma),
     providers: [
-        GoogleProvider({
+        Google({
             clientId: process.env.GOOGLE_CLIENT_ID!,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
             authorization: {
@@ -48,21 +51,37 @@ const authOptions: NextAuthConfig = {
                 },
             },
         }),
-        TwitterProvider({
+        Twitter({
             clientId: process.env.TWITTER_CLIENT_ID!,
             clientSecret: process.env.TWITTER_CLIENT_SECRET!,
         }),
-        KakaoProvider({
+        Kakao({
             clientId: process.env.KAKAO_CLIENT_ID!,
             clientSecret: process.env.KAKAO_CLIENT_SECRET!,
         }),
-        SpotifyProvider({
+        Spotify({
             clientId: process.env.SPOTIFY_CLIENT_ID!,
             clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
         }),
-        CoinbaseProvider({
+        Coinbase({
             clientId: process.env.COINBASE_CLIENT_ID!,
             clientSecret: process.env.COINBASE_CLIENT_SECRET!,
+        }),
+        Resend({
+            from: "no-reply@starglow.io",
+            apiKey: process.env.RESEND_API!,
+            maxAge: 24 * 60 * 60, // 24 hours
+            async generateVerificationToken() {
+                return crypto.randomUUID();
+            },
+            sendVerificationRequest: async (params) => {
+                try {
+                    await sendVerificationRequest(params);
+                } catch (error) {
+                    console.error("Failed to send verification email:", error);
+                    throw new Error("Failed to send verification email");
+                }
+            },
         }),
     ],
     session: {

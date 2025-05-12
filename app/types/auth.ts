@@ -3,7 +3,8 @@ export type ProviderType =
     | "twitter"
     | "spotify"
     | "coinbase"
-    | "kakao";
+    | "kakao"
+    | "resend";
 
 export type Provider = {
     id: ProviderType;

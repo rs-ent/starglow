@@ -5,6 +5,8 @@ import Button from "./Button";
 import { useLoading } from "@/app/hooks/useLoading";
 import { signIn } from "next-auth/react";
 import { ProviderType } from "@/app/types/auth";
+import { useState } from "react";
+import FormSignInEmail from "./Form.SignIn.Email";
 
 interface SocialAuthButtonProps {
     providerId: ProviderType;
@@ -22,26 +24,52 @@ export default function SocialAuthButton({
     callbackUrl = "/",
 }: SocialAuthButtonProps) {
     const { startLoading } = useLoading();
+    const [showEmailVerification, setShowEmailVerification] = useState(false);
 
     const handleSignIn = async () => {
+        if (providerId === "resend") {
+            setShowEmailVerification(true);
+            return;
+        }
+
         startLoading();
         await signIn(providerId, { callbackUrl });
     };
 
     return (
-        <Button
-            variant="outline"
-            onClick={handleSignIn}
-            className={`w-full items-center justify-center ${providerColor}`}
-        >
-            <img
-                src={providerIcon}
-                alt={`${providerName} icon`}
-                style={{ width: "20px", height: "auto" }}
-            />
-            <span className="ml-2">
-                Sign in with {providerId === "twitter" ? "X" : providerName}
-            </span>
-        </Button>
+        <>
+            {showEmailVerification && (
+                <div
+                    className="fixed inset-0 flex items-center justify-center bg-black/50"
+                    onClick={() => setShowEmailVerification(false)}
+                >
+                    <div className="bg-background p-6 rounded-lg shadow-lg w-full max-w-md">
+                        <p className="text-sm font-medium text-center mb-4">
+                            Please enter your email to sign in
+                        </p>
+                        <FormSignInEmail />
+                    </div>
+                </div>
+            )}
+            <Button
+                variant="outline"
+                onClick={handleSignIn}
+                className={`w-full items-center justify-center ${providerColor}`}
+            >
+                <img
+                    src={providerIcon}
+                    alt={`${providerName} icon`}
+                    style={{ width: "20px", height: "auto" }}
+                />
+                <span className="ml-2">
+                    Sign in with{" "}
+                    {providerId === "twitter"
+                        ? "X"
+                        : providerId === "resend"
+                        ? "Email"
+                        : providerName}
+                </span>
+            </Button>
+        </>
     );
 }
