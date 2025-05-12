@@ -160,7 +160,7 @@ export default function AdminQuestList() {
         if (result) {
             toast.success(
                 `『${quest.title}』 퀘스트가 ${
-                    result ? "활성화" : "비활성화"
+                    quest.isActive ? "활성화" : "비활성화"
                 }되었습니다.`
             );
         } else {
