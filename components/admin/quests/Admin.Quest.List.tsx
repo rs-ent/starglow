@@ -158,15 +158,9 @@ export default function AdminQuestList() {
         });
 
         if (result) {
-            toast.success(
-                `『${quest.title}』 퀘스트가 ${
-                    quest.isActive ? "활성화" : "비활성화"
-                }되었습니다.`
-            );
+            toast.success(`『${quest.title}』 퀘스트가 활성화되었습니다.`);
         } else {
-            toast.error(
-                `『${quest.title}』 퀘스트 활성화 상태 변경에 실패했습니다.`
-            );
+            toast.success(`『${quest.title}』 퀘스트 비활성화되었습니다.`);
         }
     };
 

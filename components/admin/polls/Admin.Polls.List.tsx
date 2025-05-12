@@ -139,15 +139,9 @@ export default function AdminPollsList({ viewType }: PollListProps) {
         });
 
         if (result) {
-            toast.success(
-                `『${poll.title}』 투표가 ${
-                    result ? "활성화" : "비활성화"
-                }되었습니다.`
-            );
+            toast.success(`『${poll.title}』 투표가 활성화되었습니다.`);
         } else {
-            toast.error(
-                `『${poll.title}』 투표 활성화 상태 변경에 실패했습니다.`
-            );
+            toast.success(`『${poll.title}』 투표 비활성화되었습니다.`);
         }
     };
 
