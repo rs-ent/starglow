@@ -10,6 +10,7 @@ import {
     updatePoll,
     participatePoll,
     updateUserSelection,
+    updateActivePoll,
 } from "../actions/polls";
 import { playerAssetsKeys } from "../queryKeys";
 
@@ -20,6 +21,12 @@ export function useCreatePollMutation() {
         mutationFn: createPoll,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: pollKeys.all });
+            queryClient.invalidateQueries({
+                queryKey: pollKeys.list(),
+            });
+            queryClient.invalidateQueries({
+                queryKey: pollKeys.lists(),
+            });
         },
         onError: (error) => {
             console.error("Error creating poll:", error);
@@ -36,6 +43,9 @@ export function useUpdatePollMutation() {
             queryClient.invalidateQueries({ queryKey: pollKeys.all });
             queryClient.invalidateQueries({
                 queryKey: pollKeys.detail(updatePoll.id),
+            });
+            queryClient.invalidateQueries({
+                queryKey: pollKeys.list(),
             });
             queryClient.invalidateQueries({
                 queryKey: pollKeys.lists(),
@@ -58,6 +68,9 @@ export function useDeletePollMutation() {
                 queryKey: pollKeys.detail(deletedPoll.id),
             });
             queryClient.invalidateQueries({
+                queryKey: pollKeys.list(),
+            });
+            queryClient.invalidateQueries({
                 queryKey: pollKeys.lists(),
             });
         },
@@ -77,7 +90,7 @@ export function useParticipatePollMutation() {
                 throw new Error(data.error || "Error participating in poll");
             }
             queryClient.invalidateQueries({
-                queryKey: pollKeys.logs(variables.poll.id),
+                queryKey: pollKeys.logs(variables.poll.id as any),
             });
             queryClient.invalidateQueries({
                 queryKey: pollKeys.log(data.data?.id || ""),
@@ -114,7 +127,7 @@ export function useUpdateUserSelectionMutation() {
         mutationFn: updateUserSelection,
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({
-                queryKey: pollKeys.logs(data.data?.pollId || ""),
+                queryKey: pollKeys.logs((data.data?.id as any) || ""),
             });
             queryClient.invalidateQueries({
                 queryKey: pollKeys.log(data.data?.id || ""),
@@ -124,6 +137,28 @@ export function useUpdateUserSelectionMutation() {
                     data.data?.pollId || "",
                     data.data?.playerId || ""
                 ),
+            });
+        },
+    });
+}
+
+export function useUpdateActivePollMutation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: updateActivePoll,
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: pollKeys.all,
+            });
+            queryClient.invalidateQueries({
+                queryKey: pollKeys.detail(variables.pollId),
+            });
+            queryClient.invalidateQueries({
+                queryKey: pollKeys.list(),
+            });
+            queryClient.invalidateQueries({
+                queryKey: pollKeys.lists(),
             });
         },
     });

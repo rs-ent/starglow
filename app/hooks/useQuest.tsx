@@ -11,6 +11,7 @@ import {
     useCompleteQuestMutation,
     useClaimQuestRewardMutation,
     useSetReferralQuestLogsMutation,
+    useUpdateQuestActiveMutation,
 } from "@/app/mutations/questsMutations";
 import {
     GetQuestsInput,
@@ -19,6 +20,7 @@ import {
     GetClaimableQuestLogsInput,
     GetClaimedQuestLogsInput,
     GetPlayerQuestLogsInput,
+    UpdateQuestActiveInput,
 } from "../actions/quests";
 import {
     useQuestsQuery,
@@ -168,6 +170,12 @@ export function useQuestSet() {
         error: setReferralQuestLogsError,
     } = useSetReferralQuestLogsMutation();
 
+    const {
+        mutateAsync: updateQuestActive,
+        isPending: isUpdatingQuestActive,
+        error: updateQuestActiveError,
+    } = useUpdateQuestActiveMutation();
+
     const isLoading =
         isCreating ||
         isUpdating ||
@@ -176,7 +184,8 @@ export function useQuestSet() {
         isTokenGating ||
         isCompleting ||
         isClaimingQuestReward ||
-        isSettingReferralQuestLogs;
+        isSettingReferralQuestLogs ||
+        isUpdatingQuestActive;
 
     const error =
         createError ||
@@ -186,7 +195,8 @@ export function useQuestSet() {
         tokenGatingError ||
         completeError ||
         claimQuestRewardError ||
-        setReferralQuestLogsError;
+        setReferralQuestLogsError ||
+        updateQuestActiveError;
 
     return {
         createQuest,
@@ -221,8 +231,11 @@ export function useQuestSet() {
         isSettingReferralQuestLogs,
         setReferralQuestLogsError,
 
-        isLoading,
+        updateQuestActive,
+        isUpdatingQuestActive,
+        updateQuestActiveError,
 
+        isLoading,
         error,
 
         useCreateQuestMutation,
@@ -233,5 +246,6 @@ export function useQuestSet() {
         useCompleteQuestMutation,
         useClaimQuestRewardMutation,
         useSetReferralQuestLogsMutation,
+        useUpdateQuestActiveMutation,
     };
 }

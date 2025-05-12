@@ -997,3 +997,32 @@ export async function updateUserSelection(
 
     return result;
 }
+
+export interface UpdateActivePollInput {
+    pollId: string;
+    isActive: boolean;
+}
+
+export async function updateActivePoll(
+    input: UpdateActivePollInput
+): Promise<boolean> {
+    const { pollId, isActive } = input;
+
+    if (!pollId) {
+        return false;
+    }
+
+    try {
+        const poll = await prisma.poll.update({
+            where: { id: pollId },
+            data: {
+                isActive,
+            },
+        });
+
+        return poll.isActive;
+    } catch (error) {
+        console.error("Error updating poll:", error);
+        return false;
+    }
+}

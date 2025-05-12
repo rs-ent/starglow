@@ -8,6 +8,7 @@ import {
     useUpdatePollMutation,
     useParticipatePollMutation,
     useUpdateUserSelectionMutation,
+    useUpdateActivePollMutation,
 } from "../mutations/pollsMutations";
 import {
     usePollsQuery,
@@ -179,18 +180,27 @@ export function usePollsSet() {
         error: updateUserSelectionError,
     } = useUpdateUserSelectionMutation();
 
+    const {
+        mutateAsync: updateActivePoll,
+        isPending: isUpdatingActivePoll,
+        error: updateActivePollError,
+    } = useUpdateActivePollMutation();
+
     const isLoading =
         isCreating ||
         isUpdating ||
         isDeleting ||
         isParticipating ||
-        isUpdatingUserSelection;
+        isUpdatingUserSelection ||
+        isUpdatingActivePoll;
+
     const error =
         createError ||
         updateError ||
         deleteError ||
         participateError ||
-        updateUserSelectionError;
+        updateUserSelectionError ||
+        updateActivePollError;
 
     return {
         createPoll,
@@ -198,6 +208,8 @@ export function usePollsSet() {
         deletePoll,
         participatePoll,
         updateUserSelection,
+        updateActivePoll,
+
         isLoading,
         error,
     };

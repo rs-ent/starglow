@@ -31,6 +31,7 @@ export default function QuestsPublic({
     const { quests, isLoading, error } = useQuestGet({
         getQuestsInput: {
             isPublic: true,
+            isActive: true,
         },
     });
 

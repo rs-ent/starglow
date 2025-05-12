@@ -13,6 +13,7 @@ import {
     claimQuestReward,
     setReferralQuestLogs,
     updateQuestOrder,
+    updateQuestActive,
 } from "../actions/quests";
 
 export function useCreateQuestMutation() {
@@ -180,6 +181,20 @@ export function useSetReferralQuestLogsMutation() {
                     playerId: variables?.player?.id,
                     isPublic: true,
                 }),
+            });
+        },
+    });
+}
+
+export function useUpdateQuestActiveMutation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: updateQuestActive,
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: questKeys.all });
+            queryClient.invalidateQueries({
+                queryKey: questKeys.list(),
             });
         },
     });

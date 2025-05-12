@@ -40,6 +40,7 @@ import {
     verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { GripVertical } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 type QuestWithRelations = Quest & {
     artist?: Artist | null;
@@ -59,7 +60,7 @@ export default function AdminQuestList() {
         error: errorArtists,
     } = useArtistsGet({});
 
-    const { deleteQuest, updateQuestOrder } = useQuestSet();
+    const { deleteQuest, updateQuestOrder, updateQuestActive } = useQuestSet();
 
     const toast = useToast();
 
@@ -150,6 +151,25 @@ export default function AdminQuestList() {
         }
     };
 
+    const handleActiveChange = async (quest: Quest) => {
+        const result = await updateQuestActive({
+            questId: quest.id,
+            isActive: !quest.isActive,
+        });
+
+        if (result) {
+            toast.success(
+                `『${quest.title}』 퀘스트가 ${
+                    result ? "활성화" : "비활성화"
+                }되었습니다.`
+            );
+        } else {
+            toast.error(
+                `『${quest.title}』 퀘스트 활성화 상태 변경에 실패했습니다.`
+            );
+        }
+    };
+
     if (isLoading) return <div>로딩 중</div>;
     if (error) return <div>오류 발생: {error.message}</div>;
 
@@ -207,6 +227,12 @@ export default function AdminQuestList() {
                 </td>
                 <td className="px-4 py-2">
                     {quest.endDate ? formatDate(quest.endDate) : "-"}
+                </td>
+                <td className="px-4 py-2">
+                    <Switch
+                        checked={quest.isActive}
+                        onCheckedChange={() => handleActiveChange(quest)}
+                    />
                 </td>
                 <td className="px-4 py-2">
                     <div className="flex gap-2 justify-center">
@@ -279,6 +305,7 @@ export default function AdminQuestList() {
                             <th className="px-4 py-2">반복</th>
                             <th className="px-4 py-2">시작일</th>
                             <th className="px-4 py-2">종료일</th>
+                            <th className="px-4 py-2">활성화</th>
                             <th className="px-4 py-2">기능</th>
                         </tr>
                     </thead>

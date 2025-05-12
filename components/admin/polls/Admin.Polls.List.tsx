@@ -67,9 +67,9 @@ export default function AdminPollsList({ viewType }: PollListProps) {
     });
 
     const {
-        updatePoll,
-        isLoading: isUpdating,
-        error: updateError,
+        updateActivePoll,
+        isLoading: isUpdatingActivePoll,
+        error: updateActivePollError,
     } = usePollsSet();
 
     const {
@@ -133,19 +133,21 @@ export default function AdminPollsList({ viewType }: PollListProps) {
     const handleActiveChange = async (poll: Poll, checked: boolean) => {
         if (!poll) return;
 
-        await updatePoll({
-            id: poll.id,
+        const result = await updateActivePoll({
+            pollId: poll.id,
             isActive: checked,
         });
 
-        if (!isUpdating) {
-            if (updateError) {
-                toast.error(updateError.message);
-            } else {
-                toast.success(
-                    `투표가 ${checked ? "활성화" : "비활성화"}되었습니다.`
-                );
-            }
+        if (result) {
+            toast.success(
+                `『${poll.title}』 투표가 ${
+                    result ? "활성화" : "비활성화"
+                }되었습니다.`
+            );
+        } else {
+            toast.error(
+                `『${poll.title}』 투표 활성화 상태 변경에 실패했습니다.`
+            );
         }
     };
 

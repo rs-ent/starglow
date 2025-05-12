@@ -1004,3 +1004,24 @@ export async function setReferralQuestLogs(
         return false;
     }
 }
+
+export interface UpdateQuestActiveInput {
+    questId: string;
+    isActive: boolean;
+}
+
+export async function updateQuestActive(
+    input: UpdateQuestActiveInput
+): Promise<boolean> {
+    try {
+        await prisma.quest.update({
+            where: { id: input.questId },
+            data: { isActive: input.isActive },
+        });
+
+        return true;
+    } catch (error) {
+        console.error(error);
+        return false;
+    }
+}

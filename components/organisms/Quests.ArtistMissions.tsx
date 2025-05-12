@@ -31,6 +31,7 @@ export default function QuestsArtistMissions({
     const { quests, isLoading, error } = useQuestGet({
         getQuestsInput: {
             artistId: artist.id,
+            isActive: true,
         },
     });
 
