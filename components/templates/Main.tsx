@@ -10,6 +10,7 @@ import Script from "next/script";
 import { useSession } from "next-auth/react";
 import { useUserSet } from "@/app/hooks/useUser";
 import { useSearchParams } from "next/navigation";
+import { useToast } from "@/app/hooks/useToast";
 
 declare global {
     interface Window {
@@ -22,6 +23,7 @@ declare global {
 export default function Main() {
     const searchParams = useSearchParams();
     const signedOut = searchParams.get("signedOut");
+    const toast = useToast();
     const { data: session } = useSession();
     const { setUserWithTelegram, isSetUserWithTelegramPending, error } =
         useUserSet();
@@ -37,6 +39,9 @@ export default function Main() {
         }
 
         if (signedOut) {
+            toast.success(
+                `Signed out successfully. ${JSON.stringify(session)}`
+            );
             setIsLoading(false);
             return;
         }
