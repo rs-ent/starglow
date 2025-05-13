@@ -3,11 +3,12 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 import { getProviders } from "next-auth/react";
 import SocialAuthButton from "@/components/atoms/SocialAuthButton";
-import FormSignInEmail from "@/components/atoms/Form.SignIn.Email";
 import { Provider, ProviderType } from "@/app/types/auth";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "@/app/hooks/useToast";
 import PartialLoading from "@/components/atoms/PartialLoading";
+import TelegramLoginButton from "@/components/atoms/TelegramLoginButton";
+import { useUserSet } from "@/app/hooks/useUser";
 
 const providerIcons: Record<ProviderType, string> = {
     google: "/icons/providers/google.svg",
@@ -42,6 +43,8 @@ function SignInButtons() {
     const callbackUrl = params.get("callbackUrl") || "/";
     const error = params.get("error");
 
+    const { setUserWithTelegram, isSetUserWithTelegramPending } = useUserSet();
+
     useEffect(() => {
         if (error) {
             if (error === "OAuthAccountNotLinked") {
@@ -68,6 +71,15 @@ function SignInButtons() {
         fetchProviders();
     }, [fetchProviders]);
 
+    async function handleTelegramAuth(user: any) {
+        if (user) {
+            console.log("user", user);
+            setUserWithTelegram({
+                user: user,
+            });
+        }
+    }
+
     if (!providers) {
         return <PartialLoading text="Loading providers..." />;
     }
@@ -91,6 +103,7 @@ function SignInButtons() {
                     />
                 );
             })}
+            <TelegramLoginButton onAuth={handleTelegramAuth} />
         </div>
     );
 }

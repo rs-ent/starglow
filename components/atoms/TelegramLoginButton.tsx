@@ -4,25 +4,43 @@
 
 import { useEffect, useRef } from "react";
 
-export default function TelegramLoginButton() {
+interface TelegramLoginButtonProps {
+    onAuth?: (user: any) => void;
+}
+
+export default function TelegramLoginButton({
+    onAuth,
+}: TelegramLoginButtonProps) {
     const telegramWrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!telegramWrapperRef.current || telegramWrapperRef.current.childNodes.length > 0) {
+        if (
+            !telegramWrapperRef.current ||
+            telegramWrapperRef.current.childNodes.length > 0
+        ) {
             return;
         }
+
+        (window as any).onTelegramAuth = (user: any) => {
+            onAuth?.(user);
+        };
 
         const script = document.createElement("script");
         script.src = "https://telegram.org/js/telegram-widget.js?22";
         script.async = true;
         script.setAttribute("data-telegram-login", "starglow_redslippers_bot");
-        script.setAttribute("data-size", "large");
+        script.setAttribute("data-size", "small");
+        script.setAttribute("data-userpic", "false");
+        script.setAttribute("data-radius", "6");
         script.setAttribute("data-request-access", "write");
-        script.setAttribute("data-auth-url", "/api/telegram/integrate/callback");
+        script.setAttribute("data-onauth", "onTelegramAuth(user)");
 
         telegramWrapperRef.current.appendChild(script);
-    }, []);
+
+        return () => {
+            delete (window as any).onTelegramAuth;
+        };
+    }, [onAuth]);
 
     return <div ref={telegramWrapperRef} />;
-
 }

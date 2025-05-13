@@ -10,10 +10,6 @@ import Footer from "@/components/organisms/Footer";
 import Script from "next/script";
 import { useSession } from "next-auth/react";
 import { useUserSet } from "@/app/hooks/useUser";
-import Popup from "../atoms/Popup";
-import Button from "../atoms/Button";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { cn } from "@/lib/utils/tailwind";
 
 declare global {
     interface Window {
