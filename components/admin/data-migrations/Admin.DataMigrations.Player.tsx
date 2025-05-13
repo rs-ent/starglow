@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils/tailwind";
 import { useUserGet, useUserSet } from "@/app/hooks/useUser";
 import { usePlayerSet } from "@/app/hooks/usePlayer";
 import FileUploader from "@/components/atoms/FileUploader";
+import { User, Player } from "@prisma/client";
 
 export default function AdminDataMigrationsPlayer() {
     const [csvData, setCsvData] = useState<any[]>([]);
@@ -21,6 +22,9 @@ export default function AdminDataMigrationsPlayer() {
     const [migratedPlayers, setMigratedPlayers] = useState<Set<number>>(
         new Set()
     );
+
+    const [isCreatingReferralLogs, setIsCreatingReferralLogs] = useState(false);
+    const [referralLogProgress, setReferralLogProgress] = useState(0);
 
     const { users, isUsersLoading, usersError } = useUserGet({
         getUsersInput: {
@@ -172,6 +176,95 @@ export default function AdminDataMigrationsPlayer() {
         return results;
     };
 
+    const handleCreateReferralLog = async (playerData: any, index?: number) => {
+        if (!users) {
+            return { success: false, error: "Users not found" };
+        }
+
+        if (!playerData["recommenderId"]) {
+            return { success: false, skipped: true };
+        }
+
+        const referrerTelegramId = playerData["recommenderId"].replace(
+            "TG_",
+            ""
+        );
+        const referrerUser = users.find(
+            (user) => user.telegramId === referrerTelegramId
+        ) as User & { player: Player };
+        if (!referrerUser) {
+            return { success: false, error: "Referrer not found" };
+        }
+
+        const referredTelegramId = playerData["SNS ID"].replace("TG_", "");
+        const referredUser = users.find(
+            (user) => user.telegramId === referredTelegramId
+        );
+        if (!referredUser) {
+            return { success: false, error: "Referred user not found" };
+        }
+
+        try {
+            const result = await invitePlayer({
+                referredUser,
+                referrerCode: referrerUser.player.referralCode,
+                method: "telegram",
+                telegramId: referredTelegramId,
+            });
+
+            return { success: true, result };
+        } catch (error) {
+            console.error("Referral log creation failed:", error);
+            return { success: false, error: (error as Error).message };
+        }
+    };
+
+    const handleCreateAllReferralLogs = async () => {
+        setIsCreatingReferralLogs(true);
+        setReferralLogProgress(0);
+
+        const batchSize = 10;
+        const results = [];
+        let successCount = 0;
+        let failCount = 0;
+        let skipCount = 0;
+
+        try {
+            for (let i = 0; i < csvData.length; i += batchSize) {
+                const batch = csvData.slice(i, i + batchSize);
+
+                const batchResults = await Promise.all(
+                    batch.map((playerData, idx) =>
+                        handleCreateReferralLog(playerData, i + idx)
+                    )
+                );
+
+                batchResults.forEach((result) => {
+                    if (result.success) successCount++;
+                    else if (result.skipped) skipCount++;
+                    else failCount++;
+                });
+
+                results.push(...batchResults);
+
+                setReferralLogProgress(
+                    Math.floor(((i + batch.length) / csvData.length) * 100)
+                );
+
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+
+            toast.success(
+                `Referral log creation completed: ${successCount} successful, ${skipCount} skipped, ${failCount} failed`
+            );
+        } catch (error) {
+            console.error("Batch referral log creation failed:", error);
+            toast.error("Referral log creation process encountered an error");
+        } finally {
+            setIsCreatingReferralLogs(false);
+        }
+    };
+
     const totalPages = Math.ceil(csvData.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedData = csvData.slice(startIndex, startIndex + itemsPerPage);
@@ -200,7 +293,7 @@ export default function AdminDataMigrationsPlayer() {
                 <div className="mt-8">
                     <h2 className="text-xl font-semibold mb-4">CSV Data</h2>
 
-                    <div className="overflow-x-auto">
+                    <div className="overflow-auto max-h-[500px]">
                         <table className="min-w-full border border-[rgba(255,255,255,0.5)]">
                             <thead>
                                 <tr className="px-6 py-1 bg-[rgba(255,255,255,0.3)] divide-x divide-[rgba(255,255,255,0.3)]">
@@ -286,8 +379,6 @@ export default function AdminDataMigrationsPlayer() {
                             </button>
 
                             {(() => {
-                                // Calculate page range to display
-                                // Determine which group of 10 pages we're in
                                 const pageGroup = Math.floor(
                                     (currentPage - 1) / 10
                                 );
@@ -364,6 +455,42 @@ export default function AdminDataMigrationsPlayer() {
                                     </div>
                                     <div className="text-xs mt-1 text-gray-400">
                                         {migrationProgress}% Complete
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 일괄 Referral Log 생성성 */}
+                    <div className="my-6">
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={handleCreateAllReferralLogs}
+                                disabled={isCreatingReferralLogs}
+                                className={cn(
+                                    "py-2 px-4 text-white rounded transition-colors",
+                                    isCreatingReferralLogs
+                                        ? "bg-blue-400 cursor-not-allowed"
+                                        : "bg-blue-600 hover:bg-blue-700"
+                                )}
+                            >
+                                {isCreatingReferralLogs
+                                    ? "Creating Referral Logs..."
+                                    : "Create Referral Logs"}
+                            </button>
+
+                            {isCreatingReferralLogs && (
+                                <div className="flex-1">
+                                    <div className="w-full bg-gray-700 rounded-full h-2.5">
+                                        <div
+                                            className="bg-blue-600 h-2.5 rounded-full"
+                                            style={{
+                                                width: `${referralLogProgress}%`,
+                                            }}
+                                        ></div>
+                                    </div>
+                                    <div className="text-xs mt-1 text-gray-400">
+                                        {referralLogProgress}% Complete
                                     </div>
                                 </div>
                             )}

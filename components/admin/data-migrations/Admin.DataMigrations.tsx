@@ -13,7 +13,7 @@ export default function AdminDataMigrations() {
     );
 
     return (
-        <div className="flex flex-col items-center justify-center h-screen">
+        <div className="flex flex-col items-center justify-center">
             <h1 className="text-2xl font-bold mt-10">Data Migrations</h1>
             <div
                 className={cn(
