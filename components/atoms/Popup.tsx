@@ -4,15 +4,18 @@ import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils/tailwind";
+import Image from "next/image";
 
 interface PopupProps {
     children: React.ReactNode;
     width?: string;
     height?: string;
+    fullScreen?: boolean;
     className?: string;
     open: boolean;
     closeButton?: boolean;
     closeButtonColor?: string;
+    backgroundImage?: string;
     onClose: () => void;
 }
 
@@ -20,10 +23,12 @@ export default function Popup({
     children,
     width = "400px",
     height = "auto",
+    fullScreen = false,
     className = "",
     closeButton = true,
     closeButtonColor = "text-muted-foreground",
     open,
+    backgroundImage,
     onClose,
 }: PopupProps) {
     useEffect(() => {
@@ -41,7 +46,7 @@ export default function Popup({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.5)] backdrop-blur-sm z-50"
+                    className="fixed inset-0 items-center justify-center bg-[rgba(0,0,0,0.45)] backdrop-blur-sm z-50"
                     onClick={onClose}
                 >
                     <motion.div
@@ -54,13 +59,27 @@ export default function Popup({
                             filter: "blur(20px)",
                         }}
                         transition={{ duration: 0.2, ease: "easeInOut" }}
-                        style={{ width, height }}
+                        style={{
+                            width: fullScreen ? "100vw" : width,
+                            height: fullScreen ? "100vh" : height,
+                        }}
                         className={cn(
-                            "gradient-border m-2 rounded-3xl shadow-lg relative overflow-hidden bg-gradient-to-br from-[rgba(0,0,0,0.3)] to-[rgba(0,0,0,0.8)] backdrop-blur-lg",
+                            "shadow-lg relative overflow-hidden bg-gradient-to-br from-[rgba(0,0,0,0.3)] to-[rgba(0,0,0,0.8)] backdrop-blur-lg",
+                            "flex items-center justify-center",
+                            fullScreen
+                                ? "rounded-none m-0"
+                                : "rounded-3xl gradient-border m-2",
                             className
                         )}
                         onClick={(e) => e.stopPropagation()}
                     >
+                        <Image
+                            src={backgroundImage || "/bg/popup.svg"}
+                            alt="Popup Background"
+                            width={100}
+                            height={100}
+                            className="absolute inset-0 w-full h-full object-cover opacity-80 bg-blend-overlay -z-50"
+                        />
                         {closeButton && (
                             <button
                                 className={cn(

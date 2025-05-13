@@ -12,6 +12,7 @@ import PartialLoading from "@/components/atoms/PartialLoading";
 const providerIcons: Record<ProviderType, string> = {
     google: "/icons/providers/google.svg",
     twitter: "/icons/providers/x.svg",
+    discord: "/icons/providers/discord.svg",
     kakao: "/icons/providers/kakao.svg",
     spotify: "/icons/providers/spotify.svg",
     coinbase: "/icons/providers/coinbase.svg",
@@ -23,11 +24,13 @@ const providerColors: Record<ProviderType, string> = {
     twitter:
         "bg-[rgba(1,1,1,1)] text-[rgba(255,255,255,1)] hover:bg-[rgba(1,1,1,1)] hover:text-[rgba(255,255,255,1)] hover:scale-105",
     kakao: "bg-[rgba(254,230,8,1)] text-[rgba(0,0,0,1)] hover:bg-[rgba(254,230,8,1)] hover:text-[rgba(0,0,0,1)] hover:scale-105",
+    discord:
+        "border border-[rgba(93,105,242,1)] bg-[rgba(93,105,242,1)] text-[rgba(255,255,255,1)] hover:bg-[rgba(93,105,242,1)] hover:text-[rgba(255,255,255,1)] hover:scale-105",
     spotify:
         "bg-[rgba(0,0,0,1)] text-[rgba(30,215,96,1)] hover:bg-[rgba(0,0,0,1)] hover:text-[rgba(30,215,96,1)] hover:scale-105",
     coinbase:
         "bg-[rgba(255,255,255,1)] text-[rgba(0,82,255,1)] hover:bg-[rgba(255,255,255,1)] hover:text-[rgba(0,82,255,1)] hover:scale-105",
-    resend: "bg-[rgba(0,0,0,1)] text-[rgba(255,255,255,1)] hover:bg-[rgba(0,0,0,1)] hover:text-[rgba(255,255,255,1)] hover:scale-105",
+    resend: "border border-[rgba(0,0,0,0)] bg-[rgba(0,0,0,0)] text-[rgba(255,255,255,1)] hover:bg-[rgba(0,0,0,0)] hover:text-[rgba(255,255,255,1)] hover:scale-105",
 };
 
 function SignInButtons() {
@@ -69,7 +72,7 @@ function SignInButtons() {
         return <PartialLoading text="Loading providers..." />;
     }
 
-    const DONOT_SHOW_PROVIDERS = ["kakao", "twitter", "spotify", "coinbase"];
+    const DONOT_SHOW_PROVIDERS = ["spotify", "coinbase"];
 
     return (
         <div className="space-y-3">

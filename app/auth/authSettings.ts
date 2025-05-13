@@ -14,7 +14,7 @@ import type { NextAuthConfig } from "next-auth";
 import { getPlayerByUserId, setPlayer } from "../actions/player";
 import { createPolygonWallet } from "../actions/defaultWallets";
 import crypto from "crypto";
-
+import Discord from "next-auth/providers/discord";
 const isProd = process.env.NODE_ENV === "production";
 const isVercelPreview = process.env.VERCEL_ENV === "preview";
 
@@ -54,6 +54,10 @@ const authOptions: NextAuthConfig = {
         Twitter({
             clientId: process.env.TWITTER_CLIENT_ID!,
             clientSecret: process.env.TWITTER_CLIENT_SECRET!,
+        }),
+        Discord({
+            clientId: process.env.DISCORD_CLIENT_ID!,
+            clientSecret: process.env.DISCORD_CLIENT_SECRET!,
         }),
         Kakao({
             clientId: process.env.KAKAO_CLIENT_ID!,

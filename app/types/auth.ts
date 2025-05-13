@@ -1,6 +1,7 @@
 export type ProviderType =
     | "google"
     | "twitter"
+    | "discord"
     | "spotify"
     | "coinbase"
     | "kakao"

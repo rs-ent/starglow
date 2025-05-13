@@ -106,12 +106,12 @@ export default function Main() {
             <Popup
                 open={showWelcomePopup}
                 onClose={() => setShowWelcomePopup(false)}
-                width="300px"
                 className="p-8"
+                fullScreen={true}
             >
                 <div className="flex flex-col items-center text-center">
                     <div className="relative mb-6">
-                        <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 opacity-70 blur-md"></div>
+                        <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 opacity-45 blur-md"></div>
                         <img
                             src="/logo/l-gradient.svg"
                             alt="Starglow"
@@ -121,17 +121,28 @@ export default function Main() {
 
                     <h2
                         className={cn(
-                            "text-3xl font-bold mb-3 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400",
-                            getResponsiveClass(30).textClass
+                            "text-2xl font-bold mb-3",
+                            getResponsiveClass(40).textClass
+                        )}
+                    >
+                        Hi, {telegramUser?.username || telegramUser?.first_name}
+                        !
+                    </h2>
+
+                    <h3
+                        className={cn(
+                            "text-3xl font-bold mb-3",
+                            "bg-clip-text text-transparent bg-gradient-to-r from-[rgba(255,255,255,0.8)] to-[rgba(255,255,255,0.4)]",
+                            getResponsiveClass(25).textClass
                         )}
                     >
                         Welcome to Starglow{" "}
-                        {telegramUser?.username || telegramUser?.first_name}
-                    </h2>
+                    </h3>
 
                     <p
                         className={cn(
-                            "text-muted-foreground mb-8 max-w-xs",
+                            "mb-8",
+                            "text-[rgba(255,255,255,0.65)]",
                             getResponsiveClass(15).textClass
                         )}
                     >
@@ -144,6 +155,9 @@ export default function Main() {
                             onClick={handleContinueWithTelegram}
                             disabled={isSetUserWithTelegramPending}
                             variant="default"
+                            frameSize={20}
+                            textSize={25}
+                            paddingSize={25}
                             img="/icons/telegram-white.svg"
                             imgLeft={true}
                             className="w-full py-6 bg-gradient-to-r from-[#2AABEE] to-[#229ED9] hover:from-[#229ED9] hover:to-[#1E94CC] transition-all duration-300"
@@ -153,21 +167,19 @@ export default function Main() {
                                 : "Continue with Telegram"}
                         </Button>
 
-                        <div className="relative my-2">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-600"></div>
-                            </div>
-                            <div className="relative flex justify-center">
-                                <span className="px-4 text-sm text-gray-400">
-                                    or
-                                </span>
-                            </div>
+                        <div className="my-2 flex flex-row items-center justify-around">
+                            <div className="w-full border-t border-gray-600"></div>
+                            <span className="px-1 text-sm text-gray-400">
+                                or
+                            </span>
+                            <div className="w-full border-t border-gray-600"></div>
                         </div>
 
                         <Button
                             onClick={handleSignIn}
-                            variant="outline"
-                            className="w-full py-6 border-gray-600 hover:bg-gray-800 transition-all duration-300"
+                            textSize={20}
+                            variant="ghost"
+                            className="w-full py-6 border-gray-600 transition-all duration-300"
                         >
                             Sign in with another account
                         </Button>

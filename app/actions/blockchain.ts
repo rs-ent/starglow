@@ -671,7 +671,6 @@ export async function estimateGasForTransactions(
     try {
         const { collectionAddress, walletId, transactions } = input;
 
-        // 1. 컬렉션 정보 가져오기
         const collection = await prisma.collectionContract.findUnique({
             where: { address: collectionAddress },
             include: { network: true },
@@ -684,7 +683,6 @@ export async function estimateGasForTransactions(
             };
         }
 
-        // 2. 지갑 정보 가져오기
         const walletResult = await getEscrowWalletWithPrivateKey(walletId);
         if (!walletResult.success || !walletResult.data) {
             return {
@@ -693,10 +691,8 @@ export async function estimateGasForTransactions(
             };
         }
 
-        // 3. 체인 설정
         const chain = await getChain(collection.network);
 
-        // 4. 클라이언트 설정
         const publicClient = createPublicClient({
             chain,
             transport: http(),
@@ -714,7 +710,6 @@ export async function estimateGasForTransactions(
             transport: http(),
         });
 
-        // 5. 가스 추정
         const gasOptions = await estimateGasOptions({
             publicClient,
             walletClient,
@@ -724,7 +719,6 @@ export async function estimateGasForTransactions(
             customOptions: undefined,
         });
 
-        // 6. 가스 비용 계산 (이더 단위)
         const estimatedGasCostInWei =
             gasOptions.gasLimit * gasOptions.maxFeePerGas;
         const estimatedGasCostInEth = Number(estimatedGasCostInWei) / 1e18;

@@ -81,7 +81,6 @@ export async function deployCollection(
     input: DeployCollectionInput
 ): Promise<DeployCollectionResult> {
     try {
-        // 1. 네트워크 확인
         const network = await prisma.blockchainNetwork.findUnique({
             where: { id: input.networkId },
         });
@@ -89,7 +88,6 @@ export async function deployCollection(
             return { success: false, error: "Network not found" };
         }
 
-        // 2. 지갑 정보 가져오기
         const escrowWallet = await getEscrowWalletWithPrivateKey(
             input.walletId
         );
@@ -97,16 +95,14 @@ export async function deployCollection(
             return { success: false, error: "Escrow wallet not found" };
         }
 
-        // 3. Collection 컨트랙트 직접 배포
         const { hash, contractAddress } = await deployContract({
             walletId: input.walletId,
             network,
             abi,
             bytecode: collectionJson.bytecode as `0x${string}`,
-            args: [], // constructor가 없으므로 빈 배열
+            args: [], 
         });
 
-        // 4. 블록체인 설정
         const chain = await getChain(network);
         const privateKey = escrowWallet.data.privateKey;
         const formattedPrivateKey = privateKey.startsWith("0x")
@@ -114,7 +110,6 @@ export async function deployCollection(
             : `0x${privateKey}`;
         const account = privateKeyToAccount(formattedPrivateKey as Address);
 
-        // 5. 클라이언트 설정
         const publicClient = createPublicClient({
             chain,
             transport: http(),
@@ -126,14 +121,12 @@ export async function deployCollection(
             transport: http(),
         });
 
-        // 6. 컨트랙트 객체 생성
         const collectionContract = getContract({
             address: contractAddress as Address,
             abi,
             client: walletClient,
         });
 
-        // 7. 컨트랙트 초기화
         console.log("Initializing collection with params:", {
             name: input.name,
             symbol: input.symbol,
@@ -156,7 +149,6 @@ export async function deployCollection(
 
         await publicClient.waitForTransactionReceipt({ hash: initTx });
 
-        // 8. DB에 컬렉션 정보 저장
         const collection = await prisma.collectionContract.create({
             data: {
                 key: input.collectionKey,
