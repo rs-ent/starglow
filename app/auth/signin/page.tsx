@@ -9,6 +9,7 @@ import { useToast } from "@/app/hooks/useToast";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import TelegramLoginButton from "@/components/atoms/TelegramLoginButton";
 import { useUserSet } from "@/app/hooks/useUser";
+import { useRouter } from "next/navigation";
 
 const providerIcons: Record<ProviderType, string> = {
     google: "/icons/providers/google.svg",
@@ -36,6 +37,7 @@ const providerColors: Record<ProviderType, string> = {
 
 function SignInButtons() {
     const toast = useToast();
+    const router = useRouter();
     const [providers, setProviders] = useState<Record<string, Provider> | null>(
         null
     );
@@ -73,10 +75,11 @@ function SignInButtons() {
 
     async function handleTelegramAuth(user: any) {
         if (user) {
-            console.log("user", user);
-            setUserWithTelegram({
+            await setUserWithTelegram({
                 user: user,
             });
+
+            router.push(callbackUrl);
         }
     }
 
@@ -87,7 +90,7 @@ function SignInButtons() {
     const DONOT_SHOW_PROVIDERS = ["spotify", "coinbase", "discord", "kakao"];
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-3 flex flex-col items-center justify-center">
             {Object.values(providers).map((provider) => {
                 if (DONOT_SHOW_PROVIDERS.includes(provider.id)) {
                     return null;
