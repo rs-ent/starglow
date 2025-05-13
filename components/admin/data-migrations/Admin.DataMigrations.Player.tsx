@@ -7,6 +7,7 @@ import { useToast } from "@/app/hooks/useToast";
 import { cn } from "@/lib/utils/tailwind";
 import { useUserGet, useUserSet } from "@/app/hooks/useUser";
 import { usePlayerSet } from "@/app/hooks/usePlayer";
+import { usePlayerAssetSet } from "@/app/hooks/usePlayerAssets";
 import FileUploader from "@/components/atoms/FileUploader";
 import { User, Player } from "@prisma/client";
 
@@ -34,6 +35,7 @@ export default function AdminDataMigrationsPlayer() {
 
     const { setUserWithTelegram } = useUserSet();
     const { invitePlayer } = usePlayerSet({});
+    const { updatePlayerAsset } = usePlayerAssetSet({});
     const toast = useToast();
 
     useEffect(() => {
@@ -263,6 +265,25 @@ export default function AdminDataMigrationsPlayer() {
         } finally {
             setIsCreatingReferralLogs(false);
         }
+    };
+
+    /*
+    export interface PlayerAssetTransactionInput {
+    playerId: string;
+    assetId: string;
+    amount: number;
+    operation: "ADD" | "SUBTRACT" | "SET";
+    reason?: string;
+    metadata?: any;
+    questId?: string;
+    questLogId?: string;
+    pollId?: string;
+    pollLogId?: string;
+}
+    */
+
+    const handleUpdatePlayerAsset = async (index?: number) => {
+        
     };
 
     const totalPages = Math.ceil(csvData.length / itemsPerPage);

@@ -72,7 +72,7 @@ function SignInButtons() {
         return <PartialLoading text="Loading providers..." />;
     }
 
-    const DONOT_SHOW_PROVIDERS = ["spotify", "coinbase"];
+    const DONOT_SHOW_PROVIDERS = ["spotify", "coinbase", "discord", "kakao"];
 
     return (
         <div className="space-y-3">
