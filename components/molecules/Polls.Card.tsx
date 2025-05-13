@@ -162,7 +162,7 @@ export default function PollsCard({
                 const remainingTokenCount =
                     tokenGatingData.data.tokenCount -
                     (voteAmount + alreadyVotedAmount);
-                if (remainingTokenCount <= 0) {
+                if (remainingTokenCount < 0) {
                     toast.error(
                         "You've used all your tokens for this poll. Please purchase more NFTs to participate in this poll."
                     );

@@ -563,7 +563,7 @@ export async function participatePoll(
             const remainingTokenCount =
                 input.tokenGating.data.tokenCount -
                 (amount + (input.alreadyVotedAmount || 0));
-            if (remainingTokenCount <= 0) {
+            if (remainingTokenCount < 0) {
                 return {
                     success: false,
                     error: "You've used all your tokens for this poll. Please purchase more NFTs to participate in this poll.",
