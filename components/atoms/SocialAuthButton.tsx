@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react";
 import { ProviderType } from "@/app/types/auth";
 import { useState } from "react";
 import FormSignInEmail from "./Form.SignIn.Email";
+import { cn } from "@/lib/utils/tailwind";
 
 interface SocialAuthButtonProps {
     providerId: ProviderType;
@@ -14,6 +15,7 @@ interface SocialAuthButtonProps {
     providerColor: string;
     providerIcon: string;
     callbackUrl?: string;
+    className?: string;
 }
 
 export default function SocialAuthButton({
@@ -22,6 +24,7 @@ export default function SocialAuthButton({
     providerColor,
     providerIcon,
     callbackUrl = "/",
+    className,
 }: SocialAuthButtonProps) {
     const { startLoading } = useLoading();
     const [showEmailVerification, setShowEmailVerification] = useState(false);
@@ -54,7 +57,11 @@ export default function SocialAuthButton({
             <Button
                 variant="outline"
                 onClick={handleSignIn}
-                className={`w-full items-center justify-center ${providerColor}`}
+                className={cn(
+                    "w-full items-center justify-center",
+                    providerColor,
+                    className
+                )}
             >
                 <img
                     src={providerIcon}

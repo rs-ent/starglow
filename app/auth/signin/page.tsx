@@ -90,23 +90,30 @@ function SignInButtons() {
     const DONOT_SHOW_PROVIDERS = ["spotify", "coinbase", "discord", "kakao"];
 
     return (
-        <div className="space-y-3 flex flex-col items-center justify-center">
-            {Object.values(providers).map((provider) => {
-                if (DONOT_SHOW_PROVIDERS.includes(provider.id)) {
-                    return null;
-                }
-                return (
-                    <SocialAuthButton
-                        key={provider.id}
-                        providerId={provider.id}
-                        providerName={provider.name}
-                        providerIcon={providerIcons[provider.id]}
-                        providerColor={providerColors[provider.id]}
-                        callbackUrl={callbackUrl}
-                    />
-                );
-            })}
-            <TelegramLoginButton onAuth={handleTelegramAuth} />
+        <div className="w-full flex flex-col gap-4 items-center justify-center">
+            <div className="w-full grid grid-cols-1 gap-4">
+                {Object.values(providers).map((provider) => {
+                    if (DONOT_SHOW_PROVIDERS.includes(provider.id)) {
+                        return null;
+                    }
+                    return (
+                        <SocialAuthButton
+                            key={provider.id}
+                            providerId={provider.id}
+                            providerName={provider.name}
+                            providerIcon={providerIcons[provider.id]}
+                            providerColor={providerColors[provider.id]}
+                            callbackUrl={callbackUrl}
+                        />
+                    );
+                })}
+            </div>
+            <div className="my-2 flex flex-row items-center justify-around">
+                <div className="w-full border-t border-gray-600"></div>
+                <span className="px-1 text-sm text-gray-400">or</span>
+                <div className="w-full border-t border-gray-600"></div>
+            </div>
+            <TelegramLoginButton onAuth={handleTelegramAuth} size="large" />
         </div>
     );
 }
