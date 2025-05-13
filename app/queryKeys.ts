@@ -24,9 +24,13 @@ import {
     TokenGatingInput as ArtistTokenGatingInput,
 } from "./actions/artists";
 import { GetReferralLogsInput } from "./actions/referral";
+import { GetUsersInput } from "./actions/user";
 
 export const queryKeys = {
     user: {
+        all: ["user"] as const,
+        list: (input?: GetUsersInput) =>
+            [...queryKeys.user.all, "list", input] as const,
         byId: (id: string) => ["user", id] as const,
         byPlayerId: (input?: GetDBUserFromPlayerInput) =>
             ["user", "player", input?.playerId] as const,

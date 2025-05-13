@@ -125,6 +125,17 @@ model Player {
   @@index([referralCode])
 }
 
+model PlayerOldData {
+  id             String         @id @default(cuid())
+  telegramId     String
+  name           String?
+  points         Int            @default(0)
+  referrerTelegramId String?
+  createdAt      DateTime     @default(now())
+
+  @@unique([telegramId])
+}
+
 model ReferralLog {
   id             String         @id @default(cuid())
   referredPlayerId String

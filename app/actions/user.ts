@@ -3,11 +3,71 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import { Player, User } from "@prisma/client";
+import { Prisma, Player, User } from "@prisma/client";
 import { setPlayer, invitePlayer } from "./player";
 import { createPolygonWallet } from "./defaultWallets";
 import { cookies } from "next/headers";
 import crypto from "crypto";
+
+export interface GetUsersInput {
+    ids?: string[];
+    active?: boolean;
+    role?: string;
+    names?: string[];
+    providers?: string[];
+    telegramIds?: string[];
+    emails?: string[];
+}
+
+export async function getUsers(input?: GetUsersInput): Promise<User[]> {
+    if (!input) {
+        const users = await prisma.user.findMany();
+        return users;
+    }
+
+    try {
+        const where: Prisma.UserWhereInput = {};
+
+        if (input.ids) {
+            where.id = { in: input.ids };
+        }
+
+        if (input.active) {
+            where.active = input.active;
+        }
+
+        if (input.role) {
+            where.role = input.role;
+        }
+
+        if (input.names) {
+            where.name = { in: input.names };
+        }
+
+        if (input.providers) {
+            where.provider = { in: input.providers };
+        }
+
+        if (input.telegramIds) {
+            where.telegramId = { in: input.telegramIds };
+        }
+
+        if (input.emails) {
+            where.email = { in: input.emails };
+        }
+
+        const users = await prisma.user.findMany({
+            where,
+            include: {
+                player: true,
+            },
+        });
+        return users;
+    } catch (error) {
+        console.error("Failed to get users", error);
+        return [];
+    }
+}
 
 export interface GetUserByEmailInput {
     email: string;
@@ -42,6 +102,7 @@ export interface setUserWithTelegramInput {
         photo_url?: string;
     };
     referrerCode?: string;
+    withoutSessionRefresh?: boolean;
 }
 
 export async function setUserWithTelegram(
@@ -95,6 +156,10 @@ export async function setUserWithTelegram(
                 method: "telegram",
                 telegramId,
             });
+        }
+
+        if (input.withoutSessionRefresh) {
+            return { user, player };
         }
 
         const sessionToken = crypto.randomUUID();

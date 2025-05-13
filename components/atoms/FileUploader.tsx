@@ -89,8 +89,11 @@ export default function FileUploader({
                     )}
                 </div>
                 <p className="text-sm text-gray-500">
-                    Supported formats: PNG, JPG, JPEG, GIF, WEBP (Max{" "}
-                    {maxSize / 1024 / 1024}MB)
+                    Supported formats:{" "}
+                    {Object.keys(accept)
+                        .map((key) => key)
+                        .join(", ")}{" "}
+                    (Max {maxSize / 1024 / 1024}MB)
                 </p>
             </div>
         </div>

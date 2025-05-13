@@ -106,6 +106,15 @@ Table Player {
   }
 }
 
+Table PlayerOldData {
+  id String [pk]
+  telegramId String [unique, not null]
+  name String
+  points Int [not null, default: 0]
+  referrerTelegramId String
+  createdAt DateTime [default: `now()`, not null]
+}
+
 Table ReferralLog {
   id String [pk]
   referredPlayerId String [not null]

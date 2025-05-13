@@ -2,28 +2,40 @@
 
 "use client";
 
-import { GetUserByEmailInput } from "@/app/actions/user";
+import { GetUserByEmailInput, GetUsersInput } from "@/app/actions/user";
 import {
     useGetUserByEmail,
     useSetUserWithTelegram,
 } from "@/app/mutations/userMutations";
-import { useUserQuery } from "../queries/userQueries";
+import { useUserQuery, useUsersQuery } from "../queries/userQueries";
 
 export function useUserGet({
     getUserByEmailInput,
+    getUsersInput,
 }: {
     getUserByEmailInput?: GetUserByEmailInput;
+    getUsersInput?: GetUsersInput;
 }) {
+    const {
+        data: users,
+        isLoading: isUsersLoading,
+        error: usersError,
+    } = useUsersQuery({ getUsersInput });
+
     const {
         data: user,
         isLoading: isUserLoading,
         error: userError,
     } = useUserQuery({ getUserByEmailInput });
 
-    const isLoading = isUserLoading;
-    const error = userError;
+    const isLoading = isUserLoading || isUsersLoading;
+    const error = userError || usersError;
 
     return {
+        users,
+        isUsersLoading,
+        usersError,
+
         user,
         isUserLoading,
         userError,
@@ -31,6 +43,7 @@ export function useUserGet({
         isLoading,
         error,
 
+        useUsersQuery,
         useUserQuery,
     };
 }

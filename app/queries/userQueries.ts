@@ -4,7 +4,24 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../queryKeys";
-import { getUserByEmail, GetUserByEmailInput } from "../actions/user";
+import {
+    getUserByEmail,
+    GetUserByEmailInput,
+    getUsers,
+    GetUsersInput,
+} from "../actions/user";
+
+export function useUsersQuery({
+    getUsersInput,
+}: {
+    getUsersInput?: GetUsersInput;
+}) {
+    return useQuery({
+        queryKey: queryKeys.user.list(getUsersInput),
+        queryFn: () => getUsers(getUsersInput),
+        enabled: !!getUsersInput,
+    });
+}
 
 export function useUserQuery({
     getUserByEmailInput,
