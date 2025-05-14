@@ -125,7 +125,6 @@ export default function PollsCard({
     }, [tokenGatingData, poll.needToken, pollLogs]);
 
     useEffect(() => {
-        console.log("VOTE AMOUNT", voteAmount);
     }, [voteAmount]);
 
     const handleSubmit = async () => {

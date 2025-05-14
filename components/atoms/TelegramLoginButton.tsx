@@ -2,7 +2,11 @@
 
 "use client";
 
-import { useEffect, useRef } from "react";
+import Script from "next/script";
+import { useEffect, useRef, useState } from "react";
+import PartialLoading from "./PartialLoading";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils/tailwind";
 
 interface TelegramLoginButtonProps {
     size?: "small" | "medium" | "large";
@@ -14,6 +18,8 @@ export default function TelegramLoginButton({
     size = "medium",
 }: TelegramLoginButtonProps) {
     const telegramWrapperRef = useRef<HTMLDivElement>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [telegram, setTelegram] = useState<any>(null);
 
     useEffect(() => {
         if (
@@ -44,5 +50,42 @@ export default function TelegramLoginButton({
         };
     }, [onAuth]);
 
-    return <div ref={telegramWrapperRef} />;
+    return (
+        <>
+            <Script
+                src="https://telegram.org/js/telegram-web-app.js"
+                strategy="lazyOnload"
+                onLoad={() => {
+                    if (window.Telegram?.WebApp) {
+                        setTelegram(window.Telegram.WebApp);
+                    } else {
+                        setIsLoading(false);
+                    }
+                }}
+            />
+            {isLoading ? (
+                <PartialLoading text="Loading..." />
+            ) : telegram ? (
+                <Button
+                    variant="outline"
+                    onClick={() => {
+                        window.location.href = "/";
+                    }}
+                    className={cn(
+                        "w-full items-center justify-center",
+                        "bg-[rgba(84,169,235,1)] border-none"
+                    )}
+                >
+                    <img
+                        src={"/icons/providers/telegram-white.svg"}
+                        alt={`Telegram refresh icon`}
+                        style={{ width: "20px", height: "auto" }}
+                    />
+                    <span className="ml-2">Continue With Telegram</span>
+                </Button>
+            ) : (
+                <div ref={telegramWrapperRef} />
+            )}
+        </>
+    );
 }

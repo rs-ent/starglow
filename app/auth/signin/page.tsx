@@ -9,7 +9,6 @@ import { useToast } from "@/app/hooks/useToast";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import TelegramLoginButton from "@/components/atoms/TelegramLoginButton";
 import { useUserSet } from "@/app/hooks/useUser";
-import { useRouter } from "next/navigation";
 
 const providerIcons: Record<ProviderType, string> = {
     google: "/icons/providers/google.svg",
@@ -37,7 +36,6 @@ const providerColors: Record<ProviderType, string> = {
 
 function SignInButtons() {
     const toast = useToast();
-    const router = useRouter();
     const [providers, setProviders] = useState<Record<string, Provider> | null>(
         null
     );
