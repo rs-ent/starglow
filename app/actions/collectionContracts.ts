@@ -26,7 +26,7 @@ import { createNFTMetadata, getMetadataByCollectionAddress } from "./metadata";
 import { deployContract } from "./blockchain";
 
 import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
-import { BytesLike, ethers } from "ethers";
+import { revalidatePath } from "next/cache";
 const abi = collectionJson.abi;
 
 export interface GetCollectionInput {
@@ -1692,11 +1692,13 @@ export async function transferTokens(
         const totalBatches = batches.length;
 
         if (successfulBatches === totalBatches) {
+            revalidatePath("/");
             return {
                 success: true,
                 transactionHash: results[0].transactionHash,
             };
         } else if (successfulBatches > 0) {
+            revalidatePath("/");
             return {
                 success: true,
                 transactionHash: results.find((r) => r.success)

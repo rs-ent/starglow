@@ -10,7 +10,7 @@ import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
 import PollBar from "@/components/atoms/Polls.Bar";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PollOption } from "@/app/actions/polls";
 import Button from "@/components/atoms/Button";
 import { useToast } from "@/app/hooks/useToast";
@@ -94,21 +94,22 @@ export default function PollsCard({
             return;
         }
         setSelection(option);
-        setVoteAmount(1);
+
+        setVoteAmount(poll.needToken && poll.needTokenAddress ? 0 : 1);
+
         setTimeout(() => {
             setAnimateSubmit(true);
         }, 100);
     };
 
     const [voteAmount, setVoteAmount] = useState(0);
-    const [voteAmountInput, setVoteAmountInput] = useState("1");
+    const [voteAmountInput, setVoteAmountInput] = useState("0");
     const { alreadyVotedAmount, maxVoteAmount, permission } = useMemo(() => {
         const permission = tokenGatingData?.data?.hasToken;
         const alreadyVotedAmount =
             pollLogs?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
 
-        let maxVoteAmount = 99;
-
+        let maxVoteAmount = 0;
         if (poll.needToken && tokenGatingData?.data) {
             maxVoteAmount = Math.max(
                 0,
@@ -123,14 +124,14 @@ export default function PollsCard({
         };
     }, [tokenGatingData, poll.needToken, pollLogs]);
 
+    useEffect(() => {
+        console.log("VOTE AMOUNT", voteAmount);
+    }, [voteAmount]);
+
     const handleSubmit = async () => {
         startLoading();
         try {
-            if (
-                isNaN(voteAmount) ||
-                parseInt(voteAmountInput, 10) <= 0 ||
-                voteAmount <= 0
-            ) {
+            if (isNaN(voteAmount) || voteAmount <= 0) {
                 toast.error("Please enter a valid vote amount.");
                 return;
             }
@@ -184,6 +185,9 @@ export default function PollsCard({
             } else {
                 toast.error(result.error || "Failed to vote.");
             }
+
+            setVoteAmount(poll.needToken && poll.needTokenAddress ? 0 : 1);
+            setVoteAmountInput("0");
         } catch (error) {
             console.error(error);
             toast.error(`${error}`);
@@ -520,7 +524,7 @@ export default function PollsCard({
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 const amount = Math.max(
-                                                    1,
+                                                    0,
                                                     voteAmount - 1
                                                 );
                                                 setVoteAmount(amount);
@@ -537,7 +541,7 @@ export default function PollsCard({
                                             type="text"
                                             inputMode="numeric"
                                             value={voteAmountInput}
-                                            placeholder="1"
+                                            placeholder="0"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                             }}
