@@ -22,12 +22,14 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 
 import assetsJson from "@/web3/artifacts/contracts/Assets.sol/Assets.json";
+const abi = assetsJson.abi;
+const bytecode = assetsJson.bytecode as `0x${string}`;
+
 import {
     PlayerAssetResult,
     updatePlayerAssetsOnAssetChange,
 } from "./playerAssets";
-const abi = assetsJson.abi;
-const bytecode = assetsJson.bytecode as `0x${string}`;
+
 
 export interface DeployAssetsContractInput {
     walletId: string;
