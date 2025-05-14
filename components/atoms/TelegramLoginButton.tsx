@@ -4,9 +4,9 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
-import PartialLoading from "./PartialLoading";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/tailwind";
+import { useRouter } from "next/navigation";
 
 interface TelegramLoginButtonProps {
     size?: "small" | "medium" | "large";
@@ -17,6 +17,7 @@ export default function TelegramLoginButton({
     onAuth,
     size = "medium",
 }: TelegramLoginButtonProps) {
+    const router = useRouter();
     const telegramWrapperRef = useRef<HTMLDivElement>(null);
     const [telegram, setTelegram] = useState<any>(null);
     const [telegramUser, setTelegramUser] = useState<any>(null);
@@ -75,7 +76,7 @@ export default function TelegramLoginButton({
                 <Button
                     variant="outline"
                     onClick={() => {
-                        window.location.href = "/";
+                        router.push("/?requestRefresh=" + Date.now());
                     }}
                     className={cn(
                         "w-full items-center justify-center",

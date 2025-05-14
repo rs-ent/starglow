@@ -7,10 +7,9 @@ import HeroGitbook from "@/components/organisms/Hero.Gitbook";
 import HeroFollowUs from "@/components/organisms/Hero.FollowUs";
 import Footer from "@/components/organisms/Footer";
 import Script from "next/script";
-import { useSession } from "next-auth/react";
+import { getSession, useSession } from "next-auth/react";
 import { useUserSet } from "@/app/hooks/useUser";
-import { useSearchParams } from "next/navigation";
-import { useToast } from "@/app/hooks/useToast";
+import { useRouter, useSearchParams } from "next/navigation";
 
 declare global {
     interface Window {
@@ -22,8 +21,8 @@ declare global {
 
 export default function Main() {
     const searchParams = useSearchParams();
+    const requestRefresh = searchParams.get("requestRefresh");
     const signedOut = searchParams.get("signedOut");
-    const toast = useToast();
     const { data: session } = useSession();
     const { setUserWithTelegram, isSetUserWithTelegramPending, error } =
         useUserSet();
@@ -36,6 +35,10 @@ export default function Main() {
         if (session?.user || authProcessed) {
             setIsLoading(false);
             return;
+        }
+
+        if (requestRefresh) {
+            window.location.reload();
         }
 
         if (signedOut) {
