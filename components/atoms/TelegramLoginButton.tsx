@@ -18,8 +18,18 @@ export default function TelegramLoginButton({
     size = "medium",
 }: TelegramLoginButtonProps) {
     const telegramWrapperRef = useRef<HTMLDivElement>(null);
-    const [isLoading, setIsLoading] = useState(true);
     const [telegram, setTelegram] = useState<any>(null);
+    const [telegramUser, setTelegramUser] = useState<any>(null);
+
+    console.log("telegram", telegram);
+    console.log("telegramUser", telegramUser);
+
+    useEffect(() => {
+        if (telegram && telegram.initDataUnsafe?.user) {
+            const tgUser = telegram.initDataUnsafe?.user;
+            setTelegramUser(tgUser);
+        }
+    }, [telegram]);
 
     useEffect(() => {
         if (
@@ -58,14 +68,10 @@ export default function TelegramLoginButton({
                 onLoad={() => {
                     if (window.Telegram?.WebApp) {
                         setTelegram(window.Telegram.WebApp);
-                    } else {
-                        setIsLoading(false);
                     }
                 }}
             />
-            {isLoading ? (
-                <PartialLoading text="Loading..." />
-            ) : telegram ? (
+            {telegramUser ? (
                 <Button
                     variant="outline"
                     onClick={() => {
@@ -77,7 +83,7 @@ export default function TelegramLoginButton({
                     )}
                 >
                     <img
-                        src={"/icons/providers/telegram-white.svg"}
+                        src={"/icons/telegram-white.svg"}
                         alt={`Telegram refresh icon`}
                         style={{ width: "20px", height: "auto" }}
                     />
