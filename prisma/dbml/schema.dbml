@@ -8,6 +8,7 @@ Table User {
   email String [unique]
   emailVerified DateTime
   password String
+  phone String
   image String
   role String [not null, default: 'user']
   active Boolean [not null, default: true]

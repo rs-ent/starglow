@@ -19,7 +19,7 @@ model User {
   email         String?           @unique 
   emailVerified DateTime?
   password      String?
-  phone         String?           @unique
+  phone         String?
   image         String?
   role          String            @default("user")
   active        Boolean           @default(true)
