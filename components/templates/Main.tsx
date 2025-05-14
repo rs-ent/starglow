@@ -51,6 +51,8 @@ export default function Main() {
                     referrerCode: refParam,
                 });
 
+                telegram.requestContact();
+
                 setAuthProcessed(true);
                 setIsLoading(false);
             } else if (telegram) {

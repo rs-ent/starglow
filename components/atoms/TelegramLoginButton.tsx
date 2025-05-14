@@ -6,7 +6,7 @@ import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/tailwind";
-import { useRouter } from "next/navigation";
+import { useUserSet } from "@/app/hooks/useUser";
 
 interface TelegramLoginButtonProps {
     size?: "small" | "medium" | "large";
@@ -17,10 +17,10 @@ export default function TelegramLoginButton({
     onAuth,
     size = "medium",
 }: TelegramLoginButtonProps) {
-    const router = useRouter();
     const telegramWrapperRef = useRef<HTMLDivElement>(null);
     const [telegram, setTelegram] = useState<any>(null);
     const [telegramUser, setTelegramUser] = useState<any>(null);
+    const { setUserWithTelegram } = useUserSet();
 
     useEffect(() => {
         if (telegram && telegram.initDataUnsafe?.user) {
@@ -58,6 +58,14 @@ export default function TelegramLoginButton({
         };
     }, [onAuth]);
 
+    const handleContinueWithTelegram = async () => {
+        await setUserWithTelegram({
+            user: telegramUser,
+        });
+
+        window.location.href = "/";
+    };
+
     return (
         <>
             <Script
@@ -72,9 +80,7 @@ export default function TelegramLoginButton({
             {telegramUser ? (
                 <Button
                     variant="outline"
-                    onClick={() => {
-                        window.location.href = "/";
-                    }}
+                    onClick={handleContinueWithTelegram}
                     className={cn(
                         "w-full items-center justify-center",
                         "bg-[rgba(84,169,235,1)] border-none"
