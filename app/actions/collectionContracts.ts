@@ -1304,51 +1304,48 @@ export interface TransferTokensResult {
 export async function transferTokens(
     input: TransferTokensInput
 ): Promise<TransferTokensResult> {
-    // 입력 검증 - 중복 검사 제거
     if (
         !input.collectionAddress ||
         !input.fromAddress ||
         !input.spenderAddress ||
         !input.toAddress ||
+        !input.tokenIds
+    ) {
+        return {
+            success: false,
+            error: "Missing required fields",
+        };
+    }
+
+    if (
+        !input.tokenIds ||
         !Array.isArray(input.tokenIds) ||
         input.tokenIds.length === 0
     ) {
         return {
             success: false,
-            error: "Missing required fields or invalid token IDs",
+            error: "Token IDs must be an array and not empty",
         };
     }
 
-    // 토큰 수량에 따른 최적화 설정
-    const isSmallBatch = input.tokenIds.length < 10;
-
-    const BATCH_SIZE = isSmallBatch ? input.tokenIds.length : 100;
+    const BATCH_SIZE = 100;
     const MAX_CONCURRENT_BATCHES = 3;
     const MAX_RETRIES = 3;
-    const RETRY_DELAY_BASE = 2000;
-    const MAX_RETRY_DELAY = 10000; // 최대 10초 재시도 지연
-
+    const RETRY_DELAY = 2000;
+    let retryCount = 0;
     const results: {
         success: boolean;
         transactionHash?: Hash;
         error?: string;
-        batchIndex?: number;
-        tokenIds?: number[];
     }[] = [];
     const errors: string[] = [];
 
     console.log(
-        `Starting transfer of ${input.tokenIds.length} tokens${
-            isSmallBatch
-                ? " (small batch mode)"
-                : ` with batch size ${BATCH_SIZE}`
-        }`
+        `Starting bulk transfer of ${input.tokenIds.length} tokens with batch size ${BATCH_SIZE}`
     );
 
-    // 개선된 재시도 로직 - 지수 백오프와 최대 지연 시간 적용
     async function executeWithRetry<T>(
-        operation: () => Promise<T>,
-        operationName?: string
+        operation: () => Promise<T>
     ): Promise<T> {
         let currentRetry = 0;
         while (true) {
@@ -1363,18 +1360,12 @@ export async function transferTokens(
                         error.message.includes("connection"))
                 ) {
                     currentRetry++;
-                    const delay = Math.min(
-                        RETRY_DELAY_BASE * Math.pow(2, currentRetry - 1),
-                        MAX_RETRY_DELAY
-                    );
-
                     console.log(
-                        `Retrying ${
-                            operationName || "operation"
-                        } (${currentRetry}/${MAX_RETRIES}) after ${delay}ms...`
+                        `Retrying operation (${currentRetry}/${MAX_RETRIES})...`
                     );
-
-                    await new Promise((resolve) => setTimeout(resolve, delay));
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, RETRY_DELAY * currentRetry)
+                    );
                 } else {
                     throw error;
                 }
@@ -1383,14 +1374,11 @@ export async function transferTokens(
     }
 
     try {
-        // 컬렉션 정보 조회
-        const collection = await executeWithRetry(
-            () =>
-                prisma.collectionContract.findUnique({
-                    where: { address: input.collectionAddress },
-                    include: { network: true },
-                }),
-            "collection lookup"
+        const collection = await executeWithRetry(() =>
+            prisma.collectionContract.findUnique({
+                where: { address: input.collectionAddress },
+                include: { network: true },
+            })
         );
 
         if (!collection || !collection.network) {
@@ -1400,19 +1388,11 @@ export async function transferTokens(
             };
         }
 
-        // 에스크로 지갑 및 블록체인 정보 병렬 조회
         const [escrowWallet, chain] = await Promise.all([
-            executeWithRetry(
-                () =>
-                    getEscrowWalletWithPrivateKeyByAddress(
-                        input.spenderAddress
-                    ),
-                "escrow wallet lookup"
+            executeWithRetry(() =>
+                getEscrowWalletWithPrivateKeyByAddress(input.spenderAddress)
             ),
-            executeWithRetry(
-                () => getChain(collection.network),
-                "chain lookup"
-            ),
+            executeWithRetry(() => getChain(collection.network)),
         ]);
 
         if (!escrowWallet.success || !escrowWallet.data) {
@@ -1422,14 +1402,12 @@ export async function transferTokens(
             };
         }
 
-        // 에스크로 지갑 설정
         const privateKey = escrowWallet.data.privateKey;
         const formattedPrivateKey = privateKey.startsWith("0x")
             ? privateKey
             : `0x${privateKey}`;
         const account = privateKeyToAccount(formattedPrivateKey as Address);
 
-        // 클라이언트 생성 및 잔액 확인
         const [publicClient, walletClient, walletBalance] = await Promise.all([
             createPublicClient({
                 chain,
@@ -1440,252 +1418,36 @@ export async function transferTokens(
                 chain,
                 transport: http(),
             }),
-            executeWithRetry(
-                () =>
-                    getWalletBalance({
-                        address: escrowWallet.data.address,
-                        networkId: collection.network.id,
-                    }),
-                "wallet balance check"
+            executeWithRetry(() =>
+                getWalletBalance({
+                    address: escrowWallet.data.address,
+                    networkId: collection.network.id,
+                })
             ),
         ]);
 
-        // 타입 안전성 향상된 잔액 확인
-        const walletBalanceWei = walletBalance?.data?.balanceWei
-            ? BigInt(walletBalance.data.balanceWei)
-            : BigInt(0);
+        const estimatedGasCost = BigInt(2e16);
+        const requiredBalance =
+            estimatedGasCost *
+            BigInt(Math.ceil(input.tokenIds.length / BATCH_SIZE));
 
-        // 예상 가스 비용 계산
-        const estimatedGasCost = isSmallBatch
-            ? BigInt(1e16) // 작은 배치는 적은 가스 필요
-            : BigInt(2e16); // 큰 배치용
-
-        const batchCount = Math.ceil(input.tokenIds.length / BATCH_SIZE);
-        const requiredBalance = estimatedGasCost * BigInt(batchCount);
-
-        if (walletBalanceWei < requiredBalance) {
+        if (
+            walletBalance &&
+            BigInt(walletBalance.data?.balanceWei ?? "0") < requiredBalance
+        ) {
             return {
                 success: false,
-                error: `Insufficient balance in escrow wallet. Required ~${requiredBalance.toString()} wei, but only have ${walletBalanceWei.toString()} wei`,
+                error: `Insufficient balance in escrow wallet. Required ~${requiredBalance.toString()} wei`,
             };
         }
 
-        // 작은 배치일 경우 단일 트랜잭션으로 처리
-        if (isSmallBatch) {
-            try {
-                // 토큰 상태 확인
-                const tokens = await prisma.nFT.findMany({
-                    where: {
-                        collectionId: collection.id,
-                        tokenId: { in: input.tokenIds },
-                        isBurned: false,
-                    },
-                    select: {
-                        id: true,
-                        tokenId: true,
-                        isLocked: true,
-                        currentOwnerAddress: true,
-                    },
-                });
-
-                // 존재하지 않는 토큰 확인
-                if (tokens.length !== input.tokenIds.length) {
-                    const foundTokenIds = tokens.map((t) => t.tokenId);
-                    const missingTokenIds = input.tokenIds.filter(
-                        (id) => !foundTokenIds.includes(id)
-                    );
-
-                    return {
-                        success: false,
-                        error: `Tokens not found: ${missingTokenIds.join(
-                            ", "
-                        )}`,
-                    };
-                }
-
-                // 잠긴 토큰 확인
-                const lockedTokens = tokens.filter((token) => token.isLocked);
-                if (lockedTokens.length > 0) {
-                    return {
-                        success: false,
-                        error: `Locked tokens: ${lockedTokens
-                            .map((t) => t.tokenId)
-                            .join(", ")}`,
-                    };
-                }
-
-                // 소유권 확인
-                const ownershipValid = tokens.every(
-                    (token) =>
-                        token.currentOwnerAddress?.toLowerCase() ===
-                        input.fromAddress.toLowerCase()
-                );
-
-                if (!ownershipValid) {
-                    const tokenOwners = await executeWithRetry(
-                        () =>
-                            getTokenOwners({
-                                collectionAddress: input.collectionAddress,
-                                tokenIds: input.tokenIds,
-                            }),
-                        "token ownership check"
-                    );
-
-                    const invalidTokens = tokenOwners.owners.filter(
-                        (owner, idx) =>
-                            owner.toLowerCase() !==
-                            input.fromAddress.toLowerCase()
-                    );
-
-                    if (invalidTokens.length > 0) {
-                        return {
-                            success: false,
-                            error: `Not owner of tokens`,
-                        };
-                    }
-                }
-
-                // 컨트랙트 설정
-                const collectionContract = getContract({
-                    address: collection.address as Address,
-                    abi,
-                    client: walletClient,
-                });
-
-                // 가스 옵션 계산
-                const gasOptions = await executeWithRetry(
-                    () =>
-                        estimateGasOptions({
-                            publicClient,
-                            walletClient,
-                            contractAddress: collection.address as Address,
-                            abi,
-                            transactions: [
-                                {
-                                    functionName: "escrowTransfer",
-                                    args: [
-                                        input.fromAddress as Address,
-                                        account.address,
-                                        input.toAddress as Address,
-                                        input.tokenIds,
-                                    ],
-                                },
-                            ],
-                            customOptions: input.gasOptions,
-                        }),
-                    "gas estimation"
-                );
-
-                // 가스 한도 버퍼 추가
-                const adjustedGasOptions = {
-                    ...gasOptions,
-                    gasLimit:
-                        gasOptions.gasLimit +
-                        (gasOptions.gasLimit * BigInt(15)) / BigInt(100), // 작은 배치는 15% 버퍼
-                };
-
-                // 트랜잭션 실행
-                console.log(
-                    `Executing small batch transfer of ${input.tokenIds.length} tokens`
-                );
-                const hash = await executeWithRetry(
-                    () =>
-                        collectionContract.write.escrowTransfer(
-                            [
-                                input.fromAddress as Address,
-                                account.address,
-                                input.toAddress as Address,
-                                input.tokenIds,
-                            ],
-                            adjustedGasOptions
-                        ),
-                    "transaction submission"
-                );
-
-                console.log(`Transaction submitted: ${hash}`);
-
-                // 트랜잭션 영수증 대기
-                const receipt = await executeWithRetry(
-                    () =>
-                        publicClient.waitForTransactionReceipt({
-                            hash,
-                            timeout: 300_000, // 5분 타임아웃
-                            confirmations: 2,
-                        }),
-                    "transaction confirmation"
-                );
-
-                console.log(
-                    `Transaction confirmed: ${receipt.transactionHash}`
-                );
-
-                // DB 업데이트
-                await prisma.$transaction(async (tx) => {
-                    await tx.nFT.updateMany({
-                        where: {
-                            collectionId: collection.id,
-                            tokenId: { in: input.tokenIds },
-                        },
-                        data: {
-                            currentOwnerAddress: input.toAddress,
-                            transferCount: { increment: 1 },
-                            lastTransferredAt: new Date(),
-                        },
-                    });
-
-                    const transferEvents = tokens.map((token) => ({
-                        nftId: token.id,
-                        collectionId: collection.id,
-                        eventType: "TRANSFER",
-                        fromAddress: input.fromAddress,
-                        toAddress: input.toAddress,
-                        transactionHash: receipt.transactionHash,
-                        timestamp: new Date(),
-                    }));
-
-                    await tx.nFTEvent.createMany({
-                        data: transferEvents,
-                    });
-                });
-
-                return {
-                    success: true,
-                    transactionHash: receipt.transactionHash,
-                };
-            } catch (error) {
-                console.error("Error in small batch transfer:", error);
-                let errorMessage = "Unknown error";
-
-                if (error instanceof Error) {
-                    errorMessage = error.message;
-
-                    if (error.message.includes("insufficient funds")) {
-                        errorMessage = "Insufficient funds for gas";
-                    } else if (
-                        error.message.includes("gas required exceeds allowance")
-                    ) {
-                        errorMessage = "Gas limit too low";
-                    } else if (error.message.includes("INVALID_SIGNATURE")) {
-                        errorMessage = "Invalid transfer signature";
-                    }
-                }
-
-                return {
-                    success: false,
-                    error: errorMessage,
-                };
-            }
-        }
-
-        // 큰 배치일 경우 배치 처리
-        const batches: number[][] = [];
+        const batches = [];
         for (let i = 0; i < input.tokenIds.length; i += BATCH_SIZE) {
             batches.push(input.tokenIds.slice(i, i + BATCH_SIZE));
         }
 
         console.log(`Split into ${batches.length} batches`);
 
-        // 세마포어 구현
         class Semaphore {
             private counter: number;
             private waiting: Array<() => void> = [];
@@ -1717,11 +1479,88 @@ export async function transferTokens(
 
         const semaphore = new Semaphore(MAX_CONCURRENT_BATCHES);
 
-        // 가스 추정을 한 번만 수행
-        let baseGasEstimate: EstimateGasOptions;
-        try {
-            baseGasEstimate = await executeWithRetry(
-                () =>
+        const processBatch = async (
+            batchIndex: number,
+            tokenIdsBatch: number[]
+        ) => {
+            await semaphore.acquire();
+            console.log(`Processing batch ${batchIndex + 1}/${batches.length}`);
+
+            try {
+                const tokens = await prisma.nFT.findMany({
+                    where: {
+                        collectionId: collection.id,
+                        tokenId: { in: tokenIdsBatch },
+                        isBurned: false,
+                    },
+                    select: {
+                        id: true,
+                        tokenId: true,
+                        isLocked: true,
+                        currentOwnerAddress: true,
+                    },
+                });
+
+                if (tokens.length !== tokenIdsBatch.length) {
+                    const foundTokenIds = tokens.map((t) => t.tokenId);
+                    const missingTokenIds = tokenIdsBatch.filter(
+                        (id) => !foundTokenIds.includes(id)
+                    );
+                    const errorMsg = `Tokens not found in batch ${
+                        batchIndex + 1
+                    }: ${missingTokenIds.join(", ")}`;
+                    errors.push(errorMsg);
+                    results.push({ success: false, error: errorMsg });
+                    return;
+                }
+
+                const lockedTokens = tokens.filter((token) => token.isLocked);
+                if (lockedTokens.length > 0) {
+                    const errorMsg = `Locked tokens in batch ${
+                        batchIndex + 1
+                    }: ${lockedTokens.map((t) => t.tokenId).join(", ")}`;
+                    errors.push(errorMsg);
+                    results.push({ success: false, error: errorMsg });
+                    return;
+                }
+
+                const ownershipValid = tokens.every(
+                    (token) =>
+                        token.currentOwnerAddress?.toLowerCase() ===
+                        input.fromAddress.toLowerCase()
+                );
+
+                if (!ownershipValid) {
+                    const tokenOwners = await executeWithRetry(() =>
+                        getTokenOwners({
+                            collectionAddress: input.collectionAddress,
+                            tokenIds: tokenIdsBatch,
+                        })
+                    );
+
+                    const invalidTokens = tokenOwners.owners.filter(
+                        (owner, idx) =>
+                            owner.toLowerCase() !==
+                            input.fromAddress.toLowerCase()
+                    );
+
+                    if (invalidTokens.length > 0) {
+                        const errorMsg = `Not owner of tokens in batch ${
+                            batchIndex + 1
+                        }`;
+                        errors.push(errorMsg);
+                        results.push({ success: false, error: errorMsg });
+                        return;
+                    }
+                }
+
+                const collectionContract = getContract({
+                    address: collection.address as Address,
+                    abi,
+                    client: walletClient,
+                });
+
+                const gasOptions = await executeWithRetry(() =>
                     estimateGasOptions({
                         publicClient,
                         walletClient,
@@ -1734,291 +1573,116 @@ export async function transferTokens(
                                     input.fromAddress as Address,
                                     account.address,
                                     input.toAddress as Address,
-                                    batches[0], // 첫 번째 배치로 추정
+                                    tokenIdsBatch,
                                 ],
                             },
                         ],
                         customOptions: input.gasOptions,
-                    }),
-                "initial gas estimation"
-            );
-            console.log(
-                `Base gas estimate obtained: ${baseGasEstimate.gasLimit.toString()}`
-            );
-        } catch (error) {
-            console.error("Error estimating initial gas:", error);
-            return {
-                success: false,
-                error: "Failed to estimate gas for transaction batches",
-            };
-        }
+                    })
+                );
 
-        // 배치 처리 함수
-        const processBatch = async (
-            batchIndex: number,
-            tokenIdsBatch: number[]
-        ) => {
-            await semaphore.acquire();
-            console.log(`Processing batch ${batchIndex + 1}/${batches.length}`);
+                const adjustedGasOptions = {
+                    ...gasOptions,
+                    gasLimit:
+                        gasOptions.gasLimit +
+                        (gasOptions.gasLimit * BigInt(20)) / BigInt(100),
+                };
 
-            // 최대 3회까지 배치 처리 재시도
-            let batchRetries = 0;
-            const MAX_BATCH_RETRIES = 2;
+                const hash = await executeWithRetry(() =>
+                    collectionContract.write.escrowTransfer(
+                        [
+                            input.fromAddress as Address,
+                            account.address,
+                            input.toAddress as Address,
+                            tokenIdsBatch,
+                        ],
+                        adjustedGasOptions
+                    )
+                );
 
-            while (batchRetries <= MAX_BATCH_RETRIES) {
-                try {
-                    // 토큰 상태 확인
-                    const tokens = await prisma.nFT.findMany({
+                console.log(
+                    `Batch ${batchIndex + 1} transaction submitted: ${hash}`
+                );
+
+                const receipt = await executeWithRetry(() =>
+                    publicClient.waitForTransactionReceipt({
+                        hash,
+                        timeout: 600_000,
+                        confirmations: 2,
+                    })
+                );
+
+                console.log(
+                    `Batch ${batchIndex + 1} transaction confirmed: ${
+                        receipt.transactionHash
+                    }`
+                );
+
+                await prisma.$transaction(async (tx) => {
+                    await tx.nFT.updateMany({
                         where: {
                             collectionId: collection.id,
                             tokenId: { in: tokenIdsBatch },
-                            isBurned: false,
                         },
-                        select: {
-                            id: true,
-                            tokenId: true,
-                            isLocked: true,
-                            currentOwnerAddress: true,
+                        data: {
+                            currentOwnerAddress: input.toAddress,
+                            transferCount: { increment: 1 },
+                            lastTransferredAt: new Date(),
                         },
                     });
 
-                    // 존재하지 않는 토큰 확인
-                    if (tokens.length !== tokenIdsBatch.length) {
-                        const foundTokenIds = tokens.map((t) => t.tokenId);
-                        const missingTokenIds = tokenIdsBatch.filter(
-                            (id) => !foundTokenIds.includes(id)
-                        );
-                        const errorMsg = `Tokens not found in batch ${
-                            batchIndex + 1
-                        }: ${missingTokenIds.join(", ")}`;
-                        errors.push(errorMsg);
-                        results.push({
-                            success: false,
-                            error: errorMsg,
-                            batchIndex,
-                            tokenIds: tokenIdsBatch,
-                        });
-                        break; // 존재하지 않는 토큰은 재시도해도 의미 없음
-                    }
-
-                    // 잠긴 토큰 확인
-                    const lockedTokens = tokens.filter(
-                        (token) => token.isLocked
-                    );
-                    if (lockedTokens.length > 0) {
-                        const errorMsg = `Locked tokens in batch ${
-                            batchIndex + 1
-                        }: ${lockedTokens.map((t) => t.tokenId).join(", ")}`;
-                        errors.push(errorMsg);
-                        results.push({
-                            success: false,
-                            error: errorMsg,
-                            batchIndex,
-                            tokenIds: tokenIdsBatch,
-                        });
-                        break; // 잠긴 토큰은 재시도해도 의미 없음
-                    }
-
-                    // 소유권 확인
-                    const ownershipValid = tokens.every(
-                        (token) =>
-                            token.currentOwnerAddress?.toLowerCase() ===
-                            input.fromAddress.toLowerCase()
-                    );
-
-                    if (!ownershipValid) {
-                        const tokenOwners = await executeWithRetry(
-                            () =>
-                                getTokenOwners({
-                                    collectionAddress: input.collectionAddress,
-                                    tokenIds: tokenIdsBatch,
-                                }),
-                            `ownership check for batch ${batchIndex + 1}`
-                        );
-
-                        const invalidTokens = tokenOwners.owners.filter(
-                            (owner, idx) =>
-                                owner.toLowerCase() !==
-                                input.fromAddress.toLowerCase()
-                        );
-
-                        if (invalidTokens.length > 0) {
-                            const errorMsg = `Not owner of tokens in batch ${
-                                batchIndex + 1
-                            }`;
-                            errors.push(errorMsg);
-                            results.push({
-                                success: false,
-                                error: errorMsg,
-                                batchIndex,
-                                tokenIds: tokenIdsBatch,
-                            });
-                            break; // 소유권 불일치는 재시도해도 의미 없음
-                        }
-                    }
-
-                    // 컨트랙트 설정
-                    const collectionContract = getContract({
-                        address: collection.address as Address,
-                        abi,
-                        client: walletClient,
-                    });
-
-                    // 기존 가스 추정값 활용 (첫 트랜잭션에서 얻은 값)
-                    const adjustedGasOptions = {
-                        ...baseGasEstimate,
-                        gasLimit:
-                            baseGasEstimate.gasLimit +
-                            (baseGasEstimate.gasLimit * BigInt(20)) /
-                                BigInt(100),
-                    };
-
-                    // 트랜잭션 실행
-                    const hash = await executeWithRetry(
-                        () =>
-                            collectionContract.write.escrowTransfer(
-                                [
-                                    input.fromAddress as Address,
-                                    account.address,
-                                    input.toAddress as Address,
-                                    tokenIdsBatch,
-                                ],
-                                adjustedGasOptions
-                            ),
-                        `transaction submission for batch ${batchIndex + 1}`
-                    );
-
-                    console.log(
-                        `Batch ${batchIndex + 1} transaction submitted: ${hash}`
-                    );
-
-                    // 트랜잭션 영수증 대기
-                    const receipt = await executeWithRetry(
-                        () =>
-                            publicClient.waitForTransactionReceipt({
-                                hash,
-                                timeout: 600_000,
-                                confirmations: 2,
-                            }),
-                        `transaction confirmation for batch ${batchIndex + 1}`
-                    );
-
-                    console.log(
-                        `Batch ${batchIndex + 1} transaction confirmed: ${
-                            receipt.transactionHash
-                        }`
-                    );
-
-                    // DB 업데이트
-                    await prisma.$transaction(async (tx) => {
-                        await tx.nFT.updateMany({
-                            where: {
-                                collectionId: collection.id,
-                                tokenId: { in: tokenIdsBatch },
-                            },
-                            data: {
-                                currentOwnerAddress: input.toAddress,
-                                transferCount: { increment: 1 },
-                                lastTransferredAt: new Date(),
-                            },
-                        });
-
-                        const transferEvents = tokens.map((token) => ({
-                            nftId: token.id,
-                            collectionId: collection.id,
-                            eventType: "TRANSFER",
-                            fromAddress: input.fromAddress,
-                            toAddress: input.toAddress,
-                            transactionHash: receipt.transactionHash,
-                            timestamp: new Date(),
-                        }));
-
-                        await tx.nFTEvent.createMany({
-                            data: transferEvents,
-                        });
-                    });
-
-                    results.push({
-                        success: true,
+                    const transferEvents = tokens.map((token) => ({
+                        nftId: token.id,
+                        collectionId: collection.id,
+                        eventType: "TRANSFER",
+                        fromAddress: input.fromAddress,
+                        toAddress: input.toAddress,
                         transactionHash: receipt.transactionHash,
-                        batchIndex,
-                        tokenIds: tokenIdsBatch,
+                        timestamp: new Date(),
+                    }));
+
+                    await tx.nFTEvent.createMany({
+                        data: transferEvents,
                     });
-                    break; // 성공시 반복 중단
-                } catch (error) {
-                    let errorMessage = "Unknown error in batch processing";
+                });
 
-                    if (error instanceof Error) {
-                        errorMessage = error.message;
+                results.push({
+                    success: true,
+                    transactionHash: receipt.transactionHash,
+                });
+            } catch (error) {
+                let errorMessage = "Unknown error in batch processing";
 
-                        if (error.message.includes("insufficient funds")) {
-                            errorMessage = "Insufficient funds for gas";
-                            batchRetries = MAX_BATCH_RETRIES; // 자금 부족은 재시도 불필요
-                        } else if (
-                            error.message.includes(
-                                "gas required exceeds allowance"
-                            )
-                        ) {
-                            errorMessage = "Gas limit too low";
-                            // 가스 한도 증가 후 재시도
-                            baseGasEstimate = {
-                                ...baseGasEstimate,
-                                gasLimit:
-                                    (baseGasEstimate.gasLimit * BigInt(130)) /
-                                    BigInt(100),
-                            };
-                        } else if (
-                            error.message.includes("INVALID_SIGNATURE")
-                        ) {
-                            errorMessage = "Invalid transfer signature";
-                            batchRetries = MAX_BATCH_RETRIES; // 서명 오류는 재시도 불필요
-                        } else if (
-                            error.message.includes("network") ||
-                            error.message.includes("timeout")
-                        ) {
-                            errorMessage = "Network error or timeout occurred";
-                            // 네트워크 오류는 재시도 가능
-                        } else if (error.message.includes("transaction")) {
-                            errorMessage =
-                                "Transaction failed: " + error.message;
-                        }
-                    }
+                if (error instanceof Error) {
+                    errorMessage = error.message;
 
-                    batchRetries++;
-                    console.error(
-                        `Error in batch ${
-                            batchIndex + 1
-                        } (attempt ${batchRetries}/${MAX_BATCH_RETRIES + 1}):`,
-                        error
-                    );
-
-                    if (batchRetries > MAX_BATCH_RETRIES) {
-                        errors.push(`Batch ${batchIndex + 1}: ${errorMessage}`);
-                        results.push({
-                            success: false,
-                            error: errorMessage,
-                            batchIndex,
-                            tokenIds: tokenIdsBatch,
-                        });
-                    } else {
-                        console.log(
-                            `Retrying batch ${
-                                batchIndex + 1
-                            } (attempt ${batchRetries}/${
-                                MAX_BATCH_RETRIES + 1
-                            })...`
-                        );
-                        await new Promise((resolve) =>
-                            setTimeout(resolve, RETRY_DELAY_BASE * batchRetries)
-                        );
+                    if (error.message.includes("insufficient funds")) {
+                        errorMessage = "Insufficient funds for gas";
+                    } else if (
+                        error.message.includes("gas required exceeds allowance")
+                    ) {
+                        errorMessage = "Gas limit too low";
+                    } else if (error.message.includes("INVALID_SIGNATURE")) {
+                        errorMessage = "Invalid transfer signature";
+                    } else if (
+                        error.message.includes("network") ||
+                        error.message.includes("timeout")
+                    ) {
+                        errorMessage = "Network error or timeout occurred";
+                    } else if (error.message.includes("transaction")) {
+                        errorMessage = "Transaction failed: " + error.message;
                     }
                 }
-            }
 
-            semaphore.release();
+                console.error(`Error in batch ${batchIndex + 1}:`, error);
+                errors.push(`Batch ${batchIndex + 1}: ${errorMessage}`);
+                results.push({ success: false, error: errorMessage });
+            } finally {
+                semaphore.release();
+            }
         };
 
-        // 배치 동시 처리
+        // 모든 배치 동시 처리 (세마포어로 동시성 제한)
         await Promise.all(
             batches.map((batch, index) => processBatch(index, batch))
         );
@@ -2027,20 +1691,16 @@ export async function transferTokens(
         const successfulBatches = results.filter((r) => r.success).length;
         const totalBatches = batches.length;
 
-        // 모든 트랜잭션 해시 수집
-        const transactionHashes = results
-            .filter((r) => r.success && r.transactionHash)
-            .map((r) => r.transactionHash!);
-
         if (successfulBatches === totalBatches) {
             return {
                 success: true,
-                transactionHash: transactionHashes[0], // 첫 번째 트랜잭션 해시 반환
+                transactionHash: results[0].transactionHash,
             };
         } else if (successfulBatches > 0) {
             return {
                 success: true,
-                transactionHash: transactionHashes[0],
+                transactionHash: results.find((r) => r.success)
+                    ?.transactionHash,
                 error: `Partial success: ${successfulBatches}/${totalBatches} batches completed. Errors: ${errors.join(
                     "; "
                 )}`,
@@ -2052,7 +1712,7 @@ export async function transferTokens(
             };
         }
     } catch (error) {
-        console.error("Fatal error in token transfer:", error);
+        console.error("Fatal error in bulk transfer:", error);
 
         if (error instanceof Error) {
             if (error.message.includes("insufficient funds")) {
