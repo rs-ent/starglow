@@ -39,9 +39,6 @@ export default function Main() {
         }
 
         if (signedOut) {
-            toast.success(
-                `Signed out successfully. ${JSON.stringify(session)}`
-            );
             setIsLoading(false);
             return;
         }
