@@ -38,7 +38,7 @@ export default function Main() {
         }
 
         if (requestRefresh) {
-            window.location.reload();
+            window.location.href = "/";
         }
 
         if (signedOut) {
