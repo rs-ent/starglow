@@ -53,8 +53,6 @@ export default function Main() {
 
                 setAuthProcessed(true);
                 setIsLoading(false);
-
-                telegram.requestContact();
             } else if (telegram) {
                 setIsLoading(false);
             }
