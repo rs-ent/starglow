@@ -107,6 +107,7 @@ export default function PaymentModule({
         },
         onError: (error) => {
             toast.error("Payment processing failed");
+            console.error("Payment processing failed", error);
         },
     });
 

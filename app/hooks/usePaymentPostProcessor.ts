@@ -59,8 +59,13 @@ export const usePaymentPostProcessor = (
             try {
                 processPayment(payment, {
                     onSuccess: (data) => {
-                        toast.success("Payment processed successfully");
-                        onSuccess?.(data);
+                        if (data && data.success) {
+                            toast.success("Payment processed successfully");
+                            onSuccess?.(data);
+                        } else if (data && !data.success) {
+                            toast.error(data.error.message);
+                            onError?.(new Error(data.error.message));
+                        }
                     },
                     onError: (error) => {
                         toast.error(

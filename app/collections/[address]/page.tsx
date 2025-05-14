@@ -2,8 +2,7 @@
 
 import { notFound } from "next/navigation";
 import Collection from "@/components/organisms/NFTs.Collection";
-import { CollectionContract, Metadata } from "@prisma/client";
-import NavBar from "@/components/organisms/Navigation.Bar";
+import { Metadata } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 
 interface CollectionPageProps {
@@ -34,14 +33,7 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
             metadata: collectionData.metadata as Metadata,
         };
 
-        return (
-            <>
-                <div className="sticky top-0 z-10 backdrop-blur-md">
-                    <NavBar />
-                </div>
-                <Collection collection={collection} />
-            </>
-        );
+        return <Collection collection={collection} />;
     } catch (error) {
         console.error("Error fetching collection:", error);
         notFound();

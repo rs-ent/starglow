@@ -84,6 +84,7 @@ export async function processNFTs(
                         data: {
                             status: "FAILED",
                             statusReason: result.error.message,
+                            postProcessResult: JSON.stringify(result.error),
                         },
                     });
 
