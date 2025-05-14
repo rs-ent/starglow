@@ -79,7 +79,7 @@ function SignInButtons() {
                 user: user,
             });
 
-            router.push(callbackUrl);
+            window.location.href = callbackUrl;
         }
     }
 

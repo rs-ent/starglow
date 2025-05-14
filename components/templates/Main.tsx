@@ -3,17 +3,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import HeroGitbook from "@/components/organisms/Hero.Gitbook";
 import HeroFollowUs from "@/components/organisms/Hero.FollowUs";
 import Footer from "@/components/organisms/Footer";
 import Script from "next/script";
 import { useSession } from "next-auth/react";
 import { useUserSet } from "@/app/hooks/useUser";
-import Popup from "../atoms/Popup";
-import Button from "../atoms/Button";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { cn } from "@/lib/utils/tailwind";
+import { useSearchParams } from "next/navigation";
+import { useToast } from "@/app/hooks/useToast";
 
 declare global {
     interface Window {
@@ -24,6 +21,9 @@ declare global {
 }
 
 export default function Main() {
+    const searchParams = useSearchParams();
+    const signedOut = searchParams.get("signedOut");
+    const toast = useToast();
     const { data: session } = useSession();
     const { setUserWithTelegram, isSetUserWithTelegramPending, error } =
         useUserSet();
@@ -34,6 +34,14 @@ export default function Main() {
 
     useEffect(() => {
         if (session?.user || authProcessed) {
+            setIsLoading(false);
+            return;
+        }
+
+        if (signedOut) {
+            toast.success(
+                `Signed out successfully. ${JSON.stringify(session)}`
+            );
             setIsLoading(false);
             return;
         }

@@ -11,7 +11,7 @@ interface UserContentProps {
 
 export default function UserContent({ contentType, user }: UserContentProps) {
     if (contentType === "signout") {
-        signOut({ callbackUrl: "/" });
+        signOut({ callbackUrl: "/?signedOut=true" });
     }
 
     return (
