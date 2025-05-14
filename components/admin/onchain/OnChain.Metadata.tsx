@@ -951,6 +951,12 @@ export function OnChainMetadata({
             setIsUploading(true);
 
             const { collectionName, collectionKey, ...metadataFields } = data;
+
+            if (metadataFields.background_color) {
+                metadataFields.background_color =
+                    metadataFields.background_color.replace("#", "");
+            }
+
             console.log("Submitting metadata:", metadataFields);
 
             const response = await createCollection({
