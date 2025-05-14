@@ -21,7 +21,6 @@ declare global {
 
 export default function Main() {
     const searchParams = useSearchParams();
-    const requestRefresh = searchParams.get("requestRefresh");
     const signedOut = searchParams.get("signedOut");
     const { data: session } = useSession();
     const { setUserWithTelegram, isSetUserWithTelegramPending, error } =
@@ -35,10 +34,6 @@ export default function Main() {
         if (session?.user || authProcessed) {
             setIsLoading(false);
             return;
-        }
-
-        if (requestRefresh) {
-            window.location.href = "/";
         }
 
         if (signedOut) {

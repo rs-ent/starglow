@@ -22,9 +22,6 @@ export default function TelegramLoginButton({
     const [telegram, setTelegram] = useState<any>(null);
     const [telegramUser, setTelegramUser] = useState<any>(null);
 
-    console.log("telegram", telegram);
-    console.log("telegramUser", telegramUser);
-
     useEffect(() => {
         if (telegram && telegram.initDataUnsafe?.user) {
             const tgUser = telegram.initDataUnsafe?.user;
@@ -76,7 +73,7 @@ export default function TelegramLoginButton({
                 <Button
                     variant="outline"
                     onClick={() => {
-                        router.push("/?requestRefresh=" + Date.now());
+                        window.location.href = "/";
                     }}
                     className={cn(
                         "w-full items-center justify-center",
