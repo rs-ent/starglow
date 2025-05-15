@@ -547,6 +547,8 @@ Table Asset {
   questRewardAssets Quest [not null]
   pollLogRewardAssets PollLog [not null]
   questLogRewardAssets QuestLog [not null]
+  stakeRewards StakeReward [not null]
+  stakeRewardLogs StakeRewardLog [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
 }
@@ -672,6 +674,7 @@ Table CollectionContract {
   factory FactoryContract [not null]
   network BlockchainNetwork [not null]
   metadata Metadata
+  stakeRewards StakeReward [not null]
   nfts NFT [not null]
   events NFTEvent [not null]
 }
@@ -716,10 +719,41 @@ Table NFT {
   collection CollectionContract [not null]
   network BlockchainNetwork [not null]
   events NFTEvent [not null]
+  stakeRewardLogs StakeRewardLog [not null]
 
   indexes {
     (collectionId, tokenId) [unique]
   }
+}
+
+Table StakeReward {
+  id String [pk]
+  assetId String [not null]
+  asset Asset [not null]
+  amount Int [not null]
+  stakeDuration Int [not null]
+  collectionAddress String [not null]
+  collection CollectionContract [not null]
+  stakeRewardLogs StakeRewardLog [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table StakeRewardLog {
+  id String [pk]
+  stakeRewardId String [not null]
+  stakeReward StakeReward [not null]
+  nftId String [not null]
+  nft NFT [not null]
+  assetId String [not null]
+  asset Asset [not null]
+  amount Int [not null]
+  isDistributed Boolean [not null, default: false]
+  distributedAt DateTime
+  isClaimed Boolean [not null, default: false]
+  claimedAt DateTime
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
 }
 
 Table NFTEvent {
@@ -799,6 +833,16 @@ Table ArtistMessage {
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   artist Artist [not null]
+}
+
+Table StakeReward {
+  stakerewardsId String [ref: > StakeReward.id]
+  stakerewardsId String [ref: > StakeReward.id]
+}
+
+Table StakeRewardLog {
+  stakerewardlogsId String [ref: > StakeRewardLog.id]
+  stakerewardlogsId String [ref: > StakeRewardLog.id]
 }
 
 Enum PlayerAssetStatus {
@@ -966,6 +1010,16 @@ Ref: CollectionContract.networkId > BlockchainNetwork.id
 Ref: NFT.collectionId > CollectionContract.id
 
 Ref: NFT.networkId > BlockchainNetwork.id
+
+Ref: StakeReward.assetId > Asset.id
+
+Ref: StakeReward.collectionAddress > CollectionContract.address
+
+Ref: StakeRewardLog.stakeRewardId > StakeReward.id
+
+Ref: StakeRewardLog.nftId > NFT.id
+
+Ref: StakeRewardLog.assetId > Asset.id
 
 Ref: NFTEvent.collectionId > CollectionContract.id
 

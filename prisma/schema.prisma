@@ -697,6 +697,8 @@ model Asset {
   questRewardAssets Quest[] @relation("QuestRewardAsset")
   pollLogRewardAssets PollLog[] @relation("PollLogRewardAsset")
   questLogRewardAssets QuestLog[] @relation("QuestLogRewardAsset")
+  stakeRewards StakeReward[] @relation("StakeReward")
+  stakeRewardLogs StakeRewardLog[] @relation("StakeRewardLog")
   
   // 타임스탬프
   createdAt       DateTime  @default(now())
@@ -843,6 +845,7 @@ model CollectionContract {
   factory     FactoryContract   @relation(fields: [factoryId], references: [id])
   network     BlockchainNetwork @relation(fields: [networkId], references: [id])
   metadata    Metadata?         @relation("CollectionContractMetadata")
+  stakeRewards StakeReward[] @relation("StakeReward")
   nfts        NFT[]
   events      NFTEvent[]
 
@@ -890,6 +893,7 @@ model NFT {
   collection          CollectionContract @relation(fields: [collectionId], references: [id])
   network             BlockchainNetwork  @relation(fields: [networkId], references: [id])
   events              NFTEvent[]
+  stakeRewardLogs StakeRewardLog[] @relation("StakeRewardLog")
 
   @@unique([collectionId, tokenId])
   @@index([collectionId, tokenId])
@@ -897,6 +901,41 @@ model NFT {
   @@index([tokenId])
   @@index([currentOwnerAddress])
   @@index([ownerAddress])
+}
+
+model StakeReward {
+  id String @id @default(cuid())
+  assetId String
+  asset Asset @relation("StakeReward", fields: [assetId], references: [id])
+  amount Int
+  stakeDuration Int
+  collectionAddress String
+  collection CollectionContract @relation("StakeReward", fields: [collectionAddress], references: [address])
+
+  stakeRewardLogs StakeRewardLog[] @relation("StakeRewardLog")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StakeRewardLog {
+  id String @id @default(cuid())
+  stakeRewardId String
+  stakeReward StakeReward @relation("StakeRewardLog", fields: [stakeRewardId], references: [id])
+  nftId String
+  nft NFT @relation("StakeRewardLog", fields: [nftId], references: [id])
+  assetId String
+  asset Asset @relation("StakeRewardLog", fields: [assetId], references: [id])
+  amount Int
+  isDistributed Boolean @default(false)
+  distributedAt DateTime?
+  isClaimed Boolean @default(false)
+  claimedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([stakeRewardId])
+  @@index([nftId])
 }
 
 model NFTEvent {

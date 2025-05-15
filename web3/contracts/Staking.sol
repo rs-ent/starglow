@@ -17,6 +17,7 @@ contract StakingManager is
         address asset;
         uint256 amount;
         uint256 timestamp;
+        bool isClaimed;
     }
 
     struct ClaimedReward {
@@ -190,7 +191,8 @@ contract StakingManager is
         stakeInfo.distributedRewards.push(DistributedReward({
             asset: asset,
             amount: amount,
-            timestamp: block.timestamp
+            timestamp: block.timestamp,
+            isClaimed: false
         }));
 
         emit RewardDistributed(
@@ -202,5 +204,4 @@ contract StakingManager is
             block.timestamp
         );
     }
-
 }

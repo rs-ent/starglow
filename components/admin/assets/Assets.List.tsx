@@ -21,18 +21,21 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import AssetsCreate from "./Assets.Create";
+import { useMemo } from "react";
 
 interface AssetsListProps {
     contractAddress: string;
 }
 
 export default function AssetsList({ contractAddress }: AssetsListProps) {
-    // contractAddress를 기준으로 에셋 조회
-    const { assets, isLoading, error } = useAssetsGet({
-        getAssetsInput: {
-            contractAddress, // 선택된 컨트랙트의 에셋만 조회
-        },
-    });
+    const { assets, isLoading, error } = useAssetsGet({});
+    const filteredAssets = useMemo(() => {
+        return (
+            assets?.assets.filter(
+                (asset) => asset.assetsContractAddress === contractAddress
+            ) || []
+        );
+    }, [assets, contractAddress]);
 
     const {
         deactivateAsset,
@@ -45,9 +48,7 @@ export default function AssetsList({ contractAddress }: AssetsListProps) {
         return (
             <Card className="bg-card">
                 <CardContent className="flex items-center justify-center h-32">
-                    <div className="text-muted-foreground">
-                        에셋 로드중...
-                    </div>
+                    <div className="text-muted-foreground">에셋 로드중...</div>
                 </CardContent>
             </Card>
         );
@@ -57,15 +58,11 @@ export default function AssetsList({ contractAddress }: AssetsListProps) {
         return (
             <Card className="bg-card border-destructive">
                 <CardContent className="flex items-center justify-center h-32">
-                    <div className="text-destructive">
-                        에셋 로드 실패
-                    </div>
+                    <div className="text-destructive">에셋 로드 실패</div>
                 </CardContent>
             </Card>
         );
     }
-
-    const assetsList = assets?.assets || [];
 
     return (
         <div className="space-y-4">
@@ -96,7 +93,7 @@ export default function AssetsList({ contractAddress }: AssetsListProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {assetsList.map((asset: Asset) => (
+                            {filteredAssets.map((asset: Asset) => (
                                 <TableRow key={asset.id}>
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-2">

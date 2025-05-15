@@ -30,7 +30,6 @@ import {
     updatePlayerAssetsOnAssetChange,
 } from "./playerAssets";
 
-
 export interface DeployAssetsContractInput {
     walletId: string;
     networkId: string;
@@ -414,21 +413,19 @@ export async function getAssets(
         if (input?.name) {
             where.name = {
                 contains: input.name,
-                mode: "insensitive",
             };
         }
         if (input?.symbol) {
             where.symbol = {
                 contains: input.symbol,
-                mode: "insensitive",
             };
         }
         if (input?.contractAddress) {
-            where.contractAddress = {
-                contains: input.contractAddress,
-                mode: "insensitive",
-            };
+            where.assetsContractAddress = input.contractAddress;
         }
+
+        console.log("@@@ WHERE @@@", where);
+        console.log("@@@ INPUT @@@", input);
 
         const assets = await prisma.asset.findMany({
             where,
@@ -553,6 +550,7 @@ export interface AddAssetFunctionInput {
     assetId: string;
     selector: string;
     functionAbi: string;
+    functionApi: string;
     createdBy?: string;
 }
 
@@ -593,9 +591,11 @@ export async function addAssetFunction(
         });
 
         const tx = await contract.write.addAssetFunction([
-            asset.assetId!,
+            asset.assetType === "ONCHAIN" ? 0 : 1,
+            asset.assetId,
             input.selector as `0x${string}`,
-            input.functionAbi,
+            input.functionAbi || "0x",
+            input.functionApi || "0x",
         ]);
 
         const publicClient = createPublicClient({

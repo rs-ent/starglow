@@ -20,10 +20,15 @@ import {
     EstimateGasOptions,
     getWalletBalance,
 } from "./blockchain";
-import { BlockchainNetwork, CollectionContract, NFT } from "@prisma/client";
+import {
+    Prisma,
+    BlockchainNetwork,
+    CollectionContract,
+    NFT,
+} from "@prisma/client";
 import { privateKeyToAccount } from "viem/accounts";
 import { createNFTMetadata, getMetadataByCollectionAddress } from "./metadata";
-import { deployContract } from "./blockchain";
+import { deployContract, estimateGasForTransactions } from "./blockchain";
 
 import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
 import { revalidatePath } from "next/cache";
@@ -913,11 +918,11 @@ export async function getTokens(
 }
 
 export interface LockTokensInput {
+    userId: string;
     collectionAddress: string;
-    walletId: string;
     tokenIds: number[];
     unlockScheduledAt: number;
-    gasOptions?: EstimateGasOptions;
+    isStaking?: boolean;
 }
 
 export interface LockTokensResult {
@@ -968,8 +973,30 @@ export async function lockTokens(
             };
         }
 
+        const userWallets = await prisma.wallet.findMany({
+            where: {
+                userId: input.userId,
+            },
+            select: {
+                address: true,
+            },
+        });
+
+        const isOwner = tokens.every((token) =>
+            userWallets.some(
+                (wallet) => wallet.address === token.currentOwnerAddress
+            )
+        );
+
+        if (!isOwner) {
+            return {
+                success: false,
+                error: "You are not the owner of the tokens.",
+            };
+        }
+
         const escrowWallet = await getEscrowWalletWithPrivateKey(
-            input.walletId
+            collection.creatorAddress as Address
         );
         if (!escrowWallet.success || !escrowWallet.data) {
             return {
@@ -1012,7 +1039,6 @@ export async function lockTokens(
                     args: [input.tokenIds, BigInt(input.unlockScheduledAt)],
                 },
             ],
-            customOptions: input.gasOptions,
         });
 
         const hash = await collectionContract.write.lockTokens(
@@ -1022,18 +1048,29 @@ export async function lockTokens(
 
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
-        const TOKEN_LOCKED_EVENT_TOPIC =
-            "0xf25fd82f8bf40df41b90b95a0159c55596f50b182d7b7dff1d3e04a5a16ac7c4";
-        const events = receipt.logs.filter(
-            (log) => log.topics[0] === TOKEN_LOCKED_EVENT_TOPIC
-        );
+        const updateNFTData: Prisma.NFTUpdateInput = {
+            isLocked: true,
+            lockedAt: new Date(),
+            unlockScheduledAt: new Date(input.unlockScheduledAt * 1000),
+            lockTransactionHash: receipt.transactionHash,
+        };
 
-        if (events.length !== input.tokenIds.length) {
-            return {
-                success: false,
-                error: "Some tokens were not locked successfully",
-            };
+        if (input.isStaking) {
+            updateNFTData.isStaked = true;
+            updateNFTData.stakedAt = new Date();
         }
+
+        const lockEvents = tokens.map((token) => ({
+            nftId: token.id,
+            collectionId: collection.id,
+            eventType: input.isStaking ? "STAKE" : "LOCK",
+            fromAddress: escrowWallet.data.address as Address,
+            transactionHash: receipt.transactionHash,
+            timestamp: new Date(),
+            metadata: {
+                unlockScheduledAt: input.unlockScheduledAt,
+            },
+        }));
 
         await prisma.$transaction(async (tx) => {
             await tx.nFT.updateMany({
@@ -1041,25 +1078,8 @@ export async function lockTokens(
                     collectionId: collection.id,
                     tokenId: { in: input.tokenIds },
                 },
-                data: {
-                    isLocked: true,
-                    lockedAt: new Date(),
-                    unlockScheduledAt: new Date(input.unlockScheduledAt * 1000),
-                    lockTransactionHash: receipt.transactionHash,
-                },
+                data: updateNFTData,
             });
-
-            const lockEvents = tokens.map((token) => ({
-                nftId: token.id,
-                collectionId: collection.id,
-                eventType: "LOCK",
-                fromAddress: input.walletId,
-                transactionHash: receipt.transactionHash,
-                timestamp: new Date(),
-                metadata: {
-                    unlockScheduledAt: input.unlockScheduledAt,
-                },
-            }));
 
             await tx.nFTEvent.createMany({
                 data: lockEvents,
@@ -1097,10 +1117,10 @@ export async function lockTokens(
 }
 
 export interface UnlockTokensInput {
+    userId: string;
     collectionAddress: string;
-    walletId: string;
     tokenIds: number[];
-    gasOptions?: EstimateGasOptions;
+    isUnstaking?: boolean;
 }
 
 export interface UnlockTokensResult {
@@ -1125,12 +1145,19 @@ export async function unlockTokens(
             };
         }
 
+        const where: Prisma.NFTWhereInput = {
+            collectionId: collection.id,
+            tokenId: { in: input.tokenIds },
+            isBurned: false,
+            isLocked: true,
+        };
+
+        if (input.isUnstaking) {
+            where.isStaked = true;
+        }
+
         const tokens = await prisma.nFT.findMany({
-            where: {
-                collectionId: collection.id,
-                tokenId: { in: input.tokenIds },
-                isBurned: false,
-            },
+            where,
             select: {
                 id: true,
                 tokenId: true,
@@ -1145,20 +1172,30 @@ export async function unlockTokens(
             };
         }
 
-        const invalidTokens = tokens.filter(
-            (token) => token.currentOwnerAddress !== input.walletId
+        const userWallets = await prisma.wallet.findMany({
+            where: {
+                userId: input.userId,
+            },
+            select: {
+                address: true,
+            },
+        });
+
+        const isOwner = tokens.every((token) =>
+            userWallets.some(
+                (wallet) => wallet.address === token.currentOwnerAddress
+            )
         );
-        if (invalidTokens.length > 0) {
+
+        if (!isOwner) {
             return {
                 success: false,
-                error: `Not owner of tokens: ${invalidTokens
-                    .map((t) => t.tokenId)
-                    .join(", ")}`,
+                error: "You are not the owner of the tokens.",
             };
         }
 
         const escrowWallet = await getEscrowWalletWithPrivateKey(
-            input.walletId
+            collection.creatorAddress as Address
         );
         if (!escrowWallet.success || !escrowWallet.data) {
             return {
@@ -1201,7 +1238,6 @@ export async function unlockTokens(
                     args: [input.tokenIds, true],
                 },
             ],
-            customOptions: input.gasOptions,
         });
 
         const hash = await collectionContract.write.unlockTokens(
@@ -1211,39 +1247,32 @@ export async function unlockTokens(
 
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
-        const TOKEN_UNLOCKED_EVENT_TOPIC =
-            "0x0f7cd4952f541f9f3db6c639f784e95428c45f6ca7eb587d0bc3b6be3f619957";
-        const events = receipt.logs.filter(
-            (log) => log.topics[0] === TOKEN_UNLOCKED_EVENT_TOPIC
-        );
+        const updateNFTData: Prisma.NFTUpdateInput = {
+            isLocked: false,
+            unlockAt: new Date(),
+        };
 
-        if (events.length !== input.tokenIds.length) {
-            return {
-                success: false,
-                error: "Some tokens were not unlocked successfully",
-            };
+        if (input.isUnstaking) {
+            updateNFTData.isStaked = false;
+            updateNFTData.unstakedAt = new Date();
         }
+
+        const unlockEvents = tokens.map((token) => ({
+            nftId: token.id,
+            collectionId: collection.id,
+            eventType: input.isUnstaking ? "UNSTAKE" : "UNLOCK",
+            fromAddress: escrowWallet.data.address as Address,
+            transactionHash: receipt.transactionHash,
+            timestamp: new Date(),
+        }));
 
         await prisma.$transaction(async (tx) => {
             await tx.nFT.updateMany({
                 where: {
                     id: { in: tokens.map((t) => t.id) },
                 },
-                data: {
-                    isLocked: false,
-                    unlockAt: new Date(),
-                },
+                data: updateNFTData,
             });
-
-            // NFT 이벤트 생성
-            const unlockEvents = tokens.map((token) => ({
-                nftId: token.id,
-                collectionId: collection.id,
-                eventType: "UNLOCK",
-                fromAddress: input.walletId,
-                transactionHash: receipt.transactionHash,
-                timestamp: new Date(),
-            }));
 
             await tx.nFTEvent.createMany({
                 data: unlockEvents,
