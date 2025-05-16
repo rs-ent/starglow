@@ -85,7 +85,9 @@ export default function UserContentsMyAssetsNFTCard({
                 "bg-gradient-to-br",
                 "gradient-border",
                 "white-glow-smooth",
-                "cursor-pointer"
+                "cursor-pointer",
+                "transition-all duration-500 animate-in fade-in-0",
+                isTokenGateLoading ? "opacity-0" : "opacity-100"
             )}
             style={{
                 background: `linear-gradient(to bottom right, ${bg1}, ${bg2}, ${bg3})`,
