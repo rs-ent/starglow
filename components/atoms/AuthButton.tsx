@@ -8,7 +8,6 @@ import Button from "./Button";
 import { useLoading } from "@/app/hooks/useLoading";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback } from "react";
-import UserCard from "../molecules/UserCard";
 
 interface AuthButtonProps {
     frameSize?: number;
@@ -24,7 +23,6 @@ interface AuthButtonProps {
         | "secondary"
         | "ghost"
         | "link";
-    showUserCard?: boolean;
 }
 
 export default function AuthButton({
@@ -34,7 +32,6 @@ export default function AuthButton({
     gapSize = 20,
     className = "",
     variant = "default",
-    showUserCard = true,
 }: AuthButtonProps) {
     const { data: session, status } = useSession();
     const { startLoading } = useLoading();
@@ -71,29 +68,20 @@ export default function AuthButton({
         );
     }
 
-    return session && session.user ? (
-        showUserCard ? (
-            <UserCard
-                src={session.user.image || ""}
-                name={session.user.name || ""}
-                avatarSize={frameSize * 3}
-                usernameSize={textSize}
-                unserNameTruncate={true}
-                className="max-w-[60%]"
-            />
-        ) : null
-    ) : (
-        <Button
-            onClick={handleSignIn}
-            variant={variant}
-            className={className}
-            frameSize={frameSize}
-            textSize={textSize}
-            paddingSize={paddingSize}
-            gapSize={gapSize}
-            icon={LogIn}
-        >
-            Sign In
-        </Button>
+    return (
+        (!session || !session.user) && (
+            <Button
+                onClick={handleSignIn}
+                variant={variant}
+                className={className}
+                frameSize={frameSize}
+                textSize={textSize}
+                paddingSize={paddingSize}
+                gapSize={gapSize}
+                icon={LogIn}
+            >
+                Sign In
+            </Button>
+        )
     );
 }

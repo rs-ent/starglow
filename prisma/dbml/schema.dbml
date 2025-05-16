@@ -731,7 +731,7 @@ Table StakeReward {
   assetId String [not null]
   asset Asset [not null]
   amount Int [not null]
-  stakeDuration Int [not null]
+  stakeDuration BigInt [not null]
   collectionAddress String [not null]
   collection CollectionContract [not null]
   stakeRewardLogs StakeRewardLog [not null]

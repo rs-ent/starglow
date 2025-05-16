@@ -110,7 +110,7 @@ export async function unstake(input: UnstakeInput): Promise<UnstakeResult> {
 export interface CreateStakeRewardInput {
     asset: Asset;
     amount: number;
-    stakeDuration: number;
+    stakeDuration: bigint;
     collectionAddress: string;
 }
 
@@ -144,14 +144,19 @@ export async function createStakeReward(
 export interface GetStakeRewardInput {
     assetId?: string;
     amount?: number;
-    stakeDuration?: number;
+    stakeDuration?: bigint;
     stakeDurationIndicator?: "lte" | "gte" | "equal";
     collectionAddress?: string;
 }
 
+type StakeRewardWithAsset = StakeReward & {
+    asset: Asset;
+    collection: CollectionContract;
+};
+
 export async function getStakeRewards(
     input?: GetStakeRewardInput
-): Promise<StakeReward[]> {
+): Promise<StakeRewardWithAsset[]> {
     try {
         const where: Prisma.StakeRewardWhereInput = {};
 
@@ -188,6 +193,10 @@ export async function getStakeRewards(
             orderBy: {
                 stakeDuration: "asc",
             },
+            include: {
+                asset: true,
+                collection: true,
+            },
         });
 
         return stakeRewards;
@@ -201,7 +210,7 @@ export interface UpdateStakeRewardInput {
     stakeRewardId: string;
     assetId?: string;
     amount?: number;
-    stakeDuration?: number;
+    stakeDuration?: bigint;
     collectionAddress?: string;
 }
 
@@ -339,7 +348,8 @@ export async function findRewardableStakeTokens(): Promise<
             for (const token of eligibleTokens) {
                 if (
                     token.stakedAt &&
-                    now - token.stakedAt.getTime() >= stakeReward.stakeDuration
+                    BigInt(now - token.stakedAt.getTime()) >=
+                        stakeReward.stakeDuration
                 ) {
                     results.push({
                         token: token as NFT,

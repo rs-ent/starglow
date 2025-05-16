@@ -908,7 +908,7 @@ model StakeReward {
   assetId String
   asset Asset @relation("StakeReward", fields: [assetId], references: [id])
   amount Int
-  stakeDuration Int
+  stakeDuration BigInt
   collectionAddress String
   collection CollectionContract @relation("StakeReward", fields: [collectionAddress], references: [address])
 

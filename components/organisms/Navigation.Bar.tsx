@@ -82,7 +82,6 @@ export default function NavigationBar({ user, player }: NavigationBarProps) {
                         textSize={15}
                         paddingSize={10}
                         gapSize={10}
-                        showUserCard={false}
                     />
                     {player && (
                         <RewardPanel
@@ -123,7 +122,6 @@ export default function NavigationBar({ user, player }: NavigationBarProps) {
                             textSize={10}
                             paddingSize={20}
                             gapSize={20}
-                            showUserCard={false}
                         />
                     )}
                 </div>

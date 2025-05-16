@@ -424,9 +424,6 @@ export async function getAssets(
             where.assetsContractAddress = input.contractAddress;
         }
 
-        console.log("@@@ WHERE @@@", where);
-        console.log("@@@ INPUT @@@", input);
-
         const assets = await prisma.asset.findMany({
             where,
             skip: (currentPage - 1) * itemsPerPage,

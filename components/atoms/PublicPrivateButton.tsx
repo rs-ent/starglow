@@ -15,6 +15,8 @@ interface PublicPrivateButtonProps {
     gapSize?: number;
     paddingSize?: number;
     isActive?: boolean;
+    publicIcon?: string;
+    privateIcon?: string;
 }
 
 export default function PublicPrivateButton({
@@ -27,6 +29,8 @@ export default function PublicPrivateButton({
     gapSize = 10,
     paddingSize = 0,
     isActive = false,
+    publicIcon = "/icons/lock.svg",
+    privateIcon = "/icons/world.svg",
 }: PublicPrivateButtonProps) {
     const textSizeClass = getResponsiveClass(textSize).textClass;
     const frameSizeClass = getResponsiveClass(frameSize).frameClass;
@@ -58,7 +62,7 @@ export default function PublicPrivateButton({
                 </h3>
                 {isPublic ? (
                     <img
-                        src="/icons/world.svg"
+                        src={publicIcon}
                         alt={title}
                         className={cn(
                             frameSizeClass,
@@ -67,7 +71,7 @@ export default function PublicPrivateButton({
                     />
                 ) : (
                     <img
-                        src="/icons/lock.svg"
+                        src={privateIcon}
                         alt={title}
                         className={cn(
                             frameSizeClass,

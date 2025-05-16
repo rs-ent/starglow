@@ -765,8 +765,56 @@ export interface TokenGateResult {
 }
 
 export async function tokenGate(
-    input: TokenGateInput
+    input?: TokenGateInput
 ): Promise<TokenGateResult> {
+    if (!input) {
+        return {
+            success: false,
+            error: "No input provided",
+            data: {
+                hasToken: false,
+                tokenCount: 0,
+                ownerWallets: [],
+            },
+        };
+    }
+
+    if (!input.userId) {
+        return {
+            success: false,
+            error: "No userId provided",
+            data: {
+                hasToken: false,
+                tokenCount: 0,
+                ownerWallets: [],
+            },
+        };
+    }
+
+    if (!input.tokenType) {
+        return {
+            success: false,
+            error: "No tokenType provided",
+            data: {
+                hasToken: false,
+                tokenCount: 0,
+                ownerWallets: [],
+            },
+        };
+    }
+
+    if (!input.tokenAddress) {
+        return {
+            success: false,
+            error: "No tokenAddress provided",
+            data: {
+                hasToken: false,
+                tokenCount: 0,
+                ownerWallets: [],
+            },
+        };
+    }
+
     try {
         const { userId, tokenType, tokenAddress } = input;
 

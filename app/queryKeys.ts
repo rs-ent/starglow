@@ -25,7 +25,11 @@ import {
 } from "./actions/artists";
 import { GetReferralLogsInput } from "./actions/referral";
 import { GetUsersInput } from "./actions/user";
-import { GetStakeRewardInput, GetUserStakeRewardLogsInput } from "./actions/staking";
+import {
+    GetStakeRewardInput,
+    GetUserStakeRewardLogsInput,
+} from "./actions/staking";
+import { TokenGateInput } from "./actions/blockchain";
 
 export const queryKeys = {
     user: {
@@ -574,4 +578,15 @@ export const stakingKeys = {
         [...stakingKeys.all, "stake-rewards", input?.assetId] as const,
     userStakeRewardLogs: (input?: GetUserStakeRewardLogsInput) =>
         [...stakingKeys.all, "user-stake-reward-logs", input?.user.id] as const,
+};
+
+export const blockchainKeys = {
+    all: ["blockchain"] as const,
+    tokenGate: (input?: TokenGateInput) =>
+        [
+            ...blockchainKeys.all,
+            "token-gate",
+            input?.tokenAddress,
+            input?.userId,
+        ] as const,
 };

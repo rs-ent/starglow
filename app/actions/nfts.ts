@@ -9,6 +9,7 @@ import {
     NFTPaginationParams,
 } from "@/components/admin/onchain/OnChain.types";
 import { ethers, providers } from "ethers";
+import { User } from "next-auth";
 
 export async function fetchNFTs(
     filters: NFTFilters,
@@ -297,13 +298,15 @@ export async function getOwnerByTokenIds({
 
         const [, returnData] = await multicallContract.aggregate(calls);
 
-        return tokenIds.map((tokenId, index) => ({
+        const result = tokenIds.map((tokenId, index) => ({
             tokenId,
             ownerAddress: nftInterface.decodeFunctionResult(
                 "ownerOf",
                 returnData[index]
             )[0],
         }));
+
+        return result;
     } catch (error) {
         console.error("Error fetching owner by token IDs:", error);
         throw new Error("Failed to fetch owner by token IDs");
@@ -340,4 +343,99 @@ export async function verifyOwnership({
         console.error("Error verifying ownership:", error);
         throw new Error("Failed to verify ownership");
     }
+}
+
+export interface UserVerifiedNFTsByCollectionAddressInput {
+    collectionAddress: string;
+    userId: string;
+}
+
+export async function getUserVerifiedNFTsByCollectionAddress(
+    input?: UserVerifiedNFTsByCollectionAddressInput
+): Promise<NFT[]> {
+    if (!input) {
+        return [];
+    }
+
+    const [wallets, collection] = await Promise.all([
+        prisma.wallet.findMany({
+            where: {
+                userId: input.userId,
+            },
+            select: {
+                address: true,
+            },
+        }),
+        prisma.collectionContract.findUnique({
+            where: {
+                address: input.collectionAddress,
+            },
+        }),
+    ]);
+
+    if (!collection) {
+        return [];
+    }
+
+    const nfts = await prisma.nFT.findMany({
+        where: {
+            collection: { address: input.collectionAddress },
+            currentOwnerAddress: {
+                in: wallets.map((wallet) => wallet.address),
+            },
+        },
+        select: {
+            id: true,
+            tokenId: true,
+            currentOwnerAddress: true,
+        },
+    });
+
+    const ownerAddresses = await getOwnerByTokenIds({
+        contractAddress: input.collectionAddress,
+        tokenIds: nfts.map((nft) => nft.tokenId.toString()),
+        networkId: collection?.networkId,
+    });
+
+    const ownerAddressMap = new Map(
+        ownerAddresses.map(({ tokenId, ownerAddress }) => [
+            tokenId,
+            ownerAddress,
+        ])
+    );
+
+    const needsUpdate = nfts.filter((nft) => {
+        const currentOwner = ownerAddressMap.get(nft.tokenId.toString());
+        return currentOwner && currentOwner !== nft.currentOwnerAddress;
+    });
+
+    if (needsUpdate.length > 0) {
+        await Promise.all(
+            needsUpdate.map((nft) =>
+                prisma.nFT.update({
+                    where: { id: nft.id },
+                    data: {
+                        currentOwnerAddress: ownerAddressMap.get(
+                            nft.tokenId.toString()
+                        ),
+                    },
+                })
+            )
+        );
+    }
+
+    const verifiedNFTIds = nfts
+        .filter((nft) => {
+            const currentOwner = ownerAddressMap.get(nft.tokenId.toString());
+            return wallets.some((wallet) => wallet.address === currentOwner);
+        })
+        .map((nft) => nft.id);
+
+    const verifiedNFTs = await prisma.nFT.findMany({
+        where: {
+            id: { in: verifiedNFTIds },
+        },
+    });
+
+    return verifiedNFTs;
 }

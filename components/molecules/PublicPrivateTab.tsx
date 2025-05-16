@@ -14,6 +14,10 @@ interface PublicPrivateTabProps {
     frameSize?: number;
     gapSize?: number;
     paddingSize?: number;
+    publicText?: string;
+    privateText?: string;
+    publicIcon?: string;
+    privateIcon?: string;
 }
 
 export default function PublicPrivateTab({
@@ -25,6 +29,10 @@ export default function PublicPrivateTab({
     frameSize = 20,
     gapSize = 10,
     paddingSize = 0,
+    publicText = "World",
+    privateText = "Exclusive",
+    publicIcon = "/icons/world.svg",
+    privateIcon = "/icons/lock.svg",
 }: PublicPrivateTabProps) {
     return (
         <div
@@ -35,7 +43,7 @@ export default function PublicPrivateTab({
         >
             <div className="grid grid-cols-2 gap-[15px] cursor-pointer">
                 <PublicPrivateButton
-                    title="World"
+                    title={publicText}
                     isPublic={true}
                     onClick={onPublic}
                     textSize={textSize}
@@ -43,11 +51,12 @@ export default function PublicPrivateTab({
                     gapSize={gapSize}
                     paddingSize={paddingSize}
                     isActive={isPublic}
+                    publicIcon={publicIcon}
                     className="justify-self-end"
                 />
 
                 <PublicPrivateButton
-                    title="Exclusive"
+                    title={privateText}
                     isPublic={false}
                     onClick={onPrivate}
                     textSize={textSize}
@@ -55,6 +64,7 @@ export default function PublicPrivateTab({
                     gapSize={gapSize}
                     paddingSize={paddingSize}
                     isActive={!isPublic}
+                    privateIcon={privateIcon}
                     className="justify-self-start"
                 />
             </div>
