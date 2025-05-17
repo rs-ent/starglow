@@ -73,7 +73,7 @@ export default function UserNFTDetail({
                     mass: 0.8,
                 }}
                 className={cn(
-                    "fixed inset-0 w-screen h-screen backdrop-blur-3xl z-50"
+                    "fixed inset-0 w-screen h-screen backdrop-blur-3xl z-30"
                 )}
                 style={{
                     background: `linear-gradient(to bottom right, ${bg1}, ${bg2}, ${bg3})`,

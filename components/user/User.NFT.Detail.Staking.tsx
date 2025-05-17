@@ -3,7 +3,12 @@
 "use client";
 
 import { useStakingGet, useStakingSet } from "@/app/hooks/useStaking";
-import { Player, CollectionContract } from "@prisma/client";
+import {
+    Player,
+    CollectionContract,
+    NFT,
+    StakeRewardLog,
+} from "@prisma/client";
 import { User } from "next-auth";
 import PartialLoading from "../atoms/PartialLoading";
 import { TokenGateResult } from "@/app/actions/blockchain";
@@ -12,7 +17,8 @@ import { cn } from "@/lib/utils/tailwind";
 import { Button } from "../ui/button";
 import { useToast } from "@/app/hooks/useToast";
 import Popup from "../atoms/Popup";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useLoading } from "@/app/hooks/useLoading";
 
 interface UserNFTStakingProps {
     user: User | null;
@@ -28,26 +34,58 @@ export default function UserNFTStaking({
     tokenGateResult,
 }: UserNFTStakingProps) {
     const {
+        stakeRewards,
         userStakingTokens,
         isUserStakingTokensLoading,
+        userStakeRewardLogs,
         userStakingTokensError,
     } = useStakingGet({
+        getStakeRewardInput: {
+            collectionAddress: collection.address,
+        },
         getUserStakingTokensInput: { userId: user?.id ?? "" },
+        getUserStakeRewardLogsInput: { userId: user?.id ?? "" },
     });
 
     const { stake, unstake, claimStakeReward } = useStakingSet();
 
     const toast = useToast();
+    const { startLoading, endLoading } = useLoading();
 
     const [openStakePopup, setOpenStakePopup] = useState(false);
     const [openUnstakePopup, setOpenUnstakePopup] = useState(false);
+
+    const nextNotDistributedReward = useMemo(() => {
+        const rewardable = stakeRewards
+            ?.filter((r) => {
+                const index = userStakeRewardLogs?.findIndex(
+                    (l) => l.stakeRewardId === r.id
+                );
+
+                const isRewardable = index === -1;
+                return isRewardable;
+            })
+            .sort((a, b) => Number(a.stakeDuration) - Number(b.stakeDuration));
+
+        return rewardable?.[0];
+    }, [stakeRewards, userStakeRewardLogs]);
+
+    const canClaimReward = useMemo(() => {
+        return userStakeRewardLogs && userStakeRewardLogs.length > 0;
+    }, [userStakeRewardLogs]);
+
+    console.log("Stake Rewards", stakeRewards);
+    console.log("User Staking Tokens", userStakingTokens);
+    console.log("User Stake Reward Logs", userStakeRewardLogs);
 
     const handleClaimReward = () => {
         console.log("Claim Reward");
     };
 
     const handleStake = async () => {
+        startLoading();
         if (!user || !user.id || !player) {
+            endLoading();
             toast.error(
                 "Please login to stake your NFTs. If you have already logged in, please refresh the page."
             );
@@ -58,6 +96,7 @@ export default function UserNFTStaking({
         const collectionAddress = collection.address;
 
         if (!tokenIds || tokenIds.length === 0 || !collectionAddress) {
+            endLoading();
             toast.error(
                 "Cannot find any tokens for staking. Please purchase the NFT first. If you have already purchased the NFT, please contact support."
             );
@@ -77,20 +116,27 @@ export default function UserNFTStaking({
         } else {
             toast.error(stakeResult.message ?? "Failed to stake NFTs.");
         }
+        endLoading();
     };
 
     const handleUnstake = async () => {
+        startLoading();
         setOpenUnstakePopup(false);
         if (!user || !user.id || !player) {
+            endLoading();
             toast.error(
                 "Please login to unstake your NFTs. If you have already logged in, please refresh the page."
             );
             return;
         }
-        const tokenIds = userStakingTokens?.map((t) => t.tokenId) ?? [];
+        const tokenIds =
+            userStakingTokens?.map(
+                (t: NFT & { stakeRewardLogs: StakeRewardLog[] }) => t.tokenId
+            ) ?? [];
         const collectionAddress = collection.address;
 
         if (!tokenIds.length || !collectionAddress) {
+            endLoading();
             toast.error("No staked tokens found.");
             return;
         }
@@ -106,6 +152,7 @@ export default function UserNFTStaking({
         } else {
             toast.error(unstakeResult.message ?? "Failed to unstake NFTs.");
         }
+        endLoading();
     };
 
     return (
@@ -264,9 +311,13 @@ export default function UserNFTStaking({
                         <div className={cn("w-full flex flex-row", "gap-3")}>
                             <p className="font-semibold">Next Reward Date</p>
                             <p className="flex-1 text-[rgba(255,255,255,0.6)]">
-                                {userStakingTokens?.[0]?.stakedAt
+                                {userStakingTokens?.[0]?.stakedAt &&
+                                nextNotDistributedReward
                                     ? new Date(
-                                          userStakingTokens?.[0]?.stakedAt
+                                          userStakingTokens[0].stakedAt.getTime() +
+                                              Number(
+                                                  nextNotDistributedReward.stakeDuration
+                                              )
                                       ).toLocaleDateString()
                                     : "Not staked yet"}
                             </p>
@@ -275,10 +326,8 @@ export default function UserNFTStaking({
                         <div className={cn("w-full flex flex-row", "gap-3")}>
                             <p className="font-semibold">Reward Amount</p>
                             <p className="flex-1 text-[rgba(255,255,255,0.6)]">
-                                {userStakingTokens?.[0]?.stakedAt
-                                    ? new Date(
-                                          userStakingTokens?.[0]?.stakedAt
-                                      ).toLocaleDateString()
+                                {nextNotDistributedReward
+                                    ? nextNotDistributedReward.amount
                                     : "Not staked yet"}
                             </p>
                         </div>
@@ -292,6 +341,7 @@ export default function UserNFTStaking({
                                     onClick={() => {
                                         handleClaimReward();
                                     }}
+                                    disabled={!canClaimReward}
                                 >
                                     Claim Reward
                                 </Button>
@@ -306,14 +356,6 @@ export default function UserNFTStaking({
                             </>
                         ) : (
                             <>
-                                <Button
-                                    className="w-full rounded-full"
-                                    onClick={() => {
-                                        setOpenUnstakePopup(true);
-                                    }}
-                                >
-                                    Unstake
-                                </Button>
                                 <Button
                                     className="w-full rounded-full"
                                     onClick={() => {

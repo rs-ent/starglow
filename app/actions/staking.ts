@@ -22,6 +22,7 @@ export interface StakeInput {
     collectionAddress: string;
     tokenIds: number[];
     unStakeScheduledAt?: Date;
+    isAdmin?: boolean;
 }
 
 export interface StakeResult {
@@ -46,6 +47,7 @@ export async function stake(input: StakeInput): Promise<StakeResult> {
                 ? Math.floor(unStakeScheduledAt.getTime() / 1000)
                 : 0,
             isStaking: true,
+            isAdmin: input.isAdmin,
         });
 
         if (!lockResult.success) {
@@ -68,6 +70,7 @@ export interface UnstakeInput {
     userId: string;
     collectionAddress: string;
     tokenIds: number[];
+    isAdmin?: boolean;
 }
 
 export interface UnstakeResult {
@@ -77,7 +80,7 @@ export interface UnstakeResult {
 }
 
 export async function unstake(input: UnstakeInput): Promise<UnstakeResult> {
-    const { userId, collectionAddress, tokenIds } = input;
+    const { userId, collectionAddress, tokenIds, isAdmin } = input;
 
     if (!userId || !collectionAddress || !tokenIds || tokenIds.length === 0) {
         return { success: false, message: "Invalid input parameters." };
@@ -89,6 +92,7 @@ export async function unstake(input: UnstakeInput): Promise<UnstakeResult> {
             collectionAddress,
             tokenIds,
             isUnstaking: true,
+            isAdmin,
         });
 
         if (!unlockResult.success) {
@@ -123,9 +127,20 @@ export async function getUserStakingTokens(
     }
 
     try {
+        const wallets = await prisma.wallet.findMany({
+            where: {
+                userId: input.userId,
+            },
+            select: {
+                address: true,
+            },
+        });
+
         const tokens = await prisma.nFT.findMany({
             where: {
-                currentOwnerAddress: input.userId,
+                currentOwnerAddress: {
+                    in: wallets.map((w: any) => w.address),
+                },
                 isStaked: true,
             },
             include: {
@@ -285,21 +300,21 @@ export async function deleteStakeReward(
 }
 
 export interface GetUserStakeRewardLogsInput {
-    user: User;
+    userId: string | null;
     isClaimed?: boolean;
 }
 
 export async function getUserStakeRewardLogs(
     input?: GetUserStakeRewardLogsInput
 ): Promise<StakeRewardLog[]> {
-    if (!input || !input?.user) {
+    if (!input || !input?.userId) {
         return [];
     }
 
     try {
         const wallets = await prisma.wallet.findMany({
             where: {
-                userId: input.user.id,
+                userId: input.userId,
             },
             select: {
                 address: true,

@@ -46,7 +46,7 @@ export default function Popup({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.45)] backdrop-blur-sm z-50"
+                    className="fixed inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.45)] backdrop-blur-sm z-30"
                     onClick={onClose}
                 >
                     <motion.div

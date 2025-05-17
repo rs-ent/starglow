@@ -580,7 +580,7 @@ export const stakingKeys = {
     stakeRewards: (input?: GetStakeRewardInput) =>
         [...stakingKeys.all, "stake-rewards", input?.assetId] as const,
     userStakeRewardLogs: (input?: GetUserStakeRewardLogsInput) =>
-        [...stakingKeys.all, "user-stake-reward-logs", input?.user.id] as const,
+        [...stakingKeys.all, "user-stake-reward-logs", input?.userId] as const,
 };
 
 export const blockchainKeys = {

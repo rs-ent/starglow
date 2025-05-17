@@ -96,7 +96,7 @@ export default function NavigationBar({ user, player }: NavigationBarProps) {
             <div className="lg:hidden">
                 <div
                     className={cn(
-                        "fixed top-0 left-0 right-0 inset-x-0 z-40",
+                        "fixed top-0 left-0 right-0 inset-x-0 z-20",
                         "flex justify-between items-center",
                         "px-[10px] py-[10px]",
                         "sm:px-[16px] sm:py-[14px]",
