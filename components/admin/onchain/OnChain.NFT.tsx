@@ -163,6 +163,7 @@ export function NFTList({ collection }: { collection: CollectionContract }) {
                     userId: session?.user?.id ?? "",
                     collectionAddress: collection.address,
                     tokenIds: [nft.tokenId],
+                    isAdmin: true,
                 });
 
                 if (result.success) {
@@ -181,6 +182,7 @@ export function NFTList({ collection }: { collection: CollectionContract }) {
                     collectionAddress: collection.address,
                     tokenIds: [nft.tokenId],
                     unlockScheduledAt: 0,
+                    isAdmin: true,
                 });
                 if (result.success) {
                     toast.success(`Token #${nft.tokenId} locked!`);
