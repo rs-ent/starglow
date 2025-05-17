@@ -37,7 +37,7 @@ export default function User() {
 
     const handleSelect = (tab: string) => {
         if (tab === "sign-out") {
-            signOut({ callbackUrl: "/" });
+            signOut({ callbackUrl: "/?signedOut=true" });
             return;
         }
 
