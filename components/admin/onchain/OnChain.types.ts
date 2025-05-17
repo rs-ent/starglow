@@ -18,9 +18,10 @@ export interface NFTFilters {
     currentOwnerAddress?: string;
     isListed?: boolean;
     isBurned?: boolean;
+    isStaked?: boolean;
     searchTerm?: string;
     networkId?: string;
-    status?: "all" | "listed" | "unlisted" | "burned";
+    status?: "all" | "listed" | "unlisted" | "burned" | "staked";
 }
 
 export interface NFTPaginationParams {

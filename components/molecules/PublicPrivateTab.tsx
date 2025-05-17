@@ -41,7 +41,7 @@ export default function PublicPrivateTab({
                 className
             )}
         >
-            <div className="grid grid-cols-2 gap-[15px] cursor-pointer">
+            <div className="grid grid-cols-2 gap-[20px] cursor-pointer">
                 <PublicPrivateButton
                     title={publicText}
                     isPublic={true}

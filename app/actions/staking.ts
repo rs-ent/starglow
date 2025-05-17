@@ -107,6 +107,37 @@ export async function unstake(input: UnstakeInput): Promise<UnstakeResult> {
     }
 }
 
+export interface GetUserStakingTokensInput {
+    userId: string;
+}
+
+export type StakingToken = NFT & {
+    stakeRewardLogs: StakeRewardLog[];
+};
+
+export async function getUserStakingTokens(
+    input?: GetUserStakingTokensInput
+): Promise<StakingToken[]> {
+    if (!input || !input?.userId) {
+        return [];
+    }
+
+    try {
+        const tokens = await prisma.nFT.findMany({
+            where: {
+                currentOwnerAddress: input.userId,
+                isStaked: true,
+            },
+            include: {
+                stakeRewardLogs: true,
+            },
+        });
+        return tokens;
+    } catch (error) {
+        return [];
+    }
+}
+
 export interface CreateStakeRewardInput {
     asset: Asset;
     amount: number;

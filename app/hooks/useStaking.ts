@@ -5,6 +5,7 @@
 import {
     useStakeRewards,
     useUserStakeRewardLogs,
+    useUserStakingTokens,
 } from "@/app/queries/stakingQueries";
 
 import {
@@ -18,17 +19,26 @@ import {
 } from "@/app/mutations/stakingMutations";
 
 import type {
+    GetUserStakingTokensInput,
     GetStakeRewardInput,
     GetUserStakeRewardLogsInput,
 } from "@/app/actions/staking";
 
 export function useStakingGet({
+    getUserStakingTokensInput,
     getStakeRewardInput,
     getUserStakeRewardLogsInput,
 }: {
+    getUserStakingTokensInput?: GetUserStakingTokensInput;
     getStakeRewardInput?: GetStakeRewardInput;
     getUserStakeRewardLogsInput?: GetUserStakeRewardLogsInput;
 }) {
+    const {
+        data: userStakingTokens,
+        isLoading: isUserStakingTokensLoading,
+        error: userStakingTokensError,
+    } = useUserStakingTokens(getUserStakingTokensInput);
+
     const {
         data: stakeRewards,
         isLoading: isStakeRewardsLoading,
@@ -40,10 +50,18 @@ export function useStakingGet({
         error: userStakeRewardLogsError,
     } = useUserStakeRewardLogs(getUserStakeRewardLogsInput);
 
-    const isLoading = isStakeRewardsLoading || isUserStakeRewardLogsLoading;
-    const error = stakeRewardsError || userStakeRewardLogsError;
+    const isLoading =
+        isUserStakingTokensLoading ||
+        isStakeRewardsLoading ||
+        isUserStakeRewardLogsLoading;
+    const error =
+        userStakingTokensError || stakeRewardsError || userStakeRewardLogsError;
 
     return {
+        userStakingTokens,
+        isUserStakingTokensLoading,
+        userStakingTokensError,
+
         stakeRewards,
         isStakeRewardsLoading,
         stakeRewardsError,

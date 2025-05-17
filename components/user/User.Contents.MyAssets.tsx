@@ -2,11 +2,13 @@
 
 "use client";
 
+import { Player } from "@prisma/client";
 import UserContentsMyAssetsNFT from "./User.Contents.MyAssets.NFT";
 import UserContentsMyAssetsRewards from "./User.Contents.MyAssets.Rewards";
 
 import { cn } from "@/lib/utils/tailwind";
 import { useState } from "react";
+import { User } from "next-auth";
 
 const assetsTab = [
     {
@@ -19,7 +21,15 @@ const assetsTab = [
     },
 ];
 
-export default function UserContentsMyAssets() {
+interface UserContentsMyAssetsProps {
+    user: User | null;
+    player: Player | null;
+}
+
+export default function UserContentsMyAssets({
+    user,
+    player,
+}: UserContentsMyAssetsProps) {
     const [selectedTab, setSelectedTab] = useState<string>(assetsTab[0].id);
 
     return (
@@ -47,8 +57,12 @@ export default function UserContentsMyAssets() {
                     </button>
                 ))}
             </div>
-            {selectedTab === "nft" && <UserContentsMyAssetsNFT />}
-            {selectedTab === "rewards" && <UserContentsMyAssetsRewards />}
+            {selectedTab === "nft" && (
+                <UserContentsMyAssetsNFT user={user} player={player} />
+            )}
+            {selectedTab === "rewards" && (
+                <UserContentsMyAssetsRewards user={user} player={player} />
+            )}
         </div>
     );
 }

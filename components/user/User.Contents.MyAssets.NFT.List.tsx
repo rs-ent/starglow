@@ -10,8 +10,17 @@ import UserContentsMyAssetsNFTCard from "./User.Contents.MyAssets.NFT.Card";
 import { CollectionContract } from "@prisma/client";
 import { METADATA_TYPE } from "@/app/actions/metadata";
 import UserNFTDetail from "./User.NFT.Detail";
+import { User } from "next-auth";
+import { Player } from "@prisma/client";
+interface UserMyAssetsNFTListProps {
+    user: User | null;
+    player: Player | null;
+}
 
-export default function UserMyAssetsNFTList() {
+export default function UserMyAssetsNFTList({
+    user,
+    player,
+}: UserMyAssetsNFTListProps) {
     const { everyCollections, isLoading, error } = useFactoryGet({});
 
     const [selectedCollection, setSelectedCollection] = useState<{
@@ -41,6 +50,8 @@ export default function UserMyAssetsNFTList() {
                     collection={selectedCollection.collection}
                     metadata={selectedCollection.metadata}
                     onClose={handleClose}
+                    user={user}
+                    player={player}
                 />
             )}
             <div className="w-full">

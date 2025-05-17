@@ -26,6 +26,9 @@ export async function fetchNFTs(
             ...(filters.isBurned !== undefined && {
                 isBurned: filters.isBurned,
             }),
+            ...(filters.isStaked !== undefined && {
+                isStaked: filters.isStaked,
+            }),
             ...(filters.networkId && { networkId: filters.networkId }),
             ...(filters.searchTerm && {
                 OR: [

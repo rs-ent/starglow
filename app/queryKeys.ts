@@ -28,6 +28,7 @@ import { GetUsersInput } from "./actions/user";
 import {
     GetStakeRewardInput,
     GetUserStakeRewardLogsInput,
+    GetUserStakingTokensInput,
 } from "./actions/staking";
 import { TokenGateInput } from "./actions/blockchain";
 
@@ -574,6 +575,8 @@ export const artistKeys = {
 
 export const stakingKeys = {
     all: ["staking"] as const,
+    userStakingTokens: (input?: GetUserStakingTokensInput) =>
+        [...stakingKeys.all, "user-staking-tokens", input?.userId] as const,
     stakeRewards: (input?: GetStakeRewardInput) =>
         [...stakingKeys.all, "stake-rewards", input?.assetId] as const,
     userStakeRewardLogs: (input?: GetUserStakeRewardLogsInput) =>

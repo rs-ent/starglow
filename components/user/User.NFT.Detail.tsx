@@ -4,7 +4,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { XIcon } from "lucide-react";
-import { CollectionContract } from "@prisma/client";
+import { CollectionContract, Player } from "@prisma/client";
 import { METADATA_TYPE } from "@/app/actions/metadata";
 import ImageMetadata from "../atoms/ImageMetadata";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -12,17 +12,23 @@ import { cn } from "@/lib/utils/tailwind";
 import { useMemo, useState } from "react";
 import { formatHexToRGBA } from "@/lib/utils/format";
 import PublicPrivateTab from "../molecules/PublicPrivateTab";
+import UserNFTStaking from "./User.NFT.Detail.Staking";
+import { User } from "next-auth";
 
 interface UserNFTDetailProps {
     collection: CollectionContract;
     metadata: METADATA_TYPE;
     onClose: () => void;
+    user: User | null;
+    player: Player | null;
 }
 
 export default function UserNFTDetail({
     collection,
     metadata,
     onClose,
+    user,
+    player,
 }: UserNFTDetailProps) {
     const [isMission, setIsMission] = useState(true);
 
@@ -77,14 +83,15 @@ export default function UserNFTDetail({
                 </div>
                 <div
                     className={cn(
-                        "flex flex-col p-6 items-center justify-center h-full",
-                        "max-w-[600px] w-screen mx-auto"
+                        "flex flex-col items-center justify-center h-full",
+                        "max-w-[600px] w-screen mx-auto",
+                        "py-24 px-6"
                     )}
                 >
                     <h2
                         className={cn(
-                            "fixed top-6",
-                            getResponsiveClass(40).textClass
+                            "break-words w-full text-center px-6 mb-10",
+                            getResponsiveClass(35).textClass
                         )}
                     >
                         {metadata.name}
@@ -103,12 +110,26 @@ export default function UserNFTDetail({
                             className="w-full rounded-[12px]"
                         />
                     </div>
-                    <div className="w-full">
+                    <div className={cn("mt-12 mb-6")}>
                         <PublicPrivateTab
                             isPublic={isMission}
                             onPublic={() => setIsMission(true)}
                             onPrivate={() => setIsMission(false)}
+                            textSize={25}
+                            frameSize={20}
+                            gapSize={10}
+                            publicText="Mission"
+                            privateText="Staking"
                         />
+                    </div>
+                    <div
+                        className={cn("flex-1 w-full overflow-y-auto", "py-6")}
+                    >
+                        {isMission ? (
+                            <UserNFTStaking user={user} player={player} />
+                        ) : (
+                            <UserNFTStaking user={user} player={player} />
+                        )}
                     </div>
                 </div>
             </motion.div>

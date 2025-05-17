@@ -5,8 +5,9 @@
 import UserNavigation from "@/components/user/User.Navigation";
 import UserContents from "@/components/user/User.Contents";
 import { cn } from "@/lib/utils/tailwind";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 
 const tabs = [
     {
@@ -25,6 +26,14 @@ const tabs = [
 
 export default function User() {
     const [selectedTab, setSelectedTab] = useState<string>(tabs[0].id);
+    const { data: session } = useSession();
+
+    const { user, player } = useMemo(() => {
+        return {
+            user: session?.user ?? null,
+            player: session?.player ?? null,
+        };
+    }, [session]);
 
     const handleSelect = (tab: string) => {
         if (tab === "sign-out") {
@@ -53,7 +62,11 @@ export default function User() {
             </div>
 
             <div className="relative">
-                <UserContents selectedTab={selectedTab} />
+                <UserContents
+                    selectedTab={selectedTab}
+                    user={user}
+                    player={player}
+                />
             </div>
         </div>
     );
