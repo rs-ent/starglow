@@ -760,6 +760,7 @@ export interface TokenGateResult {
         hasToken: boolean;
         tokenCount: number;
         ownerWallets: string[];
+        tokenIds: number[];
     };
     error?: string;
 }
@@ -775,6 +776,7 @@ export async function tokenGate(
                 hasToken: false,
                 tokenCount: 0,
                 ownerWallets: [],
+                tokenIds: [],
             },
         };
     }
@@ -787,6 +789,7 @@ export async function tokenGate(
                 hasToken: false,
                 tokenCount: 0,
                 ownerWallets: [],
+                tokenIds: [],
             },
         };
     }
@@ -799,6 +802,7 @@ export async function tokenGate(
                 hasToken: false,
                 tokenCount: 0,
                 ownerWallets: [],
+                tokenIds: [],
             },
         };
     }
@@ -811,6 +815,7 @@ export async function tokenGate(
                 hasToken: false,
                 tokenCount: 0,
                 ownerWallets: [],
+                tokenIds: [],
             },
         };
     }
@@ -836,6 +841,7 @@ export async function tokenGate(
                     hasToken: false,
                     tokenCount: 0,
                     ownerWallets: [],
+                    tokenIds: [],
                 },
             };
         }
@@ -854,12 +860,20 @@ export async function tokenGate(
                     .map((owner) => owner.toLowerCase())
                     .filter((owner) => walletAddresses.has(owner));
 
+                const userTokenIds = tokenOwners.tokenIds.filter(
+                    (tokenId, idx) =>
+                        walletAddresses.has(
+                            tokenOwners.owners[idx].toLowerCase()
+                        )
+                );
+
                 return {
                     success: ownerMatches.length > 0,
                     data: {
                         hasToken: ownerMatches.length > 0,
                         tokenCount: ownerMatches.length,
                         ownerWallets: ownerMatches,
+                        tokenIds: userTokenIds,
                     },
                 };
             }
@@ -872,6 +886,7 @@ export async function tokenGate(
                         hasToken: false,
                         tokenCount: 0,
                         ownerWallets: [],
+                        tokenIds: [],
                     },
                 };
             }
@@ -884,6 +899,7 @@ export async function tokenGate(
                         hasToken: false,
                         tokenCount: 0,
                         ownerWallets: [],
+                        tokenIds: [],
                     },
                 };
         }
@@ -896,6 +912,7 @@ export async function tokenGate(
                 hasToken: false,
                 tokenCount: 0,
                 ownerWallets: [],
+                tokenIds: [],
             },
         };
     }

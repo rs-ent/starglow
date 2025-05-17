@@ -13,10 +13,14 @@ import { useMetadata } from "@/app/hooks/useMetadata";
 import { METADATA_TYPE } from "@/app/actions/metadata";
 import ImageMetadata from "@/components/atoms/ImageMetadata";
 import { formatHexToRGBA } from "@/lib/utils/format";
-
+import { TokenGateResult } from "@/app/actions/blockchain";
 interface UserContentsMyAssetsNFTCardProps {
     collectionContract: CollectionContract;
-    onSelect: (collection: CollectionContract, metadata: METADATA_TYPE) => void;
+    onSelect: (
+        collection: CollectionContract,
+        metadata: METADATA_TYPE,
+        tokenGateResult: TokenGateResult
+    ) => void;
 }
 
 export default function UserContentsMyAssetsNFTCard({
@@ -71,8 +75,8 @@ export default function UserContentsMyAssetsNFTCard({
         });
 
     const handleSelect = () => {
-        if (collectionContract && metadata) {
-            onSelect(collectionContract, metadata);
+        if (collectionContract && metadata && tokenGateData) {
+            onSelect(collectionContract, metadata, tokenGateData);
         }
     };
 

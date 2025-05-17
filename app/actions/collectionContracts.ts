@@ -33,6 +33,7 @@ import { deployContract, estimateGasForTransactions } from "./blockchain";
 import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
 import { revalidatePath } from "next/cache";
 const abi = collectionJson.abi;
+import { Abi } from "viem";
 
 export interface GetCollectionInput {
     collectionAddress: string;
@@ -221,6 +222,7 @@ export interface getTokenOwnersInput {
 
 export interface getTokenOwnersResult {
     owners: string[];
+    tokenIds: number[];
 }
 
 export async function getTokenOwners(
@@ -233,7 +235,7 @@ export async function getTokenOwners(
         });
 
         if (!collection || !collection.network) {
-            return { owners: [] };
+            return { owners: [], tokenIds: [] };
         }
 
         const chain = await getChain(collection.network);
@@ -252,7 +254,7 @@ export async function getTokenOwners(
             ).map((token) => token.tokenId);
 
         if (!tokenIds.length) {
-            return { owners: [] };
+            return { owners: [], tokenIds: [] };
         }
 
         const BATCH_SIZE = 50;
@@ -324,10 +326,11 @@ export async function getTokenOwners(
 
         return {
             owners: results.map((result) => result.owner),
+            tokenIds: results.map((result) => result.tokenId),
         };
     } catch (error) {
         console.error("Error getting token owners:", error);
-        return { owners: [] };
+        return { owners: [], tokenIds: [] };
     }
 }
 
@@ -923,6 +926,7 @@ export interface LockTokensInput {
     tokenIds: number[];
     unlockScheduledAt: number;
     isStaking?: boolean;
+    isAdmin?: boolean;
 }
 
 export interface LockTokensResult {
@@ -988,16 +992,20 @@ export async function lockTokens(
             )
         );
 
-        if (!isOwner) {
+        if (!isOwner && !input.isAdmin) {
             return {
                 success: false,
                 error: "You are not the owner of the tokens.",
             };
         }
 
-        const escrowWallet = await getEscrowWalletWithPrivateKey(
+        console.log("collection.creatorAddress", collection.creatorAddress);
+
+        const escrowWallet = await getEscrowWalletWithPrivateKeyByAddress(
             collection.creatorAddress as Address
         );
+
+        console.log("escrowWallet", escrowWallet);
         if (!escrowWallet.success || !escrowWallet.data) {
             return {
                 success: false,
@@ -1067,9 +1075,6 @@ export async function lockTokens(
             fromAddress: escrowWallet.data.address as Address,
             transactionHash: receipt.transactionHash,
             timestamp: new Date(),
-            metadata: {
-                unlockScheduledAt: input.unlockScheduledAt,
-            },
         }));
 
         await prisma.$transaction(async (tx) => {
@@ -1118,9 +1123,11 @@ export async function lockTokens(
 
 export interface UnlockTokensInput {
     userId: string;
+    userRole?: string;
     collectionAddress: string;
     tokenIds: number[];
     isUnstaking?: boolean;
+    isAdmin?: boolean;
 }
 
 export interface UnlockTokensResult {
@@ -1148,8 +1155,6 @@ export async function unlockTokens(
         const where: Prisma.NFTWhereInput = {
             collectionId: collection.id,
             tokenId: { in: input.tokenIds },
-            isBurned: false,
-            isLocked: true,
         };
 
         if (input.isUnstaking) {
@@ -1187,14 +1192,14 @@ export async function unlockTokens(
             )
         );
 
-        if (!isOwner) {
+        if (!isOwner && !input.isAdmin) {
             return {
                 success: false,
                 error: "You are not the owner of the tokens.",
             };
         }
 
-        const escrowWallet = await getEscrowWalletWithPrivateKey(
+        const escrowWallet = await getEscrowWalletWithPrivateKeyByAddress(
             collection.creatorAddress as Address
         );
         if (!escrowWallet.success || !escrowWallet.data) {
@@ -2672,4 +2677,63 @@ export async function updateCollectionSettings(
                     : "Unknown error updating collection settings",
         };
     }
+}
+
+export interface GetTokensLockStatusInput {
+    collectionAddress: string;
+    tokenIds: number[];
+}
+
+export interface GetTokensLockStatusResult {
+    tokenId: number;
+    isLocked: boolean;
+}
+
+export async function getTokensLockStatus(
+    input?: GetTokensLockStatusInput
+): Promise<GetTokensLockStatusResult[]> {
+    if (!input) {
+        return [];
+    }
+
+    const { collectionAddress, tokenIds } = input;
+
+    console.log("Collection Address", collectionAddress);
+    console.log("Token IDs", tokenIds);
+
+    const collection = await prisma.collectionContract.findUnique({
+        where: { address: collectionAddress },
+        include: { network: true },
+    });
+    if (!collection || !collection.network) {
+        throw new Error("Collection not found");
+    }
+
+    const chain = await getChain(collection.network);
+    const publicClient = createPublicClient({
+        chain,
+        transport: http(),
+    });
+
+    const contractFunctionAbi = abi.filter((item) => item.type === "function");
+
+    const results = await publicClient.multicall({
+        contracts: tokenIds.map((tokenId) => ({
+            address: collectionAddress as Address,
+            abi: contractFunctionAbi as Abi,
+            functionName: "isTokenLocked",
+            args: [BigInt(tokenId)],
+        })),
+        multicallAddress: collection.network.multicallAddress as Address,
+    });
+
+    console.log("Token Lock Status", results);
+
+    return tokenIds.map((tokenId, idx) => ({
+        tokenId,
+        isLocked:
+            results[idx].status === "success"
+                ? (results[idx].result as boolean)
+                : false,
+    }));
 }

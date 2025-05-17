@@ -308,7 +308,9 @@ export async function getUserStakeRewardLogs(
 
         const tokens = await prisma.nFT.findMany({
             where: {
-                currentOwnerAddress: { in: wallets.map((w) => w.address) },
+                currentOwnerAddress: {
+                    in: wallets.map((w: any) => w.address),
+                },
             },
             select: {
                 id: true,
@@ -316,7 +318,7 @@ export async function getUserStakeRewardLogs(
         });
 
         const where: Prisma.StakeRewardLogWhereInput = {};
-        where.nftId = { in: tokens.map((t) => t.id) };
+        where.nftId = { in: tokens.map((t: any) => t.id) };
 
         if (input?.isClaimed) {
             where.isClaimed = input.isClaimed;
@@ -349,7 +351,9 @@ export async function findRewardableStakeTokens(): Promise<
 
         const stakeRewards = await prisma.stakeReward.findMany({
             where: {
-                collectionAddress: { in: collections.map((c) => c.address) },
+                collectionAddress: {
+                    in: collections.map((c: any) => c.address),
+                },
             },
         });
         if (!stakeRewards.length) return [];
@@ -360,7 +364,7 @@ export async function findRewardableStakeTokens(): Promise<
 
         for (const stakeReward of stakeRewards) {
             const collection = collections.find(
-                (c) => c.address === stakeReward.collectionAddress
+                (c: any) => c.address === stakeReward.collectionAddress
             );
             if (!collection) continue;
 

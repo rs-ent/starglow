@@ -21,7 +21,7 @@ interface PopupProps {
 
 export default function Popup({
     children,
-    width = "400px",
+    width = "320px",
     height = "auto",
     fullScreen = false,
     className = "",
@@ -46,7 +46,7 @@ export default function Popup({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 items-center justify-center bg-[rgba(0,0,0,0.45)] backdrop-blur-sm z-50"
+                    className="fixed inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.45)] backdrop-blur-sm z-50"
                     onClick={onClose}
                 >
                     <motion.div
@@ -60,8 +60,10 @@ export default function Popup({
                         }}
                         transition={{ duration: 0.2, ease: "easeInOut" }}
                         style={{
-                            width: fullScreen ? "100vw" : width,
-                            height: fullScreen ? "100vh" : height,
+                            width: fullScreen ? "100vw" : "auto",
+                            height: fullScreen ? "100vh" : "auto",
+                            maxWidth: fullScreen ? "100vw" : width,
+                            maxHeight: fullScreen ? "100vh" : height,
                         }}
                         className={cn(
                             "shadow-lg relative overflow-hidden bg-gradient-to-br from-[rgba(0,0,0,0.3)] to-[rgba(0,0,0,0.8)] backdrop-blur-lg",
@@ -78,7 +80,8 @@ export default function Popup({
                             alt="Popup Background"
                             width={100}
                             height={100}
-                            className="absolute inset-0 w-full h-full object-cover opacity-80 bg-blend-overlay -z-50"
+                            className="absolute inset-0 w-full h-full object-cover opacity-70 bg-blend-overlay -z-50"
+                            style={{ filter: "blur(5px)" }}
                         />
                         {closeButton && (
                             <button

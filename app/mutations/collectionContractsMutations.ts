@@ -198,7 +198,7 @@ export const useUnlockTokensMutation = () => {
                 collectionKeys.tokens.locked(variables.collectionAddress),
                 (old: any) => ({
                     ...old,
-                    tokenIds: old.tokenIds.filter(
+                    tokenIds: (old?.tokenIds ?? []).filter(
                         (id: number) => !variables.tokenIds.includes(id)
                     ),
                 })
@@ -646,7 +646,9 @@ export const useUpdateCollectionSettingsMutation = () => {
                     ),
                 });
                 await queryClient.invalidateQueries({
-                    queryKey: collectionKeys.detail(variables.collectionAddress),
+                    queryKey: collectionKeys.detail(
+                        variables.collectionAddress
+                    ),
                 });
 
                 toast.success("컬렉션 설정이 업데이트되었습니다.");

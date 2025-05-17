@@ -53,8 +53,12 @@ import {
 import { NFTFilters, NFTPaginationParams } from "./OnChain.types";
 import { useToast } from "@/app/hooks/useToast";
 import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
-import { useCollectionsByNetwork } from "@/app/queries/collectionContractsQueries";
-
+import {
+    useCollectionsByNetwork,
+    useTokensLockStatus,
+} from "@/app/queries/collectionContractsQueries";
+import { useCollectionSet } from "@/app/hooks/useCollectionContracts";
+import { useSession } from "next-auth/react";
 function CollectionList({
     collections,
     selectedCollection,
@@ -102,6 +106,7 @@ function CollectionList({
 
 export function NFTList({ collection }: { collection: CollectionContract }) {
     const toast = useToast();
+    const { data: session } = useSession();
 
     const [filters, setFilters] = useState<NFTFilters & { address: string }>({
         collectionId: collection.id,
@@ -131,10 +136,63 @@ export function NFTList({ collection }: { collection: CollectionContract }) {
         networkId: collection.networkId,
     });
 
+    const { data: tokensLockStatus, isLoading: isLoadingTokensLockStatus } =
+        useTokensLockStatus({
+            collectionAddress: collection.address,
+            tokenIds: nfts?.items.map((nft) => nft.tokenId) || [],
+        });
+
     const [nftList, setNftList] = useState<NFT[]>(nfts?.items || []);
     const [filteredNftList, setFilteredNftList] = useState<NFT[]>(
         nftList || []
     );
+
+    const { lock, unlock, isLocking, isUnlocking, refresh } = useCollectionSet({
+        collectionAddress: collection.address,
+    });
+
+    const handleLockUnlock = async (nft: NFT, isLocked: boolean) => {
+        try {
+            if (isLocked) {
+                const confirm = window.confirm(
+                    "Are you sure you want to unlock this NFT?"
+                );
+                if (!confirm) return;
+
+                const result = await unlock({
+                    userId: session?.user?.id ?? "",
+                    collectionAddress: collection.address,
+                    tokenIds: [nft.tokenId],
+                });
+
+                if (result.success) {
+                    toast.success(`Token #${nft.tokenId} unlocked!`);
+                } else {
+                    toast.error(result.error ?? "Failed to unlock token");
+                }
+            } else {
+                const confirm = window.confirm(
+                    "Are you sure you want to lock this NFT?"
+                );
+                if (!confirm) return;
+
+                const result = await lock({
+                    userId: session?.user?.id ?? "",
+                    collectionAddress: collection.address,
+                    tokenIds: [nft.tokenId],
+                    unlockScheduledAt: 0,
+                });
+                if (result.success) {
+                    toast.success(`Token #${nft.tokenId} locked!`);
+                } else {
+                    toast.error(result.error ?? "Failed to lock token");
+                }
+            }
+            await refresh();
+        } catch (e) {
+            toast.error("Failed to change lock status");
+        }
+    };
 
     useEffect(() => {
         if (nfts?.items) {
@@ -325,6 +383,14 @@ export function NFTList({ collection }: { collection: CollectionContract }) {
         );
     };
 
+    const getLockStatus = (tokenId: number) => {
+        if (!Array.isArray(tokensLockStatus)) {
+            console.warn("tokensLockStatus is not an array", tokensLockStatus);
+            return undefined;
+        }
+        return tokensLockStatus?.find((t) => t.tokenId === tokenId)?.isLocked;
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -353,6 +419,7 @@ export function NFTList({ collection }: { collection: CollectionContract }) {
                                 <TableHead>Current Owner</TableHead>
                                 <TableHead>Minted At</TableHead>
                                 <TableHead>Initial Transferred At</TableHead>
+                                <TableHead>Status</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -426,6 +493,25 @@ export function NFTList({ collection }: { collection: CollectionContract }) {
                                                 : "-"}
                                         </TableCell>
                                         <TableCell>
+                                            {isLoadingTokensLockStatus ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : getLockStatus(nft.tokenId) ? (
+                                                <span
+                                                    title="Locked"
+                                                    style={{ color: "#ff0000" }}
+                                                >
+                                                    Locked
+                                                </span>
+                                            ) : (
+                                                <span
+                                                    title="Unlocked"
+                                                    style={{ color: "#ffffff" }}
+                                                >
+                                                    Unlocked
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button
@@ -441,6 +527,26 @@ export function NFTList({ collection }: { collection: CollectionContract }) {
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem>
                                                         Transfer
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        disabled={
+                                                            isLocking ||
+                                                            isUnlocking
+                                                        }
+                                                        onClick={() =>
+                                                            handleLockUnlock(
+                                                                nft,
+                                                                !!getLockStatus(
+                                                                    nft.tokenId
+                                                                )
+                                                            )
+                                                        }
+                                                    >
+                                                        {getLockStatus(
+                                                            nft.tokenId
+                                                        )
+                                                            ? "Unlock"
+                                                            : "Lock"}
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem>
                                                         Burn

@@ -12,6 +12,7 @@ import {
     useCollectionsByNetwork,
     useCollectionSettings,
     useCollection,
+    useTokensLockStatus,
 } from "../queries/collectionContractsQueries";
 import {
     useMintTokensMutation,
@@ -83,6 +84,11 @@ export function useCollectionGet({
 
     const hasCollectionAddress = !!collectionAddress;
 
+    const tokensLockStatusQuery = useTokensLockStatus({
+        collectionAddress,
+        tokenIds: options?.tokenIds || [],
+    });
+
     return {
         // 데이터
         collection,
@@ -91,6 +97,7 @@ export function useCollectionGet({
         escrowWallets: escrowWalletsQuery.data,
         nonce: nonceQuery.data,
         settings: collectionSettingsQuery.data,
+        tokensLockStatus: tokensLockStatusQuery.data,
 
         // 상태
         isLoading:
@@ -99,14 +106,16 @@ export function useCollectionGet({
             (hasCollectionAddress && statusQuery.isLoading) ||
             (hasCollectionAddress && escrowWalletsQuery.isLoading) ||
             (hasCollectionAddress && collectionSettingsQuery.isLoading) ||
-            (hasCollectionAddress && walletId ? nonceQuery.isLoading : false),
+            (hasCollectionAddress && walletId ? nonceQuery.isLoading : false) ||
+            (hasCollectionAddress && tokensLockStatusQuery.isLoading),
         error:
             collectionError ||
             tokensQuery.error ||
             statusQuery.error ||
             escrowWalletsQuery.error ||
             collectionSettingsQuery.error ||
-            (walletId ? nonceQuery.error : undefined),
+            (walletId ? nonceQuery.error : undefined) ||
+            tokensLockStatusQuery.error,
 
         // 개별 쿼리 상태
         isLoadingCollection: isCollectionLoading,
@@ -117,6 +126,8 @@ export function useCollectionGet({
             hasCollectionAddress && walletId ? nonceQuery.isLoading : false,
         isLoadingSettings:
             hasCollectionAddress && collectionSettingsQuery.isLoading,
+        isLoadingTokensLockStatus:
+            hasCollectionAddress && tokensLockStatusQuery.isLoading,
 
         // 원본 쿼리 객체 (고급 사용 사례용)
         tokensQuery,
@@ -124,6 +135,7 @@ export function useCollectionGet({
         escrowWalletsQuery,
         nonceQuery,
         collectionSettingsQuery,
+        tokensLockStatusQuery,
     };
 }
 

@@ -3,19 +3,30 @@
 "use client";
 
 import { useStakingGet, useStakingSet } from "@/app/hooks/useStaking";
-import { Player } from "@prisma/client";
+import { Player, CollectionContract } from "@prisma/client";
 import { User } from "next-auth";
 import PartialLoading from "../atoms/PartialLoading";
-
+import { TokenGateResult } from "@/app/actions/blockchain";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+import { Button } from "../ui/button";
+import { useToast } from "@/app/hooks/useToast";
+import Popup from "../atoms/Popup";
+import { useState } from "react";
 
 interface UserNFTStakingProps {
     user: User | null;
     player: Player | null;
+    collection: CollectionContract;
+    tokenGateResult: TokenGateResult;
 }
 
-export default function UserNFTStaking({ user, player }: UserNFTStakingProps) {
+export default function UserNFTStaking({
+    user,
+    player,
+    collection,
+    tokenGateResult,
+}: UserNFTStakingProps) {
     const {
         userStakingTokens,
         isUserStakingTokensLoading,
@@ -24,12 +35,206 @@ export default function UserNFTStaking({ user, player }: UserNFTStakingProps) {
         getUserStakingTokensInput: { userId: user?.id ?? "" },
     });
 
-    console.log("User Staking Tokens", userStakingTokens);
+    const { stake, unstake, claimStakeReward } = useStakingSet();
+
+    const toast = useToast();
+
+    const [openStakePopup, setOpenStakePopup] = useState(false);
+    const [openUnstakePopup, setOpenUnstakePopup] = useState(false);
+
+    const handleClaimReward = () => {
+        console.log("Claim Reward");
+    };
+
+    const handleStake = async () => {
+        if (!user || !user.id || !player) {
+            toast.error(
+                "Please login to stake your NFTs. If you have already logged in, please refresh the page."
+            );
+            return;
+        }
+
+        const tokenIds = tokenGateResult.data?.tokenIds ?? [];
+        const collectionAddress = collection.address;
+
+        if (!tokenIds || tokenIds.length === 0 || !collectionAddress) {
+            toast.error(
+                "Cannot find any tokens for staking. Please purchase the NFT first. If you have already purchased the NFT, please contact support."
+            );
+            return;
+        }
+
+        const stakeResult = await stake({
+            userId: user.id,
+            collectionAddress,
+            tokenIds,
+        });
+
+        if (stakeResult.success) {
+            toast.success(
+                `${tokenIds.length} NFTs staked successfully! You can now start earning rewards.`
+            );
+        } else {
+            toast.error(stakeResult.message ?? "Failed to stake NFTs.");
+        }
+    };
+
+    const handleUnstake = async () => {
+        setOpenUnstakePopup(false);
+        if (!user || !user.id || !player) {
+            toast.error(
+                "Please login to unstake your NFTs. If you have already logged in, please refresh the page."
+            );
+            return;
+        }
+        const tokenIds = userStakingTokens?.map((t) => t.tokenId) ?? [];
+        const collectionAddress = collection.address;
+
+        if (!tokenIds.length || !collectionAddress) {
+            toast.error("No staked tokens found.");
+            return;
+        }
+
+        const unstakeResult = await unstake({
+            userId: user.id,
+            collectionAddress,
+            tokenIds,
+        });
+
+        if (unstakeResult.success) {
+            toast.success("NFTs unstaked successfully!");
+        } else {
+            toast.error(unstakeResult.message ?? "Failed to unstake NFTs.");
+        }
+    };
 
     return (
         <div className="w-full flex flex-col items-center justify-center">
+            <Popup
+                open={openUnstakePopup}
+                onClose={() => setOpenUnstakePopup(false)}
+                width="500px"
+            >
+                <div className="w-full flex flex-col items-center justify-center px-4 py-6">
+                    <h2 className="w-full text-center text-2xl font-extrabold mb-4 tracking-tight">
+                        Unstake NFTs
+                    </h2>
+                    <div className="w-full flex flex-col gap-4 bg-[rgba(255,255,255,0.07)] rounded-xl p-5 shadow-inner border border-[rgba(255,255,255,0.08)]">
+                        <div className="flex items-start gap-3">
+                            <span className="text-blue-400 text-xl mt-0.5">
+                                🔓
+                            </span>
+                            <div>
+                                <span className="font-semibold text-blue-300">
+                                    Unstake Warning
+                                </span>
+                                <div className="text-sm text-gray-200 mt-0.5">
+                                    If you unstake now,{" "}
+                                    <b>you will not receive rewards</b> for this
+                                    period.
+                                    <br />
+                                    Are you sure you want to unstake your NFTs?
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="w-full flex flex-row gap-3 mt-5">
+                        <Button
+                            className="flex-1 rounded-full"
+                            variant="outline"
+                            onClick={() => setOpenUnstakePopup(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            className="flex-1 rounded-full"
+                            onClick={handleUnstake}
+                        >
+                            Unstake
+                        </Button>
+                    </div>
+                </div>
+            </Popup>
+            <Popup
+                open={openStakePopup}
+                onClose={() => setOpenStakePopup(false)}
+                width="500px"
+            >
+                <div className="w-full flex flex-col items-center justify-center px-4 py-6">
+                    <h2 className="w-full text-center text-2xl font-extrabold mb-4 tracking-tight">
+                        Stake Your NFTs
+                    </h2>
+                    <div className="w-full flex flex-col gap-4 bg-[rgba(255,255,255,0.07)] rounded-xl p-5 shadow-inner border border-[rgba(255,255,255,0.08)]">
+                        <div className="flex items-start gap-3">
+                            <span className="text-yellow-400 text-xl mt-0.5">
+                                ⏳
+                            </span>
+                            <div>
+                                <span className="font-semibold text-yellow-300">
+                                    Instant Lockup
+                                </span>
+                                <div className="text-sm text-gray-200 mt-0.5">
+                                    Staking starts immediately, and the NFT is{" "}
+                                    <b>locked</b>.<br />
+                                    <span className="text-yellow-200">
+                                        Transfer is not possible.
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <span className="text-green-400 text-xl mt-0.5">
+                                🎁
+                            </span>
+                            <div>
+                                <span className="font-semibold text-green-300">
+                                    Reward
+                                </span>
+                                <div className="text-sm text-gray-200 mt-0.5">
+                                    You can receive <b>rewards</b> based on the
+                                    staking period.
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <span className="text-blue-400 text-xl mt-0.5">
+                                🔓
+                            </span>
+                            <div>
+                                <span className="font-semibold text-blue-300">
+                                    Unstake Anytime
+                                </span>
+                                <div className="text-sm text-gray-200 mt-0.5">
+                                    You can <b>Unstake</b> at any time,
+                                    <br />
+                                    <span className="text-blue-200">
+                                        but you will <b>not receive rewards</b>{" "}
+                                        if you unstake early.
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="w-full h-[1px] bg-[rgba(255,255,255,0.12)] my-5" />
+                    <div className="w-full flex flex-col items-center">
+                        <div className="text-xs text-gray-400 mb-3 text-center">
+                            * Please check the staking policy before proceeding.
+                        </div>
+                        <Button
+                            className="w-full rounded-full py-3 text-lg font-bold shadow-md"
+                            onClick={handleStake}
+                        >
+                            Stake
+                        </Button>
+                    </div>
+                </div>
+            </Popup>
             {isUserStakingTokensLoading ? (
                 <PartialLoading text="Loading..." size="sm" />
+            ) : userStakingTokensError ? (
+                <div className="w-full flex flex-col items-center justify-center">
+                    <p className="text-red-500">Error loading staking tokens</p>
+                </div>
             ) : (
                 <div
                     className={cn(
@@ -57,7 +262,7 @@ export default function UserNFTStaking({ user, player }: UserNFTStakingProps) {
                         </div>
                         <div className="h-[1px] w-full bg-[rgba(255,255,255,0.5)] my-3" />
                         <div className={cn("w-full flex flex-row", "gap-3")}>
-                            <p className="font-semibold">End Date</p>
+                            <p className="font-semibold">Next Reward Date</p>
                             <p className="flex-1 text-[rgba(255,255,255,0.6)]">
                                 {userStakingTokens?.[0]?.stakedAt
                                     ? new Date(
@@ -68,7 +273,7 @@ export default function UserNFTStaking({ user, player }: UserNFTStakingProps) {
                         </div>
                         <div className="h-[1px] w-full bg-[rgba(255,255,255,0.5)] my-3" />
                         <div className={cn("w-full flex flex-row", "gap-3")}>
-                            <p className="font-semibold">Staked NFT</p>
+                            <p className="font-semibold">Reward Amount</p>
                             <p className="flex-1 text-[rgba(255,255,255,0.6)]">
                                 {userStakingTokens?.[0]?.stakedAt
                                     ? new Date(
@@ -77,6 +282,48 @@ export default function UserNFTStaking({ user, player }: UserNFTStakingProps) {
                                     : "Not staked yet"}
                             </p>
                         </div>
+                    </div>
+
+                    <div className="w-full flex flex-col gap-3 mt-3">
+                        {userStakingTokens && userStakingTokens.length > 0 ? (
+                            <>
+                                <Button
+                                    className="w-full rounded-full"
+                                    onClick={() => {
+                                        handleClaimReward();
+                                    }}
+                                >
+                                    Claim Reward
+                                </Button>
+                                <Button
+                                    className="w-full rounded-full"
+                                    onClick={() => {
+                                        setOpenUnstakePopup(true);
+                                    }}
+                                >
+                                    Unstake
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button
+                                    className="w-full rounded-full"
+                                    onClick={() => {
+                                        setOpenUnstakePopup(true);
+                                    }}
+                                >
+                                    Unstake
+                                </Button>
+                                <Button
+                                    className="w-full rounded-full"
+                                    onClick={() => {
+                                        setOpenStakePopup(true);
+                                    }}
+                                >
+                                    Stake
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

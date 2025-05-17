@@ -14,10 +14,12 @@ import { formatHexToRGBA } from "@/lib/utils/format";
 import PublicPrivateTab from "../molecules/PublicPrivateTab";
 import UserNFTStaking from "./User.NFT.Detail.Staking";
 import { User } from "next-auth";
+import { TokenGateResult } from "@/app/actions/blockchain";
 
 interface UserNFTDetailProps {
     collection: CollectionContract;
     metadata: METADATA_TYPE;
+    tokenGateResult: TokenGateResult;
     onClose: () => void;
     user: User | null;
     player: Player | null;
@@ -26,6 +28,7 @@ interface UserNFTDetailProps {
 export default function UserNFTDetail({
     collection,
     metadata,
+    tokenGateResult,
     onClose,
     user,
     player,
@@ -76,7 +79,7 @@ export default function UserNFTDetail({
                     background: `linear-gradient(to bottom right, ${bg1}, ${bg2}, ${bg3})`,
                 }}
             >
-                <div className="absolute top-0 right-0 p-6">
+                <div className="absolute top-0 right-0 p-3">
                     <button onClick={onClose}>
                         <XIcon className="text-white" />
                     </button>
@@ -85,12 +88,12 @@ export default function UserNFTDetail({
                     className={cn(
                         "flex flex-col items-center justify-center h-full",
                         "max-w-[600px] w-screen mx-auto",
-                        "py-24 px-6"
+                        "py-14 px-3"
                     )}
                 >
                     <h2
                         className={cn(
-                            "break-words w-full text-center px-6 mb-10",
+                            "break-words w-full text-center px-6 mb-6",
                             getResponsiveClass(35).textClass
                         )}
                     >
@@ -98,37 +101,50 @@ export default function UserNFTDetail({
                     </h2>
                     <div
                         className={cn(
-                            "w-full gradient-border p-[10px] white-glow-smooth",
-                            "rounded-[12px]"
+                            "flex-1 w-full overflow-y-auto",
+                            "py-4 px-3"
                         )}
-                        style={{
-                            background: `linear-gradient(to bottom right, ${bg3}, ${bg2}, ${bg1})`,
-                        }}
                     >
-                        <ImageMetadata
-                            metadata={metadata}
-                            className="w-full rounded-[12px]"
-                        />
-                    </div>
-                    <div className={cn("mt-12 mb-6")}>
-                        <PublicPrivateTab
-                            isPublic={isMission}
-                            onPublic={() => setIsMission(true)}
-                            onPrivate={() => setIsMission(false)}
-                            textSize={25}
-                            frameSize={20}
-                            gapSize={10}
-                            publicText="Mission"
-                            privateText="Staking"
-                        />
-                    </div>
-                    <div
-                        className={cn("flex-1 w-full overflow-y-auto", "py-6")}
-                    >
+                        <div
+                            className={cn(
+                                "w-full gradient-border p-[10px] white-glow-smooth",
+                                "rounded-[12px]"
+                            )}
+                            style={{
+                                background: `linear-gradient(to bottom right, ${bg3}, ${bg2}, ${bg1})`,
+                            }}
+                        >
+                            <ImageMetadata
+                                metadata={metadata}
+                                className="w-full rounded-[12px]"
+                            />
+                        </div>
+                        <div className={cn("mt-12 mb-6")}>
+                            <PublicPrivateTab
+                                isPublic={isMission}
+                                onPublic={() => setIsMission(true)}
+                                onPrivate={() => setIsMission(false)}
+                                textSize={25}
+                                frameSize={20}
+                                gapSize={10}
+                                publicText="Mission"
+                                privateText="Staking"
+                            />
+                        </div>
                         {isMission ? (
-                            <UserNFTStaking user={user} player={player} />
+                            <UserNFTStaking
+                                user={user}
+                                player={player}
+                                collection={collection}
+                                tokenGateResult={tokenGateResult}
+                            />
                         ) : (
-                            <UserNFTStaking user={user} player={player} />
+                            <UserNFTStaking
+                                user={user}
+                                player={player}
+                                collection={collection}
+                                tokenGateResult={tokenGateResult}
+                            />
                         )}
                     </div>
                 </div>
