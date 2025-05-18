@@ -144,7 +144,10 @@ export function useStakingSet() {
         updateStakeReward,
         deleteStakeReward,
         findRewardableStakeTokens,
+
         claimStakeReward,
+        isClaimingStakeReward,
+        claimStakeRewardError,
 
         isLoading,
 

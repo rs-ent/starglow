@@ -52,7 +52,8 @@ export default function UserNFTStaking({
 
     console.log("User Stake Reward Logs", userStakeRewardLogs);
 
-    const { stake, unstake, claimStakeReward } = useStakingSet();
+    const { stake, unstake, claimStakeReward, isClaimingStakeReward } =
+        useStakingSet();
 
     const toast = useToast();
     const { startLoading, endLoading } = useLoading();
@@ -63,6 +64,7 @@ export default function UserNFTStaking({
     const [claimedAssets, setClaimedAssets] = useState<
         { asset: Asset | null; amount: number }[]
     >([]);
+    const [claimStarted, setClaimStarted] = useState(false);
 
     const nextNotDistributedReward = useMemo(() => {
         const rewardable = stakeRewards
@@ -88,6 +90,8 @@ export default function UserNFTStaking({
     }, [userStakeRewardLogs]);
 
     const handleClaimReward = async () => {
+        if (isClaimingStakeReward || claimStarted) return;
+
         if (!player) {
             toast.error("Player not found");
             return;
@@ -97,6 +101,7 @@ export default function UserNFTStaking({
             return;
         }
 
+        setClaimStarted(true);
         startLoading();
         try {
             console.log("Claim Reward", {
@@ -118,9 +123,14 @@ export default function UserNFTStaking({
                 toast.success(`Reward ${result.totalRewardAmount} claimed`);
             }
         } catch (e) {
-            toast.error("Error claiming reward");
+            toast.error(
+                "Error claiming reward: " +
+                    (e instanceof Error ? e.message : "")
+            );
+        } finally {
+            setClaimStarted(false);
+            endLoading();
         }
-        endLoading();
     };
 
     const handleStake = async () => {
@@ -434,7 +444,9 @@ export default function UserNFTStaking({
                                     }}
                                     disabled={
                                         !canClaimReward ||
-                                        claimedAssets.length > 0
+                                        claimedAssets.length > 0 ||
+                                        isClaimingStakeReward ||
+                                        claimStarted
                                     }
                                 >
                                     Claim Reward
