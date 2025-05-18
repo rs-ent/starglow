@@ -269,27 +269,25 @@ export async function batchUpdatePlayerAsset(
         };
     }
 
-    return prisma.$transaction(async (tx) => {
-        const results: PlayerAsset[] = [];
-        const failed: PlayerAssetTransactionInput[] = [];
-        const promises = inputs.txs.map(async (input) => {
-            const result = await updatePlayerAsset({ transaction: input });
-            if (result.success && result.data) {
-                results.push(result.data);
-            } else {
-                failed.push(input);
-            }
-        });
-        await Promise.all(promises);
-
-        return {
-            success: true,
-            data: {
-                results,
-                failed,
-            },
-        };
+    const results: PlayerAsset[] = [];
+    const failed: PlayerAssetTransactionInput[] = [];
+    const promises = inputs.txs.map(async (input) => {
+        const result = await updatePlayerAsset({ transaction: input });
+        if (result.success && result.data) {
+            results.push(result.data);
+        } else {
+            failed.push(input);
+        }
     });
+    await Promise.all(promises);
+
+    return {
+        success: true,
+        data: {
+            results,
+            failed,
+        },
+    };
 }
 
 export interface DeletePlayerAssetInput {

@@ -8,6 +8,7 @@ import {
     CollectionContract,
     NFT,
     StakeRewardLog,
+    Asset,
 } from "@prisma/client";
 import { User } from "next-auth";
 import PartialLoading from "../atoms/PartialLoading";
@@ -44,8 +45,12 @@ export default function UserNFTStaking({
             collectionAddress: collection.address,
         },
         getUserStakingTokensInput: { userId: user?.id ?? "" },
-        getUserStakeRewardLogsInput: { userId: user?.id ?? "" },
+        getUserStakeRewardLogsInput: {
+            userId: user?.id ?? "",
+        },
     });
+
+    console.log("User Stake Reward Logs", userStakeRewardLogs);
 
     const { stake, unstake, claimStakeReward } = useStakingSet();
 
@@ -54,6 +59,10 @@ export default function UserNFTStaking({
 
     const [openStakePopup, setOpenStakePopup] = useState(false);
     const [openUnstakePopup, setOpenUnstakePopup] = useState(false);
+    const [showClaimedRewards, setShowClaimedRewards] = useState(false);
+    const [claimedAssets, setClaimedAssets] = useState<
+        { asset: Asset | null; amount: number }[]
+    >([]);
 
     const nextNotDistributedReward = useMemo(() => {
         const rewardable = stakeRewards
@@ -71,15 +80,47 @@ export default function UserNFTStaking({
     }, [stakeRewards, userStakeRewardLogs]);
 
     const canClaimReward = useMemo(() => {
-        return userStakeRewardLogs && userStakeRewardLogs.length > 0;
+        return (
+            userStakeRewardLogs &&
+            userStakeRewardLogs.filter((l: StakeRewardLog) => !l.isClaimed)
+                .length > 0
+        );
     }, [userStakeRewardLogs]);
 
-    console.log("Stake Rewards", stakeRewards);
-    console.log("User Staking Tokens", userStakingTokens);
-    console.log("User Stake Reward Logs", userStakeRewardLogs);
+    const handleClaimReward = async () => {
+        if (!player) {
+            toast.error("Player not found");
+            return;
+        }
+        if (!userStakeRewardLogs || userStakeRewardLogs.length === 0) {
+            toast.error("No reward logs to claim");
+            return;
+        }
 
-    const handleClaimReward = () => {
-        console.log("Claim Reward");
+        startLoading();
+        try {
+            console.log("Claim Reward", {
+                player,
+                stakeRewardLogs: userStakeRewardLogs,
+            });
+            const result = await claimStakeReward({
+                player,
+                stakeRewardLogs: userStakeRewardLogs,
+            });
+
+            console.log("Claim Reward Result", result);
+
+            if (result.error) {
+                toast.error(result.error);
+            } else {
+                setClaimedAssets(result.rewardedAssets);
+                setShowClaimedRewards(true);
+                toast.success(`Reward ${result.totalRewardAmount} claimed`);
+            }
+        } catch (e) {
+            toast.error("Error claiming reward");
+        }
+        endLoading();
     };
 
     const handleStake = async () => {
@@ -157,6 +198,51 @@ export default function UserNFTStaking({
 
     return (
         <div className="w-full flex flex-col items-center justify-center">
+            <Popup
+                open={showClaimedRewards}
+                onClose={() => setShowClaimedRewards(false)}
+                width="400px"
+            >
+                <div className="flex flex-col items-center py-6">
+                    <h2 className="text-2xl font-bold mb-4 text-yellow-400 animate-bounce">
+                        🎉 Reward Claimed! 🎉
+                    </h2>
+                    <div className="flex flex-col gap-4 w-full">
+                        {claimedAssets.map(({ asset, amount }, idx) => (
+                            <div
+                                key={idx}
+                                className="flex items-center gap-3 bg-gray-800 rounded-lg p-3 shadow-md"
+                            >
+                                {asset?.iconUrl ? (
+                                    <img
+                                        src={asset.iconUrl}
+                                        alt={asset.name}
+                                        className="w-10 h-10 rounded-full border-2 border-yellow-300"
+                                    />
+                                ) : (
+                                    <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-2xl">
+                                        ❓
+                                    </div>
+                                )}
+                                <div className="flex-1">
+                                    <div className="font-semibold text-lg text-white">
+                                        {asset?.name ?? "Unknown Asset"}
+                                    </div>
+                                    <div className="text-yellow-300 font-bold text-xl">
+                                        +{amount}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <button
+                        className="mt-6 px-6 py-2 bg-yellow-400 text-black font-bold rounded-full shadow-lg hover:bg-yellow-300 transition"
+                        onClick={() => setShowClaimedRewards(false)}
+                    >
+                        Close
+                    </button>
+                </div>
+            </Popup>
             <Popup
                 open={openUnstakePopup}
                 onClose={() => setOpenUnstakePopup(false)}
@@ -337,11 +423,19 @@ export default function UserNFTStaking({
                         {userStakingTokens && userStakingTokens.length > 0 ? (
                             <>
                                 <Button
-                                    className="w-full rounded-full"
+                                    className={cn(
+                                        "w-full rounded-full",
+                                        !canClaimReward && "opacity-50",
+                                        canClaimReward &&
+                                            "animate-pulse bg-orange-600"
+                                    )}
                                     onClick={() => {
                                         handleClaimReward();
                                     }}
-                                    disabled={!canClaimReward}
+                                    disabled={
+                                        !canClaimReward ||
+                                        claimedAssets.length > 0
+                                    }
                                 >
                                     Claim Reward
                                 </Button>

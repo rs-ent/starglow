@@ -440,7 +440,7 @@ export interface ClaimStakeRewardInput {
 
 export interface ClaimStakeRewardResult {
     rewardedAssets: {
-        assetId: string;
+        asset: Asset | null;
         amount: number;
     }[];
     totalRewardAmount: number;
@@ -451,6 +451,11 @@ export async function claimStakeReward(
     input: ClaimStakeRewardInput
 ): Promise<ClaimStakeRewardResult> {
     const { player, stakeRewardLogs } = input;
+
+    console.log("Claim Reward", {
+        player,
+        stakeRewardLogs,
+    });
 
     if (!player || !stakeRewardLogs || stakeRewardLogs.length === 0) {
         return {
@@ -464,6 +469,7 @@ export async function claimStakeReward(
         const invalidLogs = stakeRewardLogs.filter(
             (log) => log.isClaimed || !log.isDistributed
         );
+        console.log("Invalid Logs", invalidLogs);
 
         if (invalidLogs.length > 0) {
             console.error(
@@ -478,6 +484,8 @@ export async function claimStakeReward(
             };
         }
 
+        console.log("Valid Logs", stakeRewardLogs);
+
         const assetMap = new Map<string, number>();
         for (const log of stakeRewardLogs) {
             if (!assetMap.has(log.assetId)) {
@@ -485,6 +493,8 @@ export async function claimStakeReward(
             }
             assetMap.set(log.assetId, assetMap.get(log.assetId)! + log.amount);
         }
+
+        console.log("Asset Map", assetMap);
 
         const txs = Array.from(assetMap.entries()).map(([assetId, amount]) => ({
             playerId: player.id,
@@ -494,20 +504,30 @@ export async function claimStakeReward(
             reason: "STAKE_REWARD",
         }));
 
-        await prisma.$transaction(async (tx) => {
-            await batchUpdatePlayerAsset({ txs });
+        console.log("Txs", txs);
 
-            await tx.stakeRewardLog.updateMany({
-                where: { id: { in: stakeRewardLogs.map((l) => l.id) } },
-                data: { isClaimed: true, claimedAt: new Date() },
-            });
+        const updatedPlayerAssets = await batchUpdatePlayerAsset({ txs });
+
+        console.log("Updated Player Assets", updatedPlayerAssets);
+
+        const updatedStakeRewardLogs = await prisma.stakeRewardLog.updateMany({
+            where: { id: { in: stakeRewardLogs.map((l) => l.id) } },
+            data: { isClaimed: true, claimedAt: new Date() },
         });
+
+        console.log("Updated Stake Reward Logs", updatedStakeRewardLogs);
 
         revalidatePath(`/user/${player.userId}`);
 
+        const assets = await prisma.asset.findMany({
+            where: { id: { in: txs.map(({ assetId }) => assetId) } },
+        });
+
+        console.log("Assets", assets);
+
         return {
             rewardedAssets: txs.map(({ assetId, amount }) => ({
-                assetId,
+                asset: assets.find((a) => a.id === assetId) ?? null,
                 amount,
             })),
             totalRewardAmount: txs.reduce((sum, tx) => sum + tx.amount, 0),
