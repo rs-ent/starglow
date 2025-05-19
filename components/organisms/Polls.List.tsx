@@ -11,12 +11,14 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { useEffect, useMemo, useState } from "react";
+import PartialLoading from "../atoms/PartialLoading";
 
 interface PollsListProps {
     polls: Poll[];
     player: Player | null;
     pollLogs?: PollLog[];
     artist?: Artist | null;
+    isLoading?: boolean;
     tokenGatingData?: AdvancedTokenGateResult | null;
     forceSlidesToShow?: number;
 }
@@ -26,6 +28,7 @@ export default function PollsList({
     player,
     pollLogs,
     artist,
+    isLoading,
     tokenGatingData,
     forceSlidesToShow = 3,
 }: PollsListProps) {
@@ -80,6 +83,10 @@ export default function PollsList({
 
         return pollMap;
     }, [pollLogs, polls]);
+
+    if (isLoading) {
+        return <PartialLoading text="Loading polls..." size="sm" />;
+    }
 
     return (
         <div

@@ -4,18 +4,29 @@
 
 import { useBlockchainGet } from "@/app/hooks/useBlockchainV2";
 import { useSession } from "next-auth/react";
-import { CollectionContract } from "@prisma/client";
+import {
+    CollectionContract,
+    Player,
+    Quest,
+    QuestLog,
+    Poll,
+    PollLog,
+} from "@prisma/client";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useMetadata } from "@/app/hooks/useMetadata";
 import { METADATA_TYPE } from "@/app/actions/metadata";
 import ImageMetadata from "@/components/atoms/ImageMetadata";
 import { formatHexToRGBA } from "@/lib/utils/format";
 import { TokenGateResult } from "@/app/actions/blockchain";
+import { useQuestGet } from "@/app/hooks/useQuest";
+import { usePollsGet } from "@/app/hooks/usePolls";
+
 interface UserContentsMyAssetsNFTCardProps {
-    collectionContract: CollectionContract;
+    player: Player | null;
+    collection: CollectionContract;
     onSelect: (
         collection: CollectionContract,
         metadata: METADATA_TYPE,
@@ -24,14 +35,77 @@ interface UserContentsMyAssetsNFTCardProps {
 }
 
 export default function UserContentsMyAssetsNFTCard({
-    collectionContract,
+    player,
+    collection,
     onSelect,
 }: UserContentsMyAssetsNFTCardProps) {
     const { data: session } = useSession();
 
     const { metadataByCollectionAddress } = useMetadata({
-        collectionAddress: collectionContract.address,
+        collectionAddress: collection.address,
     });
+
+    const { quests, questLogs } = useQuestGet({
+        getQuestsInput: {
+            artistId: collection.artistId ?? undefined,
+            isActive: true,
+        },
+        getQuestLogsInput: {
+            playerId: player?.id ?? undefined,
+        },
+    });
+
+    const { pollsList, playerPollLogs } = usePollsGet({
+        getPollsInput: {
+            artistId: collection.artistId ?? undefined,
+            isActive: true,
+        },
+        getPlayerPollLogsInput: {
+            playerId: player?.id ?? undefined,
+        },
+    });
+
+    const isWithinDateRange = (
+        startDate: Date | null,
+        endDate: Date | null,
+        now: Date
+    ) => {
+        if (!startDate && !endDate) return true;
+        if (!endDate || !startDate) return false;
+        return endDate > now && startDate < now;
+    };
+
+    const hasNewActivities = useMemo(() => {
+        const now = new Date();
+
+        const newQuest = quests?.items?.filter((quest: Quest) => {
+            const isNotCompleted = !questLogs?.items?.some(
+                (log: QuestLog) => log.questId === quest.id
+            );
+            const isActive = quest.isActive;
+            const isAvailable =
+                quest.permanent ||
+                isWithinDateRange(quest.startDate, quest.endDate, now);
+
+            return isNotCompleted && isActive && isAvailable;
+        });
+
+        const newPoll = pollsList?.items?.filter((poll: Poll) => {
+            const isNotVoted = !playerPollLogs?.some(
+                (log: PollLog) => log.pollId === poll.id
+            );
+            const isActive = poll.isActive;
+            const isAvailable = isWithinDateRange(
+                poll.startDate,
+                poll.endDate,
+                now
+            );
+
+            return isNotVoted && isActive && isAvailable;
+        });
+
+        return (newQuest?.length ?? 0) > 0 || (newPoll?.length ?? 0) > 0;
+    }, [quests, pollsList, questLogs, playerPollLogs]);
 
     const { metadata, glowStart, glowEnd, bg1, bg2, bg3 } = useMemo(() => {
         const metadata = metadataByCollectionAddress?.metadata as METADATA_TYPE;
@@ -70,13 +144,13 @@ export default function UserContentsMyAssetsNFTCard({
             tokenGateInput: {
                 userId: session?.user?.id ?? "",
                 tokenType: "Collection",
-                tokenAddress: collectionContract?.address ?? "",
+                tokenAddress: collection.address ?? "",
             },
         });
 
     const handleSelect = () => {
-        if (collectionContract && metadata && tokenGateData) {
-            onSelect(collectionContract, metadata, tokenGateData);
+        if (collection && metadata && tokenGateData) {
+            onSelect(collection, metadata, tokenGateData);
         }
     };
 
@@ -122,14 +196,31 @@ export default function UserContentsMyAssetsNFTCard({
                                 >
                                     {metadata?.name}
                                 </h2>
-                                <div
-                                    className={cn(
-                                        "ml-1 mt-1 rounded-full",
-                                        "w-[5px] h-[5px] md:w-[7px] md:h-[7px]",
-                                        "animate-pulse",
-                                        "bg-red-500"
-                                    )}
-                                />
+                                {hasNewActivities && (
+                                    <div
+                                        className={cn(
+                                            "relative flex-shrink-0",
+                                            "w-[4px] h-[4px] sm:w-[5px] sm:h-[5px] md:w-[6px] md:h-[6px]",
+                                            "ml-1 mt-1"
+                                        )}
+                                    >
+                                        <div
+                                            className={cn(
+                                                "absolute w-full h-full",
+                                                "rounded-full",
+                                                "animate-ping",
+                                                "bg-red-500"
+                                            )}
+                                        />
+                                        <div
+                                            className={cn(
+                                                "w-full h-full",
+                                                "rounded-full",
+                                                "bg-red-500"
+                                            )}
+                                        />
+                                    </div>
+                                )}
                             </div>
                             <p
                                 className={cn(

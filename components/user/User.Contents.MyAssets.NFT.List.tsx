@@ -81,7 +81,8 @@ export default function UserMyAssetsNFTList({
                                 )}
                             >
                                 <UserContentsMyAssetsNFTCard
-                                    collectionContract={collection}
+                                    player={player}
+                                    collection={collection}
                                     onSelect={handleSelect}
                                 />
                             </div>

@@ -78,6 +78,7 @@ export default function UserNFTDetailMission({
                 pollLogs={playerPollLogs ?? []}
                 tokenGatingData={takenGateData}
                 forceSlidesToShow={1}
+                isLoading={isLoadingPolls}
             />
         </div>
     );

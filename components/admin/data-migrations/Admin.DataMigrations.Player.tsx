@@ -282,9 +282,8 @@ export default function AdminDataMigrationsPlayer() {
 }
     */
 
-    const handleUpdatePlayerAsset = async (index?: number) => {
-        
-    };
+    /// 1000Points = 1SGP
+    const handleUpdatePlayerAsset = async (index?: number) => {};
 
     const totalPages = Math.ceil(csvData.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
