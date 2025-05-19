@@ -12,10 +12,10 @@ import { cn } from "@/lib/utils/tailwind";
 import { useMemo, useState } from "react";
 import { formatHexToRGBA } from "@/lib/utils/format";
 import PublicPrivateTab from "../molecules/PublicPrivateTab";
-import UserNFTStaking from "./User.NFT.Detail.Staking";
 import { User } from "next-auth";
 import { TokenGateResult } from "@/app/actions/blockchain";
-
+import UserNFTDetailStaking from "./User.NFT.Detail.Staking";
+import UserNFTDetailMission from "./User.NFT.Detail.Mission";
 interface UserNFTDetailProps {
     collection: CollectionContract;
     metadata: METADATA_TYPE;
@@ -119,7 +119,7 @@ export default function UserNFTDetail({
                                 className="w-full rounded-[12px]"
                             />
                         </div>
-                        <div className={cn("mt-12 mb-6")}>
+                        <div className={cn("mt-6 mb-4 sm:mt-10 sm:mb-6")}>
                             <PublicPrivateTab
                                 isPublic={isMission}
                                 onPublic={() => setIsMission(true)}
@@ -132,14 +132,14 @@ export default function UserNFTDetail({
                             />
                         </div>
                         {isMission ? (
-                            <UserNFTStaking
+                            <UserNFTDetailMission
                                 user={user}
                                 player={player}
                                 collection={collection}
                                 tokenGateResult={tokenGateResult}
                             />
                         ) : (
-                            <UserNFTStaking
+                            <UserNFTDetailStaking
                                 user={user}
                                 player={player}
                                 collection={collection}

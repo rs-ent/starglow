@@ -21,19 +21,19 @@ import Popup from "../atoms/Popup";
 import { useState, useMemo } from "react";
 import { useLoading } from "@/app/hooks/useLoading";
 
-interface UserNFTStakingProps {
+interface UserNFTDetailStakingProps {
     user: User | null;
     player: Player | null;
     collection: CollectionContract;
     tokenGateResult: TokenGateResult;
 }
 
-export default function UserNFTStaking({
+export default function UserNFTDetailStaking({
     user,
     player,
     collection,
     tokenGateResult,
-}: UserNFTStakingProps) {
+}: UserNFTDetailStakingProps) {
     const {
         stakeRewards,
         userStakingTokens,
