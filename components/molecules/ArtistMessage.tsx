@@ -12,12 +12,12 @@ import { cn } from "@/lib/utils/tailwind";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ArtistMessageProps {
-    artist: Artist;
+    artistId: string;
     className?: string;
 }
 
 export default function ArtistMessage({
-    artist,
+    artistId,
     className,
 }: ArtistMessageProps) {
     const [message, setMessage] = useState<ArtistMessageType | null>(null);
@@ -25,7 +25,7 @@ export default function ArtistMessage({
 
     const { artistMessages, isLoading, error } = useArtistsGet({
         getArtistMessagesInput: {
-            artistId: artist.id,
+            artistId: artistId,
         },
     });
 

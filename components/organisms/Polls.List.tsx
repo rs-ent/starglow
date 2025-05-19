@@ -52,13 +52,14 @@ export default function PollsList({
     };
 
     useEffect(() => {
+        const minSlidesToShow = Math.min(forceSlidesToShow, polls.length);
         const handleResize = () => {
             if (window.innerWidth <= 640) {
-                setSlidesToShow(Math.min(1, polls.length));
+                setSlidesToShow(Math.min(1, minSlidesToShow));
             } else if (window.innerWidth <= 1024) {
-                setSlidesToShow(Math.min(2, polls.length));
+                setSlidesToShow(Math.min(2, minSlidesToShow));
             } else {
-                setSlidesToShow(Math.min(3, polls.length));
+                setSlidesToShow(Math.min(3, minSlidesToShow));
             }
         };
 

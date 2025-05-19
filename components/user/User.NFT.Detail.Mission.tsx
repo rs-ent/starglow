@@ -12,6 +12,7 @@ import { useQuestGet } from "@/app/hooks/useQuest";
 import { usePollsGet } from "@/app/hooks/usePolls";
 import QuestsMissions from "../molecules/Quests.Missions";
 import PollsList from "../organisms/Polls.List";
+import ArtistMessage from "../molecules/ArtistMessage";
 import { useMemo } from "react";
 
 interface UserNFTDetailMissionProps {
@@ -53,7 +54,13 @@ export default function UserNFTDetailMission({
     }, [tokenGateResult]);
 
     return (
-        <div>
+        <div className="w-full">
+            <div className="w-full flex items-center justify-center">
+                <ArtistMessage
+                    artistId={collection.artistId ?? ""}
+                    className="px-0 sm:px-0 md:px-0 lg:px-0 xl:px-0"
+                />
+            </div>
             <QuestsMissions
                 player={player}
                 quests={quests?.items ?? []}

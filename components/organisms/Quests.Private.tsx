@@ -111,7 +111,7 @@ export default function QuestsPrivate({
                     {showArtistContents && (
                         <div className="w-full h-full z-0 relative">
                             <ArtistMessage
-                                artist={selectedArtist}
+                                artistId={selectedArtist.id}
                                 className="mt-[20px] sm:mt-[35px] md:mt-[40px] lg:mt-[45px] xl:mt-[50px]"
                             />
                             <div
