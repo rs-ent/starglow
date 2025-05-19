@@ -37,17 +37,20 @@ export function useStakingGet({
         data: userStakingTokens,
         isLoading: isUserStakingTokensLoading,
         error: userStakingTokensError,
+        refetch: refetchUserStakingTokens,
     } = useUserStakingTokens(getUserStakingTokensInput);
 
     const {
         data: stakeRewards,
         isLoading: isStakeRewardsLoading,
         error: stakeRewardsError,
+        refetch: refetchStakeRewards,
     } = useStakeRewards(getStakeRewardInput);
     const {
         data: userStakeRewardLogs,
         isLoading: isUserStakeRewardLogsLoading,
         error: userStakeRewardLogsError,
+        refetch: refetchUserStakeRewardLogs,
     } = useUserStakeRewardLogs(getUserStakeRewardLogsInput);
 
     const isLoading =
@@ -56,6 +59,14 @@ export function useStakingGet({
         isUserStakeRewardLogsLoading;
     const error =
         userStakingTokensError || stakeRewardsError || userStakeRewardLogsError;
+
+    const refetch = async () => {
+        await Promise.all([
+            refetchUserStakingTokens(),
+            refetchStakeRewards(),
+            refetchUserStakeRewardLogs(),
+        ]);
+    };
 
     return {
         userStakingTokens,
@@ -73,6 +84,8 @@ export function useStakingGet({
         isLoading,
 
         error,
+
+        refetch,
     };
 }
 

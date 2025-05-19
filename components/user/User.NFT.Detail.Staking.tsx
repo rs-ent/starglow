@@ -40,6 +40,7 @@ export default function UserNFTDetailStaking({
         isUserStakingTokensLoading,
         userStakeRewardLogs,
         userStakingTokensError,
+        refetch,
     } = useStakingGet({
         getStakeRewardInput: {
             collectionAddress: collection.address,
@@ -66,7 +67,7 @@ export default function UserNFTDetailStaking({
     >([]);
     const [claimStarted, setClaimStarted] = useState(false);
 
-    const nextNotDistributedReward = useMemo(() => {
+    const { nextNotDistributedReward, canClaimReward } = useMemo(() => {
         const rewardable = stakeRewards
             ?.filter((r) => {
                 const index = userStakeRewardLogs?.findIndex(
@@ -78,16 +79,16 @@ export default function UserNFTDetailStaking({
             })
             .sort((a, b) => Number(a.stakeDuration) - Number(b.stakeDuration));
 
-        return rewardable?.[0];
-    }, [stakeRewards, userStakeRewardLogs]);
-
-    const canClaimReward = useMemo(() => {
-        return (
+        const canClaim =
             userStakeRewardLogs &&
             userStakeRewardLogs.filter((l: StakeRewardLog) => !l.isClaimed)
-                .length > 0
-        );
-    }, [userStakeRewardLogs]);
+                .length > 0;
+
+        return {
+            nextNotDistributedReward: rewardable?.[0],
+            canClaimReward: canClaim,
+        };
+    }, [stakeRewards, userStakeRewardLogs]);
 
     const handleClaimReward = async () => {
         if (isClaimingStakeReward || claimStarted) return;
@@ -118,6 +119,7 @@ export default function UserNFTDetailStaking({
             if (result.error) {
                 toast.error(result.error);
             } else {
+                await refetch();
                 setClaimedAssets(result.rewardedAssets);
                 setShowClaimedRewards(true);
                 toast.success(`Reward ${result.totalRewardAmount} claimed`);
@@ -161,9 +163,11 @@ export default function UserNFTDetailStaking({
         });
 
         if (stakeResult.success) {
+            await refetch();
             toast.success(
                 `${tokenIds.length} NFTs staked successfully! You can now start earning rewards.`
             );
+            setOpenStakePopup(false);
         } else {
             toast.error(stakeResult.message ?? "Failed to stake NFTs.");
         }
@@ -199,6 +203,7 @@ export default function UserNFTDetailStaking({
         });
 
         if (unstakeResult.success) {
+            await refetch();
             toast.success("NFTs unstaked successfully!");
         } else {
             toast.error(unstakeResult.message ?? "Failed to unstake NFTs.");
