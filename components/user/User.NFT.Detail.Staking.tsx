@@ -48,6 +48,8 @@ export default function UserNFTDetailStaking({
         getUserStakingTokensInput: { userId: user?.id ?? "" },
         getUserStakeRewardLogsInput: {
             userId: user?.id ?? "",
+            isDistributed: true,
+            isClaimed: false,
         },
     });
 
@@ -196,9 +198,16 @@ export default function UserNFTDetailStaking({
             return;
         }
 
+        const unClaimedStakeRewardLogs = userStakeRewardLogs?.filter(
+            (log) => log.isDistributed && !log.isClaimed
+        );
+
+        console.log("Unclaimed Stake Reward Logs", unClaimedStakeRewardLogs);
+
         const unstakeResult = await unstake({
             userId: user.id,
             collectionAddress,
+            unClaimedStakeRewardLogs: unClaimedStakeRewardLogs,
             tokenIds,
         });
 

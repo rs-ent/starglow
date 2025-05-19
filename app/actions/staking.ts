@@ -70,6 +70,7 @@ export interface UnstakeInput {
     userId: string;
     collectionAddress: string;
     tokenIds: number[];
+    unClaimedStakeRewardLogs?: StakeRewardLog[];
     isAdmin?: boolean;
 }
 
@@ -80,7 +81,13 @@ export interface UnstakeResult {
 }
 
 export async function unstake(input: UnstakeInput): Promise<UnstakeResult> {
-    const { userId, collectionAddress, tokenIds, isAdmin } = input;
+    const {
+        userId,
+        collectionAddress,
+        tokenIds,
+        unClaimedStakeRewardLogs,
+        isAdmin,
+    } = input;
 
     if (!userId || !collectionAddress || !tokenIds || tokenIds.length === 0) {
         return { success: false, message: "Invalid input parameters." };
@@ -97,6 +104,15 @@ export async function unstake(input: UnstakeInput): Promise<UnstakeResult> {
 
         if (!unlockResult.success) {
             return { success: false, message: unlockResult.error };
+        }
+
+        if (unClaimedStakeRewardLogs && unClaimedStakeRewardLogs.length > 0) {
+            await prisma.stakeRewardLog.updateMany({
+                where: {
+                    id: { in: unClaimedStakeRewardLogs.map((log) => log.id) },
+                },
+                data: { isDistributed: false },
+            });
         }
 
         revalidatePath(`/user/${userId}`);
@@ -301,6 +317,7 @@ export async function deleteStakeReward(
 
 export interface GetUserStakeRewardLogsInput {
     userId: string | null;
+    isDistributed?: boolean;
     isClaimed?: boolean;
 }
 
@@ -334,6 +351,10 @@ export async function getUserStakeRewardLogs(
 
         const where: Prisma.StakeRewardLogWhereInput = {};
         where.nftId = { in: tokens.map((t: any) => t.id) };
+
+        if (input?.isDistributed) {
+            where.isDistributed = input.isDistributed;
+        }
 
         if (input?.isClaimed) {
             where.isClaimed = input.isClaimed;
