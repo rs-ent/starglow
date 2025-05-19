@@ -18,6 +18,7 @@ interface PollsListProps {
     pollLogs?: PollLog[];
     artist?: Artist | null;
     tokenGatingData?: AdvancedTokenGateResult | null;
+    forceSlidesToShow?: number;
 }
 
 export default function PollsList({
@@ -26,9 +27,12 @@ export default function PollsList({
     pollLogs,
     artist,
     tokenGatingData,
+    forceSlidesToShow = 3,
 }: PollsListProps) {
     const [currentSlide, setCurrentSlide] = useState(0);
-    const [slidesToShow, setSlidesToShow] = useState(Math.min(3, polls.length));
+    const [slidesToShow, setSlidesToShow] = useState(
+        Math.min(forceSlidesToShow, polls.length)
+    );
 
     const sliderSettings = {
         dots: false,

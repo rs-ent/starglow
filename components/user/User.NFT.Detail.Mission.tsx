@@ -70,6 +70,7 @@ export default function UserNFTDetailMission({
                 polls={pollsList?.items ?? []}
                 pollLogs={playerPollLogs ?? []}
                 tokenGatingData={takenGateData}
+                forceSlidesToShow={1}
             />
         </div>
     );
