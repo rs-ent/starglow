@@ -30,11 +30,13 @@ export default function PollsList({
     artist,
     isLoading,
     tokenGatingData,
-    forceSlidesToShow = 3,
+    forceSlidesToShow,
 }: PollsListProps) {
     const [currentSlide, setCurrentSlide] = useState(0);
     const [slidesToShow, setSlidesToShow] = useState(
-        Math.min(forceSlidesToShow, polls.length)
+        forceSlidesToShow
+            ? Math.min(forceSlidesToShow, polls.length)
+            : polls.length
     );
 
     const sliderSettings = {
@@ -55,7 +57,9 @@ export default function PollsList({
     };
 
     useEffect(() => {
-        const minSlidesToShow = Math.min(forceSlidesToShow, polls.length);
+        const minSlidesToShow = forceSlidesToShow
+            ? Math.min(forceSlidesToShow, polls.length)
+            : polls.length;
         const handleResize = () => {
             if (window.innerWidth <= 640) {
                 setSlidesToShow(Math.min(1, minSlidesToShow));
@@ -103,8 +107,8 @@ export default function PollsList({
 `,
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
-                WebkitMaskSize: "50% 100%, 50% 100%",
-                maskSize: "50% 100%, 50% 100%",
+                WebkitMaskSize: "55% 100%, 55% 100%",
+                maskSize: "55% 100%, 55% 100%",
                 WebkitMaskPosition: "left, right",
                 maskPosition: "left, right",
             }}
@@ -112,6 +116,7 @@ export default function PollsList({
             <Slider {...sliderSettings}>
                 {polls.map((poll, index) => {
                     let centerIndices: number[] = [];
+                    centerIndices = [currentSlide];
 
                     if (slidesToShow === 1) {
                         centerIndices = [currentSlide];

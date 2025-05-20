@@ -23,13 +23,13 @@ import { formatHexToRGBA } from "@/lib/utils/format";
 import { TokenGateResult } from "@/app/actions/blockchain";
 import { useQuestGet } from "@/app/hooks/useQuest";
 import { usePollsGet } from "@/app/hooks/usePolls";
+import { Collection } from "@/app/actions/factoryContracts";
 
 interface UserContentsMyAssetsNFTCardProps {
     player: Player | null;
-    collection: CollectionContract;
+    collection: Collection;
     onSelect: (
-        collection: CollectionContract,
-        metadata: METADATA_TYPE,
+        collection: Collection,
         tokenGateResult: TokenGateResult
     ) => void;
 }
@@ -40,10 +40,6 @@ export default function UserContentsMyAssetsNFTCard({
     onSelect,
 }: UserContentsMyAssetsNFTCardProps) {
     const { data: session } = useSession();
-
-    const { metadataByCollectionAddress } = useMetadata({
-        collectionAddress: collection.address,
-    });
 
     const { quests, questLogs } = useQuestGet({
         getQuestsInput: {
@@ -108,7 +104,7 @@ export default function UserContentsMyAssetsNFTCard({
     }, [quests, pollsList, questLogs, playerPollLogs]);
 
     const { metadata, glowStart, glowEnd, bg1, bg2, bg3 } = useMemo(() => {
-        const metadata = metadataByCollectionAddress?.metadata as METADATA_TYPE;
+        const metadata = collection.metadata?.metadata as METADATA_TYPE | null;
 
         const start =
             Number(
@@ -137,7 +133,7 @@ export default function UserContentsMyAssetsNFTCard({
             bg2,
             bg3,
         };
-    }, [metadataByCollectionAddress]);
+    }, [collection.metadata]);
 
     const { tokenGateData, isTokenGateLoading, tokenGateError } =
         useBlockchainGet({
@@ -149,8 +145,8 @@ export default function UserContentsMyAssetsNFTCard({
         });
 
     const handleSelect = () => {
-        if (collection && metadata && tokenGateData) {
-            onSelect(collection, metadata, tokenGateData);
+        if (collection && tokenGateData) {
+            onSelect(collection, tokenGateData);
         }
     };
 
@@ -185,7 +181,12 @@ export default function UserContentsMyAssetsNFTCard({
                             "p-[10px] sm:p-[11px] md:p-[13px] lg:p-[16px]"
                         )}
                     >
-                        <ImageMetadata metadata={metadata} className="mb-2" />
+                        {metadata && (
+                            <ImageMetadata
+                                metadata={metadata}
+                                className="mb-2"
+                            />
+                        )}
                         <div className="flex flex-col gap-[2px] items-start">
                             <div className="w-full flex flex-row items-start">
                                 <h2

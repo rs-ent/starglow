@@ -16,9 +16,9 @@ import { User } from "next-auth";
 import { TokenGateResult } from "@/app/actions/blockchain";
 import UserNFTDetailStaking from "./User.NFT.Detail.Staking";
 import UserNFTDetailMission from "./User.NFT.Detail.Mission";
+import { Collection } from "@/app/actions/factoryContracts";
 interface UserNFTDetailProps {
-    collection: CollectionContract;
-    metadata: METADATA_TYPE;
+    collection: Collection;
     tokenGateResult: TokenGateResult;
     onClose: () => void;
     user: User | null;
@@ -27,7 +27,6 @@ interface UserNFTDetailProps {
 
 export default function UserNFTDetail({
     collection,
-    metadata,
     tokenGateResult,
     onClose,
     user,
@@ -35,14 +34,15 @@ export default function UserNFTDetail({
 }: UserNFTDetailProps) {
     const [isMission, setIsMission] = useState(true);
 
-    const { bg1, bg2, bg3 } = useMemo(() => {
+    const { metadata, bg1, bg2, bg3 } = useMemo(() => {
+        const metadata = collection.metadata?.metadata as METADATA_TYPE | null;
         const bg = metadata?.background_color?.replace("#", "") || "000000";
         const bg1 = formatHexToRGBA(bg, 0.6);
         const bg2 = formatHexToRGBA(bg, 0.4);
         const bg3 = formatHexToRGBA(bg, 0.9);
 
-        return { bg1, bg2, bg3 };
-    }, [metadata]);
+        return { metadata, bg1, bg2, bg3 };
+    }, [collection.metadata]);
 
     return (
         <AnimatePresence>
@@ -97,7 +97,7 @@ export default function UserNFTDetail({
                             getResponsiveClass(35).textClass
                         )}
                     >
-                        {metadata.name}
+                        {metadata?.name}
                     </h2>
                     <div
                         className={cn(
@@ -114,10 +114,12 @@ export default function UserNFTDetail({
                                 background: `linear-gradient(to bottom right, ${bg3}, ${bg2}, ${bg1})`,
                             }}
                         >
-                            <ImageMetadata
-                                metadata={metadata}
-                                className="w-full rounded-[12px]"
-                            />
+                            {metadata && (
+                                <ImageMetadata
+                                    metadata={metadata}
+                                    className="w-full rounded-[12px]"
+                                />
+                            )}
                         </div>
                         <div className={cn("mt-6 mb-4 sm:mt-10 sm:mb-6")}>
                             <PublicPrivateTab

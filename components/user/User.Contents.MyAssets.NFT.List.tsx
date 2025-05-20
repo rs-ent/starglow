@@ -13,6 +13,7 @@ import UserNFTDetail from "./User.NFT.Detail";
 import { User } from "next-auth";
 import { Player } from "@prisma/client";
 import { TokenGateResult } from "@/app/actions/blockchain";
+import { Collection } from "@/app/actions/factoryContracts";
 
 interface UserMyAssetsNFTListProps {
     user: User | null;
@@ -26,19 +27,17 @@ export default function UserMyAssetsNFTList({
     const { everyCollections, isLoading, error } = useFactoryGet({});
 
     const [selectedCollection, setSelectedCollection] = useState<{
-        collection: CollectionContract;
-        metadata: METADATA_TYPE;
+        collection: Collection;
         tokenGateResult: TokenGateResult;
     } | null>(null);
 
     const [openDetail, setOpenDetail] = useState<boolean>(false);
 
     const handleSelect = (
-        collection: CollectionContract,
-        metadata: METADATA_TYPE,
+        collection: Collection,
         tokenGateResult: TokenGateResult
     ) => {
-        setSelectedCollection({ collection, metadata, tokenGateResult });
+        setSelectedCollection({ collection, tokenGateResult });
         setOpenDetail(true);
     };
 
@@ -52,7 +51,6 @@ export default function UserMyAssetsNFTList({
             {selectedCollection && openDetail && (
                 <UserNFTDetail
                     collection={selectedCollection.collection}
-                    metadata={selectedCollection.metadata}
                     tokenGateResult={selectedCollection.tokenGateResult}
                     onClose={handleClose}
                     user={user}
