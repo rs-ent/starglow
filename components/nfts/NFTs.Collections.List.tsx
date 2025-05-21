@@ -210,16 +210,16 @@ export default function NFTsCollectionsList({
             </h2>
             <Canvas camera={{ position: [0, 0, targetCameraZ], fov: 40 }}>
                 <CameraLerp targetCameraZ={targetCameraZ} />
-                <ambientLight intensity={0.3} color="#ffffff" />
+                <ambientLight intensity={0.1} color="#ffffab" />
                 <directionalLight
                     position={[-4, 4.4, 12]}
-                    intensity={1.6}
+                    intensity={1.2}
                     color="#ffffff"
                     castShadow={true}
                 />
                 <directionalLight
                     position={[4, -4.4, 12]}
-                    intensity={0.1}
+                    intensity={0.3}
                     color="#ffffff"
                     castShadow={true}
                 />
@@ -230,6 +230,77 @@ export default function NFTsCollectionsList({
                     castShadow={true}
                     distance={50}
                     decay={2}
+                />
+
+                <spotLight
+                    position={[-5, -15, 10]}
+                    intensity={1}
+                    color="#aa00ff"
+                    castShadow={true}
+                    decay={0.1}
+                />
+
+                <spotLight
+                    position={[0, -15, 10]}
+                    intensity={1}
+                    color="#00ffbb"
+                    castShadow={true}
+                    decay={0.1}
+                />
+                <spotLight
+                    position={[5, -15, 10]}
+                    intensity={1}
+                    color="#ff00aa"
+                    castShadow={true}
+                    decay={0.1}
+                />
+
+                <spotLight
+                    position={[20, 0, 10]}
+                    intensity={1}
+                    color="#ff00aa"
+                    castShadow={true}
+                    decay={0.1}
+                />
+
+                <spotLight
+                    position={[20, 10, 10]}
+                    intensity={1}
+                    color="#00ffbb"
+                    castShadow={true}
+                    decay={0.1}
+                />
+
+                <spotLight
+                    position={[20, -10, 10]}
+                    intensity={1}
+                    color="#aa00ff"
+                    castShadow={true}
+                    decay={0.1}
+                />
+
+                <spotLight
+                    position={[-20, 0, 10]}
+                    intensity={1}
+                    color="#aa00ff"
+                    castShadow={true}
+                    decay={0.1}
+                />
+
+                <spotLight
+                    position={[-20, 10, 10]}
+                    intensity={1}
+                    color="#aa00ff"
+                    castShadow={true}
+                    decay={0.1}
+                />
+
+                <spotLight
+                    position={[-20, -10, 10]}
+                    intensity={1}
+                    color="#ff00bb"
+                    castShadow={true}
+                    decay={0.1}
                 />
                 <Arrow />
 

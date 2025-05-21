@@ -238,7 +238,10 @@ export default function AdminPollsCreateModal({
             return false;
         }
 
-        if (polls?.find((poll) => poll.id === formData.id)) {
+        if (
+            mode === "create" &&
+            polls?.find((poll) => poll.id === formData.id)
+        ) {
             toast.error("이미 존재하는 ID입니다.");
             return false;
         }
