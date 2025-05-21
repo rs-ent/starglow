@@ -61,7 +61,7 @@ export default function NFTsCollections() {
     }
 
     return (
-        <div className="max-w-[1600px] m-auto">
+        <div className="m-auto">
             <NFTsCollectionsList collections={listedCollections} />
         </div>
     );

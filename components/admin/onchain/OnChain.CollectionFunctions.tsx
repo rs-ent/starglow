@@ -42,6 +42,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { CollectionContract } from "@prisma/client";
 import { useUpdateCollectionSettingsMutation } from "@/app/mutations/collectionContractsMutations";
+import DateTimePicker from "@/components/atoms/DateTimePicker";
 
 interface CollectionFunctionsProps {
     collection: CollectionContract;
@@ -78,6 +79,24 @@ export default function CollectionFunctions({
     const [price, setPrice] = useState(collection.price?.toString() || "0");
     const [circulation, setCirculation] = useState(
         collection.circulation?.toString() || "0"
+    );
+    const [preSaleStart, setPreSaleStart] = useState(
+        collection.preSaleStart?.toString() || ""
+    );
+    const [preSaleEnd, setPreSaleEnd] = useState(
+        collection.preSaleEnd?.toString() || ""
+    );
+    const [saleStart, setSaleStart] = useState(
+        collection.saleStart?.toString() || ""
+    );
+    const [saleEnd, setSaleEnd] = useState(
+        collection.saleEnd?.toString() || ""
+    );
+    const [glowStart, setGlowStart] = useState(
+        collection.glowStart?.toString() || ""
+    );
+    const [glowEnd, setGlowEnd] = useState(
+        collection.glowEnd?.toString() || ""
     );
 
     // 컬렉션 데이터 및 작업
@@ -322,6 +341,12 @@ export default function CollectionFunctions({
                 price: Number(price),
                 circulation: Number(circulation),
                 isListed: isListed,
+                preSaleStart: preSaleStart ? new Date(preSaleStart) : undefined,
+                preSaleEnd: preSaleEnd ? new Date(preSaleEnd) : undefined,
+                saleStart: saleStart ? new Date(saleStart) : undefined,
+                saleEnd: saleEnd ? new Date(saleEnd) : undefined,
+                glowStart: glowStart ? new Date(glowStart) : undefined,
+                glowEnd: glowEnd ? new Date(glowEnd) : undefined,
             });
 
             if (result.success) {
@@ -418,6 +443,94 @@ export default function CollectionFunctions({
                         disabled={isUpdatingSettings}
                     />
                 </div>
+
+                {/* Pre-sale Period */}
+                <div className="space-y-4 pt-4 border-t">
+                    <Label className="font-medium">Pre-sale Period</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                        <DateTimePicker
+                            label="Start Date"
+                            value={
+                                preSaleStart
+                                    ? new Date(preSaleStart)
+                                    : new Date()
+                            }
+                            onChange={(date) =>
+                                setPreSaleStart(date.toISOString())
+                            }
+                            disabled={isUpdatingSettings}
+                            minDate={new Date()}
+                        />
+                        <DateTimePicker
+                            label="End Date"
+                            value={
+                                preSaleEnd ? new Date(preSaleEnd) : new Date()
+                            }
+                            onChange={(date) =>
+                                setPreSaleEnd(date.toISOString())
+                            }
+                            disabled={isUpdatingSettings}
+                            minDate={
+                                preSaleStart
+                                    ? new Date(preSaleStart)
+                                    : new Date()
+                            }
+                        />
+                    </div>
+                </div>
+
+                {/* Main Sale Period */}
+                <div className="space-y-4 pt-4 border-t">
+                    <Label className="font-medium">Main Sale Period</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                        <DateTimePicker
+                            label="Start Date"
+                            value={saleStart ? new Date(saleStart) : new Date()}
+                            onChange={(date) =>
+                                setSaleStart(date.toISOString())
+                            }
+                            disabled={isUpdatingSettings}
+                            minDate={
+                                preSaleEnd ? new Date(preSaleEnd) : new Date()
+                            }
+                        />
+                        <DateTimePicker
+                            label="End Date"
+                            value={saleEnd ? new Date(saleEnd) : new Date()}
+                            onChange={(date) => setSaleEnd(date.toISOString())}
+                            disabled={isUpdatingSettings}
+                            minDate={
+                                saleStart ? new Date(saleStart) : new Date()
+                            }
+                        />
+                    </div>
+                </div>
+
+                {/* Glow Period */}
+                <div className="space-y-4 pt-4 border-t">
+                    <Label className="font-medium">Glow Period</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                        <DateTimePicker
+                            label="Start Date"
+                            value={glowStart ? new Date(glowStart) : new Date()}
+                            onChange={(date) =>
+                                setGlowStart(date.toISOString())
+                            }
+                            disabled={isUpdatingSettings}
+                            minDate={saleEnd ? new Date(saleEnd) : new Date()}
+                        />
+                        <DateTimePicker
+                            label="End Date"
+                            value={glowEnd ? new Date(glowEnd) : new Date()}
+                            onChange={(date) => setGlowEnd(date.toISOString())}
+                            disabled={isUpdatingSettings}
+                            minDate={
+                                glowStart ? new Date(glowStart) : new Date()
+                            }
+                        />
+                    </div>
+                </div>
+
                 <div className="space-y-2">
                     <Label htmlFor="listed">Listed</Label>
                     <Switch

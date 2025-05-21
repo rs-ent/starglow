@@ -841,6 +841,12 @@ model CollectionContract {
   isPaused    Boolean           @default(false)
   pauseAt     DateTime?
   unpauseAt   DateTime?
+  preSaleStart DateTime?
+  preSaleEnd DateTime?
+  saleStart DateTime?
+  saleEnd DateTime?
+  glowStart DateTime?
+  glowEnd DateTime?
   artist      Artist?           @relation(fields: [artistId], references: [id])
   factory     FactoryContract   @relation(fields: [factoryId], references: [id])
   network     BlockchainNetwork @relation(fields: [networkId], references: [id])

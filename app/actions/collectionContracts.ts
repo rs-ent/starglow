@@ -2627,6 +2627,12 @@ export interface UpdateCollectionSettingsInput {
     price: number;
     circulation: number;
     isListed: boolean;
+    preSaleStart?: Date;
+    preSaleEnd?: Date;
+    saleStart?: Date;
+    saleEnd?: Date;
+    glowStart?: Date;
+    glowEnd?: Date;
 }
 
 export interface UpdateCollectionSettingsResult {
@@ -2637,6 +2643,12 @@ export interface UpdateCollectionSettingsResult {
         price: number;
         circulation: number;
         isListed: boolean;
+        preSaleStart?: Date | null;
+        preSaleEnd?: Date | null;
+        saleStart?: Date | null;
+        saleEnd?: Date | null;
+        glowStart?: Date | null;
+        glowEnd?: Date | null;
     };
     error?: string;
 }
@@ -2645,7 +2657,18 @@ export async function updateCollectionSettings(
     input: UpdateCollectionSettingsInput
 ): Promise<UpdateCollectionSettingsResult> {
     try {
-        const { collectionAddress, price, circulation, isListed } = input;
+        const {
+            collectionAddress,
+            price,
+            circulation,
+            isListed,
+            preSaleStart,
+            preSaleEnd,
+            saleStart,
+            saleEnd,
+            glowStart,
+            glowEnd,
+        } = input;
 
         const updatedCollection = await prisma.collectionContract.update({
             where: { address: collectionAddress },
@@ -2653,6 +2676,12 @@ export async function updateCollectionSettings(
                 price,
                 circulation,
                 isListed,
+                preSaleStart,
+                preSaleEnd,
+                saleStart,
+                saleEnd,
+                glowStart,
+                glowEnd,
             },
             select: {
                 id: true,
@@ -2660,6 +2689,12 @@ export async function updateCollectionSettings(
                 price: true,
                 circulation: true,
                 isListed: true,
+                preSaleStart: true,
+                preSaleEnd: true,
+                saleStart: true,
+                saleEnd: true,
+                glowStart: true,
+                glowEnd: true,
             },
         });
 

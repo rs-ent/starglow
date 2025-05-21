@@ -670,6 +670,12 @@ Table CollectionContract {
   isPaused Boolean [not null, default: false]
   pauseAt DateTime
   unpauseAt DateTime
+  preSaleStart DateTime
+  preSaleEnd DateTime
+  saleStart DateTime
+  saleEnd DateTime
+  glowStart DateTime
+  glowEnd DateTime
   artist Artist
   factory FactoryContract [not null]
   network BlockchainNetwork [not null]
