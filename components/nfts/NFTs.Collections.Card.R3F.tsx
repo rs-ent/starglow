@@ -135,8 +135,8 @@ const CardMesh = React.memo(function CardMesh({
                 <meshPhysicalMaterial
                     map={texture}
                     transparent={true}
-                    metalness={0.01}
-                    roughness={0.9}
+                    metalness={0.05}
+                    roughness={0.5}
                     clearcoat={1.5}
                     clearcoatRoughness={0.1}
                     transmission={0.01}

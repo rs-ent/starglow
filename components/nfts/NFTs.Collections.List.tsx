@@ -2,7 +2,7 @@
 
 import type { Collection } from "@/app/actions/factoryContracts";
 import { Canvas } from "@react-three/fiber";
-import { useState, useRef, use, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { useGesture, WebKitGestureEvent } from "@use-gesture/react";
 import NFTsCollectionsCard3DR3F from "./NFTs.Collections.Card.R3F";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
@@ -10,13 +10,40 @@ import { BlendFunction } from "postprocessing";
 import { useThree, useFrame } from "@react-three/fiber";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { METADATA_TYPE } from "@/app/actions/metadata";
 import React from "react";
-
+import { Mesh } from "three";
 interface NFTsCollectionsListProps {
     collections: Collection[];
     initialTargetCameraZ?: number;
 }
+
+const Arrow = React.memo(function Arrow() {
+    const arrowRef = useRef<Mesh>(null);
+
+    useFrame(() => {
+        if (arrowRef.current) {
+            arrowRef.current.position.y =
+                Math.sin(Date.now() * 0.005) * 0.2 + 9.3;
+            arrowRef.current.rotation.y = Date.now() * 0.005;
+        }
+    });
+
+    return (
+        <mesh ref={arrowRef} position={[0, 9.3, 5]} rotation={[Math.PI, 0, 0]}>
+            <coneGeometry args={[0.6, 1.4, 4]} />
+            <meshStandardMaterial
+                color="rgb(97, 59, 150)"
+                metalness={0.5}
+                roughness={0.5}
+                transparent
+                opacity={1}
+                envMapIntensity={1.5}
+                emissive="rgb(107, 69, 170)"
+                emissiveIntensity={0.2}
+            />
+        </mesh>
+    );
+});
 
 export default function NFTsCollectionsList({
     collections,
@@ -37,7 +64,6 @@ export default function NFTsCollectionsList({
             } = state;
             const target = event.target as HTMLElement;
 
-            // 카드 영역 내부에서의 드래그는 무시
             if (target.closest(".card-container")) {
                 return;
             }
@@ -105,11 +131,11 @@ export default function NFTsCollectionsList({
         }
     );
 
-    const { baseRadius, radius, angleStep } = useMemo(() => {
+    const { radius, angleStep } = useMemo(() => {
         const baseRadius = 30;
         const radius = baseRadius + Math.max(0, len - 5) * 0.7;
         const angleStep = (2 * Math.PI) / len;
-        return { baseRadius, radius, angleStep };
+        return { radius, angleStep };
     }, [len]);
 
     const CameraLerp = React.memo(function CameraLerp({
@@ -168,7 +194,7 @@ export default function NFTsCollectionsList({
                     <ambientLight intensity={1} color="#ffffff" />
                     <directionalLight
                         position={[-4, 4.4, 12]}
-                        intensity={3}
+                        intensity={2}
                         color="#ffffff"
                         castShadow={true}
                     />
@@ -178,16 +204,17 @@ export default function NFTsCollectionsList({
                         color="#ffffff"
                         castShadow={true}
                     />
+                    <pointLight
+                        position={[-1.5, 20, 10]} // y값을 18에서 12로 낮춤
+                        intensity={35}
+                        color="#aa00ff"
+                        castShadow={true}
+                        distance={50}
+                        decay={2}
+                    />
+                    <Arrow />
 
                     {collections.map(renderCollection)}
-                    <EffectComposer>
-                        <Bloom
-                            blendFunction={BlendFunction.ADD}
-                            intensity={0.3}
-                            luminanceThreshold={0.7}
-                            luminanceSmoothing={2}
-                        />
-                    </EffectComposer>
                 </Canvas>
             </div>
         </div>
