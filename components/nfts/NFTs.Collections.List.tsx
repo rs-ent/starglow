@@ -2,11 +2,9 @@
 
 import type { Collection } from "@/app/actions/factoryContracts";
 import { Canvas } from "@react-three/fiber";
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useGesture, WebKitGestureEvent } from "@use-gesture/react";
 import NFTsCollectionsCard3DR3F from "./NFTs.Collections.Card.R3F";
-import { EffectComposer, Bloom } from "@react-three/postprocessing";
-import { BlendFunction } from "postprocessing";
 import { useThree, useFrame } from "@react-three/fiber";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -31,15 +29,16 @@ const Arrow = React.memo(function Arrow() {
     return (
         <mesh ref={arrowRef} position={[0, 9.3, 5]} rotation={[Math.PI, 0, 0]}>
             <coneGeometry args={[0.6, 1.4, 4]} />
-            <meshStandardMaterial
+            <meshPhysicalMaterial
                 color="rgb(97, 59, 150)"
                 metalness={0.5}
-                roughness={0.5}
+                roughness={0.6}
                 transparent
                 opacity={1}
+                reflectivity={0.3}
                 envMapIntensity={1.5}
                 emissive="rgb(107, 69, 170)"
-                emissiveIntensity={0.2}
+                emissiveIntensity={0.25}
             />
         </mesh>
     );
@@ -52,6 +51,8 @@ export default function NFTsCollectionsList({
     const [selected, setSelected] = useState(0);
     const [dragOffset, setDragOffset] = useState(0);
     const [targetCameraZ, setTargetCameraZ] = useState(initialTargetCameraZ);
+    const [width, setWidth] = useState(900);
+    const [height, setHeight] = useState(500);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const len = collections.length;
@@ -172,8 +173,32 @@ export default function NFTsCollectionsList({
         [selected, dragOffset, angleStep, radius]
     );
 
+    useEffect(() => {
+        const handleResize = () => {
+            setWidth(window.innerWidth);
+            if (window.innerWidth <= 640) {
+                setTargetCameraZ(55);
+                setHeight(window.innerHeight - 80);
+            } else if (window.innerWidth <= 1024) {
+                setTargetCameraZ(50);
+                setHeight(window.innerHeight - 80);
+            } else {
+                setTargetCameraZ(45);
+                setHeight(window.innerHeight - 130);
+            }
+        };
+
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, [window.innerWidth, window.innerHeight]);
+
     return (
-        <div>
+        <div
+            {...bind()}
+            ref={containerRef}
+            style={{ width: width, height: height, touchAction: "none" }}
+        >
             <h2
                 className={cn(
                     "text-center text-4xl",
@@ -183,40 +208,33 @@ export default function NFTsCollectionsList({
             >
                 NFTs
             </h2>
-            <div
-                {...bind()}
-                ref={containerRef}
-                style={{ width: 1000, height: 600, touchAction: "none" }}
-                className="mt-[10px]"
-            >
-                <Canvas camera={{ position: [0, 0, targetCameraZ], fov: 40 }}>
-                    <CameraLerp targetCameraZ={targetCameraZ} />
-                    <ambientLight intensity={1} color="#ffffff" />
-                    <directionalLight
-                        position={[-4, 4.4, 12]}
-                        intensity={2}
-                        color="#ffffff"
-                        castShadow={true}
-                    />
-                    <directionalLight
-                        position={[4, -4.4, 12]}
-                        intensity={0.1}
-                        color="#ffffff"
-                        castShadow={true}
-                    />
-                    <pointLight
-                        position={[-1.5, 20, 10]} // y값을 18에서 12로 낮춤
-                        intensity={35}
-                        color="#aa00ff"
-                        castShadow={true}
-                        distance={50}
-                        decay={2}
-                    />
-                    <Arrow />
+            <Canvas camera={{ position: [0, 0, targetCameraZ], fov: 40 }}>
+                <CameraLerp targetCameraZ={targetCameraZ} />
+                <ambientLight intensity={0.3} color="#ffffff" />
+                <directionalLight
+                    position={[-4, 4.4, 12]}
+                    intensity={1.6}
+                    color="#ffffff"
+                    castShadow={true}
+                />
+                <directionalLight
+                    position={[4, -4.4, 12]}
+                    intensity={0.1}
+                    color="#ffffff"
+                    castShadow={true}
+                />
+                <pointLight
+                    position={[-1.5, 20, 10]} // y값을 18에서 12로 낮춤
+                    intensity={35}
+                    color="#aa00ff"
+                    castShadow={true}
+                    distance={50}
+                    decay={2}
+                />
+                <Arrow />
 
-                    {collections.map(renderCollection)}
-                </Canvas>
-            </div>
+                {collections.map(renderCollection)}
+            </Canvas>
         </div>
     );
 }

@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useLoader } from "@react-three/fiber";
-import { TextureLoader, Mesh, DoubleSide } from "three";
+import { TextureLoader, Mesh, DoubleSide, Color, MathUtils } from "three";
 import { RoundedBox } from "@react-three/drei";
 import { Text } from "@react-three/drei";
 import { Collection } from "@/app/actions/factoryContracts";
 import { METADATA_TYPE } from "@/app/actions/metadata";
+import { Environment } from "@react-three/drei";
 import React from "react";
 
 interface Card3DProps {
@@ -25,6 +26,7 @@ interface Card3DProps {
 
 const CONSTANTS = {
     CARD_RATIO: 4 / 3,
+    LOGO_RATIO: 1 / 1,
     LERP_FACTOR: 0.1,
     SCALE: {
         SELECTED: 1.1,
@@ -47,6 +49,7 @@ const CardMesh = React.memo(function CardMesh({
 }: Card3DProps) {
     const meshRef = useRef<Mesh>(null);
     const texture = useLoader(TextureLoader, imageUrl);
+    const logoTexture = useLoader(TextureLoader, "/logo/3d.svg");
 
     useEffect(() => {
         if (!texture.image) return;
@@ -62,7 +65,22 @@ const CardMesh = React.memo(function CardMesh({
             texture.offset.set(0, (1 - crop) / 2);
         }
         texture.needsUpdate = true;
-    }, [texture]);
+
+        if (!logoTexture.image) return;
+        const logoRatio = CONSTANTS.LOGO_RATIO;
+        const logoImageRatio =
+            logoTexture.image.width / logoTexture.image.height;
+        if (logoImageRatio > logoRatio) {
+            const crop = logoRatio / logoImageRatio;
+            logoTexture.repeat.set(crop, 1);
+            logoTexture.offset.set((1 - crop) / 2, 0);
+        } else {
+            const crop = logoImageRatio / logoRatio;
+            logoTexture.repeat.set(1, crop);
+            logoTexture.offset.set(0, (1 - crop) / 2);
+        }
+        logoTexture.needsUpdate = true;
+    }, [texture, logoTexture]);
 
     const [hovered, setHovered] = useState(false);
     useEffect(() => {
@@ -75,13 +93,34 @@ const CardMesh = React.memo(function CardMesh({
 
     useFrame(() => {
         if (meshRef.current) {
-            meshRef.current.position.lerp(
-                { x: position[0], y: position[1], z: position[2] },
-                CONSTANTS.LERP_FACTOR
-            );
-            meshRef.current.rotation.y +=
-                (rotationY - meshRef.current.rotation.y) *
-                CONSTANTS.LERP_FACTOR;
+            if (isSelected) {
+                // 선택된 카드만 애니메이션 + 부드러운 이동/회전
+                meshRef.current.position.lerp(
+                    { x: position[0], y: position[1], z: position[2] },
+                    CONSTANTS.LERP_FACTOR
+                );
+                meshRef.current.position.y =
+                    position[1] + Math.sin(Date.now() * 0.005) * 0.2;
+
+                let y = meshRef.current.rotation.y;
+                y = ((y + Math.PI) % (2 * Math.PI)) - Math.PI;
+                meshRef.current.rotation.y = y;
+
+                meshRef.current.rotation.y +=
+                    (0 - meshRef.current.rotation.y) * CONSTANTS.LERP_FACTOR;
+
+                if (Math.abs(meshRef.current.rotation.y) < 0.01) {
+                    meshRef.current.rotation.y = 0;
+                }
+            } else {
+                // 선택되지 않은 카드는 목표 위치/회전으로 "즉시" 고정
+                meshRef.current.position.set(
+                    position[0],
+                    position[1],
+                    position[2]
+                );
+                meshRef.current.rotation.y = Date.now() * 0.001;
+            }
         }
     });
 
@@ -104,8 +143,10 @@ const CardMesh = React.memo(function CardMesh({
             clearcoatRoughness: 0.2,
             transmission: 0.3,
             ior: 2.5,
+            reflectivity: 0.8,
+            thickness: 0.5,
             emissive: backgroundColor,
-            emissiveIntensity: 0.2,
+            emissiveIntensity: 0.1,
             envMapIntensity: 1.2,
         }),
         [backgroundColor]
@@ -118,217 +159,266 @@ const CardMesh = React.memo(function CardMesh({
     }, [texture]);
 
     return (
-        <group
-            ref={meshRef}
-            scale={scale}
-            onPointerOver={handlePointerOver}
-            onPointerOut={handlePointerOut}
-            onClick={onClick}
-        >
-            {/* 카드 본체 */}
-            <RoundedBox args={[12, 16, 0.6]} radius={0.3} smoothness={5}>
-                <meshPhysicalMaterial {...cardMaterialProps} />
-            </RoundedBox>
-            {/* 디스플레이(이미지) */}
-            <mesh position={[0, 3.3, 0.31]}>
-                <planeGeometry args={[10.56, 7.92]} />
-                <meshPhysicalMaterial
-                    map={texture}
-                    transparent={true}
-                    metalness={0.05}
-                    roughness={0.5}
-                    clearcoat={1.5}
-                    clearcoatRoughness={0.1}
-                    transmission={0.01}
-                    ior={1}
-                    envMapIntensity={0.5}
-                />
-            </mesh>
-            {/* 디스플레이(정보) */}
-            <mesh position={[0, -4.1, 0.1]}>
-                <RoundedBox args={[10.7, 6.5, 0.5]} radius={0.3} smoothness={5}>
-                    <meshPhysicalMaterial
-                        color={backgroundColor}
-                        transparent={true}
-                        opacity={0.4}
-                        roughness={0.8}
-                        metalness={0.4}
-                        clearcoat={1}
-                        clearcoatRoughness={0.05}
-                        transmission={0.5}
-                        ior={1.7}
-                    />
-                    <Text
-                        font="/fonts/conthrax.otf"
-                        position={[0, 2.2, 0.26]}
-                        fontSize={0.7}
-                        color="#fff"
-                        anchorX="center"
-                        anchorY="middle"
-                        glyphGeometryDetail={1}
-                        maxWidth={10}
-                    >
-                        {name}
-                    </Text>
-
-                    <RoundedBox
-                        args={[4.7, 2, 0.5]}
-                        position={[-2.5, 0.5, 0.1]}
-                        radius={0.3}
-                        smoothness={5}
-                    >
-                        <meshPhysicalMaterial
-                            color={backgroundColor}
-                            transparent={true}
-                            opacity={0.35}
-                            roughness={0.05}
-                            metalness={0.2}
-                        />
-
-                        <Text
-                            font="/fonts/suit-variable.otf"
-                            position={[0, 0.3, 0.26]}
-                            fontSize={0.4}
-                            color="#fff"
-                            anchorX="center"
-                            anchorY="middle"
-                            maxWidth={10}
-                        >
-                            Glow Chance
-                        </Text>
-                        <Text
-                            font="/fonts/conthrax.otf"
-                            position={[0, -0.4, 0.26]}
-                            fontSize={0.45}
-                            fontWeight={700}
-                            color={foregroundColor}
-                            anchorX="center"
-                            anchorY="middle"
-                            maxWidth={10}
-                        >
-                            {status}
-                        </Text>
-                    </RoundedBox>
-
-                    <RoundedBox
-                        args={[4.7, 2, 0.5]}
-                        position={[2.5, 0.5, 0.1]}
-                        radius={0.3}
-                        smoothness={5}
-                    >
-                        <meshPhysicalMaterial
-                            color={backgroundColor}
-                            transparent={true}
-                            opacity={0.35}
-                            roughness={0.05}
-                            metalness={0.2}
-                        />
-
-                        <Text
-                            font="/fonts/suit-variable.otf"
-                            position={[0, 0.3, 0.26]}
-                            fontSize={0.4}
-                            color="#fff"
-                            anchorX="center"
-                            anchorY="middle"
-                            maxWidth={10}
-                        >
-                            {dateLabel}
-                        </Text>
-                        <Text
-                            font="/fonts/conthrax.otf"
-                            position={[0, -0.4, 0.26]}
-                            fontSize={0.45}
-                            fontWeight={700}
-                            color={foregroundColor}
-                            anchorX="center"
-                            anchorY="middle"
-                            maxWidth={3}
-                        >
-                            {dateValue}
-                        </Text>
-                    </RoundedBox>
-
-                    <RoundedBox
-                        args={[4.7, 2, 0.5]}
-                        position={[-2.5, -1.8, 0.1]}
-                        radius={0.3}
-                        smoothness={5}
-                    >
-                        <meshPhysicalMaterial
-                            color={backgroundColor}
-                            transparent={true}
-                            opacity={0.35}
-                            roughness={0.05}
-                            metalness={0.2}
-                        />
-
-                        <Text
-                            font="/fonts/suit-variable.otf"
-                            position={[0, 0.3, 0.26]}
-                            fontSize={0.4}
-                            color="#fff"
-                            anchorX="center"
-                            anchorY="middle"
-                            maxWidth={10}
-                        >
-                            Stock
-                        </Text>
-                        <Text
-                            font="/fonts/conthrax.otf"
-                            position={[0, -0.4, 0.26]}
-                            fontSize={0.45}
-                            fontWeight={700}
-                            color={foregroundColor}
-                            anchorX="center"
-                            anchorY="middle"
-                            maxWidth={3}
-                        >
-                            1000/1000
-                        </Text>
-                    </RoundedBox>
-
-                    <RoundedBox
-                        args={[4.7, 2, 0.5]}
-                        position={[2.5, -1.8, 0.1]}
-                        radius={0.3}
-                        smoothness={5}
-                    >
-                        <meshPhysicalMaterial
-                            color={backgroundColor}
-                            transparent={true}
-                            opacity={0.35}
-                            roughness={0.05}
-                            metalness={0.2}
-                        />
-
-                        <Text
-                            font="/fonts/suit-variable.otf"
-                            position={[0, 0.3, 0.26]}
-                            fontSize={0.4}
-                            color="#fff"
-                            anchorX="center"
-                            anchorY="middle"
-                            maxWidth={10}
-                        >
-                            Awaiters
-                        </Text>
-                        <Text
-                            font="/fonts/conthrax.otf"
-                            position={[0, -0.4, 0.26]}
-                            fontSize={0.45}
-                            fontWeight={700}
-                            color={foregroundColor}
-                            anchorX="center"
-                            anchorY="middle"
-                            maxWidth={3}
-                        >
-                            654
-                        </Text>
-                    </RoundedBox>
+        <>
+            <Environment preset="city" />
+            <group
+                ref={meshRef}
+                scale={scale}
+                onPointerOver={handlePointerOver}
+                onPointerOut={handlePointerOut}
+                onClick={onClick}
+            >
+                {/* 카드 본체 */}
+                <RoundedBox args={[12, 16, 0.6]} radius={0.3} smoothness={5}>
+                    <meshPhysicalMaterial {...cardMaterialProps} />
                 </RoundedBox>
-            </mesh>
-        </group>
+                {/* 디스플레이(이미지) */}
+                <mesh position={[0, 3.3, 0.32]}>
+                    <planeGeometry args={[10.56, 7.92]} />
+                    <meshPhysicalMaterial
+                        map={texture}
+                        transparent={true}
+                        metalness={0.1}
+                        roughness={0.01}
+                        clearcoat={1}
+                        clearcoatRoughness={0.1}
+                        transmission={0.01}
+                        ior={1.2}
+                        reflectivity={0.6}
+                        thickness={0.5}
+                        envMapIntensity={1}
+                    />
+                </mesh>
+                {/* 디스플레이(정보) */}
+                <mesh position={[0, -4.1, 0.1]}>
+                    <RoundedBox
+                        args={[10.7, 6.5, 0.5]}
+                        radius={0.3}
+                        smoothness={5}
+                    >
+                        <meshPhysicalMaterial
+                            color={backgroundColor}
+                            transparent={true}
+                            opacity={0.4}
+                            roughness={0.8}
+                            metalness={0.4}
+                            clearcoat={1}
+                            clearcoatRoughness={0.05}
+                            transmission={0.5}
+                            ior={1}
+                        />
+                        <Text
+                            font="/fonts/conthrax.otf"
+                            position={[0, 2.2, 0.26]}
+                            fontSize={0.7}
+                            color="#fff"
+                            anchorX="center"
+                            anchorY="middle"
+                            glyphGeometryDetail={1}
+                            maxWidth={10}
+                        >
+                            {name}
+                        </Text>
+
+                        <RoundedBox
+                            args={[5.35, 2.5, 0.5]}
+                            position={[-2.57, 0.5, 0.1]}
+                            radius={0.3}
+                            smoothness={5}
+                        >
+                            <meshPhysicalMaterial
+                                color={backgroundColor}
+                                transparent={true}
+                                opacity={0.35}
+                                roughness={0.6}
+                                metalness={0.4}
+                            />
+
+                            <Text
+                                font="/fonts/suit-variable.otf"
+                                position={[0, 0.4, 0.26]}
+                                fontSize={0.4}
+                                color="#fff"
+                                anchorX="center"
+                                anchorY="middle"
+                                maxWidth={10}
+                            >
+                                Glow Chance
+                            </Text>
+                            <Text
+                                font="/fonts/conthrax.otf"
+                                position={[0, -0.3, 0.26]}
+                                fontSize={0.55}
+                                fontWeight={700}
+                                color={foregroundColor}
+                                anchorX="center"
+                                anchorY="middle"
+                                maxWidth={10}
+                            >
+                                {status}
+                            </Text>
+                        </RoundedBox>
+
+                        <RoundedBox
+                            args={[5.35, 2.5, 0.5]}
+                            position={[2.57, 0.5, 0.1]}
+                            radius={0.3}
+                            smoothness={5}
+                        >
+                            <meshPhysicalMaterial
+                                color={backgroundColor}
+                                transparent={true}
+                                opacity={0.35}
+                                roughness={0.6}
+                                metalness={0.4}
+                            />
+
+                            <Text
+                                font="/fonts/suit-variable.otf"
+                                position={[0, 0.4, 0.26]}
+                                fontSize={0.4}
+                                color="#fff"
+                                anchorX="center"
+                                anchorY="middle"
+                                maxWidth={10}
+                            >
+                                {dateLabel}
+                            </Text>
+                            <Text
+                                font="/fonts/conthrax.otf"
+                                position={[0, -0.3, 0.26]}
+                                fontSize={0.55}
+                                fontWeight={700}
+                                color={foregroundColor}
+                                anchorX="center"
+                                anchorY="middle"
+                                maxWidth={3}
+                            >
+                                {dateValue}
+                            </Text>
+                        </RoundedBox>
+
+                        <RoundedBox
+                            args={[5.35, 2.5, 0.5]}
+                            position={[-2.57, -1.8, 0.1]}
+                            radius={0.3}
+                            smoothness={5}
+                        >
+                            <meshPhysicalMaterial
+                                color={backgroundColor}
+                                transparent={true}
+                                opacity={0.35}
+                                roughness={0.6}
+                                metalness={0.4}
+                            />
+
+                            <Text
+                                font="/fonts/suit-variable.otf"
+                                position={[0, 0.4, 0.26]}
+                                fontSize={0.4}
+                                color="#fff"
+                                anchorX="center"
+                                anchorY="middle"
+                                maxWidth={10}
+                            >
+                                Stock
+                            </Text>
+                            <Text
+                                font="/fonts/conthrax.otf"
+                                position={[0, -0.3, 0.26]}
+                                fontSize={0.55}
+                                fontWeight={700}
+                                color={foregroundColor}
+                                anchorX="center"
+                                anchorY="middle"
+                                maxWidth={3}
+                            >
+                                1000/1000
+                            </Text>
+                        </RoundedBox>
+
+                        <RoundedBox
+                            args={[5.35, 2.5, 0.5]}
+                            position={[2.57, -1.8, 0.1]}
+                            radius={0.3}
+                            smoothness={5}
+                        >
+                            <meshPhysicalMaterial
+                                color={backgroundColor}
+                                transparent={true}
+                                opacity={0.35}
+                                roughness={0.6}
+                                metalness={0.4}
+                            />
+
+                            <Text
+                                font="/fonts/suit-variable.otf"
+                                position={[0, 0.4, 0.26]}
+                                fontSize={0.4}
+                                color="#fff"
+                                anchorX="center"
+                                anchorY="middle"
+                                maxWidth={10}
+                            >
+                                Awaiters
+                            </Text>
+                            <Text
+                                font="/fonts/conthrax.otf"
+                                position={[0, -0.3, 0.26]}
+                                fontSize={0.55}
+                                fontWeight={700}
+                                color={foregroundColor}
+                                anchorX="center"
+                                anchorY="middle"
+                                maxWidth={3}
+                            >
+                                654
+                            </Text>
+                        </RoundedBox>
+                    </RoundedBox>
+                </mesh>
+                // 카드 뒷면 로고+배경
+                <group position={[0, 0, -0.25]}>
+                    {/* 반투명 원형 배경 */}
+                    <mesh>
+                        <circleGeometry args={[2.8, 64]} />
+                        <meshPhysicalMaterial
+                            color={backgroundColor}
+                            transparent={true}
+                            opacity={0.35}
+                            roughness={0.5}
+                            metalness={0.2}
+                            side={DoubleSide}
+                        />
+                    </mesh>
+                    {/* 글로우 효과용 mesh (emissive) */}
+                    <mesh position={[0, 0, -0.1]}>
+                        <circleGeometry args={[4, 64]} />
+                        <meshPhysicalMaterial
+                            color={foregroundColor}
+                            transparent={true}
+                            opacity={0.18}
+                            emissive={foregroundColor}
+                            emissiveIntensity={0.7}
+                            side={DoubleSide}
+                        />
+                    </mesh>
+                    {/* 로고 */}
+                    <mesh position={[0, 0, -0.15]}>
+                        <planeGeometry args={[4.5, 4.5]} />
+                        <meshPhysicalMaterial
+                            map={logoTexture}
+                            transparent={true}
+                            metalness={0.01}
+                            roughness={0.1}
+                            side={DoubleSide}
+                            emissive={foregroundColor}
+                            emissiveIntensity={0.25}
+                        />
+                    </mesh>
+                </group>
+            </group>
+        </>
     );
 });
 
