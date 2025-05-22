@@ -188,10 +188,9 @@ export default function NFTsCollectionsList({
         const index = collections.findIndex((c) => c.id === collectionId);
 
         if (buyNowClicked && index !== -1) {
-            onBuyNowClick(collections[index]);
             const cameraZ = 5;
             setTargetCameraZ(cameraZ);
-            console.log("Target Camera Z", cameraZ);
+            onBuyNowClick(collections[index]);
         }
 
         if (selected === index) {
