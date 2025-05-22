@@ -60,19 +60,21 @@ export default function NFTsCollectionsList({
     const [positionY, setPositionY] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
 
+    const [isPinching, setIsPinching] = useState(false);
+
     const len = collections.length;
     const handleDrag = useCallback(
         (state: any) => {
+            if (isPinching) {
+                return;
+            }
+
             const {
                 movement: [mx],
                 last,
                 event,
             } = state;
             const target = event.target as HTMLElement;
-
-            if (target.closest(".card-container")) {
-                return;
-            }
 
             const offset = mx / 120;
             if (!last) {
@@ -85,7 +87,7 @@ export default function NFTsCollectionsList({
                 setDragOffset(0);
             }
         },
-        [selected, len]
+        [selected, len, isPinching]
     );
 
     const handleWheel = useCallback(
@@ -111,13 +113,24 @@ export default function NFTsCollectionsList({
         ({
             event,
             offset: [d],
+            first,
+            last,
         }: {
             event: WheelEvent | TouchEvent | PointerEvent | WebKitGestureEvent;
             offset: [number, number];
+            first: boolean;
+            last: boolean;
         }) => {
             event.preventDefault();
+
+            if (first) {
+                setIsPinching(true);
+            } else if (last) {
+                setIsPinching(false);
+            }
+
             setTargetCameraZ((prev) => {
-                let next = prev - d * 0.1;
+                let next = prev - d * 0.05;
                 if (next < 10) next = 10;
                 if (next > 100) next = 100;
                 return next;
