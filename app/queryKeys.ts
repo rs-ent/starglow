@@ -31,6 +31,7 @@ import {
     GetUserStakingTokensInput,
 } from "./actions/staking";
 import { TokenGateInput } from "./actions/blockchain";
+import { CollectionParticipantType } from "@prisma/client";
 
 export const queryKeys = {
     user: {
@@ -355,6 +356,16 @@ export const collectionKeys = {
             [...collectionKeys.all, "tokens", "nonce", address] as const,
         stock: (address: string) =>
             [...collectionKeys.all, "tokens", "stock", address] as const,
+    },
+
+    participants: {
+        all: (collectionAddress: string, type: CollectionParticipantType) =>
+            [
+                ...collectionKeys.all,
+                "participants",
+                collectionAddress,
+                type,
+            ] as const,
     },
 
     // 이벤트 관련

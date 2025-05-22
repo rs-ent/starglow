@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useLoader } from "@react-three/fiber";
-import { TextureLoader, Mesh, DoubleSide, Color, MathUtils } from "three";
+import { TextureLoader, Mesh, DoubleSide } from "three";
 import { RoundedBox } from "@react-three/drei";
 import { Text } from "@react-three/drei";
 import { Collection } from "@/app/actions/factoryContracts";
@@ -10,6 +10,7 @@ import { METADATA_TYPE } from "@/app/actions/metadata";
 import { Environment } from "@react-three/drei";
 import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import React from "react";
+import { CollectionParticipantType } from "@prisma/client";
 
 interface Card3DProps {
     backgroundColor: string;
@@ -47,13 +48,15 @@ const CONSTANTS = {
         LABEL: {
             fontSize: 0.45,
             color: "#fff",
+            outlineWidth: 0.015,
+            outlineColor: "#fff",
         },
         VALUE: {
             fontSize: 0.5,
             fontWeight: 700,
             outlineWidth: 0.05,
-            outlineBlur: 0.6,
-            outlineOpacity: 0.25,
+            outlineBlur: 0.3,
+            outlineOpacity: 0.2,
             renderOrder: 1,
         },
         COMMON: {
@@ -64,7 +67,7 @@ const CONSTANTS = {
     },
     BOX: {
         INFO: {
-            args: [5, 2.1, 0.3] as [number, number, number],
+            args: [5, 2.1, 0.5] as [number, number, number],
             radius: 0.2,
             smoothness: 5,
             materialProps: {
@@ -98,14 +101,14 @@ const CONSTANTS = {
             BOTTOM_RIGHT: [2.57, -1.8, 0.3] as [number, number, number],
         },
         TEXT: {
-            LABEL: [0, 0.4, 0.16] as [number, number, number],
-            VALUE: [0, -0.3, 0.16] as [number, number, number],
+            LABEL: [0, 0.4, 0.26] as [number, number, number],
+            VALUE: [0, -0.3, 0.26] as [number, number, number],
             TITLE: [0, 2.2, 0.26] as [number, number, number],
         },
         TEXT_ACCENT: {
-            LABEL: [0, 0.4, 0.16] as [number, number, number],
-            VALUE: [0, -0.3, 0.26] as [number, number, number],
-            TITLE: [0, 2.2, 4] as [number, number, number],
+            LABEL: [0, 0.4, 0.26] as [number, number, number],
+            VALUE: [0, -0.3, 2] as [number, number, number],
+            TITLE: [0, 2.5, 5] as [number, number, number],
         },
     },
 } as const;
@@ -308,10 +311,14 @@ const CardMesh = React.memo(function CardMesh({
                             </Text>
                             <Text
                                 font="/fonts/conthrax.otf"
-                                position={CONSTANTS.POSITION.TEXT.VALUE}
+                                position={
+                                    isSelected
+                                        ? CONSTANTS.POSITION.TEXT_ACCENT.VALUE
+                                        : CONSTANTS.POSITION.TEXT.VALUE
+                                }
                                 maxWidth={3}
                                 color={foregroundColor}
-                                outlineColor={foregroundColor}
+                                outlineColor={backgroundColor}
                                 {...CONSTANTS.TEXT.COMMON}
                                 {...CONSTANTS.TEXT.VALUE}
                             >
@@ -337,10 +344,14 @@ const CardMesh = React.memo(function CardMesh({
                             </Text>
                             <Text
                                 font="/fonts/conthrax.otf"
-                                position={CONSTANTS.POSITION.TEXT.VALUE}
+                                position={
+                                    isSelected
+                                        ? CONSTANTS.POSITION.TEXT_ACCENT.VALUE
+                                        : CONSTANTS.POSITION.TEXT.VALUE
+                                }
                                 maxWidth={3}
                                 color={foregroundColor}
-                                outlineColor={foregroundColor}
+                                outlineColor={backgroundColor}
                                 {...CONSTANTS.TEXT.COMMON}
                                 {...CONSTANTS.TEXT.VALUE}
                             >
@@ -366,10 +377,14 @@ const CardMesh = React.memo(function CardMesh({
                             </Text>
                             <Text
                                 font="/fonts/conthrax.otf"
-                                position={CONSTANTS.POSITION.TEXT.VALUE}
+                                position={
+                                    isSelected
+                                        ? CONSTANTS.POSITION.TEXT_ACCENT.VALUE
+                                        : CONSTANTS.POSITION.TEXT.VALUE
+                                }
                                 maxWidth={3}
                                 color={foregroundColor}
-                                outlineColor={foregroundColor}
+                                outlineColor={backgroundColor}
                                 {...CONSTANTS.TEXT.COMMON}
                                 {...CONSTANTS.TEXT.VALUE}
                             >
@@ -395,10 +410,14 @@ const CardMesh = React.memo(function CardMesh({
                             </Text>
                             <Text
                                 font="/fonts/conthrax.otf"
-                                position={CONSTANTS.POSITION.TEXT.VALUE}
+                                position={
+                                    isSelected
+                                        ? CONSTANTS.POSITION.TEXT_ACCENT.VALUE
+                                        : CONSTANTS.POSITION.TEXT.VALUE
+                                }
                                 maxWidth={3}
                                 color={foregroundColor}
-                                outlineColor={foregroundColor}
+                                outlineColor={backgroundColor}
                                 {...CONSTANTS.TEXT.COMMON}
                                 {...CONSTANTS.TEXT.VALUE}
                             >
@@ -475,6 +494,7 @@ export default function NFTsCollectionsCard3DR3F({
         status,
         dateLabel,
         dateValue,
+        participantsType,
     } = useMemo(() => {
         const preSaleStart = collection.preSaleStart;
         const preSaleEnd = collection.preSaleEnd;
@@ -486,17 +506,22 @@ export default function NFTsCollectionsCard3DR3F({
         let status = "SCHEDULED";
         let dateLabel = "Sale Open";
         let dateValue = "Unknown";
+        let participantsType: CollectionParticipantType =
+            CollectionParticipantType.PREREGISTRATION;
 
         if (glowStart && glowEnd) {
             if (now < glowStart) {
+                participantsType = CollectionParticipantType.GLOW;
                 status = "GLOWING";
                 dateLabel = "Glow Start";
                 dateValue = formatDate(glowStart.toISOString());
             } else if (now > glowStart && now < glowEnd) {
+                participantsType = CollectionParticipantType.GLOW;
                 status = "GLOWING";
                 dateLabel = "Glow End";
                 dateValue = formatDate(glowEnd.toISOString());
             } else {
+                participantsType = CollectionParticipantType.GLOW;
                 status = "GLOWED";
                 dateLabel = "Glow Ended";
                 dateValue = formatDate(glowEnd.toISOString());
@@ -505,10 +530,12 @@ export default function NFTsCollectionsCard3DR3F({
 
         if (saleStart && saleEnd) {
             if (now < saleStart) {
+                participantsType = CollectionParticipantType.PRIVATESALE;
                 status = "SCHEDULED";
                 dateLabel = "Sale Open";
                 dateValue = formatDate(saleStart.toISOString());
             } else if (now > saleStart && now < saleEnd) {
+                participantsType = CollectionParticipantType.PUBLICSALE;
                 status = "ONGOING";
                 dateLabel = "Sale End";
                 dateValue = formatDate(saleEnd.toISOString());
@@ -517,10 +544,12 @@ export default function NFTsCollectionsCard3DR3F({
 
         if (preSaleStart && preSaleEnd) {
             if (now < preSaleStart) {
+                participantsType = CollectionParticipantType.PREREGISTRATION;
                 status = "PRE-REG";
                 dateLabel = "Pre Reg Open";
                 dateValue = formatDate(preSaleStart.toISOString());
             } else if (now > preSaleStart && now < preSaleEnd) {
+                participantsType = CollectionParticipantType.PREREGISTRATION;
                 status = "PRE-REG";
                 dateLabel = "Pre Sale End";
                 dateValue = formatDate(preSaleEnd.toISOString());
@@ -542,11 +571,15 @@ export default function NFTsCollectionsCard3DR3F({
             status,
             dateLabel,
             dateValue,
+            participantsType,
         };
     }, [collection]);
 
-    const { collectionStock } = useCollectionGet({
+    const { collectionStock, collectionParticipants } = useCollectionGet({
         collectionAddress: collection.address,
+        options: {
+            participantsType,
+        },
     });
 
     return (
@@ -558,7 +591,7 @@ export default function NFTsCollectionsCard3DR3F({
             status={status}
             dateLabel={dateLabel}
             dateValue={dateValue}
-            participants={0}
+            participants={collectionParticipants?.length || 0}
             remainStock={collectionStock?.remain || 0}
             totalStock={collectionStock?.total || 0}
             position={position}

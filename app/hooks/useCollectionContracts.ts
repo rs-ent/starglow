@@ -14,6 +14,7 @@ import {
     useCollection,
     useTokensLockStatus,
     useCollectionStock,
+    useCollectionParticipants,
 } from "../queries/collectionContractsQueries";
 import {
     useMintTokensMutation,
@@ -28,6 +29,7 @@ import {
     useDeployCollectionMutation,
     useUpdateCollectionSettingsMutation,
 } from "../mutations/collectionContractsMutations";
+import { CollectionParticipantType } from "@prisma/client";
 import { collectionKeys } from "../queryKeys";
 
 // GET 훅 (조회 기능)
@@ -40,6 +42,7 @@ export interface UseCollectionGetProps {
         isBurned?: boolean;
         isLocked?: boolean;
         isStaked?: boolean;
+        participantsType?: CollectionParticipantType;
     };
 }
 
@@ -94,6 +97,11 @@ export function useCollectionGet({
         collectionAddress,
     });
 
+    const collectionParticipantsQuery = useCollectionParticipants({
+        collectionAddress,
+        type: CollectionParticipantType.PREREGISTRATION,
+    });
+
     return {
         // 데이터
         collection,
@@ -104,6 +112,7 @@ export function useCollectionGet({
         settings: collectionSettingsQuery.data,
         tokensLockStatus: tokensLockStatusQuery.data,
         collectionStock: collectionStockQuery.data,
+        collectionParticipants: collectionParticipantsQuery.data,
 
         // 상태
         isLoading:
@@ -113,7 +122,8 @@ export function useCollectionGet({
             (hasCollectionAddress && escrowWalletsQuery.isLoading) ||
             (hasCollectionAddress && collectionSettingsQuery.isLoading) ||
             (hasCollectionAddress && walletId ? nonceQuery.isLoading : false) ||
-            (hasCollectionAddress && tokensLockStatusQuery.isLoading),
+            (hasCollectionAddress && tokensLockStatusQuery.isLoading) ||
+            (hasCollectionAddress && collectionParticipantsQuery.isLoading),
         error:
             collectionError ||
             tokensQuery.error ||
@@ -122,7 +132,8 @@ export function useCollectionGet({
             collectionSettingsQuery.error ||
             (walletId ? nonceQuery.error : undefined) ||
             tokensLockStatusQuery.error ||
-            collectionStockQuery.error,
+            collectionStockQuery.error ||
+            collectionParticipantsQuery.error,
 
         // 개별 쿼리 상태
         isLoadingCollection: isCollectionLoading,
@@ -137,6 +148,8 @@ export function useCollectionGet({
             hasCollectionAddress && tokensLockStatusQuery.isLoading,
         isLoadingCollectionStock:
             hasCollectionAddress && collectionStockQuery.isLoading,
+        isLoadingCollectionParticipants:
+            hasCollectionAddress && collectionParticipantsQuery.isLoading,
 
         // 원본 쿼리 객체 (고급 사용 사례용)
         tokensQuery,
@@ -146,6 +159,7 @@ export function useCollectionGet({
         collectionSettingsQuery,
         tokensLockStatusQuery,
         collectionStockQuery,
+        collectionParticipantsQuery,
     };
 }
 

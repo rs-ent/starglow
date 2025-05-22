@@ -33,6 +33,7 @@ model User {
   wallets       Wallet[]
   provider      String?
   telegramId    String?           @unique
+  collectionParticipants CollectionParticipant[]
   
   @@index([telegramId])
   @@index([email, active])
@@ -854,7 +855,8 @@ model CollectionContract {
   stakeRewards StakeReward[] @relation("StakeReward")
   nfts        NFT[]
   events      NFTEvent[]
-
+  participants CollectionParticipant[]
+  
   @@index([address, networkId])
   @@index([factoryId])
 }
@@ -907,6 +909,27 @@ model NFT {
   @@index([tokenId])
   @@index([currentOwnerAddress])
   @@index([ownerAddress])
+}
+
+enum CollectionParticipantType {
+  PREREGISTRATION
+  PRESALE
+  PRIVATESALE
+  PUBLICSALE
+  GLOW
+}
+
+model CollectionParticipant {
+  id String @id @default(cuid())
+  type CollectionParticipantType
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  collectionAddress String
+  collection CollectionContract @relation(fields: [collectionAddress], references: [address])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, collectionAddress, type])
+  @@index([collectionAddress, type])
 }
 
 model StakeReward {

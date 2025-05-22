@@ -117,7 +117,7 @@ export default function NFTsCollectionsList({
         }) => {
             event.preventDefault();
             setTargetCameraZ((prev) => {
-                let next = prev - d * 0.05;
+                let next = prev - d * 0.1;
                 if (next < 10) next = 10;
                 if (next > 100) next = 100;
                 return next;
@@ -230,7 +230,7 @@ export default function NFTsCollectionsList({
                     color="#ffffff"
                 />
                 <pointLight
-                    position={[-1.5, 20, 10]} // y값을 18에서 12로 낮춤
+                    position={[-1.5, 20, 10]}
                     intensity={35}
                     color="#aa00ff"
                     distance={50}

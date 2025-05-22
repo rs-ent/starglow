@@ -22,6 +22,7 @@ Table User {
   wallets Wallet [not null]
   provider String
   telegramId String [unique]
+  collectionParticipants CollectionParticipant [not null]
 }
 
 Table Account {
@@ -683,6 +684,7 @@ Table CollectionContract {
   stakeRewards StakeReward [not null]
   nfts NFT [not null]
   events NFTEvent [not null]
+  participants CollectionParticipant [not null]
 }
 
 Table NFT {
@@ -729,6 +731,20 @@ Table NFT {
 
   indexes {
     (collectionId, tokenId) [unique]
+  }
+}
+
+Table CollectionParticipant {
+  id String [pk]
+  type CollectionParticipantType [not null]
+  userId String [not null]
+  user User [not null]
+  collectionAddress String [not null]
+  collection CollectionContract [not null]
+  createdAt DateTime [default: `now()`, not null]
+
+  indexes {
+    (userId, collectionAddress, type) [unique]
   }
 }
 
@@ -881,6 +897,14 @@ Enum AssetType {
   OFFCHAIN
 }
 
+Enum CollectionParticipantType {
+  PREREGISTRATION
+  PRESALE
+  PRIVATESALE
+  PUBLICSALE
+  GLOW
+}
+
 Enum PaymentStatus {
   PENDING
   AWAITING_DEPOSIT
@@ -1016,6 +1040,10 @@ Ref: CollectionContract.networkId > BlockchainNetwork.id
 Ref: NFT.collectionId > CollectionContract.id
 
 Ref: NFT.networkId > BlockchainNetwork.id
+
+Ref: CollectionParticipant.userId > User.id
+
+Ref: CollectionParticipant.collectionAddress > CollectionContract.address
 
 Ref: StakeReward.assetId > Asset.id
 

@@ -16,6 +16,7 @@ import {
     updateCollectionSettings,
     getTokensLockStatus,
     getCollectionStock,
+    getCollectionParticipants,
 } from "../actions/collectionContracts";
 import type {
     GetCollectionInput,
@@ -33,6 +34,7 @@ import type {
     UpdateCollectionSettingsResult,
     GetTokensLockStatusInput,
     GetCollectionStockInput,
+    GetCollectionParticipantsInput,
 } from "../actions/collectionContracts";
 import { NFT } from "@prisma/client";
 
@@ -174,5 +176,18 @@ export const useCollectionStock = (input: GetCollectionStockInput) => {
         queryKey: collectionKeys.tokens.stock(input.collectionAddress),
         queryFn: () => getCollectionStock(input),
         enabled: !!input.collectionAddress,
+    });
+};
+
+export const useCollectionParticipants = (
+    input: GetCollectionParticipantsInput
+) => {
+    return useQuery({
+        queryKey: collectionKeys.participants.all(
+            input.collectionAddress,
+            input.type
+        ),
+        queryFn: () => getCollectionParticipants(input),
+        enabled: !!input.collectionAddress && !!input.type,
     });
 };

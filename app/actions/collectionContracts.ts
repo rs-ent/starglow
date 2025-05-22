@@ -25,6 +25,8 @@ import {
     BlockchainNetwork,
     CollectionContract,
     NFT,
+    CollectionParticipant,
+    CollectionParticipantType,
 } from "@prisma/client";
 import { privateKeyToAccount } from "viem/accounts";
 import { createNFTMetadata, getMetadataByCollectionAddress } from "./metadata";
@@ -2763,6 +2765,33 @@ export async function getCollectionStock(
     } catch (error) {
         console.error("Error getting collection stock:", error);
         return { remain: 0, total: 0 };
+    }
+}
+
+export interface GetCollectionParticipantsInput {
+    collectionAddress: string;
+    type: CollectionParticipantType;
+}
+
+export async function getCollectionParticipants(
+    input?: GetCollectionParticipantsInput
+): Promise<CollectionParticipant[]> {
+    if (!input) {
+        return [];
+    }
+
+    try {
+        const participants = await prisma.collectionParticipant.findMany({
+            where: {
+                collectionAddress: input.collectionAddress,
+                type: input.type,
+            },
+        });
+
+        return participants;
+    } catch (error) {
+        console.error("Error getting collection participants:", error);
+        return [];
     }
 }
 
