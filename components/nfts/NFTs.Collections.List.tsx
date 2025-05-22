@@ -112,12 +112,12 @@ export default function NFTsCollectionsList({
     const handlePinch = useCallback(
         ({
             event,
-            offset: [d],
+            movement: [md],
             first,
             last,
         }: {
             event: WheelEvent | TouchEvent | PointerEvent | WebKitGestureEvent;
-            offset: [number, number];
+            movement: [number, number];
             first: boolean;
             last: boolean;
         }) => {
@@ -130,7 +130,7 @@ export default function NFTsCollectionsList({
             }
 
             setTargetCameraZ((prev) => {
-                let next = prev - d * 0.05;
+                let next = prev - md * 0.1;
                 if (next < 10) next = 10;
                 if (next > 100) next = 100;
                 return next;
