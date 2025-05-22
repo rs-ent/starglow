@@ -8,6 +8,7 @@ import { Text } from "@react-three/drei";
 import { Collection } from "@/app/actions/factoryContracts";
 import { METADATA_TYPE } from "@/app/actions/metadata";
 import { Environment } from "@react-three/drei";
+import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import React from "react";
 
 interface Card3DProps {
@@ -18,6 +19,9 @@ interface Card3DProps {
     status: string;
     dateLabel: string;
     dateValue: string;
+    participants: number;
+    remainStock: number;
+    totalStock: number;
     position?: [number, number, number];
     rotationY?: number;
     isSelected?: boolean;
@@ -31,6 +35,78 @@ const CONSTANTS = {
     SCALE: {
         SELECTED: 1.1,
         DEFAULT: 0.8,
+    },
+    TEXT: {
+        TITLE: {
+            fontSize: 0.7,
+            outlineWidth: 0.05,
+            outlineBlur: 0.5,
+            outlineOpacity: 0.4,
+            renderOrder: 2,
+        },
+        LABEL: {
+            fontSize: 0.45,
+            color: "#fff",
+        },
+        VALUE: {
+            fontSize: 0.5,
+            fontWeight: 700,
+            outlineWidth: 0.05,
+            outlineBlur: 0.6,
+            outlineOpacity: 0.25,
+            renderOrder: 1,
+        },
+        COMMON: {
+            anchorX: "center" as const,
+            anchorY: "middle" as const,
+            glyphGeometryDetail: 4,
+        },
+    },
+    BOX: {
+        INFO: {
+            args: [5, 2.1, 0.3] as [number, number, number],
+            radius: 0.2,
+            smoothness: 5,
+            materialProps: {
+                transparent: true,
+                opacity: 0.1,
+                roughness: 0.01,
+                metalness: 1,
+                color: "#000",
+            },
+        },
+        MAIN: {
+            args: [12, 16, 0.6] as [number, number, number],
+            radius: 0.3,
+            smoothness: 5,
+        },
+        DISPLAY: {
+            args: [10.7, 6.5, 0.5] as [number, number, number],
+            radius: 0.3,
+            smoothness: 5,
+            materialProps: {
+                transparent: true,
+                opacity: 0,
+            },
+        },
+    },
+    POSITION: {
+        INFO_BOX: {
+            LEFT: [-2.57, 0.5, 0.3] as [number, number, number],
+            RIGHT: [2.57, 0.5, 0.3] as [number, number, number],
+            BOTTOM_LEFT: [-2.57, -1.8, 0.3] as [number, number, number],
+            BOTTOM_RIGHT: [2.57, -1.8, 0.3] as [number, number, number],
+        },
+        TEXT: {
+            LABEL: [0, 0.4, 0.16] as [number, number, number],
+            VALUE: [0, -0.3, 0.16] as [number, number, number],
+            TITLE: [0, 2.2, 0.26] as [number, number, number],
+        },
+        TEXT_ACCENT: {
+            LABEL: [0, 0.4, 0.16] as [number, number, number],
+            VALUE: [0, -0.3, 0.26] as [number, number, number],
+            TITLE: [0, 2.2, 4] as [number, number, number],
+        },
     },
 } as const;
 
@@ -46,6 +122,9 @@ const CardMesh = React.memo(function CardMesh({
     status = "SCHEDULED",
     dateLabel,
     dateValue,
+    participants,
+    remainStock,
+    totalStock,
 }: Card3DProps) {
     const meshRef = useRef<Mesh>(null);
     const texture = useLoader(TextureLoader, imageUrl);
@@ -169,7 +248,7 @@ const CardMesh = React.memo(function CardMesh({
                 onClick={onClick}
             >
                 {/* 카드 본체 */}
-                <RoundedBox args={[12, 16, 0.6]} radius={0.3} smoothness={5}>
+                <RoundedBox {...CONSTANTS.BOX.MAIN}>
                     <meshPhysicalMaterial {...cardMaterialProps} />
                 </RoundedBox>
                 {/* 디스플레이(이미지) */}
@@ -191,188 +270,139 @@ const CardMesh = React.memo(function CardMesh({
                 </mesh>
                 {/* 디스플레이(정보) */}
                 <mesh position={[0, -4.1, 0.1]}>
-                    <RoundedBox
-                        args={[10.7, 6.5, 0.5]}
-                        radius={0.3}
-                        smoothness={5}
-                    >
+                    <RoundedBox {...CONSTANTS.BOX.DISPLAY}>
                         <meshPhysicalMaterial
-                            color={backgroundColor}
-                            transparent={true}
-                            opacity={0.4}
-                            roughness={0.8}
-                            metalness={0.4}
-                            clearcoat={1}
-                            clearcoatRoughness={0.05}
-                            transmission={0.5}
-                            ior={1}
+                            {...CONSTANTS.BOX.DISPLAY.materialProps}
                         />
                         <Text
                             font="/fonts/conthrax.otf"
-                            position={[0, 2.2, 0.26]}
-                            fontSize={0.7}
+                            position={
+                                isSelected
+                                    ? CONSTANTS.POSITION.TEXT_ACCENT.TITLE
+                                    : CONSTANTS.POSITION.TEXT.TITLE
+                            }
                             color="#fff"
-                            anchorX="center"
-                            anchorY="middle"
-                            glyphGeometryDetail={1}
                             maxWidth={10}
+                            outlineColor={foregroundColor}
+                            {...CONSTANTS.TEXT.COMMON}
+                            {...CONSTANTS.TEXT.TITLE}
                         >
                             {name}
                         </Text>
 
                         <RoundedBox
-                            args={[5.35, 2.5, 0.5]}
-                            position={[-2.57, 0.5, 0.1]}
-                            radius={0.3}
-                            smoothness={5}
+                            {...CONSTANTS.BOX.INFO}
+                            position={CONSTANTS.POSITION.INFO_BOX.LEFT}
                         >
                             <meshPhysicalMaterial
-                                color={backgroundColor}
-                                transparent={true}
-                                opacity={0.35}
-                                roughness={0.6}
-                                metalness={0.4}
+                                {...CONSTANTS.BOX.INFO.materialProps}
                             />
-
                             <Text
                                 font="/fonts/suit-variable.otf"
-                                position={[0, 0.4, 0.26]}
-                                fontSize={0.4}
-                                color="#fff"
-                                anchorX="center"
-                                anchorY="middle"
+                                position={CONSTANTS.POSITION.TEXT.LABEL}
                                 maxWidth={10}
+                                {...CONSTANTS.TEXT.COMMON}
+                                {...CONSTANTS.TEXT.LABEL}
                             >
                                 Glow Chance
                             </Text>
                             <Text
                                 font="/fonts/conthrax.otf"
-                                position={[0, -0.3, 0.26]}
-                                fontSize={0.55}
-                                fontWeight={700}
+                                position={CONSTANTS.POSITION.TEXT.VALUE}
+                                maxWidth={3}
                                 color={foregroundColor}
-                                anchorX="center"
-                                anchorY="middle"
-                                maxWidth={10}
+                                outlineColor={foregroundColor}
+                                {...CONSTANTS.TEXT.COMMON}
+                                {...CONSTANTS.TEXT.VALUE}
                             >
                                 {status}
                             </Text>
                         </RoundedBox>
 
                         <RoundedBox
-                            args={[5.35, 2.5, 0.5]}
-                            position={[2.57, 0.5, 0.1]}
-                            radius={0.3}
-                            smoothness={5}
+                            {...CONSTANTS.BOX.INFO}
+                            position={CONSTANTS.POSITION.INFO_BOX.RIGHT}
                         >
                             <meshPhysicalMaterial
-                                color={backgroundColor}
-                                transparent={true}
-                                opacity={0.35}
-                                roughness={0.6}
-                                metalness={0.4}
+                                {...CONSTANTS.BOX.INFO.materialProps}
                             />
-
                             <Text
                                 font="/fonts/suit-variable.otf"
-                                position={[0, 0.4, 0.26]}
-                                fontSize={0.4}
-                                color="#fff"
-                                anchorX="center"
-                                anchorY="middle"
+                                position={CONSTANTS.POSITION.TEXT.LABEL}
                                 maxWidth={10}
+                                {...CONSTANTS.TEXT.COMMON}
+                                {...CONSTANTS.TEXT.LABEL}
                             >
                                 {dateLabel}
                             </Text>
                             <Text
                                 font="/fonts/conthrax.otf"
-                                position={[0, -0.3, 0.26]}
-                                fontSize={0.55}
-                                fontWeight={700}
-                                color={foregroundColor}
-                                anchorX="center"
-                                anchorY="middle"
+                                position={CONSTANTS.POSITION.TEXT.VALUE}
                                 maxWidth={3}
+                                color={foregroundColor}
+                                outlineColor={foregroundColor}
+                                {...CONSTANTS.TEXT.COMMON}
+                                {...CONSTANTS.TEXT.VALUE}
                             >
                                 {dateValue}
                             </Text>
                         </RoundedBox>
 
                         <RoundedBox
-                            args={[5.35, 2.5, 0.5]}
-                            position={[-2.57, -1.8, 0.1]}
-                            radius={0.3}
-                            smoothness={5}
+                            {...CONSTANTS.BOX.INFO}
+                            position={CONSTANTS.POSITION.INFO_BOX.BOTTOM_LEFT}
                         >
                             <meshPhysicalMaterial
-                                color={backgroundColor}
-                                transparent={true}
-                                opacity={0.35}
-                                roughness={0.6}
-                                metalness={0.4}
+                                {...CONSTANTS.BOX.INFO.materialProps}
                             />
-
                             <Text
                                 font="/fonts/suit-variable.otf"
-                                position={[0, 0.4, 0.26]}
-                                fontSize={0.4}
-                                color="#fff"
-                                anchorX="center"
-                                anchorY="middle"
+                                position={CONSTANTS.POSITION.TEXT.LABEL}
                                 maxWidth={10}
+                                {...CONSTANTS.TEXT.COMMON}
+                                {...CONSTANTS.TEXT.LABEL}
                             >
                                 Stock
                             </Text>
                             <Text
                                 font="/fonts/conthrax.otf"
-                                position={[0, -0.3, 0.26]}
-                                fontSize={0.55}
-                                fontWeight={700}
-                                color={foregroundColor}
-                                anchorX="center"
-                                anchorY="middle"
+                                position={CONSTANTS.POSITION.TEXT.VALUE}
                                 maxWidth={3}
+                                color={foregroundColor}
+                                outlineColor={foregroundColor}
+                                {...CONSTANTS.TEXT.COMMON}
+                                {...CONSTANTS.TEXT.VALUE}
                             >
-                                1000/1000
+                                {remainStock}/{totalStock}
                             </Text>
                         </RoundedBox>
 
                         <RoundedBox
-                            args={[5.35, 2.5, 0.5]}
-                            position={[2.57, -1.8, 0.1]}
-                            radius={0.3}
-                            smoothness={5}
+                            {...CONSTANTS.BOX.INFO}
+                            position={CONSTANTS.POSITION.INFO_BOX.BOTTOM_RIGHT}
                         >
                             <meshPhysicalMaterial
-                                color={backgroundColor}
-                                transparent={true}
-                                opacity={0.35}
-                                roughness={0.6}
-                                metalness={0.4}
+                                {...CONSTANTS.BOX.INFO.materialProps}
                             />
-
                             <Text
                                 font="/fonts/suit-variable.otf"
-                                position={[0, 0.4, 0.26]}
-                                fontSize={0.4}
-                                color="#fff"
-                                anchorX="center"
-                                anchorY="middle"
+                                position={CONSTANTS.POSITION.TEXT.LABEL}
                                 maxWidth={10}
+                                {...CONSTANTS.TEXT.COMMON}
+                                {...CONSTANTS.TEXT.LABEL}
                             >
                                 Awaiters
                             </Text>
                             <Text
                                 font="/fonts/conthrax.otf"
-                                position={[0, -0.3, 0.26]}
-                                fontSize={0.55}
-                                fontWeight={700}
-                                color={foregroundColor}
-                                anchorX="center"
-                                anchorY="middle"
+                                position={CONSTANTS.POSITION.TEXT.VALUE}
                                 maxWidth={3}
+                                color={foregroundColor}
+                                outlineColor={foregroundColor}
+                                {...CONSTANTS.TEXT.COMMON}
+                                {...CONSTANTS.TEXT.VALUE}
                             >
-                                654
+                                {participants}
                             </Text>
                         </RoundedBox>
                     </RoundedBox>
@@ -515,6 +545,10 @@ export default function NFTsCollectionsCard3DR3F({
         };
     }, [collection]);
 
+    const { collectionStock } = useCollectionGet({
+        collectionAddress: collection.address,
+    });
+
     return (
         <CardMesh
             backgroundColor={backgroundColor}
@@ -524,6 +558,9 @@ export default function NFTsCollectionsCard3DR3F({
             status={status}
             dateLabel={dateLabel}
             dateValue={dateValue}
+            participants={0}
+            remainStock={collectionStock?.remain || 0}
+            totalStock={collectionStock?.total || 0}
             position={position}
             rotationY={rotationY}
             isSelected={isSelected}

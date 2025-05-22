@@ -13,6 +13,7 @@ import {
     useCollectionSettings,
     useCollection,
     useTokensLockStatus,
+    useCollectionStock,
 } from "../queries/collectionContractsQueries";
 import {
     useMintTokensMutation,
@@ -89,6 +90,10 @@ export function useCollectionGet({
         tokenIds: options?.tokenIds || [],
     });
 
+    const collectionStockQuery = useCollectionStock({
+        collectionAddress,
+    });
+
     return {
         // 데이터
         collection,
@@ -98,6 +103,7 @@ export function useCollectionGet({
         nonce: nonceQuery.data,
         settings: collectionSettingsQuery.data,
         tokensLockStatus: tokensLockStatusQuery.data,
+        collectionStock: collectionStockQuery.data,
 
         // 상태
         isLoading:
@@ -115,7 +121,8 @@ export function useCollectionGet({
             escrowWalletsQuery.error ||
             collectionSettingsQuery.error ||
             (walletId ? nonceQuery.error : undefined) ||
-            tokensLockStatusQuery.error,
+            tokensLockStatusQuery.error ||
+            collectionStockQuery.error,
 
         // 개별 쿼리 상태
         isLoadingCollection: isCollectionLoading,
@@ -128,6 +135,8 @@ export function useCollectionGet({
             hasCollectionAddress && collectionSettingsQuery.isLoading,
         isLoadingTokensLockStatus:
             hasCollectionAddress && tokensLockStatusQuery.isLoading,
+        isLoadingCollectionStock:
+            hasCollectionAddress && collectionStockQuery.isLoading,
 
         // 원본 쿼리 객체 (고급 사용 사례용)
         tokensQuery,
@@ -136,6 +145,7 @@ export function useCollectionGet({
         nonceQuery,
         collectionSettingsQuery,
         tokensLockStatusQuery,
+        collectionStockQuery,
     };
 }
 

@@ -353,6 +353,8 @@ export const collectionKeys = {
             ] as const,
         nonce: (address: string) =>
             [...collectionKeys.all, "tokens", "nonce", address] as const,
+        stock: (address: string) =>
+            [...collectionKeys.all, "tokens", "stock", address] as const,
     },
 
     // 이벤트 관련

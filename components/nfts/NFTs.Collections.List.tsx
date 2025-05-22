@@ -9,25 +9,29 @@ import { useThree, useFrame } from "@react-three/fiber";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import React from "react";
-import { Mesh } from "three";
+import { Mesh, Vector3 } from "three";
 interface NFTsCollectionsListProps {
     collections: Collection[];
     initialTargetCameraZ?: number;
 }
 
-const Arrow = React.memo(function Arrow() {
+const Arrow = React.memo(function Arrow({ positionY }: { positionY: number }) {
     const arrowRef = useRef<Mesh>(null);
 
     useFrame(() => {
         if (arrowRef.current) {
             arrowRef.current.position.y =
-                Math.sin(Date.now() * 0.005) * 0.2 + 9.3;
+                Math.sin(Date.now() * 0.005) * 0.2 + (9 + positionY);
             arrowRef.current.rotation.y = Date.now() * 0.005;
         }
     });
 
+    const position = useMemo(() => {
+        return new Vector3(0, 9 + positionY, 5);
+    }, [positionY]);
+
     return (
-        <mesh ref={arrowRef} position={[0, 9.3, 5]} rotation={[Math.PI, 0, 0]}>
+        <mesh ref={arrowRef} position={position} rotation={[Math.PI, 0, 0]}>
             <coneGeometry args={[0.6, 1.4, 4]} />
             <meshPhysicalMaterial
                 color="rgb(97, 59, 150)"
@@ -53,6 +57,7 @@ export default function NFTsCollectionsList({
     const [targetCameraZ, setTargetCameraZ] = useState(initialTargetCameraZ);
     const [width, setWidth] = useState(900);
     const [height, setHeight] = useState(500);
+    const [positionY, setPositionY] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const len = collections.length;
@@ -163,27 +168,30 @@ export default function NFTsCollectionsList({
                 <NFTsCollectionsCard3DR3F
                     key={i}
                     collection={collection}
-                    position={[x, 0, z]}
+                    position={[x, positionY, z]}
                     rotationY={rotationY}
                     isSelected={Math.round(effectiveSelected) === i}
                     onClick={() => setSelected(i)}
                 />
             );
         },
-        [selected, dragOffset, angleStep, radius]
+        [selected, dragOffset, angleStep, radius, positionY]
     );
 
     useEffect(() => {
         const handleResize = () => {
             setWidth(window.innerWidth);
             if (window.innerWidth <= 640) {
-                setTargetCameraZ(55);
+                setTargetCameraZ(40);
+                setPositionY(1.5);
                 setHeight(window.innerHeight - 80);
             } else if (window.innerWidth <= 1024) {
-                setTargetCameraZ(50);
+                setTargetCameraZ(45);
+                setPositionY(2);
                 setHeight(window.innerHeight - 80);
             } else {
                 setTargetCameraZ(45);
+                setPositionY(1);
                 setHeight(window.innerHeight - 130);
             }
         };
@@ -215,19 +223,16 @@ export default function NFTsCollectionsList({
                     position={[-4, 4.4, 12]}
                     intensity={1.2}
                     color="#ffffff"
-                    castShadow={true}
                 />
                 <directionalLight
                     position={[4, -4.4, 12]}
                     intensity={0.3}
                     color="#ffffff"
-                    castShadow={true}
                 />
                 <pointLight
                     position={[-1.5, 20, 10]} // y값을 18에서 12로 낮춤
                     intensity={35}
                     color="#aa00ff"
-                    castShadow={true}
                     distance={50}
                     decay={2}
                 />
@@ -236,7 +241,6 @@ export default function NFTsCollectionsList({
                     position={[-5, -15, 10]}
                     intensity={1}
                     color="#aa00ff"
-                    castShadow={true}
                     decay={0.1}
                 />
 
@@ -244,14 +248,12 @@ export default function NFTsCollectionsList({
                     position={[0, -15, 10]}
                     intensity={1}
                     color="#00ffbb"
-                    castShadow={true}
                     decay={0.1}
                 />
                 <spotLight
                     position={[5, -15, 10]}
                     intensity={1}
                     color="#ff00aa"
-                    castShadow={true}
                     decay={0.1}
                 />
 
@@ -259,7 +261,6 @@ export default function NFTsCollectionsList({
                     position={[20, 0, 10]}
                     intensity={1}
                     color="#ff00aa"
-                    castShadow={true}
                     decay={0.1}
                 />
 
@@ -275,7 +276,6 @@ export default function NFTsCollectionsList({
                     position={[20, -10, 10]}
                     intensity={1}
                     color="#aa00ff"
-                    castShadow={true}
                     decay={0.1}
                 />
 
@@ -283,7 +283,6 @@ export default function NFTsCollectionsList({
                     position={[-20, 0, 10]}
                     intensity={1}
                     color="#aa00ff"
-                    castShadow={true}
                     decay={0.1}
                 />
 
@@ -291,7 +290,6 @@ export default function NFTsCollectionsList({
                     position={[-20, 10, 10]}
                     intensity={1}
                     color="#aa00ff"
-                    castShadow={true}
                     decay={0.1}
                 />
 
@@ -299,10 +297,9 @@ export default function NFTsCollectionsList({
                     position={[-20, -10, 10]}
                     intensity={1}
                     color="#ff00bb"
-                    castShadow={true}
                     decay={0.1}
                 />
-                <Arrow />
+                <Arrow positionY={positionY} />
 
                 {collections.map(renderCollection)}
             </Canvas>

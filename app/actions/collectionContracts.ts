@@ -2714,6 +2714,58 @@ export async function updateCollectionSettings(
     }
 }
 
+export interface GetCollectionStockInput {
+    collectionAddress: string;
+}
+
+export interface GetCollectionStockResult {
+    remain: number;
+    total: number;
+}
+
+export async function getCollectionStock(
+    input?: GetCollectionStockInput
+): Promise<GetCollectionStockResult> {
+    if (!input) {
+        return { remain: 0, total: 0 };
+    }
+
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            select: {
+                circulation: true,
+                creatorAddress: true,
+            },
+        });
+
+        const tokenOwners = await getTokenOwners({
+            collectionAddress: input.collectionAddress,
+        });
+
+        const tokenOwnedByCreator = tokenOwners.owners.filter(
+            (owner) => owner === collection?.creatorAddress
+        );
+
+        const tokenOwnedByUsers = tokenOwners.owners.filter(
+            (owner) => owner !== collection?.creatorAddress
+        );
+
+        const remain = Math.min(
+            (collection?.circulation ?? 0) - tokenOwnedByUsers.length,
+            tokenOwnedByCreator.length
+        );
+
+        return {
+            remain: remain,
+            total: collection?.circulation ?? 0,
+        };
+    } catch (error) {
+        console.error("Error getting collection stock:", error);
+        return { remain: 0, total: 0 };
+    }
+}
+
 export interface GetTokensLockStatusInput {
     collectionAddress: string;
     tokenIds: number[];
