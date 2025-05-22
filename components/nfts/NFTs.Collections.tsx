@@ -8,7 +8,11 @@ import { Alert } from "../ui/alert";
 import type { Collection } from "@/app/actions/factoryContracts";
 import NFTsCollectionsList from "./NFTs.Collections.List";
 
-export default function NFTsCollections() {
+export default function NFTsCollections({
+    onBuyNowClick,
+}: {
+    onBuyNowClick: (collection: Collection) => void;
+}) {
     const { everyCollections, isLoading, error, everyCollectionsQuery } =
         useFactoryGet({});
 
@@ -62,8 +66,10 @@ export default function NFTsCollections() {
 
     return (
         <div className="m-auto">
-            
-            <NFTsCollectionsList collections={listedCollections} />
+            <NFTsCollectionsList
+                collections={listedCollections}
+                onBuyNowClick={onBuyNowClick}
+            />
         </div>
     );
 }

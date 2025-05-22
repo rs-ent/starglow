@@ -11,6 +11,7 @@ import { Environment } from "@react-three/drei";
 import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import React from "react";
 import { CollectionParticipantType } from "@prisma/client";
+import { useSpring, animated } from "@react-spring/three";
 
 interface Card3DProps {
     backgroundColor: string;
@@ -27,6 +28,8 @@ interface Card3DProps {
     rotationY?: number;
     isSelected?: boolean;
     onClick?: () => void;
+    onBuyNowClick?: () => void;
+    confirmedAlpha?: number;
 }
 
 const CONSTANTS = {
@@ -121,6 +124,7 @@ const CardMesh = React.memo(function CardMesh({
     rotationY = 0,
     isSelected = false,
     onClick,
+    onBuyNowClick,
     name,
     status = "SCHEDULED",
     dateLabel,
@@ -128,6 +132,7 @@ const CardMesh = React.memo(function CardMesh({
     participants,
     remainStock,
     totalStock,
+    confirmedAlpha = 1,
 }: Card3DProps) {
     const meshRef = useRef<Mesh>(null);
     const texture = useLoader(TextureLoader, imageUrl);
@@ -176,13 +181,13 @@ const CardMesh = React.memo(function CardMesh({
     useFrame(() => {
         if (meshRef.current) {
             if (isSelected) {
-                // 선택된 카드만 애니메이션 + 부드러운 이동/회전
                 meshRef.current.position.lerp(
                     { x: position[0], y: position[1], z: position[2] },
                     CONSTANTS.LERP_FACTOR
                 );
                 meshRef.current.position.y =
-                    position[1] + Math.sin(Date.now() * 0.005) * 0.2;
+                    position[1] +
+                    Math.sin(Date.now() * 0.005 * confirmedAlpha) * 0.2;
 
                 let y = meshRef.current.rotation.y;
                 y = ((y + Math.PI) % (2 * Math.PI)) - Math.PI;
@@ -195,7 +200,6 @@ const CardMesh = React.memo(function CardMesh({
                     meshRef.current.rotation.y = 0;
                 }
             } else {
-                // 선택되지 않은 카드는 목표 위치/회전으로 "즉시" 고정
                 meshRef.current.position.set(
                     position[0],
                     position[1],
@@ -206,13 +210,25 @@ const CardMesh = React.memo(function CardMesh({
         }
     });
 
-    const scale = useMemo(() => {
-        if (isSelected) return CONSTANTS.SCALE.SELECTED;
-        return CONSTANTS.SCALE.DEFAULT;
-    }, [isSelected]);
+    const { scale: cardScale } = useSpring({
+        scale: isSelected ? CONSTANTS.SCALE.SELECTED : CONSTANTS.SCALE.DEFAULT,
+        config: {
+            mass: 1,
+            tension: 170,
+            friction: 26,
+        },
+    });
 
     const handlePointerOver = useCallback(() => setHovered(true), []);
     const handlePointerOut = useCallback(() => setHovered(false), []);
+
+    const handleBuyNowClick = useCallback(
+        (e: React.MouseEvent | React.TouchEvent) => {
+            e.stopPropagation();
+            onBuyNowClick?.();
+        },
+        [onBuyNowClick]
+    );
 
     const cardMaterialProps = useMemo(
         () => ({
@@ -240,12 +256,31 @@ const CardMesh = React.memo(function CardMesh({
         };
     }, [texture]);
 
+    const {
+        scale: buyNowScale,
+        opacity,
+        animatedPositionY,
+    } = useSpring<{
+        scale: number;
+        opacity: number;
+        animatedPositionY: number;
+    }>({
+        scale: confirmedAlpha > 1 ? 1 : 0,
+        opacity: confirmedAlpha > 1 ? 1 : 0,
+        animatedPositionY: confirmedAlpha > 1 ? 0 : 15,
+        config: {
+            mass: 0.4,
+            tension: 200,
+            friction: 6,
+        },
+    });
+
     return (
         <>
             <Environment preset="city" />
-            <group
+            <animated.group
                 ref={meshRef}
-                scale={scale}
+                scale={cardScale}
                 onPointerOver={handlePointerOver}
                 onPointerOut={handlePointerOut}
                 onClick={onClick}
@@ -254,6 +289,50 @@ const CardMesh = React.memo(function CardMesh({
                 <RoundedBox {...CONSTANTS.BOX.MAIN}>
                     <meshPhysicalMaterial {...cardMaterialProps} />
                 </RoundedBox>
+                {isSelected && (
+                    <animated.group
+                        scale={buyNowScale}
+                        position-y={animatedPositionY}
+                    >
+                        <RoundedBox
+                            args={[12, 3, 1]}
+                            position={[0, 0, 6]}
+                            rotation={[0, 0, 0]}
+                            radius={0.3}
+                            smoothness={5}
+                            onClick={handleBuyNowClick}
+                        >
+                            <animated.meshPhysicalMaterial
+                                color="rgb(78,59,153)"
+                                transparent={true}
+                                opacity={opacity}
+                                metalness={0.9}
+                                roughness={0.1}
+                                clearcoat={2}
+                                clearcoatRoughness={0.2}
+                                transmission={0.2}
+                                ior={1.5}
+                                reflectivity={1}
+                                envMapIntensity={1.5}
+                                emissive="rgb(78,59,153)"
+                                emissiveIntensity={opacity.to((o) => o * 1.2)}
+                            />
+                            <Text
+                                font="/fonts/conthrax.otf"
+                                position={[0, -0.1, 0.7]}
+                                color="#fff"
+                                fontSize={1.5}
+                                maxWidth={10}
+                                outlineWidth={0.05}
+                                outlineColor="rgb(255,255,255)"
+                                outlineBlur={0.8}
+                                outlineOpacity={0.3}
+                            >
+                                BUY NOW
+                            </Text>
+                        </RoundedBox>
+                    </animated.group>
+                )}
                 {/* 디스플레이(이미지) */}
                 <mesh position={[0, 3.3, 0.32]}>
                     <planeGeometry args={[10.56, 7.92]} />
@@ -466,7 +545,7 @@ const CardMesh = React.memo(function CardMesh({
                         />
                     </mesh>
                 </group>
-            </group>
+            </animated.group>
         </>
     );
 });
@@ -477,12 +556,16 @@ export default function NFTsCollectionsCard3DR3F({
     rotationY,
     isSelected,
     onClick,
+    onBuyNowClick,
+    confirmedAlpha,
 }: {
     collection: Collection;
     position?: [number, number, number];
     rotationY?: number;
     isSelected?: boolean;
     onClick?: () => void;
+    onBuyNowClick?: () => void;
+    confirmedAlpha?: number;
 }) {
     const now = useMemo(() => new Date(), []);
 
@@ -598,6 +681,8 @@ export default function NFTsCollectionsCard3DR3F({
             rotationY={rotationY}
             isSelected={isSelected}
             onClick={onClick}
+            onBuyNowClick={onBuyNowClick}
+            confirmedAlpha={confirmedAlpha}
         />
     );
 }

@@ -13,22 +13,30 @@ import { Mesh, Vector3 } from "three";
 interface NFTsCollectionsListProps {
     collections: Collection[];
     initialTargetCameraZ?: number;
+    onBuyNowClick: (collection: Collection) => void;
 }
 
-const Arrow = React.memo(function Arrow({ positionY }: { positionY: number }) {
+const Arrow = React.memo(function Arrow({
+    positionY,
+    confirmedAlpha,
+}: {
+    positionY: number;
+    confirmedAlpha: number;
+}) {
     const arrowRef = useRef<Mesh>(null);
 
     useFrame(() => {
         if (arrowRef.current) {
             arrowRef.current.position.y =
-                Math.sin(Date.now() * 0.005) * 0.2 + (9 + positionY);
-            arrowRef.current.rotation.y = Date.now() * 0.005;
+                Math.sin(Date.now() * 0.005 * confirmedAlpha) * 0.2 +
+                (9 + positionY);
+            arrowRef.current.rotation.y = Date.now() * 0.005 * confirmedAlpha;
         }
     });
 
     const position = useMemo(() => {
         return new Vector3(0, 9 + positionY, 5);
-    }, [positionY]);
+    }, [positionY, confirmedAlpha]);
 
     return (
         <mesh ref={arrowRef} position={position} rotation={[Math.PI, 0, 0]}>
@@ -50,17 +58,24 @@ const Arrow = React.memo(function Arrow({ positionY }: { positionY: number }) {
 
 export default function NFTsCollectionsList({
     collections,
+    onBuyNowClick,
     initialTargetCameraZ = 35,
 }: NFTsCollectionsListProps) {
     const [selected, setSelected] = useState(0);
     const [dragOffset, setDragOffset] = useState(0);
     const [targetCameraZ, setTargetCameraZ] = useState(initialTargetCameraZ);
+    const [cameraZByWidth, setCameraZByWidth] = useState(initialTargetCameraZ);
     const [width, setWidth] = useState(900);
     const [height, setHeight] = useState(500);
     const [positionY, setPositionY] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const [isPinching, setIsPinching] = useState(false);
+
+    const [confirmedAlpha, setConfirmedAlpha] = useState(1);
+    const [buyNowCollection, setBuyNowCollection] = useState<Collection | null>(
+        null
+    );
 
     const len = collections.length;
     const handleDrag = useCallback(
@@ -74,7 +89,6 @@ export default function NFTsCollectionsList({
                 last,
                 event,
             } = state;
-            const target = event.target as HTMLElement;
 
             const offset = mx / 120;
             if (!last) {
@@ -85,6 +99,7 @@ export default function NFTsCollectionsList({
                 if (next >= len) next -= len;
                 setSelected(next);
                 setDragOffset(0);
+                setConfirmedAlpha(1);
             }
         },
         [selected, len, isPinching]
@@ -166,6 +181,35 @@ export default function NFTsCollectionsList({
         return null;
     });
 
+    const handleClickCollection = (
+        collectionId: string,
+        buyNowClicked: boolean
+    ) => {
+        const index = collections.findIndex((c) => c.id === collectionId);
+
+        if (buyNowClicked && index !== -1) {
+            onBuyNowClick(collections[index]);
+            const cameraZ = 5;
+            setTargetCameraZ(cameraZ);
+            console.log("Target Camera Z", cameraZ);
+        }
+
+        if (selected === index) {
+            if (!buyNowClicked && confirmedAlpha > 1) {
+                setConfirmedAlpha(1);
+                setTargetCameraZ(cameraZByWidth);
+            } else {
+                const cameraZ = cameraZByWidth - 9;
+                setTargetCameraZ(cameraZ);
+                setConfirmedAlpha(2.5);
+            }
+        } else {
+            setSelected(index);
+            setConfirmedAlpha(1);
+            setTargetCameraZ(cameraZByWidth);
+        }
+    };
+
     const renderCollection = useCallback(
         (collection: Collection, i: number) => {
             const effectiveSelected = selected - dragOffset;
@@ -181,11 +225,15 @@ export default function NFTsCollectionsList({
                     position={[x, positionY, z]}
                     rotationY={rotationY}
                     isSelected={Math.round(effectiveSelected) === i}
-                    onClick={() => setSelected(i)}
+                    onClick={() => handleClickCollection(collection.id, false)}
+                    onBuyNowClick={() =>
+                        handleClickCollection(collection.id, true)
+                    }
+                    confirmedAlpha={confirmedAlpha}
                 />
             );
         },
-        [selected, dragOffset, angleStep, radius, positionY]
+        [selected, dragOffset, angleStep, radius, positionY, confirmedAlpha]
     );
 
     useEffect(() => {
@@ -193,14 +241,17 @@ export default function NFTsCollectionsList({
             setWidth(window.innerWidth);
             if (window.innerWidth <= 640) {
                 setTargetCameraZ(40);
+                setCameraZByWidth(40);
                 setPositionY(1.5);
                 setHeight(window.innerHeight - 80);
             } else if (window.innerWidth <= 1024) {
                 setTargetCameraZ(45);
+                setCameraZByWidth(45);
                 setPositionY(2);
                 setHeight(window.innerHeight - 80);
             } else {
                 setTargetCameraZ(45);
+                setCameraZByWidth(45);
                 setPositionY(1);
                 setHeight(window.innerHeight - 130);
             }
@@ -309,7 +360,7 @@ export default function NFTsCollectionsList({
                     color="#ff00bb"
                     decay={0.1}
                 />
-                <Arrow positionY={positionY} />
+                <Arrow positionY={positionY} confirmedAlpha={confirmedAlpha} />
 
                 {collections.map(renderCollection)}
             </Canvas>
