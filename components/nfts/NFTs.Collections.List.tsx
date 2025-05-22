@@ -99,12 +99,9 @@ export default function NFTsCollectionsList({
             delta: [number, number];
         }) => {
             event.preventDefault();
-            setTargetCameraZ((prev) => {
-                let next = prev + dy * 0.05;
-                if (next < 10) next = 10;
-                if (next > 100) next = 100;
-                return next;
-            });
+            setTargetCameraZ((prev) =>
+                Math.min(Math.max(prev + dy * 0.05, 10), 100)
+            );
         },
         []
     );
@@ -130,10 +127,10 @@ export default function NFTsCollectionsList({
             }
 
             setTargetCameraZ((prev) => {
-                let next = prev - md * 0.1;
-                if (next < 10) next = 10;
-                if (next > 100) next = 100;
-                return next;
+                return Math.min(
+                    Math.max(prev - (md - 1) * (md < 1 ? 3 : 1.5), 10),
+                    100
+                );
             });
         },
         []
