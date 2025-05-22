@@ -213,9 +213,9 @@ const CardMesh = React.memo(function CardMesh({
     const { scale: cardScale } = useSpring({
         scale: isSelected ? CONSTANTS.SCALE.SELECTED : CONSTANTS.SCALE.DEFAULT,
         config: {
-            mass: 1,
-            tension: 170,
-            friction: 26,
+            mass: 0.8,
+            tension: 120,
+            friction: 29,
         },
     });
 
@@ -295,7 +295,7 @@ const CardMesh = React.memo(function CardMesh({
                         position-y={animatedPositionY}
                     >
                         <RoundedBox
-                            args={[12, 3, 1]}
+                            args={[10.5, 3, 1]}
                             position={[0, 0, 6]}
                             rotation={[0, 0, 0]}
                             radius={0.3}
@@ -321,7 +321,7 @@ const CardMesh = React.memo(function CardMesh({
                                 font="/fonts/conthrax.otf"
                                 position={[0, -0.1, 0.7]}
                                 color="#fff"
-                                fontSize={1.5}
+                                fontSize={1.2}
                                 maxWidth={10}
                                 outlineWidth={0.05}
                                 outlineColor="rgb(255,255,255)"
