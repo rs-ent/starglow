@@ -14,6 +14,7 @@ import {
     Calendar,
     Users,
 } from "lucide-react";
+import { useMemo } from "react";
 
 interface NFTContentsDetailsProps {
     collection: Collection;
@@ -24,25 +25,24 @@ export default function NFTContentsDetails({
     collection,
     metadata,
 }: NFTContentsDetailsProps) {
-    const sharePercentage = metadata?.attributes?.find(
-        (attr) => attr.trait_type === "Share Percentage"
-    )?.value;
+    const { sharePercentage, glowStartDate, glowEndDate, reportUrl } =
+        useMemo(() => {
+            const sharePercentage = metadata?.attributes?.find(
+                (attr) => attr.trait_type === "Share Percentage"
+            )?.value;
 
-    const glowStartDate = metadata?.attributes?.find(
-        (attr) => attr.trait_type === "Glow Start"
-    )?.value;
+            const glowStartDate = metadata?.attributes?.find(
+                (attr) => attr.trait_type === "Glow Start"
+            )?.value;
 
-    const glowEndDate = metadata?.attributes?.find(
-        (attr) => attr.trait_type === "Glow End"
-    )?.value;
+            const glowEndDate = metadata?.attributes?.find(
+                (attr) => attr.trait_type === "Glow End"
+            )?.value;
 
-    const formatDate = (timestamp: number) => {
-        return new Date(timestamp * 1000).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        });
-    };
+            const reportUrl = metadata?.external_url;
+
+            return { sharePercentage, glowStartDate, glowEndDate, reportUrl };
+        }, [metadata]);
 
     return (
         <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50">
@@ -150,7 +150,32 @@ export default function NFTContentsDetails({
                         <p>Network: {collection.networkId}</p>
                     </div>
                 </div>
+
+                {/* iframe */}
+                {reportUrl && (
+                    <div className="flex justify-center mb-6 md:mb-8">
+                        <iframe
+                            src={reportUrl}
+                            width="100%"
+                            height="1000"
+                            style={{
+                                borderRadius: "1rem",
+                                background: "transparent",
+                            }}
+                            title="Official Report"
+                            allowFullScreen
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );
 }
+
+const formatDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    });
+};

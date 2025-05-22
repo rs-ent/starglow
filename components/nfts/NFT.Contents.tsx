@@ -27,6 +27,7 @@ export default function NFTContents({ collection }: NFTContentsProps) {
 
     return (
         <div className="flex flex-col items-center w-full py-6 sm:py-8 md:py-10">
+            <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
             <div className="w-full max-w-7xl px-4">
                 {purchaseSuccess && (
                     <div className="bg-chart-1/20 border border-chart-1/30 text-chart-1 p-3 sm:p-4 rounded-lg mb-6 sm:mb-8 max-w-3xl mx-auto">
@@ -38,14 +39,14 @@ export default function NFTContents({ collection }: NFTContentsProps) {
                 )}
 
                 <div className="grid grid-cols-1 gap-6 mt-[50px] mb-[50px] lg:grid-cols-3 lg:gap-8 lg:mt-[0px] lg:mb-[0px]">
-                    <div className="lg:col-span-2 order-2 lg:order-1">
+                    <div className="lg:col-span-2 order-1 lg:order-1">
                         <NFTContentsDetails
                             collection={collection}
                             metadata={metadata}
                         />
                     </div>
 
-                    <div className="lg:col-span-1 order-1 lg:order-2">
+                    <div className="lg:col-span-1 order-2 lg:order-2">
                         <div className="lg:sticky lg:top-8">
                             <NFTContentsPayment
                                 collection={collection}
