@@ -1,9 +1,9 @@
-/// components\molecules\NFTs.CollectionDetails.tsx
+/// components/nfts/NFT.Contents.Details.tsx
 
 "use client";
 
 import Image from "next/image";
-import { CollectionContract, Metadata } from "@prisma/client";
+import { Collection } from "@/app/actions/factoryContracts";
 import { METADATA_TYPE } from "@/app/actions/metadata";
 import { H2, H3 } from "../atoms/Typography";
 import {
@@ -15,15 +15,15 @@ import {
     Users,
 } from "lucide-react";
 
-interface CollectionDetailsProps {
-    collection: CollectionContract & { metadata: Metadata };
+interface NFTContentsDetailsProps {
+    collection: Collection;
     metadata: METADATA_TYPE;
 }
 
-export default function CollectionDetails({
+export default function NFTContentsDetails({
     collection,
     metadata,
-}: CollectionDetailsProps) {
+}: NFTContentsDetailsProps) {
     const sharePercentage = metadata?.attributes?.find(
         (attr) => attr.trait_type === "Share Percentage"
     )?.value;

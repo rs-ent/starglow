@@ -1,7 +1,7 @@
 /// app\collections\[address]\page.tsx
 
 import { notFound } from "next/navigation";
-import Collection from "@/components/organisms/NFTs.Collection";
+import Collection from "@/components/nfts/NFT.Contents";
 import { Metadata } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 

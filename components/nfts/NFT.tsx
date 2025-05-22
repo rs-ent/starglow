@@ -5,6 +5,7 @@
 import type { Collection } from "@/app/actions/factoryContracts";
 import { cn } from "@/lib/utils/tailwind";
 import { useEffect, useState } from "react";
+import NFTContents from "./NFT.Contents";
 
 interface NFTProps {
     collection: Collection;
@@ -34,11 +35,7 @@ export default function NFT({ collection, searchParams }: NFTProps) {
                 )}
             />
 
-            <div className="flex flex-col items-center justify-center">
-                <div className="flex flex-col items-center justify-center">
-                    <h1 className="text-4xl font-bold">{collection.name}</h1>
-                </div>
-            </div>
+            <NFTContents collection={collection} />
         </>
     );
 }

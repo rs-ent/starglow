@@ -2,18 +2,18 @@
 
 "use client";
 
-import { CollectionContract, Metadata } from "@prisma/client";
-import { METADATA_TYPE } from "@/app/actions/metadata";
 import { useState } from "react";
-import NFTsCollectionDetails from "../molecules/NFTs.CollectionDetails";
-import NFTsCollectionPayment from "../molecules/NFTs.CollectionPayment";
+import NFTContentsDetails from "./NFT.Contents.Details";
+import NFTContentsPayment from "./NFT.Contents.Payment";
+import type { Collection } from "@/app/actions/factoryContracts";
+import { METADATA_TYPE } from "@/app/actions/metadata";
 
-interface CollectionProps {
-    collection: CollectionContract & { metadata: Metadata };
+interface NFTContentsProps {
+    collection: Collection;
 }
 
-export default function Collection({ collection }: CollectionProps) {
-    const metadata = collection.metadata.metadata as METADATA_TYPE;
+export default function NFTContents({ collection }: NFTContentsProps) {
+    const metadata = collection?.metadata?.metadata as METADATA_TYPE;
     const [purchaseSuccess, setPurchaseSuccess] = useState(false);
 
     const handlePurchase = (quantity: number) => {
@@ -37,35 +37,22 @@ export default function Collection({ collection }: CollectionProps) {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
-                    {/* Collection Description Section */}
+                <div className="grid grid-cols-1 gap-6 mt-[50px] mb-[50px] lg:grid-cols-3 lg:gap-8 lg:mt-[0px] lg:mb-[0px]">
                     <div className="lg:col-span-2 order-2 lg:order-1">
-                        <NFTsCollectionDetails
+                        <NFTContentsDetails
                             collection={collection}
                             metadata={metadata}
                         />
                     </div>
 
-                    {/* Payment Section */}
                     <div className="lg:col-span-1 order-1 lg:order-2">
                         <div className="lg:sticky lg:top-8">
-                            <NFTsCollectionPayment
+                            <NFTContentsPayment
                                 collection={collection}
-                                metadata={metadata}
                                 onPurchase={handlePurchase}
                             />
                         </div>
                     </div>
-                </div>
-
-                {/* Back button - mobile only */}
-                <div className="mt-8 flex justify-center lg:hidden">
-                    <a
-                        href="/collections"
-                        className="px-4 py-2 bg-secondary/50 hover:bg-secondary/70 text-foreground rounded-lg border border-border/30 text-sm transition-colors"
-                    >
-                        Back to Collections
-                    </a>
                 </div>
             </div>
         </div>

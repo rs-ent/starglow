@@ -1,9 +1,8 @@
-/// components\molecules\NFTs.CollectionPayment.tsx
+/// components/nfts/NFT.Contents.Payment.tsx
 
 "use client";
 
-import { CollectionContract, Metadata } from "@prisma/client";
-import { METADATA_TYPE } from "@/app/actions/metadata";
+import { Collection } from "@/app/actions/factoryContracts";
 import { useState } from "react";
 import { H3 } from "../atoms/Typography";
 import { Ticket, AlertCircle, CheckCircle2 } from "lucide-react";
@@ -12,19 +11,17 @@ import { Currency } from "@/lib/types/payment";
 import { formatCurrency } from "@/lib/utils/format";
 import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 
-interface CollectionPaymentProps {
-    collection: CollectionContract & { metadata: Metadata };
-    metadata: METADATA_TYPE;
+interface NFTContentsPaymentProps {
+    collection: Collection;
     onPurchase?: (quantity: number) => void;
 }
 
 const initialCurrency = "CURRENCY_USD" as Currency;
 
-export default function CollectionPayment({
+export default function NFTContentsPayment({
     collection,
-    metadata,
     onPurchase,
-}: CollectionPaymentProps) {
+}: NFTContentsPaymentProps) {
     const [quantity, setQuantity] = useState(1);
     const [displayPrice, setDisplayPrice] = useState<number>(
         collection.price ?? 0
