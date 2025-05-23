@@ -1,7 +1,7 @@
 /// components/templates/Navigation.tsx
 
 import { auth } from "@/app/auth/authSettings";
-import NavigationBar from "@/components/organisms/Navigation.Bar";
+import NavigationBar from "@/components/navigation/Navigation.Bar";
 
 export const dynamic = "force-dynamic";
 

@@ -1001,6 +1001,8 @@ model Artist {
   music               String[]             @default([])
   events              String[]             @default([])
   additionalInfo      Json?
+  backgroundColors    String[]             @default([])
+  foregroundColors    String[]             @default([])
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   members             ArtistMember[]

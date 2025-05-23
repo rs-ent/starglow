@@ -4,25 +4,19 @@
 import Button from "./Button";
 import { useLoading } from "@/app/hooks/useLoading";
 import { signIn } from "next-auth/react";
-import { ProviderType } from "@/app/types/auth";
 import { useState } from "react";
+import { Provider } from "@/app/types/auth";
 import FormSignInEmail from "./Form.SignIn.Email";
 import { cn } from "@/lib/utils/tailwind";
-
+import { getProviderIdentity } from "@/lib/utils/get/provider-identity";
 interface SocialAuthButtonProps {
-    providerId: ProviderType;
-    providerName: string;
-    providerColor: string;
-    providerIcon: string;
+    provider: Provider;
     callbackUrl?: string;
     className?: string;
 }
 
 export default function SocialAuthButton({
-    providerId,
-    providerName,
-    providerColor,
-    providerIcon,
+    provider,
     callbackUrl = "/",
     className,
 }: SocialAuthButtonProps) {
@@ -30,14 +24,16 @@ export default function SocialAuthButton({
     const [showEmailVerification, setShowEmailVerification] = useState(false);
 
     const handleSignIn = async () => {
-        if (providerId === "resend") {
+        if (provider.id === "resend") {
             setShowEmailVerification(true);
             return;
         }
 
         startLoading();
-        await signIn(providerId, { callbackUrl });
+        await signIn(provider.id, { callbackUrl });
     };
+
+    const { icon, color } = getProviderIdentity(provider.id);
 
     return (
         <>
@@ -59,22 +55,24 @@ export default function SocialAuthButton({
                 onClick={handleSignIn}
                 className={cn(
                     "w-full items-center justify-center",
-                    providerColor,
+                    color,
                     className
                 )}
             >
-                <img
-                    src={providerIcon}
-                    alt={`${providerName} icon`}
-                    style={{ width: "20px", height: "auto" }}
-                />
+                {icon && (
+                    <img
+                        src={icon}
+                        alt={`${provider.name} icon`}
+                        style={{ width: "20px", height: "auto" }}
+                    />
+                )}
                 <span className="ml-2">
                     Sign in with{" "}
-                    {providerId === "twitter"
+                    {provider.id === "twitter"
                         ? "X"
-                        : providerId === "resend"
+                        : provider.id === "resend"
                         ? "Email"
-                        : providerName}
+                        : provider.name}
                 </span>
             </Button>
         </>

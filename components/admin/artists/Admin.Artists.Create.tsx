@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import FileUploader from "@/components/atoms/FileUploader";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils/tailwind";
 
 interface AdminArtistsCreateProps {
     mode: "create" | "update";
@@ -61,6 +62,12 @@ export default function AdminArtistsCreate({
     const [additionalInfo, setAdditionalInfo] = useState<any>(
         initialData?.additionalInfo ?? ""
     );
+    const [backgroundColors, setBackgroundColors] = useState<string[]>(
+        initialData?.backgroundColors ?? []
+    );
+    const [foregroundColors, setForegroundColors] = useState<string[]>(
+        initialData?.foregroundColors ?? []
+    );
     const [selectedCollectionIds, setSelectedCollectionIds] = useState<
         string[]
     >(initialData?.collectionContracts?.map((c: any) => c.id) ?? []);
@@ -84,6 +91,8 @@ export default function AdminArtistsCreate({
             setSelectedCollectionIds(
                 initialData.collectionContracts?.map((c: any) => c.id) ?? []
             );
+            setBackgroundColors(initialData.backgroundColors ?? []);
+            setForegroundColors(initialData.foregroundColors ?? []);
         }
     }, [initialData]);
 
@@ -162,6 +171,8 @@ export default function AdminArtistsCreate({
                 music: music.filter(Boolean),
                 events: events.filter(Boolean),
                 additionalInfo: parsedAdditionalInfo,
+                backgroundColors: backgroundColors,
+                foregroundColors: foregroundColors,
                 collectionContractIds: selectedCollectionIds,
             });
         } else {
@@ -179,6 +190,8 @@ export default function AdminArtistsCreate({
                 music: music.filter(Boolean),
                 events: events.filter(Boolean),
                 additionalInfo: parsedAdditionalInfo,
+                backgroundColors: backgroundColors,
+                foregroundColors: foregroundColors,
                 collectionContractIds: selectedCollectionIds,
             });
         }
@@ -239,7 +252,7 @@ export default function AdminArtistsCreate({
                                     <img
                                         src={logoUrl}
                                         alt="Logo Preview"
-                                        className="w-24 h-24 object-cover rounded mt-2 border"
+                                        className="w-24 h-24 object-contain rounded mt-2 border"
                                     />
                                 )}
                             </div>
@@ -456,6 +469,166 @@ export default function AdminArtistsCreate({
                                     + Event
                                 </Button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Background Colors */}
+                        <div>
+                            <Label className="text-foreground mb-2 block">
+                                Background Colors
+                            </Label>
+                            <div className="space-y-2">
+                                {backgroundColors.map((color, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="flex gap-2 items-center"
+                                    >
+                                        <input
+                                            type="color"
+                                            value={color}
+                                            onChange={(e) => {
+                                                const newColors = [
+                                                    ...backgroundColors,
+                                                ];
+                                                newColors[idx] = e.target.value;
+                                                setBackgroundColors(newColors);
+                                            }}
+                                            className="w-10 h-10 rounded cursor-pointer"
+                                        />
+                                        <Input
+                                            value={color}
+                                            onChange={(e) => {
+                                                const newColors = [
+                                                    ...backgroundColors,
+                                                ];
+                                                newColors[idx] = e.target.value;
+                                                setBackgroundColors(newColors);
+                                            }}
+                                            className="bg-background text-foreground"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setBackgroundColors(
+                                                    backgroundColors.filter(
+                                                        (_, i) => i !== idx
+                                                    )
+                                                );
+                                            }}
+                                        >
+                                            -
+                                        </Button>
+                                    </div>
+                                ))}
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() =>
+                                        setBackgroundColors([
+                                            ...backgroundColors,
+                                            "#000000",
+                                        ])
+                                    }
+                                >
+                                    + Background Color
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Foreground Colors */}
+                        <div>
+                            <Label className="text-foreground mb-2 block">
+                                Foreground Colors
+                            </Label>
+                            <div className="space-y-2">
+                                {foregroundColors.map((color, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="flex gap-2 items-center"
+                                    >
+                                        <input
+                                            type="color"
+                                            value={color}
+                                            onChange={(e) => {
+                                                const newColors = [
+                                                    ...foregroundColors,
+                                                ];
+                                                newColors[idx] = e.target.value;
+                                                setForegroundColors(newColors);
+                                            }}
+                                            className="w-10 h-10 rounded cursor-pointer"
+                                        />
+                                        <Input
+                                            value={color}
+                                            onChange={(e) => {
+                                                const newColors = [
+                                                    ...foregroundColors,
+                                                ];
+                                                newColors[idx] = e.target.value;
+                                                setForegroundColors(newColors);
+                                            }}
+                                            className="bg-background text-foreground"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setForegroundColors(
+                                                    foregroundColors.filter(
+                                                        (_, i) => i !== idx
+                                                    )
+                                                );
+                                            }}
+                                        >
+                                            -
+                                        </Button>
+                                    </div>
+                                ))}
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() =>
+                                        setForegroundColors([
+                                            ...foregroundColors,
+                                            "#FFFFFF",
+                                        ])
+                                    }
+                                >
+                                    + Foreground Color
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Color Preview */}
+                    <div className="mt-4">
+                        <Label className="text-foreground mb-2 block">
+                            Color Preview
+                        </Label>
+                        <div className={cn("grid grid-cols-3 gap-4")}>
+                            {backgroundColors.map((bgColor, bgIdx) =>
+                                foregroundColors.map((fgColor, fgIdx) => (
+                                    <div
+                                        key={`${bgIdx}-${fgIdx}`}
+                                        className="p-4 rounded-lg"
+                                        style={{
+                                            backgroundColor: bgColor,
+                                            color: fgColor,
+                                        }}
+                                    >
+                                        <p className="text-center">
+                                            Background: {bgColor}
+                                        </p>
+                                        <p className="text-center">
+                                            Foreground: {fgColor}
+                                        </p>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>

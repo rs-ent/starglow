@@ -269,6 +269,10 @@ export const collectionKeys = {
     lists: () => [...collectionKeys.all, "list"] as const,
     detail: (address: string) =>
         [...collectionKeys.all, "detail", address] as const,
+    userVerified: (userId?: string) =>
+        userId
+            ? [...collectionKeys.all, "user-verified", userId]
+            : ([...collectionKeys.all, "user-verified"] as const),
 
     deployment: {
         pending: (networkId: string) =>

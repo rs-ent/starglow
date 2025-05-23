@@ -17,6 +17,7 @@ import {
     getTokensLockStatus,
     getCollectionStock,
     getCollectionParticipants,
+    getUserVerifiedCollections,
 } from "../actions/collectionContracts";
 import type {
     GetCollectionInput,
@@ -35,6 +36,7 @@ import type {
     GetTokensLockStatusInput,
     GetCollectionStockInput,
     GetCollectionParticipantsInput,
+    GetUserVerifiedCollectionsInput,
 } from "../actions/collectionContracts";
 import { NFT } from "@prisma/client";
 
@@ -189,5 +191,15 @@ export const useCollectionParticipants = (
         ),
         queryFn: () => getCollectionParticipants(input),
         enabled: !!input.collectionAddress && !!input.type,
+    });
+};
+
+export const useUserVerifiedCollections = (
+    input?: GetUserVerifiedCollectionsInput
+) => {
+    return useQuery({
+        queryKey: collectionKeys.userVerified(input?.userId),
+        queryFn: () => getUserVerifiedCollections(input),
+        enabled: !!input?.userId,
     });
 };

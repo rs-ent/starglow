@@ -1,72 +1,71 @@
-/// templates/User.tsx
+/// components/user/User.tsx
 
 "use client";
 
-import UserNavigation from "@/components/user/User.Navigation";
-import UserContents from "@/components/user/User.Contents";
+import { Player } from "@prisma/client";
+import type { User } from "next-auth";
+import UserProfile from "./User.Profile";
+import PublicPrivateTab from "../molecules/PublicPrivateTab";
+import { useState } from "react";
+import UserRewards from "./User.Rewards";
+import UserMyStar from "./User.MyStar";
 import { cn } from "@/lib/utils/tailwind";
-import { useState, useMemo } from "react";
-import { signOut } from "next-auth/react";
-import { useSession } from "next-auth/react";
+import { useCollectionGet } from "@/app/hooks/useCollectionV2";
 
-const tabs = [
-    {
-        id: "storage",
-        label: "Storage",
-    },
-    {
-        id: "settings",
-        label: "Settings",
-    },
-    {
-        id: "sign-out",
-        label: "Sign Out",
-    },
-];
+interface UserProps {
+    user: User;
+    player: Player;
+}
 
-export default function User() {
-    const [selectedTab, setSelectedTab] = useState<string>(tabs[0].id);
-    const { data: session } = useSession();
+export default function User({ user, player }: UserProps) {
+    const [isPublic, setIsPublic] = useState(true);
 
-    const { user, player } = useMemo(() => {
-        return {
-            user: session?.user ?? null,
-            player: session?.player ?? null,
-        };
-    }, [session]);
-
-    const handleSelect = (tab: string) => {
-        if (tab === "sign-out") {
-            signOut({ callbackUrl: "/?signedOut=true" });
-            return;
-        }
-
-        setSelectedTab(tab);
-    };
+    const {
+        userVerifiedCollections,
+        isUserVerifiedCollectionsLoading,
+        userVerifiedCollectionsError,
+        refetchUserVerifiedCollections,
+    } = useCollectionGet({
+        getUserVerifiedCollectionsInput: {
+            userId: user.id ?? "",
+        },
+    });
 
     return (
-        <div
-            className={cn(
-                "flex flex-col items-center justify-center",
-                "overflow-x-hidden"
-            )}
-        >
-            <div
-                className={cn(
-                    "fixed inset-0 w-screen h-screen -z-50",
-                    "bg-gradient-to-b from-[#09021B] to-[#311473]"
-                )}
-            />
-            <div className="mt-[100px] lg:mt-[50px] mb-[50px]">
-                <UserNavigation tabs={tabs} onSelect={handleSelect} />
-            </div>
-
-            <div className="relative">
-                <UserContents
-                    selectedTab={selectedTab}
-                    user={user}
-                    player={player}
-                />
+        <div className="overflow-hidden">
+            <div className="flex items-center justify-center">
+                <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
+                <div
+                    className={cn(
+                        "mt-[60px] lg:mt-[30px]",
+                        "flex flex-col items-center justify-center"
+                    )}
+                >
+                    <UserProfile user={user} />
+                    <PublicPrivateTab
+                        isPublic={isPublic}
+                        onPublic={() => setIsPublic(true)}
+                        onPrivate={() => setIsPublic(false)}
+                        className="mt-[50px] mb-[10px]"
+                        textSize={25}
+                        frameSize={20}
+                        publicText="My Star"
+                        publicIcon="/ui/user/user-mystar.svg"
+                        privateText="Rewards"
+                        privateIcon="/ui/user/user-rewards.svg"
+                    />
+                    {isPublic ? (
+                        <UserMyStar
+                            user={user}
+                            player={player}
+                            userVerifiedCollections={
+                                userVerifiedCollections ?? []
+                            }
+                        />
+                    ) : (
+                        <UserRewards user={user} player={player} />
+                    )}
+                </div>
             </div>
         </div>
     );

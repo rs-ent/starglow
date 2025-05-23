@@ -27,6 +27,7 @@ import {
     NFT,
     CollectionParticipant,
     CollectionParticipantType,
+    Artist,
 } from "@prisma/client";
 import { privateKeyToAccount } from "viem/accounts";
 import { createNFTMetadata, getMetadataByCollectionAddress } from "./metadata";
@@ -2852,4 +2853,84 @@ export async function getTokensLockStatus(
                 ? (results[idx].result as boolean)
                 : false,
     }));
+}
+
+export interface GetUserVerifiedCollectionsInput {
+    userId: string;
+}
+
+export type VerifiedCollection = CollectionContract & {
+    artist: Artist | null;
+    verifiedTokens: number[];
+};
+
+export async function getUserVerifiedCollections(
+    input?: GetUserVerifiedCollectionsInput
+): Promise<VerifiedCollection[]> {
+    if (!input || !input.userId) {
+        return [];
+    }
+
+    try {
+        const [wallets, collections] = await Promise.all([
+            prisma.wallet.findMany({
+                where: {
+                    userId: input.userId,
+                },
+                select: {
+                    address: true,
+                },
+            }),
+            prisma.collectionContract.findMany({
+                include: {
+                    artist: true,
+                },
+            }),
+        ]);
+
+        const unverifiedNfts = await prisma.nFT.findMany({
+            where: {
+                currentOwnerAddress: {
+                    in: wallets.map((wallet) => wallet.address),
+                },
+            },
+            select: {
+                tokenId: true,
+                collectionId: true,
+            },
+        });
+
+        const collectionsWithVerifiedTokens = await Promise.all(
+            collections.map(async (collection) => {
+                const collectionNfts = unverifiedNfts.filter(
+                    (nft) => nft.collectionId === collection.id
+                );
+
+                const tokenOwners = await getTokenOwners({
+                    collectionAddress: collection.address,
+                    tokenIds: collectionNfts.map((nft) => nft.tokenId),
+                });
+
+                const walletAddresses = new Set(
+                    wallets.map((wallet) => wallet.address.toLowerCase())
+                );
+                const verifiedTokens = tokenOwners.tokenIds.filter(
+                    (tokenId, index) => {
+                        const owner = tokenOwners.owners[index].toLowerCase();
+                        return walletAddresses.has(owner);
+                    }
+                );
+
+                return {
+                    ...collection,
+                    verifiedTokens,
+                };
+            })
+        );
+
+        return collectionsWithVerifiedTokens;
+    } catch (error) {
+        console.error("Error getting user verified collections:", error);
+        return [];
+    }
 }

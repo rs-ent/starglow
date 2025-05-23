@@ -11,16 +11,16 @@ import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
 
 const defaultMenuItems = [
-    { name: "Quests", href: "/quests", icon: "/ui/ribbon-badge.svg" },
-    { name: "Polls", href: "/polls", icon: "/ui/vote.svg" },
-    { name: "NFTs", href: "/nfts", icon: "/ui/assets.svg" },
+    { name: "Quest", href: "/quests", icon: "/ui/navigation/nav-quest.svg" },
+    { name: "NFT", href: "/nfts", icon: "/ui/navigation/nav-nft.svg" },
+    { name: "Poll", href: "/polls", icon: "/ui/navigation/nav-poll.svg" },
 ];
 
 const myPage = (userId: string) => [
     {
-        name: "My Page",
-        href: `/user/${userId}`,
-        icon: "/ui/integration.svg",
+        name: "My",
+        href: `/user`,
+        icon: "/ui/navigation/nav-my.svg",
     },
 ];
 
@@ -44,7 +44,7 @@ export default function NavigationBar({ user, player }: NavigationBarProps) {
                 className="
                 hidden lg:flex
                 sticky top-0 z-10 backdrop-blur-xs
-                w-full items-center justify-between bg-gradient-to-br from-[rgba(5,1,10,0.3)] to-[rgba(1,1,2,0.7)]
+                w-full items-center justify-between bg-gradient-to-br from-[rgba(5,1,10,0.4)] to-[rgba(1,1,2,0.7)]
                 py-3 px-5
                 sm:py-4 sm:px-6
                 md:py-6 md:px-8
@@ -128,10 +128,11 @@ export default function NavigationBar({ user, player }: NavigationBarProps) {
                 <nav
                     className="
                     fixed bottom-0 left-0 right-0 inset-x-0 z-40
-                    bg-background/30 backdrop-blur-sm border-t border-muted
-                    px-[5px] py-[7px]
-                    sm:px-[30px] sm:py-[9px]
-                    md:px-[60px] md:py-[10px]
+                    bg-gradient-to-br from-[rgba(5,1,10,0.6)] to-[rgba(1,1,2,0.9)]
+                    backdrop-blur-sm border-t border-muted rounded-t-[20px]
+                    px-[5px] py-[10px]
+                    sm:px-[30px] sm:py-[11px]
+                    md:px-[60px] md:py-[12px]
                     flex justify-around items-center
                 "
                 >

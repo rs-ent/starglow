@@ -7,6 +7,7 @@ import NFTContentsDetails from "./NFT.Contents.Details";
 import NFTContentsPayment from "./NFT.Contents.Payment";
 import type { Collection } from "@/app/actions/factoryContracts";
 import { METADATA_TYPE } from "@/app/actions/metadata";
+import NFTContentsReport from "./NFT.Contents.Report";
 
 interface NFTContentsProps {
     collection: Collection;
@@ -47,12 +48,19 @@ export default function NFTContents({ collection }: NFTContentsProps) {
                     </div>
 
                     <div className="lg:col-span-1 order-2 lg:order-2">
-                        <div className="lg:sticky lg:top-8">
+                        <div className="lg:sticky lg:top-[110px]">
                             <NFTContentsPayment
                                 collection={collection}
                                 onPurchase={handlePurchase}
                             />
                         </div>
+                    </div>
+
+                    <div className="lg:col-span-1 order-3 lg:order-3">
+                        <NFTContentsReport
+                            collection={collection}
+                            metadata={metadata}
+                        />
                     </div>
                 </div>
             </div>

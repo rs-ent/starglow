@@ -8,7 +8,7 @@ import "./globals.css";
 import Toast from "@/components/atoms/Toast";
 import Providers from "./Providers";
 import Loading from "@/components/organisms/Loading";
-import Navigation from "@/components/templates/Navigation";
+import Navigation from "@/components/navigation/Navigation";
 export const metadata: Metadata = {
     title: "Starglow",
     description: "Starglow",

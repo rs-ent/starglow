@@ -1,10 +1,10 @@
 /// app\user\page.tsx
 
-import { redirect } from "next/navigation";
-import { requireAuthUser } from "@/app/auth/authUtils";
+import { requireAuthUserAndPlayer } from "@/app/auth/authUtils";
+import User from "@/components/user/User";
 
 export default async function UserEntryPage() {
-    const user = await requireAuthUser("/user");
+    const { user, player } = await requireAuthUserAndPlayer("/user");
 
-    redirect(`/user/${user.id}`);
+    return <User user={user} player={player} />;
 }

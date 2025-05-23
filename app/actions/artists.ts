@@ -26,6 +26,8 @@ export interface CreateArtistInput {
     music?: string[];
     events?: string[];
     additionalInfo?: any;
+    backgroundColors?: string[];
+    foregroundColors?: string[];
     collectionContractIds?: string[];
 }
 
@@ -161,6 +163,8 @@ export interface UpdateArtistInput {
     music?: string[];
     events?: string[];
     additionalInfo?: any;
+    backgroundColors?: string[];
+    foregroundColors?: string[];
     collectionContractIds?: string[];
 }
 

@@ -150,23 +150,6 @@ export default function NFTContentsDetails({
                         <p>Network: {collection.networkId}</p>
                     </div>
                 </div>
-
-                {/* iframe */}
-                {reportUrl && (
-                    <div className="flex justify-center mb-6 md:mb-8">
-                        <iframe
-                            src={reportUrl}
-                            width="100%"
-                            height="1000"
-                            style={{
-                                borderRadius: "1rem",
-                                background: "transparent",
-                            }}
-                            title="Official Report"
-                            allowFullScreen
-                        />
-                    </div>
-                )}
             </div>
         </div>
     );

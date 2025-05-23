@@ -10,6 +10,7 @@ import {
 } from "@/components/admin/onchain/OnChain.types";
 import { ethers, providers } from "ethers";
 import { User } from "next-auth";
+import { getTokenOwners } from "./collectionContracts";
 
 export async function fetchNFTs(
     filters: NFTFilters,

@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import type { User } from "next-auth";
 import { auth } from "./authSettings";
 import { prisma } from "@/lib/prisma/client";
+import { Player } from "@prisma/client";
+
 export async function requireAuth() {
     const session = await auth();
     if (!session?.user) {
@@ -32,6 +34,27 @@ export async function requireAuthUser(callbackUrl: string): Promise<User> {
             redirect(`/auth/signin?callbackUrl=${encodedCallback}`);
         }
         return session.user;
+    } catch (error) {
+        console.error("Authentication error:", error);
+        const encodedCallback = encodeURIComponent(callbackUrl);
+        redirect(`/auth/signin?callbackUrl=${encodedCallback}`);
+    }
+}
+
+export async function requireAuthUserAndPlayer(callbackUrl: string): Promise<{
+    user: User;
+    player: Player;
+}> {
+    try {
+        const session = await auth();
+        if (!session?.user || !session?.player) {
+            const encodedCallback = encodeURIComponent(callbackUrl);
+            redirect(`/auth/signin?callbackUrl=${encodedCallback}`);
+        }
+        return {
+            user: session.user,
+            player: session.player,
+        };
     } catch (error) {
         console.error("Authentication error:", error);
         const encodedCallback = encodeURIComponent(callbackUrl);

@@ -42,7 +42,9 @@ export default function PublicPrivateButton({
             className={cn(
                 isActive ? "opacity-100" : "opacity-40",
                 "hover:opacity-100",
-                "transition-opacity duration-500"
+                "transition-opacity duration-500",
+                "flex flex-row",
+                isPublic ? "justify-end" : "justify-start"
             )}
         >
             <button
