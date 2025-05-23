@@ -19,9 +19,6 @@ export default function ProfileName({ user, size = 20 }: ProfileNameProps) {
 
     const { icon, color } = getProviderIdentity(user.provider);
 
-    console.log(user.provider);
-    console.log(icon);
-
     return (
         <div className="flex flex-row gap-[5px] items-center justify-center">
             {icon && (

@@ -2,14 +2,15 @@
 
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Artist, Player, Poll, Quest } from "@prisma/client";
 import { User } from "next-auth";
 import { VerifiedCollection } from "@/app/actions/collectionContracts";
+import { cn } from "@/lib/utils/tailwind";
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { useQuestGet } from "@/app/hooks/useQuest";
 import ArtistButton from "../atoms/Artist.Button";
-import { cn } from "@/lib/utils/tailwind";
+import UserMyStarModal from "./User.MyStar.Modal";
 
 interface UserMyStarProps {
     user: User;
@@ -22,6 +23,9 @@ export default function UserMyStar({
     player,
     userVerifiedCollections,
 }: UserMyStarProps) {
+    const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
     const {
         pollsList,
         playerPollLogs,
@@ -99,31 +103,51 @@ export default function UserMyStar({
         return result;
     }, [pollsList, quests, playerPollLogs, playerQuestLogs]);
 
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setTimeout(() => {
+            setSelectedArtist(null);
+        }, 800);
+    };
+
+    const handleSelectArtist = (artist: Artist) => {
+        setSelectedArtist(artist);
+        setIsModalOpen(true);
+    };
+
     return (
-        <div
-            className={cn(
-                "flex flex-col items-center justify-center w-screen max-w-[1000px]",
-                "py-4 px-6 sm:py-6 sm:px-8 md:py-8 md:px-12 lg:py-10 lg:px-12"
-            )}
-        >
-            {artists.map((artist, index) => {
-                const [polls, quests] = newArtistsActivities.get(artist.id) || [
-                    [],
-                    [],
-                ];
+        <>
+            <UserMyStarModal
+                artist={selectedArtist}
+                open={isModalOpen}
+                onClose={handleCloseModal}
+            />
+            <div
+                className={cn(
+                    "flex flex-col items-center justify-center w-screen max-w-[1000px]",
+                    "py-4 px-6 sm:py-6 sm:px-8 md:py-8 md:px-12 lg:py-10 lg:px-12"
+                )}
+            >
+                {artists.map((artist, index) => {
+                    const [polls, quests] = newArtistsActivities.get(
+                        artist.id
+                    ) || [[], []];
 
-                const hasNewActivity = polls.length > 0 || quests.length > 0;
+                    const hasNewActivity =
+                        polls.length > 0 || quests.length > 0;
 
-                return (
-                    <ArtistButton
-                        key={artist.id}
-                        artist={artist}
-                        index={index}
-                        className="w-full"
-                        hasNewActivity={hasNewActivity}
-                    />
-                );
-            })}
-        </div>
+                    return (
+                        <ArtistButton
+                            key={artist.id}
+                            artist={artist}
+                            index={index}
+                            className="w-full"
+                            hasNewActivity={hasNewActivity}
+                            onClick={() => handleSelectArtist(artist)}
+                        />
+                    );
+                })}
+            </div>
+        </>
     );
 }

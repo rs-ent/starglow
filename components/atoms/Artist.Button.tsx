@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import Image from "next/image";
+import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
 
 interface ArtistButtonProps {
     artist: Artist;
@@ -17,6 +18,7 @@ interface ArtistButtonProps {
     paddingSize?: number;
     className?: string;
     hasNewActivity?: boolean;
+    onClick?: () => void;
 }
 
 export default function ArtistButton({
@@ -28,12 +30,19 @@ export default function ArtistButton({
     paddingSize = 65,
     className,
     hasNewActivity = false,
+    onClick,
 }: ArtistButtonProps) {
     const frameClass = getResponsiveClass(frameSize).frameClass;
     const textClass = getResponsiveClass(textSize).textClass;
     const gapClass = getResponsiveClass(gapSize).gapClass;
     const paddingClass = getResponsiveClass(paddingSize).paddingClass;
     const dotFrameClass = getResponsiveClass(5).frameClass;
+
+    const handleClick = () => {
+        if (onClick) {
+            onClick();
+        }
+    };
 
     return (
         <AnimatePresence>
@@ -47,15 +56,23 @@ export default function ArtistButton({
                     delay: index * 0.1,
                 }}
                 className={className}
+                onClick={handleClick}
             >
                 <div
                     className={cn(
                         "flex flex-row items-center justify-between rounded-3xl",
                         "cursor-pointer backdrop-blur-xs",
-                        "gradient-border morp-glass-1",
+                        "gradient-border",
                         paddingClass,
                         "px-[15px]"
                     )}
+                    style={{
+                        background: `linear-gradient(to right, ${ArtistBG(
+                            artist,
+                            0,
+                            80
+                        )} 30%, ${ArtistBG(artist, 1, 10)} 100%)`,
+                    }}
                 >
                     <div
                         className={cn(
@@ -70,9 +87,7 @@ export default function ArtistButton({
                                 "rounded-full",
                                 "border-[2px]",
                                 "overflow-hidden",
-                                artist.backgroundColors.length > 0
-                                    ? `border-[${artist.backgroundColors[0]}] bg-[${artist.backgroundColors[0]}]`
-                                    : "border-[rgba(255,255,255,1)] bg-[rgba(255,255,255,1)]",
+                                `border-[${ArtistBG(artist, 0, 0.7)}]`,
                                 frameClass
                             )}
                         >
@@ -104,7 +119,16 @@ export default function ArtistButton({
                                 )}
                             </div>
                         </div>
-                        <h2 className={cn(textClass)}>{artist.name}</h2>
+                        <h2
+                            className={cn(
+                                textClass,
+                                artist.foregroundColors.length > 0
+                                    ? `text-[${artist.foregroundColors[0]}]`
+                                    : ""
+                            )}
+                        >
+                            {artist.name}
+                        </h2>
                     </div>
                     <div
                         className={cn(
