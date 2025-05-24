@@ -280,7 +280,7 @@ export default function UserMyStarModal({
                             >
                                 <div
                                     className={cn(
-                                        "w-full h-full overflow-y-auto",
+                                        "w-full h-full overflow-y-auto overflow-x-hidden",
                                         "backdrop-blur-xl"
                                     )}
                                     style={{
