@@ -22,6 +22,7 @@ interface PollsArtistListProps {
     bgColorTo?: string;
     bgColorAccentFrom?: string;
     bgColorAccentTo?: string;
+    forceSlidesToShow?: number;
 }
 
 export default function PollsArtistList({
@@ -36,6 +37,7 @@ export default function PollsArtistList({
     bgColorTo,
     bgColorAccentFrom,
     bgColorAccentTo,
+    forceSlidesToShow,
 }: PollsArtistListProps) {
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
@@ -59,7 +61,7 @@ export default function PollsArtistList({
     return (
         <div
             className={cn(
-                "max-w-[1400px] w-screen",
+                "w-full",
                 "px-[10px] sm:px-[10px] md:px-[20px] lg:px-[20px]",
                 "mt-[10px] sm:mt-[15px] md:mt-[20px] lg:mt-[25px] xl:mt-[30px]",
                 className
@@ -93,6 +95,7 @@ export default function PollsArtistList({
                         bgColorTo={bgColorTo}
                         bgColorAccentFrom={bgColorAccentFrom}
                         bgColorAccentTo={bgColorAccentTo}
+                        forceSlidesToShow={forceSlidesToShow}
                     />
                 ) : (
                     <div className="text-center text-2xl">No polls found</div>

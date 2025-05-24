@@ -76,50 +76,50 @@ export default function UserMyStarModalContentsCollections({
         <div className={cn("w-full flex flex-col items-center justify-center")}>
             <div
                 className={cn(
-                    "w-full relative",
-                    "mt-[50px] mb-[20px] sm:mb-[50px] lg:mb-[100px]"
-                )}
-            >
-                <Arrow
-                    role="next"
-                    className="absolute top-1/2 right-1 -translate-y-1/2 z-10"
-                    style={{
-                        opacity: verifiedCollections.length > 1 ? 1 : 0,
-                    }}
-                    size={30}
-                    color={ArtistFG(artist, 0, 1)}
-                    onClick={() => handleSlide("next")}
-                />
-                <Arrow
-                    role="prev"
-                    className="absolute top-1/2 left-1 -translate-y-1/2 z-10"
-                    style={{
-                        opacity: verifiedCollections.length > 1 ? 1 : 0,
-                    }}
-                    size={30}
-                    color={ArtistFG(artist, 0, 1)}
-                    onClick={() => handleSlide("prev")}
-                />
-                <Slider ref={sliderRef} {...settings}>
-                    {verifiedCollections.map((collection) => (
-                        <div
-                            className="w-full h-full px-3 md:px-5"
-                            key={collection.id}
-                        >
-                            <UserMyStarModalContentsCollectionsCard
-                                artist={artist}
-                                verifiedCollection={collection}
-                            />
-                        </div>
-                    ))}
-                </Slider>
-            </div>
-            <div
-                className={cn(
-                    "w-full mb-[100px]",
+                    "w-full",
                     "flex flex-col items-stretch justify-center"
                 )}
             >
+                <div
+                    className={cn(
+                        "max-w-[1000px] w-full relative mx-auto",
+                        "mt-[50px] mb-[20px] sm:mb-[50px] lg:mb-[100px]"
+                    )}
+                >
+                    <Arrow
+                        role="next"
+                        className="absolute top-1/2 right-1 -translate-y-1/2 z-10"
+                        style={{
+                            opacity: verifiedCollections.length > 1 ? 1 : 0,
+                        }}
+                        size={30}
+                        color={ArtistFG(artist, 0, 1)}
+                        onClick={() => handleSlide("next")}
+                    />
+                    <Arrow
+                        role="prev"
+                        className="absolute top-1/2 left-1 -translate-y-1/2 z-10"
+                        style={{
+                            opacity: verifiedCollections.length > 1 ? 1 : 0,
+                        }}
+                        size={30}
+                        color={ArtistFG(artist, 0, 1)}
+                        onClick={() => handleSlide("prev")}
+                    />
+                    <Slider ref={sliderRef} {...settings}>
+                        {verifiedCollections.map((collection) => (
+                            <div
+                                className="w-full h-full px-[10px] md:px-[30px]"
+                                key={collection.id}
+                            >
+                                <UserMyStarModalContentsCollectionsCard
+                                    artist={artist}
+                                    verifiedCollection={collection}
+                                />
+                            </div>
+                        ))}
+                    </Slider>
+                </div>
                 <ArtistSelector
                     artist={artist}
                     frameSize={60}
@@ -129,25 +129,27 @@ export default function UserMyStarModalContentsCollections({
                     className={cn("mb-[20px]")}
                 />
 
-                <ArtistMessage
-                    artistId={artist.id}
-                    className={cn("mt-[10px]")}
-                />
-                <div
-                    className={cn(
-                        "px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px]"
-                    )}
-                >
-                    <QuestsArtistMissions
-                        artist={artist}
-                        player={player}
-                        questLogs={questLogs}
-                        tokenGatingResult={tokenGatingResult}
-                        referralLogs={[]}
-                        bgColorFrom={ArtistBG(artist, 2, 100)}
-                        bgColorTo={ArtistBG(artist, 0, 100)}
-                        showInviteFriends={false}
+                <div className={cn("max-w-[1000px] mx-auto")}>
+                    <ArtistMessage
+                        artistId={artist.id}
+                        className={cn("mt-[10px]")}
                     />
+                    <div
+                        className={cn(
+                            "px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px]"
+                        )}
+                    >
+                        <QuestsArtistMissions
+                            artist={artist}
+                            player={player}
+                            questLogs={questLogs}
+                            tokenGatingResult={tokenGatingResult}
+                            referralLogs={[]}
+                            bgColorFrom={ArtistBG(artist, 2, 100)}
+                            bgColorTo={ArtistBG(artist, 3, 100)}
+                            showInviteFriends={false}
+                        />
+                    </div>
                 </div>
                 <PollsArtistList
                     artist={artist}
@@ -158,7 +160,7 @@ export default function UserMyStarModalContentsCollections({
                     bgColorTo={ArtistBG(artist, 1, 100)}
                     bgColorAccentFrom={ArtistBG(artist, 2, 100)}
                     bgColorAccentTo={ArtistBG(artist, 3, 100)}
-                    fgColorFrom={ArtistBG(artist, 2, 100)}
+                    fgColorFrom={ArtistBG(artist, 2, 10)}
                     fgColorTo={ArtistBG(artist, 1, 100)}
                 />
             </div>

@@ -59,6 +59,13 @@ export default function ArtistSlideSelector({
         ],
     };
 
+    useEffect(() => {
+        if (artists && artists.length > 0) {
+            setSelectedArtist(artists[0]);
+            onSelect?.(artists[0]);
+        }
+    }, [artists]);
+
     return (
         <div
             className={cn(

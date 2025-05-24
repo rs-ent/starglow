@@ -10,6 +10,8 @@ import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
 import { useState, useEffect } from "react";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import { User } from "next-auth";
+import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
+import { cn } from "@/lib/utils/tailwind";
 interface PollsPrivateProps {
     user: User | null;
     player: Player | null;
@@ -43,13 +45,8 @@ export default function PollsPrivate({
 
     const { tokenGating, isTokenGating, tokenGatingError } = useArtistSet();
 
-    useEffect(() => {
-        setSelectedArtist(null);
-        setSelectedArtistTokenGatingResult(null);
-        setShowArtistContents(false);
-    }, [privateTabClicked]);
-
     const handleArtistSelect = (artist: Artist | null) => {
+        console.log("Artist selected", artist);
         setSelectedArtist(artist);
         setSelectedArtistTokenGatingResult(null);
         setShowArtistContents(false);
@@ -102,10 +99,28 @@ export default function PollsPrivate({
                     <PartialLoading text="Authenticating..." size="sm" />
                 </div>
             )}
+            <div
+                className={cn(
+                    "fixed inset-0 w-screen h-screen -z-20",
+                    "transition-opacity duration-[2500ms] ease-in-out",
+                    selectedArtist ? "opacity-100" : "opacity-0"
+                )}
+                style={{
+                    background: `linear-gradient(to bottom right, ${
+                        selectedArtist
+                            ? ArtistBG(selectedArtist, 0, 100)
+                            : "rgba(109,40,217,0.4)"
+                    }, ${
+                        selectedArtist
+                            ? ArtistBG(selectedArtist, 1, 100)
+                            : "rgba(109,40,217,0.15)"
+                    })`,
+                }}
+            />
             {selectedArtist && !isTokenGating && !getTokenGatingLoading && (
                 <div className="relative w-full h-full">
                     {showArtistContents && (
-                        <div className="w-full h-full z-0 relative">
+                        <div className="w-screen max-w-[1400px] mx-auto z-0 relative">
                             <PollsArtistList
                                 artist={selectedArtist}
                                 player={player}
@@ -113,6 +128,20 @@ export default function PollsPrivate({
                                     selectedArtistTokenGatingResult || null
                                 }
                                 pollLogs={pollLogs}
+                                bgColorFrom={ArtistBG(selectedArtist, 0, 60)}
+                                bgColorTo={ArtistBG(selectedArtist, 1, 30)}
+                                bgColorAccentFrom={ArtistBG(
+                                    selectedArtist,
+                                    2,
+                                    100
+                                )}
+                                bgColorAccentTo={ArtistBG(
+                                    selectedArtist,
+                                    3,
+                                    100
+                                )}
+                                fgColorFrom={ArtistBG(selectedArtist, 2, 10)}
+                                fgColorTo={ArtistBG(selectedArtist, 1, 100)}
                             />
                         </div>
                     )}

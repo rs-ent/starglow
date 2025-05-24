@@ -66,6 +66,7 @@ export default function UserMyStar({
         string,
         { polls: Poll[]; quests: Quest[] }
     > = useMemo(() => {
+        const now = new Date().getTime();
         const result = new Map<string, { polls: Poll[]; quests: Quest[] }>();
 
         artists.forEach((artist) => {
@@ -73,21 +74,56 @@ export default function UserMyStar({
         });
 
         result.forEach((value, key) => {
-            const artist = artists.find((artist) => artist.id === key);
-            if (artist) {
+            if (key) {
                 value.polls =
-                    pollsList?.items.filter(
-                        (poll) => poll.artistId === artist.id
-                    ) ?? [];
+                    pollsList?.items.filter((poll) => {
+                        const isArtistMatch = poll.artistId === key;
+                        if (!isArtistMatch) return false;
+
+                        const isEligible = poll.isActive;
+                        if (!isEligible) return false;
+
+                        const isNotExpired =
+                            (!poll.endDate || poll.endDate.getTime() > now) &&
+                            (!poll.startDate || poll.startDate.getTime() < now);
+                        if (!isNotExpired) return false;
+
+                        const log = (playerPollLogs ?? []).find(
+                            (playerPollLog) => playerPollLog.pollId === poll.id
+                        );
+                        if (log) return false;
+
+                        return true;
+                    }) ?? [];
                 value.quests =
-                    quests?.items.filter(
-                        (quest) => quest.artistId === artist.id
-                    ) ?? [];
+                    quests?.items.filter((quest) => {
+                        const isArtistMatch = quest.artistId === key;
+                        if (!isArtistMatch) return false;
+
+                        const isEligible = quest.isActive;
+                        if (!isEligible) return false;
+
+                        const isNotExpired =
+                            (!quest.endDate || quest.endDate.getTime() > now) &&
+                            (!quest.startDate ||
+                                quest.startDate.getTime() < now);
+
+                        if (!quest.permanent && !isNotExpired) return false;
+
+                        const log = (playerQuestLogs ?? []).find(
+                            (playerQuestLog) =>
+                                playerQuestLog.questId === quest.id
+                        );
+
+                        const isClaimed = log && log.isClaimed;
+                        if (isClaimed) return false;
+                        return true;
+                    }) ?? [];
             }
         });
 
         return result;
-    }, [pollsList, quests, playerPollLogs, playerQuestLogs]);
+    }, [artists, pollsList, quests, playerPollLogs, playerQuestLogs]);
 
     const handleCloseModal = () => {
         setIsModalOpen(false);

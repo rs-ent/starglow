@@ -94,7 +94,6 @@ export default function PublicPrivateTab({
                         }}
                     />
 
-                    {/* 오른쪽에서 왼쪽으로 그라디언트 (Private) */}
                     <div
                         className={`absolute top-0 left-0 w-full h-full transition-opacity duration-700 ${
                             isPublic ? "opacity-0" : "opacity-100"

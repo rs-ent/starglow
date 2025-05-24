@@ -45,9 +45,6 @@ export default function QuestsArtistMissions({
         },
     });
 
-    console.log(bgColorFrom);
-    console.log(bgColorTo);
-
     const [permission, setPermission] = useState(false);
 
     useEffect(() => {

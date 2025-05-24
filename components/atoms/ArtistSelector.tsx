@@ -93,7 +93,7 @@ export default function ArtistSelector({
                     )}
                     style={{
                         boxShadow: selected
-                            ? `0px 0px 10px 0px ${ArtistBG(artist, 2, 100)}`
+                            ? `0px 0px 12px 2px ${ArtistBG(artist, 2, 100)}`
                             : "none",
                     }}
                 />

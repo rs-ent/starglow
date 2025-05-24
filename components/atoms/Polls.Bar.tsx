@@ -32,8 +32,6 @@ export default function PollBar({
     const displayValue = isBlurred ? 99 : result.voteRate;
     const displayText = isBlurred ? "??%" : `${Math.round(result.voteRate)}%`;
 
-    console.log(fgColorFrom, fgColorTo);
-
     return (
         <div
             className={cn("mb-2", fillContainer && "h-full")}

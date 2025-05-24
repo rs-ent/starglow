@@ -12,6 +12,7 @@ import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import PartialLoading from "../atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
 import { User } from "next-auth";
+import { ArtistBG } from "@/lib/utils/get/artist-colors";
 interface QuestsPrivateProps {
     user: User | null;
     player: Player | null;
@@ -46,12 +47,6 @@ export default function QuestsPrivate({
     });
 
     const { tokenGating, isTokenGating, tokenGatingError } = useArtistSet();
-
-    useEffect(() => {
-        setSelectedArtist(null);
-        setSelectedArtistTokenGatingResult(null);
-        setShowArtistContents(false);
-    }, [privateTabClicked]);
 
     const handleArtistSelect = (artist: Artist | null) => {
         setSelectedArtist(artist);
@@ -101,11 +96,24 @@ export default function QuestsPrivate({
                     onSelect={(artist) => handleArtistSelect(artist)}
                 />
             </div>
-            {(isTokenGating || getTokenGatingLoading) && (
-                <div className="w-full h-full flex items-center justify-center my-6">
-                    <PartialLoading text="Authenticating..." size="sm" />
-                </div>
-            )}
+            <div
+                className={cn(
+                    "fixed inset-0 w-screen h-screen -z-20",
+                    "transition-opacity duration-[2500ms] ease-in-out",
+                    selectedArtist ? "opacity-100" : "opacity-0"
+                )}
+                style={{
+                    background: `linear-gradient(to bottom right, ${
+                        selectedArtist
+                            ? ArtistBG(selectedArtist, 0, 100)
+                            : "rgba(109,40,217,0.4)"
+                    }, ${
+                        selectedArtist
+                            ? ArtistBG(selectedArtist, 1, 100)
+                            : "rgba(109,40,217,0.15)"
+                    })`,
+                }}
+            />
             {selectedArtist && !isTokenGating && !getTokenGatingLoading && (
                 <div className="relative w-full h-full">
                     {showArtistContents && (
@@ -128,6 +136,23 @@ export default function QuestsPrivate({
                                         selectedArtistTokenGatingResult || null
                                     }
                                     referralLogs={referralLogs || []}
+                                    bgColorFrom={ArtistBG(
+                                        selectedArtist,
+                                        2,
+                                        100
+                                    )}
+                                    bgColorTo={ArtistBG(selectedArtist, 0, 100)}
+                                    showInviteFriends={true}
+                                    bgColorFromInviteFriends={ArtistBG(
+                                        selectedArtist,
+                                        2,
+                                        100
+                                    )}
+                                    bgColorToInviteFriends={ArtistBG(
+                                        selectedArtist,
+                                        3,
+                                        100
+                                    )}
                                 />
                             </div>
                         </div>

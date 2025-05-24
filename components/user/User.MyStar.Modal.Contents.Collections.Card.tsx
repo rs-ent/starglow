@@ -37,7 +37,7 @@ export default function UserMyStarModalContentsCollectionsCard({
         >
             <h2
                 className={cn(
-                    getResponsiveClass(35).textClass,
+                    getResponsiveClass(40).textClass,
                     `text-[${ArtistFG(artist, 0, 100)}]`
                 )}
             >
@@ -155,8 +155,8 @@ function Status({
                         getResponsiveClass(20).textClass
                     )}
                 >
-                    {data.map((item) => (
-                        <>
+                    {data.map((item, index) => (
+                        <div key={item.title}>
                             <div
                                 className={cn(
                                     "w-full h-[1px] bg-white/20",
@@ -189,7 +189,7 @@ function Status({
                                     </button>
                                 )}
                             </div>
-                        </>
+                        </div>
                     ))}
                 </div>
             </div>

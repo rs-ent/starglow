@@ -19,6 +19,7 @@ import Countdown from "../atoms/Countdown";
 import Doorman from "../atoms/Doorman";
 
 interface PollsCardProps {
+    index?: number;
     poll: Poll;
     player: Player | null;
     pollLogs?: PollLog[];
@@ -34,6 +35,7 @@ interface PollsCardProps {
 }
 
 export default function PollsCard({
+    index,
     poll,
     player,
     pollLogs,
@@ -207,14 +209,14 @@ export default function PollsCard({
     };
 
     return (
-        <div className="relative max-w-[480px] min-w-[120px] my-[25px]">
+        <div className="relative w-full min-w-[120px] my-[25px]">
             <div
                 className={cn(
-                    "absolute inset-0 rounded-[16px] pointer-events-none transition-opacity duration-700 -z-50",
+                    "absolute inset-0 rounded-[16px] pointer-events-none transition-opacity duration-700 -z-40",
                     permission && isSelected ? "opacity-100" : "opacity-0"
                 )}
                 style={{
-                    background: `linear-gradient(to bottom, ${bgColorAccentFrom}, ${bgColorAccentTo})`,
+                    background: `linear-gradient(to bottom right, ${bgColorAccentFrom}, ${bgColorAccentTo})`,
                 }}
             />
             {!permission && <Doorman />}
@@ -222,7 +224,7 @@ export default function PollsCard({
                 className={cn(
                     "flex flex-col p-[12px] border border-[rgba(255,255,255,0.4)] rounded-[16px]",
                     "transition-all duration-500 ease-in-out",
-                    `bg-gradient-to-b from-[${bgColorFrom}] to-[${bgColorTo}]`,
+                    "bg-gradient-to-br from-[rgba(0,0,0,0.1)] to-[rgba(255,255,255,0.15)]",
                     !permission && "blur-sm"
                 )}
             >
@@ -296,10 +298,10 @@ export default function PollsCard({
                     <div
                         className={cn(
                             "my-6 flex-col items-center justify-center text-center",
-                            "rounded-[16px] p-3"
+                            "rounded-[16px] p-3 inner-shadow"
                         )}
                         style={{
-                            background: `linear-gradient(to bottom right, ${bgColorAccentTo}, ${bgColorAccentFrom})`,
+                            background: `linear-gradient(to bottom right, rgba(0,0,0,0.05), rgba(0,0,0,0.1))`,
                         }}
                     >
                         <h3

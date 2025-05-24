@@ -42,7 +42,7 @@ export default function ImageMetadata({
                     <div
                         className={cn(
                             "absolute inset-0 z-10",
-                            "bg-black/60",
+                            "bg-black/75",
                             "transition-opacity duration-500",
                             popup && showStatus ? "opacity-100" : "opacity-0"
                         )}

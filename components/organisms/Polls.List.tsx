@@ -12,6 +12,7 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { useEffect, useMemo, useState } from "react";
 import PartialLoading from "../atoms/PartialLoading";
+import { cn } from "@/lib/utils/tailwind";
 
 interface PollsListProps {
     polls: Poll[];
@@ -36,7 +37,7 @@ export default function PollsList({
     artist,
     isLoading,
     tokenGatingData,
-    forceSlidesToShow,
+    forceSlidesToShow = 3,
     fgColorFrom,
     fgColorTo,
     bgColorFrom,
@@ -61,17 +62,19 @@ export default function PollsList({
         swipe: true,
         swipeToSlide: true,
         draggable: true,
-        centerMode: true,
         accessibility: true,
         beforeChange: (current: number, next: number) => {
             setCurrentSlide(next);
         },
     };
 
+    const centerIndex = useMemo(() => {
+        let idx = (currentSlide + Math.floor(slidesToShow / 2)) % polls.length;
+        return idx;
+    }, [currentSlide, slidesToShow, polls.length]);
+
     useEffect(() => {
-        const minSlidesToShow = forceSlidesToShow
-            ? Math.min(forceSlidesToShow, polls.length)
-            : polls.length;
+        const minSlidesToShow = Math.min(forceSlidesToShow, polls.length);
         const handleResize = () => {
             if (window.innerWidth <= 640) {
                 setSlidesToShow(Math.min(1, minSlidesToShow));
@@ -110,12 +113,12 @@ export default function PollsList({
             style={{
                 position: "relative",
                 WebkitMaskImage: `
-    linear-gradient(to right, transparent 0%, black 15%, black 100%),
-    linear-gradient(to left, transparent 0%, black 15%, black 100%)
+    linear-gradient(to right, transparent 0%, black 10%, black 100%),
+    linear-gradient(to left, transparent 0%, black 10%, black 100%)
 `,
                 maskImage: `
-    linear-gradient(to right, transparent 0%, black 15%, black 100%),
-    linear-gradient(to left, transparent 0%, black 15%, black 100%)
+    linear-gradient(to right, transparent 0%, black 10%, black 100%),
+    linear-gradient(to left, transparent 0%, black 10%, black 100%)
 `,
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
@@ -127,23 +130,6 @@ export default function PollsList({
         >
             <Slider {...sliderSettings}>
                 {polls.map((poll, index) => {
-                    let centerIndices: number[] = [];
-                    centerIndices = [currentSlide];
-
-                    if (slidesToShow === 1) {
-                        centerIndices = [currentSlide];
-                    } else if (slidesToShow === 2) {
-                        centerIndices = [
-                            currentSlide,
-                            (currentSlide + 2) % polls.length,
-                        ];
-                    } else {
-                        centerIndices = [
-                            (currentSlide + Math.floor(slidesToShow / 2)) %
-                                polls.length,
-                        ];
-                    }
-
                     const specificTokenGatingData: TokenGatingResult =
                         !poll.needToken ||
                         !poll.needTokenAddress ||
@@ -174,14 +160,19 @@ export default function PollsList({
                                   },
                               };
                     return (
-                        <div key={poll.id} className="px-2">
+                        <div
+                            key={poll.id}
+                            className={cn(
+                                slidesToShow === 1 ? "px-[15px]" : "px-[5px]"
+                            )}
+                        >
                             <PollsCard
                                 poll={poll}
                                 player={player}
                                 pollLogs={pollIdToLogs[poll.id] || []}
                                 artist={artist}
                                 tokenGatingData={specificTokenGatingData}
-                                isSelected={centerIndices.includes(index)}
+                                isSelected={index === centerIndex}
                                 bgColorFrom={bgColorFrom}
                                 bgColorTo={bgColorTo}
                                 bgColorAccentFrom={bgColorAccentFrom}
