@@ -20,7 +20,7 @@ export default function UserMyStarModalContents({
     pollLogs,
 }: UserMyStarModalContentsProps) {
     return (
-        <div className={cn("w-screen max-w-[1000px] mx-auto")}>
+        <div className={cn("max-w-[1000px] mx-auto")}>
             <UserMyStarModalContentsCollections
                 artist={artist}
                 verifiedCollections={verifiedCollections}

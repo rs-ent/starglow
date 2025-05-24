@@ -2,7 +2,7 @@
 
 "use client";
 
-import Link from "next/link";
+import { useRef } from "react";
 import { Artist, Player, Poll, PollLog } from "@prisma/client";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import { TokenGatingResult } from "@/app/actions/polls";
@@ -45,6 +45,7 @@ export default function PollsList({
     bgColorAccentFrom,
     bgColorAccentTo,
 }: PollsListProps) {
+    const sliderRef = useRef<Slider>(null);
     const [currentSlide, setCurrentSlide] = useState(0);
     const [slidesToShow, setSlidesToShow] = useState(
         forceSlidesToShow
@@ -63,10 +64,17 @@ export default function PollsList({
         swipeToSlide: true,
         draggable: true,
         accessibility: true,
-        
         beforeChange: (current: number, next: number) => {
             setCurrentSlide(next);
         },
+        responsive: [
+            {
+                breakpoint: 860,
+                settings: {
+                    centerMode: true,
+                },
+            },
+        ],
     };
 
     const centerIndex = useMemo(() => {
@@ -127,7 +135,7 @@ export default function PollsList({
                 maskPosition: "left, right",
             }}
         >
-            <Slider {...sliderSettings}>
+            <Slider ref={sliderRef} {...sliderSettings}>
                 {polls.map((poll, index) => {
                     const specificTokenGatingData: TokenGatingResult =
                         !poll.needToken ||
@@ -161,11 +169,29 @@ export default function PollsList({
                     return (
                         <div
                             key={poll.id}
-                            className={cn(
-                                slidesToShow === 1 ? "px-[40px]" : "px-[5px]"
-                            )}
+                            className={cn("px-[8px]")}
+                            onClick={() => {
+                                if (
+                                    centerIndex === 0 &&
+                                    index === polls.length - 1
+                                ) {
+                                    sliderRef.current?.slickGoTo(index - 1);
+                                } else if (
+                                    centerIndex === polls.length - 1 &&
+                                    index === 0
+                                ) {
+                                    sliderRef.current?.slickGoTo(
+                                        polls.length - 1
+                                    );
+                                } else if (index > centerIndex) {
+                                    sliderRef.current?.slickNext();
+                                } else if (index < centerIndex) {
+                                    sliderRef.current?.slickPrev();
+                                }
+                            }}
                         >
                             <PollsCard
+                                index={index}
                                 poll={poll}
                                 player={player}
                                 pollLogs={pollIdToLogs[poll.id] || []}
