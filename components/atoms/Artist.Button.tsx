@@ -62,16 +62,16 @@ export default function ArtistButton({
                     className={cn(
                         "flex flex-row items-center justify-between rounded-3xl",
                         "cursor-pointer backdrop-blur-xs",
-                        "gradient-border",
+                        "gradient-border morp-glass-1",
                         paddingClass,
                         "px-[15px]"
                     )}
                     style={{
-                        background: `linear-gradient(to right, ${ArtistBG(
+                        background: `radial-gradient(circle, ${ArtistBG(
                             artist,
-                            0,
-                            80
-                        )} 30%, ${ArtistBG(artist, 1, 10)} 100%)`,
+                            1,
+                            20
+                        )} 40%, ${ArtistBG(artist, 0, 35)} 100%)`,
                     }}
                 >
                     <div

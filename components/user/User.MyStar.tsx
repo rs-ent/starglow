@@ -52,53 +52,39 @@ export default function UserMyStar({
         },
     });
 
-    const artists: Artist[] = useMemo(() => {
-        return userVerifiedCollections
-            .map((collection) => collection.artist)
-            .filter((artist): artist is Artist => artist !== null);
+    const artists = useMemo(() => {
+        const artistMap = new Map<string, Artist>();
+        userVerifiedCollections.forEach((collection) => {
+            if (collection.artist) {
+                artistMap.set(collection.artist.id, collection.artist);
+            }
+        });
+        return Array.from(artistMap.values());
     }, [userVerifiedCollections]);
 
-    const newArtistsActivities: Map<string, [Poll[], Quest[]]> = useMemo(() => {
-        const now = new Date();
-        const result = new Map<string, [Poll[], Quest[]]>();
+    const newArtistsActivities: Map<
+        string,
+        { polls: Poll[]; quests: Quest[] }
+    > = useMemo(() => {
+        const result = new Map<string, { polls: Poll[]; quests: Quest[] }>();
 
-        const pollLogsMap = new Map(
-            playerPollLogs?.map((log) => [log.pollId, log]) || []
-        );
-        const questLogsMap = new Map(
-            playerQuestLogs?.map((log) => [log.questId, log]) || []
-        );
+        artists.forEach((artist) => {
+            result.set(artist.id, { polls: [], quests: [] });
+        });
 
-        const getArtistArrays = (artistId: string): [Poll[], Quest[]] => {
-            return result.get(artistId) || [[], []];
-        };
-
-        for (const poll of pollsList?.items || []) {
-            if (!poll?.artistId) continue;
-            if (pollLogsMap.has(poll.id)) continue;
-            if (
-                (poll.endDate && poll.endDate < now) ||
-                (poll.startDate && poll.startDate > now)
-            )
-                continue;
-
-            const [polls, quests] = getArtistArrays(poll.artistId);
-            result.set(poll.artistId, [[...polls, poll], quests]);
-        }
-
-        for (const quest of quests?.items || []) {
-            if (!quest?.artistId || quest.isReferral) continue;
-            if (questLogsMap.get(quest.id)?.isClaimed) continue;
-            if (
-                !quest.permanent &&
-                ((quest.endDate && quest.endDate < now) ||
-                    (quest.startDate && quest.startDate > now))
-            )
-                continue;
-
-            const [polls, quests] = getArtistArrays(quest.artistId);
-            result.set(quest.artistId, [polls, [...quests, quest]]);
-        }
+        result.forEach((value, key) => {
+            const artist = artists.find((artist) => artist.id === key);
+            if (artist) {
+                value.polls =
+                    pollsList?.items.filter(
+                        (poll) => poll.artistId === artist.id
+                    ) ?? [];
+                value.quests =
+                    quests?.items.filter(
+                        (quest) => quest.artistId === artist.id
+                    ) ?? [];
+            }
+        });
 
         return result;
     }, [pollsList, quests, playerPollLogs, playerQuestLogs]);
@@ -118,20 +104,27 @@ export default function UserMyStar({
     return (
         <>
             <UserMyStarModal
+                player={player}
+                questLogs={playerQuestLogs ?? []}
+                pollLogs={playerPollLogs ?? []}
                 artist={selectedArtist}
+                verifiedCollections={userVerifiedCollections.filter(
+                    (collection) => collection.artistId === selectedArtist?.id
+                )}
                 open={isModalOpen}
                 onClose={handleCloseModal}
             />
             <div
                 className={cn(
                     "flex flex-col items-center justify-center w-screen max-w-[1000px]",
-                    "py-4 px-6 sm:py-6 sm:px-8 md:py-8 md:px-12 lg:py-10 lg:px-12"
+                    "py-4 px-6 sm:py-6 sm:px-8 md:py-8 md:px-12 lg:py-10 lg:px-12",
+                    "gap-[15px]"
                 )}
             >
                 {artists.map((artist, index) => {
-                    const [polls, quests] = newArtistsActivities.get(
+                    const { polls, quests } = newArtistsActivities.get(
                         artist.id
-                    ) || [[], []];
+                    ) || { polls: [], quests: [] };
 
                     const hasNewActivity =
                         polls.length > 0 || quests.length > 0;

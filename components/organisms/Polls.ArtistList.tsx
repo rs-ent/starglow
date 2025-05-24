@@ -16,6 +16,12 @@ interface PollsArtistListProps {
     pollLogs?: PollLog[];
     tokenGatingResult?: AdvancedTokenGateResult | null;
     className?: string;
+    fgColorFrom?: string;
+    fgColorTo?: string;
+    bgColorFrom?: string;
+    bgColorTo?: string;
+    bgColorAccentFrom?: string;
+    bgColorAccentTo?: string;
 }
 
 export default function PollsArtistList({
@@ -24,6 +30,12 @@ export default function PollsArtistList({
     pollLogs,
     tokenGatingResult,
     className,
+    fgColorFrom,
+    fgColorTo,
+    bgColorFrom,
+    bgColorTo,
+    bgColorAccentFrom,
+    bgColorAccentTo,
 }: PollsArtistListProps) {
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
@@ -75,6 +87,12 @@ export default function PollsArtistList({
                                 )
                             )
                         }
+                        fgColorFrom={fgColorFrom}
+                        fgColorTo={fgColorTo}
+                        bgColorFrom={bgColorFrom}
+                        bgColorTo={bgColorTo}
+                        bgColorAccentFrom={bgColorAccentFrom}
+                        bgColorAccentTo={bgColorAccentTo}
                     />
                 ) : (
                     <div className="text-center text-2xl">No polls found</div>

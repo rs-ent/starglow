@@ -1,6 +1,7 @@
 /// lib/utils/get/artist-colors.ts
 
 import { Artist } from "@prisma/client";
+import { formatHexToRGBA } from "@/lib/utils/format";
 
 // HSL 기반의 기본 색상
 const defaultBGColors = [
@@ -22,17 +23,13 @@ export const ArtistBG = (
     importance: number,
     opacity?: number
 ) => {
-    const hexOpacity = getHexOpacity(opacity);
     const colors = artist.backgroundColors;
-
-    if (colors.length > 0) {
-        if (colors[importance]) {
-            return `${colors[importance]}${hexOpacity}`;
-        }
-        const similarColor = makeSimilarColor(colors, importance);
-        return `${similarColor}${hexOpacity}`;
-    }
-    return `${defaultBGColors[importance]}${hexOpacity}`;
+    const baseColor =
+        colors.length > 0
+            ? colors[importance] || makeSimilarColor(colors, importance)
+            : defaultBGColors[importance];
+    const alpha = (opacity ?? 100) / 100;
+    return formatHexToRGBA(baseColor, alpha);
 };
 
 export const ArtistFG = (
@@ -40,17 +37,13 @@ export const ArtistFG = (
     importance: number,
     opacity?: number
 ) => {
-    const hexOpacity = getHexOpacity(opacity);
     const colors = artist.foregroundColors;
-
-    if (colors.length > 0) {
-        if (colors[importance]) {
-            return `${colors[importance]}${hexOpacity}`;
-        }
-        const similarColor = makeSimilarColor(colors, importance);
-        return `${similarColor}${hexOpacity}`;
-    }
-    return `${defaultFGColors[importance]}${hexOpacity}`;
+    const baseColor =
+        colors.length > 0
+            ? colors[importance] || makeSimilarColor(colors, importance)
+            : defaultFGColors[importance];
+    const alpha = (opacity ?? 100) / 100;
+    return formatHexToRGBA(baseColor, alpha);
 };
 
 function getHexOpacity(opacity?: number): string {

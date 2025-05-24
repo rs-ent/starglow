@@ -7,9 +7,15 @@ import InviteFriendsModal from "./InviteFriends.Modal";
 
 interface InviteFriendsProps {
     player: Player | null;
+    bgColorFrom?: string;
+    bgColorTo?: string;
 }
 
-export default function InviteFriends({ player }: InviteFriendsProps) {
+export default function InviteFriends({
+    player,
+    bgColorFrom = "#A5D7FB",
+    bgColorTo = "#8E76FA",
+}: InviteFriendsProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     const handleClick = () => {
@@ -28,7 +34,10 @@ export default function InviteFriends({ player }: InviteFriendsProps) {
             )}
 
             <div
-                className="relative w-full bg-gradient-to-br from-[#A5D7FB] to-[#8E76FA] rounded-2xl cursor-pointer"
+                className="relative w-full rounded-2xl cursor-pointer"
+                style={{
+                    background: `linear-gradient(to bottom right, ${bgColorFrom}, ${bgColorTo})`,
+                }}
                 onClick={handleClick}
             >
                 <H3 size={25} className="text-start p-4">

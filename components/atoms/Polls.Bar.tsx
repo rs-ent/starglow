@@ -15,6 +15,8 @@ export default function PollBar({
     showOptionName = true,
     showOptionImage = true,
     fillContainer = false,
+    fgColorFrom = "rgba(112,74,218,0.1)",
+    fgColorTo = "rgba(152,124,258,0.7)",
 }: {
     result: PollOptionResult;
     isBlurred: boolean;
@@ -23,10 +25,14 @@ export default function PollBar({
     showOptionName?: boolean;
     showOptionImage?: boolean;
     fillContainer?: boolean;
+    fgColorFrom?: string;
+    fgColorTo?: string;
 }) {
     const opacity = isBlurred ? 1 : 1 - (0.6 * rank) / totalItems;
     const displayValue = isBlurred ? 99 : result.voteRate;
     const displayText = isBlurred ? "??%" : `${Math.round(result.voteRate)}%`;
+
+    console.log(fgColorFrom, fgColorTo);
 
     return (
         <div
@@ -60,8 +66,9 @@ export default function PollBar({
                 )}
             >
                 <div
-                    className="absolute h-full rounded-r bg-gradient-to-r from-[rgba(112,74,218,0.1)] to-[rgba(152,124,258,0.7)]"
+                    className={cn("absolute h-full rounded-r")}
                     style={{
+                        background: `linear-gradient(to right, ${fgColorFrom}, ${fgColorTo})`,
                         width: `${displayValue}%`,
                         animation:
                             displayValue > 0

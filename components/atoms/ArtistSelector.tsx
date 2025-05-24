@@ -7,6 +7,7 @@ import Image from "next/image";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { useState } from "react";
+import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
 
 interface ArtistSelectorProps {
     artist: Artist;
@@ -88,9 +89,13 @@ export default function ArtistSelector({
                         "rounded-full object-cover",
                         "border-[1px] border-[rgba(255,255,255,1)]",
                         "relative",
-                        selected && "purple-glow-strong",
                         frameSizeClass
                     )}
+                    style={{
+                        boxShadow: selected
+                            ? `0px 0px 10px 0px ${ArtistBG(artist, 2, 100)}`
+                            : "none",
+                    }}
                 />
                 <div
                     className={cn(

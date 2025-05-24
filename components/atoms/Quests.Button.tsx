@@ -329,7 +329,7 @@ export default function QuestsButton({
                                     alt={quest.title}
                                     className={cn(frameClass)}
                                 />
-                                <div className="flex flex-col items-start gap-[3px]">
+                                <div className="flex flex-col items-start gap-[3px] pr-[10px]">
                                     <div
                                         className={cn(textClass, "break-words")}
                                     >
@@ -413,6 +413,7 @@ export default function QuestsButton({
                                     <Button
                                         onClick={handleClaimQuestReward}
                                         disabled={blockFunction}
+                                        className="px-[9px]"
                                     >
                                         Claim
                                     </Button>

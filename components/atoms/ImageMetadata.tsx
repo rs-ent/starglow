@@ -11,24 +11,48 @@ import { cn } from "@/lib/utils/tailwind";
 export default function ImageMetadata({
     metadata,
     className,
+    style,
     showCustomText = false,
     customText = "",
+    showStatus = false,
+    onClick = () => {},
+    popup = null,
 }: {
     metadata: METADATA_TYPE;
     className?: string;
+    style?: React.CSSProperties;
     showCustomText?: boolean;
     customText?: string;
+    showStatus?: boolean;
+    onClick?: () => void;
+    popup?: React.ReactNode;
 }) {
     return (
         <div
             className={cn(
-                "relative aspect-[4/3] overflow-hidden rounded-[7px] mb-2",
+                "relative aspect-[4/3] overflow-hidden rounded-[7px]",
                 "gradient-border",
                 className
             )}
+            onClick={onClick}
+            style={style}
         >
             {metadata?.image ? (
                 <>
+                    <div
+                        className={cn(
+                            "absolute inset-0 z-10",
+                            "bg-black/60",
+                            "transition-opacity duration-500",
+                            popup && showStatus ? "opacity-100" : "opacity-0"
+                        )}
+                        style={{
+                            height: "100%",
+                            width: "100%",
+                        }}
+                    >
+                        {popup}
+                    </div>
                     <Image
                         src={metadata.image}
                         alt={metadata.name}

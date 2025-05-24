@@ -21,6 +21,12 @@ interface PollsListProps {
     isLoading?: boolean;
     tokenGatingData?: AdvancedTokenGateResult | null;
     forceSlidesToShow?: number;
+    fgColorFrom?: string;
+    fgColorTo?: string;
+    bgColorFrom?: string;
+    bgColorTo?: string;
+    bgColorAccentFrom?: string;
+    bgColorAccentTo?: string;
 }
 
 export default function PollsList({
@@ -31,6 +37,12 @@ export default function PollsList({
     isLoading,
     tokenGatingData,
     forceSlidesToShow,
+    fgColorFrom,
+    fgColorTo,
+    bgColorFrom,
+    bgColorTo,
+    bgColorAccentFrom,
+    bgColorAccentTo,
 }: PollsListProps) {
     const [currentSlide, setCurrentSlide] = useState(0);
     const [slidesToShow, setSlidesToShow] = useState(
@@ -170,6 +182,12 @@ export default function PollsList({
                                 artist={artist}
                                 tokenGatingData={specificTokenGatingData}
                                 isSelected={centerIndices.includes(index)}
+                                bgColorFrom={bgColorFrom}
+                                bgColorTo={bgColorTo}
+                                bgColorAccentFrom={bgColorAccentFrom}
+                                bgColorAccentTo={bgColorAccentTo}
+                                fgColorFrom={fgColorFrom}
+                                fgColorTo={fgColorTo}
                             />
                         </div>
                     );

@@ -5,19 +5,28 @@
 import { XIcon } from "lucide-react";
 import { cn } from "@/lib/utils/tailwind";
 import { AnimatePresence, motion } from "framer-motion";
-import { Artist } from "@prisma/client";
+import { Artist, Player, QuestLog, PollLog } from "@prisma/client";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
-
+import type { VerifiedCollection } from "@/app/actions/collectionContracts";
+import UserMyStarModalContents from "./User.MyStar.Modal.Contents";
 interface UserMyStarModalProps {
+    player: Player | null;
+    questLogs: QuestLog[];
+    pollLogs: PollLog[];
     artist: Artist | null;
+    verifiedCollections: VerifiedCollection[];
     open: boolean;
     onClose: () => void;
 }
 
 export default function UserMyStarModal({
     artist,
+    verifiedCollections,
     open,
     onClose,
+    player,
+    questLogs,
+    pollLogs,
 }: UserMyStarModalProps) {
     if (!artist) return null;
 
@@ -26,7 +35,7 @@ export default function UserMyStarModal({
             {open && (
                 <motion.div
                     className={cn(
-                        "fixed inset-0 z-50 w-screen h-screen",
+                        "fixed inset-0 z-50 w-screen h-screen overflow-y-auto",
                         "flex items-center justify-center"
                     )}
                 >
@@ -77,6 +86,15 @@ export default function UserMyStarModal({
                     >
                         <XIcon className="w-6 h-6" />
                     </motion.button>
+                    <div className={cn("w-full h-full max-w-[1000px] mx-auto")}>
+                        <UserMyStarModalContents
+                            artist={artist}
+                            verifiedCollections={verifiedCollections}
+                            player={player}
+                            questLogs={questLogs}
+                            pollLogs={pollLogs}
+                        />
+                    </div>
                 </motion.div>
             )}
         </AnimatePresence>

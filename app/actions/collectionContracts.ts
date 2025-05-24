@@ -28,6 +28,7 @@ import {
     CollectionParticipant,
     CollectionParticipantType,
     Artist,
+    Metadata,
 } from "@prisma/client";
 import { privateKeyToAccount } from "viem/accounts";
 import { createNFTMetadata, getMetadataByCollectionAddress } from "./metadata";
@@ -2861,6 +2862,7 @@ export interface GetUserVerifiedCollectionsInput {
 
 export type VerifiedCollection = CollectionContract & {
     artist: Artist | null;
+    metadata: Metadata | null;
     verifiedTokens: number[];
 };
 
@@ -2884,6 +2886,7 @@ export async function getUserVerifiedCollections(
             prisma.collectionContract.findMany({
                 include: {
                     artist: true,
+                    metadata: true,
                 },
             }),
         ]);

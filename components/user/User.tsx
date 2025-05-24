@@ -47,8 +47,10 @@ export default function User({ user, player }: UserProps) {
                         onPublic={() => setIsPublic(true)}
                         onPrivate={() => setIsPublic(false)}
                         className="mt-[50px] mb-[10px]"
-                        textSize={25}
                         frameSize={20}
+                        textSize={30}
+                        gapSize={5}
+                        paddingSize={10}
                         publicText="My Star"
                         publicIcon="/ui/user/user-mystar.svg"
                         privateText="Rewards"

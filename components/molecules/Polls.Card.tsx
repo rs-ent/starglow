@@ -25,6 +25,12 @@ interface PollsCardProps {
     artist?: Artist | null;
     tokenGatingData?: TokenGatingResult | null;
     isSelected?: boolean;
+    fgColorFrom?: string;
+    fgColorTo?: string;
+    bgColorFrom?: string;
+    bgColorTo?: string;
+    bgColorAccentFrom?: string;
+    bgColorAccentTo?: string;
 }
 
 export default function PollsCard({
@@ -34,6 +40,12 @@ export default function PollsCard({
     artist,
     tokenGatingData,
     isSelected,
+    fgColorFrom,
+    fgColorTo,
+    bgColorFrom = "rgba(109,40,217,0.4)",
+    bgColorTo = "rgba(109,40,217,0.15)",
+    bgColorAccentFrom = "rgba(109,40,217,1)",
+    bgColorAccentTo = "rgba(109,40,217,0.45)",
 }: PollsCardProps) {
     const { startLoading, endLoading } = useLoading();
     const toast = useToast();
@@ -124,8 +136,7 @@ export default function PollsCard({
         };
     }, [tokenGatingData, poll.needToken, pollLogs]);
 
-    useEffect(() => {
-    }, [voteAmount]);
+    useEffect(() => {}, [voteAmount]);
 
     const handleSubmit = async () => {
         startLoading();
@@ -199,12 +210,11 @@ export default function PollsCard({
         <div className="relative max-w-[480px] min-w-[120px] my-[25px]">
             <div
                 className={cn(
-                    "absolute inset-0 rounded-[16px] pointer-events-none transition-opacity duration-500 -z-50",
+                    "absolute inset-0 rounded-[16px] pointer-events-none transition-opacity duration-700 -z-50",
                     permission && isSelected ? "opacity-100" : "opacity-0"
                 )}
                 style={{
-                    background:
-                        "linear-gradient(to bottom, rgba(109,40,217,1), rgba(109,40,217,0.45))",
+                    background: `linear-gradient(to bottom, ${bgColorAccentFrom}, ${bgColorAccentTo})`,
                 }}
             />
             {!permission && <Doorman />}
@@ -212,7 +222,7 @@ export default function PollsCard({
                 className={cn(
                     "flex flex-col p-[12px] border border-[rgba(255,255,255,0.4)] rounded-[16px]",
                     "transition-all duration-500 ease-in-out",
-                    "bg-gradient-to-b from-[rgba(109,40,217,0.4)] to-[rgba(109,40,217,0.15)]",
+                    `bg-gradient-to-b from-[${bgColorFrom}] to-[${bgColorTo}]`,
                     !permission && "blur-sm"
                 )}
             >
@@ -286,9 +296,11 @@ export default function PollsCard({
                     <div
                         className={cn(
                             "my-6 flex-col items-center justify-center text-center",
-                            "rounded-[16px] p-3",
-                            "bg-gradient-to-br from-[rgba(200,180,255,0.01)] to-[rgba(160,110,250,0.1)]"
+                            "rounded-[16px] p-3"
                         )}
+                        style={{
+                            background: `linear-gradient(to bottom right, ${bgColorAccentTo}, ${bgColorAccentFrom})`,
+                        }}
                     >
                         <h3
                             className={cn(
@@ -361,6 +373,8 @@ export default function PollsCard({
                                                     showOptionName={false}
                                                     showOptionImage={false}
                                                     fillContainer={true}
+                                                    fgColorFrom={fgColorFrom}
+                                                    fgColorTo={fgColorTo}
                                                 />
                                             </div>
                                         </div>
@@ -476,6 +490,8 @@ export default function PollsCard({
                                         isBlurred={isBlurred}
                                         rank={idx}
                                         totalItems={sortedResults.length}
+                                        fgColorFrom={fgColorFrom}
+                                        fgColorTo={fgColorTo}
                                     />
                                 ))}
                                 {isBlurred && (

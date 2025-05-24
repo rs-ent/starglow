@@ -1,8 +1,6 @@
 /// lib/utils/responsiveClass.ts
 
-export const getResponsiveClass = (
-    size: number
-) => {
+export const getResponsiveClass = (size: number) => {
     const texts = {
         5: "text-[8px]  sm:text-[9px]   md:text-[10px] lg:text-[12px]  xl:text-[13px]",
         10: "text-[9px]  sm:text-[10px] md:text-[12px] lg:text-[13px]  xl:text-[14px]",
@@ -19,7 +17,6 @@ export const getResponsiveClass = (
         65: "text-[59px] sm:text-[68px] md:text-[77px] lg:text-[86px]  xl:text-[94px]",
         70: "text-[70px] sm:text-[81px] md:text-[91px] lg:text-[102px] xl:text-[112px]",
     };
-
 
     const paddings = {
         0: "px-0 py-0",
@@ -74,15 +71,53 @@ export const getResponsiveClass = (
         70: "w-[70px] h-[70px]  sm:w-[81px] sm:h-[81px]  md:w-[91px] md:h-[91px] lg:w-[102px] lg:h-[102px] xl:w-[112px] xl:h-[112px]",
     };
 
+    const marginX = {
+        5: "mx-[1px] sm:mx-[2px] md:mx-[3px] lg:mx-[4px] xl:mx-[5px]",
+        10: "mx-[3px] sm:mx-[4px] md:mx-[5px] lg:mx-[6px] xl:mx-[7px]",
+        15: "mx-[5px] sm:mx-[6px] md:mx-[7px] lg:mx-[8px] xl:mx-[10px]",
+        20: "mx-[7px] sm:mx-[8px] md:mx-[10px] lg:mx-[12px] xl:mx-[14px]",
+        25: "mx-[9px] sm:mx-[10px] md:mx-[12px] lg:mx-[14px] xl:mx-[16px]",
+        30: "mx-[11px] sm:mx-[12px] md:mx-[14px] lg:mx-[16px] xl:mx-[18px]",
+        35: "mx-[13px] sm:mx-[14px] md:mx-[16px] lg:mx-[18px] xl:mx-[20px]",
+        40: "mx-[15px] sm:mx-[16px] md:mx-[18px] lg:mx-[20px] xl:mx-[22px]",
+        45: "mx-[17px] sm:mx-[18px] md:mx-[20px] lg:mx-[22px] xl:mx-[24px]",
+        50: "mx-[19px] sm:mx-[20px] md:mx-[22px] lg:mx-[24px] xl:mx-[26px]",
+        55: "mx-[21px] sm:mx-[22px] md:mx-[24px] lg:mx-[26px] xl:mx-[28px]",
+        60: "mx-[23px] sm:mx-[24px] md:mx-[26px] lg:mx-[28px] xl:mx-[30px]",
+        65: "mx-[25px] sm:mx-[26px] md:mx-[28px] lg:mx-[30px] xl:mx-[32px]",
+        70: "mx-[27px] sm:mx-[28px] md:mx-[30px] lg:mx-[32px] xl:mx-[34px]",
+    };
+
+    const marginY = {
+        5: "my-[1px] sm:my-[2px] md:my-[3px] lg:my-[4px] xl:my-[5px]",
+        10: "my-[3px] sm:my-[4px] md:my-[5px] lg:my-[6px] xl:my-[7px]",
+        15: "my-[5px] sm:my-[6px] md:my-[7px] lg:my-[8px] xl:my-[10px]",
+        20: "my-[7px] sm:my-[8px] md:my-[10px] lg:my-[12px] xl:my-[14px]",
+        25: "my-[9px] sm:my-[10px] md:my-[12px] lg:my-[14px] xl:my-[16px]",
+        30: "my-[11px] sm:my-[12px] md:my-[14px] lg:my-[16px] xl:my-[18px]",
+        35: "my-[13px] sm:my-[14px] md:my-[16px] lg:my-[18px] xl:my-[20px]",
+        40: "my-[15px] sm:my-[16px] md:my-[18px] lg:my-[20px] xl:my-[22px]",
+        45: "my-[17px] sm:my-[18px] md:my-[20px] lg:my-[22px] xl:my-[24px]",
+        50: "my-[19px] sm:my-[20px] md:my-[22px] lg:my-[24px] xl:my-[26px]",
+        55: "my-[21px] sm:my-[22px] md:my-[24px] lg:my-[26px] xl:my-[28px]",
+        60: "my-[23px] sm:my-[24px] md:my-[26px] lg:my-[28px] xl:my-[30px]",
+        65: "my-[25px] sm:my-[26px] md:my-[28px] lg:my-[30px] xl:my-[32px]",
+        70: "my-[27px] sm:my-[28px] md:my-[30px] lg:my-[32px] xl:my-[34px]",
+    };
+
     const textClass = texts[size as keyof typeof texts];
     const paddingClass = paddings[size as keyof typeof paddings];
     const frameClass = frames[size as keyof typeof frames];
     const gapClass = gaps[size as keyof typeof gaps];
+    const marginXClass = marginX[size as keyof typeof marginX];
+    const marginYClass = marginY[size as keyof typeof marginY];
 
     return {
         textClass,
         paddingClass,
         frameClass,
         gapClass,
+        marginXClass,
+        marginYClass,
     };
 };
