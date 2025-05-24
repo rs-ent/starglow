@@ -46,7 +46,6 @@ export default function PollsPrivate({
     const { tokenGating, isTokenGating, tokenGatingError } = useArtistSet();
 
     const handleArtistSelect = (artist: Artist | null) => {
-        console.log("Artist selected", artist);
         setSelectedArtist(artist);
         setSelectedArtistTokenGatingResult(null);
         setShowArtistContents(false);

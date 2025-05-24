@@ -37,21 +37,19 @@ export default function UserMyStarModal({
             {open && (
                 <motion.div
                     className={cn(
-                        "fixed inset-0 z-50 w-screen h-screen overflow-y-auto",
+                        "fixed inset-0 z-50 w-screen h-screen",
                         "flex items-center justify-center"
                     )}
                 >
-                    {/* VIP Stage Backdrop - GPU 가속 최적화 */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="fixed inset-0 bg-black/85 -z-50"
+                        className="fixed inset-0 bg-black/70 -z-50"
                         style={{ willChange: "opacity" }}
                     />
 
-                    {/* Optimized Spotlight - 단일 스포트라이트로 통합 */}
                     <motion.div
                         initial={{
                             opacity: 0,
@@ -86,14 +84,13 @@ export default function UserMyStarModal({
                         }}
                     />
 
-                    {/* Simplified Ring Effect - 블러 제거, 성능 최적화 */}
                     <motion.div
                         initial={{
                             transform: "scale(0.5)",
                             opacity: 0,
                         }}
                         animate={{
-                            transform: "scale(2)",
+                            transform: "scale(3)",
                             opacity: [0, 0.8, 0],
                         }}
                         transition={{
@@ -112,11 +109,11 @@ export default function UserMyStarModal({
                     />
 
                     <div className="fixed inset-0 z-50 pointer-events-none">
-                        {Array.from({ length: 28 }).map((_, i) => {
+                        {Array.from({ length: 36 }).map((_, i) => {
                             const angle = Math.random() * 360;
-                            const startRadius = Math.random() * 50;
-                            const endRadius = 150 + Math.random() * 120;
-                            const delay = 0.2 + Math.random() * 0.5;
+                            const startRadius = Math.random() * 40;
+                            const endRadius = 80 + Math.random() * 180;
+                            const delay = 0.1 + Math.random() * 0.5;
 
                             return (
                                 <motion.div
@@ -207,7 +204,6 @@ export default function UserMyStarModal({
                         }}
                     />
 
-                    {/* Close Button with Simpler Effect */}
                     <motion.button
                         initial={{ opacity: 0, scale: 0.5 }}
                         animate={{
@@ -241,9 +237,7 @@ export default function UserMyStarModal({
                         <XIcon className="w-5 h-5 text-white group-hover:rotate-90 transition-transform duration-300" />
                     </motion.button>
 
-                    {/* VIP Content Stage - 성능 최적화 */}
                     <div className={cn("w-full h-full relative py-8 lg:px-12")}>
-                        {/* Main Content with Optimized 3D Transform */}
                         <motion.div
                             initial={{
                                 opacity: 0,
@@ -270,10 +264,9 @@ export default function UserMyStarModal({
                                 willChange: "transform, opacity",
                             }}
                         >
-                            {/* Animated Border Gradient */}
                             <div
                                 className={cn(
-                                    "relative w-full h-full rounded-3xl",
+                                    "relative w-full h-full rounded-3xl overflow-hidden",
                                     "bg-gradient-to-r animate-gradient-shift"
                                 )}
                                 style={{
@@ -285,10 +278,9 @@ export default function UserMyStarModal({
                                     backgroundSize: "100% 100%",
                                 }}
                             >
-                                {/* Content Container with Glass Effect */}
                                 <div
                                     className={cn(
-                                        "w-full h-full overflow-y-auto rounded-3xl",
+                                        "w-full h-full overflow-y-auto",
                                         "backdrop-blur-xl"
                                     )}
                                     style={{

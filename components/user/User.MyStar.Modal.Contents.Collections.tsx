@@ -82,7 +82,7 @@ export default function UserMyStarModalContentsCollections({
             >
                 <div
                     className={cn(
-                        "max-w-[1000px] w-full relative mx-auto",
+                        "w-full relative mx-auto",
                         "mt-[50px] mb-[20px] sm:mb-[50px] lg:mb-[100px]"
                     )}
                 >
@@ -109,7 +109,7 @@ export default function UserMyStarModalContentsCollections({
                     <Slider ref={sliderRef} {...settings}>
                         {verifiedCollections.map((collection) => (
                             <div
-                                className="w-full h-full px-[10px] md:px-[30px]"
+                                className="w-full h-full px-[20px] md:px-[30px]"
                                 key={collection.id}
                             >
                                 <UserMyStarModalContentsCollectionsCard
@@ -122,48 +122,46 @@ export default function UserMyStarModalContentsCollections({
                 </div>
                 <ArtistSelector
                     artist={artist}
-                    frameSize={60}
+                    frameSize={55}
                     textSize={30}
                     gapSize={40}
                     isSelected={true}
                     className={cn("mb-[20px]")}
                 />
 
-                <div className={cn("max-w-[1000px] mx-auto")}>
-                    <ArtistMessage
-                        artistId={artist.id}
-                        className={cn("mt-[10px]")}
-                    />
-                    <div
-                        className={cn(
-                            "px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px]"
-                        )}
-                    >
-                        <QuestsArtistMissions
-                            artist={artist}
-                            player={player}
-                            questLogs={questLogs}
-                            tokenGatingResult={tokenGatingResult}
-                            referralLogs={[]}
-                            bgColorFrom={ArtistBG(artist, 2, 100)}
-                            bgColorTo={ArtistBG(artist, 3, 100)}
-                            showInviteFriends={false}
-                        />
-                    </div>
-                </div>
-                <PollsArtistList
-                    artist={artist}
-                    player={player}
-                    tokenGatingResult={tokenGatingResult}
-                    pollLogs={pollLogs}
-                    bgColorFrom={ArtistBG(artist, 0, 100)}
-                    bgColorTo={ArtistBG(artist, 1, 100)}
-                    bgColorAccentFrom={ArtistBG(artist, 2, 100)}
-                    bgColorAccentTo={ArtistBG(artist, 3, 100)}
-                    fgColorFrom={ArtistBG(artist, 2, 10)}
-                    fgColorTo={ArtistBG(artist, 1, 100)}
+                <ArtistMessage
+                    artistId={artist.id}
+                    className={cn("mt-[10px]")}
                 />
+                <div
+                    className={cn(
+                        "px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px]"
+                    )}
+                >
+                    <QuestsArtistMissions
+                        artist={artist}
+                        player={player}
+                        questLogs={questLogs}
+                        tokenGatingResult={tokenGatingResult}
+                        referralLogs={[]}
+                        bgColorFrom={ArtistBG(artist, 2, 100)}
+                        bgColorTo={ArtistBG(artist, 3, 100)}
+                        showInviteFriends={false}
+                    />
+                </div>
             </div>
+            <PollsArtistList
+                artist={artist}
+                player={player}
+                tokenGatingResult={tokenGatingResult}
+                pollLogs={pollLogs}
+                bgColorFrom={ArtistBG(artist, 0, 100)}
+                bgColorTo={ArtistBG(artist, 1, 100)}
+                bgColorAccentFrom={ArtistBG(artist, 2, 100)}
+                bgColorAccentTo={ArtistBG(artist, 3, 100)}
+                fgColorFrom={ArtistBG(artist, 2, 10)}
+                fgColorTo={ArtistBG(artist, 1, 100)}
+            />
         </div>
     );
 }
