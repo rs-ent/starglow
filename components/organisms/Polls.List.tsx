@@ -63,6 +63,7 @@ export default function PollsList({
         swipeToSlide: true,
         draggable: true,
         accessibility: true,
+        
         beforeChange: (current: number, next: number) => {
             setCurrentSlide(next);
         },
@@ -76,10 +77,8 @@ export default function PollsList({
     useEffect(() => {
         const minSlidesToShow = Math.min(forceSlidesToShow, polls.length);
         const handleResize = () => {
-            if (window.innerWidth <= 640) {
+            if (window.innerWidth <= 860) {
                 setSlidesToShow(Math.min(1, minSlidesToShow));
-            } else if (window.innerWidth <= 1024) {
-                setSlidesToShow(Math.min(2, minSlidesToShow));
             } else {
                 setSlidesToShow(Math.min(3, minSlidesToShow));
             }
@@ -163,7 +162,7 @@ export default function PollsList({
                         <div
                             key={poll.id}
                             className={cn(
-                                slidesToShow === 1 ? "px-[15px]" : "px-[5px]"
+                                slidesToShow === 1 ? "px-[40px]" : "px-[5px]"
                             )}
                         >
                             <PollsCard
