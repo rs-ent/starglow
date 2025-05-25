@@ -58,7 +58,7 @@ export default function UserRewards({ user, player }: UserRewardsProps) {
             />
             <div
                 className={cn(
-                    "grid grid-cols-3 gap-4 w-screen max-w-[1000px]",
+                    "grid grid-cols-3 gap-3 w-screen max-w-[1000px]",
                     "py-4 px-6 sm:py-6 sm:px-8 md:py-8 md:px-12 lg:py-10 lg:px-12",
                     "mb-[100px]"
                 )}
@@ -68,10 +68,13 @@ export default function UserRewards({ user, player }: UserRewardsProps) {
                         key={idx}
                         className={cn(
                             "w-full aspect-square relative",
-                            "border-2 border-[rgba(255,255,255,0.2)] rounded-[18px]",
+                            "border-2 border-[rgba(255,255,255,0.2)] rounded-[16px]",
                             "bg-[rgba(255,255,255,0.05)] flex items-center justify-center",
-                            "morp-glass-1",
-                            asset ? "cursor-pointer" : "cursor-auto"
+                            "morp-glass-1 overflow-hidden",
+                            "transition-all duration-300 ease-in-out",
+                            asset
+                                ? "shadow-lg cursor-pointer hover:scale-105 hover:bg-[rgba(255,255,255,0.15)]"
+                                : "cursor-auto inner-shadow"
                         )}
                         onClick={() => {
                             if (asset) {
@@ -85,7 +88,7 @@ export default function UserRewards({ user, player }: UserRewardsProps) {
                                 balance={asset?.balance ?? 0}
                                 icon={asset?.asset?.iconUrl ?? ""}
                                 name={asset?.asset?.name ?? ""}
-                                className={""}
+                                className={cn("w-full h-full")}
                             />
                         )}
                     </div>

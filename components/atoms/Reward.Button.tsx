@@ -72,7 +72,7 @@ export default function RewardButton({
                     willChange: "filter, opacity, scale",
                 }}
                 className={cn(
-                    "w-full h-full aspect-square rounded-[18px]",
+                    "w-full h-full aspect-square",
                     "flex flex-col items-center justify-center",
                     "morp-glass-4",
                     "bg-gradient-to-br from-[rgba(255,255,255,0.2)] to-[rgba(255,255,255,0.05)]",
