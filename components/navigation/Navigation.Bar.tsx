@@ -3,7 +3,7 @@
 
 import LinkButton from "../atoms/LinkButton";
 import AuthButton from "../atoms/AuthButton";
-import { Session, User } from "next-auth";
+import { User } from "next-auth";
 import VerticalButton from "../atoms/VerticalButton";
 import { useState, useMemo } from "react";
 import RewardPanel from "../molecules/RewardPanel";

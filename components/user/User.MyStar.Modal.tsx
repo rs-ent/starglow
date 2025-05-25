@@ -38,15 +38,18 @@ export default function UserMyStarModal({
                 <motion.div
                     className={cn(
                         "fixed inset-0 z-50 w-screen h-screen",
-                        "flex items-center justify-center"
+                        "flex items-center justify-center py-[50px]"
                     )}
+                    style={{
+                        zIndex: 1000,
+                    }}
                 >
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="fixed inset-0 bg-black/70 -z-50"
+                        className="fixed inset-0 bg-black/80 -z-50 backdrop-blur-md"
                         style={{ willChange: "opacity" }}
                     />
 

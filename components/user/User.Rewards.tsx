@@ -54,7 +54,7 @@ export default function UserRewards({ user, player }: UserRewardsProps) {
                 setShowModal={setShowModal}
                 selectedReward={selectedReward}
                 rewards={playerAssetList}
-                player={player}
+                playerId={player?.id ?? ""}
             />
             <div
                 className={cn(

@@ -60,6 +60,9 @@ export async function getRewardsLogs({
                 poll: true,
                 pollLog: true,
             },
+            orderBy: {
+                createdAt: "desc",
+            },
         });
 
         return result;

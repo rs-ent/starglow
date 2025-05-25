@@ -12,13 +12,13 @@ import { Player } from "@prisma/client";
 import PartialLoading from "../atoms/PartialLoading";
 
 interface UserRewardsModalCardProps {
-    player: Player | null;
+    playerId?: string;
     reward: PlayerAssetWithAsset;
     closeModal: () => void;
 }
 
 export default function UserRewardsModalCard({
-    player,
+    playerId,
     reward,
     closeModal,
 }: UserRewardsModalCardProps) {
@@ -27,7 +27,7 @@ export default function UserRewardsModalCard({
     const { rewardsLogs, isRewardsLogsLoading, rewardsLogsError } =
         useRewardsLogsGet({
             getRewardsLogsInput: {
-                playerId: player?.id ?? "",
+                playerId: playerId ?? "",
                 assetId: reward.asset.id,
             },
         });
@@ -35,75 +35,44 @@ export default function UserRewardsModalCard({
     return (
         <div
             className={cn(
-                "w-[95%] h-[60%] min-h-[300px] mx-auto",
+                "w-full max-w-[1000px] h-full max-h-full mx-auto",
+                "flex flex-col",
                 "border border-[rgba(255,255,255,0.1)]",
                 "bg-gradient-to-br from-[#09021B] to-[#311473]",
                 "rounded-[18px]",
-                "relative flex flex-col items-center justify-center",
-                "shadow-lg"
+                "shadow-lg",
+                "relative",
+                "overflow-hidden"
             )}
         >
-            <div className="absolute top-4 right-4">
+            <button
+                onClick={closeModal}
+                className={cn(
+                    "absolute top-4 right-4 z-20",
+                    "p-2 rounded-lg",
+                    "hover:bg-white/10 transition-colors"
+                )}
+                aria-label="Close modal"
+            >
                 <XIcon
                     className={cn(
-                        getResponsiveClass(30).frameClass,
-                        "cursor-pointer",
+                        getResponsiveClass(25).frameClass,
                         "text-white"
                     )}
-                    onClick={closeModal}
                 />
-            </div>
+            </button>
 
-            <div className="flex flex-col items-center justify-center my-[50px] w-full p-1">
-                <h2
-                    className={cn(
-                        getResponsiveClass(40).textClass,
-                        "mb-[40px]"
-                    )}
-                >
-                    {reward.asset.name}
-                </h2>
-
-                <div className="mb-[20px]">
-                    <img
-                        src="/elements/el03.svg"
-                        alt="el03"
-                        className={cn(getResponsiveClass(45).frameClass)}
-                    />
-                </div>
-
-                <Funds
-                    funds={reward.balance}
-                    fundsLabel={reward.asset.symbol}
-                    fundsIcon={reward.asset.iconUrl ?? undefined}
-                    frameSize={35}
-                    textSize={35}
-                    gapSize={30}
-                    paddingSize={20}
-                    className="bg-[rgba(255,255,255,0.1)]"
-                />
-                {reward.asset.name === "SGP" && (
-                    <p
-                        className={cn(
-                            getResponsiveClass(15).textClass,
-                            "text-[rgba(255,255,255,0.4)] mt-[10px] underline"
-                        )}
-                        onClick={() => setShowPointsMissing(!showPointsMissing)}
-                    >
-                        {"points are missing? >"}
-                    </p>
-                )}
-
-                {showPointsMissing && (
-                    <div className="absolute inset-0 h-full w-full flex items-center justify-center bg-[#5321C6] rounded-[18px] z-50 overflow-y-auto">
-                        <div className="flex flex-col justify-center p-5 gap-5 text-left">
-                            <div className="flex justify-center">
+            {showPointsMissing && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#5321C6] rounded-[18px] p-5">
+                    <div className="w-full max-w-[500px] max-h-full overflow-y-auto">
+                        <div className="flex flex-col gap-4">
+                            <div className="flex justify-center mb-2">
                                 <img
                                     src="/ui/info.svg"
                                     alt="info"
-                                    className={cn(
+                                    className={
                                         getResponsiveClass(50).frameClass
-                                    )}
+                                    }
                                 />
                             </div>
                             <p
@@ -113,96 +82,201 @@ export default function UserRewardsModalCard({
                                 )}
                             >
                                 For the Starglowers who collected 'Points'
-                                through telegram mini app :
+                                through telegram mini app:
                             </p>
-                            <p className={cn(getResponsiveClass(25).textClass)}>
+                            <p className={getResponsiveClass(25).textClass}>
                                 <strong>Points</strong> are officially all
                                 integrated into <strong>SGP</strong> from
                                 05/20/2025 and no longer used. Rewards for
                                 mission complete will be given in{" "}
                                 <strong>SGP</strong>.
                             </p>
-                            <p className={cn(getResponsiveClass(25).textClass)}>
+                            <p className={getResponsiveClass(25).textClass}>
                                 They have the same value and are available to
                                 exchange into <strong>SGT</strong> after token
                                 generation.
                             </p>
                             <Button
-                                className={cn(getResponsiveClass(25).textClass)}
+                                className={cn(
+                                    getResponsiveClass(25).textClass,
+                                    "mt-4"
+                                )}
                                 onClick={() => setShowPointsMissing(false)}
                             >
                                 Okay, got it
                             </Button>
                         </div>
                     </div>
-                )}
+                </div>
+            )}
 
-                <div
+            <div className="flex flex-col h-full max-h-full overflow-hidden">
+                <header
                     className={cn(
-                        "flex flex-col items-stretch justify-center",
-                        "max-h-[50vh]",
-                        "w-full max-w-[800px] min-w-0",
-                        "overflow-y-auto mt-[50px] gap-2",
-                        getResponsiveClass(30).paddingClass
+                        "flex-shrink-0 flex-grow-0",
+                        "pt-12 pb-6 px-6",
+                        "text-center"
                     )}
                 >
-                    {isRewardsLogsLoading && (
-                        <PartialLoading text="Loading rewards logs" size="sm" />
-                    )}
-                    {rewardsLogsError && <p>Error loading rewards logs</p>}
-                    {rewardsLogs?.map((log) => {
-                        console.log("Log", log);
-                        return (
-                            <div
-                                key={log.id}
+                    <h2
+                        className={cn(
+                            getResponsiveClass(35).textClass,
+                            "font-bold mb-6"
+                        )}
+                    >
+                        {reward.asset.name}
+                    </h2>
+
+                    <div className="flex justify-center mb-6">
+                        <img
+                            src="/elements/el03.svg"
+                            alt={reward.asset.name}
+                            className={getResponsiveClass(40).frameClass}
+                        />
+                    </div>
+
+                    <div className="flex flex-col items-center gap-2">
+                        <Funds
+                            funds={reward.balance}
+                            fundsLabel={reward.asset.symbol}
+                            fundsIcon={reward.asset.iconUrl ?? undefined}
+                            frameSize={30}
+                            textSize={30}
+                            gapSize={20}
+                            paddingSize={15}
+                            className="bg-[rgba(255,255,255,0.1)]"
+                        />
+
+                        {reward.asset.name === "SGP" && (
+                            <button
                                 className={cn(
-                                    "gradient-border",
-                                    "rounded-[18px]",
-                                    "bg-gradient-to-br from-[rgba(0,0,0,0.1)] to-[rgba(0,0,0,0.3)]",
-                                    "p-[20px]"
+                                    getResponsiveClass(15).textClass,
+                                    "text-[rgba(255,255,255,0.4)]",
+                                    "underline underline-offset-2",
+                                    "cursor-pointer",
+                                    "hover:text-white/60 transition-colors",
+                                    "mt-1"
                                 )}
+                                onClick={() => setShowPointsMissing(true)}
                             >
-                                <div
-                                    className={cn(
-                                        "flex items-center justify-between",
-                                        getResponsiveClass(30).gapClass
-                                    )}
-                                >
-                                    <div className="flex flex-col gap-[2px]">
-                                        <p
-                                            className={cn(
-                                                getResponsiveClass(15)
-                                                    .textClass,
-                                                "font-bold"
-                                            )}
-                                        >
-                                            {log.reason}
-                                        </p>
-                                        <p
-                                            className={cn(
-                                                getResponsiveClass(5).textClass,
-                                                "text-[rgba(255,255,255,0.5)]"
-                                            )}
-                                        >
-                                            {log.createdAt.toLocaleString()}
+                                points are missing? →
+                            </button>
+                        )}
+                    </div>
+                </header>
+
+                <section
+                    className={cn(
+                        "flex-1",
+                        "min-h-0",
+                        "overflow-hidden",
+                        "px-6 pb-6"
+                    )}
+                >
+                    <div className={cn("h-full mt-[20px]", "overflow-y-auto")}>
+                        <div className="max-w-[800px] mx-auto pb-2">
+                            <div className="space-y-3 h-[300px]">
+                                {isRewardsLogsLoading && (
+                                    <div className="py-8">
+                                        <PartialLoading
+                                            text="Loading reward history..."
+                                            size="sm"
+                                        />
+                                    </div>
+                                )}
+
+                                {rewardsLogsError && (
+                                    <div className="py-8 text-center">
+                                        <p className="text-red-400">
+                                            Failed to load reward history
                                         </p>
                                     </div>
-                                    <div
+                                )}
+
+                                {!isRewardsLogsLoading &&
+                                    !rewardsLogsError &&
+                                    (!rewardsLogs ||
+                                        rewardsLogs.length === 0) && (
+                                        <div className="py-8 text-center">
+                                            <p
+                                                className={cn(
+                                                    getResponsiveClass(15)
+                                                        .textClass,
+                                                    "text-white/40"
+                                                )}
+                                            >
+                                                No reward history yet
+                                            </p>
+                                        </div>
+                                    )}
+
+                                {rewardsLogs?.map((log) => (
+                                    <article
+                                        key={log.id}
                                         className={cn(
-                                            "flex flex-row items-end justify-center text-right",
-                                            getResponsiveClass(15).textClass
+                                            "gradient-border",
+                                            "rounded-[16px]",
+                                            "bg-gradient-to-br from-black/20 to-black/40",
+                                            "p-4",
+                                            "backdrop-blur-sm"
                                         )}
                                     >
-                                        <h3>
-                                            {log.amount > 0 ? "+ " : "- "}
-                                            {log.amount} {log.asset?.symbol}
-                                        </h3>
-                                    </div>
-                                </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <p
+                                                    className={cn(
+                                                        getResponsiveClass(15)
+                                                            .textClass,
+                                                        "font-semibold",
+                                                        "line-clamp-2"
+                                                    )}
+                                                >
+                                                    {log.reason}
+                                                </p>
+                                                <time
+                                                    className={cn(
+                                                        getResponsiveClass(10)
+                                                            .textClass,
+                                                        "text-white/50",
+                                                        "mt-1 block"
+                                                    )}
+                                                >
+                                                    {new Date(
+                                                        log.createdAt
+                                                    ).toLocaleDateString()}{" "}
+                                                    {new Date(
+                                                        log.createdAt
+                                                    ).toLocaleTimeString()}
+                                                </time>
+                                            </div>
+
+                                            <div
+                                                className={cn(
+                                                    getResponsiveClass(15)
+                                                        .textClass,
+                                                    "font-main"
+                                                )}
+                                            >
+                                                <div
+                                                    className={cn(
+                                                        "flex-shrink-0",
+                                                        "text-right"
+                                                    )}
+                                                >
+                                                    {log.amount >= 0
+                                                        ? "+"
+                                                        : "-"}
+                                                    {log.amount.toLocaleString()}{" "}
+                                                    {log.asset?.symbol}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </article>
+                                ))}
                             </div>
-                        );
-                    })}
-                </div>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     );

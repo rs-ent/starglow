@@ -14,7 +14,7 @@ import type { RewardLog } from "@/app/actions/rewardsLogs";
 import { Player } from "@prisma/client";
 
 interface UserRewardsModalProps {
-    player: Player | null;
+    playerId: string;
     showModal: boolean;
     setShowModal: (showModal: boolean) => void;
     selectedReward: PlayerAssetWithAsset | null;
@@ -22,7 +22,7 @@ interface UserRewardsModalProps {
 }
 
 export default function UserRewardsModal({
-    player,
+    playerId,
     showModal,
     setShowModal,
     selectedReward,
@@ -49,9 +49,9 @@ export default function UserRewardsModal({
     return (
         <div
             className={cn(
-                "fixed inset-0 w-screen h-screen bg-black/40 backdrop-blur-xs",
-                "transition-all duration-700 ease-in-out",
-                showModal ? "opacity-100 z-30" : "opacity-0 -z-50"
+                "fixed inset-0 w-screen h-screen bg-black/50 backdrop-blur-xs",
+                "transition-all duration-700 ease-in-out py-[50px]",
+                showModal ? "opacity-100 z-50" : "opacity-0 -z-50"
             )}
         >
             <div className="absolute top-1/2 right-1 -translate-y-1/2">
@@ -101,7 +101,7 @@ export default function UserRewardsModal({
                                 )}
                             >
                                 <UserRewardsModalCard
-                                    player={player}
+                                    playerId={playerId}
                                     reward={reward}
                                     closeModal={() => setShowModal(false)}
                                 />
