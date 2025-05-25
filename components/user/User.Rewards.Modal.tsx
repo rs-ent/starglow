@@ -10,8 +10,7 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import UserRewardsModalCard from "./User.Rewards.Modal.Card";
-import type { RewardLog } from "@/app/actions/rewardsLogs";
-import { Player } from "@prisma/client";
+import Portal from "@/components/atoms/Portal";
 
 interface UserRewardsModalProps {
     playerId: string;
@@ -47,69 +46,74 @@ export default function UserRewardsModal({
     };
 
     return (
-        <div
-            className={cn(
-                "fixed inset-0 w-screen h-screen bg-black/50 backdrop-blur-xs",
-                "transition-all duration-700 ease-in-out py-[50px]",
-                showModal ? "opacity-100 z-50" : "opacity-0 -z-50"
-            )}
-        >
-            <div className="absolute top-1/2 right-1 -translate-y-1/2">
-                <img
-                    src="/ui/arrow-right.svg"
-                    alt="arrow-right"
-                    className={cn(
-                        getResponsiveClass(25).frameClass,
-                        "cursor-pointer",
-                        rewards && rewards.length > 1
-                            ? "opacity-100"
-                            : "opacity-0"
-                    )}
-                    onClick={() => sliderRef.current?.slickNext()}
-                />
+        <Portal>
+            <div
+                className={cn(
+                    "fixed inset-0 w-screen h-screen bg-black/50 backdrop-blur-xs",
+                    "transition-all duration-700 ease-in-out py-[50px]",
+                    showModal ? "opacity-100" : "opacity-0"
+                )}
+                style={{
+                    zIndex: showModal ? 1000 : -1000,
+                }}
+            >
+                <div className="absolute top-1/2 right-1 -translate-y-1/2">
+                    <img
+                        src="/ui/arrow-right.svg"
+                        alt="arrow-right"
+                        className={cn(
+                            getResponsiveClass(25).frameClass,
+                            "cursor-pointer",
+                            rewards && rewards.length > 1
+                                ? "opacity-100"
+                                : "opacity-0"
+                        )}
+                        onClick={() => sliderRef.current?.slickNext()}
+                    />
+                </div>
+                <div className="absolute top-1/2 left-1 -translate-y-1/2">
+                    <img
+                        src="/ui/arrow-right.svg"
+                        alt="arrow-right"
+                        className={cn(
+                            getResponsiveClass(25).frameClass,
+                            "cursor-pointer",
+                            rewards && rewards.length > 1
+                                ? "opacity-100"
+                                : "opacity-0"
+                        )}
+                        style={{
+                            transform: "rotate(180deg)",
+                        }}
+                        onClick={() => sliderRef.current?.slickPrev()}
+                    />
+                </div>
+                <div className="flex items-center justify-center w-full h-full">
+                    <Slider
+                        ref={sliderRef}
+                        {...sliderSettings}
+                        className="w-screen max-w-full"
+                    >
+                        {rewards?.map((reward, idx) => {
+                            return (
+                                <div
+                                    key={reward.id || idx}
+                                    className={cn(
+                                        "flex items-center justify-center",
+                                        getResponsiveClass(70).paddingClass
+                                    )}
+                                >
+                                    <UserRewardsModalCard
+                                        playerId={playerId}
+                                        reward={reward}
+                                        closeModal={() => setShowModal(false)}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </Slider>
+                </div>
             </div>
-            <div className="absolute top-1/2 left-1 -translate-y-1/2">
-                <img
-                    src="/ui/arrow-right.svg"
-                    alt="arrow-right"
-                    className={cn(
-                        getResponsiveClass(25).frameClass,
-                        "cursor-pointer",
-                        rewards && rewards.length > 1
-                            ? "opacity-100"
-                            : "opacity-0"
-                    )}
-                    style={{
-                        transform: "rotate(180deg)",
-                    }}
-                    onClick={() => sliderRef.current?.slickPrev()}
-                />
-            </div>
-            <div className="flex items-center justify-center w-full h-full">
-                <Slider
-                    ref={sliderRef}
-                    {...sliderSettings}
-                    className="w-screen max-w-full"
-                >
-                    {rewards?.map((reward, idx) => {
-                        return (
-                            <div
-                                key={reward.id || idx}
-                                className={cn(
-                                    "flex items-center justify-center",
-                                    getResponsiveClass(70).paddingClass
-                                )}
-                            >
-                                <UserRewardsModalCard
-                                    playerId={playerId}
-                                    reward={reward}
-                                    closeModal={() => setShowModal(false)}
-                                />
-                            </div>
-                        );
-                    })}
-                </Slider>
-            </div>
-        </div>
+        </Portal>
     );
 }
