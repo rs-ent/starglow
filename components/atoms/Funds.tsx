@@ -42,7 +42,7 @@ export default function Funds({
         >
             <div className={cn("flex items-center justify-center", gapClass)}>
                 {fundsIcon && (
-                    <div className="p-1 bg-gradient-to-br from-[rgba(0,0,0,0.7)] to-[rgba(255,255,255,0.3)] rounded-full flex items-center justify-center">
+                    <div className="rounded-full flex items-center justify-center">
                         {fundsIcon.endsWith(".svg") ? (
                             <img
                                 src={fundsIcon}

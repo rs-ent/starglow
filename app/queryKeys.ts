@@ -32,6 +32,7 @@ import {
 } from "./actions/staking";
 import { TokenGateInput } from "./actions/blockchain";
 import { CollectionParticipantType } from "@prisma/client";
+import { GetRewardsLogsInput } from "./actions/rewardsLogs";
 
 export const queryKeys = {
     user: {
@@ -609,4 +610,10 @@ export const blockchainKeys = {
             input?.tokenAddress,
             input?.userId,
         ] as const,
+};
+
+export const rewardLogsKeys = {
+    all: ["reward-logs"] as const,
+    list: (input?: GetRewardsLogsInput) =>
+        [...rewardLogsKeys.all, "list", input] as const,
 };

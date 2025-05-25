@@ -74,7 +74,7 @@ export async function getPlayerAssets(
         where.assetId = input.filter.assetId;
     }
 
-    if (input?.filter.assetIds) {
+    if (input?.filter.assetIds && input.filter.assetIds.length > 0) {
         where.assetId = { in: input.filter.assetIds };
     }
 
