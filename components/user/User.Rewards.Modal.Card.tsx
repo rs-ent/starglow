@@ -68,7 +68,7 @@ export default function UserRewardsModalCard({
                         <div className="flex flex-col gap-4">
                             <div className="flex justify-center mb-2">
                                 <img
-                                    src="/ui/info.svg"
+                                    src="/ui/information.svg"
                                     alt="info"
                                     className={
                                         getResponsiveClass(50).frameClass
