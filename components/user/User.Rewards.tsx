@@ -6,9 +6,8 @@ import { Player, PlayerAsset, Asset } from "@prisma/client";
 import { User } from "next-auth";
 import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
 import { cn } from "@/lib/utils/tailwind";
-import RewardButton from "@/components/atoms/Reward.Button";
-import { useMemo, useState } from "react";
-import UserRewardsModal from "./User.Rewards.Modal";
+import { useMemo } from "react";
+import UserRewardModalCardV2 from "./User.Reward.Modal.Card.V2";
 interface UserRewardsProps {
     user: User;
     player: Player | null;
@@ -38,61 +37,18 @@ export default function UserRewards({ user, player }: UserRewardsProps) {
         return { playerAssetList, slots };
     }, [playerAssets]);
 
-    const [selectedReward, setSelectedReward] =
-        useState<PlayerAssetWithAsset | null>(null);
-    const [showModal, setShowModal] = useState(false);
-
-    const handleRewardClick = (asset: PlayerAssetWithAsset) => {
-        setSelectedReward(asset);
-        setShowModal(true);
-    };
-
     return (
         <>
-            <UserRewardsModal
-                showModal={showModal}
-                setShowModal={setShowModal}
-                selectedReward={selectedReward}
-                rewards={playerAssetList}
-                playerId={player?.id ?? ""}
-            />
             <div
                 className={cn(
-                    "grid grid-cols-3 gap-3 w-screen max-w-[1000px]",
-                    "py-4 px-6 sm:py-6 sm:px-8 md:py-8 md:px-12 lg:py-10 lg:px-12",
-                    "mb-[100px]"
+                    "w-screen max-w-[800px] mx-auto flex flex-col gap-4 mb-[100px] lg:mb-[50px]"
                 )}
             >
-                {slots.map((asset: PlayerAssetWithAsset | null, idx) => (
-                    <div
-                        key={idx}
-                        className={cn(
-                            "w-full aspect-square relative",
-                            "border-2 border-[rgba(255,255,255,0.2)] rounded-[16px]",
-                            "bg-[rgba(255,255,255,0.05)] flex items-center justify-center",
-                            "morp-glass-1 overflow-hidden",
-                            "transition-all duration-300 ease-in-out",
-                            asset
-                                ? "shadow-lg cursor-pointer hover:scale-105 hover:bg-[rgba(255,255,255,0.15)]"
-                                : "cursor-auto inner-shadow"
-                        )}
-                        onClick={() => {
-                            if (asset) {
-                                handleRewardClick(asset);
-                            }
-                        }}
-                    >
-                        {asset && (
-                            <RewardButton
-                                index={idx}
-                                balance={asset?.balance ?? 0}
-                                icon={asset?.asset?.iconUrl ?? ""}
-                                name={asset?.asset?.name ?? ""}
-                                className={cn("w-full h-full")}
-                            />
-                        )}
-                    </div>
-                ))}
+                <UserRewardModalCardV2
+                    playerId={player?.id}
+                    reward={playerAssetList[0]}
+                    closeModal={() => {}}
+                />
             </div>
         </>
     );

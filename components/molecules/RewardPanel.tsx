@@ -8,7 +8,7 @@ import Funds from "@/components/atoms/Funds";
 import { Loader2 } from "lucide-react";
 import { PlayerAsset, Asset } from "@prisma/client";
 import UserRewardsModal from "../user/User.Rewards.Modal";
-import type { PlayerAssetWithAsset } from "../user/User.Rewards";
+import type { PlayerAssetWithAsset } from "../user/User.Rewards.Inventory";
 
 interface RewardPanelProps {
     playerId: string;

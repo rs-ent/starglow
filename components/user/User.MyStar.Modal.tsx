@@ -39,7 +39,7 @@ export default function UserMyStarModal({
                     <motion.div
                         className={cn(
                             "fixed inset-0 z-50 w-screen h-screen",
-                            "flex items-center justify-center py-[50px]"
+                            "flex items-center justify-center"
                         )}
                         style={{
                             zIndex: 1000,
@@ -245,11 +245,7 @@ export default function UserMyStarModal({
                             <XIcon className="w-5 h-5 text-white group-hover:rotate-90 transition-transform duration-300" />
                         </motion.button>
 
-                        <div
-                            className={cn(
-                                "w-full h-full relative py-8 lg:px-12"
-                            )}
-                        >
+                        <div className={cn("w-full h-full relative")}>
                             <motion.div
                                 initial={{
                                     opacity: 0,
@@ -278,7 +274,7 @@ export default function UserMyStarModal({
                             >
                                 <div
                                     className={cn(
-                                        "relative w-full h-full rounded-3xl overflow-hidden",
+                                        "relative w-full h-full overflow-hidden",
                                         "bg-gradient-to-r animate-gradient-shift"
                                     )}
                                     style={{
