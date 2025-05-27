@@ -8,6 +8,8 @@ import {
     SetPlayerInput,
     invitePlayer,
     InvitePlayerParams,
+    updatePlayerSettings,
+    UpdatePlayerSettingsInput,
 } from "@/app/actions/player";
 import { playerKeys } from "@/app/queryKeys";
 
@@ -33,7 +35,23 @@ export function useInvitePlayerMutation(input?: InvitePlayerParams) {
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: playerKeys.all });
             queryClient.invalidateQueries({
-                queryKey: playerKeys.byId(variables?.referralId || ""),
+                queryKey: playerKeys.byId(variables?.referredUser.id || ""),
+            });
+        },
+    });
+}
+
+export function useUpdatePlayerSettingsMutation(
+    input?: UpdatePlayerSettingsInput
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: updatePlayerSettings,
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: playerKeys.all });
+            queryClient.invalidateQueries({
+                queryKey: playerKeys.byId(variables?.playerId || ""),
             });
         },
     });

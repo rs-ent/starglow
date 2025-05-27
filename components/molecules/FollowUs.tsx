@@ -14,10 +14,26 @@ interface FollowUsProps {
 }
 
 const socialLinks = [
-    { href: "https://docs.starglow.io", icon: "/icons/gitbook-black-round.svg", alt: "Gitbook" },
-    { href: "https://x.com/StarglowP", icon: "/icons/x-black-round.svg", alt: "X" },
-    { href: "https://t.me/StarglowP_Ann", icon: "/icons/telegram-black-round.svg", alt: "Telegram" },
-    { href: "https://medium.com/@starglowP", icon: "/icons/medium-black-round.svg", alt: "Medium" },
+    {
+        href: "https://docs.starglow.io",
+        icon: "/icons/gitbook-black-round.svg",
+        alt: "Gitbook",
+    },
+    {
+        href: "https://x.com/StarglowP",
+        icon: "/icons/x-black-round.svg",
+        alt: "X",
+    },
+    {
+        href: "https://t.me/StarglowP_Ann",
+        icon: "/icons/telegram-black-round.svg",
+        alt: "Telegram",
+    },
+    {
+        href: "https://medium.com/@Starglow",
+        icon: "/icons/medium-black-round.svg",
+        alt: "Medium",
+    },
 ];
 
 export default function FollowUs({
@@ -31,16 +47,33 @@ export default function FollowUs({
     const { textClass } = getResponsiveClass(textSize);
 
     return (
-        <div className={cn("flex flex-col items-center justify-center text-center", className)}>
+        <div
+            className={cn(
+                "flex flex-col items-center justify-center text-center",
+                className
+            )}
+        >
             {!minimal && (
-                <H3 className={cn("font-main text-foreground", textClass, "mb-1")}>
+                <H3
+                    className={cn(
+                        "font-main text-foreground",
+                        textClass,
+                        "mb-1"
+                    )}
+                >
                     FOLLOW US ON SOCIAL MEDIA
                 </H3>
             )}
 
             <div className={cn("flex items-center justify-center", gapClass)}>
                 {socialLinks.map(({ href, icon, alt }) => (
-                    <LinkButton key={alt} href={href} target="_blank" frameSize={frameSize} paddingSize={minimal ? 0 : undefined}>
+                    <LinkButton
+                        key={alt}
+                        href={href}
+                        target="_blank"
+                        frameSize={frameSize}
+                        paddingSize={minimal ? 0 : undefined}
+                    >
                         <img
                             src={icon}
                             alt={alt}

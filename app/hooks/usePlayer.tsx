@@ -9,12 +9,14 @@ import {
 import {
     useSetPlayerMutation,
     useInvitePlayerMutation,
+    useUpdatePlayerSettingsMutation,
 } from "@/app/mutations/playerMutations";
 import {
     GetPlayerInput,
     InvitePlayerParams,
     SetPlayerInput,
     GetDBUserFromPlayerInput,
+    UpdatePlayerSettingsInput,
 } from "@/app/actions/player";
 
 export function usePlayerGet({
@@ -50,24 +52,24 @@ export function usePlayerGet({
     };
 }
 
-export function usePlayerSet({
-    setPlayerInput,
-    invitePlayerInput,
-}: {
-    setPlayerInput?: SetPlayerInput;
-    invitePlayerInput?: InvitePlayerParams;
-}) {
+export function usePlayerSet() {
     const {
         mutateAsync: setPlayer,
         isPending: isSetPlayerPending,
         error: setPlayerError,
-    } = useSetPlayerMutation(setPlayerInput);
+    } = useSetPlayerMutation();
 
     const {
         mutateAsync: invitePlayer,
         isPending: isInvitePlayerPending,
         error: invitePlayerError,
-    } = useInvitePlayerMutation(invitePlayerInput);
+    } = useInvitePlayerMutation();
+
+    const {
+        mutateAsync: updatePlayerSettings,
+        isPending: isUpdatePlayerSettingsPending,
+        error: updatePlayerSettingsError,
+    } = useUpdatePlayerSettingsMutation();
 
     return {
         setPlayer,
@@ -78,7 +80,12 @@ export function usePlayerSet({
         isInvitePlayerPending,
         invitePlayerError,
 
+        updatePlayerSettings,
+        isUpdatePlayerSettingsPending,
+        updatePlayerSettingsError,
+
         useSetPlayerMutation,
         useInvitePlayerMutation,
+        useUpdatePlayerSettingsMutation,
     };
 }

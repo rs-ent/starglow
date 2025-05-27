@@ -104,6 +104,9 @@ model Player {
   userId            String?      @unique
   telegramId        String?      @unique
   name              String?
+  nickname          String?
+  image             String?
+  email             String?
   referralCount     Int          @default(0)
   referredBy        String?
   referrer          Player?      @relation("Referrer", fields: [referredBy], references: [id])

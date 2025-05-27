@@ -239,3 +239,32 @@ export async function generateReferralCode(): Promise<string> {
 
     return code;
 }
+
+export interface UpdatePlayerSettingsInput {
+    playerId: string;
+    nickname?: string;
+    image?: string;
+    email?: string;
+}
+
+export async function updatePlayerSettings(
+    input?: UpdatePlayerSettingsInput
+): Promise<Player | null> {
+    if (!input) {
+        return null;
+    }
+
+    try {
+        return await prisma.player.update({
+            where: { id: input.playerId },
+            data: {
+                nickname: input.nickname,
+                image: input.image,
+                email: input.email,
+            },
+        });
+    } catch (error) {
+        console.error("[updatePlayerSettings] Error:", error);
+        return null;
+    }
+}

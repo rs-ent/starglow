@@ -32,7 +32,6 @@ export default function UserMyStarModalContentsCollections({
     pollLogs,
 }: UserMyStarModalContentsCollectionsProps) {
     const sliderRef = useRef<Slider | null>(null);
-    const [currentSlide, setCurrentSlide] = useState(0);
 
     const settings = {
         dots: false,
@@ -41,7 +40,6 @@ export default function UserMyStarModalContentsCollections({
         speed: 500,
         slidesToShow: 1,
         slidesToScroll: 1,
-        afterChange: (index: number) => setCurrentSlide(index),
     };
 
     const handleSlide = (direction: "next" | "prev") => {

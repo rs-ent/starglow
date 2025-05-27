@@ -7,13 +7,18 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { User } from "next-auth";
 import { getProviderIdentity } from "@/lib/utils/get/provider-identity";
 import { Provider, ProviderType } from "@/app/types/auth";
-
+import { Player } from "@prisma/client";
 interface ProfileNameProps {
     user: User & { provider?: ProviderType };
+    player: Player;
     size?: number;
 }
 
-export default function ProfileName({ user, size = 20 }: ProfileNameProps) {
+export default function ProfileName({
+    user,
+    player,
+    size = 20,
+}: ProfileNameProps) {
     const textClass = getResponsiveClass(size).textClass;
     const frameClass = getResponsiveClass(size + 5).frameClass;
 
@@ -31,7 +36,7 @@ export default function ProfileName({ user, size = 20 }: ProfileNameProps) {
                 </div>
             )}
             <p className={cn("text-[rgba(255,255,255,0.7)]", textClass)}>
-                {user.name || user.email || " "}
+                {player.nickname || user.name || user.email || " "}
             </p>
         </div>
     );

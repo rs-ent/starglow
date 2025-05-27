@@ -9,6 +9,8 @@ import { useState, useMemo } from "react";
 import RewardPanel from "../molecules/RewardPanel";
 import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
+import { usePathname } from "next/navigation";
+import UserSettings from "../user/User.Settings";
 
 const defaultMenuItems = [
     { name: "Quest", href: "/quests", icon: "/ui/navigation/nav-quest.svg" },
@@ -30,7 +32,9 @@ interface NavigationBarProps {
 }
 
 export default function NavigationBar({ user, player }: NavigationBarProps) {
+    const pathname = usePathname();
     const [active, setActive] = useState<string>("");
+    const [showUserSettings, setShowUserSettings] = useState<boolean>(false);
     const menu = useMemo(() => {
         if (user && user.id) {
             return [...defaultMenuItems, ...myPage(user.id)];
@@ -40,6 +44,9 @@ export default function NavigationBar({ user, player }: NavigationBarProps) {
 
     return (
         <>
+            {showUserSettings && user && player && (
+                <UserSettings user={user} player={player} />
+            )}
             <nav
                 className="
                 hidden lg:flex
@@ -112,10 +119,19 @@ export default function NavigationBar({ user, player }: NavigationBarProps) {
                         <img src="/logo/l-white.svg" alt="Starglow" />
                     </LinkButton>
                     {player ? (
-                        <RewardPanel
-                            playerId={player.id}
-                            assetNames={["SGP"]}
-                        />
+                        pathname !== "/user" ? (
+                            <RewardPanel
+                                playerId={player.id}
+                                assetNames={["SGP"]}
+                            />
+                        ) : (
+                            <img
+                                src="/ui/settings.svg"
+                                alt="Settings"
+                                className="w-[20px] h-[20px] opacity-80 hover:opacity-100 transition-opacity duration-300"
+                                onClick={() => setShowUserSettings(true)}
+                            />
+                        )
                     ) : (
                         <AuthButton
                             frameSize={10}

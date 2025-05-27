@@ -41,7 +41,7 @@ export default function User({ user, player }: UserProps) {
                         "flex flex-col items-center justify-center"
                     )}
                 >
-                    <UserProfile user={user} />
+                    <UserProfile user={user} player={player} />
                     <PublicPrivateTab
                         isPublic={isPublic}
                         onPublic={() => setIsPublic(true)}

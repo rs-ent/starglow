@@ -136,6 +136,7 @@ function Status({
                 .join(", "),
             needCopy: false,
         });
+        
         return result;
     }, [verifiedCollection, metadata]);
 
