@@ -1,8 +1,8 @@
-/// components/organisms/Hero.FollowUs.tsx
+/// components/main/Main.FollowUs.tsx
 
 import FollowUs from "../molecules/FollowUs";
 
-export default function HeroFollowUs() {
+export default function MainFollowUs() {
     return (
         <div
             className="

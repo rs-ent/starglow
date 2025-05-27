@@ -3,13 +3,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import HeroGitbook from "@/components/organisms/Hero.Gitbook";
-import HeroFollowUs from "@/components/organisms/Hero.FollowUs";
+import MainGitbook from "@/components/main/Main.Gitbook";
+import MainPartners from "@/components/main/Main.Partners";
+import MainFollowUs from "@/components/main/Main.FollowUs";
 import Footer from "@/components/organisms/Footer";
 import Script from "next/script";
-import { getSession, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useUserSet } from "@/app/hooks/useUser";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 declare global {
     interface Window {
@@ -93,8 +94,9 @@ export default function Main() {
                 />
 
                 <main className="flex flex-col flex-1">
-                    <HeroGitbook />
-                    <HeroFollowUs />
+                    <MainGitbook />
+                    <MainPartners />
+                    <MainFollowUs />
                 </main>
                 <Footer followUsVisible={false} />
             </div>

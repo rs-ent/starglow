@@ -1,4 +1,4 @@
-/// components/organisms/Hero.Gitbook.tsx
+/// components/main/Main.Gitbook.tsx
 
 "use client";
 
@@ -8,7 +8,7 @@ import Icon from "../atoms/Icon";
 import { ArrowDown } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function HeroGitbook() {
+export default function MainGitbook() {
     return (
         <div className="
             flex flex-col items-center justify-center w-full text-center
