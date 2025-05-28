@@ -15,7 +15,7 @@ import ArtistMessage from "../artists/ArtistMessage";
 import QuestsArtistMissions from "../quests/Quests.Contents.Private.ArtistMissions";
 import PollsContentsPrivateArtistList from "../polls/Polls.Contents.Private.ArtistList";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
-
+import ArtistFeed from "../artists/Artist.Feed";
 interface UserMyStarModalContentsCollectionsProps {
     player: Player | null;
     questLogs: QuestLog[];
@@ -131,6 +131,7 @@ export default function UserMyStarModalContentsCollections({
                     artistId={artist.id}
                     className={cn("mt-[10px]")}
                 />
+                <ArtistFeed artist={artist} />
                 <div
                     className={cn(
                         "px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px]"

@@ -72,6 +72,7 @@ export default function InteractFeedback({
             decay: 0.96,
             startVelocity: 20,
             scalar: 1,
+            zIndex: 1000,
         };
 
         const shoot = () => {

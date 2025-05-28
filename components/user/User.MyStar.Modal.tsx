@@ -220,13 +220,13 @@ export default function UserMyStarModal({
                             }}
                             exit={{ opacity: 0, scale: 0.5 }}
                             transition={{
+                                ease: "easeInOut",
                                 duration: 0.5,
                                 delay: 0.8,
-                                ease: [0.34, 1.56, 0.64, 1],
                             }}
                             onClick={onClose}
                             className={cn(
-                                "absolute top-4 right-4 z-60",
+                                "absolute top-4 right-4 z-10",
                                 "p-3 rounded-full",
                                 "bg-white/10 backdrop-blur-sm",
                                 "border border-white/20",

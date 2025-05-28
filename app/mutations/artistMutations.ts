@@ -10,6 +10,7 @@ import {
     updateArtist,
     createArtistMessage,
     updateArtistMessage,
+    deleteArtistMessage,
     tokenGating,
 } from "../actions/artists";
 
@@ -98,6 +99,24 @@ export function useUpdateArtistMessage() {
                     }),
                 });
             }
+        },
+    });
+}
+
+export function useDeleteArtistMessage() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: deleteArtistMessage,
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: artistKeys.all });
+            queryClient.invalidateQueries({
+                queryKey: artistKeys.messages({
+                    artistId: variables.artistId,
+                }),
+            });
+            queryClient.invalidateQueries({
+                queryKey: artistKeys.detail({ id: variables.artistId }),
+            });
         },
     });
 }

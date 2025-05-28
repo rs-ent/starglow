@@ -307,6 +307,23 @@ export async function updateArtistMessage(
     }
 }
 
+export interface DeleteArtistMessageInput {
+    id: string;
+    artistId: string;
+}
+
+export async function deleteArtistMessage(
+    input: DeleteArtistMessageInput
+): Promise<boolean> {
+    try {
+        await prisma.artistMessage.delete({ where: { id: input.id } });
+        return true;
+    } catch (error) {
+        console.error(error);
+        return false;
+    }
+}
+
 export interface TokenGatingInput {
     artist: Artist | null;
     userId: string | null;

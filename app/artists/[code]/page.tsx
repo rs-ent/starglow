@@ -1,17 +1,21 @@
 /// app/artists/manage/[id]/page.tsx
 
-import { getArtist } from "@/app/actions/artists";
-import AdminArtistsManageDashboard from "@/components/admin/artists/Admin.Artists.Manage.Dashboard";
+import AdminArtistsManageDashboard from "@/components/admin/artists/manage/Admin.Artists.Manage.Dashboard";
+import { prisma } from "@/lib/prisma/client";
 
 interface ArtistPageProps {
     params: {
-        id: string;
+        code: string;
     };
 }
 
 export default async function ArtistPage({ params }: ArtistPageProps) {
-    const { id } = await params;
-    const artist = await getArtist({ id });
+    const { code } = await params;
+    const artist = await prisma.artist.findUnique({
+        where: {
+            code,
+        },
+    });
 
     if (!artist) {
         return <div>Artist not found</div>;

@@ -120,6 +120,7 @@ model Player {
   pollLogs          PollLog[]
   questLogs         QuestLog[]
   rewardLogs        RewardsLog[]
+  artistFeedReactions ArtistFeedReaction[]
   referredPlayerLogs    ReferralLog[]   @relation("ReferredPlayer")
   referrerPlayerLogs    ReferralLog[]   @relation("ReferrerPlayer")
   referralCode          String   @unique
@@ -1009,8 +1010,10 @@ model Artist {
   additionalInfo      Json?
   backgroundColors    String[]             @default([])
   foregroundColors    String[]             @default([])
+  code                String?              @unique
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
+  feeds               ArtistFeed[]
   members             ArtistMember[]
   collectionContracts CollectionContract[]
   messages            ArtistMessage[]
@@ -1018,6 +1021,7 @@ model Artist {
   quests              Quest[]              @relation("ArtistQuests")
 
   @@index([name])
+  @@index([code])
 }
 
 model ArtistMember {
@@ -1058,6 +1062,30 @@ model ArtistMessage {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   artist         Artist    @relation(fields: [artistId], references: [id])
+}
+
+model ArtistFeed {
+  id String @id @default(cuid())
+  artistId String
+  artist Artist @relation(fields: [artistId], references: [id])
+  imageUrls String[]
+  videoUrls String[]
+  text String?
+  reactions ArtistFeedReaction[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ArtistFeedReaction {
+  id String @id @default(cuid())
+  artistFeedId String
+  artistFeed ArtistFeed @relation(fields: [artistFeedId], references: [id])
+  playerId String
+  player Player @relation(fields: [playerId], references: [id])
+  reaction String?
+  comment String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum PaymentStatus {

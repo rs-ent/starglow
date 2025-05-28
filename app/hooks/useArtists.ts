@@ -16,6 +16,7 @@ import {
     useCreateArtistMessage,
     useUpdateArtistMessage,
     useTokenGating,
+    useDeleteArtistMessage,
 } from "@/app/mutations/artistMutations";
 
 import type {
@@ -52,6 +53,7 @@ export function useArtistsGet({
         data: artistMessages,
         isLoading: isArtistMessagesLoading,
         error: artistMessagesError,
+        refetch: refetchArtistMessages,
     } = useArtistMessages(getArtistMessagesInput);
 
     const {
@@ -80,6 +82,7 @@ export function useArtistsGet({
         artistMessages,
         isArtistMessagesLoading,
         artistMessagesError,
+        refetchArtistMessages,
 
         tokenGatingResult,
         isTokenGatingLoading,
@@ -122,6 +125,12 @@ export function useArtistSet() {
     } = useUpdateArtistMessage();
 
     const {
+        mutateAsync: deleteArtistMessage,
+        isPending: isDeletingArtistMessage,
+        error: deleteArtistMessageError,
+    } = useDeleteArtistMessage();
+
+    const {
         mutateAsync: tokenGating,
         isPending: isTokenGating,
         error: tokenGatingError,
@@ -162,6 +171,10 @@ export function useArtistSet() {
         updateArtistMessage,
         isUpdatingArtistMessage,
         updateArtistMessageError,
+
+        deleteArtistMessage,
+        isDeletingArtistMessage,
+        deleteArtistMessageError,
 
         tokenGating,
         isTokenGating,

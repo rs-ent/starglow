@@ -102,6 +102,7 @@ Table Player {
   pollLogs PollLog [not null]
   questLogs QuestLog [not null]
   rewardLogs RewardsLog [not null]
+  artistFeedReactions ArtistFeedReaction [not null]
   referredPlayerLogs ReferralLog [not null]
   referrerPlayerLogs ReferralLog [not null]
   referralCode String [unique, not null]
@@ -816,8 +817,10 @@ Table Artist {
   additionalInfo Json
   backgroundColors String[] [not null]
   foregroundColors String[] [not null]
+  code String [unique]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  feeds ArtistFeed [not null]
   members ArtistMember [not null]
   collectionContracts CollectionContract [not null]
   messages ArtistMessage [not null]
@@ -863,6 +866,30 @@ Table ArtistMessage {
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   artist Artist [not null]
+}
+
+Table ArtistFeed {
+  id String [pk]
+  artistId String [not null]
+  artist Artist [not null]
+  imageUrls String[] [not null]
+  videoUrls String[] [not null]
+  text String
+  reactions ArtistFeedReaction [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table ArtistFeedReaction {
+  id String [pk]
+  artistFeedId String [not null]
+  artistFeed ArtistFeed [not null]
+  playerId String [not null]
+  player Player [not null]
+  reaction String
+  comment String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
 }
 
 Table StakeReward {
@@ -1070,3 +1097,9 @@ Ref: NFTEvent.nftId > NFT.id
 Ref: ArtistMember.artistId > Artist.id
 
 Ref: ArtistMessage.artistId > Artist.id
+
+Ref: ArtistFeed.artistId > Artist.id
+
+Ref: ArtistFeedReaction.artistFeedId > ArtistFeed.id
+
+Ref: ArtistFeedReaction.playerId > Player.id

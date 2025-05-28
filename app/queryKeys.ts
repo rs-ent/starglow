@@ -617,3 +617,16 @@ export const rewardLogsKeys = {
     list: (input?: GetRewardsLogsInput) =>
         [...rewardLogsKeys.all, "list", input] as const,
 };
+
+export const artistFeedKeys = {
+    all: ["artist-feeds"] as const,
+    list: (params: { artistId: string; cursor?: string; limit?: number }) =>
+        [...artistFeedKeys.all, "list", params] as const,
+    byId: (id: string) => [...artistFeedKeys.all, "detail", id] as const,
+    reactions: (params: {
+        artistFeedId?: string;
+        playerId?: string;
+        cursor?: string;
+        limit?: number;
+    }) => [...artistFeedKeys.all, "reactions", params] as const,
+};
