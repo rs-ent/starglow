@@ -28,6 +28,7 @@ import {
     useRemoveEscrowWalletMutation,
     useDeployCollectionMutation,
     useUpdateCollectionSettingsMutation,
+    useAddPageImagesMutation,
 } from "../mutations/collectionContractsMutations";
 import { CollectionParticipantType } from "@prisma/client";
 import { collectionKeys } from "../queryKeys";
@@ -185,6 +186,7 @@ export function useCollectionSet({
     const addEscrowMutation = useAddEscrowWalletMutation();
     const removeEscrowMutation = useRemoveEscrowWalletMutation();
     const updateSettingsMutation = useUpdateCollectionSettingsMutation();
+    const addPageImagesMutation = useAddPageImagesMutation();
 
     return {
         // 작업 함수들
@@ -198,6 +200,7 @@ export function useCollectionSet({
         addEscrow: addEscrowMutation.mutateAsync,
         removeEscrow: removeEscrowMutation.mutateAsync,
         updateSettings: updateSettingsMutation.mutateAsync,
+        addPageImages: addPageImagesMutation.mutateAsync,
 
         // 작업 상태
         isProcessing:
@@ -210,7 +213,8 @@ export function useCollectionSet({
             unpauseMutation.isPending ||
             addEscrowMutation.isPending ||
             removeEscrowMutation.isPending ||
-            updateSettingsMutation.isPending,
+            updateSettingsMutation.isPending ||
+            addPageImagesMutation.isPending,
 
         // 개별 작업 상태
         isMinting: mintMutation.isPending,
@@ -223,6 +227,7 @@ export function useCollectionSet({
         isAddingEscrow: addEscrowMutation.isPending,
         isRemovingEscrow: removeEscrowMutation.isPending,
         isUpdatingSettings: updateSettingsMutation.isPending,
+        isAddingPageImages: addPageImagesMutation.isPending,
 
         // 에러
         error:
@@ -235,7 +240,8 @@ export function useCollectionSet({
             unpauseMutation.error ||
             addEscrowMutation.error ||
             removeEscrowMutation.error ||
-            updateSettingsMutation.error,
+            updateSettingsMutation.error ||
+            addPageImagesMutation.error,
 
         // 원본 mutation 객체들 (고급 사용 사례용)
         mintMutation,
@@ -248,7 +254,7 @@ export function useCollectionSet({
         addEscrowMutation,
         removeEscrowMutation,
         updateSettingsMutation,
-
+        addPageImagesMutation,
         // 캐시 갱신
         refresh: async () => {
             if (!collectionAddress) return;
@@ -264,6 +270,9 @@ export function useCollectionSet({
             });
             await queryClient.invalidateQueries({
                 queryKey: collectionKeys.settings.byAddress(collectionAddress),
+            });
+            await queryClient.invalidateQueries({
+                queryKey: collectionKeys.detail(collectionAddress),
             });
         },
     };

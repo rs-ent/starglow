@@ -15,6 +15,7 @@ import {
     removeEscrowWallet,
     deployCollection,
     updateCollectionSettings,
+    addPageImages,
 } from "@/app/actions/collectionContracts";
 import { NFT } from "@prisma/client";
 import { collectionKeys } from "../queryKeys";
@@ -658,6 +659,23 @@ export const useUpdateCollectionSettingsMutation = () => {
         },
         onError: (error, variables) => {
             toast.error("컬렉션 설정 업데이트 실패: ${error}");
+        },
+    });
+};
+
+export const useAddPageImagesMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: addPageImages,
+        onSuccess: async (data, variables) => {
+            if (data.success) {
+                await queryClient.invalidateQueries({
+                    queryKey: collectionKeys.detail(
+                        variables.collectionAddress
+                    ),
+                });
+            }
         },
     });
 };

@@ -43,6 +43,15 @@ import { Switch } from "@/components/ui/switch";
 import { CollectionContract } from "@prisma/client";
 import { useUpdateCollectionSettingsMutation } from "@/app/mutations/collectionContractsMutations";
 import DateTimePicker from "@/components/atoms/DateTimePicker";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import OnChainCollectionPageImages from "./OnChain.CollectionPageImages";
 
 interface CollectionFunctionsProps {
     collection: CollectionContract;
@@ -98,6 +107,8 @@ export default function CollectionFunctions({
     const [glowEnd, setGlowEnd] = useState(
         collection.glowEnd?.toString() || ""
     );
+
+    const [showPageImages, setShowPageImages] = useState(false);
 
     // 컬렉션 데이터 및 작업
     const {
@@ -539,6 +550,17 @@ export default function CollectionFunctions({
                         onCheckedChange={setIsListed}
                     />
                 </div>
+
+                <div>
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            setShowPageImages(!showPageImages);
+                        }}
+                    >
+                        페이지 이미지 추가하기
+                    </Button>
+                </div>
             </CardContent>
             <CardFooter>
                 <Button
@@ -561,16 +583,14 @@ export default function CollectionFunctions({
 
     return (
         <div className="rounded-md bg-muted/40 p-4 space-y-4">
-            <h3 className="text-lg font-semibold">
-                Collection Contract Functions
-            </h3>
+            <h3 className="text-lg font-semibold">컬렉션 컨트랙트 기능</h3>
             <div className="text-sm text-muted-foreground mb-4">
-                Manage and interact with this NFT collection.
+                이 NFT 컬렉션을 관리하고 상호작용하세요.
                 <div className="mt-2 font-mono text-xs">
-                    Collection Address: {collection.address}
+                    컬렉션 주소: {collection.address}
                 </div>
                 <div className="font-mono text-xs">
-                    Network:{" "}
+                    네트워크:{" "}
                     {networks?.find((n) => n.id === collection.networkId)
                         ?.name || "Unknown"}
                 </div>
@@ -578,15 +598,15 @@ export default function CollectionFunctions({
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Wallet</CardTitle>
+                    <CardTitle>지갑</CardTitle>
                     <CardDescription>
-                        Select a wallet to interact with the contract
+                        컬렉션을 상호작용하기 위한 지갑을 선택하세요
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="grid w-full items-center gap-4">
                         <div className="space-y-2">
-                            <Label>Select Wallet</Label>
+                            <Label>지갑 선택</Label>
                             <select
                                 className="w-full p-2 rounded-md border bg-card"
                                 value={selectedWalletId}
@@ -594,7 +614,7 @@ export default function CollectionFunctions({
                                     handleWalletSelect(e.target.value)
                                 }
                             >
-                                <option value="">Select a wallet</option>
+                                <option value="">지갑 선택</option>
                                 {wallets?.map((wallet) => (
                                     <option key={wallet.id} value={wallet.id}>
                                         {wallet.address} (
@@ -617,12 +637,12 @@ export default function CollectionFunctions({
                                     {showPrivateKey ? (
                                         <>
                                             <EyeOff className="h-4 w-4 mr-1" />
-                                            Hide
+                                            숨김
                                         </>
                                     ) : (
                                         <>
                                             <Eye className="h-4 w-4 mr-1" />
-                                            Show
+                                            보기
                                         </>
                                     )}
                                 </Button>
@@ -630,7 +650,7 @@ export default function CollectionFunctions({
                             <Input
                                 id="privateKey"
                                 type={showPrivateKey ? "text" : "password"}
-                                placeholder="Private key will be loaded automatically"
+                                placeholder="프라이빗빗 키는 자동으로 로드됩니다"
                                 value={privateKey}
                                 disabled
                             />
@@ -671,24 +691,22 @@ export default function CollectionFunctions({
 
             <Tabs defaultValue="mint" className="w-full">
                 <TabsList className="grid grid-cols-3 mb-4">
-                    <TabsTrigger value="mint">Mint</TabsTrigger>
-                    <TabsTrigger value="metadata">Metadata</TabsTrigger>
-                    <TabsTrigger value="settings">Settings</TabsTrigger>
+                    <TabsTrigger value="mint">민팅</TabsTrigger>
+                    <TabsTrigger value="metadata">메타데이터</TabsTrigger>
+                    <TabsTrigger value="settings">설정</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="mint" className="space-y-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Mint Tokens</CardTitle>
+                            <CardTitle>토큰 민팅</CardTitle>
                             <CardDescription>
-                                Mint new NFTs to a specified address
+                                지정된 주소에 새로운 NFT를 민팅하세요
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid w-full items-center gap-2">
-                                <Label htmlFor="recipient">
-                                    Recipient Address
-                                </Label>
+                                <Label htmlFor="recipient">수신자 주소</Label>
                                 <Input
                                     id="recipient"
                                     placeholder="0x..."
@@ -699,7 +717,7 @@ export default function CollectionFunctions({
                                 />
                             </div>
                             <div className="grid w-full items-center gap-2">
-                                <Label htmlFor="quantity">Quantity</Label>
+                                <Label htmlFor="quantity">수량</Label>
                                 <Input
                                     id="quantity"
                                     type="number"
@@ -715,7 +733,7 @@ export default function CollectionFunctions({
                             <div className="border rounded-md p-3 mt-4 space-y-3">
                                 <div className="flex justify-between items-center">
                                     <div className="font-medium text-sm">
-                                        Gas Estimation
+                                        가스 추정
                                     </div>
                                     <Button
                                         variant="ghost"
@@ -736,19 +754,19 @@ export default function CollectionFunctions({
                                         {!selectedWalletId ? (
                                             <div className="text-yellow-500">
                                                 <AlertTriangle className="h-3 w-3 inline mr-1" />
-                                                Please select a wallet with
-                                                admin or escrow permissions
+                                                관리자 또는 에스크로 권한이 있는
+                                                지갑을 선택하세요
                                             </div>
                                         ) : isGasEstimateLoading ? (
                                             <div className="flex items-center">
                                                 <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                                                Estimating gas...
+                                                가스 추정 중...
                                             </div>
                                         ) : gasEstimateData ? (
                                             <>
                                                 <div className="flex justify-between">
                                                     <span className="text-muted-foreground">
-                                                        Estimated Gas Cost:
+                                                        예상 가스 비용:
                                                     </span>
                                                     <span className="font-mono">
                                                         {
@@ -760,7 +778,7 @@ export default function CollectionFunctions({
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between text-xs text-muted-foreground">
-                                                    <span>Gas Limit:</span>
+                                                    <span>가스 한도:</span>
                                                     <span className="font-mono">
                                                         {
                                                             gasEstimateData.gasLimit
@@ -771,14 +789,14 @@ export default function CollectionFunctions({
                                         ) : (
                                             <div className="text-yellow-500">
                                                 <AlertTriangle className="h-3 w-3 inline mr-1" />
-                                                Unable to estimate gas
+                                                가스 추정 불가능
                                             </div>
                                         )}
                                     </div>
                                 ) : (
                                     <div className="text-sm text-muted-foreground">
-                                        Enter recipient address and quantity to
-                                        see gas estimation
+                                        수신자 주소와 수량을 입력하여 가스
+                                        추정을 확인하세요
                                     </div>
                                 )}
 
@@ -800,7 +818,7 @@ export default function CollectionFunctions({
                                                 htmlFor="customGasSettings"
                                                 className="text-sm"
                                             >
-                                                Use custom gas settings
+                                                사용자 지정 가스 설정 사용
                                             </Label>
                                         </div>
 
@@ -811,7 +829,7 @@ export default function CollectionFunctions({
                                                         htmlFor="gasLimit"
                                                         className="text-xs"
                                                     >
-                                                        Gas Limit
+                                                        가스 한도
                                                     </Label>
                                                     <Input
                                                         id="gasLimit"
@@ -821,7 +839,7 @@ export default function CollectionFunctions({
                                                                 e.target.value
                                                             )
                                                         }
-                                                        placeholder="Gas Limit"
+                                                        placeholder="가스 한도"
                                                         className="h-8 text-xs"
                                                     />
                                                 </div>
@@ -830,7 +848,7 @@ export default function CollectionFunctions({
                                                         htmlFor="gasPrice"
                                                         className="text-xs"
                                                     >
-                                                        Gas Price (wei)
+                                                        가스 가격 (wei)
                                                     </Label>
                                                     <Input
                                                         id="gasPrice"
@@ -840,7 +858,7 @@ export default function CollectionFunctions({
                                                                 e.target.value
                                                             )
                                                         }
-                                                        placeholder="Gas Price"
+                                                        placeholder="가스 가격"
                                                         className="h-8 text-xs"
                                                     />
                                                 </div>
@@ -859,10 +877,10 @@ export default function CollectionFunctions({
                                 {isMinting ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Minting...
+                                        민팅 중...
                                     </>
                                 ) : (
-                                    "Mint NFTs"
+                                    "NFT 민팅"
                                 )}
                             </Button>
                         </CardFooter>
@@ -874,8 +892,7 @@ export default function CollectionFunctions({
                         <CardHeader>
                             <CardTitle>Collection Metadata</CardTitle>
                             <CardDescription>
-                                View the metadata associated with this
-                                collection
+                                이 컬렉션과 관련된 메타데이터입니다.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -902,7 +919,7 @@ export default function CollectionFunctions({
                                                     }
                                                 >
                                                     <Copy className="h-4 w-4 mr-1" />
-                                                    Copy
+                                                    복사
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
@@ -917,7 +934,7 @@ export default function CollectionFunctions({
                                                     }
                                                 >
                                                     <ExternalLink className="h-4 w-4 mr-1" />
-                                                    Open
+                                                    열기
                                                 </Button>
                                             </div>
                                         )}
@@ -977,16 +994,18 @@ export default function CollectionFunctions({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Card>
                             <CardHeader>
-                                <CardTitle>Pause Contract</CardTitle>
+                                <CardTitle>컬렉션 일시 중지</CardTitle>
                                 <CardDescription>
-                                    Temporarily pause all transfers and minting
+                                    모든 전송 및 민팅을 일시적으로 중지
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <p className="text-sm text-muted-foreground">
-                                    Current status:{" "}
+                                    현재 상태:{" "}
                                     <span className="font-semibold">
-                                        {status?.isPaused ? "Paused" : "Active"}
+                                        {status?.isPaused
+                                            ? "일시 중지"
+                                            : "활성화"}
                                     </span>
                                 </p>
                             </CardContent>
@@ -1017,12 +1036,12 @@ export default function CollectionFunctions({
                                             {status?.isPaused ? (
                                                 <>
                                                     <Play className="mr-2 h-4 w-4" />
-                                                    Unpause Contract
+                                                    컬렉션 일시 중지 해제
                                                 </>
                                             ) : (
                                                 <>
                                                     <Pause className="mr-2 h-4 w-4" />
-                                                    Pause Contract
+                                                    컬렉션 일시 중지
                                                 </>
                                             )}
                                         </>
@@ -1037,9 +1056,18 @@ export default function CollectionFunctions({
             </Tabs>
             <div className="flex justify-end mt-6">
                 <Button type="button" variant="outline" onClick={onClose}>
-                    Close
+                    닫기
                 </Button>
             </div>
+
+            {showPageImages && (
+                <Dialog open={showPageImages} onOpenChange={setShowPageImages}>
+                    <DialogTitle>페이지 이미지</DialogTitle>
+                    <DialogContent>
+                        <OnChainCollectionPageImages collection={collection} />
+                    </DialogContent>
+                </Dialog>
+            )}
         </div>
     );
 }

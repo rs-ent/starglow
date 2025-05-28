@@ -2762,7 +2762,10 @@ export async function getCollectionStock(
 
         return {
             remain: remain,
-            total: collection?.circulation ?? 0,
+            total: Math.min(
+                collection?.circulation ?? 0,
+                tokenOwnedByCreator.length
+            ),
         };
     } catch (error) {
         console.error("Error getting collection stock:", error);
@@ -2935,5 +2938,27 @@ export async function getUserVerifiedCollections(
     } catch (error) {
         console.error("Error getting user verified collections:", error);
         return [];
+    }
+}
+
+export interface AddPageImagesInput {
+    collectionAddress: string;
+    images: string[];
+}
+
+export async function addPageImages(
+    input: AddPageImagesInput
+): Promise<{ success: boolean; error?: any; data?: CollectionContract }> {
+    try {
+        const { collectionAddress, images } = input;
+        const collection = await prisma.collectionContract.update({
+            where: { address: collectionAddress },
+            data: { pageImages: images },
+        });
+
+        return { success: true, data: collection };
+    } catch (error) {
+        console.error("Error adding page images:", error);
+        return { success: false, error: error };
     }
 }

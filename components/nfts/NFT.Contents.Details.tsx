@@ -3,6 +3,7 @@
 "use client";
 
 import Image from "next/image";
+import { Copy } from "lucide-react";
 import { Collection } from "@/app/actions/factoryContracts";
 import { METADATA_TYPE } from "@/app/actions/metadata";
 import { H2, H3 } from "../atoms/Typography";
@@ -14,17 +15,59 @@ import {
     Calendar,
     Users,
 } from "lucide-react";
-import { useMemo } from "react";
-
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+import { useMemo, useState } from "react";
+import { useToast } from "@/app/hooks/useToast";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import Countdown from "@/components/atoms/Countdown";
+import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
+import { CollectionParticipantType } from "@prisma/client";
 interface NFTContentsDetailsProps {
     collection: Collection;
+    participantsType: CollectionParticipantType;
     metadata: METADATA_TYPE;
+    status: string;
+    dateLabel: string;
+    dateValue: string;
+    collectionStock:
+        | {
+              total: number;
+              remain: number;
+          }
+        | null
+        | undefined;
+    collectionParticipantsNumber: number;
 }
 
 export default function NFTContentsDetails({
     collection,
+    participantsType,
     metadata,
+    status,
+    dateLabel,
+    dateValue,
+    collectionStock,
+    collectionParticipantsNumber,
 }: NFTContentsDetailsProps) {
+    const toast = useToast();
+
+    console.log("participantsType", participantsType);
+    console.log("status", status);
+    console.log("dateLabel", dateLabel);
+    console.log("dateValue", dateValue);
+    console.log("collectionStock", collectionStock);
+    console.log("collectionParticipantsNumber", collectionParticipantsNumber);
+
+    const handleCopyAddress = async () => {
+        try {
+            await navigator.clipboard.writeText(collection.address);
+            toast.success("Collection address copied to clipboard");
+        } catch (error) {
+            toast.error("Failed to copy collection address");
+        }
+    };
     const { sharePercentage, glowStartDate, glowEndDate, reportUrl } =
         useMemo(() => {
             const sharePercentage = metadata?.attributes?.find(
@@ -43,6 +86,10 @@ export default function NFTContentsDetails({
 
             return { sharePercentage, glowStartDate, glowEndDate, reportUrl };
         }, [metadata]);
+
+    // 원하는 size를 지정 (예: 20)
+    const size = 20;
+    const { textClass, frameClass } = getResponsiveClass(size);
 
     return (
         <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50">
@@ -67,25 +114,96 @@ export default function NFTContentsDetails({
 
             {/* Collection Info */}
             <div className="p-4 sm:p-6 md:p-8">
-                <H2 className="text-xl md:text-2xl lg:text-3xl mb-4 break-words">
+                <H2
+                    className={cn(getResponsiveClass(40).textClass, "mb-[5px]")}
+                >
                     {collection.name}
                 </H2>
 
+                {/* Status Badge + Date */}
+                <div className="flex items-center gap-3 mb-[20px]">
+                    <Badge
+                        className={cn(
+                            "uppercase",
+                            status.includes("LIVE") &&
+                                "bg-purple-600 text-white animate-pulse drop-shadow-glow",
+                            status.includes("ON SALE") &&
+                                "bg-purple-500 text-white animate-pulse drop-shadow-glow",
+                            status.includes("GLOW") &&
+                                "bg-purple-400 text-white animate-pulse",
+                            status.includes("SCHEDULED") &&
+                                "bg-purple-200 text-purple-900 animate-pulse",
+                            status === "ENDED" && "bg-slate-400 text-white",
+                            getResponsiveClass(20).textClass
+                        )}
+                    >
+                        {status}
+                    </Badge>
+                    <Countdown
+                        endDate={new Date(dateValue)}
+                        className={cn(
+                            getResponsiveClass(30).textClass,
+                            "font-digital"
+                        )}
+                    />
+                </div>
+
                 {/* Key info grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-6">
-                    <div className="flex items-center text-foreground/70 text-sm md:text-base">
-                        <CircleDollarSign className="flex-shrink-0 w-4 h-4 md:w-5 md:h-5 mr-2 text-primary" />
+                    <div
+                        className={`flex items-center text-foreground/70 ${textClass}`}
+                    >
+                        <CircleDollarSign
+                            className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
+                        />
                         <span>Price: ${collection.price}</span>
                     </div>
 
-                    <div className="flex items-center text-foreground/70 text-sm md:text-base">
-                        <Users className="flex-shrink-0 w-4 h-4 md:w-5 md:h-5 mr-2 text-primary" />
-                        <span>Supply: {collection.circulation}</span>
+                    <div
+                        className={`flex items-center text-foreground/70 ${textClass}`}
+                    >
+                        <Users
+                            className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
+                        />
+                        {participantsType === "PREREGISTRATION" ||
+                        participantsType === "PRESALE" ? (
+                            <span>
+                                Awaiters: {collectionParticipantsNumber}
+                            </span>
+                        ) : participantsType === "PRIVATESALE" ||
+                          participantsType === "PUBLICSALE" ? (
+                            <span>
+                                Supply: {collectionStock?.remain || 0} /{" "}
+                                {collectionStock?.total || 0}
+                            </span>
+                        ) : null}
+                    </div>
+
+                    <div
+                        className={`flex items-center text-foreground/70 ${textClass} cursor-pointer`}
+                        onClick={handleCopyAddress}
+                    >
+                        <Users
+                            className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
+                        />
+                        <span className="flex-1 min-w-0 truncate">
+                            Address: {collection.address}
+                        </span>
+                        <Copy
+                            className={cn(
+                                "flex-shrink-0 ml-1",
+                                getResponsiveClass(5).frameClass
+                            )}
+                        />
                     </div>
 
                     {glowStartDate && (
-                        <div className="flex items-center text-foreground/70 text-sm md:text-base">
-                            <Calendar className="flex-shrink-0 w-4 h-4 md:w-5 md:h-5 mr-2 text-primary" />
+                        <div
+                            className={`flex items-center text-foreground/70 ${textClass}`}
+                        >
+                            <Calendar
+                                className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
+                            />
                             <span>
                                 Glow Start: {formatDate(Number(glowStartDate))}
                             </span>
@@ -93,8 +211,12 @@ export default function NFTContentsDetails({
                     )}
 
                     {glowEndDate && (
-                        <div className="flex items-center text-foreground/70 text-sm md:text-base">
-                            <Calendar className="flex-shrink-0 w-4 h-4 md:w-5 md:h-5 mr-2 text-primary" />
+                        <div
+                            className={`flex items-center text-foreground/70 ${textClass}`}
+                        >
+                            <Calendar
+                                className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
+                            />
                             <span>
                                 Glow End: {formatDate(Number(glowEndDate))}
                             </span>
@@ -102,53 +224,15 @@ export default function NFTContentsDetails({
                     )}
 
                     {sharePercentage && (
-                        <div className="flex items-center text-foreground/70 text-sm md:text-base">
-                            <Share2 className="flex-shrink-0 w-4 h-4 md:w-5 md:h-5 mr-2 text-primary" />
+                        <div
+                            className={`flex items-center text-foreground/70 ${textClass}`}
+                        >
+                            <Share2
+                                className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
+                            />
                             <span>Share: {sharePercentage}</span>
                         </div>
                     )}
-
-                    {metadata?.external_url && (
-                        <div className="flex items-center text-foreground/70 text-sm md:text-base">
-                            <ExternalLink className="flex-shrink-0 w-4 h-4 md:w-5 md:h-5 mr-2 text-primary" />
-                            <a
-                                href={metadata.external_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline truncate"
-                            >
-                                View Report
-                            </a>
-                        </div>
-                    )}
-                </div>
-
-                {/* Description */}
-                {metadata?.description && (
-                    <div className="mb-6 md:mb-8">
-                        <H3 className="mb-2 md:mb-3 text-lg md:text-xl">
-                            Description
-                        </H3>
-                        <p className="text-sm md:text-base text-foreground/80 whitespace-pre-line">
-                            {metadata.description}
-                        </p>
-                    </div>
-                )}
-
-                {/* Contract Info */}
-                <div className="mb-6 md:mb-8">
-                    <H3 className="mb-2 md:mb-3 text-lg md:text-xl">
-                        Contract Details
-                    </H3>
-                    <div className="text-sm md:text-base text-foreground/80">
-                        <p className="mb-2">
-                            Contract Address:{" "}
-                            <span className="font-mono">
-                                {collection.address}
-                            </span>
-                        </p>
-                        <p>Network: {collection.networkId}</p>
-                    </div>
                 </div>
             </div>
         </div>

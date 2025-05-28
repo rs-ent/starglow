@@ -853,6 +853,7 @@ model CollectionContract {
   saleEnd DateTime?
   glowStart DateTime?
   glowEnd DateTime?
+  pageImages String[]
   artist      Artist?           @relation(fields: [artistId], references: [id])
   factory     FactoryContract   @relation(fields: [factoryId], references: [id])
   network     BlockchainNetwork @relation(fields: [networkId], references: [id])

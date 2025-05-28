@@ -2,6 +2,7 @@
 
 import { useUserVerifiedCollections } from "../queries/collectionContractsQueries";
 import type { GetUserVerifiedCollectionsInput } from "../actions/collectionContracts";
+import { useAddPageImagesMutation } from "../mutations/collectionContractsMutations";
 
 interface UseCollectionGetProps {
     getUserVerifiedCollectionsInput?: GetUserVerifiedCollectionsInput;
@@ -34,5 +35,30 @@ export function useCollectionGet({
         error,
 
         refetch,
+    };
+}
+
+export function useCollectionSet() {
+    const {
+        mutateAsync: addPageImages,
+        isPending: isAddingPageImages,
+        error: addPageImagesError,
+        reset: resetPageImages,
+    } = useAddPageImagesMutation();
+
+    const isLoading = isAddingPageImages;
+    const error = addPageImagesError;
+
+    const reset = () => Promise.all([resetPageImages()]);
+
+    return {
+        addPageImages,
+        isAddingPageImages,
+        addPageImagesError,
+
+        isLoading,
+        error,
+
+        reset,
     };
 }

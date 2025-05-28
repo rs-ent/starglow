@@ -2,56 +2,66 @@
 
 "use client";
 
-import Image from "next/image";
-import { Collection } from "@/app/actions/factoryContracts";
 import { METADATA_TYPE } from "@/app/actions/metadata";
-import { H2, H3 } from "../atoms/Typography";
-import {
-    Globe,
-    ExternalLink,
-    Share2,
-    CircleDollarSign,
-    Calendar,
-    Users,
-} from "lucide-react";
-import { useMemo } from "react";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+import { useMemo, useRef } from "react";
 
 interface NFTContentsReportProps {
-    collection: Collection;
     metadata: METADATA_TYPE;
 }
 
 export default function NFTContentsReport({
-    collection,
     metadata,
 }: NFTContentsReportProps) {
-    const { reportUrl } = useMemo(() => {
-        const reportUrl = metadata?.external_url;
+    const iframeRef = useRef<HTMLIFrameElement>(null);
 
-        return { reportUrl };
-    }, [metadata]);
+    // 전체화면 요청 함수
+    const handleFullScreen = () => {
+        if (iframeRef.current) {
+            // 표준 FullScreen API
+            if (iframeRef.current.requestFullscreen) {
+                iframeRef.current.requestFullscreen();
+            }
+            // Safari 등 벤더 프리픽스 대응
+            else if ((iframeRef.current as any).webkitRequestFullscreen) {
+                (iframeRef.current as any).webkitRequestFullscreen();
+            }
+        }
+    };
+
+    const reportUrl = metadata?.external_url;
 
     return (
         <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50">
-            {/* Collection Info */}
-            <div className="p-4 sm:p-6 md:p-8">
-                {/* iframe */}
-                {reportUrl && (
-                    <div className="flex justify-center mb-6 md:mb-8">
-                        <iframe
-                            src={reportUrl}
-                            width="100%"
-                            height="600"
-                            style={{
-                                borderRadius: "1rem",
-                                background: "transparent",
-                            }}
-                            title="Official Report"
-                            allowFullScreen
+            {/* iframe */}
+            {reportUrl && (
+                <div className="w-full flex flex-col items-center">
+                    <div className="fixed top-0 right-0 p-2">
+                        <img
+                            src="/ui/maximize.svg"
+                            alt="maximize"
+                            className={cn(
+                                "opacity-50 hover:opacity-100 cursor-pointer transition-opacity duration-300",
+                                getResponsiveClass(25).frameClass
+                            )}
+                            onClick={handleFullScreen}
                         />
                     </div>
-                )}
-            </div>
+                    <iframe
+                        ref={iframeRef}
+                        src={reportUrl}
+                        width="100%"
+                        height="400"
+                        style={{
+                            borderRadius: "1rem",
+                            background: "transparent",
+                        }}
+                        title="Official Report"
+                        allowFullScreen
+                    />
+                </div>
+            )}
         </div>
     );
 }

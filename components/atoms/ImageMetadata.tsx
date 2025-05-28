@@ -7,6 +7,7 @@ import Image from "next/image";
 import { METADATA_TYPE } from "@/app/actions/metadata";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+import { useRouter } from "next/navigation";
 
 export default function ImageMetadata({
     metadata,
@@ -17,6 +18,7 @@ export default function ImageMetadata({
     showStatus = false,
     onClick = () => {},
     popup = null,
+    showDonotHaveToken = false,
 }: {
     metadata: METADATA_TYPE;
     className?: string;
@@ -26,6 +28,7 @@ export default function ImageMetadata({
     showStatus?: boolean;
     onClick?: () => void;
     popup?: React.ReactNode;
+    showDonotHaveToken?: boolean;
 }) {
     return (
         <div
@@ -53,6 +56,7 @@ export default function ImageMetadata({
                     >
                         {popup}
                     </div>
+                    {showDonotHaveToken && <DonotHaveToken />}
                     <Image
                         src={metadata.image}
                         alt={metadata.name}
@@ -88,6 +92,48 @@ export default function ImageMetadata({
             ) : (
                 <Skeleton className="w-full h-full" />
             )}
+        </div>
+    );
+}
+
+function DonotHaveToken() {
+    const router = useRouter();
+
+    const handleBuyClick = () => {
+        router.push("/nfts");
+    };
+    return (
+        <div
+            className={cn(
+                "absolute inset-0 z-10 w-full h-full flex items-center justify-center bg-[rgba(0,0,0,0.3)] backdrop-blur-xs",
+                "flex flex-col gap-2 overflow-x-hidden overflow-y-auto"
+            )}
+        >
+            <img
+                src="/icons/lock.svg"
+                className={cn(getResponsiveClass(35).frameClass)}
+                alt="Lock icon"
+            />
+            <h4
+                className={cn(
+                    getResponsiveClass(15).textClass,
+                    "text-white font-semibold text-center"
+                )}
+            >
+                Unlock exclusive benefits
+                <br />
+                by owning this token!
+            </h4>
+            <button
+                onClick={handleBuyClick}
+                className={cn(
+                    "mt-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold shadow-lg hover:scale-105 transition-transform",
+                    getResponsiveClass(15).textClass,
+                    getResponsiveClass(20).paddingClass
+                )}
+            >
+                Buy Now
+            </button>
         </div>
     );
 }

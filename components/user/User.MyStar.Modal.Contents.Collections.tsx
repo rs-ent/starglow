@@ -36,7 +36,7 @@ export default function UserMyStarModalContentsCollections({
     const settings = {
         dots: false,
         arrows: false,
-        infinite: true,
+        infinite: verifiedCollections.length > 1,
         speed: 500,
         slidesToShow: 1,
         slidesToScroll: 1,

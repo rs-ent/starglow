@@ -3,7 +3,7 @@
 "use client";
 
 import { Collection } from "@/app/actions/factoryContracts";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { H3 } from "../atoms/Typography";
 import { Ticket, AlertCircle, CheckCircle2 } from "lucide-react";
 import PaymentModule from "../payment/PaymentModule";
@@ -14,6 +14,12 @@ import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 interface NFTContentsPaymentProps {
     collection: Collection;
     onPurchase?: (quantity: number) => void;
+    collectionStock:
+        | {
+              remain: number;
+              total: number;
+          }
+        | undefined;
 }
 
 const initialCurrency = "CURRENCY_USD" as Currency;
@@ -21,6 +27,10 @@ const initialCurrency = "CURRENCY_USD" as Currency;
 export default function NFTContentsPayment({
     collection,
     onPurchase,
+    collectionStock = {
+        remain: 0,
+        total: 0,
+    },
 }: NFTContentsPaymentProps) {
     const [quantity, setQuantity] = useState(1);
     const [displayPrice, setDisplayPrice] = useState<number>(
@@ -28,28 +38,17 @@ export default function NFTContentsPayment({
     );
     const [currency, setCurrency] = useState<Currency>(initialCurrency);
 
-    const { tokens } = useCollectionGet({
-        collectionAddress: collection.address,
-        options: {
-            ownerAddress: collection.creatorAddress,
-        },
-    });
-
-    const availableTokens = Math.min(
-        tokens?.length ?? collection.circulation,
-        collection.circulation
-    );
-
     const handleDisplayPriceChange = (displayPrice: number) => {
         setDisplayPrice(displayPrice);
     };
 
-    // NFT 구매 가능 여부 체크
-    const isSoldOut = availableTokens <= 0;
-    const isNotActive = collection.isListed !== true;
+    const { isSoldOut, isNotActive, canPurchase } = useMemo(() => {
+        const isSoldOut = collectionStock.remain <= 0;
+        const isNotActive = collection.isListed !== true;
+        const canPurchase = !isSoldOut && !isNotActive;
 
-    // 구매 가능 여부 확인
-    const canPurchase = !isSoldOut && !isNotActive;
+        return { isSoldOut, isNotActive, canPurchase };
+    }, [collectionStock, collection]);
 
     return (
         <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50 p-4 sm:p-6 md:p-8">
@@ -80,9 +79,9 @@ export default function NFTContentsPayment({
                 <div className="flex justify-between items-center mb-2">
                     <span className="text-foreground/70">Available NFTs</span>
                     <span className="font-main">
-                        {availableTokens}
+                        {collectionStock.remain}
                         {" of "}
-                        {collection.circulation}
+                        {collectionStock.total}
                     </span>
                 </div>
             </div>
@@ -112,10 +111,13 @@ export default function NFTContentsPayment({
                             <button
                                 onClick={() =>
                                     setQuantity(
-                                        Math.min(quantity + 1, availableTokens)
+                                        Math.min(
+                                            quantity + 1,
+                                            collectionStock.remain
+                                        )
                                     )
                                 }
-                                disabled={quantity >= availableTokens}
+                                disabled={quantity >= collectionStock.remain}
                                 className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border border-border/50 rounded-r-lg disabled:opacity-50"
                                 aria-label="Increase quantity"
                             >

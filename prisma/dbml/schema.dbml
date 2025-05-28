@@ -682,6 +682,7 @@ Table CollectionContract {
   saleEnd DateTime
   glowStart DateTime
   glowEnd DateTime
+  pageImages String[] [not null]
   artist Artist
   factory FactoryContract [not null]
   network BlockchainNetwork [not null]

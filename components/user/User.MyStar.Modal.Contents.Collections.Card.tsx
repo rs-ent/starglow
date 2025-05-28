@@ -11,7 +11,6 @@ import type { METADATA_TYPE } from "@/app/actions/metadata";
 import { useMemo, useState } from "react";
 import { CopyIcon } from "lucide-react";
 import { useToast } from "@/app/hooks/useToast";
-import ArtistMessage from "../artists/ArtistMessage";
 
 interface UserMyStarModalContentsCollectionsCardProps {
     artist: Artist;
@@ -59,13 +58,21 @@ export default function UserMyStarModalContentsCollectionsCard({
                         "w-full h-full",
                         "rounded-[16px] overflow-hidden"
                     )}
-                    onClick={() => setShowStatus(!showStatus)}
+                    onClick={() =>
+                        setShowStatus(
+                            verifiedCollection.verifiedTokens.length > 0 &&
+                                !showStatus
+                        )
+                    }
                     showStatus={showStatus}
                     popup={
                         <Status
                             verifiedCollection={verifiedCollection}
                             metadata={metadata}
                         />
+                    }
+                    showDonotHaveToken={
+                        verifiedCollection.verifiedTokens.length === 0
                     }
                     style={
                         {
