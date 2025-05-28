@@ -8,6 +8,8 @@ import Portal from "./Portal";
 import Lottie from "lottie-react";
 import { TextAnimate } from "@/components/magicui/text-animate";
 import { Confetti, type ConfettiRef } from "@/components/magicui/confetti";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
 
 interface InteractFeedbackProps {
     open: boolean;
@@ -137,7 +139,10 @@ export default function InteractFeedback({
                                 by="character"
                                 duration={0.9}
                                 once
-                                className="text-xl font-main text-center text-white"
+                                className={cn(
+                                    "text-xl font-main text-center text-white",
+                                    getResponsiveClass(30).textClass
+                                )}
                             >
                                 {title}
                             </TextAnimate>
@@ -148,7 +153,10 @@ export default function InteractFeedback({
                                     duration={0.9}
                                     delay={0.2}
                                     once
-                                    className="text-base text-center text-[rgba(255,255,255,0.85)]"
+                                    className={cn(
+                                        "text-base text-center text-[rgba(255,255,255,0.85)]",
+                                        getResponsiveClass(15).textClass
+                                    )}
                                 >
                                     {description}
                                 </TextAnimate>
