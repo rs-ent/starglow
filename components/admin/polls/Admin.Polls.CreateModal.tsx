@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
 import {
     CreatePollInput,
     PollOption,
@@ -55,6 +54,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown } from "lucide-react";
 import YoutubeViewer from "@/components/atoms/YoutubeViewer";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 function Section({
     title,
@@ -173,9 +173,9 @@ export default function AdminPollsCreateModal({
         requiredQuests: initialData?.requiredQuests || [],
         artistId: initialData?.artistId || undefined,
         isActive: initialData?.isActive,
+        hasAnswer: initialData?.hasAnswer || false,
+        answerOptionIds: initialData?.answerOptionIds || [],
     });
-
-    console.log(initialData?.isActive);
 
     // Update form data when initial data changes
     useEffect(() => {
@@ -210,6 +210,8 @@ export default function AdminPollsCreateModal({
                 requiredQuests: initialData.requiredQuests || [],
                 artistId: initialData.artistId || undefined,
                 isActive: initialData.isActive,
+                hasAnswer: initialData.hasAnswer || false,
+                answerOptionIds: initialData.answerOptionIds || [],
             });
         }
     }, [open, initialData]);
@@ -292,6 +294,16 @@ export default function AdminPollsCreateModal({
         ) {
             toast.error("보상 수량을 설정할 때는 보상 에셋을 선택해주세요.");
             return false;
+        }
+
+        if (formData.hasAnswer) {
+            if (
+                !formData.answerOptionIds ||
+                formData.answerOptionIds.length === 0
+            ) {
+                toast.error("정답 옵션을 선택해주세요.");
+                return false;
+            }
         }
 
         return true;
@@ -1023,6 +1035,95 @@ export default function AdminPollsCreateModal({
 
                                 <Section title="폴 옵션">
                                     <div className="space-y-4">
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                checked={formData.hasAnswer}
+                                                onCheckedChange={(checked) => {
+                                                    if (!checked) {
+                                                        handleFormChange(
+                                                            "hasAnswer",
+                                                            false
+                                                        );
+                                                        handleFormChange(
+                                                            "answerOptionIds",
+                                                            []
+                                                        );
+                                                    } else {
+                                                        handleFormChange(
+                                                            "hasAnswer",
+                                                            true
+                                                        );
+                                                    }
+                                                }}
+                                            />
+                                            <Label className="text-lg">
+                                                정답이 있는 폴
+                                            </Label>
+                                        </div>
+
+                                        {/* Conditionally render answer fields */}
+                                        {formData.hasAnswer && (
+                                            <div className="space-y-4 mt-4">
+                                                <div>
+                                                    <Label className="block font-semibold mb-1">
+                                                        정답 옵션 선택
+                                                    </Label>
+                                                    <div className="flex flex-col gap-2">
+                                                        {(
+                                                            formData.options ||
+                                                            []
+                                                        ).map((option) => (
+                                                            <div
+                                                                key={
+                                                                    option.optionId
+                                                                }
+                                                                className="flex items-center gap-1"
+                                                            >
+                                                                <Checkbox
+                                                                    checked={formData.answerOptionIds?.includes(
+                                                                        option.optionId
+                                                                    )}
+                                                                    onCheckedChange={(
+                                                                        checked
+                                                                    ) => {
+                                                                        let newIds =
+                                                                            formData.answerOptionIds ||
+                                                                            [];
+                                                                        if (
+                                                                            checked
+                                                                        ) {
+                                                                            newIds =
+                                                                                [
+                                                                                    ...newIds,
+                                                                                    option.optionId,
+                                                                                ];
+                                                                        } else {
+                                                                            newIds =
+                                                                                newIds.filter(
+                                                                                    (
+                                                                                        id
+                                                                                    ) =>
+                                                                                        id !==
+                                                                                        option.optionId
+                                                                                );
+                                                                        }
+                                                                        handleFormChange(
+                                                                            "answerOptionIds",
+                                                                            newIds
+                                                                        );
+                                                                    }}
+                                                                />
+                                                                <span>
+                                                                    {option.name ||
+                                                                        option.optionId}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div className="flex justify-between items-center">
                                             <h2 className="text-lg font-semibold">
                                                 폴 옵션

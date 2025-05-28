@@ -1,30 +1,31 @@
-///components/organisms/Polls.Private.tsx
+/// components/polls/Polls.Contents.Private.tsx
 
 "use client";
 
 import { Artist, Player, PollLog } from "@prisma/client";
 import PartialLoading from "../atoms/PartialLoading";
 import ArtistSlideSelector from "../molecules/ArtistSlideSelector";
-import PollsArtistList from "./Polls.ArtistList";
+import PollsContentsPrivateArtistList from "./Polls.Contents.Private.ArtistList";
 import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
 import { useState, useEffect } from "react";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import { User } from "next-auth";
-import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
+import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { cn } from "@/lib/utils/tailwind";
-interface PollsPrivateProps {
+
+interface PollsContentsPrivateProps {
     user: User | null;
     player: Player | null;
     privateTabClicked: boolean;
     pollLogs?: PollLog[];
 }
 
-export default function PollsPrivate({
+export default function PollsContentsPrivate({
     user,
     player,
     privateTabClicked,
     pollLogs,
-}: PollsPrivateProps) {
+}: PollsContentsPrivateProps) {
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
     const [showArtistContents, setShowArtistContents] = useState(false);
     const [
@@ -120,7 +121,7 @@ export default function PollsPrivate({
                 <div className="relative w-full h-full">
                     {showArtistContents && (
                         <div className="w-screen max-w-[1400px] mx-auto z-0 relative">
-                            <PollsArtistList
+                            <PollsContentsPrivateArtistList
                                 artist={selectedArtist}
                                 player={player}
                                 tokenGatingResult={

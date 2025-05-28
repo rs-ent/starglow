@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils/tailwind";
 import Image from "next/image";
+import Portal from "./Portal";
 
 interface PopupProps {
     children: React.ReactNode;
@@ -16,6 +17,8 @@ interface PopupProps {
     closeButton?: boolean;
     closeButtonColor?: string;
     backgroundImage?: string;
+    withoutBackgroundImage?: boolean;
+    withoutBorder?: boolean;
     onClose: () => void;
 }
 
@@ -29,6 +32,8 @@ export default function Popup({
     closeButtonColor = "text-muted-foreground",
     open,
     backgroundImage,
+    withoutBackgroundImage = false,
+    withoutBorder = false,
     onClose,
 }: PopupProps) {
     useEffect(() => {
@@ -40,64 +45,70 @@ export default function Popup({
     }, [onClose]);
 
     return (
-        <AnimatePresence>
-            {open && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.45)] backdrop-blur-sm z-30"
-                    onClick={onClose}
-                >
+        <Portal>
+            <AnimatePresence>
+                {open && (
                     <motion.div
-                        initial={{ scale: 1, y: -70, filter: "blur(10px)" }}
-                        animate={{ scale: 1, y: 0, filter: "blur(0)" }}
-                        exit={{
-                            scale: 1,
-                            y: 70,
-                            opacity: 0,
-                            filter: "blur(20px)",
-                        }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        style={{
-                            width: fullScreen ? "100vw" : "auto",
-                            height: fullScreen ? "100vh" : "auto",
-                            maxWidth: fullScreen ? "100vw" : width,
-                            maxHeight: fullScreen ? "100vh" : height,
-                        }}
-                        className={cn(
-                            "shadow-lg relative overflow-hidden bg-gradient-to-br from-[rgba(0,0,0,0.3)] to-[rgba(0,0,0,0.8)] backdrop-blur-lg",
-                            "flex items-center justify-center",
-                            fullScreen
-                                ? "rounded-none m-0"
-                                : "rounded-3xl gradient-border m-2",
-                            className
-                        )}
-                        onClick={(e) => e.stopPropagation()}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.45)] backdrop-blur-sm z-30"
+                        onClick={onClose}
                     >
-                        <Image
-                            src={backgroundImage || "/bg/popup.svg"}
-                            alt="Popup Background"
-                            width={100}
-                            height={100}
-                            className="absolute inset-0 w-full h-full object-cover opacity-70 bg-blend-overlay -z-50"
-                            style={{ filter: "blur(5px)" }}
-                        />
-                        {closeButton && (
-                            <button
-                                className={cn(
-                                    "absolute top-2 right-2 text-muted-foreground hover:text-foreground",
-                                    closeButtonColor
-                                )}
-                                onClick={onClose}
-                            >
-                                <X size={30} />
-                            </button>
-                        )}
-                        {children}
+                        <motion.div
+                            initial={{ scale: 1, y: -70, filter: "blur(10px)" }}
+                            animate={{ scale: 1, y: 0, filter: "blur(0)" }}
+                            exit={{
+                                scale: 1,
+                                y: 70,
+                                opacity: 0,
+                                filter: "blur(20px)",
+                            }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                            style={{
+                                width: fullScreen ? "100vw" : "auto",
+                                height: fullScreen ? "100vh" : "auto",
+                                maxWidth: fullScreen ? "100vw" : width,
+                                maxHeight: fullScreen ? "100vh" : height,
+                            }}
+                            className={cn(
+                                "shadow-lg relative overflow-hidden bg-gradient-to-br from-[rgba(0,0,0,0.3)] to-[rgba(0,0,0,0.8)] backdrop-blur-lg",
+                                "flex items-center justify-center",
+                                fullScreen
+                                    ? "rounded-none m-0"
+                                    : withoutBorder
+                                    ? "rounded-3xl m-2"
+                                    : "rounded-3xl gradient-border m-2",
+                                className
+                            )}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {!withoutBackgroundImage && (
+                                <Image
+                                    src={backgroundImage || "/bg/popup.svg"}
+                                    alt="Popup Background"
+                                    width={100}
+                                    height={100}
+                                    className="absolute inset-0 w-full h-full object-cover opacity-70 bg-blend-overlay -z-50"
+                                    style={{ filter: "blur(5px)" }}
+                                />
+                            )}
+                            {closeButton && (
+                                <button
+                                    className={cn(
+                                        "absolute top-2 right-2 text-muted-foreground hover:text-foreground",
+                                        closeButtonColor
+                                    )}
+                                    onClick={onClose}
+                                >
+                                    <X size={30} />
+                                </button>
+                            )}
+                            {children}
+                        </motion.div>
                     </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
+                )}
+            </AnimatePresence>
+        </Portal>
     );
 }

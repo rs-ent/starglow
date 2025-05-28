@@ -1,17 +1,14 @@
-/// components/organisms/Polls.Public.tsx
+/// components/polls/Polls.Contents.Public.tsx
 
 "use client";
 
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { cn } from "@/lib/utils/tailwind";
 import { Player, PollLog } from "@prisma/client";
-import Slider from "react-slick";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import PollsList from "./Polls.List";
 
-interface PollsPublicProps {
+interface PollsContentsPublicProps {
     player: Player | null;
     pollLogs?: PollLog[];
     className?: string;
@@ -21,15 +18,13 @@ export default function PollsPublic({
     player,
     pollLogs,
     className,
-}: PollsPublicProps) {
+}: PollsContentsPublicProps) {
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
             category: "PUBLIC",
             isActive: true,
         },
     });
-
-    console.log(pollsList);
 
     return (
         <div

@@ -96,6 +96,7 @@ export default function AdminPollsList({ viewType }: PollListProps) {
     }, [pollFilter, polls]);
 
     const handleEditPoll = (poll: Poll) => {
+        console.log("Poll", poll);
         setEditPoll(poll);
         setOpen(true);
     };

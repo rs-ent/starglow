@@ -110,10 +110,17 @@ export default function FileUploader({
                                 <button
                                     type="button"
                                     className={cn(
+                                        "flex flex-row items-center gap-2",
+                                        "cursor-pointer",
                                         "px-6 py-3 bg-[rgba(255,255,255,0.1)] text-white rounded-lg hover:bg-[rgba(255,255,255,0.15)] transition-all duration-200 hover:scale-105",
                                         getResponsiveClass(15).textClass
                                     )}
                                 >
+                                    <img
+                                        src="/ui/folder-add.svg"
+                                        alt="Choose Image"
+                                        className="w-4 h-4"
+                                    />
                                     Choose Image
                                 </button>
                                 <p
@@ -131,10 +138,17 @@ export default function FileUploader({
                                 <button
                                     type="button"
                                     className={cn(
+                                        "flex flex-row items-center gap-2",
+                                        "cursor-pointer",
                                         "w-full px-6 py-3 bg-[rgba(255,255,255,0.1)] text-white rounded-lg hover:bg-[rgba(255,255,255,0.15)] transition-all duration-200 hover:scale-105",
                                         getResponsiveClass(15).textClass
                                     )}
                                 >
+                                    <img
+                                        src="/ui/folder-add.svg"
+                                        alt="Choose Image"
+                                        className="w-3 h-3"
+                                    />
                                     Upload Image
                                 </button>
                             </div>

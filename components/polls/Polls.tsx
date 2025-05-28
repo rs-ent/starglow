@@ -1,12 +1,13 @@
-/// components\templates\Polls.tsx
+/// components/polls/Polls.tsx
 
 "use client";
 
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
-import PollsContents from "@/components/organisms/Polls.Contents";
+import PollsContents from "@/components/polls/Polls.Contents";
 import { User } from "next-auth";
+
 interface PollsProps {
     user: User | null;
     player: Player | null;

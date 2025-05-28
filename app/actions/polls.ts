@@ -63,6 +63,8 @@ export interface CreatePollInput {
     requiredQuests?: string[];
     artistId?: string;
     isActive?: boolean;
+    hasAnswer?: boolean;
+    answerOptionIds?: string[];
 }
 
 export async function createPoll(input: CreatePollInput): Promise<Poll> {
@@ -288,6 +290,8 @@ export interface UpdatePollInput {
     artistId?: string | null;
     artist?: Artist | null;
     isActive?: boolean;
+    hasAnswer?: boolean;
+    answerOptionIds?: string[];
 }
 
 export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
@@ -623,6 +627,23 @@ export async function participatePoll(
                 amount: amount,
             },
         });
+
+        if (
+            poll.hasAnswer &&
+            poll.answerOptionIds &&
+            poll.answerOptionIds.length > 0
+        ) {
+            const selectedOptionId = pollLog.optionId;
+            const isAnswer = poll.answerOptionIds.includes(selectedOptionId);
+
+            if (!isAnswer) {
+                return {
+                    success: true,
+                    data: pollLog,
+                    error: "MISSED_ANSWER",
+                };
+            }
+        }
 
         if (isFirstTimeVote) {
             if (

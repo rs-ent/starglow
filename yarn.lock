@@ -4016,7 +4016,7 @@
   dependencies:
     "@radix-ui/react-compose-refs" "1.1.1"
 
-"@radix-ui/react-slot@1.2.0", "@radix-ui/react-slot@^1.2.0":
+"@radix-ui/react-slot@1.2.0":
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/@radix-ui/react-slot/-/react-slot-1.2.0.tgz#57727fc186ddb40724ccfbe294e1a351d92462ba"
   integrity sha512-ujc+V6r0HNDviYqIK3rW4ffgYiZ8g5DEHrGJVk4x7kTlLXRDILnKX9vAUYeIsLOoDpDJ0ujpqMkjH4w2ofuo6w==
@@ -4027,6 +4027,13 @@
   version "1.2.2"
   resolved "https://registry.yarnpkg.com/@radix-ui/react-slot/-/react-slot-1.2.2.tgz#18e6533e778a2051edc2ad0773da8e22f03f626a"
   integrity sha512-y7TBO4xN4Y94FvcWIOIh18fM4R1A8S4q1jhoz4PNzOoHsFcN8pogcFmZrTYAm4F9VRUrWP/Mw7xSKybIeRI+CQ==
+  dependencies:
+    "@radix-ui/react-compose-refs" "1.1.2"
+
+"@radix-ui/react-slot@^1.2.3":
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/@radix-ui/react-slot/-/react-slot-1.2.3.tgz#502d6e354fc847d4169c3bc5f189de777f68cfe1"
+  integrity sha512-aeNmHnBxbi2St0au6VBVC7JXFlhLlOnvIIlePNniyUNAClzmtAUEY8/pBiK3iHjufOlwA+c20/8jngo7xcrg8A==
   dependencies:
     "@radix-ui/react-compose-refs" "1.1.2"
 
@@ -5679,6 +5686,11 @@
   integrity sha512-Xh8vSwUeMKeYYrj3cX4lGQgFSF/N03r+tv4AiLl1SucqV+uTQpxRcnM8AkXKHwYP9ZPXOYXRr2KPXpVlIvqh9w==
   dependencies:
     "@types/node" "*"
+
+"@types/canvas-confetti@^1.9.0":
+  version "1.9.0"
+  resolved "https://registry.yarnpkg.com/@types/canvas-confetti/-/canvas-confetti-1.9.0.tgz#d1077752e046413c9881fbb2ba34a70ebe3c1773"
+  integrity sha512-aBGj/dULrimR1XDZLtG9JwxX1b4HPRF6CX9Yfwh3NvstZEm1ZL7RBnel4keCPSqs1ANRu1u2Aoz9R+VmtjYuTg==
 
 "@types/caseless@*":
   version "0.12.5"
@@ -7519,6 +7531,11 @@ caniuse-lite@^1.0.30001579, caniuse-lite@^1.0.30001688, caniuse-lite@^1.0.300017
   resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30001707.tgz#c5e104d199e6f4355a898fcd995a066c7eb9bf41"
   integrity sha512-3qtRjw/HQSMlDWf+X79N206fepf4SOOU6SQLMaq/0KkZLmSjPxAkBOQQ+FxbHKfHmYLZFfdWsO3KA90ceHPSnw==
 
+canvas-confetti@^1.9.3:
+  version "1.9.3"
+  resolved "https://registry.yarnpkg.com/canvas-confetti/-/canvas-confetti-1.9.3.tgz#ef4c857420ad8045ab4abe8547261c8cdf229845"
+  integrity sha512-rFfTURMvmVEX1gyXFgn5QMn81bYk70qa0HLzcIOSVEyl57n6o9ItHeBtUSWdvKAPY0xlvBHno4/v3QPrT83q9g==
+
 caseless@^0.12.0, caseless@~0.12.0:
   version "0.12.0"
   resolved "https://registry.yarnpkg.com/caseless/-/caseless-0.12.0.tgz#1b681c21ff84033c826543090689420d187151dc"
@@ -7802,6 +7819,13 @@ cmdk@^1.1.1:
     "@radix-ui/react-dialog" "^1.1.6"
     "@radix-ui/react-id" "^1.1.0"
     "@radix-ui/react-primitive" "^2.0.2"
+
+cobe@^0.6.3:
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/cobe/-/cobe-0.6.3.tgz#9c3d45ae3a328b7bf709eb17b02f9caff41b22f0"
+  integrity sha512-WHr7X4o1ym94GZ96h7b1pNemZJacbOzd02dZtnVwuC4oWBaLg96PBmp2rIS1SAhUDhhC/QyS9WEqkpZIs/ZBTg==
+  dependencies:
+    phenomenon "^1.6.0"
 
 color-convert@^1.9.0, color-convert@^1.9.3:
   version "1.9.3"
@@ -9657,6 +9681,15 @@ fraction.js@^4.3.7:
   version "4.3.7"
   resolved "https://registry.yarnpkg.com/fraction.js/-/fraction.js-4.3.7.tgz#06ca0085157e42fda7f9e726e79fefc4068840f7"
   integrity sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==
+
+framer-motion@^12.15.0:
+  version "12.15.0"
+  resolved "https://registry.yarnpkg.com/framer-motion/-/framer-motion-12.15.0.tgz#6892283fc7967b071f537d6d160ab49e3d5e73ae"
+  integrity sha512-XKg/LnKExdLGugZrDILV7jZjI599785lDIJZLxMiiIFidCsy0a4R2ZEf+Izm67zyOuJgQYTHOmodi7igQsw3vg==
+  dependencies:
+    motion-dom "^12.15.0"
+    motion-utils "^12.12.1"
+    tslib "^2.4.0"
 
 framer-motion@^12.6.2:
   version "12.6.2"
@@ -11980,12 +12013,24 @@ moment@^2.29.4:
   resolved "https://registry.yarnpkg.com/moment/-/moment-2.30.1.tgz#f8c91c07b7a786e30c59926df530b4eac96974ae"
   integrity sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how==
 
+motion-dom@^12.15.0:
+  version "12.15.0"
+  resolved "https://registry.yarnpkg.com/motion-dom/-/motion-dom-12.15.0.tgz#eca7c9d8c28976b8c920f175f92d5288f5a17785"
+  integrity sha512-D2ldJgor+2vdcrDtKJw48k3OddXiZN1dDLLWrS8kiHzQdYVruh0IoTwbJBslrnTXIPgFED7PBN2Zbwl7rNqnhA==
+  dependencies:
+    motion-utils "^12.12.1"
+
 motion-dom@^12.6.1:
   version "12.6.1"
   resolved "https://registry.yarnpkg.com/motion-dom/-/motion-dom-12.6.1.tgz#2b8f53c0af51db75301f88f25fc4d4546424ba60"
   integrity sha512-8XVsriTUEVOepoIDgE/LDGdg7qaKXWdt+wQA/8z0p8YzJDLYL8gbimZ3YkCLlj7bB2i/4UBD/g+VO7y9ZY0zHQ==
   dependencies:
     motion-utils "^12.5.0"
+
+motion-utils@^12.12.1:
+  version "12.12.1"
+  resolved "https://registry.yarnpkg.com/motion-utils/-/motion-utils-12.12.1.tgz#63e28751325cb9d1cd684f3c273a570022b0010e"
+  integrity sha512-f9qiqUHm7hWSLlNW8gS9pisnsN7CRFRD58vNjptKdsqFLpkVnX00TNeD6Q0d27V9KzT7ySFyK1TZ/DShfVOv6w==
 
 motion-utils@^12.5.0:
   version "12.5.0"
@@ -12003,6 +12048,14 @@ motion@10.16.2:
     "@motionone/types" "^10.15.1"
     "@motionone/utils" "^10.15.1"
     "@motionone/vue" "^10.16.2"
+
+motion@^12.15.0:
+  version "12.15.0"
+  resolved "https://registry.yarnpkg.com/motion/-/motion-12.15.0.tgz#dbfc09a0c3c60e9b40aa5f2f855a8822bb5d36de"
+  integrity sha512-HLouXyIb1uQFiZgJTYGrtEzbatPc6vK+HP+Qt6afLQjaudiGiLLVsoy71CwzD/Stlh06FUd5OpyiXqn6XvqjqQ==
+  dependencies:
+    framer-motion "^12.15.0"
+    tslib "^2.4.0"
 
 ms@2.1.2:
   version "2.1.2"
@@ -12785,6 +12838,11 @@ pgpass@1.x:
   integrity sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==
   dependencies:
     split2 "^4.1.0"
+
+phenomenon@^1.6.0:
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/phenomenon/-/phenomenon-1.6.0.tgz#7b5b7647d0b48152cc0846994da3d92e8f6da677"
+  integrity sha512-7h9/fjPD3qNlgggzm88cY58l9sudZ6Ey+UmZsizfhtawO6E3srZQXywaNm2lBwT72TbpHYRPy7ytIHeBUD/G0A==
 
 picocolors@^1.0.0, picocolors@^1.1.0, picocolors@^1.1.1:
   version "1.1.1"

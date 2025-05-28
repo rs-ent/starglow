@@ -1,4 +1,4 @@
-/// components/organisms/Polls.ArtistList.tsx
+/// components/polls/Polls.Contents.Private.ArtistList.tsx
 
 "use client";
 
@@ -10,7 +10,7 @@ import PartialLoading from "../atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
 import { useEffect, useState } from "react";
 
-interface PollsArtistListProps {
+interface PollsContentsPrivateArtistListProps {
     artist: Artist;
     player: Player | null;
     pollLogs?: PollLog[];
@@ -25,7 +25,7 @@ interface PollsArtistListProps {
     forceSlidesToShow?: number;
 }
 
-export default function PollsArtistList({
+export default function PollsContentsPrivateArtistList({
     artist,
     player,
     pollLogs,
@@ -38,7 +38,7 @@ export default function PollsArtistList({
     bgColorAccentFrom,
     bgColorAccentTo,
     forceSlidesToShow,
-}: PollsArtistListProps) {
+}: PollsContentsPrivateArtistListProps) {
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
             artistId: artist.id,

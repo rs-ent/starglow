@@ -1,4 +1,4 @@
-/// components/organisms/Polls.Contents.tsx
+/// components/polls/Polls.Contents.tsx
 
 "use client";
 
@@ -7,9 +7,10 @@ import { Player } from "@prisma/client";
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { useState } from "react";
 import PublicPrivateTab from "../molecules/PublicPrivateTab";
-import PollsPublic from "./Polls.Public";
-import PollsPrivate from "./Polls.Private";
+import PollsContentsPublic from "./Polls.Contents.Public";
+import PollsContentsPrivate from "./Polls.Contents.Private";
 import { User } from "next-auth";
+
 interface PollsContentsProps {
     user: User | null;
     player: Player | null;
@@ -46,9 +47,12 @@ export default function PollsContents({ user, player }: PollsContentsProps) {
             />
 
             {isPublic ? (
-                <PollsPublic player={player} pollLogs={playerPollLogs} />
+                <PollsContentsPublic
+                    player={player}
+                    pollLogs={playerPollLogs}
+                />
             ) : (
-                <PollsPrivate
+                <PollsContentsPrivate
                     user={user}
                     player={player}
                     pollLogs={playerPollLogs}

@@ -215,6 +215,8 @@ Table Poll {
   isActive Boolean [not null, default: false]
   options Json[] [not null]
   optionsOrder String[] [not null]
+  hasAnswer Boolean [not null, default: false]
+  answerOptionIds String[] [not null]
   imgUrl String
   youtubeUrl String
   startDate DateTime [default: `now()`, not null]

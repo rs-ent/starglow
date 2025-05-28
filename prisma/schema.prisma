@@ -270,6 +270,8 @@ model Poll {
   // 옵션 정보 (JSON 형태로 저장)
   options           Json[]       // [{optionId: string, option: string, optionShorten: string?, description: string?, imgUrl: string?, youtubeUrl: string?}]
   optionsOrder      String[]     @default([]) // [optionId, optionId, optionId, ...]
+  hasAnswer         Boolean      @default(false)
+  answerOptionIds   String[]     @default([])
   
   // 미디어
   imgUrl            String?

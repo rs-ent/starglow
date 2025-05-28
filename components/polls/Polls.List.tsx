@@ -1,4 +1,4 @@
-/// components/organisms/Polls.List.tsx
+/// components/polls/Polls.List.tsx
 
 "use client";
 
@@ -6,7 +6,7 @@ import { useRef } from "react";
 import { Artist, Player, Poll, PollLog } from "@prisma/client";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import { TokenGatingResult } from "@/app/actions/polls";
-import PollsCard from "@/components/molecules/Polls.Card";
+import PollsListCard from "@/components/polls/Polls.List.Card";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -190,7 +190,7 @@ export default function PollsList({
                                 }
                             }}
                         >
-                            <PollsCard
+                            <PollsListCard
                                 index={index}
                                 poll={poll}
                                 player={player}

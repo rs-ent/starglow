@@ -2,39 +2,89 @@
 
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { useMemo } from "react";
+import UserSettings from "../user/User.Settings";
+import { useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 
 interface ProfileImageProps {
-    image?: string | null;
     className?: string;
     size?: number;
 }
 
 export default function ProfileImage({
-    image,
     className,
     size = 60,
 }: ProfileImageProps) {
-    const responsiveClass = getResponsiveClass(size);
+    const [showUserSettings, setShowUserSettings] = useState(false);
+
+    const { data: session } = useSession();
+
+    const { frameSize, cameraSize } = useMemo(() => {
+        const frameSize = getResponsiveClass(size).frameClass;
+        const cameraSize = getResponsiveClass(
+            size / 2 - ((size / 2) % 5)
+        ).frameClass;
+
+        return {
+            frameSize,
+            cameraSize,
+        };
+    }, [size]);
+
+    const image = useMemo(() => {
+        if (session?.player) {
+            return session.player.image || session?.user?.image || "";
+        }
+        return session?.user?.image || "";
+    }, [session]);
 
     return (
-        <div
-            className={cn(
-                "rounded-full overflow-hidden border-2 border-[rgba(255,255,255,0.6)]",
-                responsiveClass.frameClass,
-                className
-            )}
-        >
-            {image ? (
-                <img
-                    src={image}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
+        <>
+            {showUserSettings && session?.user && session?.player && (
+                <UserSettings
+                    user={session?.user}
+                    player={session?.player}
+                    showNickname={false}
+                    onClose={() => setShowUserSettings(false)}
                 />
-            ) : (
-                <DefaultProfileImageSvg opacity={0.8} scale={1.15} />
             )}
-        </div>
+            <div
+                className={cn(
+                    "rounded-full overflow-hidden border-2 border-[rgba(255,255,255,0.6)] relative",
+                    frameSize,
+                    className
+                )}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setShowUserSettings(true);
+                }}
+            >
+                <div
+                    className={cn(
+                        "absolute inset-0 w-full h-full flex items-center justify-center z-10",
+                        "bg-[rgba(0,0,0,0.6)]",
+                        "hover:opacity-100 opacity-0 cursor-pointer",
+                        showUserSettings && "opacity-100",
+                        "transition-opacity duration-300 ease-in-out"
+                    )}
+                >
+                    <img
+                        src="/ui/camera.svg"
+                        alt="Camera"
+                        className={cn(cameraSize, "object-contain")}
+                    />
+                </div>
+                {image ? (
+                    <img
+                        src={image}
+                        alt="Profile"
+                        className="w-full h-full object-cover -z-10"
+                    />
+                ) : (
+                    <DefaultProfileImageSvg opacity={0.8} scale={1.15} />
+                )}
+            </div>
+        </>
     );
 }
 

@@ -94,11 +94,6 @@ export default function QuestsButton({
             return;
         }
 
-        if (status === "completed") {
-            toast.error("You have already completed this quest.");
-            return;
-        }
-
         if (isCompleting) {
             toast.info("Please wait for the quest to complete.");
             return;
@@ -402,8 +397,9 @@ export default function QuestsButton({
                                             waitDate.getTime() >
                                                 new Date().getTime() && (
                                                 <Countdown
-                                                    size={5}
+                                                    size={10}
                                                     endDate={waitDate}
+                                                    className="font-digital text-[rgba(255,255,255,0.8)]"
                                                 />
                                             )}
                                     </div>

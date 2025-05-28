@@ -11,13 +11,10 @@ interface UserProfileProps {
 }
 
 export default function UserProfile({ user, player }: UserProfileProps) {
-    console.log("User", user);
-    console.log("Player", player);
-
     return (
         <div className="flex flex-col gap-[15px] items-center justify-center">
-            <ProfileImage image={user.image} size={65} />
-            <ProfileName user={user} player={player} size={20} />
+            <ProfileImage size={65} />
+            <ProfileName size={20} />
         </div>
     );
 }

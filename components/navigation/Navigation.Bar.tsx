@@ -10,7 +10,7 @@ import RewardPanel from "../molecules/RewardPanel";
 import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
 import { usePathname } from "next/navigation";
-import UserSettings from "../user/User.Settings";
+import UserNavigation from "../user/User.Navigation";
 
 const defaultMenuItems = [
     { name: "Quest", href: "/quests", icon: "/ui/navigation/nav-quest.svg" },
@@ -34,7 +34,8 @@ interface NavigationBarProps {
 export default function NavigationBar({ user, player }: NavigationBarProps) {
     const pathname = usePathname();
     const [active, setActive] = useState<string>("");
-    const [showUserSettings, setShowUserSettings] = useState<boolean>(false);
+    const [showUserNavigation, setShowUserNavigation] =
+        useState<boolean>(false);
     const menu = useMemo(() => {
         if (user && user.id) {
             return [...defaultMenuItems, ...myPage(user.id)];
@@ -44,8 +45,12 @@ export default function NavigationBar({ user, player }: NavigationBarProps) {
 
     return (
         <>
-            {showUserSettings && user && player && (
-                <UserSettings user={user} player={player} />
+            {showUserNavigation && (
+                <UserNavigation
+                    user={user}
+                    player={player}
+                    onClose={() => setShowUserNavigation(false)}
+                />
             )}
             <nav
                 className="
@@ -90,12 +95,20 @@ export default function NavigationBar({ user, player }: NavigationBarProps) {
                         paddingSize={10}
                         gapSize={10}
                     />
-                    {player && (
-                        <RewardPanel
-                            playerId={player.id}
-                            assetNames={["SGP"]}
-                        />
-                    )}
+                    {player &&
+                        (pathname !== "/user" ? (
+                            <RewardPanel
+                                playerId={player.id}
+                                assetNames={["SGP"]}
+                            />
+                        ) : (
+                            <img
+                                src="/ui/settings.svg"
+                                alt="Settings"
+                                className="w-[20px] h-[20px] opacity-80 hover:opacity-100 transition-opacity duration-300"
+                                onClick={() => setShowUserNavigation(true)}
+                            />
+                        ))}
                 </div>
             </nav>
 
@@ -129,7 +142,7 @@ export default function NavigationBar({ user, player }: NavigationBarProps) {
                                 src="/ui/settings.svg"
                                 alt="Settings"
                                 className="w-[20px] h-[20px] opacity-80 hover:opacity-100 transition-opacity duration-300"
-                                onClick={() => setShowUserSettings(true)}
+                                onClick={() => setShowUserNavigation(true)}
                             />
                         )
                     ) : (
