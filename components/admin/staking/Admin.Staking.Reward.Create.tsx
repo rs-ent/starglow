@@ -24,7 +24,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import CollectionCard from "@/components/molecules/NFTs.CollectionCard";
+import CollectionCard from "@/components/nfts/NFTs.CollectionCard";
 import { useToast } from "@/app/hooks/useToast";
 
 interface AdminStakingRewardCreateProps {

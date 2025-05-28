@@ -5,11 +5,11 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
-import PublicPrivateTab from "@/components/molecules/PublicPrivateTab";
-import QuestsPrivate from "./Quests.Private";
+import PublicPrivateTab from "@/components/atoms/PublicPrivateTab";
+import QuestsPrivate from "./Quests.Contents.Private";
 import { useReferralGet } from "@/app/hooks/useReferral";
 import { useQuestGet } from "@/app/hooks/useQuest";
-import QuestsPublic from "./Quests.Public";
+import QuestsPublic from "./Quests.Contents.Public";
 import { User } from "next-auth";
 
 interface QuestsContentsProps {

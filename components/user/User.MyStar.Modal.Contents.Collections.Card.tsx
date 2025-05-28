@@ -11,7 +11,7 @@ import type { METADATA_TYPE } from "@/app/actions/metadata";
 import { useMemo, useState } from "react";
 import { CopyIcon } from "lucide-react";
 import { useToast } from "@/app/hooks/useToast";
-import ArtistMessage from "../molecules/ArtistMessage";
+import ArtistMessage from "../artists/ArtistMessage";
 
 interface UserMyStarModalContentsCollectionsCardProps {
     artist: Artist;
@@ -136,7 +136,7 @@ function Status({
                 .join(", "),
             needCopy: false,
         });
-        
+
         return result;
     }, [verifiedCollection, metadata]);
 

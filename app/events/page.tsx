@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import Events from "@/components/templates/Events";
+import Events from "@/components/events/Events";
 
 export const metadata: Metadata = {
     title: "Events | Starglow",

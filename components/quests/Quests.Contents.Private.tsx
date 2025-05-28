@@ -4,12 +4,11 @@
 
 import { useEffect, useState } from "react";
 import { Artist, Player, ReferralLog, QuestLog } from "@prisma/client";
-import ArtistMessage from "../molecules/ArtistMessage";
-import ArtistSlideSelector from "../molecules/ArtistSlideSelector";
-import QuestsArtistMissions from "./Quests.ArtistMissions";
+import ArtistMessage from "../artists/ArtistMessage";
+import ArtistSlideSelector from "../artists/ArtistSlideSelector";
+import QuestsArtistMissions from "./Quests.Contents.Private.ArtistMissions";
 import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
-import PartialLoading from "../atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
 import { User } from "next-auth";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";

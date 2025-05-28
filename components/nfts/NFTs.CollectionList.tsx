@@ -3,7 +3,7 @@
 "use client";
 
 import { CollectionContract } from "@prisma/client";
-import CollectionCard from "@/components/molecules/NFTs.CollectionCard";
+import CollectionCard from "@/components/nfts/NFTs.CollectionCard";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 

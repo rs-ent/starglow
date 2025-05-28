@@ -4,7 +4,7 @@
 
 import { Artist, Player, PollLog } from "@prisma/client";
 import PartialLoading from "../atoms/PartialLoading";
-import ArtistSlideSelector from "../molecules/ArtistSlideSelector";
+import ArtistSlideSelector from "../artists/ArtistSlideSelector";
 import PollsContentsPrivateArtistList from "./Polls.Contents.Private.ArtistList";
 import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
 import { useState, useEffect } from "react";

@@ -1,4 +1,4 @@
-import EventsDetail from "@/components/organisms/EventsDetail";
+import EventsDetail from "@/components/events/EventsDetail";
 import { getEventById } from "@/app/actions/events";
 import { notFound } from "next/navigation";
 

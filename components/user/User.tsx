@@ -5,7 +5,7 @@
 import { Player } from "@prisma/client";
 import type { User } from "next-auth";
 import UserProfile from "./User.Profile";
-import PublicPrivateTab from "../molecules/PublicPrivateTab";
+import PublicPrivateTab from "../atoms/PublicPrivateTab";
 import { useState } from "react";
 import UserRewards from "./User.Rewards";
 import UserMyStar from "./User.MyStar";

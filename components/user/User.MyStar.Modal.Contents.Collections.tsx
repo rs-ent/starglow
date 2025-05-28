@@ -11,9 +11,9 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import React, { useMemo, useRef, useState } from "react";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
 import ArtistSelector from "../atoms/ArtistSelector";
-import ArtistMessage from "../molecules/ArtistMessage";
-import QuestsArtistMissions from "../organisms/Quests.ArtistMissions";
-import PollsArtistList from "../organisms/Polls.ArtistList";
+import ArtistMessage from "../artists/ArtistMessage";
+import QuestsArtistMissions from "../quests/Quests.Contents.Private.ArtistMissions";
+import PollsContentsPrivateArtistList from "../polls/Polls.Contents.Private.ArtistList";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 
 interface UserMyStarModalContentsCollectionsProps {
@@ -148,7 +148,7 @@ export default function UserMyStarModalContentsCollections({
                     />
                 </div>
             </div>
-            <PollsArtistList
+            <PollsContentsPrivateArtistList
                 artist={artist}
                 player={player}
                 tokenGatingResult={tokenGatingResult}

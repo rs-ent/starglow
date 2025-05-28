@@ -18,7 +18,7 @@ import {
     SelectContent,
     SelectItem,
 } from "@/components/ui/select";
-import CollectionCard from "@/components/molecules/NFTs.CollectionCard";
+import CollectionCard from "@/components/nfts/NFTs.CollectionCard";
 import {
     Quest,
     Artist,

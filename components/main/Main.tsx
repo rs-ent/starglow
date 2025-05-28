@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import MainGitbook from "@/components/main/Main.Gitbook";
 import MainPartners from "@/components/main/Main.Partners";
 import MainFollowUs from "@/components/main/Main.FollowUs";
-import Footer from "@/components/organisms/Footer";
+import Footer from "@/components/main/Footer";
 import Script from "next/script";
 import { useSession } from "next-auth/react";
 import { useUserSet } from "@/app/hooks/useUser";

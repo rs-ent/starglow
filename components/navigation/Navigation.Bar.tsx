@@ -6,7 +6,7 @@ import AuthButton from "../atoms/AuthButton";
 import { User } from "next-auth";
 import VerticalButton from "../atoms/VerticalButton";
 import { useState, useMemo } from "react";
-import RewardPanel from "../molecules/RewardPanel";
+import RewardPanel from "../atoms/RewardPanel";
 import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
 import { usePathname } from "next/navigation";

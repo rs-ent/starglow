@@ -1,10 +1,10 @@
-/// components\organisms\EventsDetail.tsx
+/// components/organisms/EventsDetail.tsx
 "use client";
 
 import { useState } from "react";
 import { useEvent } from "@/app/hooks/useEvents";
-import EventDescription from "../molecules/EventDescription";
-import EventPayment from "../molecules/EventPayment";
+import EventDescription from "./EventDescription";
+import EventPayment from "./EventPayment";
 import { Loader2 } from "lucide-react";
 
 interface EventsDetailProps {

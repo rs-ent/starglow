@@ -8,7 +8,7 @@ import { usePlayerGet } from "@/app/hooks/usePlayer";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import QuestsContents from "@/components/organisms/Quests.Contents";
+import QuestsContents from "@/components/quests/Quests.Contents";
 import { User } from "next-auth";
 
 interface QuestsProps {

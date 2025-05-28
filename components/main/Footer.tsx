@@ -1,6 +1,6 @@
 /// components/organisms/Footer.tsx
 
-import FollowUs from "../molecules/FollowUs";
+import FollowUs from "./FollowUs";
 import { Paragraph } from "../atoms/Typography";
 
 interface FooterProps {

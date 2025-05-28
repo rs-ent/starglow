@@ -1,10 +1,10 @@
-/// components/organisms/Quests.Public.tsx
+/// components/quests/Quests.Contents.Public.tsx
 
 "use client";
 
 import { Player, Quest, ReferralLog, QuestLog } from "@prisma/client";
 import { useEffect, useState, useMemo, useRef } from "react";
-import QuestsMissions from "@/components/molecules/Quests.Missions";
+import QuestsMissions from "./Quests.Missions";
 import { useQuestGet, useQuestSet } from "@/app/hooks/useQuest";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";

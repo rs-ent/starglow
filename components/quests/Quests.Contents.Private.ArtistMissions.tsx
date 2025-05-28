@@ -1,4 +1,4 @@
-/// components/organisms/Quests.ArtistMissions.tsx
+/// components/quests/Quests.Contents.Private.ArtistMissions.tsx
 
 "use client";
 
@@ -8,7 +8,7 @@ import { Artist, Player, QuestLog, ReferralLog } from "@prisma/client";
 import Image from "next/image";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import QuestsMissions from "../molecules/Quests.Missions";
+import QuestsMissions from "./Quests.Missions";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import InviteFriends from "../atoms/InviteFriends";
 import { motion, AnimatePresence } from "framer-motion";

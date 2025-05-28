@@ -27,7 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import CollectionCard from "@/components/molecules/NFTs.CollectionCard";
+import CollectionCard from "@/components/nfts/NFTs.CollectionCard";
 import DateTimePicker from "@/components/atoms/DateTimePicker";
 import FileUploader from "@/components/atoms/FileUploader";
 import Image from "next/image";

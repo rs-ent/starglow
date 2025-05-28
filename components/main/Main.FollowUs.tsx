@@ -1,6 +1,6 @@
 /// components/main/Main.FollowUs.tsx
 
-import FollowUs from "../molecules/FollowUs";
+import FollowUs from "./FollowUs";
 
 export default function MainFollowUs() {
     return (

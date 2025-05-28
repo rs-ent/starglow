@@ -1,7 +1,7 @@
 /// app/quests/page.tsx
 
 import { auth } from "@/app/auth/authSettings";
-import Quests from "@/components/templates/Quests";
+import Quests from "@/components/quests/Quests";
 
 export default async function QuestPage() {
     const session = await auth();

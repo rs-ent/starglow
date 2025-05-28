@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { useState } from "react";
-import PublicPrivateTab from "../molecules/PublicPrivateTab";
+import PublicPrivateTab from "../atoms/PublicPrivateTab";
 import PollsContentsPublic from "./Polls.Contents.Public";
 import PollsContentsPrivate from "./Polls.Contents.Private";
 import { User } from "next-auth";
