@@ -344,6 +344,59 @@ html {
   .morp-glass-5 {
     box-shadow: 0 0 64px 16px rgba(255, 255, 255, 0.3) inset;
   }
+
+  .button-feather-purple {
+    position: relative;
+    z-index: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.7rem;
+    cursor: pointer;
+    user-select: none;
+    background-color: transparent;
+    text-transform: uppercase;
+    border: none;
+    height: 60px;
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+    transition: color 0.25s ease, all 0.25s ease;
+  }
+
+  /* 양쪽 "feather" 라인(가상 요소) */
+  .button-feather-purple::before,
+  .button-feather-purple::after {
+    content: "";
+    position: absolute;
+    z-index: -1; /* 텍스트 뒤에 렌더링되도록 설정 */
+    top: 50%;
+    transform: translateY(-50%);
+    height: 20px;
+    width: 50%; /* 선 길이 (버튼 반으로 설정) */
+    pointer-events: none;
+    background: linear-gradient(
+      to right,
+      rgba(167, 88, 231, 1),
+      /* 왼쪽 100% 보라 */ rgba(157, 78, 221, 0) /* 오른쪽 0% 투명 */
+    );
+    filter: blur(8px); /* 블러 효과 */
+  }
+
+  /* 왼쪽 라인: 반대 방향으로 회전하여 "왼→투명, 오른→퍼플" */
+  .button-feather-purple::before {
+    left: 0;
+    transform: translateY(-50%) rotateY(180deg);
+    /* rotateY(180deg)로 그라디언트 방향 뒤집기 */
+  }
+
+  /* 오른쪽 라인 */
+  .button-feather-purple::after {
+    right: 0;
+  }
+
+  /* Hover 시 살짝 강조해보고 싶다면 */
+  .button-feather-purple:hover {
+    text-shadow: 0 0 24px rgba(255, 255, 255, 0.6);
+  }
 }
 
 @keyframes spin-scale {

@@ -156,6 +156,8 @@ export default function NFTContents({ collection }: NFTContentsProps) {
                             ) : (
                                 <NFTContentsPreRegistration
                                     collection={collection}
+                                    participantsType={participantsType}
+                                    status={status}
                                 />
                             )}
                         </div>

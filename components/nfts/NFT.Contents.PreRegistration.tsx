@@ -1,17 +1,92 @@
-/// components/nfts/NFT.Contents.PreRegistration.tsx
+/// components/nfts/NFT.Contents.SaleDetail.tsx
 
 import { Collection } from "@/app/actions/factoryContracts";
+import { CollectionParticipantType } from "@prisma/client";
+import { useMemo } from "react";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+import { formatDate } from "@/lib/utils/format";
+import Countdown from "../atoms/Countdown";
 
 interface NFTContentsPreRegistrationProps {
     collection: Collection;
+    participantsType: CollectionParticipantType;
+    status: string;
 }
 
 export default function NFTContentsPreRegistration({
     collection,
+    participantsType,
+    status,
 }: NFTContentsPreRegistrationProps) {
+    const { saleLabel, date } = useMemo(() => {
+        if (participantsType === CollectionParticipantType.PUBLICSALE) {
+            return { saleLabel: "Sale End", date: collection.saleEnd };
+        }
+
+        return {
+            saleLabel: "Sale Open",
+            date: collection.saleStart,
+        };
+    }, [participantsType]);
+
     return (
-        <div>
-            <h3>Pre Registration</h3>
-        </div>
+        <>
+            {date && (
+                <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50 p-6">
+                    <div
+                        className={cn(
+                            "flex flex-col items-center justify-center"
+                        )}
+                    >
+                        <h2 className={cn(getResponsiveClass(45).textClass)}>
+                            {saleLabel}
+                        </h2>
+                        <h3
+                            className={cn(
+                                getResponsiveClass(35).textClass,
+                                "text-glow-white-smooth animate-pulse"
+                            )}
+                        >
+                            {formatDate(date)}
+                        </h3>
+
+                        <div
+                            className={cn(
+                                "flex flex-col items-center justify-center",
+                                "bg-[#471ca9] rounded-sm w-full",
+                                "border border-white/40 font-main p-5 my-[30px]"
+                            )}
+                        >
+                            <Countdown endDate={date} className="opacity-80" />
+                        </div>
+
+                        <h3 className={cn(getResponsiveClass(20).textClass)}>
+                            NOW OR NEVER!
+                        </h3>
+                        <h3
+                            className={cn(
+                                getResponsiveClass(20).textClass,
+                                "text-[rgba(255,255,255,0.7)]"
+                            )}
+                        >
+                            {participantsType ===
+                            CollectionParticipantType.PUBLICSALE
+                                ? "PURCHASE NOW AND GET YOURS"
+                                : "PRE-ORDER TO GET YOURS"}
+                        </h3>
+                        <h3
+                            className={cn(
+                                "button-feather-purple !font-main my-[30px]",
+                                "hover:scale-120 transition-all duration-500",
+                                getResponsiveClass(30).textClass
+                            )}
+                        >
+                            Pre Registration
+                        </h3>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }
