@@ -15,6 +15,7 @@ import Countdown from "@/components/atoms/Countdown";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import { motion, AnimatePresence } from "framer-motion";
 import InviteFriendsModal from "./InviteFriends.Modal";
+import PopupInteractFeedback from "./Popup.InteractFeedback";
 
 interface QuestsButtonProps {
     player: Player | null;
@@ -74,6 +75,9 @@ export default function QuestsButton({
 
     const [blockFunction, setBlockFunction] = useState<boolean>(false);
 
+    const [showInteractFeedback, setShowInteractFeedback] =
+        useState<boolean>(false);
+
     const handleCompleteQuest = async () => {
         if (quest.isReferral) {
             setIsInviteFriendsModalOpen(true);
@@ -91,6 +95,13 @@ export default function QuestsButton({
 
         if (!permission) {
             toast.error("You don't have permission to complete this quest.");
+            return;
+        }
+
+        if (status === "completed") {
+            toast.info(
+                "You have already completed this quest. Please claim your reward!"
+            );
             return;
         }
 
@@ -214,7 +225,7 @@ export default function QuestsButton({
         const result = await claimQuestReward({ questLog, player });
         endLoading();
         if (result.success) {
-            toast.success(`+${quest.rewardAmount} ${asset?.name} claimed!`);
+            setShowInteractFeedback(true);
         } else {
             toast.error(
                 "Failed to claim quest reward. Please try again. If the problem persists, please contact support."
@@ -285,6 +296,19 @@ export default function QuestsButton({
 
     return (
         <>
+            <PopupInteractFeedback
+                open={showInteractFeedback}
+                onClose={() => setShowInteractFeedback(false)}
+                title={"Reward Claimed!"}
+                description={
+                    "You've claimed the quest reward. Thank you for your participation!"
+                }
+                type="success"
+                autoCloseMs={4000}
+                showReward={true}
+                reward={asset || undefined}
+                rewardAmount={quest.rewardAmount}
+            />
             {isInviteFriendsModalOpen && (
                 <InviteFriendsModal
                     player={player}
@@ -406,13 +430,26 @@ export default function QuestsButton({
                                 )}
 
                                 {status === "completed" ? (
-                                    <Button
-                                        onClick={handleClaimQuestReward}
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleClaimQuestReward();
+                                        }}
                                         disabled={blockFunction}
-                                        className="px-[9px]"
+                                        className={cn(
+                                            getResponsiveClass(20).textClass,
+                                            getResponsiveClass(20).paddingClass,
+                                            "bg-[rgba(139,92,246,0.9)]",
+                                            "rounded-[8px]",
+                                            "cursor-pointer",
+                                            "backdrop-blur-xs",
+                                            "hover:bg-[rgba(139,92,246,1)] hover:scale-105",
+                                            "transition-all duration-300"
+                                        )}
                                     >
                                         Claim
-                                    </Button>
+                                    </button>
                                 ) : status === "claimed" ? (
                                     <img
                                         src="/ui/checked.svg"

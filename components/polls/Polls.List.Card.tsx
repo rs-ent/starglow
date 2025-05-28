@@ -19,6 +19,7 @@ import Doorman from "../atoms/Doorman";
 import Popup from "../atoms/Popup";
 import Button from "../atoms/Button";
 import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
+import { useAssetsGet } from "@/app/hooks/useAssets";
 
 interface PollsCardProps {
     index?: number;
@@ -55,6 +56,12 @@ export default function PollsListCard({
     const toast = useToast();
     const startDate = formatDate(poll.startDate);
     const endDate = formatDate(poll.endDate);
+
+    const { asset, isLoading: isAssetLoading } = useAssetsGet({
+        getAssetInput: {
+            id: poll.participationRewardAssetId || "",
+        },
+    });
 
     const { pollResult, isLoading, error } = usePollsGet({
         pollResultInput: {
@@ -144,6 +151,7 @@ export default function PollsListCard({
     const [showAnswerPopup, setShowAnswerPopup] = useState(false);
 
     const [showInteractFeedback, setShowInteractFeedback] = useState(false);
+    const [rewarded, setRewarded] = useState(false);
 
     const handleSubmit = async (confirmed = false) => {
         startLoading();
@@ -220,6 +228,11 @@ export default function PollsListCard({
                     setConfirmedAnswer(false);
                     setShowAnswerPopup(false);
                 } else {
+                    if (result.playerAssetUpdated) {
+                        setRewarded(true);
+                    } else {
+                        setRewarded(false);
+                    }
                     setConfirmedAnswer(false);
                     setShowAnswerPopup(false);
                     setShowInteractFeedback(true);
@@ -249,10 +262,19 @@ export default function PollsListCard({
             <PopupInteractFeedback
                 open={showInteractFeedback}
                 onClose={() => setShowInteractFeedback(false)}
-                title="Thanks for voting!"
-                description="Your opinion matters to us. Stay tuned for the results!"
+                title={
+                    poll.hasAnswer ? "Correct Answer!" : "Thanks for voting!"
+                }
+                description={
+                    poll.hasAnswer
+                        ? "You've selected the correct answer. Thank you for your participation!"
+                        : "Your opinion matters to us. Stay tuned for the results!"
+                }
                 type="success"
-                autoCloseMs={3000}
+                autoCloseMs={4000}
+                showReward={rewarded}
+                reward={asset || undefined}
+                rewardAmount={poll.participationRewardAmount}
             />
             {poll.hasAnswer && !confirmedAnswer && (
                 <Popup

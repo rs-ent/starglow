@@ -2,14 +2,16 @@
 
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Portal from "./Portal";
 import Lottie from "lottie-react";
 import { TextAnimate } from "@/components/magicui/text-animate";
-import { Confetti, type ConfettiRef } from "@/components/magicui/confetti";
+import confetti from "canvas-confetti";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+import { Asset } from "@prisma/client";
+import { NumberTicker } from "@/components/magicui/number-ticker";
 
 interface InteractFeedbackProps {
     open: boolean;
@@ -18,6 +20,10 @@ interface InteractFeedbackProps {
     description?: string;
     type?: "success" | "error" | "warning" | "info";
     autoCloseMs?: number;
+    showConfetti?: boolean;
+    showReward?: boolean;
+    reward?: Asset | null;
+    rewardAmount?: number | null;
 }
 
 export default function InteractFeedback({
@@ -26,21 +32,30 @@ export default function InteractFeedback({
     title,
     description,
     type = "success",
-    autoCloseMs = 3000,
+    autoCloseMs = 4000,
+    showConfetti = true,
+    showReward = true,
+    reward,
+    rewardAmount,
 }: InteractFeedbackProps) {
     const [successLottie, setSuccessLottie] = useState<any>(null);
-    const confettiRef = useRef<ConfettiRef>(null);
-    const [confettiVisible, setConfettiVisible] = useState(false);
 
     // 자동 닫힘
     useEffect(() => {
-        if (open && autoCloseMs) {
-            const timer = setTimeout(onClose, autoCloseMs);
-            return () => clearTimeout(timer);
+        if (open) {
+            if (autoCloseMs) {
+                const timer = setTimeout(onClose, autoCloseMs);
+                return () => clearTimeout(timer);
+            }
         }
     }, [open, autoCloseMs, onClose]);
 
-    // Lottie fetch
+    useEffect(() => {
+        if (showConfetti && open) {
+            handleConfetti();
+        }
+    }, [showConfetti, open]);
+
     useEffect(() => {
         if (type === "success") {
             fetch("/lottie/success.json")
@@ -49,21 +64,24 @@ export default function InteractFeedback({
         }
     }, [type]);
 
-    // 팝업이 열릴 때 confetti 실행
-    useEffect(() => {
-        if (open && type === "success") {
-            setConfettiVisible(true);
-            confettiRef.current?.fire({
-                particleCount: 100,
-                ticks: autoCloseMs,
+    const handleConfetti = () => {
+        const defaults = {
+            particleCount: 100,
+            spread: 120,
+            ticks: autoCloseMs ? autoCloseMs : 800,
+            decay: 0.96,
+            startVelocity: 20,
+            scalar: 1,
+        };
+
+        const shoot = () => {
+            confetti({
+                ...defaults,
             });
-        }
-        // 팝업이 닫힐 때 confetti를 잠시 더 유지
-        if (!open && confettiVisible) {
-            const timer = setTimeout(() => setConfettiVisible(false), 800); // 0.8초 후 confetti 숨김
-            return () => clearTimeout(timer);
-        }
-    }, [open, type, autoCloseMs, confettiVisible]);
+        };
+
+        shoot();
+    };
 
     return (
         <Portal>
@@ -77,13 +95,6 @@ export default function InteractFeedback({
                         transition={{ duration: 0.7 }}
                         style={{ pointerEvents: "auto" }}
                     >
-                        {/* Confetti는 카드 위에 겹치도록 배치 */}
-                        {confettiVisible && (
-                            <Confetti
-                                ref={confettiRef}
-                                className="absolute left-0 top-0 z-[1100] w-full h-full pointer-events-none"
-                            />
-                        )}
                         {/* 배경 블러/그라데이션 */}
                         <motion.div
                             className="absolute inset-0 bg-gradient-to-b from-[rgba(10,10,11,0.3)] to-[rgba(12,12,13,0.1)]"
@@ -160,6 +171,59 @@ export default function InteractFeedback({
                                 >
                                     {description}
                                 </TextAnimate>
+                            )}
+                            {showReward && rewardAmount != null && (
+                                <div className="flex flex-col items-center w-full">
+                                    <div className="h-[1px] w-full bg-white/10 my-3" />
+                                    <div className="flex flex-row items-center gap-2 mb-2">
+                                        <span
+                                            className={cn(
+                                                "text-sm text-[rgba(255,255,255,0.7)] font-medium",
+                                                getResponsiveClass(10).textClass
+                                            )}
+                                        >
+                                            You earned:
+                                        </span>
+                                        <div className="flex items-center gap-[5px]">
+                                            {reward?.iconUrl && (
+                                                <img
+                                                    src={reward.iconUrl}
+                                                    alt={reward.symbol}
+                                                    className={cn(
+                                                        "w-8 h-8 rounded-full border border-white/30 bg-white/10",
+                                                        getResponsiveClass(10)
+                                                            .frameClass
+                                                    )}
+                                                />
+                                            )}
+                                            <NumberTicker
+                                                value={rewardAmount}
+                                                startValue={parseInt(
+                                                    (rewardAmount / 2).toFixed(
+                                                        0
+                                                    ),
+                                                    10
+                                                )}
+                                                className={cn(
+                                                    "font-digital text-[rgba(255,255,150,0.85)]",
+                                                    getResponsiveClass(15)
+                                                        .textClass
+                                                )}
+                                            />
+                                            {reward?.symbol && (
+                                                <span
+                                                    className={cn(
+                                                        "text-[rgba(255,255,150,0.85)]",
+                                                        getResponsiveClass(10)
+                                                            .textClass
+                                                    )}
+                                                >
+                                                    {reward.symbol}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
                             )}
                         </motion.div>
                     </motion.div>

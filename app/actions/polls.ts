@@ -502,6 +502,7 @@ export interface ParticipatePollResult {
     success: boolean;
     data?: PollLog;
     error?: string;
+    playerAssetUpdated?: boolean;
 }
 
 export async function participatePoll(
@@ -510,6 +511,7 @@ export async function participatePoll(
     try {
         const { poll, player, optionId } = input;
         const amount = input.amount || 1;
+        let playerAssetUpdated = false;
 
         if (!poll) return { success: false, error: "Poll not found" };
         if (!player)
@@ -651,6 +653,7 @@ export async function participatePoll(
                 poll.participationRewardAssetId &&
                 poll.participationRewardAmount
             ) {
+                playerAssetUpdated = true;
                 const updateResult = await updatePlayerAsset({
                     transaction: {
                         playerId: player.id,
@@ -684,7 +687,7 @@ export async function participatePoll(
             });
         }
 
-        return { success: true, data: pollLog };
+        return { success: true, data: pollLog, playerAssetUpdated };
     } catch (error) {
         console.error("Error creating poll log:", error);
         throw new Error("Failed to create poll log");
