@@ -1,11 +1,9 @@
 /// components/artists/Artist.Feed.Card.tsx
 
-"use client";
-
 import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import { Artist } from "@prisma/client";
 import Image from "next/image";
-import { Heart, MessageCircle, Grid3X3, Play } from "lucide-react";
+import { Heart, MessageCircle, Play } from "lucide-react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
@@ -43,6 +41,8 @@ export default function ArtistFeedCard({
                             fill
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
                             sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                            quality={50}
+                            loading="lazy"
                         />
                     ) : (
                         /* 비디오 썸네일 */

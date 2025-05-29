@@ -22,10 +22,9 @@ export async function createArtistFeed({
     input: CreateArtistFeedInput;
 }): Promise<ArtistFeed | null> {
     try {
-        const artistFeed = await prisma.artistFeed.create({
+        return await prisma.artistFeed.create({
             data: input,
         });
-        return artistFeed;
     } catch (error) {
         console.error(error);
         return null;
@@ -138,10 +137,9 @@ export async function createArtistFeedReaction({
     input: CreateArtistFeedReactionInput;
 }): Promise<ArtistFeedReaction | null> {
     try {
-        const artistFeedReaction = await prisma.artistFeedReaction.create({
+        return await prisma.artistFeedReaction.create({
             data: input,
         });
-        return artistFeedReaction;
     } catch (error) {
         console.error(error);
         return null;

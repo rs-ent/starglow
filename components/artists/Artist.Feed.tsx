@@ -2,10 +2,10 @@
 
 "use client";
 
+import { useMemo } from "react";
 import { useArtistFeedsGet } from "@/app/hooks/useArtistFeeds";
 import { Artist } from "@prisma/client";
 import { useState } from "react";
-import { Loader2, Grid3X3 } from "lucide-react";
 import ArtistFeedCard from "./Artist.Feed.Card";
 import ArtistFeedModal from "./Artist.Feed.Modal";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -27,6 +27,13 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
         },
     });
 
+    const feeds = useMemo(() => {
+        if (artistFeeds?.feeds && artistFeeds.feeds.length > 0) {
+            return artistFeeds.feeds;
+        }
+        return [];
+    }, [artistFeeds]);
+
     // Loading state
     if (isLoading) {
         return <PartialLoading text="Loading feeds..." size="sm" />;
@@ -44,7 +51,7 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
         );
     }
 
-    const feeds = artistFeeds?.feeds || [];
+
 
     // Empty state
     if (feeds.length === 0) {
@@ -58,8 +65,12 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
                     "grid grid-cols-3 gap-1 w-full",
                     getResponsiveClass(30).paddingClass
                 )}
+                style={{
+                    WebkitMaskImage: feeds.length <= 9  ? "none" : "linear-gradient(to bottom, black 40%, transparent 80%)",
+                    maskImage: feeds.length <= 9 ? "none" : "linear-gradient(to bottom, black 40%, transparent 80%)"
+                }}
             >
-                {feeds.map((feed, index) => (
+                {feeds.slice(0, 9).map((feed, index) => (
                     <ArtistFeedCard
                         key={feed.id}
                         feed={feed}
