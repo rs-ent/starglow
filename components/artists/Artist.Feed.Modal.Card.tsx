@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import { Artist } from "@prisma/client";
 import { useArtistFeedsSet } from "@/app/hooks/useArtistFeeds";
 import { useToast } from "@/app/hooks/useToast";
-import { Heart, MessageCircle, Send, Play, MoreHorizontal } from "lucide-react";
+import { Heart, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils/tailwind";
 import { formatDistanceToNow } from "date-fns";
 import { useSession } from "next-auth/react";
@@ -13,21 +13,44 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import Image from "next/image";
+import { Suspense } from "react";
+
+// 이미지 로딩 플레이스홀더
+const ImagePlaceholder = () => (
+    <div className="w-full h-full bg-gray-800 animate-pulse"></div>
+);
+
+// 이미지 컴포넌트 메모이제이션
+const MediaItem = memo(({ media }: { media: { type: string, url: string } }) => (
+    <div className="flex items-center justify-center">
+        <div className="relative w-full aspect-[1/1]">
+            <Image
+                src={media.url}
+                alt=""
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 768px"
+                loading="lazy" // 이미지 지연 로딩 추가
+                priority={false} // 첫 번째 이미지만 priority 설정
+            />
+        </div>
+    </div>
+));
 
 interface ArtistFeedModalCardProps {
     feed: ArtistFeedWithReactions;
     artist: Artist;
-    isActive: boolean;
+    isActive?: boolean; // 현재 활성화된 카드인지 확인
 }
 
-export default function ArtistFeedModalCard({
+function ArtistFeedModalCard({
     feed,
     artist,
-    isActive,
+    isActive = false,
 }: ArtistFeedModalCardProps) {
     const toast = useToast();
     const { data: session } = useSession();
-    const player = session?.player;
     const { createArtistFeedReaction, deleteArtistFeedReaction } =
         useArtistFeedsSet();
 
@@ -35,39 +58,43 @@ export default function ArtistFeedModalCard({
     const [isLikeLoading, setIsLikeLoading] = useState(false);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
-    // 미디어 슬라이더 설정
-    const mediaSliderSettings = {
+    // 슬라이더 설정 메모이제이션
+    const mediaSliderSettings = useMemo(() => ({
         infinite: false,
         speed: 500,
         slidesToShow: 1,
         slidesToScroll: 1,
         arrows: false,
-        beforeChange: (current: number, next: number) =>
-            setCurrentMediaIndex(next),
-    };
+        afterChange: (index: number) => setCurrentMediaIndex(index),
+    }), []);
 
-    // 미디어 정보
-    const allMedia = [
-        ...(feed.imageUrls || []).map((url) => ({
-            type: "image" as const,
-            url,
-        })),
-        ...(feed.videoUrls || []).map((url) => ({
-            type: "video" as const,
-            url,
-        })),
-    ];
+    const { player, allMedia, userLikeReaction, isLiked, likeCount, commentCount } = useMemo(() => {
+        const player = session?.player;
+        const allMedia = [
+            ...(feed.imageUrls || []).map((url) => ({
+                type: "image" as const,
+                url,
+            })),
+            ...(feed.videoUrls || []).map((url) => ({
+                type: "video" as const,
+                url,
+            })),
+        ];
 
-    // 반응 상태
-    const userLikeReaction = feed.reactions?.find(
-        (r) => r.playerId === player?.id && !r.comment
-    );
-    const isLiked = Boolean(userLikeReaction);
-    const likeCount = feed.reactions?.filter((r) => !r.comment).length || 0;
-    const commentCount = feed.reactions?.filter((r) => r.comment).length || 0;
+        const userLikeReaction = feed.reactions?.find(
+            (r) => r.playerId === player?.id && !r.comment
+        );
+        const isLiked = Boolean(userLikeReaction);
+        const likeCount = feed.reactions?.filter((r) => !r.comment).length || 0;
+        const commentCount = feed.reactions?.filter((r) => r.comment).length || 0;
 
-    // 좋아요 토글 핸들러
-    const handleLikeToggle = () => {
+        return { player, allMedia, userLikeReaction, isLiked, likeCount, commentCount };
+    }, [feed, session]);
+
+
+
+    // 이벤트 핸들러 메모이제이션
+    const handleLikeToggle = useCallback(() => {
         if (!player?.id) {
             toast.error("Please sign in to like posts");
             return;
@@ -99,28 +126,59 @@ export default function ArtistFeedModalCard({
         } finally {
             setIsLikeLoading(false);
         }
-    };
+    }, [player?.id, isLiked, userLikeReaction, feed.id, deleteArtistFeedReaction, createArtistFeedReaction, toast]);
+
+    // 비활성 상태일 때도 기본 렌더링은 유지하되, 최적화
+    if (!isActive) {
+        return (
+            <div className="relative max-w-[768px] mx-auto w-screen h-screen bg-black flex items-center justify-center">
+                {/* 미디어 섹션 - 기본 이미지만 미리 로드 */}
+                {allMedia.length > 0 && (
+                    <div className="w-full">
+                        <div className="relative w-full aspect-[1/1]">
+                            <Image
+                                src={allMedia[0].url}
+                                alt=""
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 768px) 100vw, 768px"
+                                loading="lazy"
+                                priority={false}
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
 
     return (
-        <div className="relative max-w-[768px] mx-auto w-screen h-screen bg-black">
+        <div className="relative max-w-[768px] mx-auto w-screen h-screen bg-black flex items-center justify-center">
             {/* 미디어 섹션 */}
             {allMedia.length > 0 ? (
                 <div
                     onClick={(e) => {
                         e.stopPropagation();
                     }}
+                    className="w-full"
+                    style={{ touchAction: "none" }}
                 >
                     <Slider {...mediaSliderSettings}>
                         {allMedia.map((media, index) => (
-                            <div
-                                key={index}
-                                className="max-w-[768px] mx-auto w-screen h-screen flex flex-col items-center justify-center"
-                            >
-                                <img
-                                    src={media.url}
-                                    alt=""
-                                    className="w-full h-full object-contain"
-                                />
+                            <div key={index} className="flex items-center justify-center">
+                                <div className="relative w-full aspect-[1/1]">
+                                    <Suspense fallback={<ImagePlaceholder />}>
+                                        <Image
+                                            src={media.url}
+                                            alt=""
+                                            fill
+                                            className="object-cover"
+                                            sizes="(max-width: 768px) 100vw, 768px"
+                                            loading={index === 0 ? "eager" : "lazy"}
+                                            priority={index === 0}
+                                        />
+                                    </Suspense>
+                                </div>
                             </div>
                         ))}
                     </Slider>
@@ -209,7 +267,7 @@ export default function ArtistFeedModalCard({
                 className="absolute bottom-0 left-0 right-0 p-4 pb-6"
                 style={{
                     background:
-                        "linear-gradient(to top, #000 0%, rgba(0,0,0,0.8) 90%, rgba(0,0,0,0) 100%)",
+                        isTextExpanded ? "rgba(0,0,0,0.8)" : "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 70%, rgba(0,0,0,0) 100%)",
                 }}
             >
                 {feed.text && (
@@ -224,7 +282,7 @@ export default function ArtistFeedModalCard({
                             className={cn(
                                 "whitespace-pre-wrap transition-all duration-300",
                                 isTextExpanded
-                                    ? "max-h-[50vh] overflow-y-auto"
+                                    ? "max-h-[400px] overflow-y-auto scrollbar-none"
                                     : "line-clamp-2"
                             )}
                         >
@@ -255,3 +313,5 @@ export default function ArtistFeedModalCard({
         </div>
     );
 }
+
+export default memo(ArtistFeedModalCard);

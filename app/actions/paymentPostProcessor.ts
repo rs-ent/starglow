@@ -39,12 +39,10 @@ export const processDistributor = async (
 
     switch (table) {
         case "nfts": {
-            const result = await processNFTs(payment);
-            return result;
+            return await processNFTs(payment);
         }
         case "events": {
-            const result = await processEvents(payment);
-            return result;
+            return await processEvents(payment);
         }
         default:
             return {
@@ -130,7 +128,6 @@ export async function processNFTs(
                     },
                 };
             }
-            break;
         case "FAILED": {
             return {
                 success: false,
