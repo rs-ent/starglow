@@ -8,6 +8,8 @@ import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
 import { cn } from "@/lib/utils/tailwind";
 import { useMemo } from "react";
 import UserRewardModalCardV2 from "./User.Reward.Modal.Card.V2";
+import PartialLoading from "../atoms/PartialLoading";
+
 interface UserRewardsProps {
     user: User;
     player: Player | null;
@@ -44,11 +46,15 @@ export default function UserRewards({ user, player }: UserRewardsProps) {
                     "w-screen max-w-[800px] mx-auto flex flex-col gap-4 mb-[100px] lg:mb-[50px]"
                 )}
             >
-                <UserRewardModalCardV2
-                    playerId={player?.id}
-                    reward={playerAssetList[0]}
-                    closeModal={() => {}}
-                />
+                {isPlayerAssetsLoading ? (
+                    <PartialLoading text="Loading..." size="sm" />
+                ) : (
+                    <UserRewardModalCardV2
+                        playerId={player?.id}
+                        reward={playerAssetList[0]}
+                        closeModal={() => {}}
+                    />
+                )}
             </div>
         </>
     );

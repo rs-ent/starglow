@@ -66,13 +66,6 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
                     "px-[20px]",
                     getResponsiveClass(30).paddingClass
                 )}
-                style={{
-                    background: `linear-gradient(to bottom, ${ArtistBG(
-                        artist,
-                        0,
-                        0
-                    )}, ${ArtistBG(artist, 1, 80)} 100%)`,
-                }}
             >
                 {feeds.map((feed, index) => (
                     <ArtistFeedCard
