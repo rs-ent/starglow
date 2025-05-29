@@ -286,24 +286,28 @@ export default function PollsListCard({
                         <img
                             src="/ui/information.svg"
                             alt="info"
-                            className={cn(getResponsiveClass(30).frameClass)}
+                            className={cn(getResponsiveClass(60).frameClass)}
                         />
                         <h2
                             className={cn(
                                 "text-center text-[rgba(255,255,255,0.9)] font-semibold",
-                                getResponsiveClass(10).textClass
+                                getResponsiveClass(30).textClass
                             )}
                         >
-                            Answer Confirmation Required
+                            This poll has the correct answer.
                         </h2>
                         <p
                             className={cn(
                                 "text-center text-[rgba(255,255,255,0.7)]",
-                                getResponsiveClass(5).textClass
+                                getResponsiveClass(20).textClass
                             )}
                         >
-                            Please review and confirm your selected answer
-                            before proceeding with your vote.
+                            Please confirm your selected answer before
+                            proceeding with your vote.{" "}
+                            <strong>
+                                If you choose wrong, you will not be able to get
+                                the reward.
+                            </strong>
                         </p>
 
                         <div className="w-full flex flex-col items-center my-6 text-center">
@@ -311,7 +315,7 @@ export default function PollsListCard({
                                 className={cn(
                                     "px-4 py-2 rounded-lg inner-shadow font-main text-glow-white-smooth",
                                     "bg-gradient-to-br from-[rgba(0,0,0,0.05)] to-[rgba(0,0,0,0.2)]",
-                                    getResponsiveClass(15).textClass
+                                    getResponsiveClass(25).textClass
                                 )}
                             >
                                 {selection?.name}
@@ -794,48 +798,53 @@ export default function PollsListCard({
                     )}
 
                     {/* 투표 결과 보기 버튼 */}
-                    {status === "ONGOING" && (
-                        <>
-                            <div className="absolute bottom-[12px] right-[12px]">
-                                <img
-                                    src="/icons/charts-fill.svg"
-                                    alt="charts-fill"
-                                    className={cn(
-                                        showOngoingResults
-                                            ? "opacity-45"
-                                            : "opacity-0",
-                                        "transition-all duration-300 ease-in",
-                                        getResponsiveClass(25).frameClass
-                                    )}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowOngoingResults(
+                    {status === "ONGOING" &&
+                        (!poll.hasAnswer ||
+                            (pollLogs &&
+                                pollLogs.filter(
+                                    (pollLog) => pollLog.pollId === poll.id
+                                ).length > 0)) && (
+                            <>
+                                <div className="absolute bottom-[12px] right-[12px]">
+                                    <img
+                                        src="/icons/charts-fill.svg"
+                                        alt="charts-fill"
+                                        className={cn(
+                                            showOngoingResults
+                                                ? "opacity-45"
+                                                : "opacity-0",
+                                            "transition-all duration-300 ease-in",
+                                            getResponsiveClass(25).frameClass
+                                        )}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowOngoingResults(
+                                                !showOngoingResults
+                                            );
+                                        }}
+                                    />
+                                </div>
+                                <div className="absolute bottom-[12px] right-[12px]">
+                                    <img
+                                        src="/icons/charts-stroke.svg"
+                                        alt="charts-stroke"
+                                        className={cn(
                                             !showOngoingResults
-                                        );
-                                    }}
-                                />
-                            </div>
-                            <div className="absolute bottom-[12px] right-[12px]">
-                                <img
-                                    src="/icons/charts-stroke.svg"
-                                    alt="charts-stroke"
-                                    className={cn(
-                                        !showOngoingResults
-                                            ? "opacity-45"
-                                            : "opacity-0",
-                                        "transition-all duration-300 ease-in",
-                                        getResponsiveClass(25).frameClass
-                                    )}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowOngoingResults(
-                                            !showOngoingResults
-                                        );
-                                    }}
-                                />
-                            </div>
-                        </>
-                    )}
+                                                ? "opacity-45"
+                                                : "opacity-0",
+                                            "transition-all duration-300 ease-in",
+                                            getResponsiveClass(25).frameClass
+                                        )}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowOngoingResults(
+                                                !showOngoingResults
+                                            );
+                                        }}
+                                    />
+                                </div>
+                            </>
+                        )}
                 </div>
             </div>
         </>
