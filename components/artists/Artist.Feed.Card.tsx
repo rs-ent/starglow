@@ -20,12 +20,8 @@ export default function ArtistFeedCard({
     artist,
     onClick,
 }: ArtistFeedCardProps) {
-    // 미디어 정보 계산
-    const mediaCount =
-        (feed.imageUrls?.length || 0) + (feed.videoUrls?.length || 0);
     const firstMedia = feed.imageUrls?.[0] || feed.videoUrls?.[0];
     const isVideo = !feed.imageUrls?.[0] && feed.videoUrls?.[0];
-    const hasMultipleMedia = mediaCount > 1;
 
     // 반응 통계
     const likeCount = feed.reactions?.length || 0;

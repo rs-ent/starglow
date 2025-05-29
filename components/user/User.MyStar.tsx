@@ -24,7 +24,6 @@ export default function UserMyStar({
     userVerifiedCollections,
 }: UserMyStarProps) {
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const {
         pollsList,
@@ -125,58 +124,56 @@ export default function UserMyStar({
         return result;
     }, [artists, pollsList, quests, playerPollLogs, playerQuestLogs]);
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setTimeout(() => {
-            setSelectedArtist(null);
-        }, 800);
-    };
-
     const handleSelectArtist = (artist: Artist) => {
         setSelectedArtist(artist);
-        setIsModalOpen(true);
     };
 
-    return (
-        <>
+    const handleClose = () => {
+        setSelectedArtist(null);
+    };
+
+    if (selectedArtist) {
+        return (
             <UserMyStarModal
                 player={player}
                 questLogs={playerQuestLogs ?? []}
                 pollLogs={playerPollLogs ?? []}
                 artist={selectedArtist}
                 verifiedCollections={userVerifiedCollections.filter(
-                    (collection) => collection.artistId === selectedArtist?.id
+                    (collection) => collection.artistId === selectedArtist.id
                 )}
-                open={isModalOpen}
-                onClose={handleCloseModal}
+                open={true}
+                onClose={handleClose}
             />
-            <div
-                className={cn(
-                    "flex flex-col items-center justify-center w-screen max-w-[1000px]",
-                    "py-4 px-6 sm:py-6 sm:px-8 md:py-8 md:px-12 lg:py-10 lg:px-12",
-                    "gap-[15px]"
-                )}
-            >
-                {artists.map((artist, index) => {
-                    const { polls, quests } = newArtistsActivities.get(
-                        artist.id
-                    ) || { polls: [], quests: [] };
+        );
+    }
 
-                    const hasNewActivity =
-                        polls.length > 0 || quests.length > 0;
+    return (
+        <div
+            className={cn(
+                "flex flex-col items-center justify-center w-screen max-w-[1000px]",
+                "py-4 px-6 sm:py-6 sm:px-8 md:py-8 md:px-12 lg:py-10 lg:px-12",
+                "gap-[15px]"
+            )}
+        >
+            {artists.map((artist, index) => {
+                const { polls, quests } = newArtistsActivities.get(
+                    artist.id
+                ) || { polls: [], quests: [] };
 
-                    return (
-                        <ArtistButton
-                            key={artist.id}
-                            artist={artist}
-                            index={index}
-                            className="w-full"
-                            hasNewActivity={hasNewActivity}
-                            onClick={() => handleSelectArtist(artist)}
-                        />
-                    );
-                })}
-            </div>
-        </>
+                const hasNewActivity = polls.length > 0 || quests.length > 0;
+
+                return (
+                    <ArtistButton
+                        key={artist.id}
+                        artist={artist}
+                        index={index}
+                        className="w-full"
+                        hasNewActivity={hasNewActivity}
+                        onClick={() => handleSelectArtist(artist)}
+                    />
+                );
+            })}
+        </div>
     );
 }

@@ -12,9 +12,10 @@ import NFTContentsPageImages from "./NFT.Contents.PageImages";
 import { ShinyButton } from "@/components/magicui/shiny-button";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { CollectionParticipantType } from "@prisma/client";
+import { CollectionParticipantType, Payment } from "@prisma/client";
 import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import NFTContentsPreRegistration from "./NFT.Contents.PreRegistration";
+import InteractFeedback from "../atoms/Popup.InteractFeedback";
 
 interface NFTContentsProps {
     collection: Collection;
@@ -23,6 +24,7 @@ interface NFTContentsProps {
 export default function NFTContents({ collection }: NFTContentsProps) {
     const metadata = collection?.metadata?.metadata as METADATA_TYPE;
     const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+    const [showFeedback, setShowFeedback] = useState(false);
 
     const { status, dateLabel, dateValue, participantsType } = useMemo(() => {
         const now = new Date();
@@ -105,9 +107,10 @@ export default function NFTContents({ collection }: NFTContentsProps) {
         console.log(
             `Purchasing ${quantity} NFTs from collection ${collection.address}`
         );
-        setTimeout(() => {
-            setPurchaseSuccess(true);
-        }, 1500);
+    };
+
+    const handlePaymentSuccess = (payment: Payment) => {
+        setShowFeedback(true);
     };
 
     return (
@@ -152,6 +155,7 @@ export default function NFTContents({ collection }: NFTContentsProps) {
                                     collection={collection}
                                     onPurchase={handlePurchase}
                                     collectionStock={collectionStock}
+                                    onPaymentSuccess={handlePaymentSuccess}
                                 />
                             ) : (
                                 <NFTContentsPreRegistration
@@ -170,6 +174,15 @@ export default function NFTContents({ collection }: NFTContentsProps) {
                         ? "Buy Now"
                         : "Pre Register Now"
                 }
+            />
+            <InteractFeedback
+                open={showFeedback}
+                onClose={() => setShowFeedback(false)}
+                title="NFT Purchase Successful!"
+                description={`You have successfully purchased ${collection.name}`}
+                type="purchaseNFT"
+                showConfetti={true}
+                collection={collection}
             />
         </div>
     );

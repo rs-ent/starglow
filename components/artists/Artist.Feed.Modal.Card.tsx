@@ -127,7 +127,7 @@ export default function ArtistFeedModalCard({
 
                     {/* 미디어 인디케이터 추가 */}
                     {allMedia.length > 1 && (
-                        <div className="absolute top-2 left-1/2 -translate-x-1/2 flex gap-1">
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
                             {allMedia.map((_, index) => (
                                 <div
                                     key={index}

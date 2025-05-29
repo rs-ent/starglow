@@ -21,6 +21,7 @@ export default async function NFTPage(props: NFTPageProps) {
         },
         include: {
             metadata: true,
+            artist: true,
         },
     })) as Collection;
 

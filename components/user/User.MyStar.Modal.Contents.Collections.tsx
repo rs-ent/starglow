@@ -131,7 +131,25 @@ export default function UserMyStarModalContentsCollections({
                     artistId={artist.id}
                     className={cn("mt-[10px]")}
                 />
-                <ArtistFeed artist={artist} />
+
+                <div
+                    className={cn(
+                        "w-full px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px]",
+                        "mb-[30px]"
+                    )}
+                >
+                    <div
+                        className={cn(
+                            "w-full rounded-[16px] gradient-border",
+                            "py-[10px]",
+                            "morp-glass-3",
+                            "bg-gradient-to-br from-[rgba(0,0,0,0.1)] to-[rgba(0,0,0,0.2)]"
+                        )}
+                    >
+                        <ArtistFeed artist={artist} />
+                    </div>
+                </div>
+
                 <div
                     className={cn(
                         "px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px]"

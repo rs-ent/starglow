@@ -17,7 +17,7 @@ import {
     getChain,
     getEscrowWalletWithPrivateKey,
 } from "./blockchain";
-import { CollectionContract, FactoryContract, Metadata } from "@prisma/client";
+import { Artist, CollectionContract, FactoryContract, Metadata } from "@prisma/client";
 import { privateKeyToAccount } from "viem/accounts";
 
 import factoryJson from "@/web3/artifacts/contracts/Factory.sol/CollectionFactory.json";
@@ -384,6 +384,7 @@ export interface GetCollectionInput {
 
 export type Collection = CollectionContract & {
     metadata: Metadata | null;
+    artist: Artist | null;
 };
 
 export interface GetCollectionResult {
@@ -401,6 +402,7 @@ export async function getCollections(
                 orderBy: { createdAt: "desc" },
                 include: {
                     metadata: true,
+                    artist: true,
                 },
             });
 
@@ -439,6 +441,7 @@ export async function getCollections(
             orderBy: { createdAt: "desc" },
             include: {
                 metadata: true,
+                artist: true,
             },
         });
 

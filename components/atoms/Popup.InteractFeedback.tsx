@@ -12,18 +12,23 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { Asset } from "@prisma/client";
 import { NumberTicker } from "@/components/magicui/number-ticker";
+import { Canvas } from "@react-three/fiber";
+import NFTsCollectionsCardR3FAcqusition from "../nfts/NFTs.Collections.Card.R3F.Acqusition";
+import { Collection } from "@/app/actions/factoryContracts";
+import { XIcon } from "lucide-react";
 
 interface InteractFeedbackProps {
     open: boolean;
     onClose: () => void;
     title: string;
     description?: string;
-    type?: "success" | "error" | "warning" | "info";
+    type?: "success" | "error" | "warning" | "info" | "purchaseNFT";
     autoCloseMs?: number;
     showConfetti?: boolean;
     showReward?: boolean;
     reward?: Asset | null;
     rewardAmount?: number | null;
+    collection?: Collection | null;
 }
 
 export default function InteractFeedback({
@@ -32,11 +37,12 @@ export default function InteractFeedback({
     title,
     description,
     type = "success",
-    autoCloseMs = 4000,
+    autoCloseMs,
     showConfetti = true,
     showReward = true,
     reward,
     rewardAmount,
+    collection,
 }: InteractFeedbackProps) {
     const [successLottie, setSuccessLottie] = useState<any>(null);
 
@@ -66,13 +72,13 @@ export default function InteractFeedback({
 
     const handleConfetti = () => {
         const defaults = {
-            particleCount: 100,
-            spread: 120,
+            particleCount: type === "purchaseNFT" ? 300 : 100,
+            spread: type === "purchaseNFT" ? 360 : 120,
             ticks: autoCloseMs ? autoCloseMs : 800,
             decay: 0.96,
             startVelocity: 20,
             scalar: 1,
-            zIndex: 1000,
+            zIndex: type === "purchaseNFT" ? 20 : 1000,
         };
 
         const shoot = () => {
@@ -139,6 +145,16 @@ export default function InteractFeedback({
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
+                            <div className="absolute top-0 right-0 p-2">
+                                <button
+                                    onClick={(e) => {
+                                        console.log("close");
+                                        onClose();
+                                    }}
+                                >
+                                    <XIcon className="w-4 h-4 text-white" />
+                                </button>
+                            </div>
                             {type === "success" && successLottie && (
                                 <Lottie
                                     animationData={successLottie}
@@ -158,6 +174,26 @@ export default function InteractFeedback({
                             >
                                 {title}
                             </TextAnimate>
+                            {type === "purchaseNFT" && collection && (
+                                <div className="w-[600px] h-[400px] mb-4">
+                                    <Canvas
+                                        camera={{
+                                            position: [0, 0, 42],
+                                            fov: 45,
+                                        }}
+                                        style={{ background: "transparent" }}
+                                    >
+                                        <ambientLight intensity={0.5} />
+                                        <pointLight
+                                            position={[10, 10, 10]}
+                                            intensity={1}
+                                        />
+                                        <NFTsCollectionsCardR3FAcqusition
+                                            collection={collection}
+                                        />
+                                    </Canvas>
+                                </div>
+                            )}
                             {description && (
                                 <TextAnimate
                                     animation="slideLeft"

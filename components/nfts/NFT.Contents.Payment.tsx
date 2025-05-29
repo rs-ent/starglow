@@ -10,6 +10,7 @@ import PaymentModule from "../payment/PaymentModule";
 import { Currency } from "@/lib/types/payment";
 import { formatCurrency } from "@/lib/utils/format";
 import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
+import { Payment } from "@prisma/client";
 
 interface NFTContentsPaymentProps {
     collection: Collection;
@@ -20,6 +21,7 @@ interface NFTContentsPaymentProps {
               total: number;
           }
         | undefined;
+    onPaymentSuccess?: (payment: Payment) => void;
 }
 
 const initialCurrency = "CURRENCY_USD" as Currency;
@@ -27,6 +29,7 @@ const initialCurrency = "CURRENCY_USD" as Currency;
 export default function NFTContentsPayment({
     collection,
     onPurchase,
+    onPaymentSuccess,
     collectionStock = {
         remain: 0,
         total: 0,
@@ -141,6 +144,7 @@ export default function NFTContentsPayment({
                         productInitialPriceForDisplay={collection.price ?? 0}
                         onDisplayPriceChange={handleDisplayPriceChange}
                         onCurrencyChange={setCurrency}
+                        onPaymentSuccess={onPaymentSuccess}
                     />
                 </>
             ) : (

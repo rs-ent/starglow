@@ -10,7 +10,7 @@ import ArtistFeedCard from "./Artist.Feed.Card";
 import ArtistFeedModal from "./Artist.Feed.Modal";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { ArtistBG } from "@/lib/utils/get/artist-colors";
+import PartialLoading from "../atoms/PartialLoading";
 
 interface ArtistFeedProps {
     artist: Artist | null;
@@ -29,20 +29,13 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
 
     // Loading state
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-            </div>
-        );
+        return <PartialLoading text="Loading feeds..." size="sm" />;
     }
 
     // Error state
     if (error || !artist) {
         return (
-            <div className="text-center py-12 text-gray-500">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                    <Grid3X3 className="w-8 h-8 text-gray-300" />
-                </div>
+            <div className="text-center text-gray-500">
                 <p className="text-lg font-medium text-gray-900 mb-2">
                     Unable to load feeds
                 </p>
@@ -62,8 +55,7 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
         <>
             <div
                 className={cn(
-                    "grid grid-cols-3 gap-1 w-full my-[20px]",
-                    "px-[20px]",
+                    "grid grid-cols-3 gap-1 w-full",
                     getResponsiveClass(30).paddingClass
                 )}
             >
