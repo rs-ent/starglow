@@ -56,7 +56,8 @@ export default function UserMyStarModalContentsCollections({
             success: true,
             data: {
                 hasToken: verifiedCollections.reduce((acc, collection) => {
-                    acc[collection.address] = true;
+                    acc[collection.address] =
+                        collection.verifiedTokens.length > 0;
                     return acc;
                 }, {} as Record<string, boolean>),
                 tokenCount: verifiedCollections.reduce((acc, collection) => {
@@ -66,6 +67,8 @@ export default function UserMyStarModalContentsCollections({
                 ownerWallets: {},
             },
         };
+
+        console.log("Result", result);
 
         return result;
     }, [verifiedCollections]);
