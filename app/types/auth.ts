@@ -5,7 +5,8 @@ export type ProviderType =
     | "spotify"
     | "coinbase"
     | "kakao"
-    | "resend";
+    | "resend"
+    | "telegram";
 
 export type Provider = {
     id: ProviderType;

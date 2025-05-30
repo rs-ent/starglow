@@ -10,6 +10,7 @@ const providerIcons: Record<ProviderType, string> = {
     spotify: "/icons/providers/spotify.svg",
     coinbase: "/icons/providers/coinbase.svg",
     resend: "/icons/providers/resend.svg",
+    telegram: "/icons/providers/telegram.svg",
 };
 
 const providerColors: Record<ProviderType, string> = {
@@ -24,6 +25,8 @@ const providerColors: Record<ProviderType, string> = {
     coinbase:
         "bg-[rgba(255,255,255,1)] text-[rgba(0,82,255,1)] hover:bg-[rgba(255,255,255,1)] hover:text-[rgba(0,82,255,1)] hover:scale-105",
     resend: "border border-[rgba(0,0,0,0)] bg-[rgba(0,0,0,0)] text-[rgba(255,255,255,1)] hover:bg-[rgba(0,0,0,0)] hover:text-[rgba(255,255,255,1)] hover:scale-105",
+    telegram:
+        "bg-[rgba(27,146,209,1)] text-[rgba(255,255,255,1)] hover:bg-[rgba(27,146,209,1)] hover:text-[rgba(255,255,255,1)] hover:scale-105",
 };
 
 export function getProviderIdentity(providerId?: ProviderType) {
