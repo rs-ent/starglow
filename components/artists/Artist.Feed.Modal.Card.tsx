@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, memo } from "react";
+import { useState, useMemo, memo, useCallback } from "react";
 import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import { Artist } from "@prisma/client";
 import { useArtistFeedsSet } from "@/app/hooks/useArtistFeeds";
@@ -9,17 +9,20 @@ import { Heart, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils/tailwind";
 import { formatDistanceToNow } from "date-fns";
 import { useSession } from "next-auth/react";
-import Slider from "react-slick";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import Image from "next/image";
 import { Suspense } from "react";
 import { Skeleton } from "../ui/skeleton";
+import CustomCarousel from "../atoms/CustomCarousel";
 
 interface ArtistFeedModalCardProps {
     feed: ArtistFeedWithReactions;
     artist: Artist;
+}
+
+interface MediaItem {
+    type: "image" | "video";
+    url: string;
 }
 
 export default memo(function ArtistFeedModalCard({
@@ -33,28 +36,14 @@ export default memo(function ArtistFeedModalCard({
         useArtistFeedsSet();
 
     const [isTextExpanded, setIsTextExpanded] = useState(false);
-    const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [optimisticLikeState, setOptimisticLikeState] = useState<{
         isLiked: boolean;
         likeCount: number;
     } | null>(null);
 
-    const mediaSliderSettings = useMemo(
-        () => ({
-            infinite: false,
-            speed: 500,
-            slidesToShow: 1,
-            slidesToScroll: 1,
-            arrows: false,
-            beforeChange: (_: number, next: number) => {
-                setCurrentMediaIndex(next);
-            },
-        }),
-        []
-    );
-
-    const { allMedia } = useMemo(() => {
-        const allMedia = [
+    // Prepare media data
+    const allMedia = useMemo(() => {
+        const media: MediaItem[] = [
             ...(feed.imageUrls || []).map((url) => ({
                 type: "image" as const,
                 url,
@@ -64,9 +53,10 @@ export default memo(function ArtistFeedModalCard({
                 url,
             })),
         ];
-        return { allMedia };
+        return media;
     }, [feed]);
 
+    // Calculate reactions
     const { userLikeReaction, isLiked, likeCount, commentCount } =
         useMemo(() => {
             const userLikeReaction = feed.reactions?.find(
@@ -93,13 +83,14 @@ export default memo(function ArtistFeedModalCard({
             return { userLikeReaction, isLiked, likeCount, commentCount };
         }, [feed, player, optimisticLikeState]);
 
+    // Like toggle handler
     const handleLikeToggle = async () => {
         if (!player?.id) {
             toast.error("Please sign in to like posts");
             return;
         }
 
-        // 낙관적 업데이트 적용
+        // Optimistic update
         setOptimisticLikeState({
             isLiked: !isLiked,
             likeCount: isLiked ? likeCount - 1 : likeCount + 1,
@@ -131,55 +122,37 @@ export default memo(function ArtistFeedModalCard({
 
     return (
         <div className="relative max-w-[768px] mx-auto w-full h-[100dvh] bg-black flex items-center justify-center">
-            {/* Media section - render placeholder for low priority */}
+            {/* Media section */}
             {allMedia.length > 0 ? (
                 <div className="w-full">
-                    <Slider {...mediaSliderSettings}>
+                    <CustomCarousel
+                        direction="horizontal"
+                        containerClassName="aspect-[1/1] min-h-[300px]"
+                        indicatorClassName="bottom-4"
+                        swipeThreshold={50}
+                    >
                         {allMedia.map((media, index) => (
-                            <div
-                                key={index}
-                                className="flex items-center justify-center"
-                            >
-                                <div className="relative w-full aspect-[1/1] min-h-[300px] mx-auto">
-                                    <Suspense
-                                        fallback={
-                                            <Skeleton className="w-full h-full" />
-                                        }
-                                    >
-                                        <Image
-                                            src={media.url}
-                                            alt=""
-                                            fill
-                                            className="object-cover"
-                                            sizes="(max-width: 768px) 100vw, 768px"
-                                            quality={90}
-                                            priority={index === 0}
-                                            loading={
-                                                index === 0 ? "eager" : "lazy"
-                                            }
-                                        />
-                                    </Suspense>
-                                </div>
+                            <div key={index} className="relative w-full h-full">
+                                <Suspense
+                                    fallback={
+                                        <Skeleton className="w-full h-full" />
+                                    }
+                                >
+                                    <Image
+                                        src={media.url}
+                                        alt=""
+                                        fill
+                                        className="object-cover"
+                                        sizes="(max-width: 768px) 100vw, 768px"
+                                        quality={90}
+                                        priority={index === 0}
+                                        loading={index === 0 ? "eager" : "lazy"}
+                                        draggable={false}
+                                    />
+                                </Suspense>
                             </div>
                         ))}
-                    </Slider>
-
-                    {/* Media indicators - only show for visible cards */}
-                    {allMedia.length > 1 && (
-                        <div className="absolute w-full flex items-center justify-center gap-1 z-10">
-                            {allMedia.map((_, index) => (
-                                <div
-                                    key={`${feed.id}-${index}`}
-                                    className={cn(
-                                        "h-1 rounded-full transition-all duration-300",
-                                        index === currentMediaIndex
-                                            ? "w-6 bg-white"
-                                            : "w-1 bg-white/50"
-                                    )}
-                                />
-                            ))}
-                        </div>
-                    )}
+                    </CustomCarousel>
                 </div>
             ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
@@ -196,7 +169,7 @@ export default memo(function ArtistFeedModalCard({
                 </div>
             )}
 
-            {/* Action buttons - only render for visible cards */}
+            {/* Action buttons */}
             <div className="absolute right-4 bottom-44 flex flex-col items-center gap-6">
                 {/* Like button */}
                 <div className="flex flex-col items-center">
@@ -242,7 +215,7 @@ export default memo(function ArtistFeedModalCard({
                 </div>
             </div>
 
-            {/* Bottom info section - only render for visible cards */}
+            {/* Text section */}
             {feed.text && (
                 <div
                     className="absolute bottom-0 left-0 right-0 p-4 pb-6"
