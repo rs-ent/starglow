@@ -1,7 +1,8 @@
 /// components/artists/Artist.Feed.Modal.tsx
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+import { useArtistFeedsGet } from "@/app/hooks/useArtistFeeds";
 import { Artist } from "@prisma/client";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils/tailwind";
@@ -14,7 +15,7 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 interface ArtistFeedModalProps {
-    feeds: ArtistFeedWithReactions[];
+    initialFeeds: ArtistFeedWithReactions[];
     artist: Artist;
     initialFeedIndex?: number;
     isOpen: boolean;
@@ -22,7 +23,7 @@ interface ArtistFeedModalProps {
 }
 
 export default function ArtistFeedModal({
-    feeds,
+    initialFeeds,
     artist,
     initialFeedIndex = 0,
     isOpen,
@@ -31,8 +32,37 @@ export default function ArtistFeedModal({
     const [currentFeedIndex, setCurrentFeedIndex] = useState(initialFeedIndex);
     const sliderRef = useRef<Slider>(null);
 
+    const { artistFeedsInfiniteQuery } = useArtistFeedsGet({
+        getArtistFeedsInput: {
+            artistId: artist.id,
+            pagination: { limit: 15 },
+        },
+    });
+
+    const infiniteFeeds = artistFeedsInfiniteQuery.data
+        ? artistFeedsInfiniteQuery.data.pages.flatMap((page) => page.feeds)
+        : [];
+
+    const fetchNextPage = artistFeedsInfiniteQuery.fetchNextPage;
+    const hasNextPage = artistFeedsInfiniteQuery.hasNextPage;
+    const isFetchingNextPage = artistFeedsInfiniteQuery.isFetchingNextPage;
+
+    const allFeeds = useMemo(() => {
+        return Array.from(
+            new Map(
+                [...initialFeeds, ...infiniteFeeds].map((feed) => [
+                    feed.id,
+                    feed,
+                ])
+            ).values()
+        );
+    }, [initialFeeds, infiniteFeeds]);
+
     const handleBeforeChange = (_: number, next: number) => {
         setCurrentFeedIndex(next);
+        if (hasNextPage && next >= allFeeds.length - 3 && !isFetchingNextPage) {
+            fetchNextPage();
+        }
     };
 
     const sliderSettings = {
@@ -47,7 +77,6 @@ export default function ArtistFeedModal({
         verticalSwiping: true,
         arrows: false,
         dots: false,
-        adaptiveHeight: true,
     };
 
     if (!isOpen) return null;
@@ -55,7 +84,7 @@ export default function ArtistFeedModal({
     return (
         <Portal>
             <div
-                className="fixed w-screen h-screen inset-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-xs overscroll-none"
+                className="fixed w-screen h-[100dvh] inset-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-xs overscroll-none"
                 onClick={onClose}
                 style={{
                     zIndex: 1000,
@@ -111,23 +140,17 @@ export default function ArtistFeedModal({
                     </div>
 
                     {/* 피드 컨테이너 */}
-                    <div className="overflow-hidden max-w-[768px] mx-auto w-screen h-screen overscroll-none">
+                    <div className="overflow-hidden max-w-[768px] mx-auto w-screen h-[100dvh] overscroll-none">
                         <Slider ref={sliderRef} {...sliderSettings}>
-                            {feeds.map((feed, index) => {
-                                const distance = Math.max(
-                                    100 -
-                                        Math.abs(index - currentFeedIndex) * 10,
-                                    0
-                                );
+                            {allFeeds.map((feed, index) => {
                                 return (
                                     <div
                                         key={feed.id}
-                                        className="w-full h-full"
+                                        className="w-full h-[100dvh] flex items-center justify-center"
                                     >
                                         <ArtistFeedModalCard
                                             feed={feed}
                                             artist={artist}
-                                            distance={distance}
                                         />
                                     </div>
                                 );

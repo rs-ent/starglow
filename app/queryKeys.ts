@@ -622,6 +622,10 @@ export const artistFeedKeys = {
     all: ["artist-feeds"] as const,
     list: (params: { artistId: string; cursor?: string; limit?: number }) =>
         [...artistFeedKeys.all, "list", params] as const,
+    infiniteList: (params: {
+        artistId: string;
+        limit?: number;
+    }) => [...artistFeedKeys.all, "infinite-list", params] as const,
     byId: (id: string) => [...artistFeedKeys.all, "detail", id] as const,
     reactions: (params: {
         artistFeedId?: string;

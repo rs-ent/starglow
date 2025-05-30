@@ -34,7 +34,7 @@ export async function createArtistFeed({
 export interface GetArtistFeedsInput {
     artistId: string;
     pagination?: {
-        cursor?: string;
+        cursor?: { createdAt: string; id: string };
         limit?: number;
     };
 }
@@ -43,7 +43,10 @@ export async function getArtistFeeds({
     input,
 }: {
     input?: GetArtistFeedsInput;
-}): Promise<{ feeds: ArtistFeedWithReactions[]; nextCursor: string | null }> {
+}): Promise<{
+    feeds: ArtistFeedWithReactions[];
+    nextCursor: { createdAt: string; id: string } | null;
+}> {
     if (!input) {
         return { feeds: [], nextCursor: null };
     }
@@ -51,23 +54,40 @@ export async function getArtistFeeds({
         const artistFeeds = await prisma.artistFeed.findMany({
             where: {
                 artistId: input.artistId,
+                ...(input.pagination?.cursor
+                    ? {
+                          OR: [
+                              {
+                                  createdAt: {
+                                      lt: new Date(
+                                          input.pagination.cursor.createdAt
+                                      ),
+                                  },
+                              },
+                              {
+                                  createdAt: new Date(
+                                      input.pagination.cursor.createdAt
+                                  ),
+                                  id: { lt: input.pagination.cursor.id },
+                              },
+                          ],
+                      }
+                    : {}),
             },
             include: {
                 reactions: true,
             },
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
             take: input.pagination?.limit,
-            ...(input.pagination?.cursor
-                ? {
-                      cursor: { id: input.pagination.cursor },
-                      skip: 1,
-                  }
-                : {}),
         });
 
+        const lastFeed = artistFeeds[artistFeeds.length - 1];
         const nextCursor =
             artistFeeds.length > 0
-                ? artistFeeds[artistFeeds.length - 1].id
+                ? {
+                      createdAt: lastFeed.createdAt.toISOString(),
+                      id: lastFeed.id,
+                  }
                 : null;
 
         return { feeds: artistFeeds, nextCursor };
@@ -158,7 +178,7 @@ export async function createArtistFeedReaction({
                 reaction: reactionValue,
                 comment: input.comment,
             },
-        })
+        });
     } catch (error) {
         console.error(error);
         return null;

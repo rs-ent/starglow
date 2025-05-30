@@ -1,11 +1,17 @@
 /// app/queries/artistFeedsQueries.ts
 
-import { useQuery } from "@tanstack/react-query";
+import {
+    useInfiniteQuery,
+    useQuery,
+    UseInfiniteQueryResult,
+    InfiniteData,
+} from "@tanstack/react-query";
 import { artistFeedKeys } from "../queryKeys";
 import { getArtistFeeds, getArtistFeedReactions } from "../actions/artistFeeds";
 import type {
     GetArtistFeedsInput,
     GetArtistFeedReactionsInput,
+    ArtistFeedWithReactions,
 } from "../actions/artistFeeds";
 
 export function useArtistFeedsQuery(input?: GetArtistFeedsInput) {
@@ -26,5 +32,44 @@ export function useArtistFeedReactionsQuery(
         }),
         queryFn: () => getArtistFeedReactions({ input }),
         enabled: Boolean(input?.artistFeedId || input?.playerId),
+    });
+}
+
+export function useArtistFeedsInfiniteQuery(
+    input?: GetArtistFeedsInput
+): UseInfiniteQueryResult<
+    InfiniteData<{
+        feeds: ArtistFeedWithReactions[];
+        nextCursor: { createdAt: string; id: string } | null;
+    }>,
+    Error
+> {
+    return useInfiniteQuery<
+        {
+            feeds: ArtistFeedWithReactions[];
+            nextCursor: { createdAt: string; id: string } | null;
+        },
+        Error
+    >({
+        queryKey: artistFeedKeys.infiniteList({
+            artistId: input?.artistId ?? "",
+            limit: input?.pagination?.limit,
+        }),
+        queryFn: async ({ pageParam }) => {
+            return getArtistFeeds({
+                input: {
+                    artistId: input?.artistId ?? "",
+                    pagination: {
+                        cursor: pageParam as
+                            | { createdAt: string; id: string }
+                            | undefined,
+                        limit: input?.pagination?.limit ?? 15,
+                    },
+                },
+            });
+        },
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        enabled: Boolean(input?.artistId),
+        initialPageParam: undefined,
     });
 }

@@ -5,6 +5,7 @@
 import {
     useArtistFeedsQuery,
     useArtistFeedReactionsQuery,
+    useArtistFeedsInfiniteQuery,
 } from "@/app/queries/artistFeedsQueries";
 import {
     useCreateArtistFeed,
@@ -39,6 +40,10 @@ export function useArtistFeedsGet({
         isError: isErrorArtistFeeds,
         refetch: refetchArtistFeeds,
     } = useArtistFeedsQuery(getArtistFeedsInput);
+
+    const artistFeedsInfiniteQuery =
+        useArtistFeedsInfiniteQuery(getArtistFeedsInput);
+
     const {
         data: artistFeedReactions,
         isLoading: isLoadingArtistFeedReactions,
@@ -47,6 +52,7 @@ export function useArtistFeedsGet({
     } = useArtistFeedReactionsQuery(getArtistFeedReactionsInput);
 
     const isLoading = isLoadingArtistFeeds || isLoadingArtistFeedReactions;
+
     const error = isErrorArtistFeeds || isErrorArtistFeedReactions;
 
     const refetch = () =>
@@ -63,6 +69,8 @@ export function useArtistFeedsGet({
         refetchArtistFeedReactions,
 
         refetch,
+
+        artistFeedsInfiniteQuery,
     };
 }
 

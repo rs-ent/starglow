@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, memo } from "react";
 import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import { Artist } from "@prisma/client";
 import { useArtistFeedsSet } from "@/app/hooks/useArtistFeeds";
@@ -15,25 +15,20 @@ import "slick-carousel/slick/slick-theme.css";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import Image from "next/image";
 import { Suspense } from "react";
-
-// 이미지 로딩 플레이스홀더
-const ImagePlaceholder = () => (
-    <div className="w-full h-full bg-gray-800 animate-pulse"></div>
-);
+import { Skeleton } from "../ui/skeleton";
 
 interface ArtistFeedModalCardProps {
     feed: ArtistFeedWithReactions;
     artist: Artist;
-    distance: number;
 }
 
-export default function ArtistFeedModalCard({
+export default memo(function ArtistFeedModalCard({
     feed,
     artist,
-    distance = 0,
 }: ArtistFeedModalCardProps) {
     const toast = useToast();
     const { data: session } = useSession();
+    const player = session?.player;
     const { createArtistFeedReaction, deleteArtistFeedReaction, isPending } =
         useArtistFeedsSet();
 
@@ -43,8 +38,6 @@ export default function ArtistFeedModalCard({
         isLiked: boolean;
         likeCount: number;
     } | null>(null);
-
-    const isLowPriority = distance <= 20;
 
     const mediaSliderSettings = useMemo(
         () => ({
@@ -58,30 +51,7 @@ export default function ArtistFeedModalCard({
         []
     );
 
-    const {
-        player,
-        allMedia,
-        userLikeReaction,
-        isLiked,
-        likeCount,
-        commentCount,
-    } = useMemo(() => {
-        if (isLowPriority) {
-            return {
-                player: null,
-                allMedia:
-                    feed.imageUrls?.map((url) => ({
-                        type: "image" as const,
-                        url,
-                    })) || [],
-                userLikeReaction: null,
-                isLiked: false,
-                likeCount: 0,
-                commentCount: 0,
-            };
-        }
-
-        const player = session?.player;
+    const { allMedia } = useMemo(() => {
         const allMedia = [
             ...(feed.imageUrls || []).map((url) => ({
                 type: "image" as const,
@@ -92,41 +62,36 @@ export default function ArtistFeedModalCard({
                 url,
             })),
         ];
+        return { allMedia };
+    }, [feed]);
 
-        const userLikeReaction = feed.reactions?.find(
-            (r) => r.playerId === player?.id && r.reaction === "like"
-        );
+    const { userLikeReaction, isLiked, likeCount, commentCount } =
+        useMemo(() => {
+            const userLikeReaction = feed.reactions?.find(
+                (r) => r.playerId === player?.id && r.reaction === "like"
+            );
 
-        // 낙관적 상태가 있으면 사용, 없으면 서버 데이터 사용
-        const serverIsLiked = Boolean(userLikeReaction);
-        const serverLikeCount =
-            feed.reactions?.filter((r) => r.reaction === "like").length || 0;
+            const serverIsLiked = Boolean(userLikeReaction);
+            const serverLikeCount =
+                feed.reactions?.filter((r) => r.reaction === "like").length ||
+                0;
 
-        const isLiked =
-            optimisticLikeState !== null
-                ? optimisticLikeState.isLiked
-                : serverIsLiked;
-        const likeCount =
-            optimisticLikeState !== null
-                ? optimisticLikeState.likeCount
-                : serverLikeCount;
+            const isLiked =
+                optimisticLikeState !== null
+                    ? optimisticLikeState.isLiked
+                    : serverIsLiked;
+            const likeCount =
+                optimisticLikeState !== null
+                    ? optimisticLikeState.likeCount
+                    : serverLikeCount;
 
-        const commentCount =
-            feed.reactions?.filter((r) => r.comment).length || 0;
+            const commentCount =
+                feed.reactions?.filter((r) => r.comment).length || 0;
 
-        return {
-            player,
-            allMedia,
-            userLikeReaction,
-            isLiked,
-            likeCount,
-            commentCount,
-        };
-    }, [feed, session, isLowPriority, optimisticLikeState]);
+            return { userLikeReaction, isLiked, likeCount, commentCount };
+        }, [feed, player, optimisticLikeState]);
 
-    const handleLikeToggle = useCallback(async () => {
-        if (isLowPriority) return;
-
+    const handleLikeToggle = async () => {
         if (!player?.id) {
             toast.error("Please sign in to like posts");
             return;
@@ -160,77 +125,49 @@ export default function ArtistFeedModalCard({
                 },
             });
         }
-    }, [
-        player?.id,
-        isLiked,
-        userLikeReaction,
-        feed.id,
-        likeCount,
-        deleteArtistFeedReaction,
-        createArtistFeedReaction,
-        toast,
-        isLowPriority,
-    ]);
-
-    const { imageQuality, sizes } = useMemo(() => {
-        const imageQuality = distance;
-        const sizes = `(max-width: 768px) ${distance}vw, 768px`;
-        return { imageQuality, sizes };
-    }, [distance]);
+    };
 
     return (
-        <div className="relative max-w-[768px] mx-auto w-screen h-screen bg-black flex items-center justify-center">
+        <div className="relative max-w-[768px] mx-auto w-screen h-[100dvh] bg-black flex items-center justify-center">
             {/* Media section - render placeholder for low priority */}
             {allMedia.length > 0 ? (
-                <div
-                    onClick={(e) => {
-                        if (!isLowPriority) e.stopPropagation();
-                    }}
-                    className="w-full"
-                    style={{ touchAction: "none" }}
-                >
-                    {isLowPriority ? (
-                        <div className="relative w-full aspect-[1/1] bg-gray-900"></div>
-                    ) : (
-                        <Slider {...mediaSliderSettings}>
-                            {allMedia.map((media, index) => (
-                                <div
-                                    key={index}
-                                    className="flex items-center justify-center"
-                                >
-                                    <div className="relative w-full aspect-[1/1]">
-                                        <Suspense
-                                            fallback={<ImagePlaceholder />}
-                                        >
-                                            <Image
-                                                src={media.url}
-                                                alt=""
-                                                fill
-                                                className="object-cover"
-                                                sizes={sizes}
-                                                quality={imageQuality}
-                                                priority={
-                                                    index === 0 && distance > 80
-                                                }
-                                                loading={
-                                                    index === 0 && distance > 80
-                                                        ? "eager"
-                                                        : "lazy"
-                                                }
-                                            />
-                                        </Suspense>
-                                    </div>
+                <div className="w-full">
+                    <Slider {...mediaSliderSettings}>
+                        {allMedia.map((media, index) => (
+                            <div
+                                key={index}
+                                className="flex items-center justify-center"
+                            >
+                                <div className="relative w-full aspect-[1/1] min-h-[300px] mx-auto">
+                                    <Suspense
+                                        fallback={
+                                            <Skeleton className="w-full h-full" />
+                                        }
+                                    >
+                                        <Image
+                                            src={media.url}
+                                            alt=""
+                                            fill
+                                            className="object-cover"
+                                            sizes="(max-width: 768px) 100vw, 768px"
+                                            quality={90}
+                                            priority={index === 0}
+                                            loading={
+                                                index === 0 ? "eager" : "lazy"
+                                            }
+                                        />
+                                    </Suspense>
                                 </div>
-                            ))}
-                        </Slider>
-                    )}
+                            </div>
+                        ))}
+                    </Slider>
 
                     {/* Media indicators - only show for visible cards */}
-                    {!isLowPriority && allMedia.length > 1 && (
+                    {allMedia.length > 1 && (
                         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
                             {allMedia.map((_, index) => (
                                 <div
-                                    key={index}
+                                    key={`${feed.id}-${index}`}
                                     className={cn(
                                         "h-1 rounded-full transition-all duration-300",
                                         index === currentMediaIndex
@@ -244,73 +181,67 @@ export default function ArtistFeedModalCard({
                 </div>
             ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-                    {!isLowPriority && (
-                        <div className="text-center">
-                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-1 mx-auto mb-4">
-                                <img
-                                    src={artist.logoUrl || ""}
-                                    alt={artist.name}
-                                    className="w-full h-full rounded-full object-cover bg-black"
-                                />
-                            </div>
-                            <p className="text-white/60 text-lg">
-                                {artist.name}
-                            </p>
+                    <div className="text-center">
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-1 mx-auto mb-4">
+                            <img
+                                src={artist.logoUrl || ""}
+                                alt={artist.name}
+                                className="w-full h-full rounded-full object-cover bg-black"
+                            />
                         </div>
-                    )}
+                        <p className="text-white/60 text-lg">{artist.name}</p>
+                    </div>
                 </div>
             )}
 
             {/* Action buttons - only render for visible cards */}
-            {!isLowPriority && (
-                <div className="absolute right-4 bottom-44 flex flex-col items-center gap-6">
-                    {/* Like button */}
-                    <div className="flex flex-col items-center">
-                        <button
-                            onClick={handleLikeToggle}
-                            disabled={isPending}
+            <div className="absolute right-4 bottom-44 flex flex-col items-center gap-6">
+                {/* Like button */}
+                <div className="flex flex-col items-center">
+                    <button
+                        onClick={handleLikeToggle}
+                        disabled={isPending}
+                        className={cn(
+                            "p-2 rounded-full transition-all",
+                            isLiked
+                                ? "text-red-500 scale-110"
+                                : "text-white hover:scale-110"
+                        )}
+                    >
+                        <Heart
                             className={cn(
-                                "p-2 rounded-full transition-all",
-                                isLiked
-                                    ? "text-red-500 scale-110"
-                                    : "text-white hover:scale-110"
+                                "w-8 h-8 transition-all",
+                                isLiked && "fill-current"
                             )}
-                        >
-                            <Heart
-                                className={cn(
-                                    "w-8 h-8 transition-all",
-                                    isLiked && "fill-current"
-                                )}
-                            />
-                        </button>
-                        {likeCount > 0 && (
-                            <span className="text-white text-sm font-semibold">
-                                {likeCount}
-                            </span>
-                        )}
-                    </div>
-
-                    {/* Comment button */}
-                    <div className="flex flex-col items-center">
-                        <button
-                            onClick={() =>
-                                toast.info("Comments feature coming soon!")
-                            }
-                            className="p-2 text-white hover:scale-110 transition-all"
-                        >
-                            <MessageCircle className="w-8 h-8" />
-                        </button>
-                        {commentCount > 0 && (
-                            <span className="text-white text-sm font-semibold">
-                                {commentCount}
-                            </span>
-                        )}
-                    </div>
+                        />
+                    </button>
+                    {likeCount > 0 && (
+                        <span className="text-white text-sm font-semibold">
+                            {likeCount}
+                        </span>
+                    )}
                 </div>
-            )}
+
+                {/* Comment button */}
+                <div className="flex flex-col items-center">
+                    <button
+                        onClick={() =>
+                            toast.info("Comments feature coming soon!")
+                        }
+                        className="p-2 text-white hover:scale-110 transition-all"
+                    >
+                        <MessageCircle className="w-8 h-8" />
+                    </button>
+                    {commentCount > 0 && (
+                        <span className="text-white text-sm font-semibold">
+                            {commentCount}
+                        </span>
+                    )}
+                </div>
+            </div>
 
             {/* Bottom info section - only render for visible cards */}
-            {!isLowPriority && feed.text && (
+            {feed.text && (
                 <div
                     className="absolute bottom-0 left-0 right-0 p-4 pb-6"
                     style={{
@@ -360,4 +291,4 @@ export default function ArtistFeedModalCard({
             )}
         </div>
     );
-}
+});

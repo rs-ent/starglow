@@ -24,6 +24,10 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
     const { artistFeeds, isLoading, error } = useArtistFeedsGet({
         getArtistFeedsInput: {
             artistId: artist?.id || "",
+            pagination: {
+                limit: 9,
+                cursor: undefined,
+            },
         },
     });
 
@@ -51,8 +55,6 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
         );
     }
 
-
-
     // Empty state
     if (feeds.length === 0) {
         return <div></div>;
@@ -66,8 +68,14 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
                     getResponsiveClass(30).paddingClass
                 )}
                 style={{
-                    WebkitMaskImage: feeds.length <= 9  ? "none" : "linear-gradient(to bottom, black 40%, transparent 80%)",
-                    maskImage: feeds.length <= 9 ? "none" : "linear-gradient(to bottom, black 40%, transparent 80%)"
+                    WebkitMaskImage:
+                        feeds.length <= 9
+                            ? "none"
+                            : "linear-gradient(to bottom, black 40%, transparent 80%)",
+                    maskImage:
+                        feeds.length <= 9
+                            ? "none"
+                            : "linear-gradient(to bottom, black 40%, transparent 80%)",
                 }}
             >
                 {feeds.slice(0, 9).map((feed, index) => (
@@ -82,7 +90,7 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
 
             {/* Feed modal */}
             <ArtistFeedModal
-                feeds={feeds}
+                initialFeeds={feeds}
                 artist={artist}
                 initialFeedIndex={selectedFeedIndex || 0}
                 isOpen={selectedFeedIndex !== null}
