@@ -92,11 +92,10 @@ export async function updateArtistFeed({
 }): Promise<ArtistFeed | null> {
     try {
         const { id, ...data } = input;
-        const artistFeed = await prisma.artistFeed.update({
+        return await prisma.artistFeed.update({
             where: { id },
             data,
         });
-        return artistFeed;
     } catch (error) {
         console.error(error);
         return null;
@@ -137,9 +136,29 @@ export async function createArtistFeedReaction({
     input: CreateArtistFeedReactionInput;
 }): Promise<ArtistFeedReaction | null> {
     try {
-        return await prisma.artistFeedReaction.create({
-            data: input,
-        });
+        let reactionValue = input.reaction;
+        if (input.comment) {
+            reactionValue = `comment-${Date.now()}`;
+        }
+
+        return await prisma.artistFeedReaction.upsert({
+            where: {
+                artistFeedId_playerId_reaction: {
+                    artistFeedId: input.artistFeedId,
+                    playerId: input.playerId,
+                    reaction: reactionValue,
+                },
+            },
+            update: {
+                comment: input.comment,
+            },
+            create: {
+                artistFeedId: input.artistFeedId,
+                playerId: input.playerId,
+                reaction: reactionValue,
+                comment: input.comment,
+            },
+        })
     } catch (error) {
         console.error(error);
         return null;
@@ -215,11 +234,10 @@ export async function updateArtistFeedReaction({
 }): Promise<ArtistFeedReaction | null> {
     try {
         const { id, artistFeedId, playerId, ...data } = input;
-        const artistFeedReaction = await prisma.artistFeedReaction.update({
+        return await prisma.artistFeedReaction.update({
             where: { id },
             data,
         });
-        return artistFeedReaction;
     } catch (error) {
         console.error(error);
         return null;

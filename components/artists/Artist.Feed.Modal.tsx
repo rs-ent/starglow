@@ -50,36 +50,17 @@ export default function ArtistFeedModal({
         adaptiveHeight: true,
     };
 
-    // 터치 이벤트 핸들러
-    useEffect(() => {
-        const preventPullToRefresh = (e: TouchEvent) => {
-            if (isOpen && e.touches[0].clientY > 0) {
-                e.preventDefault();
-            }
-        };
-
-        if (isOpen) {
-            document.addEventListener('touchstart', preventPullToRefresh, { passive: false });
-            setCurrentFeedIndex(initialFeedIndex);
-            setTimeout(() => {
-                if (sliderRef.current) {
-                    sliderRef.current.slickGoTo(initialFeedIndex);
-                }
-            }, 100);
-        }
-
-        return () => {
-            document.removeEventListener('touchstart', preventPullToRefresh);
-        };
-    }, [isOpen]);
-
     if (!isOpen) return null;
 
     return (
         <Portal>
-            <div className="fixed w-screen h-screen inset-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-xs" onClick={onClose} style={{
-                zIndex: 1000,
-            }}>
+            <div
+                className="fixed w-screen h-screen inset-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-xs overscroll-none"
+                onClick={onClose}
+                style={{
+                    zIndex: 1000,
+                }}
+            >
                 <div
                     className="absolute inset-0 max-w-[768px] mx-auto w-full h-full bg-black flex shadow-2xl backdrop-blur-lg"
                     onClick={(e) => e.stopPropagation()}
@@ -130,19 +111,26 @@ export default function ArtistFeedModal({
                     </div>
 
                     {/* 피드 컨테이너 */}
-                    <div className="overflow-hidden max-w-[768px] mx-auto w-screen h-screen" style={{ touchAction: "none" }}>
+                    <div className="overflow-hidden max-w-[768px] mx-auto w-screen h-screen overscroll-none">
                         <Slider ref={sliderRef} {...sliderSettings}>
                             {feeds.map((feed, index) => {
-                                const distance = Math.max(100 - (Math.abs(index - currentFeedIndex) * 10), 0);
-                                return(
-                                    <div key={feed.id} className="w-full h-full">
+                                const distance = Math.max(
+                                    100 -
+                                        Math.abs(index - currentFeedIndex) * 10,
+                                    0
+                                );
+                                return (
+                                    <div
+                                        key={feed.id}
+                                        className="w-full h-full"
+                                    >
                                         <ArtistFeedModalCard
                                             feed={feed}
                                             artist={artist}
                                             distance={distance}
                                         />
                                     </div>
-                                )
+                                );
                             })}
                         </Slider>
                     </div>

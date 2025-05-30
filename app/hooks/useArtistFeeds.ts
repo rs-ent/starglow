@@ -84,7 +84,7 @@ export function useArtistFeedsSet() {
     } = useDeleteArtistFeed();
 
     const {
-        mutate: createArtistFeedReaction,
+        mutateAsync: createArtistFeedReaction,
         isPending: isPendingCreateArtistFeedReaction,
         error: errorCreateArtistFeedReaction,
     } = useCreateArtistFeedReaction();
@@ -94,7 +94,7 @@ export function useArtistFeedsSet() {
         error: errorUpdateArtistFeedReaction,
     } = useUpdateArtistFeedReaction();
     const {
-        mutate: deleteArtistFeedReaction,
+        mutateAsync: deleteArtistFeedReaction,
         isPending: isPendingDeleteArtistFeedReaction,
         error: errorDeleteArtistFeedReaction,
     } = useDeleteArtistFeedReaction();

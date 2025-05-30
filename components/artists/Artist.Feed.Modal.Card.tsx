@@ -21,7 +21,6 @@ const ImagePlaceholder = () => (
     <div className="w-full h-full bg-gray-800 animate-pulse"></div>
 );
 
-
 interface ArtistFeedModalCardProps {
     feed: ArtistFeedWithReactions;
     artist: Artist;
@@ -35,32 +34,50 @@ export default function ArtistFeedModalCard({
 }: ArtistFeedModalCardProps) {
     const toast = useToast();
     const { data: session } = useSession();
-    const { createArtistFeedReaction, deleteArtistFeedReaction } =
+    const { createArtistFeedReaction, deleteArtistFeedReaction, isPending } =
         useArtistFeedsSet();
 
     const [isTextExpanded, setIsTextExpanded] = useState(false);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+    const [optimisticLikeState, setOptimisticLikeState] = useState<{
+        isLiked: boolean;
+        likeCount: number;
+    } | null>(null);
 
     const isLowPriority = distance <= 20;
 
-    const mediaSliderSettings = useMemo(() => ({
-        infinite: false,
-        speed: 500,
-        slidesToShow: 1,
-        slidesToScroll: 1,
-        arrows: false,
-        beforeChange: (index: number) => setCurrentMediaIndex(index),
-    }), []);
+    const mediaSliderSettings = useMemo(
+        () => ({
+            infinite: false,
+            speed: 500,
+            slidesToShow: 1,
+            slidesToScroll: 1,
+            arrows: false,
+            beforeChange: (index: number) => setCurrentMediaIndex(index),
+        }),
+        []
+    );
 
-    const { player, allMedia, userLikeReaction, isLiked, likeCount, commentCount } = useMemo(() => {
+    const {
+        player,
+        allMedia,
+        userLikeReaction,
+        isLiked,
+        likeCount,
+        commentCount,
+    } = useMemo(() => {
         if (isLowPriority) {
             return {
                 player: null,
-                allMedia: feed.imageUrls?.map(url => ({ type: "image" as const, url })) || [],
+                allMedia:
+                    feed.imageUrls?.map((url) => ({
+                        type: "image" as const,
+                        url,
+                    })) || [],
                 userLikeReaction: null,
                 isLiked: false,
                 likeCount: 0,
-                commentCount: 0
+                commentCount: 0,
             };
         }
 
@@ -79,31 +96,63 @@ export default function ArtistFeedModalCard({
         const userLikeReaction = feed.reactions?.find(
             (r) => r.playerId === player?.id && r.reaction === "like"
         );
-        const isLiked = Boolean(userLikeReaction);
-        const likeCount = feed.reactions?.filter((r) => r.reaction === "like").length || 0;
-        const commentCount = feed.reactions?.filter((r) => r.comment).length || 0;
 
-        return { player, allMedia, userLikeReaction, isLiked, likeCount, commentCount };
-    }, [feed, session, isLowPriority]);
+        // 낙관적 상태가 있으면 사용, 없으면 서버 데이터 사용
+        const serverIsLiked = Boolean(userLikeReaction);
+        const serverLikeCount =
+            feed.reactions?.filter((r) => r.reaction === "like").length || 0;
 
-    const handleLikeToggle = useCallback(() => {
+        const isLiked =
+            optimisticLikeState !== null
+                ? optimisticLikeState.isLiked
+                : serverIsLiked;
+        const likeCount =
+            optimisticLikeState !== null
+                ? optimisticLikeState.likeCount
+                : serverLikeCount;
+
+        const commentCount =
+            feed.reactions?.filter((r) => r.comment).length || 0;
+
+        return {
+            player,
+            allMedia,
+            userLikeReaction,
+            isLiked,
+            likeCount,
+            commentCount,
+        };
+    }, [feed, session, isLowPriority, optimisticLikeState]);
+
+    const handleLikeToggle = useCallback(async () => {
         if (isLowPriority) return;
-        
+
         if (!player?.id) {
             toast.error("Please sign in to like posts");
             return;
         }
 
+        // 낙관적 업데이트 적용
+        setOptimisticLikeState({
+            isLiked: !isLiked,
+            likeCount: isLiked ? likeCount - 1 : likeCount + 1,
+        });
+
         if (isLiked && userLikeReaction) {
-            deleteArtistFeedReaction({
+            await deleteArtistFeedReaction({
                 input: {
                     id: userLikeReaction.id,
                     artistFeedId: feed.id,
                     playerId: player.id,
                 },
             });
+            setOptimisticLikeState(null);
         } else {
-            createArtistFeedReaction({
+            setOptimisticLikeState({
+                isLiked: true,
+                likeCount: likeCount + 1,
+            });
+            await createArtistFeedReaction({
                 input: {
                     artistFeedId: feed.id,
                     playerId: player.id,
@@ -111,9 +160,19 @@ export default function ArtistFeedModalCard({
                 },
             });
         }
-    }, [player?.id, isLiked, userLikeReaction, feed.id, deleteArtistFeedReaction, createArtistFeedReaction, toast, isLowPriority]);
+    }, [
+        player?.id,
+        isLiked,
+        userLikeReaction,
+        feed.id,
+        likeCount,
+        deleteArtistFeedReaction,
+        createArtistFeedReaction,
+        toast,
+        isLowPriority,
+    ]);
 
-    const {imageQuality, sizes} = useMemo(() => {
+    const { imageQuality, sizes } = useMemo(() => {
         const imageQuality = distance;
         const sizes = `(max-width: 768px) ${distance}vw, 768px`;
         return { imageQuality, sizes };
@@ -135,9 +194,14 @@ export default function ArtistFeedModalCard({
                     ) : (
                         <Slider {...mediaSliderSettings}>
                             {allMedia.map((media, index) => (
-                                <div key={index} className="flex items-center justify-center">
+                                <div
+                                    key={index}
+                                    className="flex items-center justify-center"
+                                >
                                     <div className="relative w-full aspect-[1/1]">
-                                        <Suspense fallback={<ImagePlaceholder />}>
+                                        <Suspense
+                                            fallback={<ImagePlaceholder />}
+                                        >
                                             <Image
                                                 src={media.url}
                                                 alt=""
@@ -145,8 +209,14 @@ export default function ArtistFeedModalCard({
                                                 className="object-cover"
                                                 sizes={sizes}
                                                 quality={imageQuality}
-                                                priority={index === 0 && distance > 80}
-                                                loading={index === 0 && distance > 80 ? "eager" : "lazy"}
+                                                priority={
+                                                    index === 0 && distance > 80
+                                                }
+                                                loading={
+                                                    index === 0 && distance > 80
+                                                        ? "eager"
+                                                        : "lazy"
+                                                }
                                             />
                                         </Suspense>
                                     </div>
@@ -183,7 +253,9 @@ export default function ArtistFeedModalCard({
                                     className="w-full h-full rounded-full object-cover bg-black"
                                 />
                             </div>
-                            <p className="text-white/60 text-lg">{artist.name}</p>
+                            <p className="text-white/60 text-lg">
+                                {artist.name}
+                            </p>
                         </div>
                     )}
                 </div>
@@ -196,8 +268,9 @@ export default function ArtistFeedModalCard({
                     <div className="flex flex-col items-center">
                         <button
                             onClick={handleLikeToggle}
+                            disabled={isPending}
                             className={cn(
-                                "p-2 rounded-full transition-all disabled:opacity-50",
+                                "p-2 rounded-full transition-all",
                                 isLiked
                                     ? "text-red-500 scale-110"
                                     : "text-white hover:scale-110"
@@ -206,7 +279,7 @@ export default function ArtistFeedModalCard({
                             <Heart
                                 className={cn(
                                     "w-8 h-8 transition-all",
-                                    isLiked && "fill-current",
+                                    isLiked && "fill-current"
                                 )}
                             />
                         </button>
@@ -241,8 +314,9 @@ export default function ArtistFeedModalCard({
                 <div
                     className="absolute bottom-0 left-0 right-0 p-4 pb-6"
                     style={{
-                        background:
-                            isTextExpanded ? "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 70%, rgba(0,0,0,0) 100%)" : "rgba(0,0,0,0.8)"
+                        background: isTextExpanded
+                            ? "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 70%, rgba(0,0,0,0) 100%)"
+                            : "rgba(0,0,0,0.8)",
                     }}
                 >
                     <div
