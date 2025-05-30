@@ -29,8 +29,7 @@ export default function ArtistFeedModal({
     isOpen,
     onClose,
 }: ArtistFeedModalProps) {
-    const [currentFeedIndex, setCurrentFeedIndex] = useState(initialFeedIndex);
-    const sliderRef = useRef<Slider>(null);
+    const sliderRef = useRef<Slider | null>(null);
 
     const { artistFeedsInfiniteQuery } = useArtistFeedsGet({
         getArtistFeedsInput: {
@@ -49,6 +48,22 @@ export default function ArtistFeedModal({
             document.body.style.overscrollBehavior = "";
         };
     }, [isOpen]);
+
+    const handleSliderRef = (instance: Slider | null) => {
+        sliderRef.current = instance;
+        if (instance && isOpen) {
+            instance.slickGoTo(initialFeedIndex);
+        }
+    };
+
+    const handleWheel = (e: React.WheelEvent) => {
+        if (!sliderRef.current) return;
+        if (e.deltaY > 0) {
+            sliderRef.current.slickNext();
+        } else if (e.deltaY < 0) {
+            sliderRef.current.slickPrev();
+        }
+    };
 
     const infiniteFeeds = artistFeedsInfiniteQuery.data
         ? artistFeedsInfiniteQuery.data.pages.flatMap((page) => page.feeds)
@@ -70,7 +85,6 @@ export default function ArtistFeedModal({
     }, [initialFeeds, infiniteFeeds]);
 
     const handleBeforeChange = (_: number, next: number) => {
-        setCurrentFeedIndex(next);
         if (hasNextPage && next >= allFeeds.length - 3 && !isFetchingNextPage) {
             fetchNextPage();
         }
@@ -95,7 +109,7 @@ export default function ArtistFeedModal({
     return (
         <Portal>
             <div
-                className="fixed w-screen h-[100dvh] inset-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-xs overscroll-none"
+                className="fixed w-full h-full inset-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-xs overscroll-none"
                 onClick={onClose}
                 style={{
                     zIndex: 1000,
@@ -151,13 +165,16 @@ export default function ArtistFeedModal({
                     </div>
 
                     {/* 피드 컨테이너 */}
-                    <div className="overflow-hidden max-w-[768px] mx-auto w-screen h-[100dvh] overscroll-none">
-                        <Slider ref={sliderRef} {...sliderSettings}>
+                    <div
+                        className="overflow-hidden max-w-[768px] mx-auto w-full h-full overscroll-none"
+                        onWheel={handleWheel}
+                    >
+                        <Slider ref={handleSliderRef} {...sliderSettings}>
                             {allFeeds.map((feed, index) => {
                                 return (
                                     <div
                                         key={feed.id}
-                                        className="w-full h-[100dvh] flex items-center justify-center"
+                                        className="w-full h-full flex items-center justify-center"
                                     >
                                         <ArtistFeedModalCard
                                             feed={feed}

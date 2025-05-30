@@ -46,7 +46,9 @@ export default memo(function ArtistFeedModalCard({
             slidesToShow: 1,
             slidesToScroll: 1,
             arrows: false,
-            beforeChange: (index: number) => setCurrentMediaIndex(index),
+            beforeChange: (_: number, next: number) => {
+                setCurrentMediaIndex(next);
+            },
         }),
         []
     );
@@ -128,7 +130,7 @@ export default memo(function ArtistFeedModalCard({
     };
 
     return (
-        <div className="relative max-w-[768px] mx-auto w-screen h-[100dvh] bg-black flex items-center justify-center">
+        <div className="relative max-w-[768px] mx-auto w-full h-[100dvh] bg-black flex items-center justify-center">
             {/* Media section - render placeholder for low priority */}
             {allMedia.length > 0 ? (
                 <div className="w-full">
@@ -164,7 +166,7 @@ export default memo(function ArtistFeedModalCard({
 
                     {/* Media indicators - only show for visible cards */}
                     {allMedia.length > 1 && (
-                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                        <div className="absolute w-full flex items-center justify-center gap-1 z-10">
                             {allMedia.map((_, index) => (
                                 <div
                                     key={`${feed.id}-${index}`}
@@ -245,9 +247,8 @@ export default memo(function ArtistFeedModalCard({
                 <div
                     className="absolute bottom-0 left-0 right-0 p-4 pb-6"
                     style={{
-                        background: isTextExpanded
-                            ? "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 70%, rgba(0,0,0,0) 100%)"
-                            : "rgba(0,0,0,0.8)",
+                        background:
+                            "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 70%, rgba(0,0,0,0) 100%)",
                     }}
                 >
                     <div

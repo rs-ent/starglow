@@ -47,7 +47,7 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
     if (error || !artist) {
         return (
             <div className="text-center text-gray-500">
-                <p className="text-lg font-medium text-gray-900 mb-2">
+                <p className="text-lg font-medium text-gray-100 mb-2">
                     Unable to load feeds
                 </p>
                 <p className="text-sm">Please try again later</p>
@@ -69,11 +69,11 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
                 )}
                 style={{
                     WebkitMaskImage:
-                        feeds.length <= 9
+                        feeds.length <= 6
                             ? "none"
                             : "linear-gradient(to bottom, black 40%, transparent 80%)",
                     maskImage:
-                        feeds.length <= 9
+                        feeds.length <= 6
                             ? "none"
                             : "linear-gradient(to bottom, black 40%, transparent 80%)",
                 }}
