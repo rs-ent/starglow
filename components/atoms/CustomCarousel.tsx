@@ -9,6 +9,8 @@ import {
     ReactNode,
     Children,
     useMemo,
+    useEffect,
+    memo,
 } from "react";
 import { cn } from "@/lib/utils/tailwind";
 import React from "react";
@@ -27,6 +29,18 @@ interface CustomCarouselProps {
     swipeThreshold?: number;
     speed?: number;
 }
+
+// 자식 컴포넌트를 메모이제이션
+const CarouselItem = memo(
+    ({ child, style }: { child: ReactNode; style: any }) => (
+        <div
+            className="flex items-center justify-center flex-shrink-0"
+            style={style}
+        >
+            {child}
+        </div>
+    )
+);
 
 export default function CustomCarousel({
     children,
@@ -126,50 +140,74 @@ export default function CustomCarousel({
         setDragCurrent(0);
     }, [isDragging, dragCurrent, dragStart, swipeThreshold, moveTo]);
 
-    // 터치 이벤트
-    const handleTouchStart = (e: React.TouchEvent) => {
-        const pos = isHorizontal ? e.touches[0].clientX : e.touches[0].clientY;
-        handleDragStart(pos);
-    };
+    // 이벤트 핸들러들을 useMemo로 최적화
+    const eventHandlers = useMemo(
+        () => ({
+            onTouchMove: (e: React.TouchEvent) => {
+                const pos = isHorizontal
+                    ? e.touches[0].clientX
+                    : e.touches[0].clientY;
+                handleDragMove(pos);
+            },
+            onTouchEnd: (e: React.TouchEvent) => {
+                handleDragEnd();
+            },
+            onMouseDown: (e: React.MouseEvent) => {
+                e.preventDefault(); // 텍스트 선택 방지
+                const pos = isHorizontal ? e.clientX : e.clientY;
+                handleDragStart(pos);
+            },
+            onMouseMove: (e: React.MouseEvent) => {
+                if (!isDragging) return;
+                const pos = isHorizontal ? e.clientX : e.clientY;
+                handleDragMove(pos);
+            },
+            onMouseUp: (e: React.MouseEvent) => {
+                handleDragEnd();
+            },
+            onMouseLeave: () => {
+                if (isDragging) handleDragEnd();
+            },
+            onWheel: (e: React.WheelEvent) => {
+                if (!isHorizontal && !isDragging) {
+                    e.preventDefault(); // 페이지 스크롤 방지
 
-    const handleTouchMove = (e: React.TouchEvent) => {
-        const pos = isHorizontal ? e.touches[0].clientX : e.touches[0].clientY;
-        handleDragMove(pos);
-    };
+                    // 디바운스를 위한 타임아웃
+                    if (wheelTimeoutRef.current) {
+                        clearTimeout(wheelTimeoutRef.current);
+                    }
 
-    const handleTouchEnd = (e: React.TouchEvent) => {
-        handleDragEnd();
-    };
+                    wheelTimeoutRef.current = setTimeout(() => {
+                        if (e.deltaY > 0) {
+                            moveTo("next");
+                        } else if (e.deltaY < 0) {
+                            moveTo("prev");
+                        }
+                    }, 50);
+                }
+            },
+        }),
+        [
+            isHorizontal,
+            isDragging,
+            handleDragStart,
+            handleDragMove,
+            handleDragEnd,
+            moveTo,
+        ]
+    );
 
-    // 마우스 이벤트
-    const handleMouseDown = (e: React.MouseEvent) => {
-        const pos = isHorizontal ? e.clientX : e.clientY;
-        handleDragStart(pos);
-    };
+    // 휠 이벤트 디바운스를 위한 ref 추가
+    const wheelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (!isDragging) return;
-        const pos = isHorizontal ? e.clientX : e.clientY;
-        handleDragMove(pos);
-    };
-
-    const handleMouseUp = (e: React.MouseEvent) => {
-        handleDragEnd();
-    };
-
-    const handleMouseLeave = () => {
-        if (isDragging) handleDragEnd();
-    };
-
-    const handleWheel = (e: React.WheelEvent) => {
-        if (!isHorizontal && !isDragging) {
-            if (e.deltaY > 0) {
-                moveTo("next");
-            } else if (e.deltaY < 0) {
-                moveTo("prev");
+    // cleanup
+    useEffect(() => {
+        return () => {
+            if (wheelTimeoutRef.current) {
+                clearTimeout(wheelTimeoutRef.current);
             }
-        }
-    };
+        };
+    }, []);
 
     // 현재 translate 계산 (드래그 중 미리보기 포함)
     const getCurrentTranslate = () => {
@@ -207,6 +245,45 @@ export default function CustomCarousel({
     const translateProperty = isHorizontal ? "translateX" : "translateY";
     const currentTranslate = getCurrentTranslate();
 
+    // 메모리 누수 방지 - 이벤트 리스너 정리
+    useEffect(() => {
+        const handleGlobalMouseUp = () => {
+            if (isDragging) handleDragEnd();
+        };
+
+        if (isDragging) {
+            window.addEventListener("mouseup", handleGlobalMouseUp);
+            window.addEventListener("touchend", handleGlobalMouseUp);
+        }
+
+        return () => {
+            window.removeEventListener("mouseup", handleGlobalMouseUp);
+            window.removeEventListener("touchend", handleGlobalMouseUp);
+        };
+    }, [isDragging, handleDragEnd]);
+
+    // touchstart와 wheel 이벤트를 패시브로 설정
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const handleTouchStart = (e: TouchEvent) => {
+            const pos = isHorizontal
+                ? e.touches[0].clientX
+                : e.touches[0].clientY;
+            handleDragStart(pos);
+        };
+
+        // 패시브 리스너로 성능 향상
+        container.addEventListener("touchstart", handleTouchStart, {
+            passive: true,
+        });
+
+        return () => {
+            container.removeEventListener("touchstart", handleTouchStart);
+        };
+    }, [isHorizontal, handleDragStart]);
+
     return (
         <div
             className={cn(
@@ -216,6 +293,8 @@ export default function CustomCarousel({
             )}
             style={{
                 userSelect: isDragging ? "none" : undefined,
+                // 터치 액션 최적화
+                touchAction: isHorizontal ? "pan-y" : "pan-x",
             }}
         >
             <div
@@ -225,14 +304,11 @@ export default function CustomCarousel({
                     isHorizontal ? "w-full" : "h-full",
                     containerClassName
                 )}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseLeave}
-                onWheel={handleWheel}
+                style={{
+                    // 레이아웃 계산 최적화
+                    contain: "layout style paint",
+                }}
+                {...eventHandlers}
             >
                 <div
                     className={cn(
@@ -242,30 +318,27 @@ export default function CustomCarousel({
                             : "w-full h-full flex-col"
                     )}
                     style={{
-                        transform: `${translateProperty}(${currentTranslate}%)`,
+                        transform: `${translateProperty}(${currentTranslate}%) translateZ(0)`,
                         [isHorizontal ? "width" : "height"]: `${
                             totalItems * 100
                         }%`,
                         transitionDuration: isDragging ? "0ms" : `${speed}ms`,
                         transitionTimingFunction:
                             "cubic-bezier(0.25, 1, 0.5, 1)",
+                        willChange: isDragging ? "transform" : "auto",
                     }}
                 >
-                    {childrenArray.map((child, index) => {
-                        return (
-                            <div
-                                key={index}
-                                className="flex items-center justify-center flex-shrink-0"
-                                style={{
-                                    [isHorizontal ? "width" : "height"]: `${
-                                        100 / totalItems
-                                    }%`,
-                                }}
-                            >
-                                {child}
-                            </div>
-                        );
-                    })}
+                    {childrenArray.map((child, index) => (
+                        <CarouselItem
+                            key={index}
+                            child={child}
+                            style={{
+                                [isHorizontal ? "width" : "height"]: `${
+                                    100 / totalItems
+                                }%`,
+                            }}
+                        />
+                    ))}
                 </div>
             </div>
 
