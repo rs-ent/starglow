@@ -1,6 +1,6 @@
 /// components/artists/Artist.Feed.Modal.tsx
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import { useArtistFeedsGet } from "@/app/hooks/useArtistFeeds";
 import { Artist } from "@prisma/client";
@@ -38,6 +38,17 @@ export default function ArtistFeedModal({
             pagination: { limit: 15 },
         },
     });
+
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overscrollBehavior = "none";
+        } else {
+            document.body.style.overscrollBehavior = "";
+        }
+        return () => {
+            document.body.style.overscrollBehavior = "";
+        };
+    }, [isOpen]);
 
     const infiniteFeeds = artistFeedsInfiniteQuery.data
         ? artistFeedsInfiniteQuery.data.pages.flatMap((page) => page.feeds)
