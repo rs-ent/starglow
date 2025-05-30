@@ -301,7 +301,7 @@ export default memo(function ArtistFeedModalCard({
                     >
                         <Heart
                             className={cn(
-                                "w-8 h-8 transition-all",
+                                "w-8 h-8 transition-all shadow-md",
                                 isLiked && "fill-current"
                             )}
                         />
@@ -309,23 +309,6 @@ export default memo(function ArtistFeedModalCard({
                     {likeCount > 0 && (
                         <span className="text-white text-sm font-semibold">
                             {likeCount}
-                        </span>
-                    )}
-                </div>
-
-                {/* Comment button */}
-                <div className="flex flex-col items-center">
-                    <button
-                        onClick={() =>
-                            toast.info("Comments feature coming soon!")
-                        }
-                        className="p-2 text-white hover:scale-110 transition-all"
-                    >
-                        <MessageCircle className="w-8 h-8" />
-                    </button>
-                    {commentCount > 0 && (
-                        <span className="text-white text-sm font-semibold">
-                            {commentCount}
                         </span>
                     )}
                 </div>
@@ -337,7 +320,7 @@ export default memo(function ArtistFeedModalCard({
                     className="absolute bottom-0 left-0 right-0 p-4 pb-6"
                     style={{
                         background:
-                            "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 70%, rgba(0,0,0,0) 100%)",
+                            "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.75) 80%, rgba(0,0,0,0) 100%)",
                     }}
                 >
                     <div
