@@ -1,14 +1,16 @@
 /// app\layout.tsx
 
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
-import type { Metadata } from "next";
+import {Analytics} from "@vercel/analytics/react";
+import {SpeedInsights} from "@vercel/speed-insights/next";
+import {WebVitals} from "@/lib/tools/web-vitals";
+import type {Metadata} from "next";
 import "./globals.css";
 
 import Toast from "@/components/atoms/Toast";
 import Providers from "./Providers";
 import Loading from "@/components/atoms/Loading";
 import Navigation from "@/components/navigation/Navigation";
+
 export const metadata: Metadata = {
     title: "Starglow",
     description: "Starglow",
@@ -23,6 +25,7 @@ export default function RootLayout({
         <html lang="en" suppressHydrationWarning>
             <body suppressHydrationWarning>
                 <Providers>
+                    <WebVitals />
                     <Loading />
                     <Toast />
                     <SpeedInsights />

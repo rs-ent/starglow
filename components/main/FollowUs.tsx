@@ -1,9 +1,9 @@
-/// components/molecules/FollowUs.tsx
+/// components/main/FollowUs.tsx
 
-import { H3 } from "../atoms/Typography";
+import {memo} from "react";
 import LinkButton from "../atoms/LinkButton";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { cn } from "@/lib/utils/tailwind";
+import {getResponsiveClass} from "@/lib/utils/responsiveClass";
+import {cn} from "@/lib/utils/tailwind";
 
 interface FollowUsProps {
     frameSize?: number;
@@ -13,6 +13,7 @@ interface FollowUsProps {
     className?: string;
 }
 
+// 소셜 링크 데이터 - 컴포넌트 외부로 이동
 const socialLinks = [
     {
         href: "https://docs.starglow.io",
@@ -36,13 +37,39 @@ const socialLinks = [
     },
 ];
 
-export default function FollowUs({
-    frameSize = 20,
-    textSize = 15,
-    gapSize = 15,
-    minimal = false,
-    className = "",
-}: FollowUsProps) {
+// 소셜 링크 아이템 컴포넌트
+const SocialLinkItem = memo(({ href, icon, alt, frameSize, minimal }: {
+    href: string;
+    icon: string;
+    alt: string;
+    frameSize: number;
+    minimal?: boolean;
+}) => (
+    <LinkButton
+        href={href}
+        target="_blank"
+        frameSize={frameSize}
+        paddingSize={minimal ? 0 : undefined}
+        aria-label={`Follow us on ${alt}`}
+    >
+        <img
+            src={icon}
+            alt={alt}
+            style={{ width: `${frameSize}px`, height: "auto" }}
+            loading="lazy"
+        />
+    </LinkButton>
+));
+SocialLinkItem.displayName = 'SocialLinkItem';
+
+// 메모이제이션된 FollowUs 컴포넌트
+const FollowUs = memo(function FollowUs({
+                                            frameSize = 20,
+                                            textSize = 15,
+                                            gapSize = 15,
+                                            minimal = false,
+                                            className = "",
+                                        }: FollowUsProps) {
     const { gapClass } = getResponsiveClass(gapSize);
     const { textClass } = getResponsiveClass(textSize);
 
@@ -54,7 +81,7 @@ export default function FollowUs({
             )}
         >
             {!minimal && (
-                <H3
+                <h3
                     className={cn(
                         "font-main text-foreground",
                         textClass,
@@ -62,26 +89,23 @@ export default function FollowUs({
                     )}
                 >
                     FOLLOW US ON SOCIAL MEDIA
-                </H3>
+                </h3>
             )}
 
             <div className={cn("flex items-center justify-center", gapClass)}>
                 {socialLinks.map(({ href, icon, alt }) => (
-                    <LinkButton
+                    <SocialLinkItem
                         key={alt}
                         href={href}
-                        target="_blank"
+                        icon={icon}
+                        alt={alt}
                         frameSize={frameSize}
-                        paddingSize={minimal ? 0 : undefined}
-                    >
-                        <img
-                            src={icon}
-                            alt={alt}
-                            style={{ width: `${frameSize}px`, height: "auto" }}
-                        />
-                    </LinkButton>
+                        minimal={minimal}
+                    />
                 ))}
             </div>
         </div>
     );
-}
+});
+
+export default FollowUs;

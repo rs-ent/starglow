@@ -1,73 +1,65 @@
 /// components/main/Main.Partners.tsx
 
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { cn } from "@/lib/utils/tailwind";
-import Image from "next/image";
+import {getResponsiveClass} from "@/lib/utils/responsiveClass";
+import {cn} from "@/lib/utils/tailwind";
+import {memo} from "react";
 
-const partners = [
-    {
-        name: "nh",
-        image: "/logo/partners/nh.png",
-    },
-    {
-        name: "kodit",
-        image: "/logo/partners/kodit.png",
-    },
-    {
-        name: "yarche",
-        image: "/logo/partners/yarche.png",
-    },
-    {
-        name: "unicorn",
-        image: "/logo/partners/unicorn.png",
-    },
-    {
-        name: "yellowpunch",
-        image: "/logo/partners/yellowpunch.png",
-    },
-    {
-        name: "makestar",
-        image: "/logo/partners/makestar.png",
-    },
-    {
-        name: "220ent",
-        image: "/logo/partners/220.png",
-    },
+// 파트너 정보 타입 정의
+interface Partner {
+    name: string;
+    image: string;
+}
 
-    {
-        name: "hiuaa",
-        image: "/logo/partners/hiuaa.png",
-    },
-    {
-        name: "hans-biomed",
-        image: "/logo/partners/hans-biomed.png",
-    },
-    {
-        name: "ayaeoeo",
-        image: "/logo/partners/ayaeoeo.png",
-    },
-    {
-        name: "kto",
-        image: "/logo/partners/kto.png",
-    },
-    {
-        name: "kocca",
-        image: "/logo/partners/kocca.png",
-    },
-    {
-        name: "seoulmunhwa",
-        image: "/logo/partners/seoulmunhwa.png",
-    },
-    {
-        name: "kams",
-        image: "/logo/partners/kams.png",
-    },
-    {
-        name: "seoul",
-        image: "/logo/partners/seoul.png",
-    },
+// 파트너 목록
+const partners: Partner[] = [
+    { name: "nh", image: "/logo/partners/nh.png" },
+    { name: "kodit", image: "/logo/partners/kodit.png" },
+    { name: "yarche", image: "/logo/partners/yarche.png" },
+    { name: "unicorn", image: "/logo/partners/unicorn.png" },
+    { name: "yellowpunch", image: "/logo/partners/yellowpunch.png" },
+    { name: "makestar", image: "/logo/partners/makestar.png" },
+    { name: "220ent", image: "/logo/partners/220.png" },
+    { name: "hiuaa", image: "/logo/partners/hiuaa.png" },
+    { name: "hans-biomed", image: "/logo/partners/hans-biomed.png" },
+    { name: "ayaeoeo", image: "/logo/partners/ayaeoeo.png" },
+    { name: "kto", image: "/logo/partners/kto.png" },
+    { name: "kocca", image: "/logo/partners/kocca.png" },
+    { name: "seoulmunhwa", image: "/logo/partners/seoulmunhwa.png" },
+    { name: "kams", image: "/logo/partners/kams.png" },
+    { name: "seoul", image: "/logo/partners/seoul.png" },
 ];
 
+// 메모이제이션된 파트너 로고 컴포넌트
+const PartnerLogo = memo(({ partner }: { partner: Partner }) => (
+    <div
+        className={cn(
+            "aspect-square relative",
+            "bg-gradient-to-br from-[rgba(255,255,255,0.05)] to-[rgba(255,255,255,0)]",
+            "rounded-[12px]",
+            "w-full"
+        )}
+    >
+        <img
+            src={partner.image}
+            alt={partner.name}
+            className={cn(
+                "absolute inset-0 w-full h-full",
+                "object-contain",
+                "p-[15px] sm:p-[12px] md:p-[14px] lg:p-[16px] xl:p-[18px]",
+            )}
+            style={{
+                filter: "brightness(0) invert(1)",
+                opacity: 0.92,
+            }}
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+        />
+    </div>
+));
+PartnerLogo.displayName = 'PartnerLogo';
+
+// 메인 컴포넌트
 export default function MainPartners() {
     return (
         <div className="flex flex-col items-center justify-center w-full">
@@ -90,26 +82,7 @@ export default function MainPartners() {
                 )}
             >
                 {partners.map((partner) => (
-                    <div
-                        key={partner.name}
-                        className={cn(
-                            "aspect-square relative",
-                            "bg-gradient-to-br from-[rgba(255,255,255,0.05)] to-[rgba(255,255,255,0)]",
-                            "rounded-[12px]",
-                            "w-full"
-                        )}
-                    >
-                        <Image
-                            src={partner.image}
-                            alt={partner.name}
-                            fill
-                            className="object-contain p-[15px] sm:p-[12px] md:p-[14px] lg:p-[16px] xl:p-[18px] w-full"
-                            style={{
-                                filter: "brightness(0) invert(1)",
-                                opacity: 0.92,
-                            }}
-                        />
-                    </div>
+                    <PartnerLogo key={partner.name} partner={partner} />
                 ))}
             </div>
         </div>

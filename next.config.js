@@ -32,9 +32,16 @@ const nextConfig = {
     ],
 
     experimental: {
+        // React Compiler 활성화
+        reactCompiler: true,
+
+        // 서버 액션 최적화
         serverActions: {
             bodySizeLimit: "50mb",
         },
+
+        // 점진적 CSR 활성화
+        ppr: true,
     },
 
     // web3 관련 폴더들을 빌드에서 제외
@@ -62,7 +69,6 @@ const nextConfig = {
         return config;
     },
 
-    // TypeScript 타입 체크에서 제외할 경로 설정
     typescript: {
         ignoreBuildErrors: true, // 빌드 시 타입 에러 무시
     },
