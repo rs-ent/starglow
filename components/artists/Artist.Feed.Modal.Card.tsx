@@ -103,27 +103,27 @@ export default memo(function ArtistFeedModalCard({
             likeCount: isLiked ? likeCount - 1 : likeCount + 1,
         });
 
-        if (isLiked && userLikeReaction) {
-            await deleteArtistFeedReaction({
-                input: {
-                    id: userLikeReaction.id,
-                    artistFeedId: feed.id,
-                    playerId: player.id,
-                },
-            });
+        try {
+            if (isLiked && userLikeReaction) {
+                await deleteArtistFeedReaction({
+                    input: {
+                        id: userLikeReaction.id,
+                        artistFeedId: feed.id,
+                        playerId: player.id,
+                    },
+                });
+            } else {
+                await createArtistFeedReaction({
+                    input: {
+                        artistFeedId: feed.id,
+                        playerId: player.id,
+                        reaction: "like",
+                    },
+                });
+            }
+        } catch (error) {
             setOptimisticLikeState(null);
-        } else {
-            setOptimisticLikeState({
-                isLiked: true,
-                likeCount: likeCount + 1,
-            });
-            await createArtistFeedReaction({
-                input: {
-                    artistFeedId: feed.id,
-                    playerId: player.id,
-                    reaction: "like",
-                },
-            });
+            toast.error("Failed to update like. Please try again.");
         }
     };
 
