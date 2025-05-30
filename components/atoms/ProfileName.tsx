@@ -21,10 +21,11 @@ export default function ProfileName({ size = 20 }: ProfileNameProps) {
 
     const [showUserSettings, setShowUserSettings] = useState<boolean>(false);
 
-    const { textClass, frameClass } = useMemo(() => {
+    const { textClass, frameClass, iconClass } = useMemo(() => {
         return {
             textClass: getResponsiveClass(size).textClass,
             frameClass: getResponsiveClass(size + 5).frameClass,
+            iconClass: getResponsiveClass(size - 5).frameClass,
         };
     }, [size]);
 
@@ -70,6 +71,7 @@ export default function ProfileName({ size = 20 }: ProfileNameProps) {
                     <div
                         className={cn(
                             "rounded-full p-[2px]",
+                            "flex items-center justify-center",
                             color,
                             frameClass
                         )}
@@ -77,7 +79,10 @@ export default function ProfileName({ size = 20 }: ProfileNameProps) {
                         <img
                             src={icon}
                             alt={`${provider} icon`}
-                            className="w-full h-full object-cover"
+                            className={cn(
+                                "w-full h-full object-cover",
+                                iconClass
+                            )}
                         />
                     </div>
                 )}
