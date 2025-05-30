@@ -2,8 +2,16 @@
 
 "use client";
 
-import { useState, useRef, useCallback, ReactNode, Children } from "react";
+import {
+    useState,
+    useRef,
+    useCallback,
+    ReactNode,
+    Children,
+    useMemo,
+} from "react";
 import { cn } from "@/lib/utils/tailwind";
+import React from "react";
 
 type CarouselDirection = "horizontal" | "vertical";
 
@@ -17,6 +25,7 @@ interface CustomCarouselProps {
     showIndicators?: boolean;
     indicatorClassName?: string;
     swipeThreshold?: number;
+    speed?: number;
 }
 
 export default function CustomCarousel({
@@ -29,6 +38,7 @@ export default function CustomCarousel({
     showIndicators = true,
     indicatorClassName,
     swipeThreshold = 50,
+    speed = 700,
 }: CustomCarouselProps) {
     // Children을 배열로 변환하고 개수 계산
     const childrenArray = Children.toArray(children);
@@ -151,6 +161,16 @@ export default function CustomCarousel({
         if (isDragging) handleDragEnd();
     };
 
+    const handleWheel = (e: React.WheelEvent) => {
+        if (!isHorizontal && !isDragging) {
+            if (e.deltaY > 0) {
+                moveTo("next");
+            } else if (e.deltaY < 0) {
+                moveTo("prev");
+            }
+        }
+    };
+
     // 현재 translate 계산 (드래그 중 미리보기 포함)
     const getCurrentTranslate = () => {
         // 올바른 계산: 각 아이템이 차지하는 비율만큼 이동
@@ -194,6 +214,9 @@ export default function CustomCarousel({
                 isHorizontal ? "w-full" : "h-full",
                 className
             )}
+            style={{
+                userSelect: isDragging ? "none" : undefined,
+            }}
         >
             <div
                 ref={containerRef}
@@ -209,6 +232,7 @@ export default function CustomCarousel({
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseLeave}
+                onWheel={handleWheel}
             >
                 <div
                     className={cn(
@@ -222,7 +246,7 @@ export default function CustomCarousel({
                         [isHorizontal ? "width" : "height"]: `${
                             totalItems * 100
                         }%`,
-                        transitionDuration: isDragging ? "0ms" : "300ms",
+                        transitionDuration: isDragging ? "0ms" : `${speed}ms`,
                         transitionTimingFunction:
                             "cubic-bezier(0.25, 1, 0.5, 1)",
                     }}

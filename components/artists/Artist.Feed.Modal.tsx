@@ -10,9 +10,7 @@ import ArtistFeedModalCard from "./Artist.Feed.Modal.Card";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import Portal from "../atoms/Portal";
-import Slider from "react-slick";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
+import CustomCarousel from "../atoms/CustomCarousel";
 
 interface ArtistFeedModalProps {
     initialFeeds: ArtistFeedWithReactions[];
@@ -29,8 +27,6 @@ export default function ArtistFeedModal({
     isOpen,
     onClose,
 }: ArtistFeedModalProps) {
-    const sliderRef = useRef<Slider | null>(null);
-
     const { artistFeedsInfiniteQuery } = useArtistFeedsGet({
         getArtistFeedsInput: {
             artistId: artist.id,
@@ -48,22 +44,6 @@ export default function ArtistFeedModal({
             document.body.style.overscrollBehavior = "";
         };
     }, [isOpen]);
-
-    const handleSliderRef = (instance: Slider | null) => {
-        sliderRef.current = instance;
-        if (instance && isOpen) {
-            instance.slickGoTo(initialFeedIndex);
-        }
-    };
-
-    const handleWheel = (e: React.WheelEvent) => {
-        if (!sliderRef.current) return;
-        if (e.deltaY > 0) {
-            sliderRef.current.slickNext();
-        } else if (e.deltaY < 0) {
-            sliderRef.current.slickPrev();
-        }
-    };
 
     const infiniteFeeds = artistFeedsInfiniteQuery.data
         ? artistFeedsInfiniteQuery.data.pages.flatMap((page) => page.feeds)
@@ -84,24 +64,13 @@ export default function ArtistFeedModal({
         );
     }, [initialFeeds, infiniteFeeds]);
 
-    const handleBeforeChange = (_: number, next: number) => {
+    const [currentIndex, setCurrentIndex] = useState(initialFeedIndex);
+
+    const handleIndexChange = (next: number) => {
+        setCurrentIndex(next);
         if (hasNextPage && next >= allFeeds.length - 3 && !isFetchingNextPage) {
             fetchNextPage();
         }
-    };
-
-    const sliderSettings = {
-        initialSlide: initialFeedIndex,
-        infinite: false,
-        speed: 500,
-        slidesToShow: 1,
-        slidesToScroll: 1,
-        swipeToSlide: true,
-        beforeChange: handleBeforeChange,
-        vertical: true,
-        verticalSwiping: true,
-        arrows: false,
-        dots: false,
     };
 
     if (!isOpen) return null;
@@ -165,25 +134,28 @@ export default function ArtistFeedModal({
                     </div>
 
                     {/* 피드 컨테이너 */}
-                    <div
-                        className="overflow-hidden max-w-[768px] mx-auto w-full h-full overscroll-none"
-                        onWheel={handleWheel}
-                    >
-                        <Slider ref={handleSliderRef} {...sliderSettings}>
-                            {allFeeds.map((feed, index) => {
-                                return (
-                                    <div
-                                        key={feed.id}
-                                        className="w-full h-full flex items-center justify-center"
-                                    >
-                                        <ArtistFeedModalCard
-                                            feed={feed}
-                                            artist={artist}
-                                        />
-                                    </div>
-                                );
-                            })}
-                        </Slider>
+                    <div className="overflow-hidden max-w-[768px] mx-auto w-full h-full overscroll-none">
+                        <CustomCarousel
+                            direction="vertical"
+                            initialIndex={initialFeedIndex}
+                            onIndexChange={handleIndexChange}
+                            containerClassName="w-full h-full"
+                            indicatorClassName="right-4"
+                            swipeThreshold={50}
+                            showIndicators={true}
+                        >
+                            {allFeeds.map((feed, index) => (
+                                <div
+                                    key={feed.id}
+                                    className="w-full h-full flex items-center justify-center"
+                                >
+                                    <ArtistFeedModalCard
+                                        feed={feed}
+                                        artist={artist}
+                                    />
+                                </div>
+                            ))}
+                        </CustomCarousel>
                     </div>
                 </div>
             </div>

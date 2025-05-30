@@ -132,7 +132,10 @@ export default memo(function ArtistFeedModalCard({
                         swipeThreshold={50}
                     >
                         {allMedia.map((media, index) => (
-                            <div key={index} className="relative w-full h-full">
+                            <div
+                                key={`${feed.id}-${index}`}
+                                className="relative w-full h-full"
+                            >
                                 <Suspense
                                     fallback={
                                         <Skeleton className="w-full h-full" />
