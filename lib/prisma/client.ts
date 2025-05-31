@@ -1,6 +1,6 @@
 // lib/prisma/client.ts
 
-import { PrismaClient } from "@prisma/client";
+import {PrismaClient} from "@prisma/client";
 
 /**
  * PrismaClient is attached to the `global` object in development to prevent
@@ -32,6 +32,11 @@ const getPrismaClient = () => {
         log: ["error"],
         datasources: {
             db: { url },
+        },
+        // 트랜잭션 타임아웃 설정 (1시간)
+        transactionOptions: {
+            maxWait: 3600000, // 1시간 대기
+            timeout: 3600000,  // 1시간 타임아웃
         },
     });
 };

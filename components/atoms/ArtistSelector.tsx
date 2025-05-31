@@ -2,12 +2,12 @@
 
 "use client";
 
-import { Artist } from "@prisma/client";
+import {Artist} from "@prisma/client";
 import Image from "next/image";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { cn } from "@/lib/utils/tailwind";
-import { useState } from "react";
-import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
+import {getResponsiveClass} from "@/lib/utils/responsiveClass";
+import {cn} from "@/lib/utils/tailwind";
+import {memo, useCallback, useMemo, useState} from "react";
+import {ArtistBG} from "@/lib/utils/get/artist-colors";
 
 interface ArtistSelectorProps {
     artist: Artist;
@@ -20,7 +20,8 @@ interface ArtistSelectorProps {
     onSelect?: (artist: Artist) => void;
 }
 
-export default function ArtistSelector({
+// memo로 컴포넌트 자체를 최적화
+const ArtistSelector = memo(function ArtistSelector({
     artist,
     className = "",
     frameSize = 55,
@@ -31,18 +32,45 @@ export default function ArtistSelector({
     onSelect,
 }: ArtistSelectorProps) {
     const [isLocalSelected, setIsLocalSelected] = useState(isSelected);
-    const selected = isSelected || isLocalSelected;
 
-    const frameSizeClass = getResponsiveClass(frameSize).frameClass;
-    const textSizeClass = getResponsiveClass(textSize).textClass;
+    // 선택 상태 계산 최적화
+    const selected = useMemo(() =>
+        isSelected || isLocalSelected,
+    [isSelected, isLocalSelected]);
 
-    const handleClick = () => {
+    // 반응형 클래스 계산 최적화
+    const frameSizeClass = useMemo(() =>
+        getResponsiveClass(frameSize).frameClass,
+    [frameSize]);
+
+    const textSizeClass = useMemo(() =>
+        getResponsiveClass(textSize).textClass,
+    [textSize]);
+
+    // 클릭 핸들러 최적화
+    const handleClick = useCallback(() => {
         if (onSelect) {
             onSelect(artist);
         } else {
-            setIsLocalSelected(!isLocalSelected);
+            setIsLocalSelected(prev => !prev);
         }
-    };
+    }, [artist, onSelect]);
+
+    // 그림자 스타일 최적화
+    const shadowStyle = useMemo(() => ({
+        boxShadow: selected
+            ? `0px 0px 12px 2px ${ArtistBG(artist, 2, 100)}`
+            : "none",
+    }), [selected, artist]);
+
+    // 선택된 상태의 클래스 계산 최적화
+    const selectedFrameClass = useMemo(() =>
+        selected ? "scale-[1.2] z-30 transition-all duration-300 mb-[12px] sm:mb-[14px] md:mb-[16px] lg:mb-[18px] xl:mb-[20px]" : "",
+    [selected]);
+
+    const selectedBorderClass = useMemo(() =>
+        selected ? "bg-transparent -m-[8px] sm:-m-[9px] md:-m-[10px] lg:-m-[11px] xl:-m-[12px] border-[1px] border-[rgba(255,255,255,1)]" : "",
+    [selected]);
 
     return (
         <div
@@ -59,16 +87,14 @@ export default function ArtistSelector({
                     "relative",
                     "rounded-full",
                     frameSizeClass,
-                    selected &&
-                        "scale-[1.2] z-30 transition-all duration-300 mb-[12px] sm:mb-[14px] md:mb-[16px] lg:mb-[18px] xl:mb-[20px]"
+                    selectedFrameClass
                 )}
             >
                 <div
                     className={cn(
                         "absolute inset-0",
                         "rounded-full",
-                        selected &&
-                            "bg-transparent -m-[8px] sm:-m-[9px] md:-m-[10px] lg:-m-[11px] xl:-m-[12px] border-[1px] border-[rgba(255,255,255,1)]",
+                        selectedBorderClass,
                         "transition-all duration-300"
                     )}
                 >
@@ -91,11 +117,8 @@ export default function ArtistSelector({
                         "relative",
                         frameSizeClass
                     )}
-                    style={{
-                        boxShadow: selected
-                            ? `0px 0px 12px 2px ${ArtistBG(artist, 2, 100)}`
-                            : "none",
-                    }}
+                    style={shadowStyle}
+                    priority={isSelected} // 선택된 아티스트 이미지 우선 로드
                 />
                 <div
                     className={cn(
@@ -111,6 +134,7 @@ export default function ArtistSelector({
                             width={frameSize / 2}
                             height={frameSize / 2}
                             className={cn("object-contain")}
+                            loading="lazy" // 로고는 지연 로드
                         />
                     )}
                 </div>
@@ -127,9 +151,10 @@ export default function ArtistSelector({
             </h3>
         </div>
     );
-}
+});
 
-function El03Icon({ className = "" }) {
+// El03Icon도 memo로 최적화
+const El03Icon = memo(function El03Icon({ className = "" }) {
     return (
         <svg
             width="17"
@@ -145,4 +170,6 @@ function El03Icon({ className = "" }) {
             />
         </svg>
     );
-}
+});
+
+export default ArtistSelector;

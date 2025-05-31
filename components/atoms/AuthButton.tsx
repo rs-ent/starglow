@@ -38,7 +38,7 @@ const AuthButton = memo(function AuthButton({
     variant = "default",
 }: AuthButtonProps) {
     const { data: session, status } = useSession();
-    const { startLoading, stopLoading } = useLoading();
+    const { startLoading, endLoading } = useLoading();
     const pathname = usePathname();
     const router = useRouter();
 
@@ -51,10 +51,10 @@ const AuthButton = memo(function AuthButton({
             });
         } catch (error) {
             console.error("Sign in error:", error);
-            stopLoading();
+            endLoading();
             router.push("/auth/error");
         }
-    }, [pathname, router, startLoading, stopLoading]);
+    }, [pathname, router, startLoading, endLoading]);
 
     // 로딩 상태 처리
     if (status === "loading") {

@@ -2,21 +2,20 @@
 
 "use server";
 
-import { prisma } from "@/lib/prisma/client";
-import {
-    Prisma,
-    Quest,
-    Asset,
-    Player,
-    QuestLog,
-    User,
-    ReferralLog,
-    QuestType,
-    Artist,
-} from "@prisma/client";
-import { updatePlayerAsset } from "./playerAssets";
-import { tokenGate } from "./blockchain";
-import { formatWaitTime } from "@/lib/utils/format";
+import {prisma} from "@/lib/prisma/client";
+import {Artist, Asset, Player, Prisma, Quest, QuestLog, QuestType, ReferralLog, User,} from "@prisma/client";
+import {updatePlayerAsset} from "./playerAssets";
+import {tokenGate} from "./blockchain";
+import {formatWaitTime} from "@/lib/utils/format";
+// Redis 캐싱 유틸리티 import
+import {getCachedData, invalidateCache} from "@/lib/cache/upstash-redis";
+
+// 캐시 태그 상수 정의
+const CACHE_TAGS = {
+    QUESTS: 'quests',
+    QUEST_LOGS: 'questLogs',
+    TOKEN_GATE: 'tokenGate',
+};
 
 export type PaginationInput = {
     currentPage: number;
@@ -73,6 +72,9 @@ export async function createQuest(input: CreateQuestInput) {
         },
     });
 
+    // 퀘스트 생성 후 캐시 무효화
+    await invalidateQuestsCache();
+
     return quest;
 }
 
@@ -95,145 +97,190 @@ export interface GetQuestsInput {
 export async function getQuests({
     input,
     pagination,
+    enableCache = true,
 }: {
     input?: GetQuestsInput;
     pagination?: PaginationInput;
+    enableCache?: boolean;
 }): Promise<{
     items: Quest[];
     totalItems: number;
     totalPages: number;
 }> {
     try {
-        if (!pagination) {
-            pagination = {
-                currentPage: 1,
-                itemsPerPage: Number.MAX_SAFE_INTEGER,
-            };
-        }
-
-        if (!input) {
-            const items = await prisma.quest.findMany({
-                orderBy: {
-                    order: "asc",
-                },
-                include: {
-                    artist: true,
-                    rewardAsset: true,
-                },
-                skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
-                take: pagination.itemsPerPage,
-            });
-
-            return {
-                items,
-                totalItems: items.length,
-                totalPages: Math.ceil(items.length / pagination.itemsPerPage),
-            };
-        }
-
-        const where: Prisma.QuestWhereInput = {};
-
-        if (input.startDate && input.startDateIndicator) {
-            if (input.startDateIndicator === "before") {
-                where.startDate = {
-                    lte: input.startDate,
-                };
-            } else if (input.startDateIndicator === "after") {
-                where.startDate = {
-                    gte: input.startDate,
-                };
-            } else if (input.startDateIndicator === "on") {
-                where.startDate = {
-                    equals: input.startDate,
-                };
+        // 캐시 키 생성
+        const cacheKey = `quests:${JSON.stringify(input)}:${JSON.stringify(pagination)}`;
+        
+        // Redis 환경 변수가 설정되어 있고 캐싱이 활성화된 경우에만 캐싱 사용
+        const redisConfigured = Boolean(
+            process.env.KV_REST_API_URL && 
+            process.env.KV_REST_API_TOKEN
+        );
+        
+        // 캐싱 적용 (enableCache가 true이고 input이 있고 Redis가 구성된 경우에만)
+        if (enableCache && input && redisConfigured) {
+            try {
+                return await getCachedData(
+                    cacheKey,
+                    async () => {
+                        return await fetchQuestsFromDB(input, pagination);
+                    },
+                    {
+                        ttl: 300, // 5분 캐싱
+                        tags: [CACHE_TAGS.QUESTS],
+                    }
+                );
+            } catch (cacheError) {
+                console.error("Cache error in getQuests:", cacheError);
+                // 캐싱 오류 시 직접 DB 조회
+                return await fetchQuestsFromDB(input, pagination);
             }
         }
-
-        if (input.endDate && input.endDateIndicator) {
-            if (input.endDateIndicator === "before") {
-                where.endDate = {
-                    lte: input.endDate,
-                };
-            } else if (input.endDateIndicator === "after") {
-                where.endDate = {
-                    gte: input.endDate,
-                };
-            } else if (input.endDateIndicator === "on") {
-                where.endDate = {
-                    equals: input.endDate,
-                };
-            }
-        }
-
-        if (input.permanent) {
-            where.permanent = input.permanent;
-        }
-
-        if (input.isActive) {
-            where.isActive = input.isActive;
-        }
-
-        if (input.type) {
-            where.type = input.type;
-        }
-
-        if (input.rewardAssetId) {
-            where.rewardAssetId = input.rewardAssetId;
-        }
-
-        if (input.repeatable) {
-            where.repeatable = input.repeatable;
-        }
-
-        if (input.repeatableCount) {
-            where.repeatableCount = input.repeatableCount;
-        }
-
-        if (input.repeatableInterval) {
-            where.repeatableInterval = input.repeatableInterval;
-        }
-
-        if (input.artistId) {
-            where.artistId = input.artistId;
-        }
-
-        if (input.isPublic) {
-            where.artistId = null;
-            where.needToken = false;
-            where.needTokenAddress = null;
-        }
-
-        const [items, totalItems] = await Promise.all([
-            prisma.quest.findMany({
-                where,
-                orderBy: {
-                    order: "asc",
-                },
-                skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
-                take: pagination.itemsPerPage,
-                include: {
-                    artist: true,
-                    rewardAsset: true,
-                },
-            }),
-            prisma.quest.count({ where }),
-        ]);
-
-        const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
-
-        return {
-            items,
-            totalItems,
-            totalPages,
-        };
+        
+        // 캐싱을 사용하지 않는 경우 직접 DB 조회
+        return await fetchQuestsFromDB(input, pagination);
     } catch (error) {
-        console.error(error);
+        console.error("Error in getQuests:", error);
         return {
             items: [],
             totalItems: 0,
             totalPages: 0,
         };
     }
+}
+
+// 데이터베이스에서 퀘스트를 조회하는 함수 분리 (코드 재사용성 향상)
+async function fetchQuestsFromDB(
+    input?: GetQuestsInput,
+    pagination?: PaginationInput
+): Promise<{
+    items: Quest[];
+    totalItems: number;
+    totalPages: number;
+}> {
+    if (!pagination) {
+        pagination = {
+            currentPage: 1,
+            itemsPerPage: Number.MAX_SAFE_INTEGER,
+        };
+    }
+
+    if (!input) {
+        const items = await prisma.quest.findMany({
+            orderBy: {
+                order: "asc",
+            },
+            include: {
+                artist: true,
+                rewardAsset: true,
+            },
+            skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
+            take: pagination.itemsPerPage,
+        });
+
+        return {
+            items,
+            totalItems: items.length,
+            totalPages: Math.ceil(items.length / pagination.itemsPerPage),
+        };
+    }
+
+    const where: Prisma.QuestWhereInput = {};
+
+    if (input.startDate && input.startDateIndicator) {
+        if (input.startDateIndicator === "before") {
+            where.startDate = {
+                lte: input.startDate,
+            };
+        } else if (input.startDateIndicator === "after") {
+            where.startDate = {
+                gte: input.startDate,
+            };
+        } else if (input.startDateIndicator === "on") {
+            where.startDate = {
+                equals: input.startDate,
+            };
+        }
+    }
+
+    if (input.endDate && input.endDateIndicator) {
+        if (input.endDateIndicator === "before") {
+            where.endDate = {
+                lte: input.endDate,
+            };
+        } else if (input.endDateIndicator === "after") {
+            where.endDate = {
+                gte: input.endDate,
+            };
+        } else if (input.endDateIndicator === "on") {
+            where.endDate = {
+                equals: input.endDate,
+            };
+        }
+    }
+
+    if (input.permanent !== undefined) {
+        where.permanent = input.permanent;
+    }
+
+    if (input.isActive !== undefined) {
+        where.isActive = input.isActive;
+    }
+
+    if (input.type) {
+        where.type = input.type;
+    }
+
+    if (input.rewardAssetId) {
+        where.rewardAssetId = input.rewardAssetId;
+    }
+
+    if (input.repeatable !== undefined) {
+        where.repeatable = input.repeatable;
+    }
+
+    if (input.repeatableCount) {
+        where.repeatableCount = input.repeatableCount;
+    }
+
+    if (input.repeatableInterval) {
+        where.repeatableInterval = input.repeatableInterval;
+    }
+
+    if (input.artistId) {
+        where.artistId = input.artistId;
+    }
+
+    if (input.isPublic) {
+        where.artistId = null;
+        where.needToken = false;
+        where.needTokenAddress = null;
+    }
+
+    // Promise.all로 병렬 처리하여 성능 향상
+    const [items, totalItems] = await Promise.all([
+        prisma.quest.findMany({
+            where,
+            orderBy: {
+                order: "asc",
+            },
+            skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
+            take: pagination.itemsPerPage,
+            include: {
+                artist: true,
+                rewardAsset: true,
+            },
+        }),
+        prisma.quest.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
+
+    return {
+        items,
+        totalItems,
+        totalPages,
+    };
 }
 
 export interface GetQuestInput {
@@ -328,6 +375,9 @@ export async function updateQuest(
             },
         });
 
+        // 퀘스트 업데이트 후 캐시 무효화
+        await invalidateQuestsCache();
+
         return quest;
     } catch (error) {
         console.error(error);
@@ -396,6 +446,9 @@ export async function deleteQuest(input: DeleteQuestInput): Promise<boolean> {
             });
         });
 
+        // 퀘스트 삭제 후 캐시 무효화
+        await invalidateQuestsCache();
+
         return true;
     } catch (error) {
         console.error(error);
@@ -419,7 +472,8 @@ export interface TokenGatingResult {
 }
 
 export async function tokenGating(
-    input?: TokenGatingInput
+    input?: TokenGatingInput,
+    enableCache = true
 ): Promise<TokenGatingResult> {
     try {
         const { quest, user } = input || {};
@@ -446,35 +500,70 @@ export async function tokenGating(
             };
         }
 
-        const result = await tokenGate({
-            userId: user.id,
-            tokenType: "Collection",
-            tokenAddress: quest.needTokenAddress,
-        });
-
-        if (!result.success) {
-            return {
-                success: false,
-                error: result.error,
-                data: result.data || {
-                    hasToken: false,
-                    tokenCount: 0,
-                    ownerWallets: [],
+        // 캐시 키 생성
+        const cacheKey = `tokenGate:${user.id}:${quest.needTokenAddress}`;
+        
+        // 캐싱 적용
+        if (enableCache) {
+            return await getCachedData(
+                cacheKey,
+                async () => {
+                    return await checkTokenGating(user.id, quest.needTokenAddress);
                 },
-            };
+                {
+                    ttl: 1800, // 30분 캐싱
+                    tags: [CACHE_TAGS.TOKEN_GATE, `tokenGate:${user.id}`],
+                }
+            );
         }
-
-        return {
-            success: true,
-            data: result.data,
-            error: result.error,
-        };
+        
+        // 캐싱을 사용하지 않는 경우 직접 체크
+        return await checkTokenGating(user.id, quest.needTokenAddress);
     } catch (error) {
         console.error("Error in token gating:", error);
         return {
             success: false,
             error: "Failed to check token ownership",
         };
+    }
+}
+
+// 토큰 게이팅 체크 함수 분리
+async function checkTokenGating(
+    userId: string,
+    tokenAddress: string
+): Promise<TokenGatingResult> {
+    try {
+        const result = await tokenGate({
+            userId,
+            tokenType: "Collection",
+            tokenAddress,
+        });
+
+        return {
+            success: result.success,
+            data: result.data || {
+                hasToken: false,
+                tokenCount: 0,
+                ownerWallets: [],
+            },
+            error: result.error,
+        };
+    } catch (error) {
+        console.error("Error in checkTokenGating:", error);
+        return {
+            success: false,
+            error: "Failed to check token ownership",
+        };
+    }
+}
+
+// 토큰 게이팅 캐시 무효화 함수 추가
+export async function invalidateTokenGatingCache(userId?: string) {
+    if (userId) {
+        await invalidateCache({ tags: [`tokenGate:${userId}`] });
+    } else {
+        await invalidateCache({ tags: [CACHE_TAGS.TOKEN_GATE] });
     }
 }
 
@@ -501,139 +590,133 @@ export async function completeQuest(
             };
         }
 
+        // 토큰 게이팅 체크 최적화 - 캐시된 결과 사용
         if (input.quest.needToken && input.quest.needTokenAddress) {
-            if (!input.tokenGating)
+            if (!input.tokenGating) {
                 return {
                     success: false,
-                    error: "Token gating required. Please try again or contact technical support.",
+                    error: "Token gating required",
                 };
-            if (
-                !input.tokenGating.success ||
-                !input.tokenGating.data?.hasToken
-            ) {
+            }
+            
+            if (!input.tokenGating.success || !input.tokenGating.data?.hasToken) {
                 return {
                     success: false,
-                    error: "Token gating failed. Please check your token balance. If the problem persists, please contact technical support.",
+                    error: "Token gating failed",
                 };
             }
         }
 
-        const log = await prisma.questLog.findUnique({
-            where: {
-                playerId_questId: {
-                    playerId: input.player.id,
-                    questId: input.quest.id,
+        // 트랜잭션으로 묶어 원자성 보장
+        const questLog = await prisma.$transaction(async (tx) => {
+            // 기존 로그 조회
+            const log = await tx.questLog.findUnique({
+                where: {
+                    playerId_questId: {
+                        playerId: input.player.id,
+                        questId: input.quest.id,
+                    },
                 },
-            },
-        });
+            });
 
-        if (log?.completed && log.completedAt) {
-            return {
-                success: false,
-                error: `You have already completed this quest at ${log.completedAt.toLocaleString()}.`,
-            };
-        }
-
-        if (log?.isClaimed && log.claimedAt) {
-            return {
-                success: false,
-                error: `You have already claimed the reward for this quest at ${log.claimedAt?.toLocaleString()}.`,
-            };
-        }
-
-        if (
-            input.quest.repeatable &&
-            input.quest.repeatableCount &&
-            input.quest.repeatableCount > 1
-        ) {
-            if (
-                log?.repeatCount &&
-                log.repeatCount >= input.quest.repeatableCount
-            ) {
-                return {
-                    success: false,
-                    error: `You have already completed this quest ${input.quest.repeatableCount} times.`,
-                };
+            // 이미 완료된 퀘스트 체크
+            if (log?.completed && log.completedAt) {
+                throw new Error(`You have already completed this quest at ${log.completedAt.toLocaleString()}.`);
             }
 
-            if (input.quest.repeatableInterval) {
-                const lastCompletedAt =
-                    log?.completedDates && log.completedDates.length > 0
-                        ? Math.max(
-                              ...log.completedDates.map((date) =>
-                                  new Date(date).getTime()
+            // 이미 보상을 받은 퀘스트 체크
+            if (log?.isClaimed && log.claimedAt) {
+                throw new Error(`You have already claimed the reward for this quest at ${log.claimedAt?.toLocaleString()}.`);
+            }
+
+            if (
+                input.quest.repeatable &&
+                input.quest.repeatableCount &&
+                input.quest.repeatableCount > 1
+            ) {
+                if (
+                    log?.repeatCount &&
+                    log.repeatCount >= input.quest.repeatableCount
+                ) {
+                    throw new Error(`You have already completed this quest ${input.quest.repeatableCount} times.`);
+                }
+
+                if (input.quest.repeatableInterval) {
+                    const lastCompletedAt =
+                        log?.completedDates && log.completedDates.length > 0
+                            ? Math.max(
+                                  ...log.completedDates.map((date) =>
+                                      new Date(date).getTime()
+                                  )
                               )
-                          )
-                        : 0;
-                const now = Date.now();
-                if (now - lastCompletedAt < input.quest.repeatableInterval) {
-                    const waitSeconds = Math.ceil(
-                        (input.quest.repeatableInterval -
-                            (now - lastCompletedAt)) /
-                            1000
-                    );
-                    return {
-                        success: false,
-                        error: `You can complete this quest again ${formatWaitTime(
+                            : 0;
+                    const now = Date.now();
+                    if (now - lastCompletedAt < input.quest.repeatableInterval) {
+                        const waitSeconds = Math.ceil(
+                            (input.quest.repeatableInterval -
+                                (now - lastCompletedAt)) /
+                                1000
+                        );
+                        throw new Error(`You can complete this quest again ${formatWaitTime(
                             waitSeconds
-                        )} seconds after the last completion.`,
-                    };
+                        )} seconds after the last completion.`);
+                    }
                 }
             }
-        }
 
-        const data: {
-            questId: string;
-            playerId: string;
-            completed: boolean;
-            completedAt: Date | null;
-            rewardAssetId?: string;
-            rewardAmount?: number;
-            repeatCount: number;
-            isClaimed: boolean;
-            completedDates: Date[];
-        } = {
-            questId: input.quest.id,
-            playerId: input.player.id,
-            completed: false,
-            completedAt: null,
-            rewardAssetId: input.quest.rewardAssetId || undefined,
-            rewardAmount: input.quest.rewardAmount || undefined,
-            repeatCount: log?.repeatCount ? log.repeatCount + 1 : 1,
-            isClaimed: false,
-            completedDates: log?.completedDates ? [...log.completedDates] : [],
-        };
+            const data: {
+                questId: string;
+                playerId: string;
+                completed: boolean;
+                completedAt: Date | null;
+                rewardAssetId?: string;
+                rewardAmount?: number;
+                repeatCount: number;
+                isClaimed: boolean;
+                completedDates: Date[];
+            } = {
+                questId: input.quest.id,
+                playerId: input.player.id,
+                completed: false,
+                completedAt: null,
+                rewardAssetId: input.quest.rewardAssetId || undefined,
+                rewardAmount: input.quest.rewardAmount || undefined,
+                repeatCount: log?.repeatCount ? log.repeatCount + 1 : 1,
+                isClaimed: false,
+                completedDates: log?.completedDates ? [...log.completedDates] : [],
+            };
 
-        data.completedDates.push(new Date());
+            data.completedDates.push(new Date());
 
-        if (
-            !input.quest.repeatable ||
-            !input.quest.repeatableCount ||
-            (input.quest.repeatableCount && input.quest.repeatableCount <= 1)
-        ) {
-            data.completed = true;
-            data.completedAt = new Date();
-        } else if (
-            input.quest.repeatableCount &&
-            data.repeatCount >= input.quest.repeatableCount
-        ) {
-            data.completed = true;
-            data.completedAt = new Date();
-        }
+            if (
+                !input.quest.repeatable ||
+                !input.quest.repeatableCount ||
+                (input.quest.repeatableCount && input.quest.repeatableCount <= 1)
+            ) {
+                data.completed = true;
+                data.completedAt = new Date();
+            } else if (
+                input.quest.repeatableCount &&
+                data.repeatCount >= input.quest.repeatableCount
+            ) {
+                data.completed = true;
+                data.completedAt = new Date();
+            }
 
-        if (!input.quest.rewardAssetId) {
-            data.isClaimed = true;
-        }
+            if (!input.quest.rewardAssetId) {
+                data.isClaimed = true;
+            }
 
-        const questLog = await prisma.questLog.upsert({
-            where: {
-                playerId_questId: {
-                    playerId: input.player.id,
-                    questId: input.quest.id,
+            return await tx.questLog.upsert({
+                where: {
+                    playerId_questId: {
+                        playerId: input.player.id,
+                        questId: input.quest.id,
+                    },
                 },
-            },
-            update: data,
-            create: data,
+                update: data,
+                create: data,
+            });
         });
 
         return {
@@ -644,7 +727,7 @@ export async function completeQuest(
         console.error(error);
         return {
             success: false,
-            error: "Failed to complete quest",
+            error: error.message || "Failed to complete quest",
         };
     }
 }
@@ -831,13 +914,11 @@ export async function getPlayerQuestLogs(
     }
 
     try {
-        const questLogs = await prisma.questLog.findMany({
+        return await prisma.questLog.findMany({
             where: {
                 playerId: input.playerId,
             },
         });
-
-        return questLogs;
     } catch (error) {
         console.error(error);
         return [];
@@ -868,14 +949,12 @@ export async function getClaimableQuestLogs(
             };
         }
 
-        const questLogs = await prisma.questLog.findMany({
+        return await prisma.questLog.findMany({
             where: {
                 playerId: input.playerId,
                 isClaimed: false,
             },
         });
-
-        return questLogs;
     } catch (error) {
         console.error(error);
         return [];
@@ -906,14 +985,12 @@ export async function getClaimedQuestLogs(
             };
         }
 
-        const questLogs = await prisma.questLog.findMany({
+        return await prisma.questLog.findMany({
             where: {
                 playerId: input.playerId,
                 isClaimed: true,
             },
         });
-
-        return questLogs;
     } catch (error) {
         console.error(error);
         return [];
@@ -1024,4 +1101,9 @@ export async function updateQuestActive(
         console.error(error);
         return false;
     }
+}
+
+// 퀘스트 캐시 무효화 함수 추가
+export async function invalidateQuestsCache() {
+    await invalidateCache({ tags: [CACHE_TAGS.QUESTS] });
 }

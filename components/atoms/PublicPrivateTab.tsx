@@ -2,7 +2,8 @@
 
 "use client";
 
-import { cn } from "@/lib/utils/tailwind";
+import {memo} from "react";
+import {cn} from "@/lib/utils/tailwind";
 import PublicPrivateButton from "@/components/atoms/PublicPrivateButton";
 
 interface PublicPrivateTabProps {
@@ -20,7 +21,7 @@ interface PublicPrivateTabProps {
     privateIcon?: string;
 }
 
-export default function PublicPrivateTab({
+function PublicPrivateTab({
     isPublic,
     onPublic,
     onPrivate,
@@ -34,6 +35,18 @@ export default function PublicPrivateTab({
     publicIcon = "/icons/world.svg",
     privateIcon = "/icons/lock.svg",
 }: PublicPrivateTabProps) {
+    // 마스크 스타일 객체를 미리 정의하여 렌더링 시 계산 비용 감소
+    const maskStyle = {
+        WebkitMaskImage: `url(/elements/el-long-star.svg)`,
+        maskImage: `url(/elements/el-long-star.svg)`,
+        WebkitMaskSize: "100%",
+        maskSize: "100%",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+    };
+
     return (
         <div
             className={cn(
@@ -81,14 +94,7 @@ export default function PublicPrivateTab({
                             isPublic ? "opacity-100" : "opacity-0"
                         }`}
                         style={{
-                            WebkitMaskImage: `url(/elements/el-long-star.svg)`,
-                            maskImage: `url(/elements/el-long-star.svg)`,
-                            WebkitMaskSize: "100%",
-                            maskSize: "100%",
-                            WebkitMaskRepeat: "no-repeat",
-                            maskRepeat: "no-repeat",
-                            WebkitMaskPosition: "center",
-                            maskPosition: "center",
+                            ...maskStyle,
                             background:
                                 "linear-gradient(to right,rgba(245,225,255,1) 20%, rgba(139, 92, 246, 0) 70%)",
                         }}
@@ -99,14 +105,7 @@ export default function PublicPrivateTab({
                             isPublic ? "opacity-0" : "opacity-100"
                         }`}
                         style={{
-                            WebkitMaskImage: `url(/elements/el-long-star.svg)`,
-                            maskImage: `url(/elements/el-long-star.svg)`,
-                            WebkitMaskSize: "100%",
-                            maskSize: "100%",
-                            WebkitMaskRepeat: "no-repeat",
-                            maskRepeat: "no-repeat",
-                            WebkitMaskPosition: "center",
-                            maskPosition: "center",
+                            ...maskStyle,
                             background:
                                 "linear-gradient(to left, rgba(245,225,255,1) 20%, rgba(139, 92, 246, 0) 70%)",
                         }}
@@ -116,3 +115,5 @@ export default function PublicPrivateTab({
         </div>
     );
 }
+
+export default memo(PublicPrivateTab);

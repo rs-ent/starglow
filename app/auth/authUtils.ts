@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
-import type { User } from "next-auth";
-import { auth } from "./authSettings";
-import { prisma } from "@/lib/prisma/client";
-import { Player } from "@prisma/client";
+import {redirect} from "next/navigation";
+import type {User} from "next-auth";
+import {auth} from "./authSettings";
+import {prisma} from "@/lib/prisma/client";
 
 export async function requireAuth() {
     const session = await auth();
@@ -41,14 +40,11 @@ export async function requireAuthUser(callbackUrl: string): Promise<User> {
     }
 }
 
-export async function requireAuthUserAndPlayer(callbackUrl: string): Promise<{
-    user: User;
-    player: Player;
-}> {
+export async function requireAuthUserAndPlayer(redirectTo: string = "/") {
     try {
         const session = await auth();
         if (!session?.user || !session?.player) {
-            const encodedCallback = encodeURIComponent(callbackUrl);
+            const encodedCallback = encodeURIComponent(redirectTo);
             redirect(`/auth/signin?callbackUrl=${encodedCallback}`);
         }
         return {
@@ -57,7 +53,7 @@ export async function requireAuthUserAndPlayer(callbackUrl: string): Promise<{
         };
     } catch (error) {
         console.error("Authentication error:", error);
-        const encodedCallback = encodeURIComponent(callbackUrl);
+        const encodedCallback = encodeURIComponent(redirectTo);
         redirect(`/auth/signin?callbackUrl=${encodedCallback}`);
     }
 }

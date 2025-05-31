@@ -2,32 +2,32 @@
 
 "use client";
 
+import {useCallback, useMemo} from 'react';
 import {
+    useClaimQuestRewardMutation,
+    useCompleteQuestMutation,
     useCreateQuestMutation,
+    useDeleteQuestMutation,
+    useSetReferralQuestLogsMutation,
+    useTokenGatingMutation,
+    useUpdateQuestActiveMutation,
     useUpdateQuestMutation,
     useUpdateQuestOrderMutation,
-    useDeleteQuestMutation,
-    useTokenGatingMutation,
-    useCompleteQuestMutation,
-    useClaimQuestRewardMutation,
-    useSetReferralQuestLogsMutation,
-    useUpdateQuestActiveMutation,
 } from "@/app/mutations/questsMutations";
 import {
-    GetQuestsInput,
-    PaginationInput,
-    GetQuestLogsInput,
     GetClaimableQuestLogsInput,
     GetClaimedQuestLogsInput,
     GetPlayerQuestLogsInput,
-    UpdateQuestActiveInput,
+    GetQuestLogsInput,
+    GetQuestsInput,
+    PaginationInput,
 } from "../actions/quests";
 import {
-    useQuestsQuery,
-    useQuestLogsQuery,
     useClaimableQuestLogsQuery,
     useClaimedQuestLogsQuery,
     usePlayerQuestLogsQuery,
+    useQuestLogsQuery,
+    useQuestsQuery,
 } from "@/app/queries/questsQueries";
 
 export function useQuestGet({
@@ -75,21 +75,40 @@ export function useQuestGet({
         error: playerQuestLogsError,
     } = usePlayerQuestLogsQuery({ input: getPlayerQuestLogsInput });
 
-    const isLoading =
+    const isLoading = useMemo(() => 
         isLoadingQuests ||
         isLoadingQuestLogs ||
         isLoadingClaimableQuestLogs ||
         isLoadingClaimedQuestLogs ||
-        isLoadingPlayerQuestLogs;
+        isLoadingPlayerQuestLogs,
+    [
+        isLoadingQuests,
+        isLoadingQuestLogs,
+        isLoadingClaimableQuestLogs,
+        isLoadingClaimedQuestLogs,
+        isLoadingPlayerQuestLogs
+    ]);
 
-    const error =
+    const error = useMemo(() => 
         questsError ||
         questLogsError ||
         claimableQuestLogsError ||
         claimedQuestLogsError ||
-        playerQuestLogsError;
+        playerQuestLogsError,
+    [
+        questsError,
+        questLogsError,
+        claimableQuestLogsError,
+        claimedQuestLogsError,
+        playerQuestLogsError
+    ]);
 
-    return {
+    const findQuestLog = useCallback((questId) => {
+        if (!questLogs?.items) return null;
+        return questLogs.items.find(log => log.questId === questId);
+    }, [questLogs?.items]);
+
+    return useMemo(() => ({
         quests,
         isLoadingQuests,
         questsError,
@@ -112,13 +131,27 @@ export function useQuestGet({
 
         isLoading,
         error,
-
-        useQuestsQuery,
-        useQuestLogsQuery,
-        useClaimableQuestLogsQuery,
-        useClaimedQuestLogsQuery,
-        usePlayerQuestLogsQuery,
-    };
+        findQuestLog,
+    }), [
+        quests,
+        isLoadingQuests,
+        questsError,
+        questLogs,
+        isLoadingQuestLogs,
+        questLogsError,
+        claimableQuestLogs,
+        isLoadingClaimableQuestLogs,
+        claimableQuestLogsError,
+        claimedQuestLogs,
+        isLoadingClaimedQuestLogs,
+        claimedQuestLogsError,
+        playerQuestLogs,
+        isLoadingPlayerQuestLogs,
+        playerQuestLogsError,
+        isLoading,
+        error,
+        findQuestLog
+    ]);
 }
 
 export function useQuestSet() {
@@ -176,7 +209,7 @@ export function useQuestSet() {
         error: updateQuestActiveError,
     } = useUpdateQuestActiveMutation();
 
-    const isLoading =
+    const isLoading = useMemo(() => 
         isCreating ||
         isUpdating ||
         isUpdatingOrder ||
@@ -185,9 +218,20 @@ export function useQuestSet() {
         isCompleting ||
         isClaimingQuestReward ||
         isSettingReferralQuestLogs ||
-        isUpdatingQuestActive;
+        isUpdatingQuestActive,
+    [
+        isCreating,
+        isUpdating,
+        isUpdatingOrder,
+        isDeleting,
+        isTokenGating,
+        isCompleting,
+        isClaimingQuestReward,
+        isSettingReferralQuestLogs,
+        isUpdatingQuestActive
+    ]);
 
-    const error =
+    const error = useMemo(() => 
         createError ||
         updateError ||
         updateOrderError ||
@@ -196,9 +240,20 @@ export function useQuestSet() {
         completeError ||
         claimQuestRewardError ||
         setReferralQuestLogsError ||
-        updateQuestActiveError;
+        updateQuestActiveError,
+    [
+        createError,
+        updateError,
+        updateOrderError,
+        deleteError,
+        tokenGatingError,
+        completeError,
+        claimQuestRewardError,
+        setReferralQuestLogsError,
+        updateQuestActiveError
+    ]);
 
-    return {
+    return useMemo(() => ({
         createQuest,
         isCreating,
         createError,
@@ -237,15 +292,35 @@ export function useQuestSet() {
 
         isLoading,
         error,
-
-        useCreateQuestMutation,
-        useUpdateQuestMutation,
-        useUpdateQuestOrderMutation,
-        useDeleteQuestMutation,
-        useTokenGatingMutation,
-        useCompleteQuestMutation,
-        useClaimQuestRewardMutation,
-        useSetReferralQuestLogsMutation,
-        useUpdateQuestActiveMutation,
-    };
+    }), [
+        createQuest,
+        isCreating,
+        createError,
+        updateQuest,
+        isUpdating,
+        updateError,
+        updateQuestOrder,
+        isUpdatingOrder,
+        updateOrderError,
+        deleteQuest,
+        isDeleting,
+        deleteError,
+        tokenGating,
+        isTokenGating,
+        tokenGatingError,
+        completeQuest,
+        isCompleting,
+        completeError,
+        claimQuestReward,
+        isClaimingQuestReward,
+        claimQuestRewardError,
+        setReferralQuestLogs,
+        isSettingReferralQuestLogs,
+        setReferralQuestLogsError,
+        updateQuestActive,
+        isUpdatingQuestActive,
+        updateQuestActiveError,
+        isLoading,
+        error
+    ]);
 }

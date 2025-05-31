@@ -1,15 +1,15 @@
 /// components/user/User.Rewards.Modal.Card.tsx
 
-import { useState } from "react";
-import { PlayerAssetWithAsset } from "./User.Rewards";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { cn } from "@/lib/utils/tailwind";
-import { XIcon } from "lucide-react";
+import {memo, useCallback, useState} from "react";
+import {PlayerAssetWithAsset} from "./User.Rewards";
+import {getResponsiveClass} from "@/lib/utils/responsiveClass";
+import {cn} from "@/lib/utils/tailwind";
+import {XIcon} from "lucide-react";
 import Funds from "../atoms/Funds";
-import { Button } from "../ui/button";
-import { useRewardsLogsGet } from "@/app/hooks/useRewardsLogs";
-import { Player } from "@prisma/client";
+import {Button} from "../ui/button";
+import {useRewardsLogsGet} from "@/app/hooks/useRewardsLogs";
 import PartialLoading from "../atoms/PartialLoading";
+import {formatDistanceToNow} from "date-fns";
 
 interface UserRewardsModalCardProps {
     playerId?: string;
@@ -17,25 +17,55 @@ interface UserRewardsModalCardProps {
     closeModal: () => void;
 }
 
-export default function UserRewardsModalCard({
+/**
+ * 사용자 보상 상세 정보를 표시하는 카드 컴포넌트
+ * 보상 정보와 히스토리를 보여줌
+ */
+function UserRewardsModalCard({
     playerId,
     reward,
     closeModal,
 }: UserRewardsModalCardProps) {
     const [showPointsMissing, setShowPointsMissing] = useState(false);
 
+    // 보상 로그 데이터 가져오기
     const { rewardsLogs, isRewardsLogsLoading, rewardsLogsError } =
         useRewardsLogsGet({
             getRewardsLogsInput: {
                 playerId: playerId ?? "",
                 assetId: reward.asset.id,
             },
+            // 캐싱 최적화
+            options: {
+                staleTime: 5 * 60 * 1000, // 5분
+                cacheTime: 30 * 60 * 1000, // 30분
+            },
         });
+
+    // 포인트 미싱 팝업 토글 핸들러
+    const togglePointsMissing = useCallback(() => {
+        setShowPointsMissing(prev => !prev);
+    }, []);
+
+    // 날짜 포맷팅 함수
+    const formatDate = useCallback((date: Date) => {
+        const formattedDate = date.toLocaleDateString();
+        const formattedTime = date.toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        return `${formattedDate} ${formattedTime}`;
+    }, []);
+
+    // 상대적 시간 표시 함수
+    const getRelativeTime = useCallback((date: Date) => {
+        return formatDistanceToNow(date, { addSuffix: true });
+    }, []);
 
     return (
         <div
             className={cn(
-                "w-full max-w-[1000px] h-full max-h-full mx-auto",
+                "w-full max-w-[1000px] h-full max-h-[85vh] mx-auto",
                 "flex flex-col",
                 "border border-[rgba(255,255,255,0.1)]",
                 "bg-gradient-to-br from-[#09021B] to-[#311473]",
@@ -45,12 +75,14 @@ export default function UserRewardsModalCard({
                 "overflow-hidden"
             )}
         >
+            {/* 닫기 버튼 */}
             <button
                 onClick={closeModal}
                 className={cn(
                     "absolute top-4 right-4 z-20",
                     "p-2 rounded-lg",
-                    "hover:bg-white/10 transition-colors"
+                    "hover:bg-white/10 transition-colors",
+                    "focus:outline-none focus:ring-2 focus:ring-white/30"
                 )}
                 aria-label="Close modal"
             >
@@ -62,8 +94,9 @@ export default function UserRewardsModalCard({
                 />
             </button>
 
+            {/* 포인트 미싱 정보 팝업 */}
             {showPointsMissing && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#5321C6] rounded-[18px] p-5">
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#5321C6] rounded-[18px] p-5 animate-fadeIn">
                     <div className="w-full max-w-[500px] max-h-full overflow-y-auto">
                         <div className="flex flex-col gap-4">
                             <div className="flex justify-center mb-2">
@@ -73,6 +106,7 @@ export default function UserRewardsModalCard({
                                     className={
                                         getResponsiveClass(50).frameClass
                                     }
+                                    loading="lazy"
                                 />
                             </div>
                             <p
@@ -101,7 +135,7 @@ export default function UserRewardsModalCard({
                                     getResponsiveClass(25).textClass,
                                     "mt-4"
                                 )}
-                                onClick={() => setShowPointsMissing(false)}
+                                onClick={togglePointsMissing}
                             >
                                 Okay, got it
                             </Button>
@@ -111,6 +145,7 @@ export default function UserRewardsModalCard({
             )}
 
             <div className="flex flex-col h-full max-h-full overflow-hidden">
+                {/* 헤더 섹션 */}
                 <header
                     className={cn(
                         "flex-shrink-0 flex-grow-0",
@@ -123,6 +158,7 @@ export default function UserRewardsModalCard({
                             getResponsiveClass(35).textClass,
                             "font-bold mb-6"
                         )}
+                        id="reward-modal-title"
                     >
                         {reward.asset.name}
                     </h2>
@@ -130,8 +166,12 @@ export default function UserRewardsModalCard({
                     <div className="flex justify-center mb-6">
                         <img
                             src="/elements/el03.svg"
-                            alt={reward.asset.name}
+                            alt="el03"
                             className={getResponsiveClass(40).frameClass}
+                            loading="lazy"
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = "/elements/el03.svg";
+                            }}
                         />
                     </div>
 
@@ -155,9 +195,10 @@ export default function UserRewardsModalCard({
                                     "underline underline-offset-2",
                                     "cursor-pointer",
                                     "hover:text-white/60 transition-colors",
+                                    "focus:outline-none focus:ring-2 focus:ring-white/30 rounded-sm",
                                     "mt-1"
                                 )}
-                                onClick={() => setShowPointsMissing(true)}
+                                onClick={togglePointsMissing}
                             >
                                 points are missing? →
                             </button>
@@ -165,6 +206,7 @@ export default function UserRewardsModalCard({
                     </div>
                 </header>
 
+                {/* 보상 히스토리 섹션 */}
                 <section
                     className={cn(
                         "flex-1",
@@ -173,9 +215,10 @@ export default function UserRewardsModalCard({
                         "px-6 pb-6"
                     )}
                 >
-                    <div className={cn("h-full mt-[20px]", "overflow-y-auto")}>
+                    <div className={cn("h-full mt-[20px]", "overflow-y-auto", "scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent")}>
                         <div className="max-w-[800px] mx-auto pb-2">
-                            <div className="space-y-3 h-[300px]">
+                            <div className="space-y-3 h-[300px] sm:h-[350px] md:h-[400px] lg:h-[450px] xl:h-[500px]">
+                                {/* 로딩 상태 */}
                                 {isRewardsLogsLoading && (
                                     <div className="py-8">
                                         <PartialLoading
@@ -185,14 +228,22 @@ export default function UserRewardsModalCard({
                                     </div>
                                 )}
 
+                                {/* 에러 상태 */}
                                 {rewardsLogsError && (
                                     <div className="py-8 text-center">
                                         <p className="text-red-400">
                                             Failed to load reward history
                                         </p>
+                                        <button 
+                                            className="mt-2 text-sm text-white/60 underline underline-offset-2"
+                                            onClick={() => window.location.reload()}
+                                        >
+                                            Try again
+                                        </button>
                                     </div>
                                 )}
 
+                                {/* 데이터 없음 상태 */}
                                 {!isRewardsLogsLoading &&
                                     !rewardsLogsError &&
                                     (!rewardsLogs ||
@@ -210,6 +261,7 @@ export default function UserRewardsModalCard({
                                         </div>
                                     )}
 
+                                {/* 보상 히스토리 목록 */}
                                 {rewardsLogs?.map((log) => (
                                     <article
                                         key={log.id}
@@ -218,7 +270,8 @@ export default function UserRewardsModalCard({
                                             "rounded-[16px]",
                                             "bg-gradient-to-br from-black/20 to-black/40",
                                             "p-4",
-                                            "backdrop-blur-sm"
+                                            "backdrop-blur-sm",
+                                            "transition-transform duration-200 hover:scale-[1.01]"
                                         )}
                                     >
                                         <div className="flex items-center justify-between gap-3">
@@ -233,28 +286,27 @@ export default function UserRewardsModalCard({
                                                 >
                                                     {log.reason}
                                                 </p>
-                                                <time
-                                                    className={cn(
-                                                        getResponsiveClass(10)
-                                                            .textClass,
-                                                        "text-white/50",
-                                                        "mt-1 block"
-                                                    )}
-                                                >
-                                                    {new Date(
-                                                        log.createdAt
-                                                    ).toLocaleDateString()}{" "}
-                                                    {new Date(
-                                                        log.createdAt
-                                                    ).toLocaleTimeString()}
-                                                </time>
+                                                <div className="flex items-center mt-1">
+                                                    <time
+                                                        className={cn(
+                                                            getResponsiveClass(10)
+                                                                .textClass,
+                                                            "text-white/50",
+                                                            "block"
+                                                        )}
+                                                        title={formatDate(new Date(log.createdAt))}
+                                                    >
+                                                        {getRelativeTime(new Date(log.createdAt))}
+                                                    </time>
+                                                </div>
                                             </div>
 
                                             <div
                                                 className={cn(
                                                     getResponsiveClass(15)
                                                         .textClass,
-                                                    "font-main"
+                                                    "font-main",
+                                                    log.amount >= 0 ? "text-green-400" : "text-red-400"
                                                 )}
                                             >
                                                 <div
@@ -266,7 +318,7 @@ export default function UserRewardsModalCard({
                                                     {log.amount >= 0
                                                         ? "+"
                                                         : "-"}
-                                                    {log.amount.toLocaleString()}{" "}
+                                                    {Math.abs(log.amount).toLocaleString()}{" "}
                                                     {log.asset?.symbol}
                                                 </div>
                                             </div>
@@ -281,3 +333,6 @@ export default function UserRewardsModalCard({
         </div>
     );
 }
+
+// 메모이제이션으로 불필요한 리렌더링 방지
+export default memo(UserRewardsModalCard);

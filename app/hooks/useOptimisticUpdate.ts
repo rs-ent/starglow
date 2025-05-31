@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {useCallback, useState} from 'react';
+import {useMutation, useQueryClient} from '@tanstack/react-query';
 
 interface OptimisticUpdateOptions<T, U> {
   queryKey: unknown[];

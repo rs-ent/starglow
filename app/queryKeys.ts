@@ -1,38 +1,35 @@
 /// app/queryKeys.ts
 import {
+    GetPlayerPollLogsInput,
+    GetPollLogsInput,
     GetPollsInput,
     PaginationInput,
     TokenGatingInput as PollTokenGatingInput,
-    GetPlayerPollLogsInput,
-    GetPollLogsInput,
 } from "./actions/polls";
 import {
     CompleteQuestInput,
-    GetQuestLogsInput,
     GetClaimableQuestLogsInput,
-    TokenGatingInput as QuestTokenGatingInput,
     GetClaimedQuestLogsInput,
     GetPlayerQuestLogsInput,
+    GetQuestInput,
+    GetQuestLogsInput,
+    GetQuestsInput,
+    TokenGatingInput as QuestTokenGatingInput,
 } from "./actions/quests";
-import { GetDBUserFromPlayerInput } from "./actions/player";
-import { GetPlayerAssetsFilter } from "./actions/playerAssets";
-import { GetQuestInput, GetQuestsInput } from "./actions/quests";
+import {GetDBUserFromPlayerInput} from "./actions/player";
+import {GetPlayerAssetsFilter} from "./actions/playerAssets";
 import {
     GetArtistInput,
     GetArtistMessagesInput,
     GetArtistsInput,
     TokenGatingInput as ArtistTokenGatingInput,
 } from "./actions/artists";
-import { GetReferralLogsInput } from "./actions/referral";
-import { GetUsersInput } from "./actions/user";
-import {
-    GetStakeRewardInput,
-    GetUserStakeRewardLogsInput,
-    GetUserStakingTokensInput,
-} from "./actions/staking";
-import { TokenGateInput } from "./actions/blockchain";
-import { CollectionParticipantType } from "@prisma/client";
-import { GetRewardsLogsInput } from "./actions/rewardsLogs";
+import {GetReferralLogsInput} from "./actions/referral";
+import {GetUsersInput} from "./actions/user";
+import {GetStakeRewardInput, GetUserStakeRewardLogsInput, GetUserStakingTokensInput,} from "./actions/staking";
+import {TokenGateInput} from "./actions/blockchain";
+import {CollectionParticipantType} from "@prisma/client";
+import {GetRewardsLogsInput} from "./actions/rewardsLogs";
 
 export const queryKeys = {
     user: {
@@ -551,33 +548,36 @@ export const pollKeys = {
 
 export const questKeys = {
     all: ["quests"] as const,
+    
+    // 리스트 조회 키
     list: (input?: GetQuestsInput, pagination?: PaginationInput) =>
-        [...questKeys.all, "list", input, pagination] as const,
+        [...questKeys.all, "list", { input, pagination }] as const,
+    
+    // 상세 조회 키
     detail: (input?: GetQuestInput) =>
-        [...questKeys.all, "detail", input] as const,
+        [...questKeys.all, "detail", input?.id] as const,
+    
+    // 토큰 게이팅 키 - 구조 단순화
     tokenGating: (input?: QuestTokenGatingInput) =>
-        [
-            ...questKeys.all,
-            "token-gating",
-            input?.quest.id,
-            input?.user.id,
-        ] as const,
+        [...questKeys.all, "token-gating", input?.quest?.id, input?.user?.id] as const,
+    
+    // 퀘스트 완료 키 - 구조 단순화
     complete: (input?: CompleteQuestInput) =>
-        [
-            ...questKeys.all,
-            "complete",
-            input?.quest.id,
-            input?.player.id,
-        ] as const,
+        [...questKeys.all, "complete", input?.quest?.id, input?.player?.id] as const,
+    
+    // 로그 관련 키 - 구조 단순화 및 일관성 유지
     logs: (input?: GetQuestLogsInput, pagination?: PaginationInput) =>
-        [...questKeys.all, "logs", input, pagination] as const,
+        [...questKeys.all, "logs", { input, pagination }] as const,
+    
     playerLogs: (input?: GetPlayerQuestLogsInput) =>
-        [...questKeys.all, "player-logs", input] as const,
+        [...questKeys.all, "player-logs", input?.playerId] as const,
+    
     claimableLogs: (input?: GetClaimableQuestLogsInput) =>
-        [...questKeys.all, "claimable-logs", input] as const,
+        [...questKeys.all, "claimable-logs", input?.playerId] as const,
+    
     claimedLogs: (input?: GetClaimedQuestLogsInput) =>
-        [...questKeys.all, "claimed-logs", input] as const,
-};
+        [...questKeys.all, "claimed-logs", input?.playerId] as const,
+} as const;
 
 export const artistKeys = {
     all: ["artists"] as const,

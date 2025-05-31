@@ -2,24 +2,24 @@
 
 "use client";
 
-import { Artist, Player, Poll, PollLog } from "@prisma/client";
-import { TokenGatingResult } from "@/app/actions/polls";
+import {Artist, Player, Poll, PollLog} from "@prisma/client";
+import {PollOption, TokenGatingResult} from "@/app/actions/polls";
 import PollThumbnail from "@/components/atoms/Polls.Thumbnail";
-import { formatDate } from "@/lib/utils/format";
-import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
+import {formatDate} from "@/lib/utils/format";
+import {usePollsGet, usePollsSet} from "@/app/hooks/usePolls";
 import PollBar from "@/components/atoms/Polls.Bar";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { cn } from "@/lib/utils/tailwind";
-import { useEffect, useMemo, useState } from "react";
-import { PollOption } from "@/app/actions/polls";
-import { useToast } from "@/app/hooks/useToast";
-import { useLoading } from "@/app/hooks/useLoading";
+import {getResponsiveClass} from "@/lib/utils/responsiveClass";
+import {cn} from "@/lib/utils/tailwind";
+import {memo, useCallback, useMemo, useState} from "react";
+import {useToast} from "@/app/hooks/useToast";
+import {useLoading} from "@/app/hooks/useLoading";
 import Countdown from "../atoms/Countdown";
 import Doorman from "../atoms/Doorman";
 import Popup from "../atoms/Popup";
 import Button from "../atoms/Button";
 import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
-import { useAssetsGet } from "@/app/hooks/useAssets";
+import {useAssetsGet} from "@/app/hooks/useAssets";
+import {motion} from "framer-motion";
 
 interface PollsCardProps {
     index?: number;
@@ -37,96 +37,113 @@ interface PollsCardProps {
     bgColorAccentTo?: string;
 }
 
-export default function PollsListCard({
-    index,
+function PollsListCard({
     poll,
     player,
     pollLogs,
-    artist,
     tokenGatingData,
     isSelected,
     fgColorFrom,
     fgColorTo,
-    bgColorFrom = "rgba(109,40,217,0.4)",
-    bgColorTo = "rgba(109,40,217,0.15)",
     bgColorAccentFrom = "rgba(109,40,217,1)",
     bgColorAccentTo = "rgba(109,40,217,0.45)",
 }: PollsCardProps) {
     const { startLoading, endLoading } = useLoading();
     const toast = useToast();
-    const startDate = formatDate(poll.startDate);
-    const endDate = formatDate(poll.endDate);
+    
+    // 날짜 관련 계산 메모이제이션
+    const {
+        startDate,
+        endDate,
+        startDateObj,
+        endDateObj,
+        isBlurred,
+        status,
+        showOptions,
+        isEnded
+    } = useMemo(() => {
+        const startDateFormatted = formatDate(poll.startDate);
+        const endDateFormatted = formatDate(poll.endDate);
+        const today = new Date();
+        const startDateObj = new Date(poll.startDate);
+        const endDateObj = new Date(poll.endDate);
+        
+        const endDateMinus3Days = new Date(endDateObj);
+        endDateMinus3Days.setDate(endDateObj.getDate() - 3);
+        
+        const endDatePlus30Minutes = new Date(endDateObj);
+        endDatePlus30Minutes.setMinutes(endDateObj.getMinutes() + 30);
+        
+        const isBlurred = today > endDateMinus3Days && today < endDateObj;
+        
+        // 상태 계산
+        let status;
+        if (endDateObj.getTime() < today.getTime()) status = "ENDED";
+        else if (startDateObj.getTime() > today.getTime()) status = "UPCOMING";
+        else status = "ONGOING";
+        
+        // 옵션 표시 여부
+        const showOptions = startDateObj.getTime() < today.getTime() && 
+                           endDateObj.getTime() > today.getTime();
+        
+        // 종료 여부
+        const isEnded = endDatePlus30Minutes.getTime() < today.getTime();
+        
+        return {
+            startDate: startDateFormatted,
+            endDate: endDateFormatted,
+            startDateObj,
+            endDateObj,
+            isBlurred,
+            status,
+            showOptions,
+            isEnded
+        };
+    }, [poll.startDate, poll.endDate]);
 
-    const { asset, isLoading: isAssetLoading } = useAssetsGet({
+    // 자산 정보 가져오기
+    const { asset } = useAssetsGet({
         getAssetInput: {
             id: poll.participationRewardAssetId || "",
         },
     });
 
+    // 투표 결과 가져오기
     const { pollResult, isLoading, error } = usePollsGet({
         pollResultInput: {
             pollId: poll.id,
         },
     });
 
+    // 투표 제출 훅
     const {
         participatePoll,
-        isLoading: isParticipating,
-        error: participateError,
     } = usePollsSet();
 
-    const options = poll.options as unknown as PollOption[];
+    // 옵션 파싱
+    const options = useMemo(() => 
+        poll.options as unknown as PollOption[],
+    [poll.options]);
 
-    const today = new Date();
-    const startDateObj = new Date(poll.startDate);
-    const endDateObj = new Date(poll.endDate);
-    const endDateMinus3Days = new Date(endDateObj);
-    endDateMinus3Days.setDate(endDateObj.getDate() - 3);
-    const endDatePlus30Minutes = new Date(endDateObj);
-    endDatePlus30Minutes.setMinutes(endDateObj.getMinutes() + 30);
-    const isBlurred = today > endDateMinus3Days && today < endDateObj;
-
-    const status = useMemo(() => {
-        if (endDateObj.getTime() < today.getTime()) return "ENDED";
-        if (startDateObj.getTime() > today.getTime()) return "UPCOMING";
-        return "ONGOING";
-    }, [poll, today, startDateObj, endDateObj]);
-
+    // 정렬된 결과 메모이제이션
     const sortedResults = useMemo(() => {
         return pollResult?.results
             ? [...pollResult.results].sort((a, b) => b.voteCount - a.voteCount)
             : [];
     }, [pollResult]);
 
+    // 상태 관리
     const [showOngoingResults, setShowOngoingResults] = useState(false);
     const [selection, setSelection] = useState<PollOption | null>(null);
-    const showOptions = useMemo(() => {
-        return (
-            startDateObj.getTime() < today.getTime() &&
-            endDateObj.getTime() > today.getTime()
-        );
-    }, [startDateObj, endDateObj, today]);
-    const isEnded = useMemo(() => {
-        return endDatePlus30Minutes.getTime() < today.getTime();
-    }, [endDatePlus30Minutes, today]);
-
     const [animateSubmit, setAnimateSubmit] = useState(false);
-    const handleOptionClick = (option: PollOption) => {
-        if (option.optionId === selection?.optionId) {
-            setSelection(null);
-            return;
-        }
-        setSelection(option);
-
-        setVoteAmount(poll.needToken && poll.needTokenAddress ? 0 : 1);
-
-        setTimeout(() => {
-            setAnimateSubmit(true);
-        }, 100);
-    };
-
     const [voteAmount, setVoteAmount] = useState(0);
     const [voteAmountInput, setVoteAmountInput] = useState("0");
+    const [confirmedAnswer, setConfirmedAnswer] = useState(false);
+    const [showAnswerPopup, setShowAnswerPopup] = useState(false);
+    const [showInteractFeedback, setShowInteractFeedback] = useState(false);
+    const [rewarded, setRewarded] = useState(false);
+
+    // 투표 권한 및 제한 계산
     const { alreadyVotedAmount, maxVoteAmount, permission } = useMemo(() => {
         const permission = tokenGatingData?.data?.hasToken;
         const alreadyVotedAmount =
@@ -147,20 +164,33 @@ export default function PollsListCard({
         };
     }, [tokenGatingData, poll.needToken, pollLogs]);
 
-    const [confirmedAnswer, setConfirmedAnswer] = useState(false);
-    const [showAnswerPopup, setShowAnswerPopup] = useState(false);
+    // 옵션 클릭 핸들러
+    const handleOptionClick = useCallback((option: PollOption) => {
+        if (option.optionId === selection?.optionId) {
+            setSelection(null);
+            return;
+        }
+        setSelection(option);
+        setVoteAmount(poll.needToken && poll.needTokenAddress ? 0 : 1);
+        
+        // 애니메이션 효과
+        setTimeout(() => {
+            setAnimateSubmit(true);
+        }, 100);
+    }, [selection, poll.needToken, poll.needTokenAddress]);
 
-    const [showInteractFeedback, setShowInteractFeedback] = useState(false);
-    const [rewarded, setRewarded] = useState(false);
-
-    const handleSubmit = async (confirmed = false) => {
+    // 투표 제출 핸들러
+    const handleSubmit = useCallback(async (confirmed = false) => {
         startLoading();
         try {
+            // 정답이 있는 폴인 경우 확인 팝업 표시
             if (poll.hasAnswer && !confirmedAnswer && !confirmed) {
                 setShowAnswerPopup(true);
                 setConfirmedAnswer(false);
                 return;
             }
+            
+            // 투표 수량 검증
             if (isNaN(voteAmount) || voteAmount <= 0) {
                 toast.error("Please enter a valid vote amount.");
                 setConfirmedAnswer(false);
@@ -168,6 +198,7 @@ export default function PollsListCard({
                 return;
             }
 
+            // 로그인 검증
             if (!player) {
                 toast.error("Please login to participate in this poll.");
                 setConfirmedAnswer(false);
@@ -175,6 +206,7 @@ export default function PollsListCard({
                 return;
             }
 
+            // 옵션 선택 검증
             if (!selection) {
                 toast.error("Please select an option");
                 setConfirmedAnswer(false);
@@ -182,6 +214,7 @@ export default function PollsListCard({
                 return;
             }
 
+            // 토큰 게이팅 검증
             if (poll.needToken && poll.needTokenAddress) {
                 if (!tokenGatingData || !tokenGatingData.data) {
                     toast.error(
@@ -200,6 +233,7 @@ export default function PollsListCard({
                     return;
                 }
 
+                // 남은 토큰 수량 검증
                 const remainingTokenCount =
                     tokenGatingData.data.tokenCount -
                     (voteAmount + alreadyVotedAmount);
@@ -213,6 +247,7 @@ export default function PollsListCard({
                 }
             }
 
+            // 투표 제출
             const result = await participatePoll({
                 poll: poll,
                 player: player,
@@ -222,27 +257,19 @@ export default function PollsListCard({
                 alreadyVotedAmount,
             });
 
+            // 결과 처리
             if (result.success) {
                 if (result.error === "MISSED_ANSWER") {
                     toast.error("I'm sorry, you missed the answer.");
-                    setConfirmedAnswer(false);
-                    setShowAnswerPopup(false);
                 } else {
-                    if (result.playerAssetUpdated) {
-                        setRewarded(true);
-                    } else {
-                        setRewarded(false);
-                    }
-                    setConfirmedAnswer(false);
-                    setShowAnswerPopup(false);
+                    setRewarded(result.playerAssetUpdated || false);
                     setShowInteractFeedback(true);
                 }
             } else {
                 toast.error(result.error || "Failed to vote.");
-                setConfirmedAnswer(false);
-                setShowAnswerPopup(false);
             }
 
+            // 상태 초기화
             setConfirmedAnswer(false);
             setShowAnswerPopup(false);
             setVoteAmount(poll.needToken && poll.needTokenAddress ? 0 : 1);
@@ -255,7 +282,497 @@ export default function PollsListCard({
         } finally {
             endLoading();
         }
-    };
+    }, [
+        poll, 
+        player, 
+        selection, 
+        voteAmount, 
+        tokenGatingData, 
+        alreadyVotedAmount, 
+        confirmedAnswer, 
+        participatePoll, 
+        startLoading, 
+        endLoading, 
+        toast
+    ]);
+
+    // 투표 수량 변경 핸들러
+    const handleVoteAmountChange = useCallback((value: string) => {
+        if (/^\d*$/.test(value)) {
+            setVoteAmountInput(value);
+            const num = parseInt(value, 10);
+            if (!isNaN(num) && num > 0) {
+                const amount = Math.min(maxVoteAmount, num);
+                setVoteAmount(amount);
+                setVoteAmountInput(amount.toString());
+            }
+        }
+    }, [maxVoteAmount]);
+
+    // 투표 수량 증가/감소 핸들러
+    const increaseVoteAmount = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        const amount = Math.min(maxVoteAmount, voteAmount + 1);
+        setVoteAmount(amount);
+        setVoteAmountInput(amount.toString());
+    }, [voteAmount, maxVoteAmount]);
+
+    const decreaseVoteAmount = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        const amount = Math.max(0, voteAmount - 1);
+        setVoteAmount(amount);
+        setVoteAmountInput(amount.toString());
+    }, [voteAmount]);
+
+    // 애니메이션 변수
+    const animations = useMemo(() => ({
+        card: {
+            initial: { opacity: 0, y: 20 },
+            animate: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+            exit: { opacity: 0, y: -20, transition: { duration: 0.3 } }
+        },
+        option: {
+            initial: { opacity: 0, x: -10 },
+            animate: { opacity: 1, x: 0, transition: { duration: 0.3 } },
+            hover: { scale: 1.02, transition: { duration: 0.2 } }
+        },
+        submit: {
+            initial: { opacity: 0, y: 10 },
+            animate: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+        }
+    }), []);
+
+    // 옵션 렌더링 함수
+    const renderOptions = useCallback(() => {
+        if (!showOptions) return null;
+        
+        return (
+            <motion.div
+                className={cn(
+                    "grid grid-cols-1 gap-3 w-full",
+                    "my-7 sm:my-7 md:my-8 lg:my-9 xl:my-10"
+                )}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ staggerChildren: 0.1, delayChildren: 0.2 }}
+            >
+                {options.map((option: PollOption, idx: number) => {
+                    const result = sortedResults.find(
+                        (result) => result.optionId === option.optionId
+                    );
+
+                    const votedCount =
+                        pollLogs?.reduce((acc, curr) => {
+                            if (curr.optionId === option.optionId) {
+                                return acc + curr.amount;
+                            }
+                            return acc;
+                        }, 0) || 0;
+                        
+                    return (
+                        <motion.div
+                            key={option.optionId}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleOptionClick(option);
+                            }}
+                            className={cn(
+                                selection?.optionId === option.optionId &&
+                                    "text-glow-white-smooth white-glow-smooth border-[rgba(255,255,255,0.3)]",
+                                "flex items-center justify-between w-full py-3 px-2 rounded-[10px]",
+                                "border border-[rgba(255,255,255,0.1)]",
+                                "bg-[rgba(0,0,0,0.05)] inner-shadow",
+                                "transition-all duration-300",
+                                "hover:bg-[rgba(0,0,0,0.35)]",
+                                "hover:scale-105",
+                                "hover:border-[rgba(255,255,255,0.4)]",
+                                "cursor-pointer",
+                                "relative overflow-hidden",
+                                "mx-auto"
+                            )}
+                            variants={animations.option}
+                            initial="initial"
+                            animate="animate"
+                            whileHover="hover"
+                        >
+                            {result && showOngoingResults && (
+                                <div className="absolute inset-0">
+                                    <div className="h-full -m-1">
+                                        <PollBar
+                                            result={result}
+                                            isBlurred={isBlurred}
+                                            rank={0}
+                                            totalItems={sortedResults.length}
+                                            showOptionName={false}
+                                            showOptionImage={false}
+                                            fillContainer={true}
+                                            fgColorFrom={fgColorFrom}
+                                            fgColorTo={fgColorTo}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex-1 flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <div
+                                        className={cn(
+                                            showOngoingResults && "opacity-0",
+                                            selection?.optionId === option.optionId && "white-glow",
+                                            "w-6 h-6 rounded-full z-10",
+                                            "border-2 border-[rgba(255,255,255,0.3)]",
+                                            "relative",
+                                            "transition-all duration-300",
+                                            "transform hover:scale-110",
+                                            "flex-shrink-0",
+                                            getResponsiveClass(20).frameClass,
+                                            selection?.optionId === option.optionId && "bg-[rgba(255,255,255,0.2)]"
+                                        )}
+                                    >
+                                        {selection?.optionId === option.optionId && (
+                                            <div className="
+                                                absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                                                w-3 h-3 rounded-full
+                                                bg-white
+                                                shadow-[0_0_8px_rgba(255,255,255,0.8)]
+                                            " />
+                                        )}
+                                    </div>
+
+                                    <h3
+                                        className={cn(
+                                            "text-[rgba(255,255,255,0.9)] z-10 leading-0",
+                                            getResponsiveClass(15).textClass,
+                                            "leading-none"
+                                        )}
+                                    >
+                                        {option.name}
+                                    </h3>
+                                </div>
+                                {/* 투표 확인 아이콘 */}
+                                <div
+                                    className={cn(
+                                        "transition-all duration-300",
+                                        "flex items-center justify-center text-right",
+                                        votedCount > 0 ? "opacity-40" : "opacity-0",
+                                        getResponsiveClass(10).textClass,
+                                        showOngoingResults && "opacity-0",
+                                        "flex-shrink-0 ml-3"
+                                    )}
+                                >
+                                    <h2>{votedCount || "00"}</h2>
+                                </div>
+                            </div>
+
+                            {/* 옵션의 이미지가 있을 경우 렌더링 */}
+                            {option.imgUrl && (
+                                <div
+                                    className="absolute inset-0 z-0 inner-shadow"
+                                    style={{
+                                        backgroundImage: `url(${option.imgUrl})`,
+                                        backgroundSize: "cover",
+                                        backgroundPosition: "center",
+                                        backgroundRepeat: "no-repeat",
+                                        opacity: 0.45,
+                                        mixBlendMode: "overlay",
+                                    }}
+                                />
+                            )}
+                        </motion.div>
+                    );
+                })}
+            </motion.div>
+        );
+    }, [
+        showOptions, 
+        options, 
+        sortedResults, 
+        pollLogs, 
+        showOngoingResults, 
+        isBlurred, 
+        fgColorFrom, 
+        fgColorTo, 
+        selection, 
+        handleOptionClick,
+        animations.option
+    ]);
+
+    // 결과 차트 렌더링 함수
+    const renderResults = useCallback(() => {
+        if (!isEnded) return null;
+        
+        return (
+            <div className="mt-6">
+                {isLoading ? (
+                    <div className="animate-pulse">
+                        {Array.from({ length: options.length }).map((_, idx) => (
+                            <div
+                                key={idx}
+                                className="h-[34px] bg-[rgba(255,255,255,0.3)] blur-sm rounded mb-2"
+                            ></div>
+                        ))}
+                    </div>
+                ) : error ? (
+                    <div className="text-red-500 text-sm">
+                        Error loading poll results
+                    </div>
+                ) : (
+                    <>
+                        {sortedResults.map((result, idx) => (
+                            <PollBar
+                                key={result.optionId}
+                                result={result}
+                                isBlurred={isBlurred}
+                                rank={idx}
+                                totalItems={sortedResults.length}
+                                fgColorFrom={fgColorFrom}
+                                fgColorTo={fgColorTo}
+                            />
+                        ))}
+                        {isBlurred && (
+                            <p className="text-xs font-light text-[rgba(255,255,255,0.6)]">
+                                * States hidden before 3 days of end date. Result will be revealed on X after closing.
+                            </p>
+                        )}
+                    </>
+                )}
+            </div>
+        );
+    }, [
+        isEnded, 
+        isLoading, 
+        error, 
+        options.length, 
+        sortedResults, 
+        isBlurred, 
+        fgColorFrom, 
+        fgColorTo
+    ]);
+
+    // 제출 버튼 렌더링 함수
+    const renderSubmitButton = useCallback(() => {
+        if (!showOptions || !selection) return null;
+        
+        return (
+            <motion.div
+                className={cn(
+                    animateSubmit ? "opacity-100" : "opacity-0"
+                )}
+                variants={animations.submit}
+                initial="initial"
+                animate="animate"
+            >
+                {poll.allowMultipleVote && poll.needToken && poll.needTokenAddress && (
+                    <div
+                        className={cn(
+                            "flex flex-row justify-center items-center overflow-hidden mb-1",
+                            getResponsiveClass(30).gapClass
+                        )}
+                    >
+                        <button
+                            className={cn(
+                                "cursor-pointer",
+                                "bg-[rgba(139,92,246,0.9)] hover:bg-[rgba(139,92,246,1)]",
+                                "rounded-full text-center",
+                                getResponsiveClass(30).frameClass,
+                                getResponsiveClass(15).textClass
+                            )}
+                            onClick={decreaseVoteAmount}
+                            aria-label="Decrease amount"
+                        >
+                            -
+                        </button>
+
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            value={voteAmountInput}
+                            placeholder="0"
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => handleVoteAmountChange(e.target.value)}
+                            className={cn(
+                                "py-[3px] text-center",
+                                "rounded-full border border-[rgba(255,255,255,0.8)]",
+                                "focus:outline-none",
+                                "focus:border-[rgba(255,255,255,0.8)]",
+                                "focus:shadow-none",
+                                getResponsiveClass(15).textClass
+                            )}
+                            style={{
+                                width: `${Math.max(voteAmountInput.length, 1)}ch`,
+                                minWidth: "7ch",
+                                maxWidth: "14ch",
+                                transition: "width 0.2s",
+                            }}
+                        />
+
+                        <button
+                            className={cn(
+                                "cursor-pointer",
+                                "bg-[rgba(139,92,246,0.9)] hover:bg-[rgba(139,92,246,1)]",
+                                "rounded-full text-center",
+                                getResponsiveClass(30).frameClass,
+                                getResponsiveClass(15).textClass
+                            )}
+                            onClick={increaseVoteAmount}
+                            aria-label="Increase amount"
+                        >
+                            +
+                        </button>
+                    </div>
+                )}
+
+                <button
+                    onClick={() => handleSubmit()}
+                    className={cn(
+                        "cursor-pointer",
+                        "w-full bg-[#8b5cf6]/90 hover:bg-[#8b5cf6] hover:glow-purple rounded-full font-main",
+                        "transition-all duration-300 ease-in",
+                        "mb-[30px]",
+                        getResponsiveClass(15).paddingClass,
+                        getResponsiveClass(15).textClass
+                    )}
+                >
+                    SUBMIT
+                </button>
+            </motion.div>
+        );
+    }, [
+        showOptions, 
+        selection, 
+        animateSubmit, 
+        poll.allowMultipleVote, 
+        poll.needToken, 
+        poll.needTokenAddress, 
+        voteAmountInput, 
+        handleVoteAmountChange, 
+        decreaseVoteAmount, 
+        increaseVoteAmount, 
+        handleSubmit,
+        animations.submit
+    ]);
+
+    // 투표 결과 보기 버튼 렌더링 함수
+    const renderResultsToggle = useCallback(() => {
+        if (status !== "ONGOING" || 
+            (poll.hasAnswer && 
+             (!pollLogs || pollLogs.filter(log => log.pollId === poll.id).length === 0))) {
+            return null;
+        }
+        
+        return (
+            <>
+                <div className="absolute bottom-[12px] right-[12px]">
+                    <img
+                        src="/icons/charts-fill.svg"
+                        alt="charts-fill"
+                        className={cn(
+                            showOngoingResults ? "opacity-45" : "opacity-0",
+                            "transition-all duration-300 ease-in",
+                            getResponsiveClass(25).frameClass
+                        )}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowOngoingResults(!showOngoingResults);
+                        }}
+                    />
+                </div>
+                <div className="absolute bottom-[12px] right-[12px]">
+                    <img
+                        src="/icons/charts-stroke.svg"
+                        alt="charts-stroke"
+                        className={cn(
+                            !showOngoingResults ? "opacity-45" : "opacity-0",
+                            "transition-all duration-300 ease-in",
+                            getResponsiveClass(25).frameClass
+                        )}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowOngoingResults(!showOngoingResults);
+                        }}
+                    />
+                </div>
+            </>
+        );
+    }, [status, poll.hasAnswer, pollLogs, showOngoingResults]);
+
+    // 토큰 게이팅 정보 렌더링 함수
+    const renderTokenGatingInfo = useCallback(() => {
+        if (!poll.needToken || !poll.needTokenAddress || !tokenGatingData || !tokenGatingData.data) {
+            return null;
+        }
+        
+        return (
+            <div className="my-3">
+                <h2 className="text-xs font-light text-[rgba(255,255,255,0.9)]">
+                    My Vote : {maxVoteAmount - voteAmount}
+                </h2>
+            </div>
+        );
+    }, [poll.needToken, poll.needTokenAddress, tokenGatingData, maxVoteAmount, voteAmount]);
+
+    // 정답 확인 팝업 렌더링 함수
+    const renderAnswerConfirmPopup = useCallback(() => {
+        if (!poll.hasAnswer || confirmedAnswer) return null;
+        
+        return (
+            <Popup
+                open={showAnswerPopup}
+                width="w-full"
+                onClose={() => setShowAnswerPopup(false)}
+            >
+                <div className="flex flex-col items-center justify-center p-10 gap-2 rounded-2xl">
+                    <img
+                        src="/ui/information.svg"
+                        alt="info"
+                        className={cn(getResponsiveClass(60).frameClass)}
+                    />
+                    <h2
+                        className={cn(
+                            "text-center text-[rgba(255,255,255,0.9)] font-semibold",
+                            getResponsiveClass(30).textClass
+                        )}
+                    >
+                        This poll has the correct answer.
+                    </h2>
+                    <p
+                        className={cn(
+                            "text-center text-[rgba(255,255,255,0.7)]",
+                            getResponsiveClass(20).textClass
+                        )}
+                    >
+                        Please confirm your selected answer before
+                        proceeding with your vote.{" "}
+                        <strong>
+                            If you choose wrong, you will not be able to get
+                            the reward.
+                        </strong>
+                    </p>
+
+                    <div className="w-full flex flex-col items-center my-6 text-center">
+                        <div
+                            className={cn(
+                                "px-4 py-2 rounded-lg inner-shadow font-main text-glow-white-smooth",
+                                "bg-gradient-to-br from-[rgba(0,0,0,0.05)] to-[rgba(0,0,0,0.2)]",
+                                getResponsiveClass(25).textClass
+                            )}
+                        >
+                            {selection?.name}
+                        </div>
+                    </div>
+
+                    <Button
+                        onClick={() => {
+                            setConfirmedAnswer(true);
+                            handleSubmit(true);
+                        }}
+                        textSize={15}
+                    >
+                        Confirm and Submit
+                    </Button>
+                </div>
+            </Popup>
+        );
+    }, [poll.hasAnswer, confirmedAnswer, showAnswerPopup, selection, handleSubmit]);
 
     return (
         <>
@@ -276,64 +793,7 @@ export default function PollsListCard({
                 reward={asset || undefined}
                 rewardAmount={poll.participationRewardAmount}
             />
-            {poll.hasAnswer && !confirmedAnswer && (
-                <Popup
-                    open={showAnswerPopup}
-                    width="w-full"
-                    onClose={() => setShowAnswerPopup(false)}
-                >
-                    <div className="flex flex-col items-center justify-center p-10 gap-2 rounded-2xl">
-                        <img
-                            src="/ui/information.svg"
-                            alt="info"
-                            className={cn(getResponsiveClass(60).frameClass)}
-                        />
-                        <h2
-                            className={cn(
-                                "text-center text-[rgba(255,255,255,0.9)] font-semibold",
-                                getResponsiveClass(30).textClass
-                            )}
-                        >
-                            This poll has the correct answer.
-                        </h2>
-                        <p
-                            className={cn(
-                                "text-center text-[rgba(255,255,255,0.7)]",
-                                getResponsiveClass(20).textClass
-                            )}
-                        >
-                            Please confirm your selected answer before
-                            proceeding with your vote.{" "}
-                            <strong>
-                                If you choose wrong, you will not be able to get
-                                the reward.
-                            </strong>
-                        </p>
-
-                        <div className="w-full flex flex-col items-center my-6 text-center">
-                            <div
-                                className={cn(
-                                    "px-4 py-2 rounded-lg inner-shadow font-main text-glow-white-smooth",
-                                    "bg-gradient-to-br from-[rgba(0,0,0,0.05)] to-[rgba(0,0,0,0.2)]",
-                                    getResponsiveClass(25).textClass
-                                )}
-                            >
-                                {selection?.name}
-                            </div>
-                        </div>
-
-                        <Button
-                            onClick={() => {
-                                setConfirmedAnswer(true);
-                                handleSubmit(true);
-                            }}
-                            textSize={15}
-                        >
-                            Confirm and Submit
-                        </Button>
-                    </div>
-                </Popup>
-            )}
+            {renderAnswerConfirmPopup()}
             <div className="relative w-full min-w-[120px] my-[25px]">
                 <div
                     className={cn(
@@ -446,407 +906,23 @@ export default function PollsListCard({
                     )}
 
                     {/* 옵션 섹션 */}
-                    {showOptions && (
-                        <div
-                            className={cn(
-                                "grid grid-cols-1 gap-3 w-full",
-                                "my-6 sm:my-7 md:my-8 lg:my-9 xl:my-10"
-                            )}
-                        >
-                            {options.map((option: PollOption, idx: number) => {
-                                const result = sortedResults.find(
-                                    (result) =>
-                                        result.optionId === option.optionId
-                                );
-
-                                const votedCount =
-                                    pollLogs?.reduce((acc, curr) => {
-                                        if (curr.optionId === option.optionId) {
-                                            return acc + curr.amount;
-                                        }
-                                        return acc;
-                                    }, 0) || 0;
-                                return (
-                                    <div
-                                        key={option.optionId}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleOptionClick(option);
-                                        }}
-                                        className={cn(
-                                            selection === option &&
-                                                "text-glow-white-smooth white-glow-smooth border-[rgba(255,255,255,0.3)]",
-                                            "flex items-center justify-between w-full py-3 px-2 rounded-[10px]",
-                                            "border border-[rgba(255,255,255,0.1)]",
-                                            "bg-[rgba(0,0,0,0.05)] inner-shadow",
-                                            "transition-all duration-700",
-                                            "hover:bg-[rgba(0,0,0,0.35)]",
-                                            "hover:scale-105",
-                                            "hover:border-[rgba(255,255,255,0.4)]",
-                                            "cursor-pointer",
-                                            "relative overflow-hidden",
-                                            "mx-auto"
-                                        )}
-                                    >
-                                        {result && showOngoingResults && (
-                                            <div className="absolute inset-0">
-                                                <div className="h-full -m-1">
-                                                    <PollBar
-                                                        result={result}
-                                                        isBlurred={isBlurred}
-                                                        rank={0}
-                                                        totalItems={
-                                                            sortedResults.length
-                                                        }
-                                                        showOptionName={false}
-                                                        showOptionImage={false}
-                                                        fillContainer={true}
-                                                        fgColorFrom={
-                                                            fgColorFrom
-                                                        }
-                                                        fgColorTo={fgColorTo}
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
-                                        <div className="flex-1 flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-2">
-                                                <div
-                                                    className={cn(
-                                                        showOngoingResults &&
-                                                            "opacity-0",
-                                                        selection === option &&
-                                                            "white-glow",
-                                                        "w-6 h-6 rounded-full z-10",
-                                                        "border-2 border-[rgba(255,255,255,0.3)]",
-                                                        "relative",
-                                                        "transition-all duration-700",
-                                                        "transform hover:scale-110",
-                                                        "flex-shrink-0",
-                                                        getResponsiveClass(20)
-                                                            .frameClass,
-                                                        selection === option &&
-                                                            "bg-[rgba(255,255,255,0.2)]"
-                                                    )}
-                                                >
-                                                    {selection === option && (
-                                                        <div
-                                                            className="
-                                absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                                w-3 h-3 rounded-full
-                                bg-white
-                                shadow-[0_0_8px_rgba(255,255,255,0.8)]
-                            "
-                                                        />
-                                                    )}
-                                                </div>
-
-                                                <h3
-                                                    className={cn(
-                                                        "text-[rgba(255,255,255,0.9)] z-10 leading-0",
-                                                        getResponsiveClass(15)
-                                                            .textClass,
-                                                        "leading-none"
-                                                    )}
-                                                >
-                                                    {option.name}
-                                                </h3>
-                                            </div>
-                                            {/* 투표 확인 아이콘 */}
-                                            <div
-                                                className={cn(
-                                                    "transition-all duration-700",
-                                                    "flex items-center justify-center text-right",
-                                                    votedCount > 0
-                                                        ? "opacity-40"
-                                                        : "opacity-0",
-                                                    getResponsiveClass(10)
-                                                        .textClass,
-                                                    showOngoingResults &&
-                                                        "opacity-0",
-                                                    "flex-shrink-0 ml-3"
-                                                )}
-                                            >
-                                                <h2>{votedCount || "00"}</h2>
-                                            </div>
-                                        </div>
-
-                                        {/* 옵션의 이미지가 있을 경우 렌더링 */}
-                                        {1 !== 1 && option.imgUrl && (
-                                            <div
-                                                className="absolute inset-0 z-0 inner-shadow"
-                                                style={{
-                                                    backgroundImage:
-                                                        option.imgUrl
-                                                            ? `url(${option.imgUrl})`
-                                                            : "none",
-                                                    backgroundSize: "cover",
-                                                    backgroundPosition:
-                                                        "center",
-                                                    backgroundRepeat:
-                                                        "no-repeat",
-                                                    opacity: 0.6,
-                                                    mixBlendMode: "overlay",
-                                                }}
-                                            />
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                    {renderOptions()}
 
                     {/* 차트 섹션 */}
-                    {isEnded && (
-                        <div className="mt-6">
-                            {isLoading ? (
-                                <div className="animate-pulse">
-                                    {Array.from({
-                                        length: poll.options.length,
-                                    }).map((_, idx) => (
-                                        <div
-                                            key={idx}
-                                            className="h-[34px] bg-[rgba(255,255,255,0.3)] blur-sm rounded mb-2"
-                                        ></div>
-                                    ))}
-                                </div>
-                            ) : error ? (
-                                <div className="text-red-500 text-sm">
-                                    Error loading poll results
-                                </div>
-                            ) : (
-                                <>
-                                    {sortedResults.map((result, idx) => (
-                                        <PollBar
-                                            key={result.optionId}
-                                            result={result}
-                                            isBlurred={isBlurred}
-                                            rank={idx}
-                                            totalItems={sortedResults.length}
-                                            fgColorFrom={fgColorFrom}
-                                            fgColorTo={fgColorTo}
-                                        />
-                                    ))}
-                                    {isBlurred && (
-                                        <p className="text-xs font-light text-[rgba(255,255,255,0.6)]">
-                                            * States hidden before 3 days of end
-                                            date. Result will be revealed on X
-                                            after closing.
-                                        </p>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    )}
+                    {renderResults()}
 
                     {/* Submit Button */}
-                    {selection && !showOngoingResults && (
-                        <div className="overflow-hidden w-full mb-[25px] sm:mb-[30px] md:mb-[35px] lg:mb-[40px] xl:mb-[45px]">
-                            <div
-                                className={cn(
-                                    "transform transition-all duration-500 ease-out",
-                                    "flex flex-col gap-3 items-center",
-                                    "w-full",
-                                    animateSubmit
-                                        ? "translate-y-0 opacity-100"
-                                        : "translate-y-10 opacity-0"
-                                )}
-                            >
-                                {poll.allowMultipleVote &&
-                                    poll.needToken &&
-                                    poll.needTokenAddress && (
-                                        <div
-                                            className={cn(
-                                                "flex flex-row justify-center items-center overflow-hidden mb-1",
-                                                getResponsiveClass(30).gapClass
-                                            )}
-                                        >
-                                            <button
-                                                className={cn(
-                                                    "cursor-pointer",
-                                                    "bg-[rgba(139,92,246,0.9)] hover:bg-[rgba(139,92,246,1)]",
-                                                    "rounded-full text-center",
-                                                    getResponsiveClass(30)
-                                                        .frameClass,
-                                                    getResponsiveClass(15)
-                                                        .textClass
-                                                )}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const amount = Math.max(
-                                                        0,
-                                                        voteAmount - 1
-                                                    );
-                                                    setVoteAmount(amount);
-                                                    setVoteAmountInput(
-                                                        amount.toString()
-                                                    );
-                                                }}
-                                                aria-label="Decrease amount"
-                                            >
-                                                -
-                                            </button>
+                    {renderSubmitButton()}
 
-                                            <input
-                                                type="text"
-                                                inputMode="numeric"
-                                                value={voteAmountInput}
-                                                placeholder="0"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                }}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    if (/^\d*$/.test(val)) {
-                                                        setVoteAmountInput(val);
-                                                        const num = parseInt(
-                                                            val,
-                                                            10
-                                                        );
-                                                        if (
-                                                            !isNaN(num) &&
-                                                            num > 0
-                                                        ) {
-                                                            const amount =
-                                                                Math.min(
-                                                                    maxVoteAmount,
-                                                                    num
-                                                                );
-                                                            setVoteAmount(
-                                                                amount
-                                                            );
-                                                            setVoteAmountInput(
-                                                                amount.toString()
-                                                            );
-                                                        }
-                                                    }
-                                                }}
-                                                className={cn(
-                                                    "py-[3px] text-center",
-                                                    "rounded-full border border-[rgba(255,255,255,0.8)]",
-                                                    "focus:outline-none",
-                                                    "focus:border-[rgba(255,255,255,0.8)]",
-                                                    "focus:shadow-none",
-                                                    getResponsiveClass(15)
-                                                        .textClass
-                                                )}
-                                                style={{
-                                                    width: `${Math.max(
-                                                        voteAmountInput.length,
-                                                        1
-                                                    )}ch`,
-                                                    minWidth: "7ch",
-                                                    maxWidth: "14ch",
-                                                    transition: "width 0.2s",
-                                                }}
-                                            />
-
-                                            <button
-                                                className={cn(
-                                                    "cursor-pointer",
-                                                    "bg-[rgba(139,92,246,0.9)] hover:bg-[rgba(139,92,246,1)]",
-                                                    "rounded-full text-center",
-                                                    getResponsiveClass(30)
-                                                        .frameClass,
-                                                    getResponsiveClass(15)
-                                                        .textClass
-                                                )}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const amount = Math.min(
-                                                        maxVoteAmount,
-                                                        voteAmount + 1
-                                                    );
-                                                    setVoteAmount(amount);
-                                                    setVoteAmountInput(
-                                                        amount.toString()
-                                                    );
-                                                }}
-                                                aria-label="Increase amount"
-                                            >
-                                                +
-                                            </button>
-                                        </div>
-                                    )}
-
-                                <button
-                                    onClick={() => handleSubmit()}
-                                    className={cn(
-                                        "cursor-pointer",
-                                        "w-full bg-[#8b5cf6]/90 hover:bg-[#8b5cf6] hover:glow-purple rounded-full font-main",
-                                        "transition-all duration-300 ease-in",
-                                        getResponsiveClass(15).paddingClass,
-                                        getResponsiveClass(15).textClass
-                                    )}
-                                >
-                                    SUBMIT
-                                </button>
-                            </div>
-                            {/* 토큰 게이팅이 필요한 폴의 경우 몇 개의 폴을 추가로 참여할 수 있는지 */}
-                            {poll.needToken &&
-                                poll.needTokenAddress &&
-                                tokenGatingData &&
-                                tokenGatingData.data && (
-                                    <div className="my-3">
-                                        <h2 className="text-xs font-light text-[rgba(255,255,255,0.9)]">
-                                            My Vote :{" "}
-                                            {maxVoteAmount - voteAmount}
-                                        </h2>
-                                    </div>
-                                )}
-                        </div>
-                    )}
+                    {/* 토큰 게이팅이 필요한 폴의 경우 몇 개의 폴을 추가로 참여할 수 있는지 */}
+                    {renderTokenGatingInfo()}
 
                     {/* 투표 결과 보기 버튼 */}
-                    {status === "ONGOING" &&
-                        (!poll.hasAnswer ||
-                            (pollLogs &&
-                                pollLogs.filter(
-                                    (pollLog) => pollLog.pollId === poll.id
-                                ).length > 0)) && (
-                            <>
-                                <div className="absolute bottom-[12px] right-[12px]">
-                                    <img
-                                        src="/icons/charts-fill.svg"
-                                        alt="charts-fill"
-                                        className={cn(
-                                            showOngoingResults
-                                                ? "opacity-45"
-                                                : "opacity-0",
-                                            "transition-all duration-300 ease-in",
-                                            getResponsiveClass(25).frameClass
-                                        )}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowOngoingResults(
-                                                !showOngoingResults
-                                            );
-                                        }}
-                                    />
-                                </div>
-                                <div className="absolute bottom-[12px] right-[12px]">
-                                    <img
-                                        src="/icons/charts-stroke.svg"
-                                        alt="charts-stroke"
-                                        className={cn(
-                                            !showOngoingResults
-                                                ? "opacity-45"
-                                                : "opacity-0",
-                                            "transition-all duration-300 ease-in",
-                                            getResponsiveClass(25).frameClass
-                                        )}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowOngoingResults(
-                                                !showOngoingResults
-                                            );
-                                        }}
-                                    />
-                                </div>
-                            </>
-                        )}
+                    {renderResultsToggle()}
                 </div>
             </div>
         </>
     );
 }
+
+export default memo(PollsListCard);

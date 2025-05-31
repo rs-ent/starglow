@@ -2,20 +2,14 @@
 
 "use client";
 
-import { Player, Quest, ReferralLog, QuestLog } from "@prisma/client";
-import { useEffect, useState, useMemo, useRef } from "react";
+import {Player, QuestLog, ReferralLog} from "@prisma/client";
+import {memo, useCallback, useEffect, useMemo, useState} from "react";
 import QuestsMissions from "./Quests.Missions";
-import { useQuestGet, useQuestSet } from "@/app/hooks/useQuest";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { cn } from "@/lib/utils/tailwind";
+import {useQuestGet, useQuestSet} from "@/app/hooks/useQuest";
+import {getResponsiveClass} from "@/lib/utils/responsiveClass";
+import {cn} from "@/lib/utils/tailwind";
 import InviteFriends from "../atoms/InviteFriends";
-
-type ReferralQuestLogsDataType = {
-    player: Player;
-    referralQuests: Quest[];
-    questLogs: QuestLog[];
-    referralLogs: ReferralLog[];
-} | null;
+import {AnimatePresence, motion} from "framer-motion";
 
 interface QuestsPublicProps {
     player: Player | null;
@@ -23,7 +17,7 @@ interface QuestsPublicProps {
     referralLogs?: ReferralLog[];
 }
 
-export default function QuestsPublic({
+function QuestsPublic({
     player,
     questLogs,
     referralLogs,
@@ -37,115 +31,174 @@ export default function QuestsPublic({
 
     const [selectedType, setSelectedType] = useState<string>("All");
 
-    const types = useMemo(
-        () => [
-            "All",
-            ...(Array.from(
-                new Set(
-                    quests?.items
-                        .filter(
-                            (quest): quest is Quest & { type: string } =>
-                                quest.type !== null && quest.type !== undefined
-                        )
-                        .map((quest) => quest.type)
-                )
-            ) || []),
-        ],
-        [quests?.items]
-    );
-
-    const filteredQuests = useMemo(() => {
-        if (selectedType === "All") {
-            return quests?.items || [];
+    // 퀘스트 타입 목록 메모이제이션
+    const types = useMemo(() => {
+        if (!quests?.items || quests.items.length === 0) {
+            return ["All"];
         }
-        return (
-            quests?.items.filter((quest) => quest.type === selectedType) || []
-        );
+
+        const uniqueTypes = new Set<string>();
+        quests.items.forEach(quest => {
+            if (quest.type) uniqueTypes.add(quest.type);
+        });
+
+        return ["All", ...Array.from(uniqueTypes)];
+    }, [quests?.items]);
+
+    // 필터링된 퀘스트 메모이제이션
+    const filteredQuests = useMemo(() => {
+        if (!quests?.items) return [];
+        
+        return selectedType === "All"
+            ? quests.items
+            : quests.items.filter(quest => quest.type === selectedType);
     }, [quests?.items, selectedType]);
 
+    // 레퍼럴 퀘스트 데이터 메모이제이션
     const referralQuestLogsData = useMemo(() => {
-        if (
-            !player?.id ||
-            !quests?.items ||
-            questLogs.length === 0 ||
-            !referralLogs
-        ) {
+        if (!player?.id || !quests?.items || !questLogs.length || !referralLogs) {
             return null;
         }
 
         return {
             player,
-            referralQuests:
-                quests.items.filter((quest) => quest.isReferral) || [],
-            questLogs: questLogs,
-            referralLogs: referralLogs,
+            referralQuests: quests.items.filter(quest => quest.isReferral) || [],
+            questLogs,
+            referralLogs,
         };
     }, [player, quests?.items, questLogs, referralLogs]);
 
     const { setReferralQuestLogs } = useQuestSet();
-    const prevDataRef = useRef<ReferralQuestLogsDataType>(null);
 
+    // 레퍼럴 퀘스트 로그 설정
     useEffect(() => {
-        if (
-            referralQuestLogsData &&
-            JSON.stringify(prevDataRef.current) !==
-                JSON.stringify(referralQuestLogsData)
-        ) {
-            prevDataRef.current = referralQuestLogsData;
+        if (referralQuestLogsData) {
             setReferralQuestLogs(referralQuestLogsData);
         }
     }, [referralQuestLogsData, setReferralQuestLogs]);
 
-    const handleTypeClick = (type: string) => {
+    // 타입 클릭 핸들러 메모이제이션
+    const handleTypeClick = useCallback((type: string) => {
         setSelectedType(type);
+    }, []);
+
+    // 애니메이션 변수
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: { 
+            opacity: 1,
+            transition: { 
+                duration: 0.5,
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.4 }
+        }
     };
 
     return (
-        <div className="relative max-w-[1000px] w-screen">
+        <motion.div 
+            className="relative max-w-[1000px] w-screen"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+        >
             <div
                 className={cn(
                     "py-4 px-6 sm:py-6 sm:px-8 md:py-8 md:px-12 lg:py-10 lg:px-12"
                 )}
             >
-                <div className="my-[20px] mb-[50px] lg:my-[30px] lg:mb-[80px]">
+                <motion.div 
+                    className="my-[20px] mb-[50px] lg:my-[30px] lg:mb-[80px]"
+                    variants={itemVariants}
+                >
                     <InviteFriends player={player} />
-                </div>
-                <div className="flex justify-between items-end">
-                    <div className="flex flex-row gap-2 overflow-x-auto whitespace-nowrap">
+                </motion.div>
+                
+                <motion.div 
+                    className="flex justify-between items-end mb-6"
+                    variants={itemVariants}
+                >
+                    <div className="flex flex-row gap-2 overflow-x-auto whitespace-nowrap pb-2">
                         {types.map((type) => (
-                            <h2
+                            <TypeButton 
                                 key={type}
-                                className={cn(
-                                    "text-sm transition-all duration-500 morp-glass-1 rounded-full px-4 py-2",
-                                    "cursor-pointer backdrop-blur-xs",
-                                    getResponsiveClass(15).textClass,
-                                    selectedType === type
-                                        ? "opacity-100"
-                                        : "opacity-50"
-                                )}
-                                onClick={() => handleTypeClick(type)}
-                            >
-                                {type}
-                            </h2>
+                                type={type}
+                                isSelected={selectedType === type}
+                                onClick={handleTypeClick}
+                            />
                         ))}
                     </div>
-                </div>
+                </motion.div>
 
-                {quests && questLogs && (
-                    <div className={cn("mb-[100px] lg:mb-[0px]")}>
-                        <QuestsMissions
-                            player={player}
-                            quests={filteredQuests}
-                            questLogs={questLogs}
-                            isLoading={isLoading}
-                            error={error}
-                            permission={true}
-                            tokenGatingResult={null}
-                            referralLogs={referralLogs || []}
-                        />
-                    </div>
-                )}
+                <AnimatePresence mode="wait">
+                    <motion.div 
+                        key={selectedType}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.3 }}
+                        className={cn("mb-[100px] lg:mb-[0px]")}
+                    >
+                        {quests && questLogs && (
+                            <QuestsMissions
+                                player={player}
+                                quests={filteredQuests}
+                                questLogs={questLogs}
+                                isLoading={isLoading}
+                                error={error}
+                                permission={true}
+                                tokenGatingResult={null}
+                                referralLogs={referralLogs || []}
+                            />
+                        )}
+                    </motion.div>
+                </AnimatePresence>
             </div>
-        </div>
+        </motion.div>
     );
 }
+
+// 타입 버튼 컴포넌트 - 메모이제이션 적용
+const TypeButton = memo(({ 
+    type, 
+    isSelected, 
+    onClick 
+}: { 
+    type: string; 
+    isSelected: boolean; 
+    onClick: (type: string) => void 
+}) => {
+    // 클릭 핸들러 메모이제이션
+    const handleClick = useCallback(() => {
+        onClick(type);
+    }, [onClick, type]);
+
+    return (
+        <motion.h2
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className={cn(
+                "text-sm transition-all duration-500 morp-glass-1 rounded-full px-4 py-2",
+                "cursor-pointer backdrop-blur-xs",
+                getResponsiveClass(15).textClass,
+                isSelected ? "opacity-100" : "opacity-50"
+            )}
+            onClick={handleClick}
+        >
+            {type}
+        </motion.h2>
+    );
+});
+
+// 컴포넌트 이름 설정
+TypeButton.displayName = 'TypeButton';
+
+export default memo(QuestsPublic);

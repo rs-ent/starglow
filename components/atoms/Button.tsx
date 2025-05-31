@@ -1,5 +1,8 @@
 /// components\atoms\Button.tsx
 
+"use client";
+
+import { memo } from "react";
 import { Button as ShadcnButton } from "@/components/ui/button";
 import { LucideIcon } from "lucide-react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -32,7 +35,7 @@ interface ButtonProps {
     className?: string;
 }
 
-export default function Button({
+function Button({
     children,
     frameSize = 20,
     textSize = 20,
@@ -55,8 +58,66 @@ export default function Button({
     const { frameClass } = getResponsiveClass(frameSize);
     const { gapClass } = getResponsiveClass(gapSize);
 
+    // 이미지 렌더링 함수 - 코드 중복 제거
+    const renderImage = (position: 'left' | 'right') => {
+        if (!img) return null;
+        if ((position === 'left' && !imgLeft) || (position === 'right' && imgLeft)) return null;
+
+        if (img.endsWith(".svg")) {
+            return (
+                <img
+                    src={img}
+                    alt="Button Image"
+                    className={cn(
+                        frameClass,
+                        imgSpinning && "animate-spin"
+                    )}
+                    style={{ width: `${frameSize}px`, height: "auto" }}
+                />
+            );
+        }
+
+        return (
+            <Image
+                src={img}
+                alt="Button Image"
+                width={frameSize}
+                height={frameSize}
+                className={cn(
+                    frameClass,
+                    imgSpinning && "animate-spin"
+                )}
+                style={{ objectFit: "contain" }}
+            />
+        );
+    };
+
+    // 아이콘 렌더링 함수 - 코드 중복 제거
+    const renderIcon = (position: 'left' | 'right') => {
+        if (!Icon) return null;
+        if ((position === 'left' && !iconLeft) || (position === 'right' && iconLeft)) return null;
+
+        return (
+            <div
+                className={cn(
+                    frameClass,
+                    "flex items-center justify-center"
+                )}
+            >
+                <Icon
+                    strokeWidth={2}
+                    className={cn(
+                        "w-full h-full min-w-full min-h-full",
+                        iconSpinning && "animate-spin",
+                        frameClass
+                    )}
+                />
+            </div>
+        );
+    };
+
     return (
-        <div>
+        <div className="relative">
             <ShadcnButton
                 onClick={onClick}
                 variant={variant}
@@ -69,95 +130,13 @@ export default function Button({
                     className
                 )}
             >
-                {Icon && iconLeft && (
-                    <div
-                        className={cn(
-                            frameClass,
-                            "flex items-center justify-center"
-                        )}
-                    >
-                        <Icon
-                            strokeWidth={2}
-                            className={cn(
-                                "w-full h-full min-w-full min-h-full",
-                                iconSpinning && "animate-spin",
-                                frameClass
-                            )}
-                        />
-                    </div>
-                )}
-
-                {img &&
-                    imgLeft &&
-                    (img.endsWith(".svg") ? (
-                        <img
-                            src={img}
-                            alt="Button Image"
-                            className={cn(
-                                frameClass,
-                                imgSpinning && "animate-spin"
-                            )}
-                            style={{ width: `${frameSize}px`, height: "auto" }}
-                        />
-                    ) : (
-                        <Image
-                            src={img}
-                            alt="Button Image"
-                            width={frameSize}
-                            height={frameSize}
-                            className={cn(
-                                frameClass,
-                                imgSpinning && "animate-spin"
-                            )}
-                            style={{ objectFit: "contain" }}
-                        />
-                    ))}
-
+                {renderIcon('left')}
+                {renderImage('left')}
                 {children}
-
-                {Icon && !iconLeft && (
-                    <div
-                        className={cn(
-                            frameClass,
-                            "flex items-center justify-center"
-                        )}
-                    >
-                        <Icon
-                            strokeWidth={2}
-                            className={cn(
-                                "w-full h-full min-w-full min-h-full",
-                                iconSpinning && "animate-spin"
-                            )}
-                        />
-                    </div>
-                )}
-
-                {img &&
-                    !imgLeft &&
-                    (img.endsWith(".svg") ? (
-                        <img
-                            src={img}
-                            alt="Button Image"
-                            className={cn(
-                                frameClass,
-                                imgSpinning && "animate-spin"
-                            )}
-                            style={{ width: `${frameSize}px`, height: "auto" }}
-                        />
-                    ) : (
-                        <Image
-                            src={img}
-                            alt="Button Image"
-                            width={frameSize}
-                            height={frameSize}
-                            className={cn(
-                                frameClass,
-                                imgSpinning && "animate-spin"
-                            )}
-                            style={{ objectFit: "contain" }}
-                        />
-                    ))}
+                {renderIcon('right')}
+                {renderImage('right')}
             </ShadcnButton>
+
             {beautify && (
                 <img
                     src="/elements/el02.svg"
@@ -168,3 +147,5 @@ export default function Button({
         </div>
     );
 }
+
+export default memo(Button);

@@ -2,12 +2,12 @@
 
 "use client";
 
-import { useArtistsGet } from "@/app/hooks/useArtists";
+import {useArtistsGet} from "@/app/hooks/useArtists";
 import ArtistSelector from "@/components/atoms/ArtistSelector";
 import PartialLoading from "@/components/atoms/PartialLoading";
-import { cn } from "@/lib/utils/tailwind";
-import { Artist } from "@prisma/client";
-import { useState, useEffect } from "react";
+import {cn} from "@/lib/utils/tailwind";
+import {Artist} from "@prisma/client";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -24,7 +24,8 @@ export default function ArtistSlideSelector({
     const { artists, isLoading, error } = useArtistsGet({});
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
 
-    const sliderSettings = {
+    // sliderSettings를 useMemo로 최적화
+    const sliderSettings = useMemo(() => ({
         dots: false,
         arrows: false,
         infinite: artists && artists.length > 1,
@@ -57,14 +58,45 @@ export default function ArtistSlideSelector({
                 },
             },
         ],
-    };
+    }), [artists]);
 
+    // 아티스트 선택 핸들러를 useCallback으로 최적화
+    const handleArtistSelect = useCallback((artist: Artist) => {
+        setSelectedArtist(prevSelected => {
+            const newSelected = prevSelected?.id === artist.id ? null : artist;
+            onSelect?.(newSelected);
+            return newSelected;
+        });
+    }, [onSelect]);
+
+    // 초기 아티스트 선택 로직 최적화
     useEffect(() => {
-        if (artists && artists.length > 0) {
+        if (artists && artists.length > 0 && !selectedArtist) {
             setSelectedArtist(artists[0]);
             onSelect?.(artists[0]);
         }
-    }, [artists]);
+    }, [artists, selectedArtist, onSelect]);
+
+    // 아티스트 렌더링 최적화
+    const renderArtists = useMemo(() => {
+        if (!artists || artists.length === 0) return null;
+        
+        return artists.map((artist: Artist) => (
+            <div
+                key={artist.id}
+                className={cn(
+                    "px-2",
+                    "pt-[20px] sm:pt-[25px] md:pt-[30px] lg:pt-[35px] xl:pt-[40px]"
+                )}
+            >
+                <ArtistSelector
+                    artist={artist}
+                    isSelected={selectedArtist?.id === artist.id}
+                    onSelect={() => handleArtistSelect(artist)}
+                />
+            </div>
+        ));
+    }, [artists, selectedArtist, handleArtistSelect]);
 
     return (
         <div
@@ -78,31 +110,7 @@ export default function ArtistSlideSelector({
                 {error && <div>Error: {error.message}</div>}
                 {artists && !isLoading && artists.length > 0 && (
                     <Slider {...sliderSettings}>
-                        {artists.map((artist: Artist) => (
-                            <div
-                                key={artist.id}
-                                className={cn(
-                                    "px-2",
-                                    "pt-[20px] sm:pt-[25px] md:pt-[30px] lg:pt-[35px] xl:pt-[40px]"
-                                )}
-                            >
-                                <ArtistSelector
-                                    artist={artist}
-                                    isSelected={
-                                        selectedArtist?.id === artist.id
-                                    }
-                                    onSelect={() => {
-                                        if (selectedArtist?.id === artist.id) {
-                                            setSelectedArtist(null);
-                                            onSelect?.(null);
-                                        } else {
-                                            setSelectedArtist(artist);
-                                            onSelect?.(artist);
-                                        }
-                                    }}
-                                />
-                            </div>
-                        ))}
+                        {renderArtists}
                     </Slider>
                 )}
             </div>
