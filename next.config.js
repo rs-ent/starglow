@@ -32,8 +32,6 @@ const nextConfig = {
     ],
 
     experimental: {
-        // React Compiler 활성화
-        reactCompiler: true,
 
         // 서버 액션 최적화
         serverActions: {
