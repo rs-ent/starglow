@@ -22,7 +22,8 @@ export function useGetPlayerAssets({
             getPlayerAssetsInput?.filter?.assetIds || []
         ),
         queryFn: () => getPlayerAssets(getPlayerAssetsInput),
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 1,
+        gcTime: 1000 * 60 * 5,
     });
 }
 
@@ -52,5 +53,7 @@ export function useGetPlayerAssetBalance({
             getPlayerAssetInput?.assetId || ""
         ),
         queryFn: () => getPlayerAsset(getPlayerAssetInput),
+        staleTime: 1000 * 60 * 0.5,
+        gcTime: 1000 * 60 * 1,
     });
 }

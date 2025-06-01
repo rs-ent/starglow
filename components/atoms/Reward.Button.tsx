@@ -7,6 +7,7 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import Image from "next/image";
 import { useState } from "react";
+import React from "react";
 
 interface RewardButtonProps {
     index: number;
@@ -22,7 +23,7 @@ interface RewardButtonProps {
     onClick?: () => void;
 }
 
-export default function RewardButton({
+export default React.memo(function RewardButton({
     index,
     balance,
     icon,
@@ -103,4 +104,4 @@ export default function RewardButton({
             </motion.div>
         </div>
     );
-}
+});

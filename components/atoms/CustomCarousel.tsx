@@ -42,7 +42,7 @@ const CarouselItem = memo(
     )
 );
 
-export default function CustomCarousel({
+export default React.memo(function CustomCarousel({
     children,
     direction = "horizontal",
     onIndexChange,
@@ -284,6 +284,25 @@ export default function CustomCarousel({
         };
     }, [isHorizontal, handleDragStart]);
 
+    // virtualization: 앞뒤 2개만 렌더
+    const visibleRange = 2;
+    const visibleIndexes = useMemo(() => {
+        // 항상 0~currentIndex까지는 렌더
+        const indexes = [];
+        for (let i = 0; i <= currentIndex; i++) {
+            indexes.push(i);
+        }
+        // 그리고 currentIndex+1~currentIndex+visibleRange까지 추가
+        for (
+            let i = currentIndex + 1;
+            i <= Math.min(totalItems - 1, currentIndex + visibleRange);
+            i++
+        ) {
+            indexes.push(i);
+        }
+        return indexes;
+    }, [currentIndex, totalItems]);
+
     return (
         <div
             className={cn(
@@ -328,17 +347,19 @@ export default function CustomCarousel({
                         willChange: isDragging ? "transform" : "auto",
                     }}
                 >
-                    {childrenArray.map((child, index) => (
-                        <CarouselItem
-                            key={index}
-                            child={child}
-                            style={{
-                                [isHorizontal ? "width" : "height"]: `${
-                                    100 / totalItems
-                                }%`,
-                            }}
-                        />
-                    ))}
+                    {childrenArray.map((child, index) =>
+                        visibleIndexes.includes(index) ? (
+                            <CarouselItem
+                                key={index}
+                                child={child}
+                                style={{
+                                    [isHorizontal ? "width" : "height"]: `${
+                                        100 / totalItems
+                                    }%`,
+                                }}
+                            />
+                        ) : null
+                    )}
                 </div>
             </div>
 
@@ -373,4 +394,4 @@ export default function CustomCarousel({
             )}
         </div>
     );
-}
+});

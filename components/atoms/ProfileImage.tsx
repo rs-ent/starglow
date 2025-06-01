@@ -1,23 +1,32 @@
 /// components/atoms/ProfileImage.tsx
 
+"use client";
+
+import React from "react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import UserSettings from "../user/User.Settings";
+import { User } from "next-auth";
+import { Player } from "@prisma/client";
 import { useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
+import UserSettings from "../user/User.Settings";
+import Image from "next/image";
 
 interface ProfileImageProps {
+    user: User;
+    player: Player;
     className?: string;
     size?: number;
 }
 
-export default function ProfileImage({
+export default React.memo(function ProfileImage({
+    user,
+    player,
     className,
     size = 60,
 }: ProfileImageProps) {
     const [showUserSettings, setShowUserSettings] = useState(false);
 
-    const { data: session } = useSession();
+    const image = player?.image || user?.image || "";
 
     const { frameSize, cameraSize } = useMemo(() => {
         const frameSize = getResponsiveClass(size).frameClass;
@@ -31,19 +40,12 @@ export default function ProfileImage({
         };
     }, [size]);
 
-    const image = useMemo(() => {
-        if (session?.player) {
-            return session.player.image || session?.user?.image || "";
-        }
-        return session?.user?.image || "";
-    }, [session]);
-
     return (
         <>
-            {showUserSettings && session?.user && session?.player && (
+            {showUserSettings && (
                 <UserSettings
-                    user={session?.user}
-                    player={session?.player}
+                    user={user}
+                    player={player}
                     showNickname={false}
                     onClose={() => setShowUserSettings(false)}
                 />
@@ -71,14 +73,17 @@ export default function ProfileImage({
                     <img
                         src="/ui/camera.svg"
                         alt="Camera"
-                        className={cn(cameraSize, "object-contain")}
+                        className={cameraSize}
                     />
                 </div>
                 {image ? (
                     <img
                         src={image}
                         alt="Profile"
+                        width={size * 2}
+                        height={size * 2}
                         className="w-full h-full object-cover -z-10"
+                        loading="lazy"
                     />
                 ) : (
                     <DefaultProfileImageSvg opacity={0.8} scale={1.15} />
@@ -86,7 +91,7 @@ export default function ProfileImage({
             </div>
         </>
     );
-}
+});
 
 function DefaultProfileImageSvg({
     opacity = 1.0,

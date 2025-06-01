@@ -16,6 +16,7 @@ import QuestsArtistMissions from "../quests/Quests.Contents.Private.ArtistMissio
 import PollsContentsPrivateArtistList from "../polls/Polls.Contents.Private.ArtistList";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import ArtistFeed from "../artists/Artist.Feed";
+
 interface UserMyStarModalContentsCollectionsProps {
     player: Player | null;
     questLogs: QuestLog[];
@@ -24,7 +25,7 @@ interface UserMyStarModalContentsCollectionsProps {
     verifiedCollections: VerifiedCollection[];
 }
 
-export default function UserMyStarModalContentsCollections({
+export default React.memo(function UserMyStarModalContentsCollections({
     artist,
     verifiedCollections,
     player,
@@ -184,7 +185,7 @@ export default function UserMyStarModalContentsCollections({
             />
         </div>
     );
-}
+});
 
 function Arrow(props: any) {
     const { className, style, onClick, role, size, color } = props;

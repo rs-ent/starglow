@@ -71,5 +71,7 @@ export function useArtistFeedsInfiniteQuery(
         getNextPageParam: (lastPage) => lastPage.nextCursor,
         enabled: Boolean(input?.artistId),
         initialPageParam: undefined,
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 10,
     });
 }

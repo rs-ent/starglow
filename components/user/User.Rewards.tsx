@@ -7,7 +7,7 @@ import { User } from "next-auth";
 import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
 import { cn } from "@/lib/utils/tailwind";
 import { useMemo } from "react";
-import UserRewardModalCardV2 from "./User.Reward.Modal.Card.V2";
+import dynamic from "next/dynamic";
 import PartialLoading from "../atoms/PartialLoading";
 
 interface UserRewardsProps {
@@ -16,6 +16,14 @@ interface UserRewardsProps {
 }
 
 export type PlayerAssetWithAsset = PlayerAsset & { asset: Asset };
+
+const UserRewardModalCardV2 = dynamic(
+    () => import("./User.Reward.Modal.Card.V2"),
+    {
+        loading: () => <div>Loading...</div>,
+        ssr: false,
+    }
+);
 
 export default function UserRewards({ user, player }: UserRewardsProps) {
     const { playerAssets, isPlayerAssetsLoading, playerAssetsError } =

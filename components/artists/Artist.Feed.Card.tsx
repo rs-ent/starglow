@@ -7,6 +7,7 @@ import { Heart, MessageCircle, Play } from "lucide-react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { useState, useRef, useEffect } from "react";
+import React from "react";
 
 interface ArtistFeedCardProps {
     feed: ArtistFeedWithReactions;
@@ -14,7 +15,7 @@ interface ArtistFeedCardProps {
     onClick: () => void;
 }
 
-export default function ArtistFeedCard({
+export default React.memo(function ArtistFeedCard({
     feed,
     artist,
     onClick,
@@ -181,4 +182,4 @@ export default function ArtistFeedCard({
             )}
         </div>
     );
-}
+});

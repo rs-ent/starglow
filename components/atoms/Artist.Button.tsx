@@ -8,6 +8,7 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import Image from "next/image";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
+import React from "react";
 
 interface ArtistButtonProps {
     artist: Artist;
@@ -21,7 +22,7 @@ interface ArtistButtonProps {
     onClick?: () => void;
 }
 
-export default function ArtistButton({
+export default React.memo(function ArtistButton({
     artist,
     index,
     frameSize = 55,
@@ -161,4 +162,4 @@ export default function ArtistButton({
             </motion.div>
         </AnimatePresence>
     );
-}
+});

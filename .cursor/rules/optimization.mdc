@@ -1,0 +1,198 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Starglow Project Context & Guidelines
+
+## Project Overview
+Starglow is a Web3 entertainment platform connecting K-pop musicians with fans through blockchain technology, NFTs, and data-driven artist valuation. Currently operated by a solo developer with critical milestones in 1H 2025.
+
+## Development Philosophy
+- **Efficiency First**: Every refactoring must provide measurable business value. Take advantage of cutting-edge Next.js (+19) technology 
+- **Incremental Progress**: Small, safe changes over large rewrites
+- **User-Centric**: Optimize for Web App performance first
+- **Web3 Ready**: Consider blockchain integration in all architectural decisions
+
+## Code Generation Rules
+
+### 1. Performance Optimization Priority
+```typescript
+// ALWAYS prioritize these optimizations:
+// 1. Web App load time (<3s)
+// 2. Image/Media optimization (artists' content)
+// 3. Real-time data updates (streaming counts, valuations)
+// 4. Wallet connection flow
+```
+
+### 2. Architecture Pattern
+Follow the established pattern strictly:
+app/
+├── actions/ # Server-side logic only
+├── queries/ # Data fetching with caching
+├── mutations/ # State changes
+├── hooks/ # Client-side state management
+└── components/ # UI components
+
+### 3. Web3 Integration Guidelines
+```typescript
+// For any blockchain-related code:
+// @web3-context: Always include gas optimization
+// @security: Validate all wallet interactions
+// @pattern: Use established patterns from /app/blockchain/
+
+// Example:
+export const mintNFT = async (params: MintParams) => {
+  // 1. Validate user permissions
+  // 2. Estimate gas costs
+  // 3. Show user confirmation
+  // 4. Execute with retry logic
+  // 5. Update local state optimistically
+}
+```
+
+### 4. Artist/Fan Feature Development
+```typescript
+// When developing artist-related features:
+// @priority: Features that increase fan engagement
+// @metrics: Track user interaction rates
+// @monetization: Consider revenue sharing implications
+
+// Pattern for artist features:
+interface ArtistFeature {
+  // Always include these considerations:
+  fanEngagement: EngagementMetrics;
+  revenueImpact: RevenueProjection;
+  technicalComplexity: 'low' | 'medium' | 'high';
+  implementationTime: number; // hours
+}
+```
+
+### 5. Data Optimization for Valuation System
+```typescript
+// For musician valuation features:
+// @cache: Aggressive caching for computed values
+// @realtime: Only update what changes
+// @api: Batch requests when possible
+
+// Valuation data pattern:
+const useArtistValuation = (artistId: string) => {
+  return useQuery({
+    queryKey: ['valuation', artistId],
+    queryFn: fetchValuation,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 30 * 60 * 1000, // 30 minutes
+    // Include Web2 + Web3 metrics
+  });
+};
+```
+
+## Refactoring Priorities (1H 2025 Focus)
+
+### Phase 1: Critical Path (Weeks 1-2)
+1. **Payment Flow Optimization**
+   - Reduce checkout time to <5 seconds
+   - Add retry mechanisms for failed transactions
+   - Implement proper error boundaries
+
+2. **NFT Minting Performance**
+   - Optimize contract calls
+   - Add progress indicators
+   - Implement batch minting for efficiency
+
+### Phase 2: User Experience (Weeks 3-4)
+1. **Image Loading (Artist Content)**
+   - Implement progressive loading
+   - Add skeleton screens
+   - Optimize for Telegram's webview
+
+2. **Real-time Updates**
+   - WebSocket for price updates
+   - Optimistic UI updates
+   - Efficient re-render strategies
+
+### Phase 3: Scalability (Weeks 5-6)
+1. **Data Architecture**
+   - Implement proper pagination
+   - Add infinite scroll with virtualization
+   - Optimize API calls with GraphQL/tRPC
+
+## AI Assistant Behavior
+
+### When suggesting code:
+1. **Always provide migration path** from current implementation
+2. **Include performance metrics** (before/after)
+3. **Add feature flags** for gradual rollout
+4. **Consider Telegram Mini App constraints**
+
+### Code Review Checklist:
+- [ ] Does it improve Time to Interactive (TTI)?
+- [ ] Is it compatible with Web3 wallets?
+- [ ] Does it handle Korean/English localization?
+- [ ] Will it scale to 1M+ users?
+- [ ] Can it be deployed incrementally?
+
+### Example Refactoring Template:
+```typescript
+// Current Implementation Analysis
+// Performance: X ms load time, Y re-renders
+// Issues: [List specific problems]
+
+// Proposed Solution
+// Expected Performance: X-50% ms load time
+// Benefits: [Measurable improvements]
+
+// Migration Steps:
+// 1. Add feature flag
+// 2. Implement new version alongside old
+// 3. A/B test with 10% users
+// 4. Monitor metrics for 48 hours
+// 5. Gradual rollout if successful
+
+// Rollback Plan:
+// - Feature flag disable
+// - Revert commit: [hash]
+// - Alert monitoring threshold
+```
+
+## Business-Driven Development
+
+### Always consider:
+1. **Revenue Impact**: Will this help monetization?
+2. **User Retention**: Does it improve stickiness?
+3. **Investor Metrics**: KPIs for VC funding
+4. **Artist Onboarding**: Simplifies musician integration?
+
+### Feature Priority Matrix:
+High Impact + Low Effort = DO NOW
+High Impact + High Effort = PLAN CAREFULLY
+Low Impact + Low Effort = BATCH TOGETHER
+Low Impact + High Effort = AVOID
+
+## Security & Compliance
+
+### For every feature:
+1. **Wallet Security**: Never store private keys
+2. **Data Privacy**: GDPR/Korean privacy laws
+3. **Smart Contract**: Audit before mainnet
+4. **API Rate Limiting**: Prevent abuse
+
+## Monitoring & Metrics
+
+### Track these KPIs:
+- Web App load time
+- NFT minting success rate
+- Artist onboarding time
+- Fan engagement metrics
+- Transaction completion rate
+
+### Use these tools:
+- Sentry for error tracking
+- Mixpanel for user analytics
+- Dune Analytics for on-chain data
+
+
+
+
+
+- Custom dashboard for artist metrics

@@ -11,13 +11,14 @@ import type { METADATA_TYPE } from "@/app/actions/metadata";
 import { useMemo, useState } from "react";
 import { CopyIcon } from "lucide-react";
 import { useToast } from "@/app/hooks/useToast";
+import React from "react";
 
 interface UserMyStarModalContentsCollectionsCardProps {
     artist: Artist;
     verifiedCollection: VerifiedCollection;
 }
 
-export default function UserMyStarModalContentsCollectionsCard({
+export default React.memo(function UserMyStarModalContentsCollectionsCard({
     artist,
     verifiedCollection,
 }: UserMyStarModalContentsCollectionsCardProps) {
@@ -87,7 +88,7 @@ export default function UserMyStarModalContentsCollectionsCard({
             </div>
         </div>
     );
-}
+});
 
 function Status({
     verifiedCollection,

@@ -11,9 +11,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useSession } from "next-auth/react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import Image from "next/image";
-import { Suspense } from "react";
-import { Skeleton } from "../ui/skeleton";
-import CustomCarousel from "../atoms/CustomCarousel";
+import dynamic from "next/dynamic";
 
 interface ArtistFeedModalCardProps {
     feed: ArtistFeedWithReactions;
@@ -24,6 +22,10 @@ interface MediaItem {
     type: "image" | "video";
     url: string;
 }
+
+const CustomCarousel = dynamic(() => import("../atoms/CustomCarousel"), {
+    ssr: false,
+});
 
 export default memo(function ArtistFeedModalCard({
     feed,
@@ -301,16 +303,22 @@ export default memo(function ArtistFeedModalCard({
                     >
                         <Heart
                             className={cn(
-                                "w-8 h-8 transition-all shadow-md",
+                                "w-8 h-8 transition-all",
                                 isLiked && "fill-current"
                             )}
+                            style={{
+                                filter: "drop-shadow(0 0 6px rgba(0,0,0,0.6))",
+                            }}
                         />
                     </button>
-                    {likeCount > 0 && (
-                        <span className="text-white text-sm font-semibold">
-                            {likeCount}
-                        </span>
-                    )}
+                    <span
+                        className="text-white text-sm font-semibold text-shadow"
+                        style={{
+                            filter: "drop-shadow(0 0 6px rgba(0,0,0,0.6))",
+                        }}
+                    >
+                        {likeCount > 0 ? likeCount : "Likes"}
+                    </span>
                 </div>
             </div>
 
@@ -325,7 +333,7 @@ export default memo(function ArtistFeedModalCard({
                 >
                     <div
                         className={cn(
-                            getResponsiveClass(15).textClass,
+                            getResponsiveClass(20).textClass,
                             "mt-[20px]",
                             "relative"
                         )}

@@ -4,6 +4,8 @@ import { Artist, Player, QuestLog, PollLog } from "@prisma/client";
 import type { VerifiedCollection } from "@/app/actions/collectionContracts";
 import UserMyStarModalContentsCollections from "./User.MyStar.Modal.Contents.Collections";
 import { cn } from "@/lib/utils/tailwind";
+import React from "react";
+
 interface UserMyStarModalContentsProps {
     artist: Artist;
     verifiedCollections: VerifiedCollection[];
@@ -12,7 +14,7 @@ interface UserMyStarModalContentsProps {
     pollLogs: PollLog[];
 }
 
-export default function UserMyStarModalContents({
+export default React.memo(function UserMyStarModalContents({
     artist,
     verifiedCollections,
     player,
@@ -30,4 +32,4 @@ export default function UserMyStarModalContents({
             />
         </div>
     );
-}
+});

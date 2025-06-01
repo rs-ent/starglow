@@ -1,20 +1,24 @@
 /// app\user\page.tsx
 
-import {Suspense} from "react";
-import {notFound} from "next/navigation";
+import { Suspense } from "react";
+import { notFound } from "next/navigation";
 import User from "@/components/user/User";
-import {requireAuthUserAndPlayer} from "@/app/auth/authUtils";
+import { requireAuthUserAndPlayer } from "@/app/auth/authUtils";
+import { getUserVerifiedCollections } from "../actions/collectionContracts";
 
 export const dynamic = "force-dynamic";
 
 // 로딩 상태 컴포넌트
 function UserLoading() {
     return (
-        <div className="animate-pulse p-4">
-            <div className="h-24 bg-gray-200 rounded-full w-24 mx-auto mb-4"></div>
-            <div className="h-8 bg-gray-200 rounded w-1/2 mx-auto mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-2/3 mx-auto"></div>
+        <div className="relative flex flex-col w-full h-full overflow-hidden">
+            <div className="fixed inset-0 bg-gradient-to-b from-[#09011b] to-[#311473] -z-20" />
+            <div className="flex justify-center items-center h-screen">
+                <div className="animate-pulse text-center">
+                    <h2 className="text-4xl mb-4">User</h2>
+                    <p className="text-muted-foreground">Loading...</p>
+                </div>
+            </div>
         </div>
     );
 }
@@ -23,7 +27,16 @@ function UserLoading() {
 async function UserContent() {
     try {
         const { user, player } = await requireAuthUserAndPlayer("/user");
-        return <User user={user} player={player} />;
+        const userVerifiedCollections = await getUserVerifiedCollections({
+            userId: user.id,
+        });
+        return (
+            <User
+                user={user}
+                player={player}
+                userVerifiedCollections={userVerifiedCollections}
+            />
+        );
     } catch (error) {
         console.error("Error loading user:", error);
         notFound();

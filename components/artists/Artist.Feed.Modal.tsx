@@ -10,7 +10,8 @@ import ArtistFeedModalCard from "./Artist.Feed.Modal.Card";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import Portal from "../atoms/Portal";
-import CustomCarousel from "../atoms/CustomCarousel";
+import dynamic from "next/dynamic";
+import React from "react";
 
 interface ArtistFeedModalProps {
     initialFeeds: ArtistFeedWithReactions[];
@@ -20,7 +21,11 @@ interface ArtistFeedModalProps {
     onClose: () => void;
 }
 
-export default function ArtistFeedModal({
+const CustomCarousel = dynamic(() => import("../atoms/CustomCarousel"), {
+    ssr: false,
+});
+
+export default React.memo(function ArtistFeedModal({
     initialFeeds,
     artist,
     initialFeedIndex = 0,
@@ -161,4 +166,4 @@ export default function ArtistFeedModal({
             </div>
         </Portal>
     );
-}
+});

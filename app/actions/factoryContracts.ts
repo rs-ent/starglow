@@ -17,7 +17,12 @@ import {
     getChain,
     getEscrowWalletWithPrivateKey,
 } from "./blockchain";
-import { Artist, CollectionContract, FactoryContract, Metadata } from "@prisma/client";
+import {
+    Artist,
+    CollectionContract,
+    FactoryContract,
+    Metadata,
+} from "@prisma/client";
 import { privateKeyToAccount } from "viem/accounts";
 
 import factoryJson from "@/web3/artifacts/contracts/Factory.sol/CollectionFactory.json";
@@ -380,6 +385,7 @@ export async function createCollection(
 export interface GetCollectionInput {
     factoryId?: string;
     networkId?: string;
+    isListed?: boolean;
 }
 
 export type Collection = CollectionContract & {
@@ -434,6 +440,10 @@ export async function getCollections(
 
         if (input.networkId) {
             where.networkId = input.networkId;
+        }
+
+        if (input.isListed) {
+            where.isListed = input.isListed;
         }
 
         const collections = await prisma.collectionContract.findMany({

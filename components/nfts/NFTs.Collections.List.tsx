@@ -10,6 +10,12 @@ import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import React from "react";
 import { Mesh, Vector3 } from "three";
+import { Environment } from "@react-three/drei";
+import {
+    useCachedTexture,
+    prefetchTextures,
+} from "@/lib/utils/useCachedTexture";
+
 interface NFTsCollectionsListProps {
     collections: Collection[];
     initialTargetCameraZ?: number;
@@ -61,6 +67,7 @@ export default function NFTsCollectionsList({
     onBuyNowClick,
     initialTargetCameraZ = 35,
 }: NFTsCollectionsListProps) {
+    // 모든 훅을 최상단에서 호출
     const [selected, setSelected] = useState(0);
     const [dragOffset, setDragOffset] = useState(0);
     const [targetCameraZ, setTargetCameraZ] = useState(initialTargetCameraZ);
@@ -69,13 +76,27 @@ export default function NFTsCollectionsList({
     const [height, setHeight] = useState(500);
     const [positionY, setPositionY] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
-
     const [isPinching, setIsPinching] = useState(false);
-
     const [confirmedAlpha, setConfirmedAlpha] = useState(1);
     const [buyNowCollection, setBuyNowCollection] = useState<Collection | null>(
         null
     );
+    const [isPreloaded, setIsPreloaded] = useState(false);
+
+    // 3D 카드 이미지 프리로딩
+    useEffect(() => {
+        const urls = collections
+            .map((c) => {
+                const metadata = c.metadata?.metadata as { image?: string };
+                return metadata?.image || null;
+            })
+            .filter(Boolean) as string[];
+        if (urls.length === 0) {
+            setIsPreloaded(true);
+            return;
+        }
+        prefetchTextures(urls).then(() => setIsPreloaded(true));
+    }, [collections]);
 
     const len = collections.length;
     const handleDrag = useCallback(
@@ -83,13 +104,11 @@ export default function NFTsCollectionsList({
             if (isPinching) {
                 return;
             }
-
             const {
                 movement: [mx],
                 last,
                 event,
             } = state;
-
             const offset = mx / 120;
             if (!last) {
                 setDragOffset(offset);
@@ -104,7 +123,6 @@ export default function NFTsCollectionsList({
         },
         [selected, len, isPinching]
     );
-
     const handleWheel = useCallback(
         ({
             event,
@@ -120,7 +138,6 @@ export default function NFTsCollectionsList({
         },
         []
     );
-
     const handlePinch = useCallback(
         ({
             event,
@@ -134,13 +151,11 @@ export default function NFTsCollectionsList({
             last: boolean;
         }) => {
             event.preventDefault();
-
             if (first) {
                 setIsPinching(true);
             } else if (last) {
                 setIsPinching(false);
             }
-
             setTargetCameraZ((prev) => {
                 return Math.min(
                     Math.max(prev - (md - 1) * (md < 1 ? 3 : 1.5), 10),
@@ -150,7 +165,6 @@ export default function NFTsCollectionsList({
         },
         []
     );
-
     const bind = useGesture(
         {
             onDrag: handleDrag,
@@ -161,14 +175,12 @@ export default function NFTsCollectionsList({
             eventOptions: { passive: false },
         }
     );
-
     const { radius, angleStep } = useMemo(() => {
         const baseRadius = 30;
         const radius = baseRadius + Math.max(0, len - 5) * 0.7;
         const angleStep = (2 * Math.PI) / len;
         return { radius, angleStep };
     }, [len]);
-
     const CameraLerp = React.memo(function CameraLerp({
         targetCameraZ,
     }: {
@@ -180,19 +192,16 @@ export default function NFTsCollectionsList({
         });
         return null;
     });
-
     const handleClickCollection = (
         collectionId: string,
         buyNowClicked: boolean
     ) => {
         const index = collections.findIndex((c) => c.id === collectionId);
-
         if (buyNowClicked && index !== -1) {
             const cameraZ = 5;
             setTargetCameraZ(cameraZ);
             onBuyNowClick(collections[index]);
         }
-
         if (selected === index) {
             if (!buyNowClicked && confirmedAlpha > 1) {
                 setConfirmedAlpha(1);
@@ -208,7 +217,6 @@ export default function NFTsCollectionsList({
             setTargetCameraZ(cameraZByWidth);
         }
     };
-
     const renderCollection = useCallback(
         (collection: Collection, i: number) => {
             const effectiveSelected = selected - dragOffset;
@@ -216,7 +224,6 @@ export default function NFTsCollectionsList({
             const x = Math.sin(angle) * radius;
             const z = Math.cos(angle) * radius - radius;
             const rotationY = angle;
-
             return (
                 <NFTsCollectionsCard3DR3F
                     key={i}
@@ -234,7 +241,6 @@ export default function NFTsCollectionsList({
         },
         [selected, dragOffset, angleStep, radius, positionY, confirmedAlpha]
     );
-
     useEffect(() => {
         const handleResize = () => {
             setWidth(window.innerWidth);
@@ -255,11 +261,21 @@ export default function NFTsCollectionsList({
                 setHeight(window.innerHeight - 130);
             }
         };
-
         handleResize();
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, [window.innerWidth, window.innerHeight]);
+
+    // 프리로딩 완료 후에만 렌더링
+    if (!isPreloaded) {
+        return (
+            <div className="flex items-center justify-center w-full h-[400px]">
+                <div className="animate-pulse w-40 h-60 bg-gray-200 rounded-xl" />
+                <div className="animate-pulse w-40 h-60 bg-gray-200 rounded-xl ml-4" />
+                <div className="animate-pulse w-40 h-60 bg-gray-200 rounded-xl ml-4" />
+            </div>
+        );
+    }
 
     return (
         <div
@@ -277,6 +293,7 @@ export default function NFTsCollectionsList({
                 NFTs
             </h2>
             <Canvas camera={{ position: [0, 0, targetCameraZ], fov: 40 }}>
+                <Environment preset="city" />
                 <CameraLerp targetCameraZ={targetCameraZ} />
                 <ambientLight intensity={0.1} color="#ffffab" />
                 <directionalLight

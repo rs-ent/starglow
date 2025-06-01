@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { collectionKeys } from "../queryKeys";
 import {
     getCollection,
@@ -195,11 +195,14 @@ export const useCollectionParticipants = (
 };
 
 export const useUserVerifiedCollections = (
-    input?: GetUserVerifiedCollectionsInput
+    input?: GetUserVerifiedCollectionsInput,
+    options?: UseQueryOptions<any, Error>
 ) => {
     return useQuery({
         queryKey: collectionKeys.userVerified(input?.userId),
         queryFn: () => getUserVerifiedCollections(input),
         enabled: !!input?.userId,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
     });
 };

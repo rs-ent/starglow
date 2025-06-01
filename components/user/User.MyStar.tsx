@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Artist, Player, Poll, Quest } from "@prisma/client";
 import { User } from "next-auth";
 import { VerifiedCollection } from "@/app/actions/collectionContracts";
@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils/tailwind";
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { useQuestGet } from "@/app/hooks/useQuest";
 import ArtistButton from "../atoms/Artist.Button";
-import UserMyStarModal from "./User.MyStar.Modal";
+import dynamic from "next/dynamic";
+import PartialLoading from "../atoms/PartialLoading";
 
 interface UserMyStarProps {
     user: User;
@@ -18,7 +19,12 @@ interface UserMyStarProps {
     userVerifiedCollections: VerifiedCollection[];
 }
 
-export default function UserMyStar({
+const UserMyStarModal = dynamic(() => import("./User.MyStar.Modal"), {
+    loading: () => <div>Loading...</div>,
+    ssr: false,
+});
+
+export default React.memo(function UserMyStar({
     user,
     player,
     userVerifiedCollections,
@@ -83,8 +89,12 @@ export default function UserMyStar({
                         if (!isEligible) return false;
 
                         const isNotExpired =
-                            (!poll.endDate || poll.endDate.getTime() > now) &&
-                            (!poll.startDate || poll.startDate.getTime() < now);
+                            (!poll.endDate ||
+                                (poll.endDate &&
+                                    new Date(poll.endDate).getTime() > now)) &&
+                            (!poll.startDate ||
+                                (poll.startDate &&
+                                    new Date(poll.startDate).getTime() < now));
                         if (!isNotExpired) return false;
 
                         const log = (playerPollLogs ?? []).find(
@@ -103,9 +113,12 @@ export default function UserMyStar({
                         if (!isEligible) return false;
 
                         const isNotExpired =
-                            (!quest.endDate || quest.endDate.getTime() > now) &&
+                            (!quest.endDate ||
+                                (quest.endDate &&
+                                    new Date(quest.endDate).getTime() > now)) &&
                             (!quest.startDate ||
-                                quest.startDate.getTime() < now);
+                                (quest.startDate &&
+                                    new Date(quest.startDate).getTime() < now));
 
                         if (!quest.permanent && !isNotExpired) return false;
 
@@ -124,13 +137,13 @@ export default function UserMyStar({
         return result;
     }, [artists, pollsList, quests, playerPollLogs, playerQuestLogs]);
 
-    const handleSelectArtist = (artist: Artist) => {
+    const handleSelectArtist = useCallback((artist: Artist) => {
         setSelectedArtist(artist);
-    };
+    }, []);
 
-    const handleClose = () => {
+    const handleClose = useCallback(() => {
         setSelectedArtist(null);
-    };
+    }, []);
 
     if (selectedArtist) {
         return (
@@ -145,6 +158,14 @@ export default function UserMyStar({
                 open={true}
                 onClose={handleClose}
             />
+        );
+    }
+
+    if (isPollsLoading || isQuestsLoading) {
+        return (
+            <div className="w-full flex justify-center items-center py-20">
+                <PartialLoading text="Loading..." size="sm" />
+            </div>
         );
     }
 
@@ -176,4 +197,4 @@ export default function UserMyStar({
             })}
         </div>
     );
-}
+});

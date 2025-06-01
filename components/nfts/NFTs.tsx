@@ -2,22 +2,29 @@
 
 "use client";
 
-import { useState } from "react";
-import NFTsCollections from "./NFTs.Collections";
+import { useState, useCallback } from "react";
 import type { Collection } from "@/app/actions/factoryContracts";
 import { cn } from "@/lib/utils/tailwind";
 import { useRouter } from "next/navigation";
+import NFTsCollections from "./NFTs.Collections";
 
-export default function NFTs() {
+export default function NFTs({
+    listedCollections,
+}: {
+    listedCollections: Collection[];
+}) {
     const router = useRouter();
     const [isFadingOut, setIsFadingOut] = useState(false);
 
-    const handleBuyNowClick = (collection: Collection) => {
-        setIsFadingOut(true);
-        setTimeout(() => {
-            router.push(`/nfts/${collection.address}`);
-        }, 950);
-    };
+    const handleBuyNowClick = useCallback(
+        (collection: Collection) => {
+            setIsFadingOut(true);
+            setTimeout(() => {
+                router.push(`/nfts/${collection.address}`);
+            }, 950);
+        },
+        [router]
+    );
 
     return (
         <div className="overflow-hidden">
@@ -31,7 +38,10 @@ export default function NFTs() {
                             : ""
                     )}
                 />
-                <NFTsCollections onBuyNowClick={handleBuyNowClick} />
+                <NFTsCollections
+                    onBuyNowClick={handleBuyNowClick}
+                    listedCollections={listedCollections}
+                />
             </div>
         </div>
     );
