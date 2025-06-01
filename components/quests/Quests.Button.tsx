@@ -12,9 +12,8 @@ import {formatWaitTime} from "@/lib/utils/format";
 import Countdown from "@/components/atoms/Countdown";
 import {AdvancedTokenGateResult} from "@/app/actions/blockchain";
 import {AnimatePresence, motion} from "framer-motion";
-import InviteFriendsModal from "./InviteFriends.Modal";
-import PopupInteractFeedback from "./Popup.InteractFeedback";
-import {useOptimisticUpdate} from "@/app/hooks/useOptimisticUpdate";
+import InviteFriendsModal from "../atoms/InviteFriends.Modal";
+import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
 
 // 디바운스 지연 시간 (밀리초)
 const DEBOUNCE_DELAY = 500;
@@ -80,130 +79,6 @@ function QuestsButton({
     const [status, setStatus] = useState<"completed" | "claimed" | "default">("default");
     const [buttonStyle, setButtonStyle] = useState<string>("gradient-border morp-glass-1");
     const [isReady, setIsReady] = useState<boolean>(false);
-
-    // 낙관적 업데이트를 위한 퀘스트 완료 처리
-    const completeQuestOptimistic = useOptimisticUpdate({
-        queryKey: ["questLogs", player?.id, quest.id],
-        mutationFn: async (params: { 
-            quest: Quest; 
-            player: Player; 
-            tokenGating?: TokenGatingResult 
-        }) => {
-            return await completeQuest(params);
-        },
-        optimisticUpdate: (oldData, variables) => {
-            // 기존 데이터가 없으면 새로운 QuestLog 생성
-            if (!oldData) {
-                return {
-                    id: `temp-${Date.now()}`,
-                    questId: variables.quest.id,
-                    playerId: variables.player.id,
-                    completed: true,
-                    isClaimed: false,
-                    completedDates: [new Date().toISOString()],
-                    repeatCount: 1,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                };
-            }
-            
-            // 기존 데이터가 있으면 업데이트
-            return {
-                ...oldData,
-                completed: true,
-                completedDates: [...(oldData.completedDates || []), new Date().toISOString()],
-                repeatCount: (oldData.repeatCount || 0) + 1,
-                updatedAt: new Date(),
-            };
-        },
-        onSuccess: (data, variables) => {
-            if (data.success) {
-                // 반복 퀘스트이고 아직 최대 반복 횟수에 도달하지 않았을 경우
-                if (quest.repeatable && quest.repeatableCount && quest.repeatableCount > (questLog?.repeatCount || 0) + 1) {
-                    toast.success("Quest completed! Please wait for the next completion.");
-                    // 반복 퀘스트가 최대 횟수에 도달하지 않았으면 default 상태 유지
-                    setStatus("default");
-                    setButtonStyle("gradient-border morp-glass-1");
-                } else {
-                    // 일반 퀘스트이거나 반복 퀘스트의 최대 횟수에 도달한 경우
-                    toast.success("Quest completed! Please claim your reward.");
-                    // completed 상태로 변경
-                    setStatus("completed");
-                    setButtonStyle("border-2 border-[rgba(139,92,246,0.9)] animate-pulse");
-                }
-                
-                // 중요: 처리 완료 후 즉시 상호작용 가능하도록 플래그 해제
-                isProcessingRef.current = false;
-                setBlockFunction(false);
-            }
-        },
-        onError: (error, variables, rollback) => {
-            toast.error("Failed to complete quest. Please try again.");
-            console.error("Quest completion error:", error);
-            rollback(); // 오류 발생 시 롤백
-            // 중요: 오류 발생 시에도 상호작용 가능하도록 플래그 해제
-            isProcessingRef.current = false;
-            setBlockFunction(false);
-        },
-    });
-
-    // 낙관적 업데이트를 위한 보상 청구 처리
-    const claimRewardOptimistic = useOptimisticUpdate({
-        queryKey: ["questLogs", player?.id, quest.id],
-        mutationFn: async (params: { questLog: QuestLog; player: Player }) => {
-            return await claimQuestReward(params);
-        },
-        optimisticUpdate: (oldData, variables) => {
-            if (!oldData) return variables.questLog;
-            
-            return {
-                ...oldData,
-                isClaimed: true,
-                claimedAt: new Date(),
-                updatedAt: new Date(),
-            };
-        },
-        onSuccess: (data, variables) => {
-            if (data.success) {
-                // 서버 응답 후 추가 작업 (필요한 경우)
-                // 이미 낙관적 업데이트에서 UI를 변경했으므로 여기서는 PopupInteractFeedback을 표시하지 않음
-                
-                // 반복 퀘스트 처리 로직 추가 (서버 응답 기반으로 정확한 상태 설정)
-                if (quest.repeatable && 
-                    quest.repeatableCount && 
-                    (questLog?.repeatCount || 0) < quest.repeatableCount) {
-                    // 반복 퀘스트이고 아직 최대 반복 횟수에 도달하지 않았다면 default 상태로 변경
-                    setStatus("default");
-                    setButtonStyle("gradient-border morp-glass-1");
-                    
-                    // 반복 간격이 있다면 대기 시간 설정
-                    if (quest.repeatableInterval && quest.repeatableInterval > 0) {
-                        setWaitDate(new Date(Date.now() + quest.repeatableInterval));
-                    }
-                } else {
-                    // 일반 퀘스트나 최대 반복 횟수에 도달한 경우 claimed 상태로 변경
-                    setStatus("claimed");
-                    setButtonStyle("opacity-40 bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)]");
-                }
-                
-                // 중요: 처리 완료 후 즉시 상호작용 가능하도록 플래그 해제
-                isProcessingRef.current = false;
-                setBlockFunction(false);
-            }
-        },
-        onError: (error, variables, rollback) => {
-            toast.error("Failed to claim reward. Please try again.");
-            console.error("Claim reward error:", error);
-            rollback(); // 오류 발생 시 롤백
-            
-            // 팝업 닫기 (오류 발생 시)
-            setShowInteractFeedback(false);
-            
-            // 중요: 오류 발생 시에도 상호작용 가능하도록 플래그 해제
-            isProcessingRef.current = false;
-            setBlockFunction(false);
-        },
-    });
 
     // 연속 클릭 방지 함수
     const preventRapidClicks = useCallback(() => {
@@ -298,25 +173,35 @@ function QuestsButton({
             isProcessingRef.current = true;
             setBlockFunction(true);
             window.open(quest.url, "_blank");
-            
-            // 낙관적 업데이트 사용 - 즉시 UI 상태 업데이트
-            completeQuestOptimistic.execute({
+
+            const result = await completeQuest({
                 quest,
                 player,
-                tokenGating: tokenGating || undefined,
+                tokenGating,
             });
-            
-            // 낙관적 업데이트 즉시 UI 상태 변경 (서버 응답 대기하지 않고)
-            setStatus("completed");
-            setButtonStyle("border-2 border-[rgba(139,92,246,0.9)] animate-pulse");
+
+            if (result.success) {
+                setStatus("completed");
+                setButtonStyle("border-2 border-[rgba(139,92,246,0.9)] animate-pulse");
+                if (quest.repeatable && quest.repeatableCount && quest.repeatableCount > (questLog?.repeatCount || 0) + 1) {
+                    toast.success("Quest completed! Please wait for the next completion.");
+                } else {
+                    toast.success("Quest completed! Please claim your reward.");
+                }
+            } else {
+                toast.error(result.error || "Failed to complete quest");
+            }
         } catch (error) {
             console.error("Quest completion error:", error);
             isProcessingRef.current = false;
             setBlockFunction(false);
+        } finally {
+            isProcessingRef.current = false;
+            setBlockFunction(false);
         }
     }, [
-        quest, player, permission, status, isCompleting, isClaimingQuestReward, 
-        waitDate, blockFunction, tokenGatingResult, completeQuestOptimistic, toast, preventRapidClicks
+        quest, player, permission, status, isCompleting, isClaimingQuestReward,
+        waitDate, blockFunction, tokenGatingResult, completeQuest, toast, preventRapidClicks
     ]);
 
     // 퀘스트 보상 청구 핸들러
@@ -325,7 +210,7 @@ function QuestsButton({
             e.preventDefault();
             e.stopPropagation();
         }
-        
+
         // 연속 클릭 방지
         if (!preventRapidClicks()) {
             return;
@@ -374,25 +259,31 @@ function QuestsButton({
         try {
             isProcessingRef.current = true;
             setBlockFunction(true);
-            
-            // 낙관적 업데이트 전에 팝업 표시 (한 번만 표시)
-            setShowInteractFeedback(true);
-            
-            // 낙관적 업데이트 사용
-            claimRewardOptimistic.execute({ questLog, player });
-            
-            // 낙관적 업데이트 즉시 UI 상태 변경 (서버 응답 대기하지 않고)
-            setStatus("claimed");
-            setButtonStyle("opacity-40 bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)]");
+
+            const result = await claimQuestReward({
+                questLog,
+                player,
+            });
+
+            if (result.success) {
+                setStatus("claimed");
+                setButtonStyle("opacity-40 bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)]");
+                setShowInteractFeedback(true);
+            } else {
+                toast.error(result.error || "Failed to claim quest reward");
+            }
         } catch (error) {
             console.error("Claim reward error:", error);
             setShowInteractFeedback(false);
             isProcessingRef.current = false;
             setBlockFunction(false);
+        } finally {
+            isProcessingRef.current = false;
+            setBlockFunction(false);
         }
     }, [
         player, blockFunction, permission, questLog, status, quest,
-        isClaimingQuestReward, claimRewardOptimistic, toast, preventRapidClicks
+        isClaimingQuestReward, claimQuestReward, toast, preventRapidClicks
     ]);
 
     // 퀘스트 상태 업데이트
@@ -457,24 +348,13 @@ function QuestsButton({
     const assetFrameClass = getResponsiveClass(assetSize).frameClass;
     const assetTextClass = getResponsiveClass(assetTextSize).textClass;
 
-    // 버튼 상태 계산 로직 - 낙관적 업데이트 상태 반영
+    // 버튼 상태 계산 로직
     const getButtonState = useCallback(() => {
-        // 낙관적 업데이트 중인 경우
-        if (completeQuestOptimistic.isOptimistic || claimRewardOptimistic.isOptimistic) {
-            return {
-                status: completeQuestOptimistic.isOptimistic ? "completed" : "claimed",
-                style: completeQuestOptimistic.isOptimistic 
-                    ? "border-2 border-[rgba(139,92,246,0.9)] animate-pulse border-dashed" 
-                    : "opacity-40 bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)] border-dashed",
-                disabled: true
-            };
-        }
-        
         // 처리 중인 경우
-        if (completeQuestOptimistic.isPending || claimRewardOptimistic.isPending) {
+        if (isCompleting || isClaimingQuestReward) {
             return {
                 status: status,
-                style: `${buttonStyle} opacity-70`,
+                style: `${buttonStyle} opacity-70 animate-pulse`,
                 disabled: true
             };
         }
@@ -487,8 +367,7 @@ function QuestsButton({
         };
     }, [
         status, buttonStyle, 
-        completeQuestOptimistic.isOptimistic, completeQuestOptimistic.isPending,
-        claimRewardOptimistic.isOptimistic, claimRewardOptimistic.isPending
+        isCompleting, isClaimingQuestReward
     ]);
 
     // 계산된 버튼 상태

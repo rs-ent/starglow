@@ -2,20 +2,10 @@
 
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { artistKeys } from "../queryKeys";
-import {
-    getArtists,
-    getArtist,
-    getArtistMessages,
-    tokenGating,
-} from "../actions/artists";
-import type {
-    GetArtistsInput,
-    GetArtistInput,
-    GetArtistMessagesInput,
-    TokenGatingInput,
-} from "../actions/artists";
+import {useQuery} from "@tanstack/react-query";
+import {artistKeys} from "../queryKeys";
+import type {GetArtistInput, GetArtistMessagesInput, GetArtistsInput, TokenGatingInput,} from "../actions/artists";
+import {getArtist, getArtistMessages, getArtists, tokenGating,} from "../actions/artists";
 
 export function useArtists(input?: GetArtistsInput) {
     return useQuery({
@@ -44,7 +34,5 @@ export function useTokenGatingQuery(input?: TokenGatingInput) {
     return useQuery({
         queryKey: artistKeys.tokenGating(input),
         queryFn: () => tokenGating(input),
-        enabled: Boolean(input?.artist && input?.userId),
-        staleTime: 1000 * 60 * 60 * 1,
     });
 }

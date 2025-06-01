@@ -2,7 +2,7 @@
 
 import {Player, Quest, QuestLog, ReferralLog} from "@prisma/client";
 import {memo, useMemo} from "react";
-import QuestsButton from "../atoms/Quests.Button";
+import QuestsButton from "./Quests.Button";
 import PartialLoading from "../atoms/PartialLoading";
 import {cn} from "@/lib/utils/tailwind";
 import {AdvancedTokenGateResult} from "@/app/actions/blockchain";

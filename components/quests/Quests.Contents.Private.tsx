@@ -2,13 +2,12 @@
 
 "use client";
 
-import {memo, useCallback, useEffect, useMemo, useState} from "react";
+import {memo, useCallback, useMemo, useState} from "react";
 import {Artist, Player, QuestLog, ReferralLog} from "@prisma/client";
 import ArtistMessage from "../artists/ArtistMessage";
 import ArtistSlideSelector from "../artists/ArtistSlideSelector";
 import QuestsArtistMissions from "./Quests.Contents.Private.ArtistMissions";
-import {useArtistSet, useArtistsGet} from "@/app/hooks/useArtists";
-import {AdvancedTokenGateResult} from "@/app/actions/blockchain";
+import {useArtistsGet} from "@/app/hooks/useArtists";
 import {cn} from "@/lib/utils/tailwind";
 import {User} from "next-auth";
 import {ArtistBG} from "@/lib/utils/get/artist-colors";
@@ -30,31 +29,20 @@ function QuestsPrivate({
     referralLogs,
 }: QuestsPrivateProps) {
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
-    const [showArtistContents, setShowArtistContents] = useState(false);
-    const [selectedArtistTokenGatingResult, setSelectedArtistTokenGatingResult] = 
-        useState<AdvancedTokenGateResult | null>(null);
-
-    // 토큰 게이팅 쿼리 최적화 - 필요한 경우에만 실행
-    const tokenGatingQueryEnabled = Boolean(selectedArtist && user?.id);
     
     const {
-        tokenGatingResult: getTokenGatingResult,
-        isTokenGatingLoading: getTokenGatingLoading,
+        tokenGatingResult,
+        isTokenGatingLoading,
     } = useArtistsGet({
         getTokenGatingInput: {
             artist: selectedArtist,
             userId: user?.id || null,
         },
-        enabled: tokenGatingQueryEnabled,
     });
-
-    const { tokenGating, isTokenGating } = useArtistSet();
 
     // 아티스트 선택 핸들러 메모이제이션
     const handleArtistSelect = useCallback((artist: Artist | null) => {
         setSelectedArtist(artist);
-        setSelectedArtistTokenGatingResult(null);
-        setShowArtistContents(false);
     }, []);
 
     // 배경 스타일 메모이제이션
@@ -69,60 +57,6 @@ function QuestsPrivate({
             background: `linear-gradient(to bottom right, ${ArtistBG(selectedArtist, 0, 100)}, ${ArtistBG(selectedArtist, 1, 100)})`,
         };
     }, [selectedArtist]);
-
-    // 토큰 게이팅 결과 가져오기 - 의존성 배열 최적화
-    useEffect(() => {
-        // 이미 로딩 중이거나 아티스트가 선택되지 않은 경우 실행하지 않음
-        if (isTokenGating || !selectedArtist) return;
-        
-        const fetchTokenGatingResult = async () => {
-            try {
-                // 캐시된 결과가 있으면 사용
-                if (getTokenGatingResult) {
-                    setSelectedArtistTokenGatingResult(getTokenGatingResult);
-                    setShowArtistContents(true);
-                    return;
-                }
-                
-                // 사용자가 없는 경우 기본값 설정
-                if (!user?.id) {
-                    setSelectedArtistTokenGatingResult({
-                        success: false,
-                        data: {
-                            hasToken: {},
-                            tokenCount: {},
-                            ownerWallets: {},
-                        },
-                    });
-                    setShowArtistContents(true);
-                    return;
-                }
-                
-                // API 호출
-                if (!getTokenGatingLoading) {
-                    const result = await tokenGating({
-                        artist: selectedArtist,
-                        userId: user.id,
-                    });
-                    setSelectedArtistTokenGatingResult(result);
-                    setShowArtistContents(true);
-                }
-            } catch (error) {
-                console.error("Token gating error:", error);
-                // 에러 발생 시에도 컨텐츠 표시
-                setShowArtistContents(true);
-            }
-        };
-        
-        fetchTokenGatingResult();
-    }, [
-        selectedArtist, 
-        user?.id, 
-        isTokenGating, 
-        getTokenGatingLoading, 
-        getTokenGatingResult, 
-        tokenGating
-    ]);
 
     // 애니메이션 변수 - 컴포넌트 외부로 이동하여 리렌더링 방지
     const animations = useMemo(() => ({
@@ -154,13 +88,13 @@ function QuestsPrivate({
 
     // 로딩 상태 메모이제이션
     const isLoading = useMemo(() => 
-        (isTokenGating || getTokenGatingLoading) && !!selectedArtist,
-    [isTokenGating, getTokenGatingLoading, selectedArtist]);
+        isTokenGatingLoading && !!selectedArtist,
+    [isTokenGatingLoading, selectedArtist]);
 
     // 컨텐츠 표시 조건 메모이제이션
     const shouldShowContent = useMemo(() => 
-        selectedArtist && !isTokenGating && !getTokenGatingLoading && showArtistContents,
-    [selectedArtist, isTokenGating, getTokenGatingLoading, showArtistContents]);
+        selectedArtist && !isTokenGatingLoading,
+    [selectedArtist, isTokenGatingLoading]);
 
     return (
         <div className="w-full flex flex-col items-center justify-center">
@@ -195,7 +129,7 @@ function QuestsPrivate({
             
             {/* 아티스트 콘텐츠 - AnimatePresence로 애니메이션 최적화 */}
             <AnimatePresence mode="wait">
-                {shouldShowContent && (
+                {shouldShowContent && selectedArtist && (
                     <motion.div 
                         className="relative w-full h-full"
                         key={selectedArtist.id}
@@ -228,7 +162,7 @@ function QuestsPrivate({
                                     artist={selectedArtist}
                                     player={player}
                                     questLogs={questLogs}
-                                    tokenGatingResult={selectedArtistTokenGatingResult}
+                                    tokenGatingResult={tokenGatingResult}
                                     referralLogs={referralLogs || []}
                                     bgColorFrom={ArtistBG(selectedArtist, 2, 100)}
                                     bgColorTo={ArtistBG(selectedArtist, 0, 100)}

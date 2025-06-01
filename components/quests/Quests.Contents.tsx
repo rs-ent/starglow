@@ -32,14 +32,11 @@ function QuestsContents({ user, player }: QuestsContentsProps) {
 
     // 플레이어 ID 기반 조건부 쿼리
     const playerId = player?.id ?? "";
-    const shouldFetch = !!playerId;
-
     // 퀘스트 로그 데이터 가져오기
     const { playerQuestLogs } = useQuestGet({
         getPlayerQuestLogsInput: {
             playerId
         },
-        enabled: shouldFetch
     });
 
     // 추천 로그 데이터 가져오기
@@ -47,7 +44,6 @@ function QuestsContents({ user, player }: QuestsContentsProps) {
         GetReferralLogsInput: {
             playerId
         },
-        enabled: shouldFetch
     });
 
     // 애니메이션 변수

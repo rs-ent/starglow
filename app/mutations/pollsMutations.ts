@@ -2,17 +2,16 @@
 
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { pollKeys } from "../queryKeys";
+import {useMutation, useQueryClient} from "@tanstack/react-query";
+import {playerAssetsKeys, pollKeys} from "../queryKeys";
 import {
     createPoll,
     deletePoll,
-    updatePoll,
     participatePoll,
-    updateUserSelection,
     updateActivePoll,
+    updatePoll,
+    updateUserSelection,
 } from "../actions/polls";
-import { playerAssetsKeys } from "../queryKeys";
 
 export function useCreatePollMutation() {
     const queryClient = useQueryClient();
@@ -108,9 +107,9 @@ export function useParticipatePollMutation() {
                 queryKey: pollKeys.playerLogs(variables.player.id),
             });
             queryClient.invalidateQueries({
-                queryKey: playerAssetsKeys.balances(variables.player.id, [
-                    variables.poll.participationRewardAssetId || "",
-                ]),
+                queryKey: playerAssetsKeys.balances(
+                    variables.player.id,
+                ),
             });
         },
         onError: (error) => {

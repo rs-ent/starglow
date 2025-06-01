@@ -84,7 +84,7 @@ function PollsContents({ user, player }: PollsContentsProps) {
                     animate="visible"
                     exit="exit"
                     variants={contentVariants}
-                    className="w-full"
+                    className="w-full flex justify-center items-center"
                 >
                     {isPublic ? (
                         <PollsContentsPublic

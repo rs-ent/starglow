@@ -76,7 +76,7 @@ function QuestsArtistMissions({
         ) || [];
 
         const ready =
-            (quests?.items?.length > 0) && 
+            (quests && quests.items?.length > 0) &&
             tokenGatingResult !== undefined && 
             !isLoading;
 

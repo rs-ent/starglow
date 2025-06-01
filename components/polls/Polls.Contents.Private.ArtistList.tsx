@@ -126,7 +126,7 @@ function PollsContentsPrivateArtistList({
             animate="visible"
             className="text-center text-red-400 py-6"
         >
-            Error: {typeof error === "string" ? error : error?.message}
+            Error: error?.message || "Failed to load polls"
         </motion.div>
     ), [animations.content, error]);
 

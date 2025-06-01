@@ -284,7 +284,7 @@ function PollsList({
                     
                     // 카드 스케일 계산 (중앙에 있는 카드가 더 크게 보이도록)
                     const isCenter = index === centerIndex;
-                    const scale = isCenter ? 1 : 0.95;
+                    const scale = isCenter ? 1.05 : 0.95;
                     const opacity = isCenter ? 1 : 0.85;
                     
                     return (
@@ -326,15 +326,15 @@ function PollsList({
             
             {/* 인디케이터 (모바일에서만 표시) */}
             {isMobile && (
-                <div className="flex justify-center mt-4 gap-1">
+                <div className="flex justify-center mt-2 gap-1">
                     {polls.map((_, index) => (
                         <button
                             key={index}
                             className={cn(
                                 "w-2 h-2 rounded-full transition-all",
                                 index === centerIndex 
-                                    ? "bg-white scale-125" 
-                                    : "bg-white/40"
+                                    ? "bg-white scale-110"
+                                    : "bg-white/40 scale-90"
                             )}
                             onClick={() => sliderRef.current?.slickGoTo(index)}
                             aria-label={`Go to poll ${index + 1}`}
