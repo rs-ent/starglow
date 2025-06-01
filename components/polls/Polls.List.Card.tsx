@@ -2,24 +2,24 @@
 
 "use client";
 
-import {Artist, Player, Poll, PollLog} from "@prisma/client";
-import {PollOption, TokenGatingResult} from "@/app/actions/polls";
+import { Artist, Player, Poll, PollLog } from "@prisma/client";
+import { PollOption, TokenGatingResult } from "@/app/actions/polls";
 import PollThumbnail from "@/components/atoms/Polls.Thumbnail";
-import {formatDate} from "@/lib/utils/format";
-import {usePollsGet, usePollsSet} from "@/app/hooks/usePolls";
+import { formatDate } from "@/lib/utils/format";
+import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
 import PollBar from "@/components/atoms/Polls.Bar";
-import {getResponsiveClass} from "@/lib/utils/responsiveClass";
-import {cn} from "@/lib/utils/tailwind";
-import {memo, useCallback, useMemo, useState} from "react";
-import {useToast} from "@/app/hooks/useToast";
-import {useLoading} from "@/app/hooks/useLoading";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+import { memo, useCallback, useMemo, useState } from "react";
+import { useToast } from "@/app/hooks/useToast";
+import { useLoading } from "@/app/hooks/useLoading";
 import Countdown from "../atoms/Countdown";
 import Doorman from "../atoms/Doorman";
 import Popup from "../atoms/Popup";
 import Button from "../atoms/Button";
 import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
-import {useAssetsGet} from "@/app/hooks/useAssets";
-import {motion} from "framer-motion";
+import { useAssetsGet } from "@/app/hooks/useAssets";
+import { motion } from "framer-motion";
 
 interface PollsCardProps {
     index?: number;
@@ -50,7 +50,7 @@ function PollsListCard({
 }: PollsCardProps) {
     const { startLoading, endLoading } = useLoading();
     const toast = useToast();
-    
+
     // 날짜 관련 계산 메모이제이션
     const {
         startDate,
@@ -60,35 +60,36 @@ function PollsListCard({
         isBlurred,
         status,
         showOptions,
-        isEnded
+        isEnded,
     } = useMemo(() => {
         const startDateFormatted = formatDate(poll.startDate);
         const endDateFormatted = formatDate(poll.endDate);
         const today = new Date();
         const startDateObj = new Date(poll.startDate);
         const endDateObj = new Date(poll.endDate);
-        
+
         const endDateMinus3Days = new Date(endDateObj);
         endDateMinus3Days.setDate(endDateObj.getDate() - 3);
-        
+
         const endDatePlus30Minutes = new Date(endDateObj);
         endDatePlus30Minutes.setMinutes(endDateObj.getMinutes() + 30);
-        
+
         const isBlurred = today > endDateMinus3Days && today < endDateObj;
-        
+
         // 상태 계산
         let status;
         if (endDateObj.getTime() < today.getTime()) status = "ENDED";
         else if (startDateObj.getTime() > today.getTime()) status = "UPCOMING";
         else status = "ONGOING";
-        
+
         // 옵션 표시 여부
-        const showOptions = startDateObj.getTime() < today.getTime() && 
-                           endDateObj.getTime() > today.getTime();
-        
+        const showOptions =
+            startDateObj.getTime() < today.getTime() &&
+            endDateObj.getTime() > today.getTime();
+
         // 종료 여부
         const isEnded = endDatePlus30Minutes.getTime() < today.getTime();
-        
+
         return {
             startDate: startDateFormatted,
             endDate: endDateFormatted,
@@ -97,7 +98,7 @@ function PollsListCard({
             isBlurred,
             status,
             showOptions,
-            isEnded
+            isEnded,
         };
     }, [poll.startDate, poll.endDate]);
 
@@ -116,14 +117,13 @@ function PollsListCard({
     });
 
     // 투표 제출 훅
-    const {
-        participatePoll,
-    } = usePollsSet();
+    const { participatePoll } = usePollsSet();
 
     // 옵션 파싱
-    const options = useMemo(() => 
-        poll.options as unknown as PollOption[],
-    [poll.options]);
+    const options = useMemo(
+        () => poll.options as unknown as PollOption[],
+        [poll.options]
+    );
 
     // 정렬된 결과 메모이제이션
     const sortedResults = useMemo(() => {
@@ -165,187 +165,205 @@ function PollsListCard({
     }, [tokenGatingData, poll.needToken, pollLogs]);
 
     // 옵션 클릭 핸들러
-    const handleOptionClick = useCallback((option: PollOption) => {
-        if (option.optionId === selection?.optionId) {
-            setSelection(null);
-            return;
-        }
-        setSelection(option);
-        setVoteAmount(poll.needToken && poll.needTokenAddress ? 0 : 1);
-        
-        // 애니메이션 효과
-        setTimeout(() => {
-            setAnimateSubmit(true);
-        }, 100);
-    }, [selection, poll.needToken, poll.needTokenAddress]);
+    const handleOptionClick = useCallback(
+        (option: PollOption) => {
+            if (option.optionId === selection?.optionId) {
+                setSelection(null);
+                return;
+            }
+            setSelection(option);
+            setVoteAmount(poll.needToken && poll.needTokenAddress ? 0 : 1);
+
+            // 애니메이션 효과
+            setTimeout(() => {
+                setAnimateSubmit(true);
+            }, 100);
+        },
+        [selection, poll.needToken, poll.needTokenAddress]
+    );
 
     // 투표 제출 핸들러
-    const handleSubmit = useCallback(async (confirmed = false) => {
-        startLoading();
-        try {
-            // 정답이 있는 폴인 경우 확인 팝업 표시
-            if (poll.hasAnswer && !confirmedAnswer && !confirmed) {
-                setShowAnswerPopup(true);
-                setConfirmedAnswer(false);
-                return;
-            }
-            
-            // 투표 수량 검증
-            if (isNaN(voteAmount) || voteAmount <= 0) {
-                toast.error("Please enter a valid vote amount.");
-                setConfirmedAnswer(false);
-                setShowAnswerPopup(false);
-                return;
-            }
-
-            // 로그인 검증
-            if (!player) {
-                toast.error("Please login to participate in this poll.");
-                setConfirmedAnswer(false);
-                setShowAnswerPopup(false);
-                return;
-            }
-
-            // 옵션 선택 검증
-            if (!selection) {
-                toast.error("Please select an option");
-                setConfirmedAnswer(false);
-                setShowAnswerPopup(false);
-                return;
-            }
-
-            // 토큰 게이팅 검증
-            if (poll.needToken && poll.needTokenAddress) {
-                if (!tokenGatingData || !tokenGatingData.data) {
-                    toast.error(
-                        "Please wait for the token gating process to complete."
-                    );
+    const handleSubmit = useCallback(
+        async (confirmed = false) => {
+            startLoading();
+            try {
+                // 정답이 있는 폴인 경우 확인 팝업 표시
+                if (poll.hasAnswer && !confirmedAnswer && !confirmed) {
+                    setShowAnswerPopup(true);
                     setConfirmedAnswer(false);
-                    setShowAnswerPopup(false);
                     return;
                 }
-                if (!tokenGatingData?.data.hasToken) {
-                    toast.error(
-                        "This polls is need an authentication. Please purchase the NFT before participation."
-                    );
+
+                // 투표 수량 검증
+                if (isNaN(voteAmount) || voteAmount <= 0) {
+                    toast.error("Please enter a valid vote amount.");
                     setConfirmedAnswer(false);
                     setShowAnswerPopup(false);
                     return;
                 }
 
-                // 남은 토큰 수량 검증
-                const remainingTokenCount =
-                    tokenGatingData.data.tokenCount -
-                    (voteAmount + alreadyVotedAmount);
-                if (remainingTokenCount < 0) {
-                    toast.error(
-                        "You've used all your tokens for this poll. Please purchase more NFTs to participate in this poll."
-                    );
+                // 로그인 검증
+                if (!player) {
+                    toast.error("Please login to participate in this poll.");
                     setConfirmedAnswer(false);
                     setShowAnswerPopup(false);
                     return;
                 }
-            }
 
-            // 투표 제출
-            const result = await participatePoll({
-                poll: poll,
-                player: player,
-                optionId: selection.optionId,
-                amount: voteAmount,
-                tokenGating: tokenGatingData || undefined,
-                alreadyVotedAmount,
-            });
+                // 옵션 선택 검증
+                if (!selection) {
+                    toast.error("Please select an option");
+                    setConfirmedAnswer(false);
+                    setShowAnswerPopup(false);
+                    return;
+                }
 
-            // 결과 처리
-            if (result.success) {
-                if (result.error === "MISSED_ANSWER") {
-                    toast.error("I'm sorry, you missed the answer.");
+                // 토큰 게이팅 검증
+                if (poll.needToken && poll.needTokenAddress) {
+                    if (!tokenGatingData || !tokenGatingData.data) {
+                        toast.error(
+                            "Please wait for the token gating process to complete."
+                        );
+                        setConfirmedAnswer(false);
+                        setShowAnswerPopup(false);
+                        return;
+                    }
+                    if (!tokenGatingData?.data.hasToken) {
+                        toast.error(
+                            "This polls is need an authentication. Please purchase the NFT before participation."
+                        );
+                        setConfirmedAnswer(false);
+                        setShowAnswerPopup(false);
+                        return;
+                    }
+
+                    // 남은 토큰 수량 검증
+                    const remainingTokenCount =
+                        tokenGatingData.data.tokenCount -
+                        (voteAmount + alreadyVotedAmount);
+                    if (remainingTokenCount < 0) {
+                        toast.error(
+                            "You've used all your tokens for this poll. Please purchase more NFTs to participate in this poll."
+                        );
+                        setConfirmedAnswer(false);
+                        setShowAnswerPopup(false);
+                        return;
+                    }
+                }
+
+                // 투표 제출
+                const result = await participatePoll({
+                    poll: poll,
+                    player: player,
+                    optionId: selection.optionId,
+                    amount: voteAmount,
+                    tokenGating: tokenGatingData || undefined,
+                    alreadyVotedAmount,
+                });
+
+                // 결과 처리
+                if (result.success) {
+                    if (result.error === "MISSED_ANSWER") {
+                        toast.error("I'm sorry, you missed the answer.");
+                    } else {
+                        setRewarded(result.playerAssetUpdated || false);
+                        setShowInteractFeedback(true);
+                    }
                 } else {
-                    setRewarded(result.playerAssetUpdated || false);
-                    setShowInteractFeedback(true);
+                    toast.error(result.error || "Failed to vote.");
                 }
-            } else {
-                toast.error(result.error || "Failed to vote.");
-            }
 
-            // 상태 초기화
-            setConfirmedAnswer(false);
-            setShowAnswerPopup(false);
-            setVoteAmount(poll.needToken && poll.needTokenAddress ? 0 : 1);
-            setVoteAmountInput("0");
-        } catch (error) {
-            console.error(error);
-            toast.error(`${error}`);
-            setConfirmedAnswer(false);
-            setShowAnswerPopup(false);
-        } finally {
-            endLoading();
-        }
-    }, [
-        poll, 
-        player, 
-        selection, 
-        voteAmount, 
-        tokenGatingData, 
-        alreadyVotedAmount, 
-        confirmedAnswer, 
-        participatePoll, 
-        startLoading, 
-        endLoading, 
-        toast
-    ]);
+                // 상태 초기화
+                setConfirmedAnswer(false);
+                setShowAnswerPopup(false);
+                setVoteAmount(poll.needToken && poll.needTokenAddress ? 0 : 1);
+                setVoteAmountInput("0");
+            } catch (error) {
+                console.error(error);
+                toast.error(`${error}`);
+                setConfirmedAnswer(false);
+                setShowAnswerPopup(false);
+            } finally {
+                endLoading();
+            }
+        },
+        [
+            poll,
+            player,
+            selection,
+            voteAmount,
+            tokenGatingData,
+            alreadyVotedAmount,
+            confirmedAnswer,
+            participatePoll,
+            startLoading,
+            endLoading,
+            toast,
+        ]
+    );
 
     // 투표 수량 변경 핸들러
-    const handleVoteAmountChange = useCallback((value: string) => {
-        if (/^\d*$/.test(value)) {
-            setVoteAmountInput(value);
-            const num = parseInt(value, 10);
-            if (!isNaN(num) && num > 0) {
-                const amount = Math.min(maxVoteAmount, num);
-                setVoteAmount(amount);
-                setVoteAmountInput(amount.toString());
+    const handleVoteAmountChange = useCallback(
+        (value: string) => {
+            if (/^\d*$/.test(value)) {
+                setVoteAmountInput(value);
+                const num = parseInt(value, 10);
+                if (!isNaN(num) && num > 0) {
+                    const amount = Math.min(maxVoteAmount, num);
+                    setVoteAmount(amount);
+                    setVoteAmountInput(amount.toString());
+                }
             }
-        }
-    }, [maxVoteAmount]);
+        },
+        [maxVoteAmount]
+    );
 
     // 투표 수량 증가/감소 핸들러
-    const increaseVoteAmount = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        const amount = Math.min(maxVoteAmount, voteAmount + 1);
-        setVoteAmount(amount);
-        setVoteAmountInput(amount.toString());
-    }, [voteAmount, maxVoteAmount]);
+    const increaseVoteAmount = useCallback(
+        (e: React.MouseEvent) => {
+            e.stopPropagation();
+            const amount = Math.min(maxVoteAmount, voteAmount + 1);
+            setVoteAmount(amount);
+            setVoteAmountInput(amount.toString());
+        },
+        [voteAmount, maxVoteAmount]
+    );
 
-    const decreaseVoteAmount = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        const amount = Math.max(0, voteAmount - 1);
-        setVoteAmount(amount);
-        setVoteAmountInput(amount.toString());
-    }, [voteAmount]);
+    const decreaseVoteAmount = useCallback(
+        (e: React.MouseEvent) => {
+            e.stopPropagation();
+            const amount = Math.max(0, voteAmount - 1);
+            setVoteAmount(amount);
+            setVoteAmountInput(amount.toString());
+        },
+        [voteAmount]
+    );
 
     // 애니메이션 변수
-    const animations = useMemo(() => ({
-        card: {
-            initial: { opacity: 0, y: 20 },
-            animate: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-            exit: { opacity: 0, y: -20, transition: { duration: 0.3 } }
-        },
-        option: {
-            initial: { opacity: 0, x: -10 },
-            animate: { opacity: 1, x: 0, transition: { duration: 0.3 } },
-            hover: { scale: 1.02, transition: { duration: 0.2 } }
-        },
-        submit: {
-            initial: { opacity: 0, y: 10 },
-            animate: { opacity: 1, y: 0, transition: { duration: 0.3 } }
-        }
-    }), []);
+    const animations = useMemo(
+        () => ({
+            card: {
+                initial: { opacity: 0, y: 20 },
+                animate: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+                exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
+            },
+            option: {
+                initial: { opacity: 0, x: -10 },
+                animate: { opacity: 1, x: 0, transition: { duration: 0.3 } },
+                hover: { scale: 1.02, transition: { duration: 0.2 } },
+            },
+            submit: {
+                initial: { opacity: 0, y: 10 },
+                animate: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+            },
+        }),
+        []
+    );
 
     // 옵션 렌더링 함수
     const renderOptions = useCallback(() => {
         if (!showOptions) return null;
-        
+
         return (
             <motion.div
                 className={cn(
@@ -368,7 +386,7 @@ function PollsListCard({
                             }
                             return acc;
                         }, 0) || 0;
-                        
+
                     return (
                         <motion.div
                             key={option.optionId}
@@ -417,24 +435,30 @@ function PollsListCard({
                                     <div
                                         className={cn(
                                             showOngoingResults && "opacity-0",
-                                            selection?.optionId === option.optionId && "white-glow",
+                                            selection?.optionId ===
+                                                option.optionId && "white-glow",
                                             "w-6 h-6 rounded-full z-10",
                                             "border-2 border-[rgba(255,255,255,0.3)]",
                                             "relative",
                                             "transition-all duration-300",
-                                            "transform hover:scale-110",
+                                            "transform hover:scale-105",
                                             "flex-shrink-0",
                                             getResponsiveClass(20).frameClass,
-                                            selection?.optionId === option.optionId && "bg-[rgba(255,255,255,0.2)]"
+                                            selection?.optionId ===
+                                                option.optionId &&
+                                                "bg-[rgba(255,255,255,0.2)]"
                                         )}
                                     >
-                                        {selection?.optionId === option.optionId && (
-                                            <div className="
+                                        {selection?.optionId ===
+                                            option.optionId && (
+                                            <div
+                                                className="
                                                 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
                                                 w-3 h-3 rounded-full
                                                 bg-white
                                                 shadow-[0_0_8px_rgba(255,255,255,0.8)]
-                                            " />
+                                            "
+                                            />
                                         )}
                                     </div>
 
@@ -453,7 +477,9 @@ function PollsListCard({
                                     className={cn(
                                         "transition-all duration-300",
                                         "flex items-center justify-center text-right",
-                                        votedCount > 0 ? "opacity-40" : "opacity-0",
+                                        votedCount > 0
+                                            ? "opacity-40"
+                                            : "opacity-0",
                                         getResponsiveClass(10).textClass,
                                         showOngoingResults && "opacity-0",
                                         "flex-shrink-0 ml-3"
@@ -483,33 +509,35 @@ function PollsListCard({
             </motion.div>
         );
     }, [
-        showOptions, 
-        options, 
-        sortedResults, 
-        pollLogs, 
-        showOngoingResults, 
-        isBlurred, 
-        fgColorFrom, 
-        fgColorTo, 
-        selection, 
+        showOptions,
+        options,
+        sortedResults,
+        pollLogs,
+        showOngoingResults,
+        isBlurred,
+        fgColorFrom,
+        fgColorTo,
+        selection,
         handleOptionClick,
-        animations.option
+        animations.option,
     ]);
 
     // 결과 차트 렌더링 함수
     const renderResults = useCallback(() => {
         if (!isEnded) return null;
-        
+
         return (
             <div className="mt-6">
                 {isLoading ? (
                     <div className="animate-pulse">
-                        {Array.from({ length: options.length }).map((_, idx) => (
-                            <div
-                                key={idx}
-                                className="h-[34px] bg-[rgba(255,255,255,0.3)] blur-sm rounded mb-2"
-                            ></div>
-                        ))}
+                        {Array.from({ length: options.length }).map(
+                            (_, idx) => (
+                                <div
+                                    key={idx}
+                                    className="h-[34px] bg-[rgba(255,255,255,0.3)] blur-sm rounded mb-2"
+                                ></div>
+                            )
+                        )}
                     </div>
                 ) : error ? (
                     <div className="text-red-500 text-sm">
@@ -530,7 +558,8 @@ function PollsListCard({
                         ))}
                         {isBlurred && (
                             <p className="text-xs font-light text-[rgba(255,255,255,0.6)]">
-                                * States hidden before 3 days of end date. Result will be revealed on X after closing.
+                                * States hidden before 3 days of end date.
+                                Result will be revealed on X after closing.
                             </p>
                         )}
                     </>
@@ -538,88 +567,93 @@ function PollsListCard({
             </div>
         );
     }, [
-        isEnded, 
-        isLoading, 
-        error, 
-        options.length, 
-        sortedResults, 
-        isBlurred, 
-        fgColorFrom, 
-        fgColorTo
+        isEnded,
+        isLoading,
+        error,
+        options.length,
+        sortedResults,
+        isBlurred,
+        fgColorFrom,
+        fgColorTo,
     ]);
 
     // 제출 버튼 렌더링 함수
     const renderSubmitButton = useCallback(() => {
         if (!showOptions || !selection) return null;
-        
+
         return (
             <motion.div
-                className={cn(
-                    animateSubmit ? "opacity-100" : "opacity-0"
-                )}
+                className={cn(animateSubmit ? "opacity-100" : "opacity-0")}
                 variants={animations.submit}
                 initial="initial"
                 animate="animate"
             >
-                {poll.allowMultipleVote && poll.needToken && poll.needTokenAddress && (
-                    <div
-                        className={cn(
-                            "flex flex-row justify-center items-center overflow-hidden mb-1",
-                            getResponsiveClass(30).gapClass
-                        )}
-                    >
-                        <button
+                {poll.allowMultipleVote &&
+                    poll.needToken &&
+                    poll.needTokenAddress && (
+                        <div
                             className={cn(
-                                "cursor-pointer",
-                                "bg-[rgba(139,92,246,0.9)] hover:bg-[rgba(139,92,246,1)]",
-                                "rounded-full text-center",
-                                getResponsiveClass(30).frameClass,
-                                getResponsiveClass(15).textClass
+                                "flex flex-row justify-center items-center overflow-hidden mb-1",
+                                getResponsiveClass(30).gapClass
                             )}
-                            onClick={decreaseVoteAmount}
-                            aria-label="Decrease amount"
                         >
-                            -
-                        </button>
+                            <button
+                                className={cn(
+                                    "cursor-pointer",
+                                    "bg-[rgba(139,92,246,0.9)] hover:bg-[rgba(139,92,246,1)]",
+                                    "rounded-full text-center",
+                                    getResponsiveClass(30).frameClass,
+                                    getResponsiveClass(15).textClass
+                                )}
+                                onClick={decreaseVoteAmount}
+                                aria-label="Decrease amount"
+                            >
+                                -
+                            </button>
 
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            value={voteAmountInput}
-                            placeholder="0"
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => handleVoteAmountChange(e.target.value)}
-                            className={cn(
-                                "py-[3px] text-center",
-                                "rounded-full border border-[rgba(255,255,255,0.8)]",
-                                "focus:outline-none",
-                                "focus:border-[rgba(255,255,255,0.8)]",
-                                "focus:shadow-none",
-                                getResponsiveClass(15).textClass
-                            )}
-                            style={{
-                                width: `${Math.max(voteAmountInput.length, 1)}ch`,
-                                minWidth: "7ch",
-                                maxWidth: "14ch",
-                                transition: "width 0.2s",
-                            }}
-                        />
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                value={voteAmountInput}
+                                placeholder="0"
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) =>
+                                    handleVoteAmountChange(e.target.value)
+                                }
+                                className={cn(
+                                    "py-[3px] text-center",
+                                    "rounded-full border border-[rgba(255,255,255,0.8)]",
+                                    "focus:outline-none",
+                                    "focus:border-[rgba(255,255,255,0.8)]",
+                                    "focus:shadow-none",
+                                    getResponsiveClass(15).textClass
+                                )}
+                                style={{
+                                    width: `${Math.max(
+                                        voteAmountInput.length,
+                                        1
+                                    )}ch`,
+                                    minWidth: "7ch",
+                                    maxWidth: "14ch",
+                                    transition: "width 0.2s",
+                                }}
+                            />
 
-                        <button
-                            className={cn(
-                                "cursor-pointer",
-                                "bg-[rgba(139,92,246,0.9)] hover:bg-[rgba(139,92,246,1)]",
-                                "rounded-full text-center",
-                                getResponsiveClass(30).frameClass,
-                                getResponsiveClass(15).textClass
-                            )}
-                            onClick={increaseVoteAmount}
-                            aria-label="Increase amount"
-                        >
-                            +
-                        </button>
-                    </div>
-                )}
+                            <button
+                                className={cn(
+                                    "cursor-pointer",
+                                    "bg-[rgba(139,92,246,0.9)] hover:bg-[rgba(139,92,246,1)]",
+                                    "rounded-full text-center",
+                                    getResponsiveClass(30).frameClass,
+                                    getResponsiveClass(15).textClass
+                                )}
+                                onClick={increaseVoteAmount}
+                                aria-label="Increase amount"
+                            >
+                                +
+                            </button>
+                        </div>
+                    )}
 
                 <button
                     onClick={() => handleSubmit()}
@@ -637,28 +671,32 @@ function PollsListCard({
             </motion.div>
         );
     }, [
-        showOptions, 
-        selection, 
-        animateSubmit, 
-        poll.allowMultipleVote, 
-        poll.needToken, 
-        poll.needTokenAddress, 
-        voteAmountInput, 
-        handleVoteAmountChange, 
-        decreaseVoteAmount, 
-        increaseVoteAmount, 
+        showOptions,
+        selection,
+        animateSubmit,
+        poll.allowMultipleVote,
+        poll.needToken,
+        poll.needTokenAddress,
+        voteAmountInput,
+        handleVoteAmountChange,
+        decreaseVoteAmount,
+        increaseVoteAmount,
         handleSubmit,
-        animations.submit
+        animations.submit,
     ]);
 
     // 투표 결과 보기 버튼 렌더링 함수
     const renderResultsToggle = useCallback(() => {
-        if (status !== "ONGOING" || 
-            (poll.hasAnswer && 
-             (!pollLogs || pollLogs.filter(log => log.pollId === poll.id).length === 0))) {
+        if (
+            status !== "ONGOING" ||
+            (poll.hasAnswer &&
+                (!pollLogs ||
+                    pollLogs.filter((log) => log.pollId === poll.id).length ===
+                        0))
+        ) {
             return null;
         }
-        
+
         return (
             <>
                 <div className="absolute bottom-[12px] right-[12px]">
@@ -697,10 +735,15 @@ function PollsListCard({
 
     // 토큰 게이팅 정보 렌더링 함수
     const renderTokenGatingInfo = useCallback(() => {
-        if (!poll.needToken || !poll.needTokenAddress || !tokenGatingData || !tokenGatingData.data) {
+        if (
+            !poll.needToken ||
+            !poll.needTokenAddress ||
+            !tokenGatingData ||
+            !tokenGatingData.data
+        ) {
             return null;
         }
-        
+
         return (
             <div className="my-3">
                 <h2 className="text-xs font-light text-[rgba(255,255,255,0.9)]">
@@ -708,12 +751,18 @@ function PollsListCard({
                 </h2>
             </div>
         );
-    }, [poll.needToken, poll.needTokenAddress, tokenGatingData, maxVoteAmount, voteAmount]);
+    }, [
+        poll.needToken,
+        poll.needTokenAddress,
+        tokenGatingData,
+        maxVoteAmount,
+        voteAmount,
+    ]);
 
     // 정답 확인 팝업 렌더링 함수
     const renderAnswerConfirmPopup = useCallback(() => {
         if (!poll.hasAnswer || confirmedAnswer) return null;
-        
+
         return (
             <Popup
                 open={showAnswerPopup}
@@ -740,11 +789,11 @@ function PollsListCard({
                             getResponsiveClass(20).textClass
                         )}
                     >
-                        Please confirm your selected answer before
-                        proceeding with your vote.{" "}
+                        Please confirm your selected answer before proceeding
+                        with your vote.{" "}
                         <strong>
-                            If you choose wrong, you will not be able to get
-                            the reward.
+                            If you choose wrong, you will not be able to get the
+                            reward.
                         </strong>
                     </p>
 
@@ -772,7 +821,13 @@ function PollsListCard({
                 </div>
             </Popup>
         );
-    }, [poll.hasAnswer, confirmedAnswer, showAnswerPopup, selection, handleSubmit]);
+    }, [
+        poll.hasAnswer,
+        confirmedAnswer,
+        showAnswerPopup,
+        selection,
+        handleSubmit,
+    ]);
 
     return (
         <>
