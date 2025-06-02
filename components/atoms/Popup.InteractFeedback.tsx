@@ -2,23 +2,23 @@
 
 "use client"; // 클라이언트 컴포넌트로 표시
 
-import React, {useEffect, useState} from "react";
-import {AnimatePresence, motion} from "framer-motion";
+import React, { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import Portal from "./Portal";
-import dynamic from 'next/dynamic'; // 동적 임포트 사용
-import {TextAnimate} from "@/components/magicui/text-animate";
-import {getResponsiveClass} from "@/lib/utils/responsiveClass";
-import {cn} from "@/lib/utils/tailwind";
-import {Asset} from "@prisma/client";
-import {NumberTicker} from "@/components/magicui/number-ticker";
-import {Canvas} from "@react-three/fiber";
+import dynamic from "next/dynamic"; // 동적 임포트 사용
+import { TextAnimate } from "@/components/magicui/text-animate";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+import { Asset } from "@prisma/client";
+import { NumberTicker } from "@/components/magicui/number-ticker";
+import { Canvas } from "@react-three/fiber";
 import NFTsCollectionsCardR3FAcqusition from "../nfts/NFTs.Collections.Card.R3F.Acqusition";
-import {Collection} from "@/app/actions/factoryContracts";
-import {XIcon} from "lucide-react";
+import { Collection } from "@/app/actions/factoryContracts";
+import { XIcon } from "lucide-react";
+import confetti from "canvas-confetti";
 
 // 브라우저 전용 모듈을 동적으로 임포트
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
-const confetti = dynamic(() => import("canvas-confetti"), { ssr: false });
 
 interface InteractFeedbackProps {
     open: boolean;

@@ -23,6 +23,7 @@ import { useLoading } from "@/app/hooks/useLoading";
 import { getPayment } from "@/app/actions/payment";
 import { usePaymentPostProcessor } from "@/app/hooks/usePaymentPostProcessor";
 import WarningPopup from "../atoms/WarningPopup";
+import { PaymentPostProcessorDetails } from "@/app/hooks/usePaymentPostProcessor";
 
 interface PaymentModuleProps {
     productTable: ProductTable;
@@ -43,6 +44,7 @@ interface PaymentModuleProps {
     onPaymentError?: (error: Error) => void;
     onPaymentCancel?: (payment: Payment) => void;
     onPaymentRefund?: (payment: Payment) => void;
+    onPaymentComplete?: (result: PaymentPostProcessorDetails) => void;
 }
 
 export default function PaymentModule({
@@ -63,6 +65,7 @@ export default function PaymentModule({
     onPaymentError,
     onPaymentCancel,
     onPaymentRefund,
+    onPaymentComplete,
 }: PaymentModuleProps) {
     const toast = useToast();
     const { startLoading, endLoading } = useLoading();
@@ -255,6 +258,7 @@ export default function PaymentModule({
 
     useEffect(() => {
         if (postProcessStatus?.status === "COMPLETED") {
+            onPaymentComplete?.(postProcessDetails);
             if (postProcessDetails?.type === "NFT_TRANSFER") {
                 toast.success("NFT transfer completed");
             } else if (postProcessDetails?.type === "NFT_ESCROW_TRANSFER") {

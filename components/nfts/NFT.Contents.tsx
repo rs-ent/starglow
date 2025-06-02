@@ -16,7 +16,8 @@ import { CollectionParticipantType, Payment } from "@prisma/client";
 import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import NFTContentsPreRegistration from "./NFT.Contents.PreRegistration";
 import InteractFeedback from "../atoms/Popup.InteractFeedback";
-import { H2 } from "../atoms/Typography";
+import { PaymentPostProcessorDetails } from "@/app/hooks/usePaymentPostProcessor";
+import WarningPopup from "../atoms/WarningPopup";
 
 interface NFTContentsProps {
     collection: Collection;
@@ -27,6 +28,7 @@ export default React.memo(function NFTContents({
 }: NFTContentsProps) {
     const metadata = collection?.metadata?.metadata as METADATA_TYPE;
     const [showFeedback, setShowFeedback] = useState(false);
+    const [showWaitWarning, setShowWaitWarning] = useState(false);
 
     const { status, dateLabel, dateValue, participantsType } = useMemo(() => {
         const now = new Date();
@@ -115,8 +117,18 @@ export default React.memo(function NFTContents({
     );
 
     const handlePaymentSuccess = useCallback((payment: Payment) => {
-        setShowFeedback(true);
+        setShowWaitWarning(true);
     }, []);
+
+    const handlePaymentComplete = useCallback(
+        (result: PaymentPostProcessorDetails) => {
+            if (result?.type === "NFT_TRANSFER" && result.isTransferred) {
+                setShowWaitWarning(false);
+                setShowFeedback(true);
+            }
+        },
+        []
+    );
 
     return (
         <div className="flex flex-col items-center w-full py-6 sm:py-8 md:py-10">
@@ -168,6 +180,7 @@ export default React.memo(function NFTContents({
                                     onPurchase={handlePurchase}
                                     collectionStock={collectionStock}
                                     onPaymentSuccess={handlePaymentSuccess}
+                                    onPaymentComplete={handlePaymentComplete}
                                 />
                             ) : (
                                 <NFTContentsPreRegistration
@@ -195,6 +208,15 @@ export default React.memo(function NFTContents({
                 type="purchaseNFT"
                 showConfetti={true}
                 collection={collection}
+            />
+
+            <WarningPopup
+                open={showWaitWarning}
+                title="NFT Transfer in Progress"
+                message="Please keep this window open while your NFT is being transferred. Do not close the window or navigate away."
+                loading={true}
+                preventClose={true}
+                critical={true}
             />
         </div>
     );

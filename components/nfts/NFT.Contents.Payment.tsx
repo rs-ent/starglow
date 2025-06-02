@@ -11,7 +11,7 @@ import { Currency } from "@/lib/types/payment";
 import { formatCurrency } from "@/lib/utils/format";
 import { Payment } from "@prisma/client";
 import React from "react";
-
+import { PaymentPostProcessorDetails } from "@/app/hooks/usePaymentPostProcessor";
 interface NFTContentsPaymentProps {
     collection: Collection;
     onPurchase?: (quantity: number) => void;
@@ -22,6 +22,7 @@ interface NFTContentsPaymentProps {
           }
         | undefined;
     onPaymentSuccess?: (payment: Payment) => void;
+    onPaymentComplete?: (result: PaymentPostProcessorDetails) => void;
 }
 
 const initialCurrency = "CURRENCY_USD" as Currency;
@@ -30,6 +31,7 @@ export default React.memo(function NFTContentsPayment({
     collection,
     onPurchase,
     onPaymentSuccess,
+    onPaymentComplete,
     collectionStock = {
         remain: 0,
         total: 0,
@@ -144,6 +146,7 @@ export default React.memo(function NFTContentsPayment({
                         onDisplayPriceChange={handleDisplayPriceChange}
                         onCurrencyChange={setCurrency}
                         onPaymentSuccess={onPaymentSuccess}
+                        onPaymentComplete={onPaymentComplete}
                     />
                 </>
             ) : (

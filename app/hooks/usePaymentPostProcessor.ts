@@ -11,12 +11,59 @@ import {
 } from "@/app/queries/paymentPostProcessorQueries";
 import { useToast } from "@/app/hooks/useToast";
 import { Payment } from "@prisma/client";
+import { JsonValue } from "@prisma/client/runtime/library";
 
 interface UsePaymentPostProcessorOptions {
     onSuccess?: (data: any) => void;
     onError?: (error: Error) => void;
     onSettled?: () => void;
 }
+
+// 공통으로 사용되는 transferDetails 타입
+type TransferDetails = {
+    txHash: string;
+    receiverAddress: string;
+    networkName?: string;
+    transferDetails?: {
+        from: string;
+        to: string;
+        tokenId: string;
+        networkId: string;
+        networkName: string;
+        escrowWalletId: string;
+    };
+};
+
+// NFT 전송 관련 타입
+type NFTTransferDetails = {
+    type: "NFT_TRANSFER";
+    isTransferred: boolean;
+    transferDetails: TransferDetails | null;
+    transferredAt: Date | null;
+};
+
+// NFT 에스크로 전송 관련 타입
+type NFTEscrowTransferDetails = {
+    type: "NFT_ESCROW_TRANSFER";
+    isTransferred: boolean;
+    transferDetails: TransferDetails | null;
+    transferredAt: Date | null;
+};
+
+// 이벤트 처리 관련 타입
+type EventProcessDetails = {
+    type: "EVENT_PROCESS";
+    isProcessed: boolean;
+    processResult: JsonValue;
+    processedAt: Date | null;
+};
+
+// getDetails의 반환 타입
+export type PaymentPostProcessorDetails =
+    | NFTTransferDetails
+    | NFTEscrowTransferDetails
+    | EventProcessDetails
+    | null;
 
 export const usePaymentPostProcessor = (
     paymentId: string,
@@ -113,7 +160,7 @@ export const usePaymentPostProcessor = (
     const isCompleted = status?.status === "COMPLETED";
 
     // 현재 상태에 따른 상세 정보
-    const getDetails = useCallback(() => {
+    const getDetails: () => PaymentPostProcessorDetails = useCallback(() => {
         if (status?.status === "COMPLETED") {
             if (nftTransferStatus?.isTransferred) {
                 return {
