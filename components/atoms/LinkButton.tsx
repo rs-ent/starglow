@@ -17,7 +17,8 @@ interface LinkButtonProps {
     img?: string;
     imgSpinning?: boolean;
     imgLeft?: boolean;
-    onClick?: () => void;
+    isActive?: boolean;
+    onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }
 
 export default function LinkButton({
@@ -32,6 +33,7 @@ export default function LinkButton({
     img,
     imgSpinning = false,
     imgLeft = true,
+    isActive = false,
     onClick,
 }: LinkButtonProps) {
     const { textClass } = getResponsiveClass(textSize);
@@ -50,7 +52,13 @@ export default function LinkButton({
                 gapClass,
                 className
             )}
-            onClick={onClick}
+            onClick={(e) => {
+                if (isActive) {
+                    e.preventDefault();
+                    return;
+                }
+                onClick?.(e);
+            }}
         >
             {img &&
                 imgLeft &&

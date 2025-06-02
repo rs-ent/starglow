@@ -32,6 +32,7 @@ export interface CardMeshProps {
     participants: number;
     remainStock: number;
     totalStock: number;
+    artistName: string;
     position?: [number, number, number];
     rotationY?: number;
     isSelected?: boolean;
@@ -219,6 +220,7 @@ const CardMesh = React.memo(function CardMesh({
     participants,
     remainStock,
     totalStock,
+    artistName,
     position = [0, 0, 0],
     rotationY = 0,
     isSelected = false,
@@ -527,8 +529,8 @@ const CardMesh = React.memo(function CardMesh({
                         isSelected={isSelected}
                     />
                     <InfoBox
-                        label="Awaiters"
-                        value={participants}
+                        label="Artist"
+                        value={artistName}
                         labelPosition={CONSTANTS.POSITION.TEXT.LABEL}
                         valuePosition={CONSTANTS.POSITION.TEXT.VALUE}
                         boxPosition={CONSTANTS.POSITION.INFO_BOX.BOTTOM_RIGHT}
@@ -584,6 +586,7 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
         dateLabel,
         dateValue,
         participantsType,
+        artistName,
     } = useMemo(() => {
         const now = new Date();
         const preSaleStart = collection.preSaleStart;
@@ -635,13 +638,13 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
         if (preSaleStart && preSaleEnd) {
             if (now < preSaleStart) {
                 participantsType = CollectionParticipantType.PREREGISTRATION;
-                status = "PRE-REG";
-                dateLabel = "Pre Reg Open";
+                status = "PREORDER";
+                dateLabel = "Pre Order Open";
                 dateValue = formatDate(preSaleStart, false);
             } else if (now > preSaleStart && now < preSaleEnd) {
                 participantsType = CollectionParticipantType.PREREGISTRATION;
-                status = "PRE-REG";
-                dateLabel = "Pre Sale End";
+                status = "PREORDER";
+                dateLabel = "Pre Order End";
                 dateValue = formatDate(preSaleEnd, false);
             }
         }
@@ -653,6 +656,8 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             metadata.background_color || "#05010D"
         );
 
+        const artistName = collection.artist?.name || "";
+
         return {
             backgroundColor,
             foregroundColor,
@@ -662,6 +667,7 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             dateLabel,
             dateValue,
             participantsType,
+            artistName,
         };
     }, [collection]);
 
@@ -686,6 +692,7 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             participants={collectionParticipants?.length || 0}
             remainStock={collectionStock?.remain || 0}
             totalStock={collectionStock?.total || 0}
+            artistName={artistName}
             position={position}
             rotationY={rotationY}
             isSelected={isSelected}

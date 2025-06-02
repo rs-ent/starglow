@@ -21,13 +21,12 @@ interface VerticalButtonProps {
     isActive?: boolean;
     variant?:
         | "default"
-        | "space"
         | "destructive"
         | "outline"
         | "secondary"
         | "ghost"
         | "link";
-    onClick?: () => void;
+    onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
     href?: string;
     className?: string;
 }
@@ -56,8 +55,14 @@ export default function VerticalButton({
     return (
         <Link href={href || ""}>
             <ShadcnButton
-                variant={variant}
-                onClick={isActive ? undefined : onClick}
+                variant={variant || "ghost"}
+                onClick={(e) => {
+                    if (isActive) {
+                        e.preventDefault();
+                        return;
+                    }
+                    onClick?.(e);
+                }}
                 className={cn(
                     "flex flex-col h-auto items-center justify-center transition-all",
                     isActive ? "opacity-100" : "cursor-point opacity-50",

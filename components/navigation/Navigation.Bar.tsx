@@ -3,30 +3,35 @@
 
 import LinkButton from "../atoms/LinkButton";
 import AuthButton from "../atoms/AuthButton";
-import {User} from "next-auth";
+import { User } from "next-auth";
 import VerticalButton from "../atoms/VerticalButton";
-import {memo, useCallback, useMemo, useState} from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import RewardPanel from "../atoms/RewardPanel";
-import {cn} from "@/lib/utils/tailwind";
-import {Player} from "@prisma/client";
-import {usePathname} from "next/navigation";
+import { cn } from "@/lib/utils/tailwind";
+import { Player } from "@prisma/client";
+import { usePathname } from "next/navigation";
 import UserNavigation from "../user/User.Navigation";
 
-// 기본 메뉴 항목 - 컴포넌트 외부로 이동하여 재렌더링 방지
-const defaultMenuItems = [
+// 타입 정의 추가
+type MenuItem = {
+    name: string;
+    href: string;
+    icon: string;
+};
+
+// 기본 메뉴 항목
+const defaultMenuItems: MenuItem[] = [
     { name: "Quest", href: "/quests", icon: "/ui/navigation/nav-quest.svg" },
     { name: "NFT", href: "/nfts", icon: "/ui/navigation/nav-nft.svg" },
     { name: "Poll", href: "/polls", icon: "/ui/navigation/nav-poll.svg" },
 ];
 
-// 마이페이지 메뉴 항목 생성 함수
-const myPage = (userId: string) => [
-    {
-        name: "My",
-        href: `/user`,
-        icon: "/ui/navigation/nav-my.svg",
-    },
-];
+// 마이페이지 메뉴 항목
+const myPageItem: MenuItem = {
+    name: "My",
+    href: "/user",
+    icon: "/ui/navigation/nav-my.svg",
+};
 
 interface NavigationBarProps {
     user: User | null;
@@ -53,18 +58,20 @@ const Logo = memo(function Logo() {
 });
 
 // 메모이제이션된 데스크톱 메뉴 컴포넌트
-const DesktopMenu = memo(function DesktopMenu({ 
-    menuItems, 
-    user, 
-    player, 
+const DesktopMenu = memo(function DesktopMenu({
+    menuItems,
+    user,
+    player,
     pathname,
-    onShowUserNavigation
-}: { 
-    menuItems: typeof defaultMenuItems,
-    user: User | null,
-    player: Player | null,
-    pathname: string,
-    onShowUserNavigation: () => void
+    onShowUserNavigation,
+    isActivePath,
+}: {
+    menuItems: typeof defaultMenuItems;
+    user: User | null;
+    player: Player | null;
+    pathname: string;
+    onShowUserNavigation: () => void;
+    isActivePath: (href: string) => boolean;
 }) {
     return (
         <div className="hidden lg:flex items-center justify-end space-x-2 md:space-x-4 lg:space-x-9 xl:space-x-16">
@@ -74,6 +81,12 @@ const DesktopMenu = memo(function DesktopMenu({
                     href={href}
                     textSize={15}
                     paddingSize={0}
+                    isActive={isActivePath(href)}
+                    onClick={(e) => {
+                        if (isActivePath(href)) {
+                            e.preventDefault();
+                        }
+                    }}
                 >
                     {name}
                 </LinkButton>
@@ -86,10 +99,7 @@ const DesktopMenu = memo(function DesktopMenu({
             />
             {player &&
                 (pathname !== "/user" ? (
-                    <RewardPanel
-                        playerId={player.id}
-                        assetNames={["SGP"]}
-                    />
+                    <RewardPanel playerId={player.id} assetNames={["SGP"]} />
                 ) : (
                     <img
                         src="/ui/settings.svg"
@@ -103,20 +113,22 @@ const DesktopMenu = memo(function DesktopMenu({
 });
 
 // 메모이제이션된 모바일 메뉴 컴포넌트
-const MobileMenu = memo(function MobileMenu({ 
-    menuItems, 
-    player, 
+const MobileMenu = memo(function MobileMenu({
+    menuItems,
+    player,
     pathname,
     active,
     onActiveChange,
-    onShowUserNavigation
-}: { 
-    menuItems: typeof defaultMenuItems,
-    player: Player | null,
-    pathname: string,
-    active: string,
-    onActiveChange: (name: string) => void,
-    onShowUserNavigation: () => void
+    onShowUserNavigation,
+    isActivePath,
+}: {
+    menuItems: typeof defaultMenuItems;
+    player: Player | null;
+    pathname: string;
+    active: string;
+    onActiveChange: (name: string) => void;
+    onShowUserNavigation: () => void;
+    isActivePath: (href: string) => boolean;
 }) {
     return (
         <div className="lg:hidden">
@@ -135,7 +147,11 @@ const MobileMenu = memo(function MobileMenu({
                     paddingSize={0}
                     gapSize={0}
                 >
-                    <img src="/logo/l-white.svg" alt="Starglow" fetchPriority="high" />
+                    <img
+                        src="/logo/l-white.svg"
+                        alt="Starglow"
+                        fetchPriority="high"
+                    />
                 </LinkButton>
                 {player ? (
                     pathname !== "/user" ? (
@@ -176,18 +192,23 @@ const MobileMenu = memo(function MobileMenu({
                         key={name}
                         img={icon}
                         label={name}
-                        isActive={active === name}
+                        isActive={isActivePath(href)}
                         textSize={10}
                         paddingSize={0}
                         frameSize={20}
                         gapSize={5}
-                        onClick={() => onActiveChange(name)}
+                        onClick={(e) => {
+                            if (isActivePath(href)) {
+                                e.preventDefault();
+                            }
+                            onActiveChange(name);
+                        }}
                         href={href}
-                        className={
-                            active === name
+                        className={cn(
+                            isActivePath(href)
                                 ? "hover:bg-[rgba(0,0,0,0)]"
                                 : "hover:bg-[rgba(0,0,0,0)] hover:opacity-100"
-                        }
+                        )}
                     />
                 ))}
             </nav>
@@ -199,15 +220,16 @@ const MobileMenu = memo(function MobileMenu({
 function NavigationBar({ user, player }: NavigationBarProps) {
     const pathname = usePathname();
     const [active, setActive] = useState<string>("");
-    const [showUserNavigation, setShowUserNavigation] = useState<boolean>(false);
-    
+    const [showUserNavigation, setShowUserNavigation] =
+        useState<boolean>(false);
+
     // 메뉴 항목 메모이제이션
     const menu = useMemo(() => {
-        if (user && user.id) {
-            return [...defaultMenuItems, ...myPage(user.id)];
+        if (user?.id) {
+            return [...defaultMenuItems, myPageItem];
         }
         return defaultMenuItems;
-    }, [user]);
+    }, [user?.id]);
 
     // 이벤트 핸들러 메모이제이션
     const handleShowUserNavigation = useCallback(() => {
@@ -218,9 +240,20 @@ function NavigationBar({ user, player }: NavigationBarProps) {
         setShowUserNavigation(false);
     }, []);
 
-    const handleActiveChange = useCallback((name: string) => {
-        setActive(name);
-    }, []);
+    const handleActiveChange = useCallback(
+        (name: string) => {
+            if (active !== name) {
+                // 불필요한 상태 업데이트 방지
+                setActive(name);
+            }
+        },
+        [active]
+    );
+
+    const isActivePath = useCallback(
+        (href: string) => pathname === href,
+        [pathname]
+    );
 
     return (
         <>
@@ -251,16 +284,18 @@ function NavigationBar({ user, player }: NavigationBarProps) {
                     player={player}
                     pathname={pathname}
                     onShowUserNavigation={handleShowUserNavigation}
+                    isActivePath={isActivePath}
                 />
             </nav>
 
-            <MobileMenu 
-                menuItems={menu} 
-                player={player} 
+            <MobileMenu
+                menuItems={menu}
+                player={player}
                 pathname={pathname}
                 active={active}
                 onActiveChange={handleActiveChange}
                 onShowUserNavigation={handleShowUserNavigation}
+                isActivePath={isActivePath}
             />
         </>
     );
