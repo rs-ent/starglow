@@ -518,3 +518,70 @@ export async function validatePlayerAsset(
         };
     }
 }
+
+export interface SetDefaultPlayerAssetInput {
+    playerId: string;
+}
+
+export async function setDefaultPlayerAsset(
+    input?: SetDefaultPlayerAssetInput
+): Promise<PlayerAssetResult<boolean>> {
+    if (!input) {
+        return {
+            success: false,
+            data: false,
+            error: "No input provided",
+        };
+    }
+
+    try {
+        return await prisma.$transaction(async (tx) => {
+            const defaultAssets = await tx.asset.findMany({
+                where: {
+                    isDefault: true,
+                    isActive: true,
+                    NOT: {
+                        playerAssets: {
+                            some: {
+                                playerId: input.playerId,
+                            },
+                        },
+                    },
+                },
+                select: {
+                    id: true,
+                },
+            });
+
+            if (defaultAssets.length === 0) {
+                return {
+                    success: true,
+                    data: true,
+                    message: "No new default assets to create",
+                };
+            }
+
+            await tx.playerAsset.createMany({
+                data: defaultAssets.map(({ id }) => ({
+                    playerId: input.playerId,
+                    assetId: id,
+                    balance: 0,
+                    status: "ACTIVE",
+                })),
+            });
+
+            return {
+                success: true,
+                data: true,
+                message: `Created ${defaultAssets.length} default assets`,
+            };
+        });
+    } catch (error) {
+        console.error("Failed to set default player asset:", error);
+        return {
+            success: false,
+            data: false,
+            error: "Failed to set default player asset",
+        };
+    }
+}

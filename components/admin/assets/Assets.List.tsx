@@ -40,8 +40,10 @@ export default function AssetsList({ contractAddress }: AssetsListProps) {
     const {
         deactivateAsset,
         activateAsset,
+        setDefaultAsset,
         isDeactivateAssetPending,
         isActivateAssetPending,
+        isSetDefaultAssetPending,
     } = useAssetsSet();
 
     if (isLoading) {
@@ -81,22 +83,38 @@ export default function AssetsList({ contractAddress }: AssetsListProps) {
                 <CardContent>
                     <Table>
                         <TableHeader>
-                            <TableRow className="bg-muted/50">
-                                <TableHead>이름</TableHead>
-                                <TableHead>심볼</TableHead>
-                                <TableHead>유형</TableHead>
-                                <TableHead>컨트랙트</TableHead>
-                                <TableHead>상태</TableHead>
-                                <TableHead className="text-right">
+                            <TableRow className="bg-muted/50 divide-x divide-border">
+                                <TableHead className="text-center">
+                                    이름
+                                </TableHead>
+                                <TableHead className="text-center">
+                                    심볼
+                                </TableHead>
+                                <TableHead className="text-center">
+                                    유형
+                                </TableHead>
+                                <TableHead className="text-center">
+                                    컨트랙트
+                                </TableHead>
+                                <TableHead className="text-center">
+                                    상태
+                                </TableHead>
+                                <TableHead className="text-center">
+                                    디폴트 에셋
+                                </TableHead>
+                                <TableHead className="text-center">
                                     작업
                                 </TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        <TableBody className="divide-y divide-border">
                             {filteredAssets.map((asset: Asset) => (
-                                <TableRow key={asset.id}>
-                                    <TableCell className="font-medium">
-                                        <div className="flex items-center gap-2">
+                                <TableRow
+                                    key={asset.id}
+                                    className="divide-x divide-border"
+                                >
+                                    <TableCell className="font-medium text-center">
+                                        <div className="flex items-center justify-center gap-2">
                                             {asset.iconUrl && (
                                                 <img
                                                     src={asset.iconUrl}
@@ -107,8 +125,10 @@ export default function AssetsList({ contractAddress }: AssetsListProps) {
                                             {asset.name}
                                         </div>
                                     </TableCell>
-                                    <TableCell>{asset.symbol}</TableCell>
-                                    <TableCell>
+                                    <TableCell className="text-center">
+                                        {asset.symbol}
+                                    </TableCell>
+                                    <TableCell className="text-center">
                                         <Badge
                                             variant={
                                                 asset.assetType === "ONCHAIN"
@@ -120,12 +140,12 @@ export default function AssetsList({ contractAddress }: AssetsListProps) {
                                             {asset.assetType}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="text-center">
                                         <span className="font-mono text-xs">
                                             {asset.contractAddress}
                                         </span>
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="text-center">
                                         <Badge
                                             variant={
                                                 asset.isActive
@@ -139,8 +159,21 @@ export default function AssetsList({ contractAddress }: AssetsListProps) {
                                                 : "Inactive"}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
+                                    <TableCell className="text-center">
+                                        {asset.isDefault ? (
+                                            <div className="flex items-center justify-center gap-2">
+                                                <p>디폴트 에셋</p>
+                                                <p className="text-xs">
+                                                    (회원가입 시 무조건 0만큼
+                                                    지급)
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <p>디폴트 에셋 아님</p>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <div className="flex justify-center gap-2">
                                             {asset.isActive ? (
                                                 <Button
                                                     variant="destructive"
@@ -170,6 +203,37 @@ export default function AssetsList({ contractAddress }: AssetsListProps) {
                                                     }
                                                 >
                                                     Activate
+                                                </Button>
+                                            )}
+
+                                            {asset.isDefault ? (
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        setDefaultAsset({
+                                                            assetId: asset.id,
+                                                            isDefault: false,
+                                                        })
+                                                    }
+                                                >
+                                                    Unset Default
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        setDefaultAsset({
+                                                            assetId: asset.id,
+                                                            isDefault: true,
+                                                        })
+                                                    }
+                                                    disabled={
+                                                        isSetDefaultAssetPending
+                                                    }
+                                                >
+                                                    Set Default
                                                 </Button>
                                             )}
                                         </div>

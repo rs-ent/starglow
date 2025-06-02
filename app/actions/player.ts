@@ -14,6 +14,7 @@ import {
 import type { RewardCurrency } from "@/app/types/player";
 import type { User } from "next-auth";
 import { nanoid } from "nanoid";
+import { setDefaultPlayerAsset } from "./playerAssets";
 
 export interface GetPlayerInput {
     playerId: string;
@@ -69,7 +70,7 @@ export async function setPlayer(
 
     try {
         const referralCode = await generateReferralCode();
-        return await prisma.player.upsert({
+        const player = await prisma.player.upsert({
             where: { userId: input.user.id },
             update: {
                 name: input.user.name || "New Player",
@@ -80,6 +81,14 @@ export async function setPlayer(
                 referralCode: referralCode,
             },
         });
+
+        if (player) {
+            await setDefaultPlayerAsset({
+                playerId: player.id,
+            });
+        }
+
+        return player;
     } catch (error) {
         console.error("[setPlayer] Error:", error);
         return null;

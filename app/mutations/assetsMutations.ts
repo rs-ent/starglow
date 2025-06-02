@@ -12,6 +12,7 @@ import {
     executeAssetFunction,
     deployAssetsContract,
     airdropAsset,
+    setDefaultAsset,
 } from "@/app/actions/assets";
 import type {
     CreateAssetInput,
@@ -22,6 +23,7 @@ import type {
     ExecuteAssetFunctionInput,
     AirdropAssetInput,
     DeployAssetsContractInput,
+    SetDefaultAssetInput,
 } from "@/app/actions/assets";
 import { assetKeys } from "../queryKeys";
 
@@ -72,6 +74,19 @@ export function useDeactivateAsset() {
             queryClient.invalidateQueries({ queryKey: assetKeys.all });
             queryClient.invalidateQueries({
                 queryKey: assetKeys.byId(variables.id),
+            });
+        },
+    });
+}
+
+export function useSetDefaultAsset() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (input: SetDefaultAssetInput) => setDefaultAsset(input),
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: assetKeys.all });
+            queryClient.invalidateQueries({
+                queryKey: assetKeys.byId(variables.assetId),
             });
         },
     });

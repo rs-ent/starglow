@@ -2,18 +2,18 @@
 
 "use client";
 
-import {memo, useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {Artist, Player, Poll, PollLog} from "@prisma/client";
-import {AdvancedTokenGateResult} from "@/app/actions/blockchain";
-import {TokenGatingResult} from "@/app/actions/polls";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Artist, Player, Poll, PollLog } from "@prisma/client";
+import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
+import { TokenGatingResult } from "@/app/actions/polls";
 import PollsListCard from "@/components/polls/Polls.List.Card";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import PartialLoading from "../atoms/PartialLoading";
-import {cn} from "@/lib/utils/tailwind";
-import {AnimatePresence, motion} from "framer-motion";
-import {ChevronLeft, ChevronRight} from "lucide-react";
+import { cn } from "@/lib/utils/tailwind";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface PollsListProps {
     polls: Poll[];
@@ -58,33 +58,36 @@ function PollsList({
     const [isAnimating, setIsAnimating] = useState(false);
 
     // 슬라이더 설정 메모이제이션
-    const sliderSettings = useMemo(() => ({
-        dots: false,
-        arrows: false,
-        infinite: true,
-        speed: 450,
-        slidesToShow: slidesToShow,
-        slidesToScroll: 1,
-        swipe: true,
-        swipeToSlide: true,
-        draggable: true,
-        accessibility: true,
-        beforeChange: (current: number, next: number) => {
-            setCurrentSlide(next);
-            setIsAnimating(true);
-        },
-        afterChange: () => {
-            setIsAnimating(false);
-        },
-        responsive: [
-            {
-                breakpoint: 860,
-                settings: {
-                    centerMode: true,
-                },
+    const sliderSettings = useMemo(
+        () => ({
+            dots: false,
+            arrows: false,
+            infinite: true,
+            speed: 450,
+            slidesToShow: slidesToShow,
+            slidesToScroll: 1,
+            swipe: true,
+            swipeToSlide: true,
+            draggable: true,
+            accessibility: true,
+            beforeChange: (current: number, next: number) => {
+                setCurrentSlide(next);
+                setIsAnimating(true);
             },
-        ],
-    }), [slidesToShow]);
+            afterChange: () => {
+                setIsAnimating(false);
+            },
+            responsive: [
+                {
+                    breakpoint: 860,
+                    settings: {
+                        centerMode: true,
+                    },
+                },
+            ],
+        }),
+        [slidesToShow]
+    );
 
     // 중앙 인덱스 계산 메모이제이션
     const centerIndex = useMemo(() => {
@@ -95,11 +98,11 @@ function PollsList({
     // 반응형 슬라이더 설정
     useEffect(() => {
         const minSlidesToShow = Math.min(forceSlidesToShow, polls.length);
-        
+
         const handleResize = () => {
             const width = window.innerWidth;
             setIsMobile(width <= 860);
-            
+
             if (width <= 640) {
                 // 모바일 (sm)
                 setSlidesToShow(Math.min(1, minSlidesToShow));
@@ -148,34 +151,37 @@ function PollsList({
     }, [isAnimating]);
 
     // 카드 클릭 핸들러
-    const handleCardClick = useCallback((index: number) => {
-        if (isAnimating) return;
-        
-        if (centerIndex === 0 && index === polls.length - 1) {
-            sliderRef.current?.slickGoTo(index - 1);
-        } else if (centerIndex === polls.length - 1 && index === 0) {
-            sliderRef.current?.slickGoTo(polls.length - 1);
-        } else if (index > centerIndex) {
-            sliderRef.current?.slickNext();
-        } else if (index < centerIndex) {
-            sliderRef.current?.slickPrev();
-        }
-    }, [centerIndex, polls.length, isAnimating]);
+    const handleCardClick = useCallback(
+        (index: number) => {
+            if (isAnimating) return;
+
+            if (centerIndex === 0 && index === polls.length - 1) {
+                sliderRef.current?.slickGoTo(index - 1);
+            } else if (centerIndex === polls.length - 1 && index === 0) {
+                sliderRef.current?.slickGoTo(polls.length - 1);
+            } else if (index > centerIndex) {
+                sliderRef.current?.slickNext();
+            } else if (index < centerIndex) {
+                sliderRef.current?.slickPrev();
+            }
+        },
+        [centerIndex, polls.length, isAnimating]
+    );
 
     // 키보드 네비게이션
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (isHovering) {
-                if (e.key === 'ArrowLeft') {
+                if (e.key === "ArrowLeft") {
                     handlePrev();
-                } else if (e.key === 'ArrowRight') {
+                } else if (e.key === "ArrowRight") {
                     handleNext();
                 }
             }
         };
-        
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
     }, [handlePrev, handleNext, isHovering]);
 
     // 로딩 상태 처리
@@ -281,28 +287,28 @@ function PollsList({
                                           ],
                                   },
                               };
-                    
+
                     // 카드 스케일 계산 (중앙에 있는 카드가 더 크게 보이도록)
                     const isCenter = index === centerIndex;
                     const scale = isCenter ? 1.05 : 0.95;
                     const opacity = isCenter ? 1 : 0.85;
-                    
+
                     return (
                         <motion.div
                             key={poll.id}
                             className={cn("px-[8px]")}
                             onClick={() => handleCardClick(index)}
                             initial={{ scale: 0.9, opacity: 0.7 }}
-                            animate={{ 
-                                scale, 
+                            animate={{
+                                scale,
                                 opacity,
-                                transition: { duration: 0.3 }
+                                transition: { duration: 0.3 },
                             }}
-                            whileHover={{ 
+                            whileHover={{
                                 scale: isCenter ? 1.02 : scale * 1.02,
-                                transition: { duration: 0.2 }
+                                transition: { duration: 0.2 },
                             }}
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: "pointer" }}
                         >
                             <PollsListCard
                                 index={index}
@@ -323,7 +329,7 @@ function PollsList({
                     );
                 })}
             </Slider>
-            
+
             {/* 인디케이터 (모바일에서만 표시) */}
             {isMobile && (
                 <div className="flex justify-center mt-2 gap-1">
@@ -332,7 +338,7 @@ function PollsList({
                             key={index}
                             className={cn(
                                 "w-2 h-2 rounded-full transition-all",
-                                index === centerIndex 
+                                index === centerIndex
                                     ? "bg-white scale-110"
                                     : "bg-white/40 scale-90"
                             )}

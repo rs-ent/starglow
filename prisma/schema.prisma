@@ -678,6 +678,7 @@ model Asset {
   assetType       AssetType
   contractAddress String? // ONCHAIN인 경우 필수
   isActive        Boolean   @default(true)
+  isDefault       Boolean   @default(false)
 
   // Asset Function 관련
   selectors String[] @default([]) // bytes4를 string으로 저장
@@ -713,6 +714,7 @@ model Asset {
   updatedAt DateTime @updatedAt
 
   // 인덱스
+  @@index([isDefault])
   @@index([assetType, isActive])
   @@index([contractAddress])
   @@index([networkId])

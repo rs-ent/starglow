@@ -12,6 +12,8 @@ import { useQuestGet } from "@/app/hooks/useQuest";
 import ArtistButton from "../atoms/Artist.Button";
 import dynamic from "next/dynamic";
 import PartialLoading from "../atoms/PartialLoading";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { useRouter } from "next/navigation";
 
 interface UserMyStarProps {
     user: User;
@@ -30,6 +32,7 @@ export default React.memo(function UserMyStar({
     userVerifiedCollections,
 }: UserMyStarProps) {
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+    const router = useRouter();
 
     const {
         pollsList,
@@ -60,7 +63,7 @@ export default React.memo(function UserMyStar({
     const artists = useMemo(() => {
         const artistMap = new Map<string, Artist>();
         userVerifiedCollections.forEach((collection) => {
-            if (collection.artist) {
+            if (collection.artist && collection.verifiedTokens.length > 0) {
                 artistMap.set(collection.artist.id, collection.artist);
             }
         });
@@ -145,6 +148,10 @@ export default React.memo(function UserMyStar({
         setSelectedArtist(null);
     }, []);
 
+    const handleBuyClick = () => {
+        router.push("/nfts");
+    };
+
     if (selectedArtist) {
         return (
             <UserMyStarModal
@@ -165,6 +172,35 @@ export default React.memo(function UserMyStar({
         return (
             <div className="w-full flex justify-center items-center py-20">
                 <PartialLoading text="Loading..." size="sm" />
+            </div>
+        );
+    }
+
+    if (artists.length === 0) {
+        return (
+            <div className="text-center py-10 text-white/80 text-xl">
+                <h4 className={cn(getResponsiveClass(20).textClass)}>
+                    You don’t have any NFTs yet.
+                </h4>
+                <p
+                    className={cn(
+                        getResponsiveClass(15).textClass,
+                        "text-white/80"
+                    )}
+                >
+                    Discover your favorite artists and start glowing your stars!
+                </p>
+
+                <button
+                    onClick={handleBuyClick}
+                    className={cn(
+                        "mt-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold shadow-lg hover:scale-105 transition-transform",
+                        getResponsiveClass(15).textClass,
+                        getResponsiveClass(20).paddingClass
+                    )}
+                >
+                    Buy Now
+                </button>
             </div>
         );
     }

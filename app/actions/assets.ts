@@ -543,6 +543,27 @@ export async function deactivateAsset(
     }
 }
 
+export interface SetDefaultAssetInput {
+    assetId: string;
+    isDefault: boolean;
+}
+
+export async function setDefaultAsset(
+    input: SetDefaultAssetInput
+): Promise<Asset | null> {
+    try {
+        const asset = await prisma.asset.update({
+            where: { id: input.assetId },
+            data: { isDefault: input.isDefault },
+        });
+        revalidatePath("/admin/assets");
+        return asset;
+    } catch (error) {
+        console.error("Failed to set default asset:", error);
+        throw new Error("Failed to set default asset");
+    }
+}
+
 export interface AddAssetFunctionInput {
     assetId: string;
     selector: string;

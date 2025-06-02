@@ -849,7 +849,7 @@ function PollsListCard({
                 rewardAmount={poll.participationRewardAmount}
             />
             {renderAnswerConfirmPopup()}
-            <div className="relative w-full min-w-[120px] my-[25px]">
+            <div className="relative w-full max-w-[600px] min-w-[120px] my-[25px] mx-auto">
                 <div
                     className={cn(
                         "absolute inset-0 rounded-[16px] pointer-events-none transition-opacity duration-700 -z-40",

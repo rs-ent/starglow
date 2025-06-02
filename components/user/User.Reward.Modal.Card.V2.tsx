@@ -23,6 +23,8 @@ export default function UserRewardModalCardV2({
 }: UserRewardModalCardV2Props) {
     const [showPointsMissing, setShowPointsMissing] = useState(false);
 
+    console.log("reward", reward);
+
     const { rewardsLogs, isRewardsLogsLoading, rewardsLogsError } =
         useRewardsLogsGet({
             getRewardsLogsInput: {

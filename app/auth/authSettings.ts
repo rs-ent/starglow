@@ -127,11 +127,6 @@ const authOptions: NextAuthConfig = {
     },
     events: {
         async signIn({ user, account, profile }) {
-            console.log("signIn event called", {
-                userId: user?.id,
-                provider: account?.provider,
-            });
-
             try {
                 if (user.id) {
                     const updateData: any = { lastLoginAt: new Date() };

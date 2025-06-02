@@ -539,6 +539,7 @@ Table Asset {
   assetType AssetType [not null]
   contractAddress String
   isActive Boolean [not null, default: true]
+  isDefault Boolean [not null, default: false]
   selectors String[] [not null]
   abis Json
   creatorAddress String

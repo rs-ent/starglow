@@ -23,6 +23,7 @@ import {
     useExecuteAssetFunction,
     useAirdropAsset,
     useDeployAssetsContract,
+    useSetDefaultAsset,
 } from "../mutations/assetsMutations";
 
 export interface UseAssetsGetInput {
@@ -113,6 +114,11 @@ export function useAssetsSet() {
         isPending: isDeployAssetsContractPending,
     } = useDeployAssetsContract();
 
+    const {
+        mutateAsync: setDefaultAsset,
+        isPending: isSetDefaultAssetPending,
+    } = useSetDefaultAsset();
+
     return {
         createAsset,
         addAssetFunction,
@@ -122,6 +128,7 @@ export function useAssetsSet() {
         activateAsset,
         deactivateAsset,
         deployAssetsContract,
+        setDefaultAsset,
 
         isCreateAssetPending,
         isAddAssetFunctionPending,
@@ -131,6 +138,7 @@ export function useAssetsSet() {
         isActivateAssetPending,
         isDeactivateAssetPending,
         isDeployAssetsContractPending,
+        isSetDefaultAssetPending,
 
         isPending:
             isCreateAssetPending ||
@@ -140,7 +148,8 @@ export function useAssetsSet() {
             isDeleteAssetPending ||
             isActivateAssetPending ||
             isDeactivateAssetPending ||
-            isDeployAssetsContractPending,
+            isDeployAssetsContractPending ||
+            isSetDefaultAssetPending,
 
         useCreateAsset,
         useAddAssetFunction,
@@ -150,5 +159,6 @@ export function useAssetsSet() {
         useActivateAsset,
         useDeactivateAsset,
         useDeployAssetsContract,
+        useSetDefaultAsset,
     };
 }

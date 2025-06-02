@@ -30,6 +30,7 @@ async function UserContent() {
         const userVerifiedCollections = await getUserVerifiedCollections({
             userId: user.id,
         });
+        console.log("userVerifiedCollections", userVerifiedCollections);
         return (
             <User
                 user={user}

@@ -47,6 +47,8 @@ export default function UserRewards({ user, player }: UserRewardsProps) {
         return { playerAssetList, slots };
     }, [playerAssets]);
 
+    console.log("playerAssetList", playerAssetList);
+
     return (
         <>
             <div
