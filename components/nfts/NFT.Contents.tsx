@@ -81,13 +81,13 @@ export default React.memo(function NFTContents({
         if (preSaleStart && preSaleEnd) {
             if (now < preSaleStart) {
                 participantsType = CollectionParticipantType.PREREGISTRATION;
-                status = "PRE-REG";
-                dateLabel = "Pre Reg Open";
+                status = "PREORDER";
+                dateLabel = "Pre Order Open";
                 dateValue = formatDate(preSaleStart.toISOString());
             } else if (now > preSaleStart && now < preSaleEnd) {
                 participantsType = CollectionParticipantType.PREREGISTRATION;
-                status = "PRE-REG";
-                dateLabel = "Pre Sale End";
+                status = "PREORDER";
+                dateLabel = "Pre Order End";
                 dateValue = formatDate(preSaleEnd.toISOString());
             }
         }

@@ -89,7 +89,7 @@ export default React.memo(function NFTContentsDetails({
     return (
         <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50">
             {/* Banner Image */}
-            <div className="relative w-full h-60 sm:h-72 md:h-96">
+            <div className="relative w-full aspect-[4/3]">
                 {metadata?.image ? (
                     <Image
                         src={metadata.image}

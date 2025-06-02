@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useArtistsGet } from "@/app/hooks/useArtists";
+import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
 import AdminArtistsCreate from "./Admin.Artists.Create";
 import { Artist } from "@prisma/client";
 import { useState } from "react";
@@ -11,6 +11,7 @@ import Link from "next/link";
 
 export default function AdminArtistsList() {
     const { artists, isLoading, error } = useArtistsGet({});
+    const { deleteArtist, isDeleting } = useArtistSet();
     const [createOpen, setCreateOpen] = useState(false);
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
 
@@ -143,6 +144,37 @@ export default function AdminArtistsList() {
                                                     관리
                                                 </Button>
                                             </Link>
+                                            <Button
+                                                variant="destructive"
+                                                size="sm"
+                                                onClick={async () => {
+                                                    if (
+                                                        window.confirm(
+                                                            `${artist.name} 아티스트를 삭제하시겠습니까?`
+                                                        )
+                                                    ) {
+                                                        try {
+                                                            await deleteArtist({
+                                                                id: artist.id,
+                                                            });
+                                                            // 삭제 후 목록 새로고침이 필요할 수 있습니다
+                                                        } catch (error) {
+                                                            console.error(
+                                                                "아티스트 삭제 중 오류 발생:",
+                                                                error
+                                                            );
+                                                            alert(
+                                                                "아티스트 삭제 중 오류가 발생했습니다."
+                                                            );
+                                                        }
+                                                    }
+                                                }}
+                                                disabled={isDeleting}
+                                            >
+                                                {isDeleting
+                                                    ? "삭제 중..."
+                                                    : "삭제"}
+                                            </Button>
                                         </div>
                                     </td>
                                 </tr>

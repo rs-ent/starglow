@@ -121,16 +121,30 @@ export default function ArtistsList() {
                                         {artist.polls && artist.polls.length}
                                     </td>
                                     <td className="px-4 py-2 text-center align-middle">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                                setSelectedArtist(artist);
-                                                setCreateOpen(true);
-                                            }}
-                                        >
-                                            수정
-                                        </Button>
+                                        <div className="flex gap-2 justify-center">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedArtist(artist);
+                                                    setCreateOpen(true);
+                                                }}
+                                            >
+                                                수정
+                                            </Button>
+                                            <Button
+                                                variant="destructive"
+                                                size="sm"
+                                                onClick={() => {
+                                                    console.log(
+                                                        "Delete artist:",
+                                                        artist.id
+                                                    );
+                                                }}
+                                            >
+                                                삭제
+                                            </Button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

@@ -176,12 +176,20 @@ export async function updateArtist(input: UpdateArtistInput): Promise<Artist> {
             data: rest,
         });
 
+        // 1. 먼저 해당 아티스트의 모든 컬렉션 연결을 해제
+        await prisma.collectionContract.updateMany({
+            where: { artistId: artist.id },
+            data: { artistId: null },
+        });
+
+        // 2. 새로 선택된 컬렉션들만 연결
         if (collectionContractIds && collectionContractIds.length > 0) {
             await prisma.collectionContract.updateMany({
                 where: { id: { in: collectionContractIds } },
                 data: { artistId: artist.id },
             });
         }
+
         return artist;
     } catch (error) {
         console.error(error);
@@ -195,11 +203,14 @@ export interface DeleteArtistInput {
 
 export async function deleteArtist(input: DeleteArtistInput): Promise<boolean> {
     try {
-        await prisma.artist.delete({ where: { id: input.id } });
+        await prisma.artistMessage.deleteMany({
+            where: { artistId: input.id },
+        });
         await prisma.collectionContract.updateMany({
             where: { artistId: input.id },
             data: { artistId: null },
         });
+        await prisma.artist.delete({ where: { id: input.id } });
         return true;
     } catch (error) {
         console.error(error);
