@@ -6,12 +6,13 @@ import { Collection } from "@/app/actions/factoryContracts";
 import { useMemo, useState } from "react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+import React from "react";
 
 interface NFTContentsPageImagesProps {
     collection: Collection;
 }
 
-export default function NFTContentsPageImages({
+export default React.memo(function NFTContentsPageImages({
     collection,
 }: NFTContentsPageImagesProps) {
     const images = useMemo(
@@ -40,6 +41,8 @@ export default function NFTContentsPageImages({
                             objectFit: "contain",
                             display: "block",
                         }}
+                        loading={idx === 0 ? "eager" : "lazy"}
+                        fetchPriority={idx === 0 ? "high" : "auto"}
                     />
                 </div>
             ))}
@@ -70,4 +73,4 @@ export default function NFTContentsPageImages({
             </div>
         </div>
     );
-}
+});

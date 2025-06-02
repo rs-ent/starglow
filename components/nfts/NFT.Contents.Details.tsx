@@ -17,13 +17,15 @@ import {
 } from "lucide-react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useToast } from "@/app/hooks/useToast";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import Countdown from "@/components/atoms/Countdown";
 import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import { CollectionParticipantType } from "@prisma/client";
+import React from "react";
+
 interface NFTContentsDetailsProps {
     collection: Collection;
     participantsType: CollectionParticipantType;
@@ -41,7 +43,7 @@ interface NFTContentsDetailsProps {
     collectionParticipantsNumber: number;
 }
 
-export default function NFTContentsDetails({
+export default React.memo(function NFTContentsDetails({
     collection,
     participantsType,
     metadata,
@@ -53,21 +55,14 @@ export default function NFTContentsDetails({
 }: NFTContentsDetailsProps) {
     const toast = useToast();
 
-    console.log("participantsType", participantsType);
-    console.log("status", status);
-    console.log("dateLabel", dateLabel);
-    console.log("dateValue", dateValue);
-    console.log("collectionStock", collectionStock);
-    console.log("collectionParticipantsNumber", collectionParticipantsNumber);
-
-    const handleCopyAddress = async () => {
+    const handleCopyAddress = useCallback(async () => {
         try {
             await navigator.clipboard.writeText(collection.address);
             toast.success("Collection address copied to clipboard");
         } catch (error) {
             toast.error("Failed to copy collection address");
         }
-    };
+    }, [collection.address, toast]);
     const { sharePercentage, glowStartDate, glowEndDate, reportUrl } =
         useMemo(() => {
             const sharePercentage = metadata?.attributes?.find(
@@ -237,7 +232,7 @@ export default function NFTContentsDetails({
             </div>
         </div>
     );
-}
+});
 
 const formatDate = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleDateString("en-US", {

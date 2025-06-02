@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import NFTContentsDetails from "./NFT.Contents.Details";
 import NFTContentsPayment from "./NFT.Contents.Payment";
 import type { Collection } from "@/app/actions/factoryContracts";
@@ -16,14 +16,16 @@ import { CollectionParticipantType, Payment } from "@prisma/client";
 import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import NFTContentsPreRegistration from "./NFT.Contents.PreRegistration";
 import InteractFeedback from "../atoms/Popup.InteractFeedback";
+import { H2 } from "../atoms/Typography";
 
 interface NFTContentsProps {
     collection: Collection;
 }
 
-export default function NFTContents({ collection }: NFTContentsProps) {
+export default React.memo(function NFTContents({
+    collection,
+}: NFTContentsProps) {
     const metadata = collection?.metadata?.metadata as METADATA_TYPE;
-    const [purchaseSuccess, setPurchaseSuccess] = useState(false);
     const [showFeedback, setShowFeedback] = useState(false);
 
     const { status, dateLabel, dateValue, participantsType } = useMemo(() => {
@@ -103,29 +105,23 @@ export default function NFTContents({ collection }: NFTContentsProps) {
         },
     });
 
-    const handlePurchase = (quantity: number) => {
-        console.log(
-            `Purchasing ${quantity} NFTs from collection ${collection.address}`
-        );
-    };
+    const handlePurchase = useCallback(
+        (quantity: number) => {
+            console.log(
+                `Purchasing ${quantity} NFTs from collection ${collection.address}`
+            );
+        },
+        [collection.address]
+    );
 
-    const handlePaymentSuccess = (payment: Payment) => {
+    const handlePaymentSuccess = useCallback((payment: Payment) => {
         setShowFeedback(true);
-    };
+    }, []);
 
     return (
         <div className="flex flex-col items-center w-full py-6 sm:py-8 md:py-10">
             <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
             <div className="w-full max-w-7xl px-4">
-                {purchaseSuccess && (
-                    <div className="bg-chart-1/20 border border-chart-1/30 text-chart-1 p-3 sm:p-4 rounded-lg mb-6 sm:mb-8 max-w-3xl mx-auto">
-                        <p className="font-main text-center text-sm md:text-base">
-                            Your purchase was successful! Check your wallet for
-                            the NFT.
-                        </p>
-                    </div>
-                )}
-
                 <div className="grid grid-cols-1 gap-6 mt-[50px] mb-[50px] lg:grid-cols-3 lg:gap-8 lg:mt-[0px] lg:mb-[0px]">
                     <div className="lg:col-span-2 order-1 lg:order-1 gap-6 flex flex-col">
                         <NFTContentsDetails
@@ -140,7 +136,23 @@ export default function NFTContents({ collection }: NFTContentsProps) {
                                 collectionParticipants?.length || 0
                             }
                         />
+                        <h2
+                            className={cn(
+                                getResponsiveClass(30).textClass,
+                                "mt-[50px]"
+                            )}
+                        >
+                            Official Report
+                        </h2>
                         <NFTContentsReport metadata={metadata} />
+                        <h2
+                            className={cn(
+                                getResponsiveClass(30).textClass,
+                                "mt-[50px]"
+                            )}
+                        >
+                            Details
+                        </h2>
                         <NFTContentsPageImages collection={collection} />
                     </div>
 
@@ -186,15 +198,23 @@ export default function NFTContents({ collection }: NFTContentsProps) {
             />
         </div>
     );
-}
+});
 
 const VISIBLE_THRESHOLD = 0.1;
 const HIDE_THRESHOLD = 0.7;
 const MAX_OPACITY = 1;
 const MID_OPACITY = 0.9;
 
-function NFTStickyPurchaseButton({ text = "Buy Now" }: { text?: string }) {
+const NFTStickyPurchaseButton = React.memo(function NFTStickyPurchaseButton({
+    text = "Buy Now",
+}: {
+    text?: string;
+}) {
     const [opacity, setOpacity] = useState(MAX_OPACITY);
+    const thresholds = useMemo(
+        () => Array.from({ length: 21 }, (_, i) => i * 0.05),
+        []
+    );
 
     useEffect(() => {
         const target = document.getElementById("nft-payment-section");
@@ -218,13 +238,13 @@ function NFTStickyPurchaseButton({ text = "Buy Now" }: { text?: string }) {
                 }
             },
             {
-                threshold: Array.from({ length: 21 }, (_, i) => i * 0.05), // 0, 0.05, ..., 1
+                threshold: thresholds,
             }
         );
         observer.observe(target);
 
         return () => observer.disconnect();
-    }, []);
+    }, [thresholds]);
 
     const handleClick = useCallback(() => {
         const paymentSection = document.getElementById("nft-payment-section");
@@ -255,7 +275,7 @@ function NFTStickyPurchaseButton({ text = "Buy Now" }: { text?: string }) {
             </h2>
         </ShinyButton>
     );
-}
+});
 
 function formatDate(date: string) {
     const dateObj = new Date(date);

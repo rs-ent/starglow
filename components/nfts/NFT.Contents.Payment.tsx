@@ -3,14 +3,14 @@
 "use client";
 
 import { Collection } from "@/app/actions/factoryContracts";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { H3 } from "../atoms/Typography";
 import { Ticket, AlertCircle, CheckCircle2 } from "lucide-react";
 import PaymentModule from "../payment/PaymentModule";
 import { Currency } from "@/lib/types/payment";
 import { formatCurrency } from "@/lib/utils/format";
-import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import { Payment } from "@prisma/client";
+import React from "react";
 
 interface NFTContentsPaymentProps {
     collection: Collection;
@@ -26,7 +26,7 @@ interface NFTContentsPaymentProps {
 
 const initialCurrency = "CURRENCY_USD" as Currency;
 
-export default function NFTContentsPayment({
+export default React.memo(function NFTContentsPayment({
     collection,
     onPurchase,
     onPaymentSuccess,
@@ -41,9 +41,9 @@ export default function NFTContentsPayment({
     );
     const [currency, setCurrency] = useState<Currency>(initialCurrency);
 
-    const handleDisplayPriceChange = (displayPrice: number) => {
+    const handleDisplayPriceChange = useCallback((displayPrice: number) => {
         setDisplayPrice(displayPrice);
-    };
+    }, []);
 
     const { isSoldOut, isNotActive, canPurchase } = useMemo(() => {
         const isSoldOut = collectionStock.remain <= 0;
@@ -52,6 +52,14 @@ export default function NFTContentsPayment({
 
         return { isSoldOut, isNotActive, canPurchase };
     }, [collectionStock, collection]);
+
+    const handleIncrease = useCallback(() => {
+        setQuantity((prev) => Math.min(prev + 1, collectionStock.remain));
+    }, [collectionStock.remain]);
+
+    const handleDecrease = useCallback(() => {
+        setQuantity((prev) => Math.max(1, prev - 1));
+    }, []);
 
     return (
         <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50 p-4 sm:p-6 md:p-8">
@@ -99,9 +107,7 @@ export default function NFTContentsPayment({
                         </label>
                         <div className="flex items-center">
                             <button
-                                onClick={() =>
-                                    setQuantity(Math.max(1, quantity - 1))
-                                }
+                                onClick={handleDecrease}
                                 disabled={quantity <= 1}
                                 className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border border-border/50 rounded-l-lg disabled:opacity-50"
                                 aria-label="Decrease quantity"
@@ -112,14 +118,7 @@ export default function NFTContentsPayment({
                                 {quantity}
                             </div>
                             <button
-                                onClick={() =>
-                                    setQuantity(
-                                        Math.min(
-                                            quantity + 1,
-                                            collectionStock.remain
-                                        )
-                                    )
-                                }
+                                onClick={handleIncrease}
                                 disabled={quantity >= collectionStock.remain}
                                 className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border border-border/50 rounded-r-lg disabled:opacity-50"
                                 aria-label="Increase quantity"
@@ -177,4 +176,4 @@ export default function NFTContentsPayment({
             </div>
         </div>
     );
-}
+});
