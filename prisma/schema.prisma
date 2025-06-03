@@ -1103,6 +1103,8 @@ model Story_spg {
   contractURI String
   name String @unique
   symbol String @unique
+  imageUrl String?
+  metadata Json?
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

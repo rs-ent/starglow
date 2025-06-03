@@ -6,6 +6,22 @@ import FileUploader from "@/components/atoms/FileUploader";
 import { TbTopologyStar3 } from "react-icons/tb";
 import { SiEthereum } from "react-icons/si";
 import { fetchURI } from "@/app/story/metadata/actions";
+import {
+    FaEdit,
+    FaCalendarAlt,
+    FaDollarSign,
+    FaImage,
+    FaPalette,
+    FaListUl,
+    FaClock,
+    FaCheckCircle,
+    FaTimesCircle,
+    FaArrowLeft,
+    FaSave,
+    FaTimes,
+} from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import { useToast } from "@/app/hooks/useToast";
 
 // SPG 컬렉션 필수 필드 타입
 interface SPGForm {
@@ -26,74 +42,73 @@ interface SPGForm {
     name?: string;
     artistId?: string;
     networkId?: string;
+    imageUrl?: string;
 }
 
+function formatKSTDate(dateStr?: string) {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+function toDatetimeLocalValue(dt?: string) {
+    if (!dt) return "";
+    // dt는 ISO string일 수 있음
+    const date = new Date(dt);
+    // 브라우저 input value는 local time 기준이어야 함
+    // padStart로 항상 2자리 보장
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const min = String(date.getMinutes()).padStart(2, "0");
+    console.log(yyyy, mm, dd, hh, min);
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+}
+
+// 썸네일 컴포넌트
 function CollectionThumbnail({
+    imageUrl,
     contractURI,
     fallback,
+    size = "normal",
 }: {
+    imageUrl?: string;
     contractURI?: string;
     fallback?: string;
+    size?: "normal" | "large";
 }) {
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
-
+    const [metaImage, setMetaImage] = useState<string | null>(null);
     useEffect(() => {
-        let ignore = false;
-        async function fetchImage() {
-            if (!contractURI) return;
-            try {
-                const metadata = await fetchURI({ uri: contractURI });
-                if (!ignore) setImageUrl(metadata?.image || null);
-            } catch {
-                if (!ignore) setImageUrl(null);
-            }
-        }
-        fetchImage();
-        return () => {
-            ignore = true;
-        };
+        if (!contractURI) return;
+        fetchURI({ uri: contractURI })
+            .then((meta) => setMetaImage(meta?.image || null))
+            .catch(() => setMetaImage(null));
     }, [contractURI]);
-
-    if (imageUrl) {
+    const src = imageUrl || metaImage || fallback;
+    const sizeClasses = size === "large" ? "w-32 h-32" : "w-24 h-24";
+    if (src) {
         return (
             <img
-                src={imageUrl}
+                src={src}
                 alt="thumbnail"
-                className="w-24 h-24 object-cover rounded-xl border-2 border-blue-800 shadow-lg bg-[#181c2b]"
-            />
-        );
-    }
-    if (fallback) {
-        return (
-            <img
-                src={fallback}
-                alt="thumbnail"
-                className="w-24 h-24 object-cover rounded-xl border-2 border-blue-800 shadow-lg bg-[#181c2b]"
+                className={`${sizeClasses} object-cover rounded-xl border-2 border-blue-800 shadow-lg bg-[#181c2b]`}
             />
         );
     }
     return (
-        <div className="w-24 h-24 rounded-xl bg-blue-900/30 flex items-center justify-center text-4xl text-blue-700 border-2 border-blue-800">
+        <div
+            className={`${sizeClasses} rounded-2xl bg-gradient-to-br from-blue-900/30 to-purple-900/30 flex items-center justify-center text-4xl text-blue-600 border-2 border-blue-700/50`}
+        >
             📦
         </div>
     );
-}
-
-function kstInputToUTC(val?: string) {
-    if (!val) return undefined;
-    // val: "2025-04-01T17:00" (KST)
-    const date = new Date(val);
-    // 9시간 빼기
-    date.setHours(date.getHours() - 9);
-    return date.toISOString();
-}
-
-function utcToKSTInput(dt?: string) {
-    if (!dt) return "";
-    const date = new Date(dt);
-    // 9시간 더하기
-    date.setHours(date.getHours() + 9);
-    return date.toISOString().slice(0, 16);
 }
 
 export default function AdminStoryManagementSPG({
@@ -101,6 +116,7 @@ export default function AdminStoryManagementSPG({
 }: {
     onBack: () => void;
 }) {
+    const toast = useToast();
     const {
         getSPGsData,
         getSPGsIsLoading,
@@ -133,19 +149,21 @@ export default function AdminStoryManagementSPG({
         backgroundColor: "",
         foregroundColor: "",
     });
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<"info" | "schedule" | "design">(
+        "info"
+    );
 
     const handleSave = async () => {
-        await updateSPGUtilsMutationAsync({
-            ...form,
-            preOrderStart: kstInputToUTC(form.preOrderStart),
-            preOrderEnd: kstInputToUTC(form.preOrderEnd),
-            saleStart: kstInputToUTC(form.saleStart),
-            saleEnd: kstInputToUTC(form.saleEnd),
-            glowStart: kstInputToUTC(form.glowStart),
-            glowEnd: kstInputToUTC(form.glowEnd),
-            pageImages: form.pageImages.map((img) => img.url),
-        });
+        try {
+            await updateSPGUtilsMutationAsync({
+                ...form,
+                pageImages: form.pageImages.map((img) => img.url),
+            });
+            toast.success("SPG 정보가 성공적으로 업데이트되었습니다!");
+            setShowForm(false);
+        } catch (error: any) {
+            toast.error(error?.message || "업데이트 중 오류가 발생했습니다.");
+        }
     };
 
     // pageImages 업로드 핸들러
@@ -157,92 +175,28 @@ export default function AdminStoryManagementSPG({
     };
 
     // 카드형 컬렉션 목록 렌더러
-    const renderCollectionCard = (spg: any) => (
-        <div
-            key={spg.address}
-            className="bg-gradient-to-br from-[#23243a] via-[#2a2342] to-[#181c2b] rounded-2xl shadow-xl border border-blue-900/30 p-5 flex flex-col gap-3 hover:scale-[1.02] transition-all duration-200 relative group"
-        >
-            <div className="w-full flex items-center justify-between mb-8 z-10 mt-2">
-                <button
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#23243a]/80 text-blue-200 hover:bg-blue-900/40 hover:text-white transition shadow-lg"
-                    onClick={onBack}
-                    title="뒤로가기"
-                >
-                    <span className="hidden md:inline">뒤로가기</span>
-                </button>
-                <h1 className="text-3xl font-bold text-white">
-                    SPG 컬렉션 관리 센터
-                </h1>
-                <div />
-            </div>
-            {/* 썸네일 */}
-            <div className="w-full flex justify-center items-center mb-2">
-                <CollectionThumbnail
-                    contractURI={spg.contractURI}
-                    fallback={spg.pageImages?.[0]}
-                />
-            </div>
-            {/* 컬렉션명/네트워크 */}
-            <div className="flex flex-col items-center gap-1">
-                <div className="text-lg font-bold text-cyan-300 truncate w-full text-center">
-                    {spg.name || spg.address.slice(0, 8) + "..."}
-                </div>
-                <div className="text-xs text-blue-400 font-mono truncate w-full text-center">
-                    {spg.address}
-                </div>
-            </div>
-            {/* 상태/가격/기간 */}
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-                <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        spg.isListed
-                            ? "bg-green-500/20 text-green-300"
-                            : "bg-gray-700/40 text-gray-300"
-                    }`}
-                >
-                    {spg.isListed ? "Listed" : "Unlisted"}
-                </span>
-                <span className="px-3 py-1 rounded-full text-xs bg-blue-900/30 text-blue-200 font-bold">
-                    {spg.price}$
-                </span>
-                {spg.saleStart && (
-                    <span className="px-3 py-1 rounded-full text-xs bg-purple-900/30 text-purple-200">
-                        {new Date(spg.saleStart).toLocaleDateString()} ~
-                        {spg.saleEnd
-                            ? " " + new Date(spg.saleEnd).toLocaleDateString()
-                            : ""}
-                    </span>
-                )}
-            </div>
-            {/* 수정 버튼 */}
-            <button
-                className="mt-4 px-5 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-xl font-bold shadow hover:scale-105 transition-all"
+    const renderCollectionCard = (spg: any) => {
+        const isActive =
+            spg.saleStart &&
+            new Date(spg.saleStart) <= new Date() &&
+            (!spg.saleEnd || new Date(spg.saleEnd) >= new Date());
+        return (
+            <motion.div
+                key={spg.address}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -5 }}
+                className="bg-gradient-to-br from-[#2a2342] via-[#23243a] to-[#181c2b] rounded-3xl shadow-2xl border border-blue-800/30 overflow-hidden group cursor-pointer"
                 onClick={() => {
                     setForm({
                         address: spg.address,
                         isListed: spg.isListed,
-                        preOrderStart: spg.preOrderStart
-                            ? new Date(spg.preOrderStart)
-                                  .toISOString()
-                                  .slice(0, 16)
-                            : "",
-                        preOrderEnd: spg.preOrderEnd
-                            ? new Date(spg.preOrderEnd)
-                                  .toISOString()
-                                  .slice(0, 16)
-                            : "",
-                        saleStart: spg.saleStart
-                            ? new Date(spg.saleStart).toISOString().slice(0, 16)
-                            : "",
-                        saleEnd: spg.saleEnd
-                            ? new Date(spg.saleEnd).toISOString().slice(0, 16)
-                            : "",
-                        glowStart: spg.glowStart
-                            ? new Date(spg.glowStart).toISOString().slice(0, 16)
-                            : "",
-                        glowEnd: spg.glowEnd
-                            ? new Date(spg.glowEnd).toISOString().slice(0, 16)
-                            : "",
+                        preOrderStart: spg.preOrderStart || "",
+                        preOrderEnd: spg.preOrderEnd || "",
+                        saleStart: spg.saleStart || "",
+                        saleEnd: spg.saleEnd || "",
+                        glowStart: spg.glowStart || "",
+                        glowEnd: spg.glowEnd || "",
                         price: spg.price,
                         circulation: spg.circulation,
                         pageImages: Array.isArray(spg.pageImages)
@@ -258,578 +212,639 @@ export default function AdminStoryManagementSPG({
                         name: spg.name,
                         artistId: spg.artistId,
                         networkId: spg.networkId,
+                        imageUrl: spg.imageUrl,
                     });
                     setShowForm(true);
                 }}
             >
-                수정
-            </button>
-        </div>
-    );
+                <div className="relative p-6">
+                    {/* 상태 배지 */}
+                    <div className="absolute top-4 right-4 z-10">
+                        {spg.isListed ? (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-500/20 text-green-300 border border-green-500/30 flex items-center gap-1">
+                                <FaCheckCircle className="text-xs" /> Listed
+                            </span>
+                        ) : (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-700/40 text-gray-400 border border-gray-600/30 flex items-center gap-1">
+                                <FaTimesCircle className="text-xs" /> Unlisted
+                            </span>
+                        )}
+                    </div>
+                    {/* 썸네일과 정보 */}
+                    <div className="flex items-start gap-4">
+                        <CollectionThumbnail
+                            imageUrl={spg.imageUrl}
+                            contractURI={spg.contractURI}
+                            fallback={spg.pageImages?.[0]}
+                        />
+                        <div className="flex-1">
+                            <h3 className="text-xl font-bold text-white mb-1 group-hover:text-cyan-300 transition-colors">
+                                {spg.name ||
+                                    `Collection #${spg.address.slice(0, 6)}`}
+                            </h3>
+                            <p className="text-sm text-blue-400 font-mono mb-3">
+                                {spg.address.slice(0, 12)}...
+                                {spg.address.slice(-10)}
+                            </p>
+                            {/* 정보 태그들 */}
+                            <div className="flex flex-wrap gap-2">
+                                <span className="px-3 py-1 rounded-lg text-xs bg-blue-900/30 text-blue-300 border border-blue-700/30 flex items-center gap-1">
+                                    <FaDollarSign className="text-xs" />{" "}
+                                    {spg.price} USD
+                                </span>
+                                <span className="px-3 py-1 rounded-lg text-xs bg-purple-900/30 text-purple-300 border border-purple-700/30 flex items-center gap-1">
+                                    <FaListUl className="text-xs" />{" "}
+                                    {spg.circulation} NFTs
+                                </span>
+                                {isActive && (
+                                    <span className="px-3 py-1 rounded-lg text-xs bg-orange-900/30 text-orange-300 border border-orange-700/30 flex items-center gap-1 animate-pulse">
+                                        <FaClock className="text-xs" /> 판매중
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    {/* 기간 정보 */}
+                    {spg.saleStart && (
+                        <div className="mt-4 pt-4 border-t border-blue-800/20">
+                            <div className="flex items-center gap-2 text-xs text-blue-300">
+                                <FaCalendarAlt />
+                                <span>
+                                    판매 기간: {formatKSTDate(spg.saleStart)}
+                                </span>
+                                {spg.saleEnd && (
+                                    <>
+                                        <span className="text-blue-500">~</span>
+                                        <span>
+                                            {formatKSTDate(spg.saleEnd)}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                {/* 호버 효과 */}
+                <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            </motion.div>
+        );
+    };
 
     return (
-        <div className="relative w-full min-h-[80vh] flex flex-col items-center justify-start bg-gradient-to-br from-[#181c2b] to-[#2a2342] p-8 rounded-2xl shadow-2xl border border-blue-900/30 overflow-hidden">
+        <div className="relative w-full min-h-[80vh] flex flex-col items-center justify-start">
             {/* 배경 아이콘 */}
-            <TbTopologyStar3 className="absolute text-[14rem] text-blue-900/10 left-[-2rem] top-[-4rem] pointer-events-none select-none z-0" />
-            <SiEthereum className="absolute text-[7rem] text-purple-800/10 right-[-2rem] bottom-[-2rem] pointer-events-none select-none z-0" />
+            <TbTopologyStar3 className="absolute text-[20rem] text-blue-900/5 left-[-4rem] top-[-6rem] pointer-events-none select-none z-0 animate-pulse" />
+            <SiEthereum className="absolute text-[10rem] text-purple-800/5 right-[-3rem] bottom-[-3rem] pointer-events-none select-none z-0 animate-pulse" />
 
-            {/* 상단 Hero 타이틀 */}
-            <div className="w-full flex flex-col items-center mb-10 z-10">
-                <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-xl flex items-center gap-3 mb-2">
-                    SPG 컬렉션 <span className="text-blue-400">관리</span>
-                </h1>
-                <p className="text-lg text-blue-300 max-w-2xl text-center">
-                    Story Protocol Gateway NFT 컬렉션의 상태, 기간, 가격, 이미지
-                    등 주요 정보를 한눈에 관리하세요.
-                </p>
+            {/* 상단 Hero 섹션 */}
+            <div className="w-full flex flex-col items-center mb-12 z-10">
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-4 mb-6"
+                >
+                    <button
+                        onClick={onBack}
+                        className="p-3 rounded-xl bg-blue-900/20 text-blue-300 hover:bg-blue-900/30 hover:text-white transition-all duration-300 hover:scale-105"
+                    >
+                        <FaArrowLeft className="text-xl" />
+                    </button>
+                    <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400">
+                        SPG Collection Manager
+                    </h1>
+                </motion.div>
+                <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-xl text-blue-300 max-w-3xl text-center"
+                >
+                    Story Protocol Gateway NFT 컬렉션의 모든 정보를 한눈에
+                    관리하고 업데이트하세요
+                </motion.p>
             </div>
 
-            {/* 목록 */}
-            <div className="w-full max-w-6xl z-10">
-                {getSPGsIsLoading ? (
-                    <div className="text-blue-200 py-16 text-center text-xl animate-pulse">
-                        컬렉션 불러오는 중...
-                    </div>
-                ) : getSPGsIsError ? (
-                    <div className="text-red-400 py-16 text-center text-xl">
-                        {getSPGsError?.message || "목록을 불러오지 못했습니다."}
-                    </div>
-                ) : !getSPGsData || getSPGsData.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-24">
-                        <div className="text-7xl mb-4 opacity-30">📭</div>
-                        <div className="text-blue-200 text-xl mb-2">
-                            아직 등록된 SPG 컬렉션이 없습니다.
+            {/* 컬렉션 목록 */}
+            <div className="w-full max-w-7xl z-10">
+                <AnimatePresence mode="wait">
+                    {getSPGsIsLoading ? (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="flex flex-col items-center justify-center py-24"
+                        >
+                            <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mb-4" />
+                            <p className="text-xl text-blue-300">
+                                컬렉션을 불러오는 중...
+                            </p>
+                        </motion.div>
+                    ) : getSPGsIsError ? (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex flex-col items-center justify-center py-24"
+                        >
+                            <div className="text-6xl mb-4">⚠️</div>
+                            <p className="text-xl text-red-400">
+                                {getSPGsError?.message ||
+                                    "컬렉션을 불러올 수 없습니다"}
+                            </p>
+                        </motion.div>
+                    ) : !getSPGsData || getSPGsData.length === 0 ? (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="flex flex-col items-center justify-center py-24"
+                        >
+                            <div className="text-8xl mb-6 opacity-30">📭</div>
+                            <h3 className="text-2xl font-bold text-blue-200 mb-2">
+                                아직 등록된 SPG 컬렉션이 없습니다
+                            </h3>
+                            <p className="text-blue-400">
+                                컬렉션이 배포되면 이곳에서 관리할 수 있습니다
+                            </p>
+                        </motion.div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {getSPGsData.map((spg: any) =>
+                                renderCollectionCard(spg)
+                            )}
                         </div>
-                        <div className="text-blue-400">
-                            컬렉션이 배포되면 이곳에서 관리할 수 있습니다.
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        {/* 모바일: 카드형 */}
-                        <div className="grid grid-cols-1 gap-6 md:hidden">
-                            {getSPGsData.map(renderCollectionCard)}
-                        </div>
-                        {/* 데스크탑: 테이블형 */}
-                        <div className="hidden md:block">
-                            <div className="overflow-x-auto rounded-xl shadow-lg bg-[#23243a]/60">
-                                <table className="min-w-full text-sm text-blue-100">
-                                    <thead>
-                                        <tr className="bg-[#23243a]/80 text-blue-300 divide-x divide-blue-900/30">
-                                            <th className="px-4 py-3 text-center">
-                                                썸네일
-                                            </th>
-                                            <th className="px-4 py-3 text-center">
-                                                컬렉션명
-                                            </th>
-                                            <th className="px-4 py-3 text-center">
-                                                address
-                                            </th>
-                                            <th className="px-4 py-3 text-center">
-                                                isListed
-                                            </th>
-                                            <th className="px-4 py-3 text-center">
-                                                price
-                                            </th>
-                                            <th className="px-4 py-3 text-center">
-                                                기간
-                                            </th>
-                                            <th className="px-4 py-3 text-center">
-                                                Action
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {getSPGsData.map((spg: any) => (
-                                            <tr
-                                                key={spg.address}
-                                                className="border-b border-blue-900/30 hover:bg-blue-900/10 transition divide-x divide-blue-900/30"
-                                            >
-                                                <td className="px-4 py-2 text-center">
-                                                    <CollectionThumbnail
-                                                        contractURI={
-                                                            spg.contractURI
-                                                        }
-                                                        fallback={
-                                                            spg.pageImages?.[0]
-                                                        }
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-2 text-center font-bold text-cyan-200">
-                                                    {spg.name ||
-                                                        spg.address.slice(
-                                                            0,
-                                                            8
-                                                        ) + "..."}
-                                                </td>
-                                                <td className="px-4 py-2 text-center font-mono text-xs max-w-[160px] truncate">
-                                                    {spg.address}
-                                                </td>
-                                                <td className="px-4 py-2 text-center">
-                                                    <span
-                                                        className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                                            spg.isListed
-                                                                ? "bg-green-500/20 text-green-300"
-                                                                : "bg-gray-700/40 text-gray-300"
-                                                        }`}
-                                                    >
-                                                        {spg.isListed
-                                                            ? "Listed"
-                                                            : "Unlisted"}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-2 text-center">
-                                                    <span className="px-3 py-1 rounded-full text-xs bg-blue-900/30 text-blue-200 font-bold">
-                                                        {spg.price}$
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-2 text-center text-xs">
-                                                    {spg.saleStart ? (
-                                                        <span>
-                                                            {new Date(
-                                                                spg.saleStart
-                                                            ).toLocaleDateString()}{" "}
-                                                            ~
-                                                            {spg.saleEnd
-                                                                ? " " +
-                                                                  new Date(
-                                                                      spg.saleEnd
-                                                                  ).toLocaleDateString()
-                                                                : ""}
-                                                        </span>
-                                                    ) : (
-                                                        "-"
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-2 text-center">
-                                                    <button
-                                                        className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-xl font-bold shadow hover:scale-105 transition-all"
-                                                        onClick={() => {
-                                                            setForm({
-                                                                address:
-                                                                    spg.address,
-                                                                isListed:
-                                                                    spg.isListed,
-                                                                preOrderStart:
-                                                                    spg.preOrderStart
-                                                                        ? new Date(
-                                                                              spg.preOrderStart
-                                                                          )
-                                                                              .toISOString()
-                                                                              .slice(
-                                                                                  0,
-                                                                                  16
-                                                                              )
-                                                                        : "",
-                                                                preOrderEnd:
-                                                                    spg.preOrderEnd
-                                                                        ? new Date(
-                                                                              spg.preOrderEnd
-                                                                          )
-                                                                              .toISOString()
-                                                                              .slice(
-                                                                                  0,
-                                                                                  16
-                                                                              )
-                                                                        : "",
-                                                                saleStart:
-                                                                    spg.saleStart
-                                                                        ? new Date(
-                                                                              spg.saleStart
-                                                                          )
-                                                                              .toISOString()
-                                                                              .slice(
-                                                                                  0,
-                                                                                  16
-                                                                              )
-                                                                        : "",
-                                                                saleEnd:
-                                                                    spg.saleEnd
-                                                                        ? new Date(
-                                                                              spg.saleEnd
-                                                                          )
-                                                                              .toISOString()
-                                                                              .slice(
-                                                                                  0,
-                                                                                  16
-                                                                              )
-                                                                        : "",
-                                                                glowStart:
-                                                                    spg.glowStart
-                                                                        ? new Date(
-                                                                              spg.glowStart
-                                                                          )
-                                                                              .toISOString()
-                                                                              .slice(
-                                                                                  0,
-                                                                                  16
-                                                                              )
-                                                                        : "",
-                                                                glowEnd:
-                                                                    spg.glowEnd
-                                                                        ? new Date(
-                                                                              spg.glowEnd
-                                                                          )
-                                                                              .toISOString()
-                                                                              .slice(
-                                                                                  0,
-                                                                                  16
-                                                                              )
-                                                                        : "",
-                                                                price: spg.price,
-                                                                circulation:
-                                                                    spg.circulation,
-                                                                pageImages:
-                                                                    Array.isArray(
-                                                                        spg.pageImages
-                                                                    )
-                                                                        ? spg.pageImages.map(
-                                                                              (
-                                                                                  url: string,
-                                                                                  idx: number
-                                                                              ) => ({
-                                                                                  id: String(
-                                                                                      idx
-                                                                                  ),
-                                                                                  url,
-                                                                              })
-                                                                          )
-                                                                        : [],
-                                                                backgroundColor:
-                                                                    spg.backgroundColor ||
-                                                                    "",
-                                                                foregroundColor:
-                                                                    spg.foregroundColor ||
-                                                                    "",
-                                                                name: spg.name,
-                                                                artistId:
-                                                                    spg.artistId,
-                                                                networkId:
-                                                                    spg.networkId,
-                                                            });
-                                                            setShowForm(true);
-                                                        }}
-                                                    >
-                                                        수정
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </>
-                )}
+                    )}
+                </AnimatePresence>
             </div>
 
-            {/* 수정 슬라이드오버/모달 */}
-            {showForm && (
-                <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:justify-end bg-black/40 backdrop-blur-sm transition-all">
-                    {/* 슬라이드오버 패널 */}
-                    <div className="w-full md:w-[1280px] h-[90vh] md:h-full bg-gradient-to-br from-[#23243a] via-[#2a2342] to-[#181c2b] rounded-t-3xl md:rounded-l-3xl md:rounded-t-none shadow-2xl border-l-4 border-blue-900/40 p-0 flex flex-col relative animate-slideInRight">
-                        {/* 닫기 버튼 */}
-                        <button
-                            className="absolute top-4 right-4 text-blue-300 hover:text-white text-3xl z-20"
-                            onClick={() => setShowForm(false)}
-                            aria-label="닫기"
+            {/* 수정 모달 */}
+            <AnimatePresence>
+                {showForm && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
+                        onClick={(e) =>
+                            e.target === e.currentTarget && setShowForm(false)
+                        }
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="w-full max-w-4xl bg-gradient-to-br from-[#2a2342] via-[#23243a] to-[#181c2b] rounded-3xl shadow-2xl border border-blue-800/30 overflow-hidden"
                         >
-                            ×
-                        </button>
-                        {/* 상단: 썸네일/이름/상태 */}
-                        <div className="flex flex-col items-center gap-2 pt-8 pb-4 px-8 border-b border-blue-900/30 bg-[#23243a]/60 rounded-t-3xl">
-                            <div className="w-20 h-20 rounded-2xl bg-blue-900/30 flex items-center justify-center mb-2 border-2 border-blue-800 shadow-lg overflow-hidden">
-                                <CollectionThumbnail
-                                    contractURI={form.contractURI}
-                                    fallback={form.pageImages?.[0]?.url}
-                                />
-                            </div>
-                            <div className="text-2xl font-extrabold text-cyan-200 text-center truncate w-full">
-                                {form.name || form.address.slice(0, 8) + "..."}
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span
-                                    className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                        form.isListed
-                                            ? "bg-green-500/20 text-green-300"
-                                            : "bg-gray-700/40 text-gray-300"
-                                    }`}
-                                >
-                                    {form.isListed ? "Listed" : "Unlisted"}
-                                </span>
-                                <span className="px-3 py-1 rounded-full text-xs bg-blue-900/30 text-blue-200 font-bold">
-                                    {form.price}$
-                                </span>
-                            </div>
-                        </div>
-                        {/* 폼 본문 */}
-                        <form
-                            className="flex-1 flex flex-col gap-6 px-8 py-6 overflow-y-auto"
-                            onSubmit={async (e) => {
-                                e.preventDefault();
-                                await handleSave();
-                                setShowForm(false);
-                            }}
-                        >
-                            {/* isListed 토글 */}
-                            <div className="flex items-center gap-4">
-                                <label className="text-blue-200 font-bold text-lg">
-                                    isListed
-                                </label>
+                            {/* 모달 헤더 */}
+                            <div className="relative p-6 border-b border-blue-800/30 bg-gradient-to-r from-blue-900/20 to-purple-900/20">
                                 <button
-                                    type="button"
-                                    className={`w-12 h-7 rounded-full flex items-center transition-colors duration-200 ${
-                                        form.isListed
-                                            ? "bg-green-400/60"
-                                            : "bg-gray-600/60"
-                                    }`}
-                                    onClick={() =>
-                                        setForm((f) => ({
-                                            ...f,
-                                            isListed: !f.isListed,
-                                        }))
-                                    }
+                                    onClick={() => setShowForm(false)}
+                                    className="absolute top-6 right-6 p-2 rounded-lg bg-red-900/20 text-red-400 hover:bg-red-900/30 hover:text-red-300 transition-all duration-200"
                                 >
-                                    <span
-                                        className={`w-6 h-6 rounded-full bg-white shadow transform transition-transform duration-200 ${
-                                            form.isListed
-                                                ? "translate-x-5"
-                                                : "translate-x-0"
-                                        }`}
-                                    ></span>
+                                    <FaTimes className="text-xl" />
                                 </button>
-                                <span className="text-blue-400 text-sm">
-                                    {form.isListed ? "공개됨" : "비공개"}
-                                </span>
-                            </div>
-                            {/* 날짜/기간 */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-blue-200 font-semibold">
-                                        preOrderStart
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        value={utcToKSTInput(
-                                            form.preOrderStart
-                                        )}
-                                        onChange={(e) =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                preOrderStart: e.target.value,
-                                            }))
-                                        }
-                                        className="w-full rounded-xl px-3 py-2 bg-blue-900/30 text-white border border-blue-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                <div className="flex items-center gap-4">
+                                    <CollectionThumbnail
+                                        imageUrl={form.imageUrl}
+                                        contractURI={form.contractURI}
+                                        fallback={form.pageImages?.[0]?.url}
+                                        size="large"
                                     />
+                                    <div>
+                                        <h2 className="text-3xl font-bold text-white mb-2">
+                                            {form.name || "SPG Collection 설정"}
+                                        </h2>
+                                        <p className="text-sm text-blue-400 font-mono">
+                                            {form.address}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="text-blue-200 font-semibold">
-                                        preOrderEnd
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        value={utcToKSTInput(form.preOrderEnd)}
-                                        onChange={(e) =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                preOrderEnd: e.target.value,
-                                            }))
-                                        }
-                                        className="w-full rounded-xl px-3 py-2 bg-blue-900/30 text-white border border-blue-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-blue-200 font-semibold">
-                                        saleStart
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        value={utcToKSTInput(form.saleStart)}
-                                        onChange={(e) =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                saleStart: e.target.value,
-                                            }))
-                                        }
-                                        className="w-full rounded-xl px-3 py-2 bg-blue-900/30 text-white border border-blue-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-blue-200 font-semibold">
-                                        saleEnd
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        value={utcToKSTInput(form.saleEnd)}
-                                        onChange={(e) =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                saleEnd: e.target.value,
-                                            }))
-                                        }
-                                        className="w-full rounded-xl px-3 py-2 bg-blue-900/30 text-white border border-blue-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-blue-200 font-semibold">
-                                        glowStart
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        value={utcToKSTInput(form.glowStart)}
-                                        onChange={(e) =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                glowStart: e.target.value,
-                                            }))
-                                        }
-                                        className="w-full rounded-xl px-3 py-2 bg-blue-900/30 text-white border border-blue-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-blue-200 font-semibold">
-                                        glowEnd
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        value={utcToKSTInput(form.glowEnd)}
-                                        onChange={(e) =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                glowEnd: e.target.value,
-                                            }))
-                                        }
-                                        className="w-full rounded-xl px-3 py-2 bg-blue-900/30 text-white border border-blue-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    />
-                                </div>
-                            </div>
-                            {/* 가격/수량 */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-blue-200 font-semibold">
-                                        price
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={form.price}
-                                        onChange={(e) =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                price: Number(e.target.value),
-                                            }))
-                                        }
-                                        className="w-full rounded-xl px-3 py-2 bg-blue-900/30 text-white border border-blue-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-blue-200 font-semibold">
-                                        circulation
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={form.circulation}
-                                        onChange={(e) =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                circulation: Number(
-                                                    e.target.value
-                                                ),
-                                            }))
-                                        }
-                                        className="w-full rounded-xl px-3 py-2 bg-blue-900/30 text-white border border-blue-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    />
-                                </div>
-                            </div>
-                            {/* 이미지 업로드 */}
-                            <div>
-                                <label className="text-blue-200 font-bold mb-2 block">
-                                    pageImages
-                                </label>
-                                <FileUploader
-                                    bucket="spg"
-                                    multiple={true}
-                                    onComplete={handleImagesUpload}
-                                />
-                                <div className="flex gap-2 mt-2 flex-wrap">
-                                    {form.pageImages.map((img) => (
-                                        <img
-                                            key={img.id}
-                                            src={img.url}
-                                            alt="page"
-                                            className="w-16 h-16 object-cover rounded border-2 border-blue-800 shadow-md transition-transform hover:scale-110"
-                                        />
+                                {/* 탭 네비게이션 */}
+                                <div className="flex gap-2 mt-6">
+                                    {[
+                                        {
+                                            id: "info",
+                                            label: "기본 정보",
+                                            icon: <FaEdit />,
+                                        },
+                                        {
+                                            id: "schedule",
+                                            label: "판매 일정",
+                                            icon: <FaCalendarAlt />,
+                                        },
+                                        {
+                                            id: "design",
+                                            label: "디자인",
+                                            icon: <FaPalette />,
+                                        },
+                                    ].map((tab) => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() =>
+                                                setActiveTab(tab.id as any)
+                                            }
+                                            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 ${
+                                                activeTab === tab.id
+                                                    ? "bg-blue-600 text-white shadow-lg"
+                                                    : "bg-blue-900/20 text-blue-300 hover:bg-blue-900/30"
+                                            }`}
+                                        >
+                                            {tab.icon}
+                                            {tab.label}
+                                        </button>
                                     ))}
                                 </div>
                             </div>
-                            {/* 컬러 선택 */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-blue-200 font-semibold">
-                                        backgroundColor
-                                    </label>
-                                    <input
-                                        type="color"
-                                        value={
-                                            form.backgroundColor || "#000000"
+
+                            {/* 모달 본문 */}
+                            <div className="p-6 max-h-[60vh] overflow-y-auto">
+                                <AnimatePresence mode="wait">
+                                    {/* 기본 정보 탭 */}
+                                    {activeTab === "info" && (
+                                        <motion.div
+                                            key="info"
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 20 }}
+                                            className="space-y-6"
+                                        >
+                                            {/* isListed 토글 */}
+                                            <div className="flex items-center justify-between p-4 bg-blue-900/20 rounded-xl border border-blue-800/30">
+                                                <div>
+                                                    <h3 className="text-lg font-semibold text-white">
+                                                        컬렉션 공개 상태
+                                                    </h3>
+                                                    <p className="text-sm text-blue-300 mt-1">
+                                                        공개로 설정하면
+                                                        사용자들이 컬렉션을 볼
+                                                        수 있습니다
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className={`relative w-16 h-8 rounded-full transition-all duration-300 ${
+                                                        form.isListed
+                                                            ? "bg-gradient-to-r from-green-500 to-green-600"
+                                                            : "bg-gray-600"
+                                                    }`}
+                                                    onClick={() =>
+                                                        setForm((f) => ({
+                                                            ...f,
+                                                            isListed:
+                                                                !f.isListed,
+                                                        }))
+                                                    }
+                                                >
+                                                    <span
+                                                        className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg transform transition-transform duration-300 ${
+                                                            form.isListed
+                                                                ? "translate-x-8"
+                                                                : "translate-x-1"
+                                                        }`}
+                                                    />
+                                                </button>
+                                            </div>
+
+                                            {/* 가격과 수량 */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-blue-200 font-semibold mb-2">
+                                                        판매 가격 (USD)
+                                                    </label>
+                                                    <div className="relative">
+                                                        <FaDollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400" />
+                                                        <input
+                                                            type="number"
+                                                            value={form.price}
+                                                            onChange={(e) =>
+                                                                setForm(
+                                                                    (f) => ({
+                                                                        ...f,
+                                                                        price: Number(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        ),
+                                                                    })
+                                                                )
+                                                            }
+                                                            className="w-full pl-10 pr-3 py-3 rounded-xl bg-blue-900/30 text-white border border-blue-700/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-200"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-blue-200 font-semibold mb-2">
+                                                        발행 수량
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        value={form.circulation}
+                                                        onChange={(e) =>
+                                                            setForm((f) => ({
+                                                                ...f,
+                                                                circulation:
+                                                                    Number(
+                                                                        e.target
+                                                                            .value
+                                                                    ),
+                                                            }))
+                                                        }
+                                                        className="w-full px-4 py-3 rounded-xl bg-blue-900/30 text-white border border-blue-700/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+
+                                    {/* 판매 일정 탭 */}
+                                    {activeTab === "schedule" && (
+                                        <motion.div
+                                            key="schedule"
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 20 }}
+                                            className="space-y-6"
+                                        >
+                                            <div className="grid grid-cols-2 gap-4">
+                                                {[
+                                                    {
+                                                        label: "사전 예약 시작",
+                                                        field: "preOrderStart",
+                                                    },
+                                                    {
+                                                        label: "사전 예약 종료",
+                                                        field: "preOrderEnd",
+                                                    },
+                                                    {
+                                                        label: "판매 시작",
+                                                        field: "saleStart",
+                                                    },
+                                                    {
+                                                        label: "판매 종료",
+                                                        field: "saleEnd",
+                                                    },
+                                                    {
+                                                        label: "글로우 시작",
+                                                        field: "glowStart",
+                                                    },
+                                                    {
+                                                        label: "글로우 종료",
+                                                        field: "glowEnd",
+                                                    },
+                                                ].map((item) => (
+                                                    <div key={item.field}>
+                                                        <label className="block text-blue-200 font-semibold mb-2">
+                                                            {item.label}
+                                                        </label>
+                                                        <input
+                                                            type="datetime-local"
+                                                            value={toDatetimeLocalValue(
+                                                                form[
+                                                                    item.field as keyof SPGForm
+                                                                ] as string
+                                                            )}
+                                                            onChange={(e) =>
+                                                                setForm(
+                                                                    (f) => ({
+                                                                        ...f,
+                                                                        [item.field]:
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                    })
+                                                                )
+                                                            }
+                                                            className="w-full px-4 py-3 rounded-xl bg-blue-900/30 text-white border border-blue-700/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-200"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </motion.div>
+                                    )}
+
+                                    {/* 디자인 탭 */}
+                                    {activeTab === "design" && (
+                                        <motion.div
+                                            key="design"
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 20 }}
+                                            className="space-y-6"
+                                        >
+                                            {/* 썸네일 */}
+                                            <div>
+                                                <label className="block text-blue-200 font-semibold mb-2">
+                                                    썸네일 이미지
+                                                </label>
+                                                <FileUploader
+                                                    bucket="spg"
+                                                    multiple={false}
+                                                    onComplete={(files) => {
+                                                        if (files[0]?.url) {
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                imageUrl:
+                                                                    files[0]
+                                                                        .url,
+                                                            }));
+                                                        }
+                                                    }}
+                                                />
+                                                <div className="grid grid-cols-4 gap-3 mt-4">
+                                                    {form.imageUrl && (
+                                                        <div className="relative group">
+                                                            <img
+                                                                src={
+                                                                    form.imageUrl
+                                                                }
+                                                                alt="thumbnail"
+                                                                className="w-full h-24 object-cover rounded-xl border-2 border-blue-700/50 group-hover:border-cyan-500/50 transition-all duration-200"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* 페이지 이미지 */}
+                                            <div>
+                                                <label className="block text-blue-200 font-semibold mb-2">
+                                                    페이지 이미지
+                                                </label>
+                                                <FileUploader
+                                                    bucket="spg"
+                                                    multiple={true}
+                                                    onComplete={
+                                                        handleImagesUpload
+                                                    }
+                                                />
+                                                <div className="grid grid-cols-4 gap-3 mt-4">
+                                                    {form.pageImages.map(
+                                                        (img) => (
+                                                            <div
+                                                                key={img.id}
+                                                                className="relative group"
+                                                            >
+                                                                <img
+                                                                    src={
+                                                                        img.url
+                                                                    }
+                                                                    alt="page"
+                                                                    className="w-full h-24 object-cover rounded-xl border-2 border-blue-700/50 group-hover:border-cyan-500/50 transition-all duration-200"
+                                                                />
+                                                                <button
+                                                                    onClick={() =>
+                                                                        setForm(
+                                                                            (
+                                                                                f
+                                                                            ) => ({
+                                                                                ...f,
+                                                                                pageImages:
+                                                                                    f.pageImages.filter(
+                                                                                        (
+                                                                                            i
+                                                                                        ) =>
+                                                                                            i.id !==
+                                                                                            img.id
+                                                                                    ),
+                                                                            })
+                                                                        )
+                                                                    }
+                                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600"
+                                                                >
+                                                                    <FaTimes className="text-xs" />
+                                                                </button>
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* 색상 선택 */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-blue-200 font-semibold mb-2">
+                                                        배경색
+                                                    </label>
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="color"
+                                                            value={
+                                                                form.backgroundColor ||
+                                                                "#000000"
+                                                            }
+                                                            onChange={(e) =>
+                                                                setForm(
+                                                                    (f) => ({
+                                                                        ...f,
+                                                                        backgroundColor:
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                    })
+                                                                )
+                                                            }
+                                                            className="w-16 h-16 rounded-xl border-2 border-blue-700/50 cursor-pointer"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            value={
+                                                                form.backgroundColor ||
+                                                                "#000000"
+                                                            }
+                                                            onChange={(e) =>
+                                                                setForm(
+                                                                    (f) => ({
+                                                                        ...f,
+                                                                        backgroundColor:
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                    })
+                                                                )
+                                                            }
+                                                            className="flex-1 px-4 py-3 rounded-xl bg-blue-900/30 text-white border border-blue-700/50 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-blue-200 font-semibold mb-2">
+                                                        전경색
+                                                    </label>
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="color"
+                                                            value={
+                                                                form.foregroundColor ||
+                                                                "#ffffff"
+                                                            }
+                                                            onChange={(e) =>
+                                                                setForm(
+                                                                    (f) => ({
+                                                                        ...f,
+                                                                        foregroundColor:
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                    })
+                                                                )
+                                                            }
+                                                            className="w-16 h-16 rounded-xl border-2 border-blue-700/50 cursor-pointer"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            value={
+                                                                form.foregroundColor ||
+                                                                "#ffffff"
+                                                            }
+                                                            onChange={(e) =>
+                                                                setForm(
+                                                                    (f) => ({
+                                                                        ...f,
+                                                                        foregroundColor:
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                    })
+                                                                )
+                                                            }
+                                                            className="flex-1 px-4 py-3 rounded-xl bg-blue-900/30 text-white border border-blue-700/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
+                            {/* 모달 푸터 */}
+                            <div className="p-6 border-t border-blue-800/30 bg-gradient-to-r from-blue-900/10 to-purple-900/10">
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        onClick={() => setShowForm(false)}
+                                        className="px-6 py-3 rounded-xl bg-gray-700/50 text-blue-300 font-semibold hover:bg-gray-700/70 transition-all duration-200"
+                                        disabled={
+                                            updateSPGUtilsMutationIsPending
                                         }
-                                        onChange={(e) =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                backgroundColor: e.target.value,
-                                            }))
+                                    >
+                                        취소
+                                    </button>
+                                    <button
+                                        onClick={handleSave}
+                                        className="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-purple-600 text-white font-bold shadow-xl hover:from-purple-600 hover:to-cyan-600 transition-all duration-200 hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                                        disabled={
+                                            updateSPGUtilsMutationIsPending
                                         }
-                                        className="w-12 h-8 p-0 border-none bg-transparent rounded-xl shadow"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-blue-200 font-semibold">
-                                        foregroundColor
-                                    </label>
-                                    <input
-                                        type="color"
-                                        value={
-                                            form.foregroundColor || "#ffffff"
-                                        }
-                                        onChange={(e) =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                foregroundColor: e.target.value,
-                                            }))
-                                        }
-                                        className="w-12 h-8 p-0 border-none bg-transparent rounded-xl shadow"
-                                    />
+                                    >
+                                        <FaSave />
+                                        {updateSPGUtilsMutationIsPending
+                                            ? "저장 중..."
+                                            : "변경사항 저장"}
+                                    </button>
                                 </div>
                             </div>
-                        </form>
-                        {/* 하단 고정 버튼 */}
-                        <div className="w-full px-8 pb-6 pt-2 flex gap-3 justify-end bg-gradient-to-t from-[#23243a]/80 to-transparent rounded-b-3xl border-t border-blue-900/20">
-                            <button
-                                type="button"
-                                className="px-6 py-3 rounded-xl bg-gray-700 text-blue-200 font-bold hover:bg-gray-600 transition"
-                                onClick={() => setShowForm(false)}
-                                disabled={updateSPGUtilsMutationIsPending}
-                            >
-                                취소
-                            </button>
-                            <button
-                                type="submit"
-                                form=""
-                                className="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-purple-600 text-white font-bold shadow-xl hover:scale-105 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                                disabled={updateSPGUtilsMutationIsPending}
-                                onClick={async (e) => {
-                                    e.preventDefault();
-                                    await handleSave();
-                                    setShowForm(false);
-                                }}
-                            >
-                                {updateSPGUtilsMutationIsPending
-                                    ? "저장 중..."
-                                    : "저장"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

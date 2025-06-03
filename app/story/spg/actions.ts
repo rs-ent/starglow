@@ -21,6 +21,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { getChain } from "../network/actions";
+import { fetchURI } from "../metadata/actions";
 
 export interface deployCustomSPGContractInput {
     userId: string;
@@ -234,7 +235,7 @@ export async function createSPG(
             throw new Error("Collection address not found in event");
         }
 
-        console.log("SPG Collection deployed at:", collectionAddress);
+        const metadata = await fetchURI({ uri: input.selectedMetadata.url });
 
         const spg = await prisma.story_spg.create({
             data: {
@@ -242,6 +243,8 @@ export async function createSPG(
                 contractAddress: input.contractAddress,
                 baseURI: input.baseURI || "",
                 contractURI: input.selectedMetadata.url,
+                imageUrl: metadata?.image || "",
+                metadata: metadata,
                 name: input.name,
                 symbol: input.symbol,
                 networkId: input.networkId,
