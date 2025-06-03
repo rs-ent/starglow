@@ -2,17 +2,17 @@
 
 import { AlertDescription } from "../ui/alert";
 import { Alert } from "../ui/alert";
-import type { Collection } from "@/app/actions/factoryContracts";
 import NFTsCollectionsList from "./NFTs.Collections.List";
+import { SPG } from "@/app/story/spg/actions";
 
 export default function NFTsCollections({
     onBuyNowClick,
-    listedCollections,
+    spgs,
 }: {
-    onBuyNowClick: (collection: Collection) => void;
-    listedCollections: Collection[];
+    onBuyNowClick: (spgs: SPG) => void;
+    spgs: SPG[];
 }) {
-    if (!listedCollections || listedCollections.length === 0) {
+    if (!spgs || spgs.length === 0) {
         return (
             <Alert variant="destructive">
                 <AlertDescription>No collections found</AlertDescription>
@@ -23,7 +23,7 @@ export default function NFTsCollections({
     return (
         <div className="m-auto">
             <NFTsCollectionsList
-                collections={listedCollections}
+                spgs={spgs}
                 onBuyNowClick={onBuyNowClick}
             />
         </div>

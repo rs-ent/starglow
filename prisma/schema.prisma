@@ -629,6 +629,7 @@ model BlockchainNetwork {
   symbol              String
   isTestnet           Boolean              @default(true)
   isActive            Boolean              @default(true)
+  isStoryNetwork      Boolean              @default(false)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   multicallAddress    String?
@@ -637,8 +638,14 @@ model BlockchainNetwork {
   nfts                NFT[]
   assets              Asset[]
   assetsContracts     AssetsContract[]
+  story_spg_contracts Story_spgContract[]
+  story_spg Story_spg[]
+  story_nfts Story_nft[]
+  story_ipAssets Story_ipAsset[]
 
   @@index([isTestnet, isActive])
+  @@index([isStoryNetwork])
+  @@index([isTestnet, isActive, isStoryNetwork])
 }
 
 model AssetsContract {
@@ -768,42 +775,21 @@ model EscrowWallet {
   @@index([isActive])
 }
 
-model IpfsGroup {
-  id        String     @id @default(cuid())
-  pinataId  String     @unique @default(uuid())
-  name      String     @unique
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  files     IpfsFile[]
+model ipfs {
+  id        String   @id @default(cuid())
+  cid       String   @unique
+  url       String   @unique
+  type      String   @default("default")
+  previewUrl String?
+  previewWidth Int?
+  previewHeight Int?
+  previewMimeType String?
+  previewSizeBytes Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([name])
-  @@index([pinataId])
-}
-
-model IpfsFile {
-  id            String     @id @default(cuid())
-  type          String     @default("nft-metadata")
-  pinataId      String
-  name          String
-  cid           String
-  size          Int
-  numberOfFiles Int
-  mimeType      String
-  groupId       String?
-  keyvalues     Json?
-  vectorized    Boolean    @default(false)
-  network       String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  gateway       String     @default("ipfs://")
-  url           String     @default("ipfs://")
-  group         IpfsGroup? @relation(fields: [groupId], references: [pinataId])
-
-  @@index([pinataId])
-  @@index([url])
-  @@index([name])
-  @@index([groupId])
-  @@index([cid])
+  @@index([type])
+  @@index([previewUrl])
 }
 
 model Metadata {
@@ -1022,6 +1008,7 @@ model Artist {
   messages            ArtistMessage[]
   polls               Poll[]               @relation("ArtistPolls")
   quests              Quest[]              @relation("ArtistQuests")
+  story_spg           Story_spg[]
 
   @@index([name])
   @@index([code])
@@ -1091,6 +1078,126 @@ model ArtistFeedReaction {
   updatedAt    DateTime   @updatedAt
 
   @@unique([artistFeedId, playerId, reaction])
+}
+
+model Story_spgContract {
+  id String @id @default(cuid())
+  address String @unique
+  abi Json?
+  bytecode String?
+  txHash String?
+  networkId String
+  network BlockchainNetwork @relation(fields: [networkId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  story_spg Story_spg[]
+
+  @@index([networkId])
+}
+
+model Story_spg {
+  id String @id @default(cuid())
+  address String @unique
+  baseURI String
+  contractURI String
+  name String @unique
+  symbol String @unique
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contractAddress String?
+  contract Story_spgContract? @relation(fields: [contractAddress], references: [address])
+
+  networkId String
+  network   BlockchainNetwork @relation(fields: [networkId], references: [id])
+
+  ownerAddress String
+
+  artistId String?
+  artist   Artist? @relation(fields: [artistId], references: [id])
+
+  isListed Boolean @default(false)
+  preOrderStart DateTime?
+  preOrderEnd DateTime?
+  saleStart DateTime?
+  saleEnd DateTime?
+  glowStart DateTime?
+  glowEnd DateTime?
+  price          Int                     @default(0)
+  circulation    Int                     @default(1000)
+  pageImages     String[]
+  backgroundColor String?
+  foregroundColor String?
+
+  story_nfts Story_nft[]
+
+  @@index([networkId])
+  @@index([ownerAddress])
+  @@index([ownerAddress, networkId])
+  @@index([address])
+  @@index([name])
+  @@index([symbol])
+  @@index([artistId])
+}
+
+model Story_nft {
+  id String @id @default(cuid())
+  tokenId String
+  ownerAddress String
+  networkId String
+  network BlockchainNetwork @relation(fields: [networkId], references: [id])
+  tokenURI String
+  tokenURICid String
+  mintTxHash String?
+  
+  contractAddress String
+  spgCollection Story_spg? @relation(fields: [contractAddress], references: [address])
+  
+  ipId String?
+  ipAsset Story_ipAsset? @relation(fields: [ipId], references: [ipId])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([contractAddress, tokenId])
+  @@index([contractAddress])
+  @@index([ownerAddress])
+  @@index([networkId])
+  @@index([ipId])
+}
+
+model Story_ipAsset {
+  id String @id @default(cuid())
+  ipId String @unique
+  chainId String
+  tokenContract String
+  tokenId String
+  
+  ipMetadataURI String?
+  ipMetadataHash String?
+  nftMetadataURI String?
+  nftMetadataHash String?
+  
+  registrationTxHash String?
+  
+  // License Terms
+  licenseTermsId String?
+  licenseTermsURI String?
+  
+  networkId String
+  network BlockchainNetwork @relation(fields: [networkId], references: [id])
+  
+  // NFT 관계
+  nfts Story_nft[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([chainId, tokenContract, tokenId])
+  @@index([ipId])
+  @@index([networkId])
 }
 
 enum PaymentStatus {

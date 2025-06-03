@@ -55,6 +55,30 @@ export const processDistributor = async (
     }
 };
 
+async function retry<T>(
+    fn: () => Promise<T>,
+    maxRetries = 5,
+    initialDelay = 1000 // 1초
+): Promise<T> {
+    let lastError;
+    let delay = initialDelay;
+    for (let i = 0; i < maxRetries; i++) {
+        if (i > 0) {
+            console.log(`Retry ${i + 1} of ${maxRetries}...`);
+        }
+        try {
+            return await fn();
+        } catch (err) {
+            lastError = err;
+            if (i < maxRetries - 1) {
+                await new Promise((res) => setTimeout(res, delay));
+                delay += 1000; // 1초씩 증가 (1, 2, 3, 4, 5초)
+            }
+        }
+    }
+    throw lastError;
+}
+
 export async function processNFTs(
     payment: Payment
 ): Promise<PaymentPostProcessorResult> {
@@ -64,10 +88,12 @@ export async function processNFTs(
         case "PAID":
             try {
                 // NFT 전송 실행
-                const result = await transferNFTToUser({
-                    paymentId: payment.id,
-                    userId: payment.userId!,
-                });
+                const result = await retry(async () =>
+                    transferNFTToUser({
+                        paymentId: payment.id,
+                        userId: payment.userId!,
+                    })
+                );
 
                 if (!result.success) {
                     // 전송 실패 시 로깅 및 에러 처리

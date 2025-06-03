@@ -3,21 +3,21 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { Collection } from "@/app/actions/factoryContracts";
+import type { SPG } from "@/app/story/spg/actions";
 import { cn } from "@/lib/utils/tailwind";
 import { useRouter } from "next/navigation";
 import NFTsCollections from "./NFTs.Collections";
 
 export default function NFTs({
-    listedCollections,
+    spgs,
 }: {
-    listedCollections: Collection[];
+    spgs: SPG[];
 }) {
     const router = useRouter();
     const [isFadingOut, setIsFadingOut] = useState(false);
 
     const handleBuyNowClick = useCallback(
-        (collection: Collection) => {
+        (collection: SPG) => {
             setIsFadingOut(true);
             setTimeout(() => {
                 router.push(`/nfts/${collection.address}`);
@@ -40,7 +40,7 @@ export default function NFTs({
                 />
                 <NFTsCollections
                     onBuyNowClick={handleBuyNowClick}
-                    listedCollections={listedCollections}
+                    spgs={spgs}
                 />
             </div>
         </div>

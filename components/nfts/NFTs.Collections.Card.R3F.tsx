@@ -10,13 +10,14 @@ import React, {
 import { useFrame, useThree } from "@react-three/fiber";
 import { TextureLoader, Mesh, DoubleSide, LinearFilter, Vector3 } from "three";
 import { RoundedBox, Text, useCursor } from "@react-three/drei";
-import { Collection } from "@/app/actions/factoryContracts";
+import { SPG } from "@/app/story/spg/actions";
 import { METADATA_TYPE } from "@/app/actions/metadata";
 import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import { CollectionParticipantType } from "@prisma/client";
 import { animated, useSpring } from "@react-spring/three";
 import { formatDate, formatColor } from "@/lib/utils/format";
 import { useCachedTexture } from "@/lib/utils/useCachedTexture";
+import { fetchURI } from "@/app/story/metadata/actions";
 
 /**
  * CardMesh 컴포넌트에 전달되는 props 타입
@@ -45,7 +46,7 @@ export interface CardMeshProps {
  * NFTsCollectionsCard3DR3F 컴포넌트에 전달되는 props 타입
  */
 export interface NFTsCollectionsCard3DR3FProps {
-    collection: Collection;
+    spg: SPG;
     position?: [number, number, number];
     rotationY?: number;
     isSelected?: boolean;
@@ -568,7 +569,7 @@ const CardMesh = React.memo(function CardMesh({
 });
 
 export default React.memo(function NFTsCollectionsCard3DR3F({
-    collection,
+    spg,
     position,
     rotationY,
     isSelected,
@@ -580,7 +581,6 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
     const {
         backgroundColor,
         foregroundColor,
-        imageUrl,
         name,
         status,
         dateLabel,
@@ -589,12 +589,12 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
         artistName,
     } = useMemo(() => {
         const now = new Date();
-        const preSaleStart = collection.preSaleStart;
-        const preSaleEnd = collection.preSaleEnd;
-        const saleStart = collection.saleStart;
-        const saleEnd = collection.saleEnd;
-        const glowStart = collection.glowStart;
-        const glowEnd = collection.glowEnd;
+        const preSaleStart = spg.preOrderStart;
+        const preSaleEnd = spg.preOrderEnd;
+        const saleStart = spg.saleStart;
+        const saleEnd = spg.saleEnd;
+        const glowStart = spg.glowStart;
+        const glowEnd = spg.glowEnd;
 
         let status = "SCHEDULED";
         let dateLabel = "Sale Open";
@@ -649,19 +649,15 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             }
         }
 
-        const metadata = collection.metadata?.metadata as METADATA_TYPE;
-        const imageUrl = metadata.image || "";
-        const name = collection.name || "";
-        const { backgroundColor, foregroundColor } = formatColor(
-            metadata.background_color || "#05010D"
-        );
+        const name = spg.name || "";
+        const backgroundColor = spg.backgroundColor || "#05010D";
+        const foregroundColor = spg.foregroundColor || "#ffffff";
 
-        const artistName = collection.artist?.name || "";
+        const artistName = spg.artist?.name || "";
 
         return {
             backgroundColor,
             foregroundColor,
-            imageUrl,
             name,
             status,
             dateLabel,
@@ -669,29 +665,39 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             participantsType,
             artistName,
         };
-    }, [collection]);
+    }, [spg]);
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
 
-    // 컬렉션 데이터 쿼리 최적화
-    const { collectionStock, collectionParticipants } = useCollectionGet({
-        collectionAddress: collection.address,
-        options: {
-            participantsType,
-        },
-    });
+    useEffect(() => {
+        let ignore = false;
+        async function fetchImage() {
+            if (!spg.contractURI) return;
+            try {
+                const metadata = await fetchURI({ uri: spg.contractURI });
+                if (!ignore) setImageUrl(metadata?.image || "");
+            } catch {
+                if (!ignore) setImageUrl(null);
+            }
+        }
+        fetchImage();
+        return () => {
+            ignore = true;
+        };
+    }, [spg.contractURI]);
 
     // 이벤트 핸들러 단순화 (useCallback 제거)
     return (
         <CardMesh
             backgroundColor={backgroundColor}
             foregroundColor={foregroundColor}
-            imageUrl={imageUrl}
+            imageUrl={imageUrl || ""}
             name={name}
             status={status}
             dateLabel={dateLabel}
             dateValue={dateValue}
-            participants={collectionParticipants?.length || 0}
-            remainStock={collectionStock?.remain || 0}
-            totalStock={collectionStock?.total || 0}
+            participants={0}
+            remainStock={0}
+            totalStock={spg.circulation || 0}
             artistName={artistName}
             position={position}
             rotationY={rotationY}

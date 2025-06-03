@@ -1,6 +1,5 @@
 /// components/nfts/NFTs.Collections.List.tsx
 
-import type { Collection } from "@/app/actions/factoryContracts";
 import { Canvas } from "@react-three/fiber";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useGesture, WebKitGestureEvent } from "@use-gesture/react";
@@ -15,11 +14,13 @@ import {
     useCachedTexture,
     prefetchTextures,
 } from "@/lib/utils/useCachedTexture";
+import { SPG } from "@/app/story/spg/actions";
+import { fetchURI } from "@/app/story/metadata/actions";
 
 interface NFTsCollectionsListProps {
-    collections: Collection[];
+    spgs: SPG[];
     initialTargetCameraZ?: number;
-    onBuyNowClick: (collection: Collection) => void;
+    onBuyNowClick: (spg: SPG) => void;
 }
 
 const Arrow = React.memo(function Arrow({
@@ -63,7 +64,7 @@ const Arrow = React.memo(function Arrow({
 });
 
 export default function NFTsCollectionsList({
-    collections,
+    spgs,
     onBuyNowClick,
     initialTargetCameraZ = 35,
 }: NFTsCollectionsListProps) {
@@ -78,27 +79,39 @@ export default function NFTsCollectionsList({
     const containerRef = useRef<HTMLDivElement>(null);
     const [isPinching, setIsPinching] = useState(false);
     const [confirmedAlpha, setConfirmedAlpha] = useState(1);
-    const [buyNowCollection, setBuyNowCollection] = useState<Collection | null>(
+    const [buyNowCollection, setBuyNowCollection] = useState<SPG | null>(
         null
     );
     const [isPreloaded, setIsPreloaded] = useState(false);
 
     // 3D 카드 이미지 프리로딩
     useEffect(() => {
-        const urls = collections
-            .map((c) => {
-                const metadata = c.metadata?.metadata as { image?: string };
-                return metadata?.image || null;
-            })
-            .filter(Boolean) as string[];
-        if (urls.length === 0) {
-            setIsPreloaded(true);
-            return;
+        let cancelled = false;
+        async function preload() {
+            const urls = (
+                await Promise.all(
+                    spgs.map(async (c) => {
+                        const contractURI = c.contractURI;
+                        const metadata = await fetchURI({ uri: contractURI });
+                        return metadata?.image || null;
+                    })
+                )
+            ).filter(Boolean) as string[];
+            if (cancelled) return;
+            if (urls.length === 0) {
+                setIsPreloaded(true);
+                return;
+            }
+            await prefetchTextures(urls);
+            if (!cancelled) setIsPreloaded(true);
         }
-        prefetchTextures(urls).then(() => setIsPreloaded(true));
-    }, [collections]);
+        preload();
+        return () => {
+            cancelled = true;
+        };
+    }, [spgs]);
 
-    const len = collections.length;
+    const len = spgs.length;
     const handleDrag = useCallback(
         (state: any) => {
             if (isPinching) {
@@ -196,11 +209,11 @@ export default function NFTsCollectionsList({
         collectionId: string,
         buyNowClicked: boolean
     ) => {
-        const index = collections.findIndex((c) => c.id === collectionId);
+        const index = spgs.findIndex((c) => c.id === collectionId);
         if (buyNowClicked && index !== -1) {
             const cameraZ = 5;
             setTargetCameraZ(cameraZ);
-            onBuyNowClick(collections[index]);
+            onBuyNowClick(spgs[index]);
         }
         if (selected === index) {
             if (!buyNowClicked && confirmedAlpha > 1) {
@@ -218,7 +231,7 @@ export default function NFTsCollectionsList({
         }
     };
     const renderCollection = useCallback(
-        (collection: Collection, i: number) => {
+        (spg: SPG, i: number) => {
             const effectiveSelected = selected - dragOffset;
             const angle = (i - effectiveSelected) * angleStep;
             const x = Math.sin(angle) * radius;
@@ -227,13 +240,13 @@ export default function NFTsCollectionsList({
             return (
                 <NFTsCollectionsCard3DR3F
                     key={i}
-                    collection={collection}
+                    spg={spg}
                     position={[x, positionY, z]}
                     rotationY={rotationY}
                     isSelected={Math.round(effectiveSelected) === i}
-                    onClick={() => handleClickCollection(collection.id, false)}
+                    onClick={() => handleClickCollection(spg.id, false)}
                     onBuyNowClick={() =>
-                        handleClickCollection(collection.id, true)
+                        handleClickCollection(spg.id, true)
                     }
                     confirmedAlpha={confirmedAlpha}
                 />
@@ -378,7 +391,7 @@ export default function NFTsCollectionsList({
                 />
                 <Arrow positionY={positionY} confirmedAlpha={confirmedAlpha} />
 
-                {collections.map(renderCollection)}
+                {spgs.map(renderCollection)}
             </Canvas>
         </div>
     );

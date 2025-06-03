@@ -14,16 +14,70 @@ interface FileUploaderProps {
     purpose?: string;
     bucket: string;
     onComplete?: (files: { id: string; url: string }[]) => void;
+    onFiles?: (files: FileData[]) => void;
     accept?: Record<string, string[]>;
     maxSize?: number;
     multiple?: boolean;
     className?: string;
 }
 
+export type FileData = {
+    file: File;
+    id: string;
+    url: string;
+    width?: number;
+    height?: number;
+    mimeType?: string;
+    sizeBytes?: number;
+};
+
+// Helper: 이미지/비디오 width/height 추출
+async function getMediaDimensions(
+    file: File
+): Promise<{ width?: number; height?: number }> {
+    return new Promise((resolve) => {
+        if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new window.Image();
+                img.onload = () => {
+                    resolve({
+                        width: img.naturalWidth,
+                        height: img.naturalHeight,
+                    });
+                };
+                img.onerror = () => resolve({});
+                img.src = e.target?.result as string;
+            };
+            reader.onerror = () => resolve({});
+            reader.readAsDataURL(file);
+        } else if (file.type.startsWith("video/")) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const video = document.createElement("video");
+                video.preload = "metadata";
+                video.onloadedmetadata = () => {
+                    resolve({
+                        width: video.videoWidth,
+                        height: video.videoHeight,
+                    });
+                };
+                video.onerror = () => resolve({});
+                video.src = e.target?.result as string;
+            };
+            reader.onerror = () => resolve({});
+            reader.readAsDataURL(file);
+        } else {
+            resolve({});
+        }
+    });
+}
+
 export default function FileUploader({
     purpose = "other",
     bucket,
     onComplete,
+    onFiles,
     accept = {
         "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"],
     },
@@ -67,8 +121,27 @@ export default function FileUploader({
                     }))
                 );
             }
+
+            if (onFiles && uploadedFiles && uploadedFiles.length > 0) {
+                const fileDataArr: FileData[] = await Promise.all(
+                    uploadedFiles.map(async (file: StoredFile, idx: number) => {
+                        const f = acceptedFiles[idx];
+                        const dims = await getMediaDimensions(f);
+                        return {
+                            file: f,
+                            id: file.id,
+                            url: file.url,
+                            width: dims.width,
+                            height: dims.height,
+                            mimeType: f.type,
+                            sizeBytes: f.size,
+                        };
+                    })
+                );
+                onFiles(fileDataArr);
+            }
         },
-        [uploadFiles, purpose, bucket, onComplete, maxSize]
+        [uploadFiles, purpose, bucket, onComplete, onFiles, maxSize]
     );
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({

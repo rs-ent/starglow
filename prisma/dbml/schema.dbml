@@ -503,6 +503,7 @@ Table BlockchainNetwork {
   symbol String [not null]
   isTestnet Boolean [not null, default: true]
   isActive Boolean [not null, default: true]
+  isStoryNetwork Boolean [not null, default: false]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   multicallAddress String
@@ -511,6 +512,10 @@ Table BlockchainNetwork {
   nfts NFT [not null]
   assets Asset [not null]
   assetsContracts AssetsContract [not null]
+  story_spg_contracts Story_spgContract [not null]
+  story_spg Story_spg [not null]
+  story_nfts Story_nft [not null]
+  story_ipAssets Story_ipAsset [not null]
 }
 
 Table AssetsContract {
@@ -605,33 +610,18 @@ Table EscrowWallet {
   nonce String [not null]
 }
 
-Table IpfsGroup {
+Table ipfs {
   id String [pk]
-  pinataId String [unique, not null]
-  name String [unique, not null]
+  cid String [unique, not null]
+  url String [unique, not null]
+  type String [not null, default: 'default']
+  previewUrl String
+  previewWidth Int
+  previewHeight Int
+  previewMimeType String
+  previewSizeBytes Int
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
-  files IpfsFile [not null]
-}
-
-Table IpfsFile {
-  id String [pk]
-  type String [not null, default: 'nft-metadata']
-  pinataId String [not null]
-  name String [not null]
-  cid String [not null]
-  size Int [not null]
-  numberOfFiles Int [not null]
-  mimeType String [not null]
-  groupId String
-  keyvalues Json
-  vectorized Boolean [not null, default: false]
-  network String
-  createdAt DateTime [default: `now()`, not null]
-  updatedAt DateTime [not null]
-  gateway String [not null, default: 'ipfs://']
-  url String [not null, default: 'ipfs://']
-  group IpfsGroup
 }
 
 Table Metadata {
@@ -827,6 +817,7 @@ Table Artist {
   messages ArtistMessage [not null]
   polls Poll [not null]
   quests Quest [not null]
+  story_spg Story_spg [not null]
 }
 
 Table ArtistMember {
@@ -894,6 +885,95 @@ Table ArtistFeedReaction {
 
   indexes {
     (artistFeedId, playerId, reaction) [unique]
+  }
+}
+
+Table Story_spgContract {
+  id String [pk]
+  address String [unique, not null]
+  abi Json
+  bytecode String
+  txHash String
+  networkId String [not null]
+  network BlockchainNetwork [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  story_spg Story_spg [not null]
+}
+
+Table Story_spg {
+  id String [pk]
+  address String [unique, not null]
+  baseURI String [not null]
+  contractURI String [not null]
+  name String [unique, not null]
+  symbol String [unique, not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  contractAddress String
+  contract Story_spgContract
+  networkId String [not null]
+  network BlockchainNetwork [not null]
+  ownerAddress String [not null]
+  artistId String
+  artist Artist
+  isListed Boolean [not null, default: false]
+  preOrderStart DateTime
+  preOrderEnd DateTime
+  saleStart DateTime
+  saleEnd DateTime
+  glowStart DateTime
+  glowEnd DateTime
+  price Int [not null, default: 0]
+  circulation Int [not null, default: 1000]
+  pageImages String[] [not null]
+  backgroundColor String
+  foregroundColor String
+  story_nfts Story_nft [not null]
+}
+
+Table Story_nft {
+  id String [pk]
+  tokenId String [not null]
+  ownerAddress String [not null]
+  networkId String [not null]
+  network BlockchainNetwork [not null]
+  tokenURI String [not null]
+  tokenURICid String [not null]
+  mintTxHash String
+  contractAddress String [not null]
+  spgCollection Story_spg
+  ipId String
+  ipAsset Story_ipAsset
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (contractAddress, tokenId) [unique]
+  }
+}
+
+Table Story_ipAsset {
+  id String [pk]
+  ipId String [unique, not null]
+  chainId String [not null]
+  tokenContract String [not null]
+  tokenId String [not null]
+  ipMetadataURI String
+  ipMetadataHash String
+  nftMetadataURI String
+  nftMetadataHash String
+  registrationTxHash String
+  licenseTermsId String
+  licenseTermsURI String
+  networkId String [not null]
+  network BlockchainNetwork [not null]
+  nfts Story_nft [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (chainId, tokenContract, tokenId) [unique]
   }
 }
 
@@ -1067,8 +1147,6 @@ Ref: Asset.networkId > BlockchainNetwork.id
 
 Ref: FactoryContract.networkId > BlockchainNetwork.id
 
-Ref: IpfsFile.groupId > IpfsGroup.pinataId
-
 Ref: Metadata.collectionAddress - CollectionContract.address
 
 Ref: CollectionContract.artistId > Artist.id
@@ -1108,3 +1186,19 @@ Ref: ArtistFeed.artistId > Artist.id
 Ref: ArtistFeedReaction.artistFeedId > ArtistFeed.id
 
 Ref: ArtistFeedReaction.playerId > Player.id
+
+Ref: Story_spgContract.networkId > BlockchainNetwork.id
+
+Ref: Story_spg.contractAddress > Story_spgContract.address
+
+Ref: Story_spg.networkId > BlockchainNetwork.id
+
+Ref: Story_spg.artistId > Artist.id
+
+Ref: Story_nft.networkId > BlockchainNetwork.id
+
+Ref: Story_nft.contractAddress > Story_spg.address
+
+Ref: Story_nft.ipId > Story_ipAsset.ipId
+
+Ref: Story_ipAsset.networkId > BlockchainNetwork.id

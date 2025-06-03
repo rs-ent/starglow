@@ -60,11 +60,7 @@ node_modules
 
 # Hardhat files
 web3/cache
-web3/artifacts
-!/web3/artifacts/contracts/Collection.sol
-!/web3/artifacts/contracts/Factory.sol
-!/web3/artifacts/contracts/Assets.sol
-!/web3/artifacts/contracts/Staking.sol
+!web3/artifacts
 
 # TypeChain files
 /typechain
