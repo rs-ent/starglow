@@ -2962,3 +2962,189 @@ export async function addPageImages(
         return { success: false, error: error };
     }
 }
+
+export interface GetTokensByOwnerInput {
+    collectionAddress: string;
+    ownerAddress: string;
+    maxTokens?: number;
+}
+
+export interface GetTokensByOwnerResult {
+    success: boolean;
+    tokenIds: number[];
+    error?: string;
+}
+
+export async function getTokensByOwner(
+    input: GetTokensByOwnerInput
+): Promise<GetTokensByOwnerResult> {
+    try {
+        const collection = await prisma.collectionContract.findUnique({
+            where: { address: input.collectionAddress },
+            include: { network: true },
+        });
+
+        if (!collection || !collection.network) {
+            return {
+                success: false,
+                tokenIds: [],
+                error: "Collection not found",
+            };
+        }
+
+        const chain = await getChain(collection.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const contract = getContract({
+            address: collection.address as Address,
+            abi,
+            client: publicClient,
+        });
+
+        // 1. 해당 주소의 토큰 개수 확인
+        const balance = await contract.read.balanceOf([
+            input.ownerAddress as Address,
+        ]);
+        const tokenCount = Number(balance);
+
+        if (tokenCount === 0) {
+            return {
+                success: true,
+                tokenIds: [],
+            };
+        }
+
+        // 2. 전체 공급량 확인
+        const totalSupply = await contract.read.totalSupply();
+        const totalTokens = Number(totalSupply);
+
+        if (totalTokens === 0) {
+            return {
+                success: true,
+                tokenIds: [],
+            };
+        }
+
+        // 3. 토큰 ID 범위 확인 (ERC721A는 보통 0 또는 1부터 시작)
+        const startTokenId = await contract.read
+            ._startTokenId()
+            .catch(() => BigInt(0));
+        const nextTokenId = await contract.read._nextTokenId();
+
+        const maxTokenId = Number(nextTokenId) - 1;
+        const minTokenId = Number(startTokenId);
+
+        // 4. 배치로 ownerOf 확인 (Sepolia 최적화)
+        const BATCH_SIZE = 30; // Sepolia는 더 작은 배치 사용
+        const MAX_RETRIES = 2; // 재시도 횟수 줄이기
+        const RETRY_DELAY = 500; // 재시도 간격 단축
+
+        const ownedTokens: number[] = [];
+        const maxTokensToFind = input.maxTokens || tokenCount;
+
+        let foundTokens = 0;
+
+        for (
+            let start = minTokenId;
+            start <= maxTokenId && foundTokens < maxTokensToFind;
+            start += BATCH_SIZE
+        ) {
+            const end = Math.min(start + BATCH_SIZE - 1, maxTokenId);
+            const tokenIds = Array.from(
+                { length: end - start + 1 },
+                (_, i) => start + i
+            );
+
+            let retryCount = 0;
+            while (retryCount < MAX_RETRIES) {
+                try {
+                    const owners = await publicClient.multicall({
+                        contracts: tokenIds.map((tokenId) => ({
+                            address: input.collectionAddress as Address,
+                            abi: abi as AbiFunction[],
+                            functionName: "ownerOf",
+                            args: [BigInt(tokenId)],
+                        })),
+                        multicallAddress: collection.network
+                            .multicallAddress as Address,
+                    });
+
+                    tokenIds.forEach((tokenId, index) => {
+                        const result = owners[index];
+                        if (
+                            result.status === "success" &&
+                            result.result &&
+                            (
+                                result.result as unknown as string
+                            ).toLowerCase() === input.ownerAddress.toLowerCase()
+                        ) {
+                            ownedTokens.push(tokenId);
+                            foundTokens++;
+                        }
+                    });
+
+                    break; // 성공 시 반복 중단
+                } catch (error) {
+                    retryCount++;
+                    if (retryCount === MAX_RETRIES) {
+                        console.error(
+                            `Error in batch ${start}-${end} after retries:`,
+                            error
+                        );
+                        // 배치 실패 시 개별 토큰 검사로 fallback
+                        for (const tokenId of tokenIds) {
+                            try {
+                                const owner = await contract.read.ownerOf([
+                                    BigInt(tokenId),
+                                ]);
+                                if (
+                                    (
+                                        owner as unknown as string
+                                    ).toLowerCase() ===
+                                    input.ownerAddress.toLowerCase()
+                                ) {
+                                    ownedTokens.push(tokenId);
+                                    foundTokens++;
+                                    if (foundTokens >= maxTokensToFind) break;
+                                }
+                            } catch (individualError) {
+                                // 개별 토큰 조회 실패는 스킵
+                                continue;
+                            }
+                        }
+                        break;
+                    }
+                    console.log(
+                        `Retrying batch ${start}-${end} (attempt ${retryCount}/${MAX_RETRIES})`
+                    );
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, RETRY_DELAY)
+                    );
+                }
+            }
+
+            // 요청한 최대 토큰 수에 도달하면 중단
+            if (foundTokens >= maxTokensToFind) {
+                break;
+            }
+        }
+
+        return {
+            success: true,
+            tokenIds: ownedTokens.slice(0, maxTokensToFind),
+        };
+    } catch (error) {
+        console.error("Error getting tokens by owner:", error);
+        return {
+            success: false,
+            tokenIds: [],
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to get tokens by owner",
+        };
+    }
+}
