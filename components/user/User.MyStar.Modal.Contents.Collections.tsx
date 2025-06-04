@@ -6,7 +6,13 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import UserMyStarModalContentsCollectionsCard from "./User.MyStar.Modal.Contents.Collections.Card";
 import { cn } from "@/lib/utils/tailwind";
-import { Artist, Player, QuestLog, PollLog } from "@prisma/client";
+import {
+    Artist,
+    Player,
+    QuestLog,
+    PollLog,
+} from "@prisma/client";
+import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import React, { useMemo, useRef, useState } from "react";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
@@ -23,6 +29,10 @@ interface UserMyStarModalContentsCollectionsProps {
     pollLogs: PollLog[];
     artist: Artist;
     verifiedCollections: VerifiedCollection[];
+    onSelectFeed?: (
+        initialFeeds: ArtistFeedWithReactions[],
+        selectedFeedIndex: number
+    ) => void;
 }
 
 export default React.memo(function UserMyStarModalContentsCollections({
@@ -31,6 +41,7 @@ export default React.memo(function UserMyStarModalContentsCollections({
     player,
     questLogs,
     pollLogs,
+    onSelectFeed,
 }: UserMyStarModalContentsCollectionsProps) {
     const sliderRef = useRef<Slider | null>(null);
 
@@ -150,7 +161,10 @@ export default React.memo(function UserMyStarModalContentsCollections({
                             "bg-gradient-to-br from-[rgba(0,0,0,0.1)] to-[rgba(0,0,0,0.2)]"
                         )}
                     >
-                        <ArtistFeed artist={artist} />
+                        <ArtistFeed
+                            artist={artist}
+                            onSelectFeed={onSelectFeed}
+                        />
                     </div>
                 </div>
 

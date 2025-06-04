@@ -14,6 +14,8 @@ import dynamic from "next/dynamic";
 import PartialLoading from "../atoms/PartialLoading";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { useRouter } from "next/navigation";
+import ArtistFeedModal from "../artists/Artist.Feed.Modal";
+import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 
 interface UserMyStarProps {
     user: User;
@@ -31,7 +33,14 @@ export default React.memo(function UserMyStar({
     player,
     userVerifiedCollections,
 }: UserMyStarProps) {
+    const [modalState, setModalState] = useState<"none" | "artist" | "feed">(
+        "none"
+    );
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+    const [initialFeeds, setInitialFeeds] = useState<ArtistFeedWithReactions[]>(
+        []
+    );
+    const [selectedFeedIndex, setSelectedFeedIndex] = useState<number>(0);
     const router = useRouter();
 
     const {
@@ -142,9 +151,26 @@ export default React.memo(function UserMyStar({
 
     const handleSelectArtist = useCallback((artist: Artist) => {
         setSelectedArtist(artist);
+        setModalState("artist");
     }, []);
 
-    const handleClose = useCallback(() => {
+    const handleSelectFeed = useCallback(
+        (feeds: ArtistFeedWithReactions[], feedIndex: number) => {
+            setInitialFeeds(feeds);
+            setSelectedFeedIndex(feedIndex);
+            setModalState("feed");
+        },
+        []
+    );
+
+    const handleCloseFeedModal = useCallback(() => {
+        setModalState("artist");
+        setInitialFeeds([]);
+        setSelectedFeedIndex(0);
+    }, []);
+
+    const handleCloseArtistModal = useCallback(() => {
+        setModalState("none");
         setSelectedArtist(null);
     }, []);
 
@@ -152,7 +178,19 @@ export default React.memo(function UserMyStar({
         router.push("/nfts");
     };
 
-    if (selectedArtist) {
+    if (modalState === "feed" && selectedArtist) {
+        return (
+            <ArtistFeedModal
+                initialFeeds={initialFeeds}
+                artist={selectedArtist}
+                initialFeedIndex={selectedFeedIndex}
+                isOpen={true}
+                onClose={handleCloseFeedModal}
+            />
+        );
+    }
+
+    if (modalState === "artist" && selectedArtist) {
         return (
             <UserMyStarModal
                 player={player}
@@ -163,7 +201,8 @@ export default React.memo(function UserMyStar({
                     (collection) => collection.artistId === selectedArtist.id
                 )}
                 open={true}
-                onClose={handleClose}
+                onClose={handleCloseArtistModal}
+                onSelectFeed={handleSelectFeed}
             />
         );
     }
@@ -180,7 +219,7 @@ export default React.memo(function UserMyStar({
         return (
             <div className="text-center py-10 text-white/80 text-xl">
                 <h4 className={cn(getResponsiveClass(20).textClass)}>
-                    You don’t have any NFTs yet.
+                    You don't have any NFTs yet.
                 </h4>
                 <p
                     className={cn(

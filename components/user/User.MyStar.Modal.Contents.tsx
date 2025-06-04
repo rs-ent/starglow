@@ -5,6 +5,7 @@ import type { VerifiedCollection } from "@/app/actions/collectionContracts";
 import UserMyStarModalContentsCollections from "./User.MyStar.Modal.Contents.Collections";
 import { cn } from "@/lib/utils/tailwind";
 import React from "react";
+import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 
 interface UserMyStarModalContentsProps {
     artist: Artist;
@@ -12,6 +13,10 @@ interface UserMyStarModalContentsProps {
     player: Player | null;
     questLogs: QuestLog[];
     pollLogs: PollLog[];
+    onSelectFeed?: (
+        initialFeeds: ArtistFeedWithReactions[],
+        selectedFeedIndex: number
+    ) => void;
 }
 
 export default React.memo(function UserMyStarModalContents({
@@ -20,6 +25,7 @@ export default React.memo(function UserMyStarModalContents({
     player,
     questLogs,
     pollLogs,
+    onSelectFeed,
 }: UserMyStarModalContentsProps) {
     return (
         <div className={cn("max-w-[1000px] mx-auto")}>
@@ -29,6 +35,7 @@ export default React.memo(function UserMyStarModalContents({
                 player={player}
                 questLogs={questLogs}
                 pollLogs={pollLogs}
+                onSelectFeed={onSelectFeed}
             />
         </div>
     );

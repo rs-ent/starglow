@@ -5,22 +5,22 @@
 import { useMemo } from "react";
 import { useArtistFeedsGet } from "@/app/hooks/useArtistFeeds";
 import { Artist } from "@prisma/client";
+import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import { useState } from "react";
 import ArtistFeedCard from "./Artist.Feed.Card";
-import ArtistFeedModal from "./Artist.Feed.Modal";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import PartialLoading from "../atoms/PartialLoading";
 
 interface ArtistFeedProps {
     artist: Artist | null;
+    onSelectFeed?: (
+        initialFeeds: ArtistFeedWithReactions[],
+        selectedFeedIndex: number
+    ) => void;
 }
 
-export default function ArtistFeed({ artist }: ArtistFeedProps) {
-    const [selectedFeedIndex, setSelectedFeedIndex] = useState<number | null>(
-        null
-    );
-
+export default function ArtistFeed({ artist, onSelectFeed }: ArtistFeedProps) {
     const { artistFeeds, isLoading, error } = useArtistFeedsGet({
         getArtistFeedsInput: {
             artistId: artist?.id || "",
@@ -83,19 +83,12 @@ export default function ArtistFeed({ artist }: ArtistFeedProps) {
                         key={feed.id}
                         feed={feed}
                         artist={artist}
-                        onClick={() => setSelectedFeedIndex(index)}
+                        onClick={() => {
+                            onSelectFeed?.(feeds, index);
+                        }}
                     />
                 ))}
             </div>
-
-            {/* Feed modal */}
-            <ArtistFeedModal
-                initialFeeds={feeds}
-                artist={artist}
-                initialFeedIndex={selectedFeedIndex || 0}
-                isOpen={selectedFeedIndex !== null}
-                onClose={() => setSelectedFeedIndex(null)}
-            />
         </>
     );
 }
