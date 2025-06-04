@@ -15,6 +15,7 @@ import {
     useCachedTexture,
     prefetchTextures,
 } from "@/lib/utils/useCachedTexture";
+import PartialLoading from "../atoms/PartialLoading";
 
 interface NFTsCollectionsListProps {
     collections: Collection[];
@@ -269,10 +270,8 @@ export default function NFTsCollectionsList({
     // 프리로딩 완료 후에만 렌더링
     if (!isPreloaded) {
         return (
-            <div className="flex items-center justify-center w-full h-[400px]">
-                <div className="animate-pulse w-40 h-60 bg-gray-200 rounded-xl" />
-                <div className="animate-pulse w-40 h-60 bg-gray-200 rounded-xl ml-4" />
-                <div className="animate-pulse w-40 h-60 bg-gray-200 rounded-xl ml-4" />
+            <div className="flex items-center justify-center w-full h-full">
+                <PartialLoading text="Loading NFTs..." size="sm" />
             </div>
         );
     }
