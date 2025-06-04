@@ -5,39 +5,41 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import NFTContentsDetails from "./NFT.Contents.Details";
 import NFTContentsPayment from "./NFT.Contents.Payment";
-import type { Collection } from "@/app/actions/factoryContracts";
-import { METADATA_TYPE } from "@/app/actions/metadata";
 import NFTContentsReport from "./NFT.Contents.Report";
 import NFTContentsPageImages from "./NFT.Contents.PageImages";
 import { ShinyButton } from "@/components/magicui/shiny-button";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { CollectionParticipantType, Payment } from "@prisma/client";
-import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import NFTContentsPreRegistration from "./NFT.Contents.PreRegistration";
 import InteractFeedback from "../atoms/Popup.InteractFeedback";
-import { PaymentPostProcessorDetails } from "@/app/hooks/usePaymentPostProcessor";
 import WarningPopup from "../atoms/WarningPopup";
+import { SPG } from "@/app/story/spg/actions";
+import { useNFT } from "@/app/story/nft/hooks";
 
 interface NFTContentsProps {
-    collection: Collection;
+    spg: SPG;
 }
 
-export default React.memo(function NFTContents({
-    collection,
-}: NFTContentsProps) {
-    const metadata = collection?.metadata?.metadata as METADATA_TYPE;
+export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
     const [showFeedback, setShowFeedback] = useState(false);
     const [showWaitWarning, setShowWaitWarning] = useState(false);
+    const [forceCloseWaitWarning, setForceCloseWaitWarning] = useState(false);
+
+    const { circulation, isCirculationLoading } = useNFT({
+        getCirculationInput: {
+            spgAddress: spg.address,
+        },
+    });
 
     const { status, dateLabel, dateValue, participantsType } = useMemo(() => {
         const now = new Date();
-        const preSaleStart = collection.preSaleStart;
-        const preSaleEnd = collection.preSaleEnd;
-        const saleStart = collection.saleStart;
-        const saleEnd = collection.saleEnd;
-        const glowStart = collection.glowStart;
-        const glowEnd = collection.glowEnd;
+        const preSaleStart = spg.preOrderStart;
+        const preSaleEnd = spg.preOrderEnd;
+        const saleStart = spg.saleStart;
+        const saleEnd = spg.saleEnd;
+        const glowStart = spg.glowStart;
+        const glowEnd = spg.glowEnd;
 
         let status = "SCHEDULED";
         let dateLabel = "Sale Open";
@@ -98,37 +100,35 @@ export default React.memo(function NFTContents({
             dateValue,
             participantsType,
         };
-    }, [collection]);
-
-    const { collectionStock, collectionParticipants } = useCollectionGet({
-        collectionAddress: collection.address,
-        options: {
-            participantsType,
-        },
-    });
+    }, [spg]);
 
     const handlePurchase = useCallback(
         (quantity: number) => {
             console.log(
-                `Purchasing ${quantity} NFTs from collection ${collection.address}`
+                `Purchasing ${quantity} NFTs from collection ${spg.address}`
             );
         },
-        [collection.address]
+        [spg.address]
     );
 
     const handlePaymentSuccess = useCallback((payment: Payment) => {
+        console.log("Payment success");
         setShowWaitWarning(true);
+        setForceCloseWaitWarning(false);
     }, []);
 
-    const handlePaymentComplete = useCallback(
-        (result: PaymentPostProcessorDetails) => {
-            if (result?.type === "NFT_TRANSFER" && result.isTransferred) {
-                setShowWaitWarning(false);
-                setShowFeedback(true);
-            }
-        },
-        []
-    );
+    const handlePaymentComplete = useCallback(() => {
+        console.log("Payment complete");
+        setForceCloseWaitWarning(true);
+        setShowWaitWarning(false);
+        setShowFeedback(true);
+    }, []);
+
+    const handlePaymentError = useCallback((error: Error) => {
+        console.error("Payment error:", error);
+        setForceCloseWaitWarning(true);
+        setShowWaitWarning(false);
+    }, []);
 
     return (
         <div className="flex flex-col items-center w-full py-6 sm:py-8 md:py-10">
@@ -137,16 +137,13 @@ export default React.memo(function NFTContents({
                 <div className="grid grid-cols-1 gap-6 mt-[50px] mb-[50px] lg:grid-cols-3 lg:gap-8 lg:mt-[0px] lg:mb-[0px]">
                     <div className="lg:col-span-2 order-1 lg:order-1 gap-6 flex flex-col">
                         <NFTContentsDetails
-                            collection={collection}
-                            metadata={metadata}
+                            spg={spg}
                             participantsType={participantsType}
                             status={status}
                             dateLabel={dateLabel}
                             dateValue={dateValue}
-                            collectionStock={collectionStock}
-                            collectionParticipantsNumber={
-                                collectionParticipants?.length || 0
-                            }
+                            circulation={circulation ?? null}
+                            isCirculationLoading={isCirculationLoading}
                         />
                         <h2
                             className={cn(
@@ -156,7 +153,7 @@ export default React.memo(function NFTContents({
                         >
                             Official Report
                         </h2>
-                        <NFTContentsReport metadata={metadata} />
+                        <NFTContentsReport spg={spg} />
                         <h2
                             className={cn(
                                 getResponsiveClass(30).textClass,
@@ -165,7 +162,8 @@ export default React.memo(function NFTContents({
                         >
                             Details
                         </h2>
-                        <NFTContentsPageImages collection={collection} />
+                        <NFTContentsPageImages spg={spg} />
+                        <ToTheTopButton className="fixed lg:sticky" />
                     </div>
 
                     <div className="lg:col-span-1 order-2 lg:order-2">
@@ -176,15 +174,19 @@ export default React.memo(function NFTContents({
                             {participantsType ===
                             CollectionParticipantType.PUBLICSALE ? (
                                 <NFTContentsPayment
-                                    collection={collection}
+                                    spg={spg}
                                     onPurchase={handlePurchase}
-                                    collectionStock={collectionStock}
+                                    collectionStock={{
+                                        remain: circulation?.remain ?? 0,
+                                        total: circulation?.total ?? 0,
+                                    }}
                                     onPaymentSuccess={handlePaymentSuccess}
                                     onPaymentComplete={handlePaymentComplete}
+                                    onPaymentError={handlePaymentError}
                                 />
                             ) : (
                                 <NFTContentsPreRegistration
-                                    collection={collection}
+                                    spg={spg}
                                     participantsType={participantsType}
                                     status={status}
                                 />
@@ -193,6 +195,7 @@ export default React.memo(function NFTContents({
                     </div>
                 </div>
             </div>
+
             <NFTStickyPurchaseButton
                 text={
                     participantsType === CollectionParticipantType.PUBLICSALE
@@ -204,10 +207,10 @@ export default React.memo(function NFTContents({
                 open={showFeedback}
                 onClose={() => setShowFeedback(false)}
                 title="NFT Purchase Successful!"
-                description={`You have successfully purchased ${collection.name}`}
+                description={`You have successfully purchased ${spg.name}`}
                 type="purchaseNFT"
                 showConfetti={true}
-                collection={collection}
+                spg={spg}
             />
 
             <WarningPopup
@@ -217,6 +220,8 @@ export default React.memo(function NFTContents({
                 loading={true}
                 preventClose={true}
                 critical={true}
+                forceClose={forceCloseWaitWarning}
+                onClose={() => setShowWaitWarning(false)}
             />
         </div>
     );
@@ -296,6 +301,35 @@ const NFTStickyPurchaseButton = React.memo(function NFTStickyPurchaseButton({
                 {text}
             </h2>
         </ShinyButton>
+    );
+});
+
+const ToTheTopButton = React.memo(function ToTheTopButton({
+    className,
+}: {
+    className?: string;
+}) {
+    const handleClick = useCallback(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }, []);
+
+    return (
+        <div
+            className={cn(
+                "sticky w-full bottom-[90px] right-0 z-20",
+                className
+            )}
+        >
+            <img
+                src="/ui/to-top.svg"
+                alt="To the Top"
+                className={cn(
+                    "absolute right-[10px] text-white cursor-pointer opacity-80",
+                    getResponsiveClass(35).frameClass
+                )}
+                onClick={handleClick}
+            />
+        </div>
     );
 });
 

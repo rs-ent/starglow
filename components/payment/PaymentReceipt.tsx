@@ -1,15 +1,13 @@
-///
+/// components/payment/PaymentReceipt.tsx
+
 "use client";
 
-import Link from "next/link";
-import Icon from "@/components/atoms/Icon";
-import { X } from "lucide-react";
 import { H1, Paragraph } from "@/components/atoms/Typography";
 import LinkButton from "@/components/atoms/LinkButton";
 import Payments from "@/components/payment/Payments";
 
 interface PaymentReceiptProps {
-    payment: any; // TODO: Payment 타입 정의 필요
+    payment: any;
     userId: string;
     redirectUrl: string;
 }
@@ -22,19 +20,25 @@ export default function PaymentReceipt({
     if (!payment) {
         return (
             <div className="flex flex-col items-center justify-center h-screen w-full px-4 bg-[url('/bg/scifi-round.svg')] bg-cover bg-center">
-                <div className="bg-destructive/10 border border-destructive/30 text-destructive px-6 py-4 rounded-lg backdrop-blur-sm max-w-md mx-auto text-center">
-                    <H1 size={25} className="mb-4">
-                        Payment Not Found
-                    </H1>
-                    <Paragraph size={15} className="mb-6">
-                        The requested payment could not be found.
-                    </Paragraph>
-                    <LinkButton
-                        href="/"
-                        className="inline-block px-4 py-2 bg-secondary/50 hover:bg-secondary/70 text-foreground rounded-lg border border-border/30"
-                    >
-                        Return Home
-                    </LinkButton>
+                <div className="bg-gradient-to-br from-destructive/5 via-destructive/10 to-destructive/5 border border-destructive/20 shadow-lg shadow-destructive/10 text-destructive/90 px-8 py-6 rounded-2xl backdrop-blur-xl max-w-md mx-auto text-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl"></div>
+                    <div className="relative z-10">
+                        <H1 size={25} className="mb-4 font-semibold">
+                            Payment Not Found
+                        </H1>
+                        <Paragraph
+                            size={15}
+                            className="mb-6 text-destructive/70"
+                        >
+                            The requested payment could not be found.
+                        </Paragraph>
+                        <LinkButton
+                            href="/"
+                            className="inline-block px-6 py-3 bg-gradient-to-r from-secondary/40 to-secondary/60 hover:from-secondary/60 hover:to-secondary/80 text-foreground rounded-xl border border-border/20 shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
+                        >
+                            Return Home
+                        </LinkButton>
+                    </div>
                 </div>
             </div>
         );
@@ -62,19 +66,21 @@ export default function PaymentReceipt({
     }
 
     return (
-        <div className="flex flex-col items-center justify-center w-full py-6 sm:py-8 md:py-10 bg-[url('/bg/scifi-round.svg')] bg-cover bg-center">
-            <div className="w-full max-w-7xl px-4 relative">
-                <Link
-                    href={redirectUrl}
-                    className="absolute -top-2 right-6 z-10 p-2 rounded-full bg-card/20 hover:bg-card/40 backdrop-blur-sm transition-colors"
-                >
-                    <Icon
-                        icon={X}
-                        size={24}
-                        className="text-foreground/80 hover:text-foreground"
-                    />
-                </Link>
-                <Payments payment={payment} userId={userId} />
+        <div className="w-full bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 relative overflow-hidden p-20">
+            <div className="absolute inset-0 bg-[url('/bg/scifi-round.svg')] bg-cover bg-center opacity-30"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/10 to-pink-500/5"></div>
+            {/* 메인 컨테이너 */}
+            <div className="relative z-10 flex flex-col min-h-screen">
+                {/* 메인 콘텐츠 영역 */}
+                <main className="flex-1 flex items-center justify-center px-6 py-8">
+                    <div className="w-full max-w-4xl">
+                        <Payments
+                            payment={payment}
+                            userId={userId}
+                            redirectUrl={redirectUrl}
+                        />
+                    </div>
+                </main>
             </div>
         </div>
     );

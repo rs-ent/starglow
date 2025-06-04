@@ -26,15 +26,26 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
         isLoadingEscrowWallets,
         isErrorEscrowWallets,
         refetchEscrowWallets,
+
+        registeredEscrowWallets,
+        isLoadingRegisteredEscrowWallets,
+        isErrorRegisteredEscrowWallets,
+        refetchRegisteredEscrowWallets,
+
         setActiveEscrowWalletAsync,
         isPendingSetActiveEscrowWallet,
+
         fetchEscrowWalletPrivateKeyAsync,
         isPendingFetchEscrowWalletPrivateKey,
+
         registerEscrowWalletAsync,
-        isPendingRegisterEscrowWallet,
+
         fetchEscrowWalletsBalanceAsync,
         isPendingFetchEscrowWalletsBalance,
-        fetchEscrowWalletsBalance,
+
+        addEscrowWalletToSPGAsync,
+        isPendingAddEscrowWalletToSPG,
+        isErrorAddEscrowWalletToSPG,
     } = useEscrowWallets({
         getEscrowWalletsInput: {
             isActive: true,

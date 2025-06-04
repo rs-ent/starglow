@@ -25,62 +25,51 @@ import Countdown from "@/components/atoms/Countdown";
 import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import { CollectionParticipantType } from "@prisma/client";
 import React from "react";
-
+import { SPG } from "@/app/story/spg/actions";
 interface NFTContentsDetailsProps {
-    collection: Collection;
+    spg: SPG;
     participantsType: CollectionParticipantType;
-    metadata: METADATA_TYPE;
     status: string;
     dateLabel: string;
     dateValue: string;
-    collectionStock:
-        | {
-              total: number;
-              remain: number;
-          }
-        | null
-        | undefined;
-    collectionParticipantsNumber: number;
+    circulation: {
+        remain: number;
+        total: number;
+    } | null;
+    isCirculationLoading: boolean;
 }
 
 export default React.memo(function NFTContentsDetails({
-    collection,
+    spg,
     participantsType,
-    metadata,
     status,
     dateLabel,
     dateValue,
-    collectionStock,
-    collectionParticipantsNumber,
+    circulation,
+    isCirculationLoading,
 }: NFTContentsDetailsProps) {
     const toast = useToast();
 
     const handleCopyAddress = useCallback(async () => {
         try {
-            await navigator.clipboard.writeText(collection.address);
+            await navigator.clipboard.writeText(spg.address);
             toast.success("Collection address copied to clipboard");
         } catch (error) {
             toast.error("Failed to copy collection address");
         }
-    }, [collection.address, toast]);
+    }, [spg.address, toast]);
     const { sharePercentage, glowStartDate, glowEndDate, reportUrl } =
         useMemo(() => {
-            const sharePercentage = metadata?.attributes?.find(
-                (attr) => attr.trait_type === "Share Percentage"
-            )?.value;
+            const sharePercentage = spg.sharePercentage ?? 0;
 
-            const glowStartDate = metadata?.attributes?.find(
-                (attr) => attr.trait_type === "Glow Start"
-            )?.value;
+            const glowStartDate = spg.glowStart;
 
-            const glowEndDate = metadata?.attributes?.find(
-                (attr) => attr.trait_type === "Glow End"
-            )?.value;
+            const glowEndDate = spg.glowEnd;
 
-            const reportUrl = metadata?.external_url;
+            const reportUrl = spg.reportUrl;
 
             return { sharePercentage, glowStartDate, glowEndDate, reportUrl };
-        }, [metadata]);
+        }, [spg]);
 
     // 원하는 size를 지정 (예: 20)
     const size = 20;
@@ -90,10 +79,10 @@ export default React.memo(function NFTContentsDetails({
         <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50">
             {/* Banner Image */}
             <div className="relative w-full aspect-[4/3]">
-                {metadata?.image ? (
+                {spg.imageUrl ? (
                     <Image
-                        src={metadata.image}
-                        alt={collection.name}
+                        src={spg.imageUrl}
+                        alt={spg.name}
                         fill
                         className="object-cover"
                         sizes="(max-width: 640px) 100vw, (max-width: 768px) 100vw, 66vw"
@@ -112,7 +101,7 @@ export default React.memo(function NFTContentsDetails({
                 <H2
                     className={cn(getResponsiveClass(40).textClass, "mb-[5px]")}
                 >
-                    {collection.name}
+                    {spg.name}
                 </H2>
 
                 {/* Status Badge + Date */}
@@ -151,7 +140,7 @@ export default React.memo(function NFTContentsDetails({
                         <CircleDollarSign
                             className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
                         />
-                        <span>Price: ${collection.price}</span>
+                        <span>Price: ${spg.price}</span>
                     </div>
 
                     <div
@@ -162,14 +151,12 @@ export default React.memo(function NFTContentsDetails({
                         />
                         {participantsType === "PREREGISTRATION" ||
                         participantsType === "PRESALE" ? (
-                            <span>
-                                Awaiters: {collectionParticipantsNumber}
-                            </span>
+                            <span>Awaiters: {0}</span>
                         ) : participantsType === "PRIVATESALE" ||
                           participantsType === "PUBLICSALE" ? (
                             <span>
-                                Supply: {collectionStock?.remain || 0} /{" "}
-                                {collectionStock?.total || 0}
+                                Supply: {spg.circulation || 0} /{" "}
+                                {spg.circulation || 0}
                             </span>
                         ) : null}
                     </div>
@@ -182,7 +169,7 @@ export default React.memo(function NFTContentsDetails({
                             className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
                         />
                         <span className="flex-1 min-w-0 truncate">
-                            Address: {collection.address}
+                            Address: {spg.address}
                         </span>
                         <Copy
                             className={cn(

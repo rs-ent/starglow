@@ -1,14 +1,14 @@
 /// components/user/User.MyStar.Modal.Contents.tsx
 
 import { Artist, Player, QuestLog, PollLog } from "@prisma/client";
-import type { VerifiedCollection } from "@/app/actions/collectionContracts";
+import type { VerifiedSPG } from "@/app/story/interaction/actions";
 import UserMyStarModalContentsCollections from "./User.MyStar.Modal.Contents.Collections";
 import { cn } from "@/lib/utils/tailwind";
 import React from "react";
 
 interface UserMyStarModalContentsProps {
     artist: Artist;
-    verifiedCollections: VerifiedCollection[];
+    verifiedSPGs: VerifiedSPG[];
     player: Player | null;
     questLogs: QuestLog[];
     pollLogs: PollLog[];
@@ -16,7 +16,7 @@ interface UserMyStarModalContentsProps {
 
 export default React.memo(function UserMyStarModalContents({
     artist,
-    verifiedCollections,
+    verifiedSPGs,
     player,
     questLogs,
     pollLogs,
@@ -25,7 +25,7 @@ export default React.memo(function UserMyStarModalContents({
         <div className={cn("max-w-[1000px] mx-auto")}>
             <UserMyStarModalContentsCollections
                 artist={artist}
-                verifiedCollections={verifiedCollections}
+                verifiedSPGs={verifiedSPGs}
                 player={player}
                 questLogs={questLogs}
                 pollLogs={pollLogs}

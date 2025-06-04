@@ -6,11 +6,13 @@ import {
     useMintAndRegisterAsIPAssetMutation,
     useBatchRegisterAsIPAssetMutation,
 } from "./mutations";
-import { useNFTsQuery } from "./queries";
-import { getNFTsInput } from "./actions";
+import { useNFTsQuery, useOwnersQuery, useCirculationQuery } from "./queries";
+import { getNFTsInput, getOwnersInput, getCirculationInput } from "./actions";
 
 export interface useNFTInput {
     getNFTsInput?: getNFTsInput;
+    getOwnersInput?: getOwnersInput;
+    getCirculationInput?: getCirculationInput;
 }
 
 export function useNFT(input?: useNFTInput) {
@@ -21,6 +23,22 @@ export function useNFT(input?: useNFTInput) {
         error: nftsError,
         refetch: refetchNFTs,
     } = useNFTsQuery(input?.getNFTsInput);
+
+    const {
+        data: owners,
+        isLoading: isOwnersLoading,
+        isError: isOwnersError,
+        error: ownersError,
+        refetch: refetchOwners,
+    } = useOwnersQuery(input?.getOwnersInput);
+
+    const {
+        data: circulation,
+        isLoading: isCirculationLoading,
+        isError: isCirculationError,
+        error: circulationError,
+        refetch: refetchCirculation,
+    } = useCirculationQuery(input?.getCirculationInput);
 
     const {
         mutate: mint,
@@ -64,6 +82,18 @@ export function useNFT(input?: useNFTInput) {
         isNFTsError,
         nftsError,
         refetchNFTs,
+
+        owners,
+        isOwnersLoading,
+        isOwnersError,
+        ownersError,
+        refetchOwners,
+
+        circulation,
+        isCirculationLoading,
+        isCirculationError,
+        circulationError,
+        refetchCirculation,
 
         mint,
         mintAsync,

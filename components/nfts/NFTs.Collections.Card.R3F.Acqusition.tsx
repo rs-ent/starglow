@@ -17,13 +17,13 @@ import React from "react";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
 import { formatDate } from "@/lib/utils/format";
 import { useSession } from "next-auth/react";
-
+import { SPG } from "@/app/story/spg/actions";
 interface NFTsCollectionsCardR3FAcqusitionProps {
-    collection: Collection;
+    spg: SPG;
 }
 
 export default function NFTsCollectionsCardR3FAcqusition({
-    collection,
+    spg,
 }: NFTsCollectionsCardR3FAcqusitionProps) {
     const { data: session } = useSession();
     const user = session?.user;
@@ -32,22 +32,20 @@ export default function NFTsCollectionsCardR3FAcqusition({
     const meshRef = useRef<Mesh>(null);
     const hologramRef = useRef<Mesh>(null);
 
-    const { artist, metadata, backgroundColor, foregroundColor } =
-        useMemo(() => {
-            const artist = collection?.artist;
-            const metadata = collection?.metadata?.metadata as METADATA_TYPE;
-            const backgroundColor =
-                metadata?.background_color ||
-                (artist ? ArtistBG(artist, 0, 100) : "#5B21B6");
-            const foregroundColor = artist
-                ? ArtistFG(artist, 0, 100)
-                : "#FFFFFF";
-            return { artist, metadata, backgroundColor, foregroundColor };
-        }, [collection]);
+    const { artist, backgroundColor, foregroundColor } = useMemo(() => {
+        const artist = spg?.artist;
+        const backgroundColor =
+            spg?.backgroundColor ||
+            (artist ? ArtistBG(artist, 0, 100) : "#5B21B6");
+        const foregroundColor =
+            spg?.foregroundColor ||
+            (artist ? ArtistFG(artist, 0, 100) : "#FFFFFF");
+        return { artist, backgroundColor, foregroundColor };
+    }, [spg]);
 
     const texture = useLoader(
         TextureLoader,
-        metadata?.image || "/placeholder.png"
+        spg?.imageUrl || "/placeholder.png"
     );
     const logoTexture = useLoader(TextureLoader, "/logo/3d.svg");
 
@@ -276,7 +274,7 @@ export default function NFTsCollectionsCardR3FAcqusition({
                     anchorX="center"
                     anchorY="middle"
                 >
-                    {collection.name}
+                    {spg.name}
                 </Text>
 
                 <Text

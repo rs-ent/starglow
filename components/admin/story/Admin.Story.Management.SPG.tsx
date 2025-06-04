@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSPG } from "@/app/story/spg/hooks";
+import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
 import FileUploader from "@/components/atoms/FileUploader";
 import { TbTopologyStar3 } from "react-icons/tb";
 import { SiEthereum } from "react-icons/si";
@@ -10,24 +11,45 @@ import {
     FaEdit,
     FaCalendarAlt,
     FaDollarSign,
-    FaImage,
+    FaPercentage,
     FaPalette,
+    FaWallet,
     FaListUl,
     FaClock,
     FaCheckCircle,
     FaTimesCircle,
     FaArrowLeft,
     FaSave,
+    FaChartPie,
     FaTimes,
+    FaPlus,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/app/hooks/useToast";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // SPG 컬렉션 필수 필드 타입
 interface SPGForm {
     address: string;
     contractURI?: string;
     isListed?: boolean;
+    sharePercentage?: number;
+    reportUrl?: string;
     preOrderStart?: string;
     preOrderEnd?: string;
     saleStart?: string;
@@ -111,6 +133,54 @@ function CollectionThumbnail({
     );
 }
 
+// SortableItem 컴포넌트 추가
+function SortableItem({
+    img,
+    onRemove,
+}: {
+    img: { id: string; url: string };
+    onRemove: (id: string) => void;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: img.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 1 : 0,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...listeners}
+            className={`relative group cursor-move ${
+                isDragging ? "opacity-50 scale-105" : ""
+            }`}
+        >
+            <img
+                src={img.url}
+                alt="page"
+                className="w-full h-48 object-cover rounded-xl border-2 border-blue-700/50 group-hover:border-cyan-500/50 transition-all duration-200"
+            />
+            <button
+                onClick={() => onRemove(img.id)}
+                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600"
+            >
+                <FaTimes className="text-xs" />
+            </button>
+        </div>
+    );
+}
+
 export default function AdminStoryManagementSPG({
     onBack,
 }: {
@@ -122,21 +192,28 @@ export default function AdminStoryManagementSPG({
         getSPGsIsLoading,
         getSPGsIsError,
         getSPGsError,
-
         updateSPGUtilsMutation,
         updateSPGUtilsMutationAsync,
         updateSPGUtilsMutationIsPending,
         updateSPGUtilsMutationIsError,
     } = useSPG({
-        getSPGsInput: {
-            // 전체 목록 (isListed만 true로 제한하지 않음)
-        },
+        getSPGsInput: {},
     });
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState<SPGForm>({
         address: "",
         contractURI: "",
         isListed: false,
+        sharePercentage: 0,
+        imageUrl: "",
         preOrderStart: "",
         preOrderEnd: "",
         saleStart: "",
@@ -149,9 +226,33 @@ export default function AdminStoryManagementSPG({
         backgroundColor: "",
         foregroundColor: "",
     });
-    const [activeTab, setActiveTab] = useState<"info" | "schedule" | "design">(
-        "info"
-    );
+
+    const {
+        escrowWallets,
+        isLoadingEscrowWallets,
+        isErrorEscrowWallets,
+        refetchEscrowWallets,
+
+        registeredEscrowWallets,
+        isLoadingRegisteredEscrowWallets,
+        isErrorRegisteredEscrowWallets,
+        refetchRegisteredEscrowWallets,
+
+        addEscrowWalletToSPG,
+        addEscrowWalletToSPGAsync,
+        isPendingAddEscrowWalletToSPG,
+        isErrorAddEscrowWalletToSPG,
+    } = useEscrowWallets({
+        getRegisteredEscrowWalletsInput: {
+            spgAddress: form.address,
+        },
+    });
+
+    const [activeTab, setActiveTab] = useState<
+        "info" | "escrowWallets" | "schedule" | "design"
+    >("info");
+
+    const [selectedWallet, setSelectedWallet] = useState<string>("");
 
     const handleSave = async () => {
         try {
@@ -172,6 +273,33 @@ export default function AdminStoryManagementSPG({
             ...prev,
             pageImages: files,
         }));
+    };
+
+    const handleAddEscrowWallet = async () => {
+        if (!selectedWallet) {
+            toast.error("지갑을 선택해주세요.");
+            return;
+        }
+
+        try {
+            const result = await addEscrowWalletToSPGAsync({
+                spgAddress: form.address,
+                walletAddress: selectedWallet,
+            });
+
+            if (!result) {
+                toast.error("Escrow wallet 등록 중 오류가 발생했습니다.");
+                return;
+            }
+
+            toast.success("Escrow wallet이 성공적으로 등록되었습니다.");
+            setSelectedWallet("");
+            refetchRegisteredEscrowWallets();
+        } catch (error: any) {
+            toast.error(
+                error?.message || "Escrow wallet 등록 중 오류가 발생했습니다."
+            );
+        }
     };
 
     // 카드형 컬렉션 목록 렌더러
@@ -197,8 +325,8 @@ export default function AdminStoryManagementSPG({
                         saleEnd: spg.saleEnd || "",
                         glowStart: spg.glowStart || "",
                         glowEnd: spg.glowEnd || "",
-                        price: spg.price,
-                        circulation: spg.circulation,
+                        price: spg.price || 0,
+                        circulation: spg.circulation || 0,
                         pageImages: Array.isArray(spg.pageImages)
                             ? spg.pageImages.map(
                                   (url: string, idx: number) => ({
@@ -212,7 +340,9 @@ export default function AdminStoryManagementSPG({
                         name: spg.name,
                         artistId: spg.artistId,
                         networkId: spg.networkId,
-                        imageUrl: spg.imageUrl,
+                        imageUrl: spg.imageUrl || "",
+                        reportUrl: spg.reportUrl || "",
+                        sharePercentage: spg.sharePercentage || 0,
                     });
                     setShowForm(true);
                 }}
@@ -426,6 +556,11 @@ export default function AdminStoryManagementSPG({
                                             icon: <FaEdit />,
                                         },
                                         {
+                                            id: "escrowWallets",
+                                            label: "에스크로 지갑",
+                                            icon: <FaWallet />,
+                                        },
+                                        {
                                             id: "schedule",
                                             label: "판매 일정",
                                             icon: <FaCalendarAlt />,
@@ -496,33 +631,39 @@ export default function AdminStoryManagementSPG({
                                                     <span
                                                         className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg transform transition-transform duration-300 ${
                                                             form.isListed
-                                                                ? "translate-x-8"
-                                                                : "translate-x-1"
+                                                                ? "translate-x-1"
+                                                                : "-translate-x-7"
                                                         }`}
                                                     />
                                                 </button>
                                             </div>
 
-                                            {/* 가격과 수량 */}
-                                            <div className="grid grid-cols-2 gap-4">
+                                            {/* 매출 공유 비율 */}
+                                            <div className="flex items-center justify-between p-4 bg-blue-900/20 rounded-xl border border-blue-800/30">
                                                 <div>
                                                     <label className="block text-blue-200 font-semibold mb-2">
-                                                        판매 가격 (USD)
+                                                        매출 공유 비율
                                                     </label>
                                                     <div className="relative">
-                                                        <FaDollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400" />
+                                                        <FaPercentage className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400" />
                                                         <input
                                                             type="number"
-                                                            value={form.price}
+                                                            value={
+                                                                form.sharePercentage
+                                                            }
+                                                            max={1}
+                                                            min={0}
+                                                            step={0.01}
                                                             onChange={(e) =>
                                                                 setForm(
                                                                     (f) => ({
                                                                         ...f,
-                                                                        price: Number(
-                                                                            e
-                                                                                .target
-                                                                                .value
-                                                                        ),
+                                                                        sharePercentage:
+                                                                            Number(
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            ),
                                                                     })
                                                                 )
                                                             }
@@ -530,25 +671,257 @@ export default function AdminStoryManagementSPG({
                                                         />
                                                     </div>
                                                 </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between p-4 bg-blue-900/20 rounded-xl border border-blue-800/30">
                                                 <div>
                                                     <label className="block text-blue-200 font-semibold mb-2">
-                                                        발행 수량
+                                                        리포트 URL
                                                     </label>
-                                                    <input
-                                                        type="number"
-                                                        value={form.circulation}
-                                                        onChange={(e) =>
-                                                            setForm((f) => ({
-                                                                ...f,
-                                                                circulation:
-                                                                    Number(
+                                                    <div className="relative">
+                                                        <FaChartPie className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400" />
+                                                        <input
+                                                            type="text"
+                                                            value={
+                                                                form.reportUrl
+                                                            }
+                                                            onChange={(e) =>
+                                                                setForm(
+                                                                    (f) => ({
+                                                                        ...f,
+                                                                        reportUrl:
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                    })
+                                                                )
+                                                            }
+                                                            className="w-full pl-10 pr-3 py-3 rounded-xl bg-blue-900/30 text-white border border-blue-700/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-200"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between p-4 bg-blue-900/20 rounded-xl border border-blue-800/30">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="w-full">
+                                                        <label className="block text-blue-200 font-semibold mb-2">
+                                                            판매 가격 (USD)
+                                                        </label>
+                                                        <div className="relative">
+                                                            <FaDollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400" />
+                                                            <input
+                                                                type="number"
+                                                                value={
+                                                                    form.price
+                                                                }
+                                                                onChange={(e) =>
+                                                                    setForm(
+                                                                        (
+                                                                            f
+                                                                        ) => ({
+                                                                            ...f,
+                                                                            price: Number(
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            ),
+                                                                        })
+                                                                    )
+                                                                }
+                                                                className="w-full pl-10 pr-3 py-3 rounded-xl bg-blue-900/30 text-white border border-blue-700/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all duration-200"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-full">
+                                                        <label className="block text-blue-200 font-semibold mb-2">
+                                                            발행 수량
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            value={
+                                                                form.circulation
+                                                            }
+                                                            onChange={(e) =>
+                                                                setForm(
+                                                                    (f) => ({
+                                                                        ...f,
+                                                                        circulation:
+                                                                            Number(
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            ),
+                                                                    })
+                                                                )
+                                                            }
+                                                            className="w-full px-4 py-3 rounded-xl bg-blue-900/30 text-white border border-blue-700/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+
+                                    {/* 에스크로 지갑 탭 */}
+                                    {activeTab === "escrowWallets" && (
+                                        <motion.div
+                                            key="escrowWallets"
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 20 }}
+                                            className="space-y-6"
+                                        >
+                                            {/* Escrow Wallet 관리 섹션 */}
+                                            <div className="p-4 bg-blue-900/20 rounded-xl border border-blue-800/30">
+                                                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                                                    <FaWallet className="text-purple-400" />
+                                                    에스크로 지갑 관리
+                                                </h3>
+
+                                                {/* 등록된 Escrow Wallet 목록 */}
+                                                <div className="mb-4">
+                                                    <h4 className="text-sm text-blue-300 mb-2">
+                                                        등록된 Escrow Wallet
+                                                    </h4>
+                                                    {isLoadingRegisteredEscrowWallets ? (
+                                                        <div className="text-blue-300 text-center py-2">
+                                                            로딩 중...
+                                                        </div>
+                                                    ) : isErrorRegisteredEscrowWallets ? (
+                                                        <div className="text-red-400 text-center py-2">
+                                                            목록을 불러오는데
+                                                            실패했습니다.
+                                                        </div>
+                                                    ) : !registeredEscrowWallets ||
+                                                      registeredEscrowWallets.length ===
+                                                          0 ? (
+                                                        <div className="text-blue-300 text-center py-2">
+                                                            등록된 Escrow
+                                                            Wallet이 없습니다.
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-2">
+                                                            {registeredEscrowWallets.map(
+                                                                (wallet) => (
+                                                                    <div
+                                                                        key={
+                                                                            wallet
+                                                                        }
+                                                                        className="flex items-center justify-between p-2 bg-blue-900/30 rounded-lg"
+                                                                    >
+                                                                        <span className="text-blue-200 font-mono text-sm">
+                                                                            {
+                                                                                wallet
+                                                                            }
+                                                                        </span>
+                                                                    </div>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* 새로운 Escrow Wallet 등록 */}
+                                                <div>
+                                                    <h4 className="text-sm text-blue-300 mb-2">
+                                                        새 Escrow Wallet 등록
+                                                    </h4>
+                                                    {isLoadingEscrowWallets ? (
+                                                        <div className="text-blue-300 text-center py-2">
+                                                            사용 가능한 지갑
+                                                            목록을 불러오는
+                                                            중...
+                                                        </div>
+                                                    ) : isErrorEscrowWallets ? (
+                                                        <div className="text-red-400 text-center py-2">
+                                                            지갑 목록을
+                                                            불러오는데
+                                                            실패했습니다.
+                                                        </div>
+                                                    ) : !escrowWallets ||
+                                                      escrowWallets.length ===
+                                                          0 ? (
+                                                        <div className="text-blue-300 text-center py-2">
+                                                            등록 가능한 지갑이
+                                                            없습니다.
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-2">
+                                                            <select
+                                                                value={
+                                                                    selectedWallet
+                                                                }
+                                                                onChange={(e) =>
+                                                                    setSelectedWallet(
                                                                         e.target
                                                                             .value
-                                                                    ),
-                                                            }))
-                                                        }
-                                                        className="w-full px-4 py-3 rounded-xl bg-blue-900/30 text-white border border-blue-700/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                                                    />
+                                                                    )
+                                                                }
+                                                                className="w-full px-4 py-2 rounded-lg bg-blue-900/30 text-white border border-blue-700/50 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                                            >
+                                                                <option value="">
+                                                                    지갑을
+                                                                    선택하세요
+                                                                </option>
+                                                                {escrowWallets
+                                                                    .filter(
+                                                                        (
+                                                                            wallet
+                                                                        ) =>
+                                                                            !registeredEscrowWallets?.includes(
+                                                                                wallet.address
+                                                                            )
+                                                                    )
+                                                                    .map(
+                                                                        (
+                                                                            wallet
+                                                                        ) => (
+                                                                            <option
+                                                                                key={
+                                                                                    wallet.address
+                                                                                }
+                                                                                value={
+                                                                                    wallet.address
+                                                                                }
+                                                                            >
+                                                                                {
+                                                                                    wallet.address
+                                                                                }{" "}
+                                                                                {wallet.isActive
+                                                                                    ? "(활성)"
+                                                                                    : "(비활성)"}
+                                                                            </option>
+                                                                        )
+                                                                    )}
+                                                            </select>
+                                                            <button
+                                                                onClick={
+                                                                    handleAddEscrowWallet
+                                                                }
+                                                                disabled={
+                                                                    isPendingAddEscrowWalletToSPG ||
+                                                                    !selectedWallet
+                                                                }
+                                                                className="w-full px-4 py-2 bg-gradient-to-r from-cyan-600 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-cyan-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                            >
+                                                                {isPendingAddEscrowWalletToSPG ? (
+                                                                    <>
+                                                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                                        등록
+                                                                        중...
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <FaPlus />
+                                                                        선택한
+                                                                        지갑
+                                                                        등록
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </motion.div>
@@ -676,44 +1049,88 @@ export default function AdminStoryManagementSPG({
                                                     }
                                                 />
                                                 <div className="grid grid-cols-4 gap-3 mt-4">
-                                                    {form.pageImages.map(
-                                                        (img) => (
-                                                            <div
-                                                                key={img.id}
-                                                                className="relative group"
-                                                            >
-                                                                <img
-                                                                    src={
-                                                                        img.url
-                                                                    }
-                                                                    alt="page"
-                                                                    className="w-full h-24 object-cover rounded-xl border-2 border-blue-700/50 group-hover:border-cyan-500/50 transition-all duration-200"
-                                                                />
-                                                                <button
-                                                                    onClick={() =>
-                                                                        setForm(
-                                                                            (
-                                                                                f
-                                                                            ) => ({
-                                                                                ...f,
-                                                                                pageImages:
-                                                                                    f.pageImages.filter(
-                                                                                        (
-                                                                                            i
-                                                                                        ) =>
-                                                                                            i.id !==
-                                                                                            img.id
-                                                                                    ),
-                                                                            })
-                                                                        )
-                                                                    }
-                                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600"
-                                                                >
-                                                                    <FaTimes className="text-xs" />
-                                                                </button>
-                                                            </div>
-                                                        )
-                                                    )}
+                                                    <DndContext
+                                                        sensors={sensors}
+                                                        collisionDetection={
+                                                            closestCenter
+                                                        }
+                                                        onDragEnd={(event) => {
+                                                            const {
+                                                                active,
+                                                                over,
+                                                            } = event;
+                                                            if (
+                                                                over &&
+                                                                active.id !==
+                                                                    over.id
+                                                            ) {
+                                                                setForm(
+                                                                    (f) => ({
+                                                                        ...f,
+                                                                        pageImages:
+                                                                            arrayMove(
+                                                                                f.pageImages,
+                                                                                f.pageImages.findIndex(
+                                                                                    (
+                                                                                        img
+                                                                                    ) =>
+                                                                                        img.id ===
+                                                                                        active.id
+                                                                                ),
+                                                                                f.pageImages.findIndex(
+                                                                                    (
+                                                                                        img
+                                                                                    ) =>
+                                                                                        img.id ===
+                                                                                        over.id
+                                                                                )
+                                                                            ),
+                                                                    })
+                                                                );
+                                                            }
+                                                        }}
+                                                    >
+                                                        <SortableContext
+                                                            items={form.pageImages.map(
+                                                                (img) => img.id
+                                                            )}
+                                                            strategy={
+                                                                rectSortingStrategy
+                                                            }
+                                                        >
+                                                            {form.pageImages.map(
+                                                                (img) => (
+                                                                    <SortableItem
+                                                                        key={
+                                                                            img.id
+                                                                        }
+                                                                        img={
+                                                                            img
+                                                                        }
+                                                                        onRemove={(
+                                                                            id
+                                                                        ) =>
+                                                                            setForm(
+                                                                                (
+                                                                                    f
+                                                                                ) => ({
+                                                                                    ...f,
+                                                                                    pageImages:
+                                                                                        f.pageImages.filter(
+                                                                                            (
+                                                                                                i
+                                                                                            ) =>
+                                                                                                i.id !==
+                                                                                                id
+                                                                                        ),
+                                                                                })
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                )
+                                                            )}
+                                                        </SortableContext>
+                                                    </DndContext>
                                                 </div>
                                             </div>
 

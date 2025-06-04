@@ -1,4 +1,4 @@
-import { PrismaClient, Events, CollectionContract } from "@prisma/client";
+import { PrismaClient, Events, Story_spg } from "@prisma/client";
 import * as PortOne from "@portone/browser-sdk/v2";
 import { prisma } from "@/lib/prisma/client";
 
@@ -20,7 +20,7 @@ export type prismaTransaction =
 
 export type ProductTableMap = {
     events: Events;
-    nfts: CollectionContract;
+    nfts: Story_spg;
 };
 export type ProductTable = keyof ProductTableMap;
 
@@ -50,7 +50,7 @@ export const PRODUCT_MAP: {
             return product;
         },
         nfts: async ({ productId, tx }) => {
-            const product = await (tx ?? prisma).collectionContract.findUnique({
+            const product = await (tx ?? prisma).story_spg.findUnique({
                 where: { id: productId },
             });
             if (!product) throw new Error("Product not found");

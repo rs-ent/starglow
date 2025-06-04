@@ -2,23 +2,19 @@
 
 "use client";
 
-import { Collection } from "@/app/actions/factoryContracts";
 import { useMemo, useState } from "react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import React from "react";
-
+import { SPG } from "@/app/story/spg/actions";
 interface NFTContentsPageImagesProps {
-    collection: Collection;
+    spg: SPG;
 }
 
 export default React.memo(function NFTContentsPageImages({
-    collection,
+    spg,
 }: NFTContentsPageImagesProps) {
-    const images = useMemo(
-        () => collection.pageImages || [],
-        [collection.pageImages]
-    );
+    const images = useMemo(() => spg.pageImages || [], [spg.pageImages]);
     const [showAll, setShowAll] = useState(false);
 
     if (!images.length) return null;
@@ -27,11 +23,11 @@ export default React.memo(function NFTContentsPageImages({
         <div
             className={cn(
                 "w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50",
-                showAll ? "h-full" : "h-[800px]"
+                showAll ? "" : "h-[800px]"
             )}
         >
             {images.map((img, idx) => (
-                <div key={img} className="w-full" style={{}}>
+                <div key={img} className="w-full">
                     <img
                         src={img}
                         alt={`collection page image ${idx + 1}`}

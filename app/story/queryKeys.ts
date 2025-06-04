@@ -12,6 +12,12 @@ export const queryKeys = {
         list: () => [...queryKeys.escrowWallet.all, "list"] as const,
         wallet: (address: string) =>
             [...queryKeys.escrowWallet.all, "wallet", address] as const,
+        registeredWallets: (spgAddress: string) =>
+            [
+                ...queryKeys.escrowWallet.all,
+                "registeredWallets",
+                spgAddress,
+            ] as const,
         balance: (address: string) =>
             [...queryKeys.escrowWallet.all, "balance", address] as const,
         balances: (addresses: string[]) =>
@@ -37,8 +43,11 @@ export const queryKeys = {
         all: ["nft"] as const,
         list: (filter?: object) =>
             [...queryKeys.nft.all, "list", filter] as const,
-        nft: (id: string) => [...queryKeys.nft.all, "nft", id] as const,
         unregistered: (id: string) =>
             [...queryKeys.nft.all, "unregistered", id] as const,
+        owners: (tokenIds: string[]) =>
+            [...queryKeys.nft.all, "owners", tokenIds] as const,
+        circulation: (address: string) =>
+            [...queryKeys.nft.all, "circulation", address] as const,
     },
 } as const;

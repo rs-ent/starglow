@@ -4,19 +4,15 @@ import UserProfile from "./User.Profile";
 import UserClientSection from "./User.ClientSection";
 import { Player } from "@prisma/client";
 import type { User } from "next-auth";
-import { VerifiedCollection } from "@/app/actions/collectionContracts";
+import { VerifiedSPG } from "@/app/story/interaction/actions";
 
 interface UserProps {
     user: User;
     player: Player;
-    userVerifiedCollections: VerifiedCollection[];
+    userVerifiedSPGs: VerifiedSPG[];
 }
 
-export default function User({
-    user,
-    player,
-    userVerifiedCollections,
-}: UserProps) {
+export default function User({ user, player, userVerifiedSPGs }: UserProps) {
     return (
         <div className="overflow-hidden">
             <div className="flex items-center justify-center">
@@ -26,7 +22,7 @@ export default function User({
                     <UserClientSection
                         user={user}
                         player={player}
-                        userVerifiedCollections={userVerifiedCollections}
+                        userVerifiedSPGs={userVerifiedSPGs}
                     />
                 </div>
             </div>

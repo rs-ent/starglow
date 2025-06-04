@@ -1,7 +1,7 @@
 /// app/nfts/[address]/page.tsx
 
 import { prisma } from "@/lib/prisma/client";
-import type { Collection } from "@/app/actions/factoryContracts";
+import { SPG } from "@/app/story/spg/actions";
 import { notFound } from "next/navigation";
 import NFT from "@/components/nfts/NFT";
 
@@ -15,19 +15,18 @@ export default async function NFTPage(props: NFTPageProps) {
     const searchParams = await props.searchParams;
     const address = params.address;
 
-    const collection = (await prisma.collectionContract.findUnique({
+    const spg = (await prisma.story_spg.findUnique({
         where: {
             address: address,
         },
         include: {
-            metadata: true,
             artist: true,
         },
-    })) as Collection;
+    })) as SPG;
 
-    if (!collection) {
+    if (!spg) {
         return notFound();
     }
 
-    return <NFT collection={collection} searchParams={searchParams} />;
+    return <NFT spg={spg} searchParams={searchParams} />;
 }

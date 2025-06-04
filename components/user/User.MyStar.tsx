@@ -5,7 +5,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Artist, Player, Poll, Quest } from "@prisma/client";
 import { User } from "next-auth";
-import { VerifiedCollection } from "@/app/actions/collectionContracts";
 import { cn } from "@/lib/utils/tailwind";
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { useQuestGet } from "@/app/hooks/useQuest";
@@ -14,11 +13,12 @@ import dynamic from "next/dynamic";
 import PartialLoading from "../atoms/PartialLoading";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { useRouter } from "next/navigation";
+import { VerifiedSPG } from "@/app/story/interaction/actions";
 
 interface UserMyStarProps {
     user: User;
     player: Player;
-    userVerifiedCollections: VerifiedCollection[];
+    userVerifiedSPGs: VerifiedSPG[];
 }
 
 const UserMyStarModal = dynamic(() => import("./User.MyStar.Modal"), {
@@ -29,7 +29,7 @@ const UserMyStarModal = dynamic(() => import("./User.MyStar.Modal"), {
 export default React.memo(function UserMyStar({
     user,
     player,
-    userVerifiedCollections,
+    userVerifiedSPGs,
 }: UserMyStarProps) {
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
     const router = useRouter();
@@ -62,13 +62,13 @@ export default React.memo(function UserMyStar({
 
     const artists = useMemo(() => {
         const artistMap = new Map<string, Artist>();
-        userVerifiedCollections.forEach((collection) => {
-            if (collection.artist && collection.verifiedTokens.length > 0) {
-                artistMap.set(collection.artist.id, collection.artist);
+        userVerifiedSPGs.forEach((spg) => {
+            if (spg.artist && spg.verifiedTokens.length > 0) {
+                artistMap.set(spg.artist.id, spg.artist);
             }
         });
         return Array.from(artistMap.values());
-    }, [userVerifiedCollections]);
+    }, [userVerifiedSPGs]);
 
     const newArtistsActivities: Map<
         string,
@@ -159,8 +159,8 @@ export default React.memo(function UserMyStar({
                 questLogs={playerQuestLogs ?? []}
                 pollLogs={playerPollLogs ?? []}
                 artist={selectedArtist}
-                verifiedCollections={userVerifiedCollections.filter(
-                    (collection) => collection.artistId === selectedArtist.id
+                verifiedSPGs={userVerifiedSPGs.filter(
+                    (spg) => spg.artistId === selectedArtist.id
                 )}
                 open={true}
                 onClose={handleClose}

@@ -1,11 +1,10 @@
 /// app\collections\[address]\page.tsx
 
-import {notFound} from "next/navigation";
+import { notFound } from "next/navigation";
 import NFTContents from "@/components/nfts/NFT.Contents";
-import type {Collection} from "@/app/actions/factoryContracts";
-import {Metadata} from "@prisma/client";
-import {prisma} from "@/lib/prisma/client";
-import {Suspense} from "react";
+import { SPG } from "@/app/story/spg/actions";
+import { prisma } from "@/lib/prisma/client";
+import { Suspense } from "react";
 
 interface CollectionPageProps {
     params: {
@@ -27,28 +26,19 @@ function CollectionLoading() {
 // 실제 컬렉션 데이터를 가져오는 컴포넌트
 async function CollectionContent({ address }: { address: string }) {
     try {
-        const collectionData = await prisma.collectionContract.findUnique({
+        const spg = await prisma.story_spg.findUnique({
             where: { address },
             include: {
-                network: true,
-                factory: true,
-                metadata: true,
                 artist: true,
             },
         });
 
-        if (!collectionData || !collectionData.metadata) {
+        if (!spg) {
             notFound();
             return null;
         }
 
-        // 명시적으로 Collection 타입으로 캐스팅
-        const collection: Collection = {
-            ...collectionData,
-            metadata: collectionData.metadata as Metadata,
-        };
-
-        return <NFTContents collection={collection} />;
+        return <NFTContents spg={spg} />;
     } catch (error) {
         console.error("Error fetching collection:", error);
         notFound();

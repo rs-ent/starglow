@@ -1,16 +1,24 @@
 /// app/story/escrowWallet/hooks.ts
 
-import { useGetEscrowWalletsQuery } from "./queries";
+import {
+    useGetEscrowWalletsQuery,
+    useGetRegisteredEscrowWalletsQuery,
+} from "./queries";
 import {
     useRegisterEscrowWalletMutation,
     useFetchEscrowWalletPrivateKeyMutation,
     useSetActiveEscrowWalletMutation,
     useFetchEscrowWalletsBalanceMutation,
+    useAddEscrowWalletToSPGMutation,
 } from "./mutations";
-import { getEscrowWalletsInput } from "./actions";
+import {
+    getEscrowWalletsInput,
+    getRegisteredEscrowWalletsInput,
+} from "./actions";
 
 interface useEscrowWalletsInput {
     getEscrowWalletsInput?: getEscrowWalletsInput;
+    getRegisteredEscrowWalletsInput?: getRegisteredEscrowWalletsInput;
 }
 
 export const useEscrowWallets = (input?: useEscrowWalletsInput) => {
@@ -20,6 +28,15 @@ export const useEscrowWallets = (input?: useEscrowWalletsInput) => {
         isError: isErrorEscrowWallets,
         refetch: refetchEscrowWallets,
     } = useGetEscrowWalletsQuery(input?.getEscrowWalletsInput);
+
+    const {
+        data: registeredEscrowWallets,
+        isLoading: isLoadingRegisteredEscrowWallets,
+        isError: isErrorRegisteredEscrowWallets,
+        refetch: refetchRegisteredEscrowWallets,
+    } = useGetRegisteredEscrowWalletsQuery(
+        input?.getRegisteredEscrowWalletsInput
+    );
 
     const {
         mutate: registerEscrowWallet,
@@ -49,11 +66,23 @@ export const useEscrowWallets = (input?: useEscrowWalletsInput) => {
         isError: isErrorFetchEscrowWalletsBalance,
     } = useFetchEscrowWalletsBalanceMutation();
 
+    const {
+        mutate: addEscrowWalletToSPG,
+        mutateAsync: addEscrowWalletToSPGAsync,
+        isPending: isPendingAddEscrowWalletToSPG,
+        isError: isErrorAddEscrowWalletToSPG,
+    } = useAddEscrowWalletToSPGMutation();
+
     return {
         escrowWallets,
         isLoadingEscrowWallets,
         isErrorEscrowWallets,
         refetchEscrowWallets,
+
+        registeredEscrowWallets,
+        isLoadingRegisteredEscrowWallets,
+        isErrorRegisteredEscrowWallets,
+        refetchRegisteredEscrowWallets,
 
         registerEscrowWallet,
         registerEscrowWalletAsync,
@@ -74,5 +103,10 @@ export const useEscrowWallets = (input?: useEscrowWalletsInput) => {
         fetchEscrowWalletsBalanceAsync,
         isPendingFetchEscrowWalletsBalance,
         isErrorFetchEscrowWalletsBalance,
+
+        addEscrowWalletToSPG,
+        addEscrowWalletToSPGAsync,
+        isPendingAddEscrowWalletToSPG,
+        isErrorAddEscrowWalletToSPG,
     };
 };

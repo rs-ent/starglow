@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils/tailwind";
 import { AnimatePresence, motion } from "framer-motion";
 import { Artist, Player, QuestLog, PollLog } from "@prisma/client";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
-import type { VerifiedCollection } from "@/app/actions/collectionContracts";
+import type { VerifiedSPG } from "@/app/story/interaction/actions";
 import UserMyStarModalContents from "./User.MyStar.Modal.Contents";
 
 interface UserMyStarModalProps {
@@ -15,14 +15,14 @@ interface UserMyStarModalProps {
     questLogs: QuestLog[];
     pollLogs: PollLog[];
     artist: Artist | null;
-    verifiedCollections: VerifiedCollection[];
+    verifiedSPGs: VerifiedSPG[];
     open: boolean;
     onClose: () => void;
 }
 
 export default function UserMyStarModal({
     artist,
-    verifiedCollections,
+    verifiedSPGs,
     open,
     onClose,
     player,
@@ -272,9 +272,7 @@ export default function UserMyStarModal({
                                 >
                                     <UserMyStarModalContents
                                         artist={artist}
-                                        verifiedCollections={
-                                            verifiedCollections
-                                        }
+                                        verifiedSPGs={verifiedSPGs}
                                         player={player}
                                         questLogs={questLogs}
                                         pollLogs={pollLogs}

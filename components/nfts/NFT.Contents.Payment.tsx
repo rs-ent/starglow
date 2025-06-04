@@ -12,8 +12,9 @@ import { formatCurrency } from "@/lib/utils/format";
 import { Payment } from "@prisma/client";
 import React from "react";
 import { PaymentPostProcessorDetails } from "@/app/hooks/usePaymentPostProcessor";
+import { SPG } from "@/app/story/spg/actions";
 interface NFTContentsPaymentProps {
-    collection: Collection;
+    spg: SPG;
     onPurchase?: (quantity: number) => void;
     collectionStock:
         | {
@@ -23,24 +24,24 @@ interface NFTContentsPaymentProps {
         | undefined;
     onPaymentSuccess?: (payment: Payment) => void;
     onPaymentComplete?: (result: PaymentPostProcessorDetails) => void;
+    onPaymentError?: (error: Error) => void;
 }
 
 const initialCurrency = "CURRENCY_USD" as Currency;
 
 export default React.memo(function NFTContentsPayment({
-    collection,
+    spg,
     onPurchase,
     onPaymentSuccess,
     onPaymentComplete,
+    onPaymentError,
     collectionStock = {
         remain: 0,
         total: 0,
     },
 }: NFTContentsPaymentProps) {
     const [quantity, setQuantity] = useState(1);
-    const [displayPrice, setDisplayPrice] = useState<number>(
-        collection.price ?? 0
-    );
+    const [displayPrice, setDisplayPrice] = useState<number>(spg.price ?? 0);
     const [currency, setCurrency] = useState<Currency>(initialCurrency);
 
     const handleDisplayPriceChange = useCallback((displayPrice: number) => {
@@ -49,11 +50,11 @@ export default React.memo(function NFTContentsPayment({
 
     const { isSoldOut, isNotActive, canPurchase } = useMemo(() => {
         const isSoldOut = collectionStock.remain <= 0;
-        const isNotActive = collection.isListed !== true;
+        const isNotActive = spg.isListed !== true;
         const canPurchase = !isSoldOut && !isNotActive;
 
         return { isSoldOut, isNotActive, canPurchase };
-    }, [collectionStock, collection]);
+    }, [collectionStock, spg]);
 
     const handleIncrease = useCallback(() => {
         setQuantity((prev) => Math.min(prev + 1, collectionStock.remain));
@@ -133,7 +134,7 @@ export default React.memo(function NFTContentsPayment({
                     {/* Payment processor */}
                     <PaymentModule
                         productTable="nfts"
-                        productId={collection.id}
+                        productId={spg.id}
                         quantity={quantity}
                         buttonText={
                             quantity > 1
@@ -142,11 +143,12 @@ export default React.memo(function NFTContentsPayment({
                         }
                         needWallet={true}
                         productInitialCurrencyForDisplay={initialCurrency}
-                        productInitialPriceForDisplay={collection.price ?? 0}
+                        productInitialPriceForDisplay={spg.price ?? 0}
                         onDisplayPriceChange={handleDisplayPriceChange}
                         onCurrencyChange={setCurrency}
                         onPaymentSuccess={onPaymentSuccess}
                         onPaymentComplete={onPaymentComplete}
+                        onPaymentError={onPaymentError}
                     />
                 </>
             ) : (

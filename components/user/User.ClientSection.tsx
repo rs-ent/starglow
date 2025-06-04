@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import PublicPrivateTab from "../atoms/PublicPrivateTab";
 import { Player } from "@prisma/client";
 import type { User } from "next-auth";
-import { VerifiedCollection } from "@/app/actions/collectionContracts";
+import { VerifiedSPG } from "@/app/story/interaction/actions";
 
 const UserMyStar = dynamic(() => import("./User.MyStar"), {
     loading: () => <div>Loading...</div>,
@@ -18,13 +18,13 @@ const UserRewards = dynamic(() => import("./User.Rewards"), {
 interface Props {
     user: User;
     player: Player;
-    userVerifiedCollections: VerifiedCollection[];
+    userVerifiedSPGs: VerifiedSPG[];
 }
 
 const UserClientSection = React.memo(function UserClientSection({
     user,
     player,
-    userVerifiedCollections,
+    userVerifiedSPGs,
 }: Props) {
     const [isPublic, setIsPublic] = useState(true);
 
@@ -51,7 +51,7 @@ const UserClientSection = React.memo(function UserClientSection({
                 <UserMyStar
                     user={user}
                     player={player}
-                    userVerifiedCollections={userVerifiedCollections ?? []}
+                    userVerifiedSPGs={userVerifiedSPGs ?? []}
                 />
             ) : (
                 <UserRewards user={user} player={player} />

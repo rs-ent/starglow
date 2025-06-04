@@ -22,7 +22,8 @@ interface WarningPopupProps {
     loading?: boolean;
     preventClose?: boolean;
     progress?: ProgressData;
-    critical?: boolean; // 추가: 중요한 작업인지 여부
+    critical?: boolean;
+    forceClose?: boolean;
 }
 
 export default React.memo(function WarningPopup({
@@ -33,9 +34,15 @@ export default React.memo(function WarningPopup({
     loading = false,
     preventClose = false,
     progress,
-    critical = false, // 기본값은 false
+    critical = false,
+    forceClose = false,
 }: WarningPopupProps) {
-    // 브라우저 뒤로가기 방지
+    useEffect(() => {
+        if (forceClose) {
+            onClose?.();
+        }
+    }, [forceClose]);
+
     useEffect(() => {
         if (open && critical) {
             // 1. beforeunload 이벤트

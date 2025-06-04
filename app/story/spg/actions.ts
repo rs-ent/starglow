@@ -11,7 +11,11 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 import DeploySPGNFT from "@/web3/artifacts/contracts/DeploySPGNFT.sol/DeploySPGNFT.json";
-import { fetchEscrowWalletPrivateKey } from "../escrowWallet/actions";
+import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
+import {
+    addEscrowWalletToSPG,
+    fetchEscrowWalletPrivateKey,
+} from "../escrowWallet/actions";
 import {
     createWalletClient,
     createPublicClient,
@@ -253,6 +257,17 @@ export async function createSPG(
             },
         });
 
+        const { request: addEscrowWalletRequest } =
+            await publicClient.simulateContract({
+                address: spg.address as `0x${string}`,
+                abi: SPGNFTCollection.abi,
+                functionName: "addEscrowWallet",
+                args: [input.walletAddress],
+                account,
+            });
+
+        await walletClient.writeContract(addEscrowWalletRequest);
+
         return {
             ...spg,
             txHash: hash,
@@ -430,6 +445,9 @@ export async function deleteSPG(input: deleteSPGInput): Promise<SPG | null> {
 export interface updateSPGUtils {
     address: string;
     isListed?: boolean;
+    reportUrl?: string;
+    sharePercentage?: number;
+    imageUrl?: string;
     preOrderStart?: string;
     preOrderEnd?: string;
     saleStart?: string;

@@ -11,8 +11,16 @@ import {
     StoryConfig,
     SupportedChainIds,
 } from "@story-protocol/core-sdk";
-import { http, formatUnits } from "viem";
+import {
+    http,
+    formatUnits,
+    createPublicClient,
+    createWalletClient,
+    encodeFunctionData,
+} from "viem";
 import { privateKeyToAccount, Address, Account } from "viem/accounts";
+import { getChain } from "@/app/actions/blockchain";
+import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
 
 export interface registerEscrowWalletInput {
     address: string;
@@ -222,5 +230,153 @@ export async function setActiveEscrowWallet(
     } catch (error) {
         console.error("Error setting active escrow wallet", error);
         return "Error setting active escrow wallet";
+    }
+}
+
+export interface getRegisteredEscrowWalletsInput {
+    spgAddress: string;
+}
+
+export async function getRegisteredEscrowWallets(
+    input?: getRegisteredEscrowWalletsInput
+): Promise<string[]> {
+    if (!input) {
+        return [];
+    }
+
+    try {
+        const { spgAddress } = input;
+
+        const spg = await prisma.story_spg.findUnique({
+            where: {
+                address: spgAddress,
+            },
+            include: {
+                network: true,
+            },
+        });
+
+        if (!spg) {
+            console.error("SPG not found");
+            return [];
+        }
+
+        const chain = await getChain(spg.network);
+
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const registeredWallets = await prisma.escrowWallet.findMany({
+            where: {
+                isActive: true,
+            },
+            select: {
+                address: true,
+            },
+        });
+
+        const verifiedWallets = await Promise.all(
+            registeredWallets.map(async (wallet) => {
+                try {
+                    const isEscrowWallet = await publicClient.readContract({
+                        address: spgAddress as `0x${string}`,
+                        abi: SPGNFTCollection.abi,
+                        functionName: "isEscrowWallet",
+                        args: [wallet.address as `0x${string}`],
+                    });
+
+                    return isEscrowWallet ? wallet.address : null;
+                } catch (error) {
+                    console.error(
+                        `Error checking wallet ${wallet.address}:`,
+                        error
+                    );
+                    return null;
+                }
+            })
+        );
+
+        return verifiedWallets.filter(
+            (address): address is string => address !== null
+        );
+    } catch (error) {
+        console.error("Error getting registered escrow wallets", error);
+        return [];
+    }
+}
+
+export interface addEscrowWalletToSPGInput {
+    spgAddress: string;
+    walletAddress: string;
+}
+
+export async function addEscrowWalletToSPG(
+    input: addEscrowWalletToSPGInput
+): Promise<string | null> {
+    try {
+        const { spgAddress, walletAddress } = input;
+
+        const spg = await prisma.story_spg.findUnique({
+            where: {
+                address: spgAddress,
+            },
+            include: {
+                network: true,
+            },
+        });
+
+        if (!spg) {
+            return "SPG not found";
+        }
+
+        const wallet = await prisma.escrowWallet.findUnique({
+            where: {
+                address: walletAddress,
+            },
+        });
+
+        if (!wallet) {
+            return "Wallet not found";
+        }
+
+        const ownerPrivateKey = await fetchEscrowWalletPrivateKey({
+            address: spg.ownerAddress,
+        });
+
+        if (!ownerPrivateKey) {
+            return "Owner private key not found";
+        }
+
+        const ownerAccount = privateKeyToAccount(
+            ownerPrivateKey as `0x${string}`
+        );
+        const chain = await getChain(spg.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(spg.network.rpcUrl),
+        });
+
+        const walletClient = createWalletClient({
+            account: ownerAccount,
+            chain,
+            transport: http(spg.network.rpcUrl),
+        });
+
+        const { request } = await publicClient.simulateContract({
+            address: spgAddress as `0x${string}`,
+            abi: SPGNFTCollection.abi,
+            functionName: "addEscrowWallet",
+            args: [walletAddress],
+            account: ownerAccount.address,
+        });
+
+        const txHash = await walletClient.writeContract(request);
+
+        return txHash;
+    } catch (error) {
+        console.error("Error adding escrow wallet to SPG", error);
+        return null;
     }
 }

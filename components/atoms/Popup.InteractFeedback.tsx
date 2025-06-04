@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Portal from "./Portal";
-import dynamic from "next/dynamic"; // 동적 임포트 사용
+import dynamic from "next/dynamic";
 import { TextAnimate } from "@/components/magicui/text-animate";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -13,7 +13,7 @@ import { Asset } from "@prisma/client";
 import { NumberTicker } from "@/components/magicui/number-ticker";
 import { Canvas } from "@react-three/fiber";
 import NFTsCollectionsCardR3FAcqusition from "../nfts/NFTs.Collections.Card.R3F.Acqusition";
-import { Collection } from "@/app/actions/factoryContracts";
+import { SPG } from "@/app/story/spg/actions";
 import { XIcon } from "lucide-react";
 import confetti from "canvas-confetti";
 
@@ -31,7 +31,7 @@ interface InteractFeedbackProps {
     showReward?: boolean;
     reward?: Asset | null;
     rewardAmount?: number | null;
-    collection?: Collection | null;
+    spg?: SPG | null;
 }
 
 export default function InteractFeedback({
@@ -45,7 +45,7 @@ export default function InteractFeedback({
     showReward = true,
     reward,
     rewardAmount,
-    collection,
+    spg,
 }: InteractFeedbackProps) {
     const [successLottie, setSuccessLottie] = useState<any>(null);
 
@@ -177,7 +177,7 @@ export default function InteractFeedback({
                             >
                                 {title}
                             </TextAnimate>
-                            {type === "purchaseNFT" && collection && (
+                            {type === "purchaseNFT" && spg && (
                                 <div className="w-[600px] h-[400px] mb-4">
                                     <Canvas
                                         camera={{
@@ -192,7 +192,7 @@ export default function InteractFeedback({
                                             intensity={1}
                                         />
                                         <NFTsCollectionsCardR3FAcqusition
-                                            collection={collection}
+                                            spg={spg}
                                         />
                                     </Canvas>
                                 </div>

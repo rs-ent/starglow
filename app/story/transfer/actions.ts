@@ -4,24 +4,18 @@ import {
     createWalletClient,
     createPublicClient,
     http,
+    encodeFunctionData,
     Hex,
-    decodeEventLog,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import {
-    getChain,
-    estimateAndOptimizeGas,
-    getStoryNetwork,
-} from "../network/actions";
+import { getChain } from "../network/actions";
 import { prisma } from "@/lib/prisma/client";
 import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
 import { fetchEscrowWalletPrivateKey } from "../escrowWallet/actions";
-import { fetchStoryClient } from "../client";
-import { signTypedData } from "viem/accounts";
 import { getOwners } from "../nft/actions";
 
 export interface initialTransferInput {
-    collectionAddress: string;
+    spgAddress: string;
     quantity: number;
     toAddress: string;
 }
@@ -29,22 +23,22 @@ export interface initialTransferInput {
 export async function initialTransfer(
     input: initialTransferInput
 ): Promise<{ txHash: string; tokenIds: string[] }> {
-    const { collectionAddress, quantity, toAddress } = input;
+    const { spgAddress, quantity, toAddress } = input;
 
-    const collection = await prisma.story_spg.findUnique({
+    const spg = await prisma.story_spg.findUnique({
         where: {
-            address: collectionAddress,
+            address: spgAddress,
         },
         include: {
             network: true,
         },
     });
 
-    if (!collection) {
-        throw new Error("Collection not found");
+    if (!spg) {
+        throw new Error("SPG not found");
     }
 
-    const from = collection.ownerAddress;
+    const from = spg.ownerAddress;
     if (!from) {
         throw new Error("From address not found");
     }
@@ -57,22 +51,23 @@ export async function initialTransfer(
         throw new Error("Spender not found");
     }
 
-    const spenderAccount = privateKeyToAccount(spender as `0x${string}`);
+    const spenderAccount = privateKeyToAccount(spender as Hex);
 
-    const chain = await getChain(collection.network);
+    const chain = await getChain(spg.network);
     const publicClient = createPublicClient({
         chain,
-        transport: http(),
+        transport: http(spg.network.rpcUrl),
     });
 
     const walletClient = createWalletClient({
         account: spenderAccount,
         chain,
-        transport: http(),
+        transport: http(spg.network.rpcUrl),
     });
 
-    const nonce = (await publicClient.readContract({
-        address: collectionAddress as `0x${string}`,
+    // 컨트랙트 nonce 읽기 (서명용)
+    const contractNonce = (await publicClient.readContract({
+        address: spgAddress as `0x${string}`,
         abi: SPGNFTCollection.abi,
         functionName: "getNonce",
         args: [from as `0x${string}`],
@@ -83,7 +78,7 @@ export async function initialTransfer(
         name: "SPGNFTCollection",
         version: "1",
         chainId: chain.id,
-        verifyingContract: collectionAddress as `0x${string}`,
+        verifyingContract: spgAddress as `0x${string}`,
     };
 
     const types = {
@@ -97,7 +92,7 @@ export async function initialTransfer(
     };
 
     const tokenIds = await getOwners({
-        contractAddress: collectionAddress,
+        spgAddress: spgAddress,
         tokenIds: Array.from({ length: quantity }, (_, i) =>
             BigInt(i).toString()
         ),
@@ -112,7 +107,7 @@ export async function initialTransfer(
         owner: from,
         to: toAddress,
         tokenIds: ownedTokenIds,
-        nonce,
+        nonce: contractNonce, // 컨트랙트 nonce 사용
         deadline,
     };
 
@@ -123,15 +118,41 @@ export async function initialTransfer(
         message,
     });
 
-    const { request } = await publicClient.simulateContract({
-        address: collectionAddress as `0x${string}`,
+    // simulateContract 대신 직접 트랜잭션 데이터 인코딩
+    const txData = encodeFunctionData({
         abi: SPGNFTCollection.abi,
         functionName: "escrowTransferWithSignature",
         args: [from, toAddress, ownedTokenIds, deadline, signature],
-        account: spenderAccount.address,
     });
 
-    const txHash = await walletClient.writeContract(request);
+    // 가스 추정
+    const gasEstimate = await publicClient.estimateGas({
+        account: spenderAccount.address,
+        to: spgAddress as `0x${string}`,
+        data: txData,
+    });
+
+    // 트랜잭션 nonce 가져오기 (number 타입)
+    const txNonce = await publicClient.getTransactionCount({
+        address: spenderAccount.address,
+    });
+
+    // 트랜잭션 객체 생성
+    const tx = {
+        to: spgAddress as `0x${string}`,
+        data: txData,
+        gas: gasEstimate,
+        nonce: txNonce, // 트랜잭션 nonce 사용 (number 타입)
+        ...(await publicClient.estimateFeesPerGas()),
+    };
+
+    // 트랜잭션 서명
+    const signedTx = await walletClient.signTransaction(tx);
+
+    // Raw 트랜잭션 전송
+    const txHash = await publicClient.sendRawTransaction({
+        serializedTransaction: signedTx,
+    });
 
     return { txHash, tokenIds: ownedTokenIds };
 }
@@ -224,15 +245,15 @@ export async function transferNFTToUser(
         }
 
         // 4. NFT 및 컬렉션 정보 조회
-        const collection = await prisma.story_spg.findUnique({
+        const spg = await prisma.story_spg.findUnique({
             where: {
                 id: payment.productId,
             },
             include: { network: true },
         });
 
-        if (!collection) {
-            console.error("Collection not found");
+        if (!spg) {
+            console.error("SPG not found");
             return {
                 success: false,
                 error: {
@@ -244,7 +265,7 @@ export async function transferNFTToUser(
 
         // 8. transferTokens 호출
         const result = await initialTransfer({
-            collectionAddress: collection.address,
+            spgAddress: spg.address,
             quantity: payment.quantity,
             toAddress: payment.receiverWalletAddress,
         });
@@ -267,11 +288,11 @@ export async function transferNFTToUser(
                     type: "NFT_TRANSFER",
                     success: true,
                     txHash: result,
-                    from: collection.ownerAddress,
+                    from: spg.ownerAddress,
                     to: payment.receiverWalletAddress,
                     tokenId: payment.productId,
-                    networkId: collection.networkId,
-                    networkName: collection.network.name,
+                    networkId: spg.networkId,
+                    networkName: spg.network.name,
                 },
                 postProcessResultAt: new Date(),
             },
@@ -280,7 +301,7 @@ export async function transferNFTToUser(
         console.log("NFT transfer successful", {
             txHash: result.txHash,
             receiver: payment.receiverWalletAddress,
-            networkName: collection.network.name,
+            networkName: spg.network.name,
         });
 
         return {
@@ -288,7 +309,7 @@ export async function transferNFTToUser(
             data: {
                 txHash: result.txHash,
                 receiverAddress: payment.receiverWalletAddress,
-                networkName: collection.network.name,
+                networkName: spg.network.name,
             },
         };
     } catch (error) {

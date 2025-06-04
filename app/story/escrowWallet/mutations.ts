@@ -6,6 +6,7 @@ import {
     fetchEscrowWalletPrivateKey,
     setActiveEscrowWallet,
     fetchEscrowWalletsBalance,
+    addEscrowWalletToSPG,
 } from "./actions";
 import { queryKeys } from "../queryKeys";
 
@@ -131,6 +132,18 @@ export function useFetchEscrowWalletsBalanceMutation() {
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.escrowWallet.balance(address),
                 });
+            });
+        },
+    });
+}
+
+export function useAddEscrowWalletToSPGMutation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: addEscrowWalletToSPG,
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.spg.list(),
             });
         },
     });

@@ -8,16 +8,14 @@ import React, {
     useState,
 } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { TextureLoader, Mesh, DoubleSide, LinearFilter, Vector3 } from "three";
+import { Mesh, DoubleSide, LinearFilter, Vector3 } from "three";
 import { RoundedBox, Text, useCursor } from "@react-three/drei";
 import { SPG } from "@/app/story/spg/actions";
-import { METADATA_TYPE } from "@/app/actions/metadata";
-import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
+import { useNFT } from "@/app/story/nft/hooks";
 import { CollectionParticipantType } from "@prisma/client";
 import { animated, useSpring } from "@react-spring/three";
 import { formatDate, formatColor } from "@/lib/utils/format";
 import { useCachedTexture } from "@/lib/utils/useCachedTexture";
-import { fetchURI } from "@/app/story/metadata/actions";
 
 /**
  * CardMesh 컴포넌트에 전달되는 props 타입
@@ -33,6 +31,7 @@ export interface CardMeshProps {
     participants: number;
     remainStock: number;
     totalStock: number;
+    circulationLoading: boolean;
     artistName: string;
     position?: [number, number, number];
     rotationY?: number;
@@ -162,6 +161,7 @@ interface InfoBoxProps {
     backgroundColor: string;
     foregroundColor: string;
     isSelected: boolean;
+    isLoading?: boolean;
 }
 
 const InfoBox = React.memo(function InfoBox({
@@ -175,7 +175,38 @@ const InfoBox = React.memo(function InfoBox({
     backgroundColor,
     foregroundColor,
     isSelected,
+    isLoading = false,
 }: InfoBoxProps) {
+    const LoadingDots = React.memo(function LoadingDots() {
+        const { scale, opacity } = useSpring({
+            from: { scale: 0.5, opacity: 0.5 },
+            to: { scale: 0.5, opacity: 1 },
+            loop: true,
+            config: { duration: 2000 },
+        });
+
+        return (
+            <group>
+                {[0, 1, 2].map((i) => (
+                    <animated.mesh
+                        key={i}
+                        position={[i * 0.3 - 0.3, 0, 0.1]}
+                        scale={scale}
+                    >
+                        <sphereGeometry args={[0.1, 16, 16]} />
+                        <animated.meshPhysicalMaterial
+                            color="#ffffff"
+                            transparent
+                            opacity={opacity}
+                            metalness={0.8}
+                            roughness={0.1}
+                        />
+                    </animated.mesh>
+                ))}
+            </group>
+        );
+    });
+
     return (
         <RoundedBox {...CONSTANTS.BOX.INFO} position={boxPosition}>
             <meshPhysicalMaterial
@@ -191,21 +222,27 @@ const InfoBox = React.memo(function InfoBox({
             >
                 {label}
             </Text>
-            <Text
-                font={valueFont}
-                position={
-                    isSelected
-                        ? CONSTANTS.POSITION.TEXT_ACCENT.VALUE
-                        : valuePosition
-                }
-                maxWidth={3}
-                color="#fff"
-                outlineColor={backgroundColor}
-                {...CONSTANTS.TEXT.COMMON}
-                {...CONSTANTS.TEXT.VALUE}
-            >
-                {value}
-            </Text>
+            {isLoading ? (
+                <group position={valuePosition}>
+                    <LoadingDots />
+                </group>
+            ) : (
+                <Text
+                    font={valueFont}
+                    position={
+                        isSelected
+                            ? CONSTANTS.POSITION.TEXT_ACCENT.VALUE
+                            : valuePosition
+                    }
+                    maxWidth={3}
+                    color="#fff"
+                    outlineColor={backgroundColor}
+                    {...CONSTANTS.TEXT.COMMON}
+                    {...CONSTANTS.TEXT.VALUE}
+                >
+                    {value}
+                </Text>
+            )}
         </RoundedBox>
     );
 });
@@ -221,6 +258,7 @@ const CardMesh = React.memo(function CardMesh({
     participants,
     remainStock,
     totalStock,
+    circulationLoading,
     artistName,
     position = [0, 0, 0],
     rotationY = 0,
@@ -528,6 +566,7 @@ const CardMesh = React.memo(function CardMesh({
                         backgroundColor={backgroundColor}
                         foregroundColor={foregroundColor}
                         isSelected={isSelected}
+                        isLoading={circulationLoading}
                     />
                     <InfoBox
                         label="Artist"
@@ -577,10 +616,22 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
     onBuyNowClick,
     confirmedAlpha,
 }: NFTsCollectionsCard3DR3FProps) {
-    // 컬렉션 데이터 계산 메모이제이션
+    const {
+        circulation,
+        isCirculationLoading,
+        isCirculationError,
+        circulationError,
+        refetchCirculation,
+    } = useNFT({
+        getCirculationInput: {
+            spgAddress: spg.address,
+        },
+    });
+
     const {
         backgroundColor,
         foregroundColor,
+        imageUrl,
         name,
         status,
         dateLabel,
@@ -650,6 +701,7 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
         }
 
         const name = spg.name || "";
+        const imageUrl = spg.imageUrl || "";
         const backgroundColor = spg.backgroundColor || "#05010D";
         const foregroundColor = spg.foregroundColor || "#ffffff";
 
@@ -658,6 +710,7 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
         return {
             backgroundColor,
             foregroundColor,
+            imageUrl,
             name,
             status,
             dateLabel,
@@ -666,24 +719,6 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             artistName,
         };
     }, [spg]);
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
-
-    useEffect(() => {
-        let ignore = false;
-        async function fetchImage() {
-            if (!spg.contractURI) return;
-            try {
-                const metadata = await fetchURI({ uri: spg.contractURI });
-                if (!ignore) setImageUrl(metadata?.image || "");
-            } catch {
-                if (!ignore) setImageUrl(null);
-            }
-        }
-        fetchImage();
-        return () => {
-            ignore = true;
-        };
-    }, [spg.contractURI]);
 
     // 이벤트 핸들러 단순화 (useCallback 제거)
     return (
@@ -696,8 +731,9 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             dateLabel={dateLabel}
             dateValue={dateValue}
             participants={0}
-            remainStock={0}
-            totalStock={spg.circulation || 0}
+            remainStock={circulation?.remain || 0}
+            totalStock={circulation?.total || 0}
+            circulationLoading={isCirculationLoading}
             artistName={artistName}
             position={position}
             rotationY={rotationY}

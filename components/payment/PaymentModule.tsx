@@ -106,9 +106,11 @@ export default function PaymentModule({
         details: postProcessDetails,
     } = usePaymentPostProcessor(currentPaymentId ?? "", {
         onSuccess: () => {
+            onPaymentComplete?.(postProcessDetails);
             toast.success("Payment processed successfully");
         },
         onError: (error) => {
+            onPaymentError?.(error);
             toast.error("Payment processing failed");
             console.error("Payment processing failed", error);
         },
@@ -261,10 +263,13 @@ export default function PaymentModule({
             onPaymentComplete?.(postProcessDetails);
             if (postProcessDetails?.type === "NFT_TRANSFER") {
                 toast.success("NFT transfer completed");
+                onPaymentComplete?.(postProcessDetails);
             } else if (postProcessDetails?.type === "NFT_ESCROW_TRANSFER") {
                 toast.success("NFT escrow transfer completed");
+                onPaymentComplete?.(postProcessDetails);
             } else if (postProcessDetails?.type === "EVENT_PROCESS") {
                 toast.success("Event processing completed");
+                onPaymentComplete?.(postProcessDetails);
             }
         }
     }, [postProcessStatus, postProcessDetails]);

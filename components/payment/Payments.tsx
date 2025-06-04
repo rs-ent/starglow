@@ -12,6 +12,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/app/hooks/useToast";
 import { H1, H2, H3, Paragraph } from "@/components/atoms/Typography";
 import { formatCurrency } from "@/lib/utils/format";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
     LoaderCircle,
@@ -21,6 +22,7 @@ import {
     CheckCircle,
     AlertCircle,
     DollarSign,
+    X,
 } from "lucide-react";
 import { Wallet as WalletIcon } from "lucide-react";
 import { useWalletsByUserId } from "@/app/hooks/useWallet";
@@ -40,9 +42,14 @@ import FreePayButton from "./FreePayButton";
 interface PaymentProps {
     payment: Payment;
     userId: string;
+    redirectUrl: string;
 }
 
-export default function Payments({ payment, userId }: PaymentProps) {
+export default function Payments({
+    payment,
+    userId,
+    redirectUrl,
+}: PaymentProps) {
     const {
         verifyPayment,
         isVerifyingPayment,
@@ -160,427 +167,431 @@ export default function Payments({ payment, userId }: PaymentProps) {
     };
 
     return (
-        <div className="flex items-center justify-center h-screen">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="max-w-4xl mx-auto flex items-center justify-center"
-            >
-                <div className="relative w-full items-center justify-center">
-                    {/* Main Content */}
-                    <div className="relative gradient-border bg-gradient-to-br from-[rgba(0,0,0,0.4)] to-[rgba(0,0,0,0.7)] backdrop-blur-xl rounded-3xl p-1">
-                        <div className="p-8 sm:p-10">
-                            {/* Header */}
-                            <div className="flex items-center justify-between mb-8">
-                                <div className="flex items-center space-x-4">
-                                    <div className="p-3 bg-primary/10 rounded-xl">
+        <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="w-full max-w-5xl mx-auto"
+        >
+            {/* 프리미엄 글래스 컨테이너 */}
+            <div className="relative">
+                {/* 메인 컨테이너 */}
+                <div className="relative bg-gradient-to-br from-white/10 via-white/5 to-white/2 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl">
+                    <Link
+                        href={redirectUrl}
+                        className={cn(
+                            "p-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all duration-300 border border-white/20",
+                            "absolute -top-2 -right-2"
+                        )}
+                    >
+                        <Icon
+                            icon={X}
+                            size={20}
+                            className="text-white/80 hover:text-white"
+                        />
+                    </Link>
+                    {/* 상단 헤더 영역 */}
+                    <div className="px-8 py-6 border-b border-white/10 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-blue-500/10">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                    <Icon
+                                        icon={Receipt}
+                                        className="text-white w-6 h-6"
+                                    />
+                                </div>
+                                <div>
+                                    <H2
+                                        size={28}
+                                        className="font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent"
+                                    >
+                                        Payment
+                                    </H2>
+                                    <Paragraph
+                                        size={14}
+                                        className="text-white/60 font-medium"
+                                    >
+                                        Complete your transaction
+                                    </Paragraph>
+                                </div>
+                            </div>
+                            {paymentStatusBadge()}
+                        </div>
+                    </div>
+
+                    {/* 메인 콘텐츠 */}
+                    <div className="p-8">
+                        <div className="space-y-8">
+                            {/* Product Details */}
+                            <div className="bg-card/10 backdrop-blur-md p-6 rounded-2xl border border-border/5">
+                                <div className="flex items-center mb-4">
+                                    <div className="p-2 bg-primary/10 rounded-lg mr-3">
                                         <Icon
-                                            icon={Receipt}
-                                            className="text-primary w-7 h-7"
+                                            icon={DollarSign}
+                                            className="w-5 h-5 text-primary"
                                         />
                                     </div>
-                                    <div>
-                                        <H2 size={30} className="mb-1">
-                                            Payment Receipt
-                                        </H2>
+                                    <H3 size={20}>Product Details</H3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1">
+                                        <Paragraph
+                                            size={12}
+                                            className="text-muted-foreground"
+                                        >
+                                            Product Name
+                                        </Paragraph>
+                                        <Paragraph
+                                            size={15}
+                                            className="font-medium"
+                                        >
+                                            {payment.productName}
+                                        </Paragraph>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Paragraph
+                                            size={12}
+                                            className="text-muted-foreground"
+                                        >
+                                            Quantity
+                                        </Paragraph>
+                                        <Paragraph
+                                            size={15}
+                                            className="font-medium"
+                                        >
+                                            {payment.quantity} units
+                                        </Paragraph>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Paragraph
+                                            size={12}
+                                            className="text-muted-foreground"
+                                        >
+                                            Unit Price
+                                        </Paragraph>
+                                        <Paragraph
+                                            size={15}
+                                            className="font-medium"
+                                        >
+                                            {formatCurrency(
+                                                payment.amount /
+                                                    payment.quantity,
+                                                payment.currency
+                                            )}
+                                        </Paragraph>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Paragraph
+                                            size={12}
+                                            className="text-muted-foreground"
+                                        >
+                                            Total Amount
+                                        </Paragraph>
+                                        <Paragraph
+                                            size={20}
+                                            className="font-bold text-primary"
+                                        >
+                                            {formatCurrency(
+                                                payment.amount,
+                                                payment.currency
+                                            )}
+                                        </Paragraph>
                                     </div>
                                 </div>
-                                {paymentStatusBadge()}
                             </div>
 
-                            <div className="space-y-8">
-                                {/* Product Details */}
-                                <div className="bg-card/10 backdrop-blur-md p-6 rounded-2xl border border-border/5">
-                                    <div className="flex items-center mb-4">
-                                        <div className="p-2 bg-primary/10 rounded-lg mr-3">
-                                            <Icon
-                                                icon={DollarSign}
-                                                className="w-5 h-5 text-primary"
-                                            />
-                                        </div>
-                                        <H3 size={20}>Product Details</H3>
+                            {/* Payment Details */}
+                            <div className="bg-card/10 backdrop-blur-md p-6 rounded-2xl border border-border/5">
+                                <div className="flex items-center mb-4">
+                                    <div className="p-2 bg-primary/10 rounded-lg mr-3">
+                                        <Icon
+                                            icon={CreditCard}
+                                            className="w-5 h-5 text-primary"
+                                        />
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-1">
-                                            <Paragraph
-                                                size={12}
-                                                className="text-muted-foreground"
-                                            >
-                                                Product Name
-                                            </Paragraph>
-                                            <Paragraph
-                                                size={15}
-                                                className="font-medium"
-                                            >
-                                                {payment.productName}
-                                            </Paragraph>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Paragraph
-                                                size={12}
-                                                className="text-muted-foreground"
-                                            >
-                                                Quantity
-                                            </Paragraph>
-                                            <Paragraph
-                                                size={15}
-                                                className="font-medium"
-                                            >
-                                                {payment.quantity} units
-                                            </Paragraph>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Paragraph
-                                                size={12}
-                                                className="text-muted-foreground"
-                                            >
-                                                Unit Price
-                                            </Paragraph>
-                                            <Paragraph
-                                                size={15}
-                                                className="font-medium"
-                                            >
-                                                {formatCurrency(
-                                                    payment.amount /
-                                                        payment.quantity,
-                                                    payment.currency
-                                                )}
-                                            </Paragraph>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Paragraph
-                                                size={12}
-                                                className="text-muted-foreground"
-                                            >
-                                                Total Amount
-                                            </Paragraph>
-                                            <Paragraph
-                                                size={20}
-                                                className="font-bold text-primary"
-                                            >
-                                                {formatCurrency(
-                                                    payment.amount,
-                                                    payment.currency
-                                                )}
-                                            </Paragraph>
-                                        </div>
-                                    </div>
+                                    <H3 size={20}>Payment Details</H3>
                                 </div>
-
-                                {/* Payment Details */}
-                                <div className="bg-card/10 backdrop-blur-md p-6 rounded-2xl border border-border/5">
-                                    <div className="flex items-center mb-4">
-                                        <div className="p-2 bg-primary/10 rounded-lg mr-3">
-                                            <Icon
-                                                icon={CreditCard}
-                                                className="w-5 h-5 text-primary"
-                                            />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1">
+                                        <Paragraph
+                                            size={12}
+                                            className="text-muted-foreground"
+                                        >
+                                            Payment Method
+                                        </Paragraph>
+                                        <div className="flex items-center mt-1">
+                                            <Paragraph
+                                                size={15}
+                                                className="font-medium"
+                                            >
+                                                {payment.payMethod === "PAYPAL"
+                                                    ? "PayPal"
+                                                    : payment.easyPayProvider
+                                                    ? `${payment.easyPayProvider.replace(
+                                                          "EASYPAY_",
+                                                          ""
+                                                      )} (Easy Pay)`
+                                                    : payment.cardProvider
+                                                    ? `Card`
+                                                    : payment.payMethod}
+                                            </Paragraph>
                                         </div>
-                                        <H3 size={20}>Payment Details</H3>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1">
+                                        <Paragraph
+                                            size={12}
+                                            className="text-muted-foreground"
+                                        >
+                                            Payment Status
+                                        </Paragraph>
+                                        <div className="flex items-center mt-1">
+                                            <Icon
+                                                icon={
+                                                    payment.status === "PAID"
+                                                        ? CheckCircle
+                                                        : AlertCircle
+                                                }
+                                                className={cn(
+                                                    "w-4 h-4 mr-2",
+                                                    payment.status === "PAID"
+                                                        ? "text-green-500"
+                                                        : "text-yellow-500"
+                                                )}
+                                            />
+                                            <Paragraph
+                                                size={15}
+                                                className="font-medium capitalize"
+                                            >
+                                                {payment.status.toLowerCase()}
+                                            </Paragraph>
+                                        </div>
+                                    </div>
+                                    {payment.paidAt && (
                                         <div className="space-y-1">
                                             <Paragraph
                                                 size={12}
                                                 className="text-muted-foreground"
                                             >
-                                                Payment Method
+                                                Payment Date
                                             </Paragraph>
                                             <div className="flex items-center mt-1">
+                                                <Icon
+                                                    icon={Calendar}
+                                                    className="w-4 h-4 mr-2 text-muted-foreground"
+                                                />
                                                 <Paragraph
                                                     size={15}
                                                     className="font-medium"
                                                 >
-                                                    {payment.payMethod ===
-                                                    "PAYPAL"
-                                                        ? "PayPal"
-                                                        : payment.easyPayProvider
-                                                        ? `${payment.easyPayProvider.replace(
-                                                              "EASYPAY_",
-                                                              ""
-                                                          )} (Easy Pay)`
-                                                        : payment.cardProvider
-                                                        ? `Card`
-                                                        : payment.payMethod}
+                                                    {formatDate(payment.paidAt)}
                                                 </Paragraph>
                                             </div>
                                         </div>
+                                    )}
+                                    {payment.cardNumber && (
                                         <div className="space-y-1">
                                             <Paragraph
                                                 size={12}
                                                 className="text-muted-foreground"
                                             >
-                                                Payment Status
+                                                Card Number
                                             </Paragraph>
-                                            <div className="flex items-center mt-1">
-                                                <Icon
-                                                    icon={
-                                                        payment.status ===
-                                                        "PAID"
-                                                            ? CheckCircle
-                                                            : AlertCircle
-                                                    }
-                                                    className={cn(
-                                                        "w-4 h-4 mr-2",
-                                                        payment.status ===
-                                                            "PAID"
-                                                            ? "text-green-500"
-                                                            : "text-yellow-500"
-                                                    )}
-                                                />
-                                                <Paragraph
-                                                    size={15}
-                                                    className="font-medium capitalize"
-                                                >
-                                                    {payment.status.toLowerCase()}
-                                                </Paragraph>
-                                            </div>
+                                            <Paragraph
+                                                size={15}
+                                                className="font-medium font-mono"
+                                            >
+                                                •••• {payment.cardNumber}
+                                            </Paragraph>
                                         </div>
-                                        {payment.paidAt && (
-                                            <div className="space-y-1">
-                                                <Paragraph
-                                                    size={12}
-                                                    className="text-muted-foreground"
-                                                >
-                                                    Payment Date
-                                                </Paragraph>
-                                                <div className="flex items-center mt-1">
-                                                    <Icon
-                                                        icon={Calendar}
-                                                        className="w-4 h-4 mr-2 text-muted-foreground"
-                                                    />
-                                                    <Paragraph
-                                                        size={15}
-                                                        className="font-medium"
-                                                    >
-                                                        {formatDate(
-                                                            payment.paidAt
-                                                        )}
-                                                    </Paragraph>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {payment.cardNumber && (
-                                            <div className="space-y-1">
-                                                <Paragraph
-                                                    size={12}
-                                                    className="text-muted-foreground"
-                                                >
-                                                    Card Number
-                                                </Paragraph>
-                                                <Paragraph
-                                                    size={15}
-                                                    className="font-medium font-mono"
-                                                >
-                                                    •••• {payment.cardNumber}
-                                                </Paragraph>
-                                            </div>
-                                        )}
-                                    </div>
+                                    )}
                                 </div>
-
-                                {/* Wallet Selection */}
-                                {payment.needWallet && (
-                                    <div className="bg-card/10 backdrop-blur-md p-6 rounded-2xl border border-border/5">
-                                        <div className="flex items-center mb-4">
-                                            <div className="p-2 bg-primary/10 rounded-lg mr-3">
-                                                <Icon
-                                                    icon={WalletIcon}
-                                                    className="w-5 h-5 text-primary"
-                                                />
-                                            </div>
-                                            <H3 size={20}>Receiving Wallet</H3>
-                                        </div>
-
-                                        {isLoadingWallets ? (
-                                            <div className="h-10 bg-secondary/20 animate-pulse rounded-lg" />
-                                        ) : wallets && wallets.length > 0 ? (
-                                            <div className="space-y-2">
-                                                <Select
-                                                    value={
-                                                        selectedWallet?.address
-                                                    }
-                                                    onValueChange={(value) => {
-                                                        const wallet =
-                                                            wallets.find(
-                                                                (w) =>
-                                                                    w.address ===
-                                                                    value
-                                                            );
-                                                        setSelectedWallet(
-                                                            wallet || null
-                                                        );
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="w-full">
-                                                        <SelectValue placeholder="Select wallet to receive NFT" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {wallets.map(
-                                                            (wallet) => (
-                                                                <SelectItem
-                                                                    key={
-                                                                        wallet.id
-                                                                    }
-                                                                    value={
-                                                                        wallet.address
-                                                                    }
-                                                                >
-                                                                    <div className="flex items-center gap-2">
-                                                                        <WalletIcon className="h-4 w-4" />
-                                                                        <div className="flex flex-col">
-                                                                            <span className="font-medium">
-                                                                                {wallet.nickname ||
-                                                                                    "Wallet"}
-                                                                                {wallet.default && (
-                                                                                    <span className="ml-2 text-xs text-primary">
-                                                                                        (Default)
-                                                                                    </span>
-                                                                                )}
-                                                                            </span>
-                                                                            <span className="text-xs text-muted-foreground">
-                                                                                {`${wallet.address.slice(
-                                                                                    0,
-                                                                                    6
-                                                                                )}...${wallet.address.slice(
-                                                                                    -4
-                                                                                )}`}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                </SelectItem>
-                                                            )
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
-                                                {selectedWallet && (
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Selected wallet:{" "}
-                                                        {selectedWallet.address.slice(
-                                                            0,
-                                                            6
-                                                        )}
-                                                        ...
-                                                        {selectedWallet.address.slice(
-                                                            -4
-                                                        )}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg">
-                                                No wallets available. Please add
-                                                a wallet first.
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Payment Action */}
-                                {payment.status !== "PAID" && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.2 }}
-                                        className="mt-8 w-full"
-                                    >
-                                        {isProcessing || isVerifyingPayment ? (
-                                            <div className="flex flex-col items-center justify-center py-8">
-                                                <motion.div
-                                                    initial={{
-                                                        opacity: 0,
-                                                        scale: 0.9,
-                                                    }}
-                                                    animate={{
-                                                        opacity: 1,
-                                                        scale: 1,
-                                                    }}
-                                                    transition={{
-                                                        duration: 0.3,
-                                                    }}
-                                                    className="flex flex-col items-center"
-                                                >
-                                                    <div className="p-4 bg-primary/10 rounded-full mb-4">
-                                                        <Icon
-                                                            icon={LoaderCircle}
-                                                            className="w-8 h-8 text-primary animate-spin"
-                                                        />
-                                                    </div>
-                                                    <Paragraph
-                                                        size={15}
-                                                        className="text-muted-foreground"
-                                                    >
-                                                        Processing your
-                                                        payment...
-                                                    </Paragraph>
-                                                </motion.div>
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                {showPaymentButton ? (
-                                                    <div className="flex justify-center w-full">
-                                                        {payment.amount ===
-                                                        0 ? (
-                                                            <FreePayButton
-                                                                payment={
-                                                                    payment
-                                                                }
-                                                                disabled={
-                                                                    isProcessing ||
-                                                                    isVerifyingPayment
-                                                                }
-                                                                onPaymentProceed={
-                                                                    handlePaymentProceed
-                                                                }
-                                                            />
-                                                        ) : payment.payMethod ===
-                                                          "PAYPAL" ? (
-                                                            <div className="w-full my-6">
-                                                                <PayPalButton
-                                                                    payment={
-                                                                        payment
-                                                                    }
-                                                                    disabled={
-                                                                        isProcessing ||
-                                                                        isVerifyingPayment
-                                                                    }
-                                                                    onPaymentProceed={
-                                                                        handlePaymentProceed
-                                                                    }
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <PaymentButton
-                                                                payment={
-                                                                    payment
-                                                                }
-                                                                disabled={
-                                                                    isProcessing ||
-                                                                    isVerifyingPayment
-                                                                }
-                                                                onPaymentProceed={
-                                                                    handlePaymentProceed
-                                                                }
-                                                            />
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-center text-muted-foreground">
-                                                        Please select a
-                                                        receiving wallet to
-                                                        continue
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </motion.div>
-                                )}
                             </div>
+
+                            {/* Wallet Selection */}
+                            {payment.needWallet && (
+                                <div className="bg-card/10 backdrop-blur-md p-6 rounded-2xl border border-border/5">
+                                    <div className="flex items-center mb-4">
+                                        <div className="p-2 bg-primary/10 rounded-lg mr-3">
+                                            <Icon
+                                                icon={WalletIcon}
+                                                className="w-5 h-5 text-primary"
+                                            />
+                                        </div>
+                                        <H3 size={20}>Receiving Wallet</H3>
+                                    </div>
+
+                                    {isLoadingWallets ? (
+                                        <div className="h-10 bg-secondary/20 animate-pulse rounded-lg" />
+                                    ) : wallets && wallets.length > 0 ? (
+                                        <div className="space-y-2">
+                                            <Select
+                                                value={selectedWallet?.address}
+                                                onValueChange={(value) => {
+                                                    const wallet = wallets.find(
+                                                        (w) =>
+                                                            w.address === value
+                                                    );
+                                                    setSelectedWallet(
+                                                        wallet || null
+                                                    );
+                                                }}
+                                            >
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select wallet to receive NFT" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {wallets.map((wallet) => (
+                                                        <SelectItem
+                                                            key={wallet.id}
+                                                            value={
+                                                                wallet.address
+                                                            }
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <WalletIcon className="h-4 w-4" />
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium">
+                                                                        {wallet.nickname ||
+                                                                            "Wallet"}
+                                                                        {wallet.default && (
+                                                                            <span className="ml-2 text-xs text-primary">
+                                                                                (Default)
+                                                                            </span>
+                                                                        )}
+                                                                    </span>
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        {`${wallet.address.slice(
+                                                                            0,
+                                                                            6
+                                                                        )}...${wallet.address.slice(
+                                                                            -4
+                                                                        )}`}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            {selectedWallet && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    Selected wallet:{" "}
+                                                    {selectedWallet.address.slice(
+                                                        0,
+                                                        6
+                                                    )}
+                                                    ...
+                                                    {selectedWallet.address.slice(
+                                                        -4
+                                                    )}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg">
+                                            No wallets available. Please add a
+                                            wallet first.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Payment Action */}
+                            {payment.status !== "PAID" && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.2 }}
+                                    className="mt-8 w-full"
+                                >
+                                    {isProcessing || isVerifyingPayment ? (
+                                        <div className="flex flex-col items-center justify-center py-8">
+                                            <motion.div
+                                                initial={{
+                                                    opacity: 0,
+                                                    scale: 0.9,
+                                                }}
+                                                animate={{
+                                                    opacity: 1,
+                                                    scale: 1,
+                                                }}
+                                                transition={{
+                                                    duration: 0.3,
+                                                }}
+                                                className="flex flex-col items-center"
+                                            >
+                                                <div className="p-4 bg-primary/10 rounded-full mb-4">
+                                                    <Icon
+                                                        icon={LoaderCircle}
+                                                        className="w-8 h-8 text-primary animate-spin"
+                                                    />
+                                                </div>
+                                                <Paragraph
+                                                    size={15}
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Processing your payment...
+                                                </Paragraph>
+                                            </motion.div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            {showPaymentButton ? (
+                                                <div className="flex justify-center items-center w-full">
+                                                    {payment.amount === 0 ? (
+                                                        <FreePayButton
+                                                            payment={payment}
+                                                            disabled={
+                                                                isProcessing ||
+                                                                isVerifyingPayment
+                                                            }
+                                                            onPaymentProceed={
+                                                                handlePaymentProceed
+                                                            }
+                                                        />
+                                                    ) : payment.payMethod ===
+                                                      "PAYPAL" ? (
+                                                        <div className="w-full flex justify-center items-center my-6">
+                                                            <PayPalButton
+                                                                payment={
+                                                                    payment
+                                                                }
+                                                                disabled={
+                                                                    isProcessing ||
+                                                                    isVerifyingPayment
+                                                                }
+                                                                onPaymentProceed={
+                                                                    handlePaymentProceed
+                                                                }
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <PaymentButton
+                                                            payment={payment}
+                                                            disabled={
+                                                                isProcessing ||
+                                                                isVerifyingPayment
+                                                            }
+                                                            onPaymentProceed={
+                                                                handlePaymentProceed
+                                                            }
+                                                        />
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="text-center text-muted-foreground">
+                                                    Please select a receiving
+                                                    wallet to continue
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </motion.div>
+                            )}
                         </div>
                     </div>
                 </div>
-            </motion.div>
-        </div>
+            </div>
+        </motion.div>
     );
 }

@@ -1119,8 +1119,10 @@ model Story_spg {
 
   artistId String?
   artist   Artist? @relation(fields: [artistId], references: [id])
-
+  
   isListed Boolean @default(false)
+  reportUrl String?
+  sharePercentage Float @default(0.0)
   preOrderStart DateTime?
   preOrderEnd DateTime?
   saleStart DateTime?

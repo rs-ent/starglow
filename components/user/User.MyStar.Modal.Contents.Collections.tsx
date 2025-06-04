@@ -1,6 +1,5 @@
 /// components/user/User.MyStar.Modal.Contents.Collections.tsx
 
-import { VerifiedCollection } from "@/app/actions/collectionContracts";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -16,18 +15,19 @@ import QuestsArtistMissions from "../quests/Quests.Contents.Private.ArtistMissio
 import PollsContentsPrivateArtistList from "../polls/Polls.Contents.Private.ArtistList";
 import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import ArtistFeed from "../artists/Artist.Feed";
+import { VerifiedSPG } from "@/app/story/interaction/actions";
 
 interface UserMyStarModalContentsCollectionsProps {
     player: Player | null;
     questLogs: QuestLog[];
     pollLogs: PollLog[];
     artist: Artist;
-    verifiedCollections: VerifiedCollection[];
+    verifiedSPGs: VerifiedSPG[];
 }
 
 export default React.memo(function UserMyStarModalContentsCollections({
     artist,
-    verifiedCollections,
+    verifiedSPGs,
     player,
     questLogs,
     pollLogs,
@@ -37,7 +37,7 @@ export default React.memo(function UserMyStarModalContentsCollections({
     const settings = {
         dots: false,
         arrows: false,
-        infinite: verifiedCollections.length > 1,
+        infinite: verifiedSPGs.length > 1,
         speed: 500,
         slidesToShow: 1,
         slidesToScroll: 1,
@@ -56,13 +56,12 @@ export default React.memo(function UserMyStarModalContentsCollections({
         const result: AdvancedTokenGateResult = {
             success: true,
             data: {
-                hasToken: verifiedCollections.reduce((acc, collection) => {
-                    acc[collection.address] =
-                        collection.verifiedTokens.length > 0;
+                hasToken: verifiedSPGs.reduce((acc, spg) => {
+                    acc[spg.address] = spg.verifiedTokens.length > 0;
                     return acc;
                 }, {} as Record<string, boolean>),
-                tokenCount: verifiedCollections.reduce((acc, collection) => {
-                    acc[collection.address] = collection.verifiedTokens.length;
+                tokenCount: verifiedSPGs.reduce((acc, spg) => {
+                    acc[spg.address] = spg.verifiedTokens.length;
                     return acc;
                 }, {} as Record<string, number>),
                 ownerWallets: {},
@@ -72,7 +71,7 @@ export default React.memo(function UserMyStarModalContentsCollections({
         console.log("Result", result);
 
         return result;
-    }, [verifiedCollections]);
+    }, [verifiedSPGs]);
 
     return (
         <div className={cn("w-full flex flex-col items-center justify-center")}>
@@ -92,7 +91,7 @@ export default React.memo(function UserMyStarModalContentsCollections({
                         role="next"
                         className="absolute top-1/2 right-1 -translate-y-1/2 z-10"
                         style={{
-                            opacity: verifiedCollections.length > 1 ? 1 : 0,
+                            opacity: verifiedSPGs.length > 1 ? 1 : 0,
                         }}
                         size={30}
                         color={ArtistFG(artist, 0, 1)}
@@ -102,21 +101,21 @@ export default React.memo(function UserMyStarModalContentsCollections({
                         role="prev"
                         className="absolute top-1/2 left-1 -translate-y-1/2 z-10"
                         style={{
-                            opacity: verifiedCollections.length > 1 ? 1 : 0,
+                            opacity: verifiedSPGs.length > 1 ? 1 : 0,
                         }}
                         size={30}
                         color={ArtistFG(artist, 0, 1)}
                         onClick={() => handleSlide("prev")}
                     />
                     <Slider ref={sliderRef} {...settings}>
-                        {verifiedCollections.map((collection) => (
+                        {verifiedSPGs.map((spg) => (
                             <div
                                 className="w-full h-full px-[20px] md:px-[30px]"
-                                key={collection.id}
+                                key={spg.id}
                             >
                                 <UserMyStarModalContentsCollectionsCard
                                     artist={artist}
-                                    verifiedCollection={collection}
+                                    verifiedSPG={spg}
                                 />
                             </div>
                         ))}

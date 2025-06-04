@@ -5,6 +5,7 @@
 import {
     createWalletClient,
     createPublicClient,
+    PublicClient,
     http,
     Hex,
     decodeEventLog,
@@ -22,7 +23,12 @@ import {
     ERC721Metadata,
     createMetadata,
 } from "../metadata/actions";
-import { Prisma, Story_nft, Story_spg } from "@prisma/client";
+import {
+    BlockchainNetwork,
+    Prisma,
+    Story_nft,
+    Story_spg,
+} from "@prisma/client";
 import { createHash } from "crypto";
 
 // 재시도 유틸리티 함수 (가스비 예측 및 최적화 포함)
@@ -1015,8 +1021,79 @@ export async function getNFTs(input?: getNFTsInput): Promise<NFT[]> {
     }
 }
 
+async function getOwnersByTokenIds(
+    publicClient: PublicClient,
+    spgAddress: string,
+    network: BlockchainNetwork,
+    tokenIds: string[],
+    batchSize: number = 200
+): Promise<getOwnersResult[]> {
+    if (!tokenIds || tokenIds.length === 0) {
+        return [];
+    }
+
+    const results: getOwnersResult[] = [];
+
+    try {
+        for (let i = 0; i < tokenIds.length; i += batchSize) {
+            const batch = tokenIds.slice(i, i + batchSize);
+
+            if (network.multicallAddress) {
+                const multicallResults = await publicClient.multicall({
+                    contracts: batch.map((tokenId) => ({
+                        address: spgAddress as `0x${string}`,
+                        abi: SPGNFTCollection.abi as Abi,
+                        functionName: "ownerOf",
+                        args: [tokenId],
+                    })),
+                    multicallAddress: network.multicallAddress as `0x${string}`,
+                });
+
+                results.push(
+                    ...multicallResults.map((result, index) => ({
+                        tokenId: batch[index],
+                        owner:
+                            result.status === "success"
+                                ? (result.result as string)
+                                : "",
+                    }))
+                );
+            } else {
+                for (const tokenId of batch) {
+                    try {
+                        const owner = await publicClient.readContract({
+                            address: spgAddress as `0x${string}`,
+                            abi: SPGNFTCollection.abi,
+                            functionName: "ownerOf",
+                            args: [tokenId],
+                        });
+                        results.push({
+                            tokenId,
+                            owner: owner as string,
+                        });
+                    } catch (error) {
+                        results.push({
+                            tokenId,
+                            owner: "",
+                        });
+                    }
+                }
+            }
+
+            if (i + batchSize < tokenIds.length) {
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        }
+
+        return results;
+    } catch (error) {
+        console.error("Error getting owners:", error);
+        return [];
+    }
+}
+
 export interface getOwnersInput {
-    contractAddress: string;
+    spgAddress: string;
     tokenIds: string[];
 }
 
@@ -1032,59 +1109,101 @@ export async function getOwners(
         return [];
     }
 
-    const { contractAddress, tokenIds } = input;
+    const { spgAddress, tokenIds } = input;
 
-    const collection = await prisma.story_spg.findUnique({
+    const spg = await prisma.story_spg.findUnique({
         where: {
-            address: contractAddress,
+            address: spgAddress,
         },
         include: {
             network: true,
         },
     });
 
-    if (!collection) {
-        throw new Error("Collection not found");
+    if (!spg) {
+        throw new Error("SPG not found");
     }
 
-    const chain = await getChain(collection.network);
+    const chain = await getChain(spg.network);
     const publicClient = createPublicClient({
         chain,
         transport: http(),
     });
 
-    if (collection.network.multicallAddress) {
-        const multicallResults = await publicClient.multicall({
-            contracts: tokenIds.map((tokenId) => ({
-                address: contractAddress as `0x${string}`,
-                abi: SPGNFTCollection.abi as Abi,
-                functionName: "ownerOf",
-                args: [tokenId],
-            })),
-            multicallAddress: collection.network
-                .multicallAddress as `0x${string}`,
+    return await getOwnersByTokenIds(
+        publicClient,
+        spgAddress,
+        spg.network,
+        tokenIds
+    );
+}
+
+export interface getCirculationInput {
+    spgAddress: string;
+}
+
+export interface getCirculationResult {
+    remain: number;
+    total: number;
+}
+
+export async function getCirculation(
+    input?: getCirculationInput
+): Promise<getCirculationResult> {
+    if (!input) {
+        return {
+            remain: 0,
+            total: 0,
+        };
+    }
+
+    try {
+        const spg = await prisma.story_spg.findUnique({
+            where: {
+                address: input.spgAddress,
+            },
+            include: {
+                network: true,
+            },
         });
 
-        return multicallResults.map((result, index) => ({
-            tokenId: tokenIds[index],
-            owner: result.status === "success" ? (result.result as string) : "",
-        }));
-    } else {
-        const owners = await Promise.all(
-            tokenIds.map(async (tokenId) => {
-                const owner = await publicClient.readContract({
-                    address: contractAddress as `0x${string}`,
-                    abi: SPGNFTCollection.abi,
-                    functionName: "ownerOf",
-                    args: [tokenId],
-                });
-                return owner as string;
-            })
+        if (!spg) {
+            throw new Error("SPG not found");
+        }
+
+        const chain = await getChain(spg.network);
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
+
+        const totalSupplyBigint = await publicClient.readContract({
+            address: spg.address as `0x${string}`,
+            abi: SPGNFTCollection.abi,
+            functionName: "totalSupply",
+        });
+        const totalSupply = Number(totalSupplyBigint);
+
+        const owners = await getOwnersByTokenIds(
+            publicClient,
+            spg.address,
+            spg.network,
+            Array.from({ length: totalSupply }, (_, i) => i.toString())
         );
 
-        return owners.map((owner, index) => ({
-            tokenId: tokenIds[index],
-            owner,
-        }));
+        const remain = owners.filter(
+            (owner) => owner.owner === spg.ownerAddress
+        ).length;
+
+        return {
+            remain,
+            total: Math.min(totalSupply, spg.circulation),
+        };
+    } catch (error) {
+        console.error("Error getting circulation:", error);
+        return {
+            remain: 0,
+            total: 0,
+        };
     }
 }

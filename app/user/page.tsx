@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import User from "@/components/user/User";
 import { requireAuthUserAndPlayer } from "@/app/auth/authUtils";
-import { getUserVerifiedCollections } from "../actions/collectionContracts";
+import { getUserVerifiedSPGs } from "@/app/story/interaction/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -27,15 +27,16 @@ function UserLoading() {
 async function UserContent() {
     try {
         const { user, player } = await requireAuthUserAndPlayer("/user");
-        const userVerifiedCollections = await getUserVerifiedCollections({
+        const userVerifiedSPGs = await getUserVerifiedSPGs({
             userId: user.id,
         });
-        console.log("userVerifiedCollections", userVerifiedCollections);
+
+        console.log("userVerifiedSPGs", userVerifiedSPGs);
         return (
             <User
                 user={user}
                 player={player}
-                userVerifiedCollections={userVerifiedCollections}
+                userVerifiedSPGs={userVerifiedSPGs}
             />
         );
     } catch (error) {

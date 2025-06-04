@@ -908,6 +908,7 @@ Table Story_spg {
   contractURI String [not null]
   name String [unique, not null]
   symbol String [unique, not null]
+  reportUrl String
   imageUrl String
   metadata Json
   createdAt DateTime [default: `now()`, not null]
@@ -920,6 +921,7 @@ Table Story_spg {
   artistId String
   artist Artist
   isListed Boolean [not null, default: false]
+  sharePercentage Float [not null, default: 0]
   preOrderStart DateTime
   preOrderEnd DateTime
   saleStart DateTime

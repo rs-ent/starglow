@@ -16,6 +16,7 @@ import {
 } from "@/lib/utils/useCachedTexture";
 import { SPG } from "@/app/story/spg/actions";
 import { fetchURI } from "@/app/story/metadata/actions";
+import PartialLoading from "../atoms/PartialLoading";
 
 interface NFTsCollectionsListProps {
     spgs: SPG[];
@@ -79,9 +80,7 @@ export default function NFTsCollectionsList({
     const containerRef = useRef<HTMLDivElement>(null);
     const [isPinching, setIsPinching] = useState(false);
     const [confirmedAlpha, setConfirmedAlpha] = useState(1);
-    const [buyNowCollection, setBuyNowCollection] = useState<SPG | null>(
-        null
-    );
+    const [buyNowCollection, setBuyNowCollection] = useState<SPG | null>(null);
     const [isPreloaded, setIsPreloaded] = useState(false);
 
     // 3D 카드 이미지 프리로딩
@@ -91,6 +90,9 @@ export default function NFTsCollectionsList({
             const urls = (
                 await Promise.all(
                     spgs.map(async (c) => {
+                        if (c.imageUrl) {
+                            return c.imageUrl;
+                        }
                         const contractURI = c.contractURI;
                         const metadata = await fetchURI({ uri: contractURI });
                         return metadata?.image || null;
@@ -245,9 +247,7 @@ export default function NFTsCollectionsList({
                     rotationY={rotationY}
                     isSelected={Math.round(effectiveSelected) === i}
                     onClick={() => handleClickCollection(spg.id, false)}
-                    onBuyNowClick={() =>
-                        handleClickCollection(spg.id, true)
-                    }
+                    onBuyNowClick={() => handleClickCollection(spg.id, true)}
                     confirmedAlpha={confirmedAlpha}
                 />
             );
@@ -282,11 +282,11 @@ export default function NFTsCollectionsList({
     // 프리로딩 완료 후에만 렌더링
     if (!isPreloaded) {
         return (
-            <div className="flex items-center justify-center w-full h-[400px]">
-                <div className="animate-pulse w-40 h-60 bg-gray-200 rounded-xl" />
-                <div className="animate-pulse w-40 h-60 bg-gray-200 rounded-xl ml-4" />
-                <div className="animate-pulse w-40 h-60 bg-gray-200 rounded-xl ml-4" />
-            </div>
+            <PartialLoading
+                className="w-full h-[400px]"
+                text="Loading NFTs..."
+                size="md"
+            />
         );
     }
 

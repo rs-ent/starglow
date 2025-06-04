@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils/tailwind";
 import { useRouter } from "next/navigation";
 
 export default function ImageMetadata({
+    imageUrl,
     metadata,
     className,
     style,
@@ -20,7 +21,8 @@ export default function ImageMetadata({
     popup = null,
     showDonotHaveToken = false,
 }: {
-    metadata: METADATA_TYPE;
+    imageUrl?: string;
+    metadata?: METADATA_TYPE;
     className?: string;
     style?: React.CSSProperties;
     showCustomText?: boolean;
@@ -40,7 +42,7 @@ export default function ImageMetadata({
             onClick={onClick}
             style={style}
         >
-            {metadata?.image ? (
+            {imageUrl || metadata?.image ? (
                 <>
                     <div
                         className={cn(
@@ -58,8 +60,8 @@ export default function ImageMetadata({
                     </div>
                     {showDonotHaveToken && <DonotHaveToken />}
                     <Image
-                        src={metadata.image}
-                        alt={metadata.name}
+                        src={imageUrl || metadata?.image || ""}
+                        alt={metadata?.name || ""}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

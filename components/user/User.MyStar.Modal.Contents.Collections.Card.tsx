@@ -1,6 +1,6 @@
 /// components/user/User.MyStar.Modal.Contents.Collections.Card.tsx
 
-import { VerifiedCollection } from "@/app/actions/collectionContracts";
+import { VerifiedSPG } from "@/app/story/interaction/actions";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
@@ -15,18 +15,14 @@ import React from "react";
 
 interface UserMyStarModalContentsCollectionsCardProps {
     artist: Artist;
-    verifiedCollection: VerifiedCollection;
+    verifiedSPG: VerifiedSPG;
 }
 
 export default React.memo(function UserMyStarModalContentsCollectionsCard({
     artist,
-    verifiedCollection,
+    verifiedSPG,
 }: UserMyStarModalContentsCollectionsCardProps) {
     const [showStatus, setShowStatus] = useState(false);
-
-    const metadata = useMemo(() => {
-        return verifiedCollection.metadata?.metadata as METADATA_TYPE;
-    }, [verifiedCollection]);
 
     return (
         <div
@@ -41,7 +37,7 @@ export default React.memo(function UserMyStarModalContentsCollectionsCard({
                     `text-[${ArtistFG(artist, 0, 100)}]`
                 )}
             >
-                {verifiedCollection.name}
+                {verifiedSPG.name}
             </h2>
             <div
                 className={cn(
@@ -54,27 +50,25 @@ export default React.memo(function UserMyStarModalContentsCollectionsCard({
                 )}
             >
                 <ImageMetadata
-                    metadata={metadata}
+                    imageUrl={verifiedSPG.imageUrl || ""}
                     className={cn(
                         "w-full h-full",
                         "rounded-[16px] overflow-hidden"
                     )}
                     onClick={() =>
                         setShowStatus(
-                            verifiedCollection.verifiedTokens.length > 0 &&
-                                !showStatus
+                            verifiedSPG.verifiedTokens.length > 0 && !showStatus
                         )
                     }
                     showStatus={showStatus}
                     popup={
                         <Status
-                            verifiedCollection={verifiedCollection}
-                            metadata={metadata}
+                            verifiedSPG={verifiedSPG}
+                            glowStart={verifiedSPG.glowStart || ""}
+                            glowEnd={verifiedSPG.glowEnd || ""}
                         />
                     }
-                    showDonotHaveToken={
-                        verifiedCollection.verifiedTokens.length === 0
-                    }
+                    showDonotHaveToken={verifiedSPG.verifiedTokens.length === 0}
                     style={
                         {
                             boxShadow: `0px 0px 16px 1px ${ArtistBG(
@@ -91,11 +85,13 @@ export default React.memo(function UserMyStarModalContentsCollectionsCard({
 });
 
 function Status({
-    verifiedCollection,
-    metadata,
+    verifiedSPG,
+    glowStart,
+    glowEnd,
 }: {
-    verifiedCollection: VerifiedCollection;
-    metadata: METADATA_TYPE;
+    verifiedSPG: VerifiedSPG;
+    glowStart: Date | string | null;
+    glowEnd: Date | string | null;
 }) {
     const toast = useToast();
 
@@ -104,22 +100,10 @@ function Status({
             {
                 title: "Amount",
                 value:
-                    verifiedCollection.verifiedTokens.length.toLocaleString() ||
-                    "0",
+                    verifiedSPG.verifiedTokens.length.toLocaleString() || "0",
                 needCopy: false,
             },
         ];
-
-        const glowStart =
-            verifiedCollection.glowStart ||
-            metadata.attributes?.find(
-                (attr) => attr.trait_type === "Glow Start"
-            )?.value;
-
-        const glowEnd =
-            verifiedCollection.glowEnd ||
-            metadata.attributes?.find((attr) => attr.trait_type === "Glow End")
-                ?.value;
 
         if (glowStart && glowEnd) {
             result.push({
@@ -133,20 +117,18 @@ function Status({
 
         result.push({
             title: "Address",
-            value: verifiedCollection.address,
+            value: verifiedSPG.address,
             needCopy: true,
         });
 
         result.push({
             title: "Token IDs",
-            value: verifiedCollection.verifiedTokens
-                .sort((a, b) => a - b)
-                .join(", "),
+            value: verifiedSPG.verifiedTokens.sort((a, b) => a - b).join(", "),
             needCopy: false,
         });
 
         return result;
-    }, [verifiedCollection, metadata]);
+    }, [verifiedSPG]);
 
     return (
         <div

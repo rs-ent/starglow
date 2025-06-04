@@ -2,18 +2,17 @@
 
 "use client";
 
-import { METADATA_TYPE } from "@/app/actions/metadata";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { useMemo, useRef, useCallback, useState, useEffect } from "react";
 import React from "react";
-
+import { SPG } from "@/app/story/spg/actions";
 interface NFTContentsReportProps {
-    metadata: METADATA_TYPE;
+    spg: SPG;
 }
 
 export default React.memo(function NFTContentsReport({
-    metadata,
+    spg,
 }: NFTContentsReportProps) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [fullscreenSupported, setFullscreenSupported] = useState(false);
@@ -39,7 +38,7 @@ export default React.memo(function NFTContentsReport({
         }
     }, []);
 
-    const reportUrl = metadata?.external_url;
+    const reportUrl = spg.reportUrl;
 
     return (
         <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50">

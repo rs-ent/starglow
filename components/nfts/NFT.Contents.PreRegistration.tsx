@@ -1,6 +1,5 @@
 /// components/nfts/NFT.Contents.SaleDetail.tsx
 
-import { Collection } from "@/app/actions/factoryContracts";
 import { CollectionParticipantType } from "@prisma/client";
 import { useMemo } from "react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -8,28 +7,28 @@ import { cn } from "@/lib/utils/tailwind";
 import { formatDate } from "@/lib/utils/format";
 import Countdown from "../atoms/Countdown";
 import React from "react";
-
+import { SPG } from "@/app/story/spg/actions";
 interface NFTContentsPreRegistrationProps {
-    collection: Collection;
+    spg: SPG;
     participantsType: CollectionParticipantType;
     status: string;
 }
 
 export default React.memo(function NFTContentsPreRegistration({
-    collection,
+    spg,
     participantsType,
     status,
 }: NFTContentsPreRegistrationProps) {
     const { saleLabel, date } = useMemo(() => {
         if (participantsType === CollectionParticipantType.PUBLICSALE) {
-            return { saleLabel: "Sale End", date: collection.saleEnd };
+            return { saleLabel: "Sale End", date: spg.saleEnd };
         }
 
         return {
             saleLabel: "Sale Open",
-            date: collection.saleStart,
+            date: spg.saleStart,
         };
-    }, [participantsType, collection.saleEnd, collection.saleStart]);
+    }, [participantsType, spg.saleEnd, spg.saleStart]);
 
     if (!date) return null;
 
