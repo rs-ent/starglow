@@ -27,7 +27,7 @@ export default React.memo(function NFTContentsPageImages({
         <div
             className={cn(
                 "w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50",
-                showAll ? "h-full" : "h-[800px]"
+                showAll ? "" : "h-[800px]"
             )}
         >
             {images.map((img, idx) => (
