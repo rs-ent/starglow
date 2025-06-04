@@ -135,7 +135,7 @@ export interface GetPollsInput {
     bettingMode?: boolean;
     bettingAssetId?: string;
     participationRewardAssetId?: string;
-    artistId?: string;
+    artistId?: string | null;
     isActive?: boolean;
 }
 
@@ -254,7 +254,8 @@ async function fetchPollsFromDB(
     if (input?.bettingAssetId) where.bettingAssetId = input.bettingAssetId;
     if (input?.participationRewardAssetId)
         where.participationRewardAssetId = input.participationRewardAssetId;
-    if (input?.artistId) where.artistId = input.artistId;
+    if (input?.artistId === null) where.artistId = null;
+    else if (input?.artistId) where.artistId = input.artistId;
     if (input?.isActive) where.isActive = input.isActive;
     const [items, totalItems] = await Promise.all([
         prisma.poll.findMany({
