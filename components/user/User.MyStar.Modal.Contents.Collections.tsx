@@ -176,6 +176,7 @@ export default React.memo(function UserMyStarModalContentsCollections({
                 player={player}
                 tokenGatingResult={tokenGatingResult}
                 pollLogs={pollLogs}
+                forceSlidesToShow={1}
                 bgColorFrom={ArtistBG(artist, 0, 100)}
                 bgColorTo={ArtistBG(artist, 1, 100)}
                 bgColorAccentFrom={ArtistBG(artist, 2, 100)}

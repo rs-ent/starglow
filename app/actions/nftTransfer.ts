@@ -146,6 +146,7 @@ export async function transferNFTToUser(
         }
 
         const selectedEscrowWalletResult = await selectEscrowWallet(collection);
+        console.log("selectedEscrowWalletResult", selectedEscrowWalletResult);
         if (
             !selectedEscrowWalletResult.success ||
             !selectedEscrowWalletResult.data
@@ -501,6 +502,7 @@ async function selectEscrowWallet(
     });
 
     const chain = await getChain(collection.network);
+    console.log("chain", chain);
     const publicClient = createPublicClient({
         chain,
         transport: http(),

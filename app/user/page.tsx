@@ -30,12 +30,14 @@ async function UserContent() {
         const userVerifiedCollections = await getUserVerifiedCollections({
             userId: user.id,
         });
-        console.log("userVerifiedCollections", userVerifiedCollections);
+        const sortedUserVerifiedCollections = userVerifiedCollections.sort(
+            (a, b) => b.verifiedTokens.length - a.verifiedTokens.length
+        );
         return (
             <User
                 user={user}
                 player={player}
-                userVerifiedCollections={userVerifiedCollections}
+                userVerifiedCollections={sortedUserVerifiedCollections}
             />
         );
     } catch (error) {

@@ -22,7 +22,8 @@ interface NFTContentsPaymentProps {
           }
         | undefined;
     onPaymentSuccess?: (payment: Payment) => void;
-    onPaymentComplete?: (result: PaymentPostProcessorDetails) => void;
+    onPaymentComplete?: (result?: PaymentPostProcessorDetails) => void;
+    onPaymentError?: (error?: Error) => void;
 }
 
 const initialCurrency = "CURRENCY_USD" as Currency;
@@ -32,6 +33,7 @@ export default React.memo(function NFTContentsPayment({
     onPurchase,
     onPaymentSuccess,
     onPaymentComplete,
+    onPaymentError,
     collectionStock = {
         remain: 0,
         total: 0,
@@ -147,6 +149,7 @@ export default React.memo(function NFTContentsPayment({
                         onCurrencyChange={setCurrency}
                         onPaymentSuccess={onPaymentSuccess}
                         onPaymentComplete={onPaymentComplete}
+                        onPaymentError={onPaymentError}
                     />
                 </>
             ) : (

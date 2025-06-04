@@ -5,7 +5,7 @@
 import { prisma } from "@/lib/prisma/client";
 import { revalidatePath } from "next/cache";
 import { encryptPrivateKey, decryptPrivateKey } from "@/lib/utils/encryption";
-import { ethers } from "ethers";
+import { generatePrivateKey, privateKeyToAddress } from "viem/accounts";
 import {
     createPublicClient,
     createWalletClient,
@@ -431,12 +431,14 @@ export async function lookupBlockchainNetwork(params: {
 
 export async function generateWallet() {
     try {
-        const wallet = ethers.Wallet.createRandom();
+        const privateKey = generatePrivateKey();
+        const address = privateKeyToAddress(privateKey);
+
         return {
             success: true,
             data: {
-                address: wallet.address,
-                privateKey: wallet.privateKey,
+                address,
+                privateKey,
             },
         };
     } catch (error) {
@@ -464,15 +466,21 @@ export async function getWalletBalance(params: {
         }
 
         const network = networkResult.data;
+        const chain = await getChain(network);
 
-        // Create provider with network RPC URL
-        const provider = new ethers.providers.JsonRpcProvider(network.rpcUrl);
+        // Create viem public client instead of ethers provider
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(),
+        });
 
-        // Get wallet balance in wei
-        const balanceWei = await provider.getBalance(address);
+        // Get wallet balance in wei using viem
+        const balanceWei = await publicClient.getBalance({
+            address: address as Address,
+        });
 
-        // Convert wei to ether (formatted string)
-        const balanceEther = ethers.utils.formatEther(balanceWei);
+        // Convert wei to ether (formatted string) using viem utilities
+        const balanceEther = Number(balanceWei) / 1e18;
 
         return {
             success: true,
@@ -484,8 +492,8 @@ export async function getWalletBalance(params: {
                     symbol: network.symbol,
                 },
                 balanceWei: balanceWei.toString(),
-                balanceEther,
-                formatted: `${balanceEther} ${network.symbol}`,
+                balanceEther: balanceEther.toString(),
+                formatted: `${balanceEther.toFixed(6)} ${network.symbol}`,
             },
         };
     } catch (error) {

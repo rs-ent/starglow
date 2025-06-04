@@ -121,14 +121,16 @@ export default React.memo(function NFTContents({
     }, []);
 
     const handlePaymentComplete = useCallback(
-        (result: PaymentPostProcessorDetails) => {
-            if (result?.type === "NFT_TRANSFER" && result.isTransferred) {
-                setShowWaitWarning(false);
-                setShowFeedback(true);
-            }
+        (result?: PaymentPostProcessorDetails) => {
+            setShowWaitWarning(false);
+            setShowFeedback(true);
         },
         []
     );
+
+    const handlePaymentError = useCallback((error?: Error) => {
+        setShowWaitWarning(false);
+    }, []);
 
     return (
         <div className="flex flex-col items-center w-full py-6 sm:py-8 md:py-10">
@@ -181,6 +183,7 @@ export default React.memo(function NFTContents({
                                     collectionStock={collectionStock}
                                     onPaymentSuccess={handlePaymentSuccess}
                                     onPaymentComplete={handlePaymentComplete}
+                                    onPaymentError={handlePaymentError}
                                 />
                             ) : (
                                 <NFTContentsPreRegistration
