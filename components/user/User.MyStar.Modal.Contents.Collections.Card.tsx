@@ -132,7 +132,7 @@ function Status({
         }
 
         result.push({
-            title: "Address",
+            title: "Contract",
             value: verifiedCollection.address,
             needCopy: true,
         });
