@@ -35,17 +35,14 @@ export async function getUserVerifiedSPGs(
                 include: {
                     artist: true,
                     network: true,
-                    story_nfts: true,
                 },
             }),
         ]);
 
         const spgsWithTokenOwners = await Promise.all(
             spgs.map(async (spg) => {
-                const tokenIds = spg.story_nfts.map((nft) => nft.tokenId);
                 const tokenOwners = await getOwners({
                     spgAddress: spg.address,
-                    tokenIds,
                 });
                 const verifiedTokens = tokenOwners
                     .filter((data) =>

@@ -30,6 +30,7 @@ import {
     Story_spg,
 } from "@prisma/client";
 import { createHash } from "crypto";
+import { SPG } from "../spg/actions";
 
 // 재시도 유틸리티 함수 (가스비 예측 및 최적화 포함)
 async function retryTransaction<T>(
@@ -1092,9 +1093,22 @@ async function getOwnersByTokenIds(
     }
 }
 
+async function getTotalSupply(
+    publicClient: PublicClient,
+    spgAddress: string
+): Promise<number> {
+    const totalSupplyBigint = await publicClient.readContract({
+        address: spgAddress as `0x${string}`,
+        abi: SPGNFTCollection.abi,
+        functionName: "totalSupply",
+    });
+
+    return Number(totalSupplyBigint);
+}
+
 export interface getOwnersInput {
     spgAddress: string;
-    tokenIds: string[];
+    tokenIds?: string[];
 }
 
 export interface getOwnersResult {
@@ -1109,11 +1123,9 @@ export async function getOwners(
         return [];
     }
 
-    const { spgAddress, tokenIds } = input;
-
     const spg = await prisma.story_spg.findUnique({
         where: {
-            address: spgAddress,
+            address: input.spgAddress,
         },
         include: {
             network: true,
@@ -1130,9 +1142,15 @@ export async function getOwners(
         transport: http(),
     });
 
+    let tokenIds = input.tokenIds;
+    if (!tokenIds || tokenIds.length === 0) {
+        const totalSupply = await getTotalSupply(publicClient, spg.address);
+        tokenIds = Array.from({ length: totalSupply }, (_, i) => i.toString());
+    }
+
     return await getOwnersByTokenIds(
         publicClient,
-        spgAddress,
+        spg.address,
         spg.network,
         tokenIds
     );
@@ -1177,12 +1195,7 @@ export async function getCirculation(
             transport: http(),
         });
 
-        const totalSupplyBigint = await publicClient.readContract({
-            address: spg.address as `0x${string}`,
-            abi: SPGNFTCollection.abi,
-            functionName: "totalSupply",
-        });
-        const totalSupply = Number(totalSupplyBigint);
+        const totalSupply = await getTotalSupply(publicClient, spg.address);
 
         const owners = await getOwnersByTokenIds(
             publicClient,
@@ -1191,13 +1204,16 @@ export async function getCirculation(
             Array.from({ length: totalSupply }, (_, i) => i.toString())
         );
 
-        const remain = owners.filter(
-            (owner) => owner.owner === spg.ownerAddress
-        ).length;
+        const total = spg.circulation || 0;
+
+        const remain = Math.min(
+            owners.filter((owner) => owner.owner === spg.ownerAddress).length,
+            total
+        );
 
         return {
             remain,
-            total: Math.min(totalSupply, spg.circulation),
+            total,
         };
     } catch (error) {
         console.error("Error getting circulation:", error);

@@ -14,6 +14,12 @@ import {
     CircleDollarSign,
     Calendar,
     Users,
+    UserPlus,
+    Package,
+    Wallet,
+    PlayCircle,
+    StopCircle,
+    Percent,
 } from "lucide-react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -26,6 +32,8 @@ import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
 import { CollectionParticipantType } from "@prisma/client";
 import React from "react";
 import { SPG } from "@/app/story/spg/actions";
+import { formatDate } from "@/lib/utils/format";
+
 interface NFTContentsDetailsProps {
     spg: SPG;
     participantsType: CollectionParticipantType;
@@ -63,8 +71,10 @@ export default React.memo(function NFTContentsDetails({
             const sharePercentage = spg.sharePercentage ?? 0;
 
             const glowStartDate = spg.glowStart;
+            console.log("glowStartDate", glowStartDate);
 
             const glowEndDate = spg.glowEnd;
+            console.log("glowEndDate", glowEndDate);
 
             const reportUrl = spg.reportUrl;
 
@@ -146,18 +156,25 @@ export default React.memo(function NFTContentsDetails({
                     <div
                         className={`flex items-center text-foreground/70 ${textClass}`}
                     >
-                        <Users
-                            className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
-                        />
                         {participantsType === "PREREGISTRATION" ||
                         participantsType === "PRESALE" ? (
-                            <span>Awaiters: {0}</span>
+                            <>
+                                <UserPlus
+                                    className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
+                                />
+                                <span>Awaiters: {0}</span>
+                            </>
                         ) : participantsType === "PRIVATESALE" ||
                           participantsType === "PUBLICSALE" ? (
-                            <span>
-                                Supply: {spg.circulation || 0} /{" "}
-                                {spg.circulation || 0}
-                            </span>
+                            <>
+                                <Package
+                                    className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
+                                />
+                                <span>
+                                    Supply: {circulation?.remain || 0} /{" "}
+                                    {circulation?.total || 0}
+                                </span>
+                            </>
                         ) : null}
                     </div>
 
@@ -165,7 +182,7 @@ export default React.memo(function NFTContentsDetails({
                         className={`flex items-center text-foreground/70 ${textClass} cursor-pointer`}
                         onClick={handleCopyAddress}
                     >
-                        <Users
+                        <Wallet
                             className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
                         />
                         <span className="flex-1 min-w-0 truncate">
@@ -183,12 +200,10 @@ export default React.memo(function NFTContentsDetails({
                         <div
                             className={`flex items-center text-foreground/70 ${textClass}`}
                         >
-                            <Calendar
+                            <PlayCircle
                                 className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
                             />
-                            <span>
-                                Glow Start: {formatDate(Number(glowStartDate))}
-                            </span>
+                            <span>Glow Start: {formatDate(glowStartDate)}</span>
                         </div>
                     )}
 
@@ -196,12 +211,10 @@ export default React.memo(function NFTContentsDetails({
                         <div
                             className={`flex items-center text-foreground/70 ${textClass}`}
                         >
-                            <Calendar
+                            <StopCircle
                                 className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
                             />
-                            <span>
-                                Glow End: {formatDate(Number(glowEndDate))}
-                            </span>
+                            <span>Glow End: {formatDate(glowEndDate)}</span>
                         </div>
                     )}
 
@@ -209,10 +222,13 @@ export default React.memo(function NFTContentsDetails({
                         <div
                             className={`flex items-center text-foreground/70 ${textClass}`}
                         >
-                            <Share2
+                            <Percent
                                 className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
                             />
-                            <span>Share: {sharePercentage}</span>
+                            <span>
+                                Share: {sharePercentage * 100}% of Artist's
+                                Total Sales
+                            </span>
                         </div>
                     )}
                 </div>
@@ -220,11 +236,3 @@ export default React.memo(function NFTContentsDetails({
         </div>
     );
 });
-
-const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-    });
-};

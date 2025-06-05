@@ -156,6 +156,7 @@ Table Quest {
   questType QuestType [not null, default: 'URL']
   description String
   url String
+  urls String[] [not null]
   icon String
   imgUrl String
   youtubeUrl String
@@ -169,6 +170,9 @@ Table Quest {
   repeatable Boolean [not null, default: false]
   repeatableCount Int
   repeatableInterval Int
+  multiClaimable Boolean [not null, default: false]
+  multiClaimLimit Int
+  multiClaimInterval Int
   isReferral Boolean [not null, default: false]
   referralCount Int
   permanent Boolean [not null, default: false]
@@ -908,7 +912,6 @@ Table Story_spg {
   contractURI String [not null]
   name String [unique, not null]
   symbol String [unique, not null]
-  reportUrl String
   imageUrl String
   metadata Json
   createdAt DateTime [default: `now()`, not null]
@@ -921,6 +924,7 @@ Table Story_spg {
   artistId String
   artist Artist
   isListed Boolean [not null, default: false]
+  reportUrl String
   sharePercentage Float [not null, default: 0]
   preOrderStart DateTime
   preOrderEnd DateTime

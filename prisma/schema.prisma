@@ -189,6 +189,7 @@ model Quest {
   questType          QuestType    @default(URL)
   description        String?
   url                String?
+  urls               String[]
   icon               String?
   imgUrl             String?
   youtubeUrl         String?
@@ -202,6 +203,9 @@ model Quest {
   repeatable         Boolean      @default(false)
   repeatableCount    Int?
   repeatableInterval Int?
+  multiClaimable     Boolean      @default(false)
+  multiClaimLimit    Int?
+  multiClaimInterval Int?
   isReferral         Boolean      @default(false)
   referralCount      Int?
   permanent          Boolean      @default(false)

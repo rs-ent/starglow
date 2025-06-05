@@ -20,9 +20,58 @@ export interface initialTransferInput {
     toAddress: string;
 }
 
+// Batch transfer result interface
+export interface BatchTransferResult {
+    txHashes: string[];
+    tokenIds: string[];
+    totalGasUsed?: bigint;
+}
+
+// Constants for batch processing
+const BATCH_SIZES = {
+    SMALL: 20, // For escrowTransfer (legacy)
+    MEDIUM: 100, // For batchTransfer
+    LARGE: 500, // For chunked processing
+};
+
+/**
+ * Get owned token IDs for batch transfer
+ */
+async function getOwnedTokenIds(
+    spgAddress: string,
+    owner: string,
+    quantity: number
+): Promise<string[]> {
+    // Get a large range of potential token IDs
+    const maxTokensToCheck = Math.min(quantity * 10, 10000);
+    const tokenIds = await getOwners({
+        spgAddress: spgAddress,
+        tokenIds: Array.from({ length: maxTokensToCheck }, (_, i) =>
+            BigInt(i).toString()
+        ),
+    });
+
+    // Filter owned tokens
+    const ownedTokenIds = tokenIds
+        .filter((token) => token.owner.toLowerCase() === owner.toLowerCase())
+        .map((token) => token.tokenId)
+        .slice(0, quantity);
+
+    if (ownedTokenIds.length < quantity) {
+        throw new Error(
+            `Only found ${ownedTokenIds.length} tokens owned by ${owner}`
+        );
+    }
+
+    return ownedTokenIds;
+}
+
+/**
+ * Main transfer function with industry-standard batch processing
+ */
 export async function initialTransfer(
     input: initialTransferInput
-): Promise<{ txHash: string; tokenIds: string[] }> {
+): Promise<{ txHash: string; tokenIds: string[] } | BatchTransferResult> {
     const { spgAddress, quantity, toAddress } = input;
 
     const spg = await prisma.story_spg.findUnique({
@@ -65,7 +114,66 @@ export async function initialTransfer(
         transport: http(spg.network.rpcUrl),
     });
 
-    // 컨트랙트 nonce 읽기 (서명용)
+    // Get owned token IDs
+    const ownedTokenIds = await getOwnedTokenIds(spgAddress, from, quantity);
+
+    // Determine transfer strategy based on quantity
+    if (quantity <= BATCH_SIZES.SMALL) {
+        // Use legacy escrowTransfer for small quantities
+        return legacyTransfer({
+            spgAddress,
+            from,
+            to: toAddress,
+            tokenIds: ownedTokenIds,
+            spenderAccount,
+            publicClient,
+            walletClient,
+            chain,
+        });
+    } else if (quantity <= BATCH_SIZES.MEDIUM) {
+        // Use single batchTransfer
+        return batchTransfer({
+            spgAddress,
+            from,
+            to: toAddress,
+            tokenIds: ownedTokenIds,
+            spenderAccount,
+            publicClient,
+            walletClient,
+            chain,
+        });
+    } else {
+        // Use multiple batch transfers for large quantities
+        return largeBatchTransfer({
+            spgAddress,
+            from,
+            to: toAddress,
+            tokenIds: ownedTokenIds,
+            spenderAccount,
+            publicClient,
+            walletClient,
+            chain,
+        });
+    }
+}
+
+/**
+ * Legacy transfer for backward compatibility (<=20 tokens)
+ */
+async function legacyTransfer(
+    params: any
+): Promise<{ txHash: string; tokenIds: string[] }> {
+    const {
+        spgAddress,
+        from,
+        to,
+        tokenIds,
+        spenderAccount,
+        publicClient,
+        walletClient,
+        chain,
+    } = params;
+
     const contractNonce = (await publicClient.readContract({
         address: spgAddress as `0x${string}`,
         abi: SPGNFTCollection.abi,
@@ -91,23 +199,11 @@ export async function initialTransfer(
         ],
     };
 
-    const tokenIds = await getOwners({
-        spgAddress: spgAddress,
-        tokenIds: Array.from({ length: quantity }, (_, i) =>
-            BigInt(i).toString()
-        ),
-    });
-
-    const ownedTokenIds = tokenIds
-        .filter((token) => token.owner.toLowerCase() === from.toLowerCase())
-        .map((token) => token.tokenId)
-        .slice(0, quantity);
-
     const message = {
         owner: from,
-        to: toAddress,
-        tokenIds: ownedTokenIds,
-        nonce: contractNonce, // 컨트랙트 nonce 사용
+        to: to,
+        tokenIds: tokenIds,
+        nonce: contractNonce,
         deadline,
     };
 
@@ -118,43 +214,198 @@ export async function initialTransfer(
         message,
     });
 
-    // simulateContract 대신 직접 트랜잭션 데이터 인코딩
     const txData = encodeFunctionData({
         abi: SPGNFTCollection.abi,
         functionName: "escrowTransferWithSignature",
-        args: [from, toAddress, ownedTokenIds, deadline, signature],
+        args: [from, to, tokenIds, deadline, signature],
     });
 
-    // 가스 추정
     const gasEstimate = await publicClient.estimateGas({
         account: spenderAccount.address,
         to: spgAddress as `0x${string}`,
         data: txData,
     });
 
-    // 트랜잭션 nonce 가져오기 (number 타입)
     const txNonce = await publicClient.getTransactionCount({
         address: spenderAccount.address,
     });
 
-    // 트랜잭션 객체 생성
     const tx = {
         to: spgAddress as `0x${string}`,
         data: txData,
         gas: gasEstimate,
-        nonce: txNonce, // 트랜잭션 nonce 사용 (number 타입)
+        nonce: txNonce,
         ...(await publicClient.estimateFeesPerGas()),
     };
 
-    // 트랜잭션 서명
     const signedTx = await walletClient.signTransaction(tx);
-
-    // Raw 트랜잭션 전송
     const txHash = await publicClient.sendRawTransaction({
         serializedTransaction: signedTx,
     });
 
-    return { txHash, tokenIds: ownedTokenIds };
+    return { txHash, tokenIds };
+}
+
+/**
+ * Industry-standard batch transfer (21-100 tokens)
+ */
+async function batchTransfer(
+    params: any
+): Promise<{ txHash: string; tokenIds: string[] }> {
+    const {
+        spgAddress,
+        from,
+        to,
+        tokenIds,
+        spenderAccount,
+        publicClient,
+        walletClient,
+        chain,
+    } = params;
+
+    const contractNonce = (await publicClient.readContract({
+        address: spgAddress as `0x${string}`,
+        abi: SPGNFTCollection.abi,
+        functionName: "getNonce",
+        args: [from as `0x${string}`],
+    })) as bigint;
+
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 30);
+    const domain = {
+        name: "SPGNFTCollection",
+        version: "1",
+        chainId: chain.id,
+        verifyingContract: spgAddress as `0x${string}`,
+    };
+
+    const types = {
+        BatchTransferPermit: [
+            { name: "owner", type: "address" },
+            { name: "to", type: "address" },
+            { name: "tokenIds", type: "uint256[]" },
+            { name: "nonce", type: "uint256" },
+            { name: "deadline", type: "uint256" },
+        ],
+    };
+
+    const message = {
+        owner: from,
+        to: to,
+        tokenIds: tokenIds,
+        nonce: contractNonce,
+        deadline,
+    };
+
+    const signature = await spenderAccount.signTypedData({
+        domain,
+        types,
+        primaryType: "BatchTransferPermit",
+        message,
+    });
+
+    const txData = encodeFunctionData({
+        abi: SPGNFTCollection.abi,
+        functionName: "batchTransfer",
+        args: [from, to, tokenIds, deadline, signature],
+    });
+
+    const gasEstimate = await publicClient.estimateGas({
+        account: spenderAccount.address,
+        to: spgAddress as `0x${string}`,
+        data: txData,
+    });
+
+    const txNonce = await publicClient.getTransactionCount({
+        address: spenderAccount.address,
+    });
+
+    const tx = {
+        to: spgAddress as `0x${string}`,
+        data: txData,
+        gas: gasEstimate,
+        nonce: txNonce,
+        ...(await publicClient.estimateFeesPerGas()),
+    };
+
+    const signedTx = await walletClient.signTransaction(tx);
+    const txHash = await publicClient.sendRawTransaction({
+        serializedTransaction: signedTx,
+    });
+
+    return { txHash, tokenIds };
+}
+
+/**
+ * Large batch transfer with chunking (>100 tokens)
+ */
+async function largeBatchTransfer(params: any): Promise<BatchTransferResult> {
+    const {
+        spgAddress,
+        from,
+        to,
+        tokenIds,
+        spenderAccount,
+        publicClient,
+        walletClient,
+        chain,
+    } = params;
+
+    const txHashes: string[] = [];
+    const processedTokenIds: string[] = [];
+    let totalGasUsed = BigInt(0);
+
+    // Process in chunks
+    const chunkSize = BATCH_SIZES.MEDIUM;
+    for (let i = 0; i < tokenIds.length; i += chunkSize) {
+        const chunk = tokenIds.slice(i, i + chunkSize);
+
+        console.log(
+            `Processing batch ${Math.floor(i / chunkSize) + 1} of ${Math.ceil(
+                tokenIds.length / chunkSize
+            )}`
+        );
+
+        try {
+            const result = await batchTransfer({
+                spgAddress,
+                from,
+                to,
+                tokenIds: chunk,
+                spenderAccount,
+                publicClient,
+                walletClient,
+                chain,
+            });
+
+            txHashes.push(result.txHash);
+            processedTokenIds.push(...chunk);
+
+            // Wait for transaction receipt to get gas used
+            const receipt = await publicClient.waitForTransactionReceipt({
+                hash: result.txHash as `0x${string}`,
+            });
+
+            totalGasUsed += receipt.gasUsed;
+
+            // Delay between batches to avoid rate limiting
+            if (i + chunkSize < tokenIds.length) {
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+            }
+        } catch (error) {
+            console.error(
+                `Batch ${Math.floor(i / chunkSize) + 1} failed:`,
+                error
+            );
+            // Optionally implement retry logic here
+            throw error;
+        }
+    }
+
+    return {
+        txHashes,
+        tokenIds: processedTokenIds,
+        totalGasUsed,
+    };
 }
 
 export interface TransferNFTInput {
@@ -280,6 +531,9 @@ export async function transferNFTToUser(
             };
         }
 
+        // Handle both single and batch results
+        const txHash = "txHash" in result ? result.txHash : result.txHashes[0];
+
         // 10. 결제 상태 업데이트
         await prisma.payment.update({
             where: { id: payment.id },
@@ -287,27 +541,37 @@ export async function transferNFTToUser(
                 postProcessResult: {
                     type: "NFT_TRANSFER",
                     success: true,
-                    txHash: result,
+                    txHash: txHash,
                     from: spg.ownerAddress,
                     to: payment.receiverWalletAddress,
                     tokenId: payment.productId,
                     networkId: spg.networkId,
                     networkName: spg.network.name,
+                    quantity: payment.quantity,
+                    batchInfo:
+                        "txHashes" in result
+                            ? {
+                                  totalBatches: result.txHashes.length,
+                                  txHashes: result.txHashes,
+                                  totalGasUsed: result.totalGasUsed?.toString(),
+                              }
+                            : undefined,
                 },
                 postProcessResultAt: new Date(),
             },
         });
 
         console.log("NFT transfer successful", {
-            txHash: result.txHash,
+            txHash: txHash,
             receiver: payment.receiverWalletAddress,
             networkName: spg.network.name,
+            quantity: payment.quantity,
         });
 
         return {
             success: true,
             data: {
-                txHash: result.txHash,
+                txHash: txHash,
                 receiverAddress: payment.receiverWalletAddress,
                 networkName: spg.network.name,
             },

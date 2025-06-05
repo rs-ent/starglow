@@ -41,7 +41,11 @@ import DateTimePicker from "@/components/atoms/DateTimePicker";
 
 type QuestCreateInput = Omit<Quest, "id" | "createdAt" | "updatedAt">;
 type QuestUpdateInput = Partial<QuestCreateInput> & { id: string };
-interface QuestFormData extends Omit<QuestCreateInput, "repeatableInterval"> {
+interface QuestFormData
+    extends Omit<
+        QuestCreateInput,
+        "repeatableInterval" | "multiClaimInterval"
+    > {
     intervalDays: number;
     intervalHours: number;
     intervalMinutes: number;
@@ -140,6 +144,9 @@ export default function AdminQuestCreate({
         needTokenAddress: null,
         repeatable: false,
         repeatableCount: null,
+        urls: [],
+        multiClaimable: false,
+        multiClaimLimit: null,
         isReferral: false,
         referralCount: null,
         permanent: true,
@@ -955,6 +962,18 @@ function URLQuestForm({
                                 }
                                 onClick={() => onChange("repeatable", true)}
                             >
+                                누적 퀘스트
+                            </Button>
+                            <Button
+                                type="button"
+                                className="flex-1"
+                                variant={
+                                    formData.multiClaimable
+                                        ? "default"
+                                        : "outline"
+                                }
+                                onClick={() => onChange("multiClaimable", true)}
+                            >
                                 반복 퀘스트
                             </Button>
                         </div>
@@ -963,7 +982,9 @@ function URLQuestForm({
                     {formData.repeatable && (
                         <div className="w-full mb-8 flex flex-col gap-4">
                             <div>
-                                <Label className="mb-2 block">수행 횟수</Label>
+                                <Label className="mb-2 block">
+                                    누적 수행 횟수
+                                </Label>
                                 <Input
                                     type="number"
                                     value={formData.repeatableCount ?? ""}
@@ -978,7 +999,99 @@ function URLQuestForm({
                                     className="w-40"
                                 />
                                 <div className="text-xs text-muted-foreground mt-1">
-                                    횟수만큼 퀘스트 수행 시 퀘스트가 완료됩니다.
+                                    누적 횟수만큼 퀘스트 수행 시 퀘스트가
+                                    완료됩니다.
+                                </div>
+                            </div>
+                            <div>
+                                <Label className="mb-2 block">반복 간격</Label>
+                                <div className="flex gap-2 items-center">
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        value={formData.intervalDays}
+                                        onChange={(e) =>
+                                            onChange(
+                                                "intervalDays",
+                                                Number(e.target.value)
+                                            )
+                                        }
+                                        className="w-20"
+                                        placeholder="0"
+                                    />
+                                    <span>일</span>
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        value={formData.intervalHours}
+                                        onChange={(e) =>
+                                            onChange(
+                                                "intervalHours",
+                                                Number(e.target.value)
+                                            )
+                                        }
+                                        className="w-20"
+                                        placeholder="0"
+                                    />
+                                    <span>시간</span>
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        value={formData.intervalMinutes}
+                                        onChange={(e) =>
+                                            onChange(
+                                                "intervalMinutes",
+                                                Number(e.target.value)
+                                            )
+                                        }
+                                        className="w-20"
+                                        placeholder="0"
+                                    />
+                                    <span>분</span>
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        value={formData.intervalSeconds}
+                                        onChange={(e) =>
+                                            onChange(
+                                                "intervalSeconds",
+                                                Number(e.target.value)
+                                            )
+                                        }
+                                        className="w-20"
+                                        placeholder="0"
+                                    />
+                                    <span>초</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    반복 간격을 입력하세요 (예: 1일 2시간 30분
+                                    10초)
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {formData.multiClaimable && (
+                        <div className="w-full mb-8 flex flex-col gap-4">
+                            <div>
+                                <Label className="mb-2 block">
+                                    최대 클레임 횟수
+                                </Label>
+                                <Input
+                                    type="number"
+                                    value={formData.multiClaimLimit ?? ""}
+                                    onChange={(e) =>
+                                        onChange(
+                                            "multiClaimLimit",
+                                            Number(e.target.value)
+                                        )
+                                    }
+                                    min={0}
+                                    placeholder="횟수"
+                                    className="w-40"
+                                />
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    최대 반복 횟수입니다. 0은 무제한입니다.
                                 </div>
                             </div>
                             <div>

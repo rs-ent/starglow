@@ -117,13 +117,10 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
         setForceCloseWaitWarning(false);
     }, []);
 
-    const handlePaymentComplete = useCallback(
-        (result?: PaymentPostProcessorDetails) => {
-            setShowWaitWarning(false);
-            setShowFeedback(true);
-        },
-        []
-    );
+    const handlePaymentComplete = useCallback(() => {
+        setShowWaitWarning(false);
+        setShowFeedback(true);
+    }, []);
 
     const handlePaymentError = useCallback((error?: Error) => {
         setShowWaitWarning(false);
