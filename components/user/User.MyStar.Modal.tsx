@@ -9,6 +9,7 @@ import { Artist, Player, QuestLog, PollLog } from "@prisma/client";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
 import type { VerifiedSPG } from "@/app/story/interaction/actions";
 import UserMyStarModalContents from "./User.MyStar.Modal.Contents";
+import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 
 interface UserMyStarModalProps {
     player: Player | null;
@@ -18,6 +19,10 @@ interface UserMyStarModalProps {
     verifiedSPGs: VerifiedSPG[];
     open: boolean;
     onClose: () => void;
+    onSelectFeed?: (
+        initialFeeds: ArtistFeedWithReactions[],
+        selectedFeedIndex: number
+    ) => void;
 }
 
 export default function UserMyStarModal({
@@ -28,6 +33,7 @@ export default function UserMyStarModal({
     player,
     questLogs,
     pollLogs,
+    onSelectFeed,
 }: UserMyStarModalProps) {
     if (!artist) return null;
 
@@ -276,6 +282,7 @@ export default function UserMyStarModal({
                                         player={player}
                                         questLogs={questLogs}
                                         pollLogs={pollLogs}
+                                        onSelectFeed={onSelectFeed}
                                     />
                                 </div>
                             </div>

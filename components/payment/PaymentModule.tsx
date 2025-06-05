@@ -41,10 +41,10 @@ interface PaymentModuleProps {
     onDisplayPriceChange?: (price: number) => void;
 
     onPaymentSuccess?: (payment: Payment) => void;
-    onPaymentError?: (error: Error) => void;
+    onPaymentError?: (error?: Error) => void;
     onPaymentCancel?: (payment: Payment) => void;
     onPaymentRefund?: (payment: Payment) => void;
-    onPaymentComplete?: (result: PaymentPostProcessorDetails) => void;
+    onPaymentComplete?: (result?: PaymentPostProcessorDetails) => void;
 }
 
 export default function PaymentModule({
@@ -106,7 +106,7 @@ export default function PaymentModule({
         details: postProcessDetails,
     } = usePaymentPostProcessor(currentPaymentId ?? "", {
         onSuccess: () => {
-            onPaymentComplete?.(postProcessDetails);
+            onPaymentComplete?.();
             toast.success("Payment processed successfully");
         },
         onError: (error) => {

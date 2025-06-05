@@ -2,14 +2,14 @@
 
 "use client";
 
-import {usePollsGet} from "@/app/hooks/usePolls";
-import {cn} from "@/lib/utils/tailwind";
-import {Player, PollLog} from "@prisma/client";
+import { usePollsGet } from "@/app/hooks/usePolls";
+import { cn } from "@/lib/utils/tailwind";
+import { Player, PollLog } from "@prisma/client";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import PollsList from "./Polls.List";
-import {memo, useMemo} from "react";
-import {AnimatePresence, motion} from "framer-motion";
-import {useInView} from "react-intersection-observer";
+import { memo, useMemo } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useInView } from "react-intersection-observer";
 
 interface PollsContentsPublicProps {
     player: Player | null;
@@ -32,6 +32,7 @@ function PollsContentsPublic({
         getPollsInput: {
             category: "PUBLIC",
             isActive: true,
+            artistId: null,
         },
     });
 
@@ -72,7 +73,7 @@ function PollsContentsPublic({
                     </div>
                 ) : (
                     <AnimatePresence mode="wait">
-                        <motion.div 
+                        <motion.div
                             key={"public-polls"}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}

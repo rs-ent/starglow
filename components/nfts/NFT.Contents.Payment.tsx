@@ -23,8 +23,8 @@ interface NFTContentsPaymentProps {
           }
         | undefined;
     onPaymentSuccess?: (payment: Payment) => void;
-    onPaymentComplete?: (result: PaymentPostProcessorDetails) => void;
-    onPaymentError?: (error: Error) => void;
+    onPaymentComplete?: (result?: PaymentPostProcessorDetails) => void;
+    onPaymentError?: (error?: Error) => void;
 }
 
 const initialCurrency = "CURRENCY_USD" as Currency;

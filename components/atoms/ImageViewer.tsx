@@ -51,23 +51,34 @@ export default function ImageViewer({
                             "bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)]",
                             "backdrop-blur-xs morp-glass-4"
                         )}
+                        style={{
+                            width: "100%",
+                            height: "100%",
+                        }}
                     >
                         <TransformWrapper
                             initialScale={1}
-                            minScale={0.5}
+                            minScale={1}
                             maxScale={5}
                             doubleClick={{ mode: "zoomIn" }}
                             wheel={{ step: 0.2 }}
                             panning={{ velocityDisabled: true }}
                             limitToBounds={false}
                         >
-                            <TransformComponent>
+                            <TransformComponent
+                                wrapperClass="w-full h-full"
+                                wrapperStyle={{
+                                    width: "100%",
+                                    height: "100%",
+                                }}
+                            >
                                 <img
                                     src={img}
                                     alt={title || ""}
                                     style={{
                                         width: "100%",
-                                        height: "auto",
+                                        height: "100%",
+                                        objectFit: "cover",
                                         userSelect: "none",
                                         pointerEvents: "all",
                                         boxShadow:

@@ -2,14 +2,14 @@
 
 "use client";
 
-import {ArtistMessage as ArtistMessageType} from "@prisma/client";
+import { ArtistMessage as ArtistMessageType } from "@prisma/client";
 import ArtistMessageMessage from "@/components/artists/ArtistMessage.Message";
-import {useArtistsGet} from "@/app/hooks/useArtists";
-import {useEffect, useMemo, useState} from "react";
+import { useArtistsGet } from "@/app/hooks/useArtists";
+import { useEffect, useMemo, useState } from "react";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import ImageViewer from "../atoms/ImageViewer";
-import {cn} from "@/lib/utils/tailwind";
-import {AnimatePresence, motion} from "framer-motion";
+import { cn } from "@/lib/utils/tailwind";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface ArtistMessageProps {
     artistId: string;
@@ -36,11 +36,14 @@ export default function ArtistMessage({
     const [isReady, setIsReady] = useState(false);
 
     // 메모이제이션된 쿼리 입력값
-    const queryInput = useMemo(() => ({
-        getArtistMessagesInput: {
-            artistId: artistId,
-        },
-    }), [artistId]);
+    const queryInput = useMemo(
+        () => ({
+            getArtistMessagesInput: {
+                artistId: artistId,
+            },
+        }),
+        [artistId]
+    );
 
     // 아티스트 메시지 데이터 가져오기
     const { artistMessages, isLoading, error } = useArtistsGet(queryInput);
@@ -62,16 +65,20 @@ export default function ArtistMessage({
     }, [message, isLoading]);
 
     // 컨테이너 클래스 메모이제이션
-    const containerClasses = useMemo(() => cn(
-        "max-w-[1000px] w-screen overflow-hidden px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px] h-auto",
-        "flex flex-col gap-2",
-        className
-    ), [className]);
+    const containerClasses = useMemo(
+        () =>
+            cn(
+                "max-w-[1000px] w-screen overflow-hidden px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px] h-auto",
+                "flex flex-col gap-2",
+                className
+            ),
+        [className]
+    );
 
     // 메시지 컨텐츠 렌더링 최적화
     const renderMessageContent = useMemo(() => {
         if (!message) return null;
-        
+
         return (
             <div className={containerClasses}>
                 {message.bannerUrl && (
@@ -95,20 +102,25 @@ export default function ArtistMessage({
     }, [message, containerClasses]);
 
     // 로딩 상태 메모이제이션
-    const loadingElement = useMemo(() => 
-        isLoading ? <PartialLoading text="Loading..." size="sm" /> : null,
-    [isLoading]);
+    const loadingElement = useMemo(
+        () =>
+            isLoading ? <PartialLoading text="Loading..." size="sm" /> : null,
+        [isLoading]
+    );
 
     // 에러 상태 메모이제이션
-    const errorElement = useMemo(() => 
-        error ? <div>Error: {error.message}</div> : null,
-    [error]);
+    const errorElement = useMemo(
+        () => (error ? <div>Error: {error.message}</div> : null),
+        [error]
+    );
 
     return (
         <AnimatePresence>
-            {loadingElement}
-            {errorElement}
-            {message && renderMessageContent}
+            {isLoading && <div key="loading">{loadingElement}</div>}
+            {error && <div key="error">{errorElement}</div>}
+            {message && (
+                <div key={`message-${message.id}`}>{renderMessageContent}</div>
+            )}
         </AnimatePresence>
     );
 }

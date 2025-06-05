@@ -12,6 +12,7 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import Portal from "../atoms/Portal";
 import dynamic from "next/dynamic";
 import React from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface ArtistFeedModalProps {
     initialFeeds: ArtistFeedWithReactions[];
@@ -83,10 +84,16 @@ export default React.memo(function ArtistFeedModal({
     return (
         <Portal>
             <div
-                className="fixed w-full h-full inset-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-xs overscroll-none"
+                className="fixed w-full h-full inset-0 overscroll-none"
                 onClick={onClose}
                 style={{
                     zIndex: 1000,
+                    background: `linear-gradient(to bottom right, ${ArtistBG(
+                        artist,
+                        2,
+                        100
+                    )}, ${ArtistBG(artist, 3, 100)})`,
+                    willChange: "transform, opacity",
                 }}
             >
                 <div
@@ -149,17 +156,29 @@ export default React.memo(function ArtistFeedModal({
                             swipeThreshold={50}
                             showIndicators={true}
                         >
-                            {allFeeds.map((feed, index) => (
-                                <div
-                                    key={feed.id}
-                                    className="w-full h-full flex items-center justify-center"
-                                >
-                                    <ArtistFeedModalCard
-                                        feed={feed}
-                                        artist={artist}
-                                    />
-                                </div>
-                            ))}
+                            {allFeeds.map((feed, index) => {
+                                if (Math.abs(index - currentIndex) > 2) {
+                                    // Lazy: 보이지 않는 영역은 placeholder만 렌더링
+                                    return (
+                                        <div
+                                            key={feed.id}
+                                            className="w-full h-full flex items-center justify-center"
+                                            aria-hidden="true"
+                                        />
+                                    );
+                                }
+                                return (
+                                    <div
+                                        key={feed.id}
+                                        className="w-full h-full flex items-center justify-center"
+                                    >
+                                        <ArtistFeedModalCard
+                                            feed={feed}
+                                            artist={artist}
+                                        />
+                                    </div>
+                                );
+                            })}
                         </CustomCarousel>
                     </div>
                 </div>
