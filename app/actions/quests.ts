@@ -692,6 +692,46 @@ export async function completeQuest(
                 }
             }
 
+            if (input.quest.multiClaimable) {
+                if (
+                    log?.repeatCount &&
+                    input.quest.multiClaimLimit &&
+                    input.quest.multiClaimLimit > 0 &&
+                    log.repeatCount >= input.quest.multiClaimLimit
+                ) {
+                    throw new Error(
+                        `You reached the maximum number of claims.`
+                    );
+                }
+
+                if (input.quest.multiClaimInterval) {
+                    const lastCompletedAt =
+                        log?.completedDates && log.completedDates.length > 0
+                            ? Math.max(
+                                  ...log.completedDates.map((date) =>
+                                      new Date(date).getTime()
+                                  )
+                              )
+                            : 0;
+                    const now = Date.now();
+                    if (
+                        now - lastCompletedAt <
+                        input.quest.multiClaimInterval
+                    ) {
+                        const waitSeconds = Math.ceil(
+                            (input.quest.multiClaimInterval -
+                                (now - lastCompletedAt)) /
+                                1000
+                        );
+                        throw new Error(
+                            `You can complete this quest again ${formatWaitTime(
+                                waitSeconds
+                            )} seconds after the last completion.`
+                        );
+                    }
+                }
+            }
+
             const data: {
                 questId: string;
                 playerId: string;
@@ -701,6 +741,7 @@ export async function completeQuest(
                 rewardAmount?: number;
                 repeatCount: number;
                 isClaimed: boolean;
+                reclaimable: boolean;
                 completedDates: Date[];
             } = {
                 questId: input.quest.id,
@@ -711,6 +752,7 @@ export async function completeQuest(
                 rewardAmount: input.quest.rewardAmount || undefined,
                 repeatCount: log?.repeatCount ? log.repeatCount + 1 : 1,
                 isClaimed: false,
+                reclaimable: false,
                 completedDates: log?.completedDates
                     ? [...log.completedDates]
                     : [],
@@ -736,6 +778,21 @@ export async function completeQuest(
 
             if (!input.quest.rewardAssetId) {
                 data.isClaimed = true;
+            }
+
+            if (
+                input.quest.multiClaimable &&
+                input.quest.multiClaimLimit &&
+                data.repeatCount < Number(input.quest.multiClaimLimit)
+            ) {
+                data.reclaimable = true;
+            }
+
+            if (
+                input.quest.multiClaimable &&
+                input.quest.multiClaimLimit === 0
+            ) {
+                data.reclaimable = true;
             }
 
             return await tx.questLog.upsert({
@@ -807,6 +864,26 @@ export async function claimQuestReward(
             return {
                 success: false,
                 error: `Failed to give participation reward: ${updateResult.error}`,
+            };
+        }
+
+        if (input.questLog.reclaimable) {
+            const claimedDates = input.questLog.claimedDates || [];
+            claimedDates.push(new Date());
+            const updatedReclaimableQuestLog = await prisma.questLog.update({
+                where: { id: input.questLog.id },
+                data: {
+                    completed: false,
+                    completedAt: null,
+                    isClaimed: false,
+                    claimedAt: null,
+                    claimedDates,
+                },
+            });
+
+            return {
+                success: true,
+                data: updatedReclaimableQuestLog,
             };
         }
 

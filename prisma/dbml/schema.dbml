@@ -197,6 +197,8 @@ Table QuestLog {
   rewardAsset Asset
   repeatCount Int [not null, default: 1]
   completedDates DateTime[] [not null]
+  reclaimable Boolean [not null, default: false]
+  claimedDates DateTime[] [not null]
   deprecated Boolean [not null, default: false]
   createdAt DateTime [default: `now()`, not null]
   isClaimed Boolean [not null, default: false]

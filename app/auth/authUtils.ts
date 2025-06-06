@@ -11,6 +11,11 @@ export async function requireAuth() {
     return session;
 }
 
+export async function getAuthUserAndPlayer() {
+    const session = await auth();
+    return { user: session?.user, player: session?.player };
+}
+
 export async function getAuthUserId() {
     try {
         const session = await auth();

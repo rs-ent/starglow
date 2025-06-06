@@ -56,6 +56,7 @@ type SubmitQuestData = Omit<
     "intervalDays" | "intervalHours" | "intervalMinutes" | "intervalSeconds"
 > & {
     repeatableInterval?: number;
+    multiClaimInterval?: number;
 };
 
 const QUEST_ICON_PRESETS = [
@@ -163,9 +164,7 @@ export default function AdminQuestCreate({
 
     const isValid: boolean = useMemo(() => {
         const common = formData.title.trim().length > 0;
-        const urlForm = Boolean(
-            formData.url && formData.url.startsWith("https://")
-        );
+        const urlForm = !formData.url || formData.url.startsWith("https://");
         const referralForm = Boolean(
             formData.isReferral && formData.referralCount
         );
@@ -190,16 +189,17 @@ export default function AdminQuestCreate({
             ...restFormData
         } = formData;
 
+        const interval = getIntervalMsFromFields(
+            intervalDays,
+            intervalHours,
+            intervalMinutes,
+            intervalSeconds
+        );
+
         const submitData: SubmitQuestData = {
             ...restFormData,
-            repeatableInterval: formData.repeatable
-                ? getIntervalMsFromFields(
-                      intervalDays,
-                      intervalHours,
-                      intervalMinutes,
-                      intervalSeconds
-                  )
-                : undefined,
+            repeatableInterval: formData.repeatable ? interval : undefined,
+            multiClaimInterval: formData.multiClaimable ? interval : undefined,
         };
 
         const result =
@@ -222,20 +222,27 @@ export default function AdminQuestCreate({
 
     useEffect(() => {
         if (open && initialData) {
-            const { id, repeatableInterval, ...rest } = initialData;
+            const { id, repeatableInterval, multiClaimInterval, ...rest } =
+                initialData;
 
             const intervalDays = Math.floor(
-                (repeatableInterval || 0) / (24 * 60 * 60 * 1000)
+                (repeatableInterval || multiClaimInterval || 0) /
+                    (24 * 60 * 60 * 1000)
             );
             const intervalHours = Math.floor(
-                ((repeatableInterval || 0) % (24 * 60 * 60 * 1000)) /
+                ((repeatableInterval || multiClaimInterval || 0) %
+                    (24 * 60 * 60 * 1000)) /
                     (60 * 60 * 1000)
             );
             const intervalMinutes = Math.floor(
-                ((repeatableInterval || 0) % (60 * 60 * 1000)) / (60 * 1000)
+                ((repeatableInterval || multiClaimInterval || 0) %
+                    (60 * 60 * 1000)) /
+                    (60 * 1000)
             );
             const intervalSeconds = Math.floor(
-                ((repeatableInterval || 0) % (60 * 1000)) / 1000
+                ((repeatableInterval || multiClaimInterval || 0) %
+                    (60 * 1000)) /
+                    1000
             );
 
             setFormData({
@@ -441,15 +448,13 @@ function URLQuestForm({
                     </div>
                     <div className="mb-8">
                         <Label className="mb-2 block">
-                            퀘스트 클릭 시 이동할 링크 (필수)
-                            <span className="text-red-500 ml-1">*</span>
+                            퀘스트 클릭 시 이동할 링크
                         </Label>
                         <Input
                             value={formData.url || ""}
                             onChange={(e) => onChange("url", e.target.value)}
                             placeholder="https://example.com"
                             type="url"
-                            required
                             className="w-full border-2 border-primary/60"
                         />
                         {formData.url &&
@@ -948,9 +953,15 @@ function URLQuestForm({
                                 type="button"
                                 className="flex-1"
                                 variant={
-                                    !formData.repeatable ? "default" : "outline"
+                                    !formData.repeatable &&
+                                    !formData.multiClaimable
+                                        ? "default"
+                                        : "outline"
                                 }
-                                onClick={() => onChange("repeatable", false)}
+                                onClick={() => {
+                                    onChange("repeatable", false);
+                                    onChange("multiClaimable", false);
+                                }}
                             >
                                 1회성 퀘스트
                             </Button>
@@ -958,9 +969,15 @@ function URLQuestForm({
                                 type="button"
                                 className="flex-1"
                                 variant={
-                                    formData.repeatable ? "default" : "outline"
+                                    formData.repeatable &&
+                                    !formData.multiClaimable
+                                        ? "default"
+                                        : "outline"
                                 }
-                                onClick={() => onChange("repeatable", true)}
+                                onClick={() => {
+                                    onChange("repeatable", true);
+                                    onChange("multiClaimable", false);
+                                }}
                             >
                                 누적 퀘스트
                             </Button>
@@ -968,11 +985,15 @@ function URLQuestForm({
                                 type="button"
                                 className="flex-1"
                                 variant={
+                                    !formData.repeatable &&
                                     formData.multiClaimable
                                         ? "default"
                                         : "outline"
                                 }
-                                onClick={() => onChange("multiClaimable", true)}
+                                onClick={() => {
+                                    onChange("repeatable", false);
+                                    onChange("multiClaimable", true);
+                                }}
                             >
                                 반복 퀘스트
                             </Button>
@@ -1157,6 +1178,40 @@ function URLQuestForm({
                                 <div className="text-xs text-muted-foreground mt-1">
                                     반복 간격을 입력하세요 (예: 1일 2시간 30분
                                     10초)
+                                </div>
+                            </div>
+                            <div>
+                                <Label className="mb-2 block">회차별 URL</Label>
+                                <div className="flex flex-col gap-2">
+                                    {Array.from({
+                                        length: formData.multiClaimLimit || 1,
+                                    }).map((_, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="flex gap-2 items-center w-full"
+                                        >
+                                            <span className="flex-shrink-0 text-sm">
+                                                {idx + 1}회차 URL:{" "}
+                                            </span>
+                                            <Input
+                                                key={idx}
+                                                value={
+                                                    formData.urls?.[idx] ||
+                                                    formData.url ||
+                                                    ""
+                                                }
+                                                onChange={(e) => {
+                                                    const newUrls = [
+                                                        ...(formData.urls ||
+                                                            []),
+                                                    ];
+                                                    newUrls[idx] =
+                                                        e.target.value;
+                                                    onChange("urls", newUrls);
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>

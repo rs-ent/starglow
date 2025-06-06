@@ -276,15 +276,19 @@ async function fetchPollsFromDB(
     };
 }
 
-export async function getPoll(id: string): Promise<Poll | null> {
+export async function getPoll(id: string): Promise<
+    | (Poll & {
+          participationRewardAsset: Asset | null;
+          artist: Artist | null;
+      })
+    | null
+> {
     try {
         const poll = await prisma.poll.findUnique({
             where: { id },
             include: {
-                rewardLogs: true,
-                pollLogs: true,
-                bettingAsset: true,
                 participationRewardAsset: true,
+                artist: true,
             },
         });
 
@@ -869,18 +873,23 @@ export async function getPollLogs(
 
 export interface GetPlayerPollLogsInput {
     playerId?: string;
+    pollId?: string;
 }
 
 export async function getPlayerPollLogs(
     input?: GetPlayerPollLogsInput
 ): Promise<PollLog[]> {
-    if (!input || !input.playerId) {
+    if (!input) {
         return [];
     }
 
     try {
+        let where: Prisma.PollLogWhereInput = {};
+        if (input.pollId) where.pollId = input.pollId;
+        if (input.playerId) where.playerId = input.playerId;
+
         return await prisma.pollLog.findMany({
-            where: { playerId: input.playerId },
+            where,
         });
     } catch (error) {
         console.error("Error getting player poll logs:", error);

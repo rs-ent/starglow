@@ -121,7 +121,7 @@ export default function InviteFriendsModal({
                             <h2
                                 className={cn(getResponsiveClass(30).textClass)}
                             >
-                                INIVTE FRIENDS
+                                INVITE FRIENDS
                             </h2>
                             <p className={cn(getResponsiveClass(15).textClass)}>
                                 Invite your friends to Starglow and earn
