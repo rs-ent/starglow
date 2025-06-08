@@ -651,15 +651,21 @@ export default function AdminStoryManagementSPG({
                                             <div className="flex items-center justify-between p-4 bg-blue-900/20 rounded-xl border border-blue-800/30">
                                                 <div>
                                                     <label className="block text-blue-200 font-semibold mb-2">
-                                                        매출 공유 비율
+                                                        매출 공유 비율 (0.0 ~
+                                                        1.0)
                                                     </label>
                                                     <div className="relative">
                                                         <FaPercentage className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400" />
                                                         <input
                                                             type="number"
-                                                            value={
-                                                                form.sharePercentage
-                                                            }
+                                                            value={Math.min(
+                                                                Math.max(
+                                                                    form.sharePercentage ??
+                                                                        0,
+                                                                    0
+                                                                ),
+                                                                1
+                                                            )}
                                                             max={1}
                                                             min={0}
                                                             step={0.01}
@@ -668,13 +674,16 @@ export default function AdminStoryManagementSPG({
                                                                     (f) => ({
                                                                         ...f,
                                                                         sharePercentage:
-                                                                            Math.min(
-                                                                                Number(
-                                                                                    e
-                                                                                        .target
-                                                                                        .value
+                                                                            Math.max(
+                                                                                Math.min(
+                                                                                    Number(
+                                                                                        e
+                                                                                            .target
+                                                                                            .value
+                                                                                    ),
+                                                                                    1
                                                                                 ),
-                                                                                1
+                                                                                0
                                                                             ),
                                                                     })
                                                                 )
