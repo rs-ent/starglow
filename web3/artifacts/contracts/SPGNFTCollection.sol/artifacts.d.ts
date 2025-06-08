@@ -6,20 +6,25 @@
 import "hardhat/types/artifacts";
 import type { GetContractReturnType } from "@nomicfoundation/hardhat-viem/types";
 
+import { IERC6551Registry$Type } from "./IERC6551Registry";
 import { ISPGNFT$Type } from "./ISPGNFT";
 import { SPGNFTCollection$Type } from "./SPGNFTCollection";
 
 declare module "hardhat/types/artifacts" {
   interface ArtifactsMap {
+    ["IERC6551Registry"]: IERC6551Registry$Type;
     ["ISPGNFT"]: ISPGNFT$Type;
     ["SPGNFTCollection"]: SPGNFTCollection$Type;
+    ["contracts/SPGNFTCollection.sol:IERC6551Registry"]: IERC6551Registry$Type;
     ["contracts/SPGNFTCollection.sol:ISPGNFT"]: ISPGNFT$Type;
     ["contracts/SPGNFTCollection.sol:SPGNFTCollection"]: SPGNFTCollection$Type;
   }
 
   interface ContractTypesMap {
+    ["IERC6551Registry"]: GetContractReturnType<IERC6551Registry$Type["abi"]>;
     ["ISPGNFT"]: GetContractReturnType<ISPGNFT$Type["abi"]>;
     ["SPGNFTCollection"]: GetContractReturnType<SPGNFTCollection$Type["abi"]>;
+    ["contracts/SPGNFTCollection.sol:IERC6551Registry"]: GetContractReturnType<IERC6551Registry$Type["abi"]>;
     ["contracts/SPGNFTCollection.sol:ISPGNFT"]: GetContractReturnType<ISPGNFT$Type["abi"]>;
     ["contracts/SPGNFTCollection.sol:SPGNFTCollection"]: GetContractReturnType<SPGNFTCollection$Type["abi"]>;
   }

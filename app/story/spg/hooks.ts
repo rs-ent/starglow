@@ -6,7 +6,7 @@ import {
     useGetSPGsQuery,
 } from "./queries";
 import {
-    useDeployCustomSPGContractMutation,
+    useDeploySPGNFTFactoryMutation,
     useCreateSPGMutation,
     useUpdateSPGMutation,
     useDeleteSPGMutation,
@@ -46,11 +46,11 @@ export function useSPG(input?: useSPGInput) {
     } = useGetSPGsQuery(input?.getSPGsInput);
 
     const {
-        mutate: deployCustomSPGContractMutation,
-        mutateAsync: deployCustomSPGContractMutationAsync,
-        isPending: deployCustomSPGContractMutationIsPending,
-        isError: deployCustomSPGContractMutationIsError,
-    } = useDeployCustomSPGContractMutation();
+        mutate: deploySPGNFTFactoryMutation,
+        mutateAsync: deploySPGNFTFactoryMutationAsync,
+        isPending: deploySPGNFTFactoryMutationIsPending,
+        isError: deploySPGNFTFactoryMutationIsError,
+    } = useDeploySPGNFTFactoryMutation();
 
     const {
         mutate: createSPGMutation,
@@ -99,10 +99,10 @@ export function useSPG(input?: useSPGInput) {
         getSPGsError,
         getSPGsRefetch,
 
-        deployCustomSPGContractMutation,
-        deployCustomSPGContractMutationAsync,
-        deployCustomSPGContractMutationIsPending,
-        deployCustomSPGContractMutationIsError,
+        deploySPGNFTFactoryMutation,
+        deploySPGNFTFactoryMutationAsync,
+        deploySPGNFTFactoryMutationIsPending,
+        deploySPGNFTFactoryMutationIsError,
 
         createSPGMutation,
         createSPGMutationAsync,
@@ -126,6 +126,7 @@ export function useSPG(input?: useSPGInput) {
 
         useGetSPGQuery,
         useGetSPGsQuery,
+        useDeploySPGNFTFactoryMutation,
         useCreateSPGMutation,
         useUpdateSPGMutation,
         useDeleteSPGMutation,

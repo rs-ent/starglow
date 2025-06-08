@@ -50,4 +50,15 @@ export const queryKeys = {
         circulation: (address: string) =>
             [...queryKeys.nft.all, "circulation", address] as const,
     },
+    tba: {
+        all: ["tba"] as const,
+        list: (filter?: object) =>
+            [...queryKeys.tba.all, "list", filter] as const,
+        contract: (id: string) =>
+            [...queryKeys.tba.all, "contract", id] as const,
+        contracts: (filter?: object) =>
+            [...queryKeys.tba.all, "contracts", filter] as const,
+        addresses: (networkId: string) =>
+            [...queryKeys.tba.all, "addresses", networkId] as const,
+    },
 } as const;

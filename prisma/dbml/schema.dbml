@@ -522,6 +522,7 @@ Table BlockchainNetwork {
   story_spg Story_spg [not null]
   story_nfts Story_nft [not null]
   story_ipAssets Story_ipAsset [not null]
+  tbaContracts TBAContract [not null]
 }
 
 Table AssetsContract {
@@ -907,6 +908,27 @@ Table Story_spgContract {
   story_spg Story_spg [not null]
 }
 
+Table TBAContract {
+  id String [pk]
+  address String [unique, not null]
+  type TBAContractType [not null]
+  name String
+  version String
+  abi Json
+  bytecode String
+  txHash String
+  deployedBy String
+  networkId String [not null]
+  network BlockchainNetwork [not null]
+  isActive Boolean [not null, default: true]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (networkId, type, address) [unique]
+  }
+}
+
 Table Story_spg {
   id String [pk]
   address String [unique, not null]
@@ -925,6 +947,8 @@ Table Story_spg {
   ownerAddress String [not null]
   artistId String
   artist Artist
+  tbaRegistryAddress String
+  tbaImplementationAddress String
   isListed Boolean [not null, default: false]
   reportUrl String
   sharePercentage Float [not null, default: 0]
@@ -1033,6 +1057,11 @@ Enum CollectionParticipantType {
   PRIVATESALE
   PUBLICSALE
   GLOW
+}
+
+Enum TBAContractType {
+  REGISTRY
+  IMPLEMENTATION
 }
 
 Enum PaymentStatus {
@@ -1198,6 +1227,8 @@ Ref: ArtistFeedReaction.artistFeedId > ArtistFeed.id
 Ref: ArtistFeedReaction.playerId > Player.id
 
 Ref: Story_spgContract.networkId > BlockchainNetwork.id
+
+Ref: TBAContract.networkId > BlockchainNetwork.id
 
 Ref: Story_spg.contractAddress > Story_spgContract.address
 

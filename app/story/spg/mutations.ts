@@ -3,18 +3,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../queryKeys";
 import {
-    deployCustomSPGContract,
+    deploySPGNFTFactory,
     createSPG,
     updateSPG,
     deleteSPG,
     updateSPGUtils,
 } from "./actions";
 
-export function useDeployCustomSPGContractMutation() {
+export function useDeploySPGNFTFactoryMutation() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: deployCustomSPGContract,
+        mutationFn: deploySPGNFTFactory,
         onSuccess: (data, variables, context) => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.spg.contracts(),
@@ -106,12 +106,18 @@ export function useUpdateSPGUtilsMutation() {
                 queryKey: queryKeys.spg.all,
             });
             const previousData = queryClient.getQueryData(queryKeys.spg.all);
-            queryClient.setQueryData(queryKeys.spg.all, (old: any) => [...(old ?? []), variables]);
+            queryClient.setQueryData(queryKeys.spg.all, (old: any) => [
+                ...(old ?? []),
+                variables,
+            ]);
             return { previousData };
         },
         onError: (error, variables, context) => {
             if (context?.previousData) {
-                queryClient.setQueryData(queryKeys.spg.all, context.previousData);
+                queryClient.setQueryData(
+                    queryKeys.spg.all,
+                    context.previousData
+                );
             }
         },
         onSettled: (data, error, variables, context) => {

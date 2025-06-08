@@ -12,7 +12,14 @@ import { fetchEscrowWalletPrivateKey } from "./escrowWallet/actions";
 import * as Client from "@web3-storage/w3up-client";
 import { StoreMemory } from "@web3-storage/w3up-client/stores/memory";
 import { Signer } from "@web3-storage/w3up-client/principal/ed25519";
-import { Chain, createPublicClient, http, PublicClient } from "viem";
+import {
+    Chain,
+    createPublicClient,
+    createWalletClient,
+    http,
+    PublicClient,
+    WalletClient,
+} from "viem";
 
 const ADMIN_KEY = process.env.WEB3STORAGE_ADMIN_KEY;
 
@@ -226,4 +233,74 @@ export async function fetchPublicClient(input: fetchPublicClientInput) {
     PublicClientCache.set(cacheKey, publicClient);
 
     return publicClient;
+}
+
+export const WalletClientCache = new Map<string, WalletClient>();
+
+export interface fetchWalletClientInput {
+    networkId?: string;
+    network?: BlockchainNetwork;
+    wallet?: EscrowWallet;
+    walletAddress?: string;
+}
+
+export async function fetchWalletClient(input: fetchWalletClientInput) {
+    let network: BlockchainNetwork | null = null;
+    let wallet: EscrowWallet | null = null;
+
+    if (input.network) {
+        network = input.network;
+    } else if (input.networkId) {
+        network = await prisma.blockchainNetwork.findUnique({
+            where: { id: input.networkId },
+        });
+    }
+    if (!network) throw new Error("Network not found");
+
+    if (input.wallet) {
+        wallet = input.wallet;
+    } else if (input.walletAddress) {
+        wallet = await prisma.escrowWallet.findUnique({
+            where: { address: input.walletAddress },
+        });
+    }
+    if (!wallet) throw new Error("Wallet not found");
+
+    const cacheKey = `${network.id}-${wallet.address}`;
+    if (WalletClientCache.has(cacheKey)) {
+        return WalletClientCache.get(cacheKey)!;
+    }
+
+    const privateKey = await fetchEscrowWalletPrivateKey({
+        address: wallet.address,
+    });
+    if (!privateKey) throw new Error("Private key not found");
+    const account = privateKeyToAccount(privateKey as `0x${string}`);
+
+    const chain: Chain = {
+        id: network.chainId,
+        name: network.name,
+        nativeCurrency: {
+            name: network.symbol,
+            symbol: network.symbol,
+            decimals: 18,
+        },
+        rpcUrls: {
+            default: { http: [network.rpcUrl] },
+            public: { http: [network.rpcUrl] },
+        },
+        blockExplorers: {
+            default: { name: "Explorer", url: network.explorerUrl },
+        },
+    };
+
+    const walletClient = createWalletClient({
+        account,
+        chain,
+        transport: http(network.rpcUrl as `http${string}`),
+    });
+
+    WalletClientCache.set(cacheKey, walletClient);
+
+    return walletClient;
 }

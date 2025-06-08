@@ -2,21 +2,16 @@
 
 "use server";
 
-import {
-    createWalletClient,
-    createPublicClient,
-    PublicClient,
-    http,
-    Hex,
-    decodeEventLog,
-    Abi,
-} from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { getChain, estimateAndOptimizeGas } from "../network/actions";
+import { PublicClient, http, Hex, decodeEventLog, Abi } from "viem";
+import { estimateAndOptimizeGas } from "../network/actions";
 import { prisma } from "@/lib/prisma/client";
 import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
 import { fetchEscrowWalletPrivateKey } from "../escrowWallet/actions";
-import { fetchStoryClient } from "../client";
+import {
+    fetchPublicClient,
+    fetchStoryClient,
+    fetchWalletClient,
+} from "../client";
 import {
     createTokenURIsMetadata,
     IPAssetMetadata,
@@ -123,34 +118,13 @@ export async function mint(input: mintInput): Promise<mintResult> {
             throw new Error("Network not found");
         }
 
-        const privateKey = await fetchEscrowWalletPrivateKey({
-            userId: input.userId,
-            address: input.walletAddress,
+        const publicClient = await fetchPublicClient({
+            network: network,
         });
 
-        console.log("Wallet address:", input.walletAddress);
-        console.log("Private key:", privateKey);
-
-        if (!privateKey) {
-            throw new Error("Private key not found");
-        }
-
-        // viem chain 설정
-        const chain = await getChain(network);
-
-        // viem account 생성
-        const account = privateKeyToAccount(privateKey as Hex);
-
-        // viem wallet client 생성
-        const walletClient = createWalletClient({
-            account,
-            chain,
-            transport: http(network.rpcUrl),
-        });
-
-        const publicClient = createPublicClient({
-            chain,
-            transport: http(network.rpcUrl),
+        const walletClient = await fetchWalletClient({
+            network: network,
+            walletAddress: input.walletAddress,
         });
 
         console.log("Creating tokenURI metadata...");
@@ -189,7 +163,7 @@ export async function mint(input: mintInput): Promise<mintResult> {
             abi: SPGNFTCollection.abi,
             functionName: "mint",
             args: [input.walletAddress, BigInt(input.quantity), tokenURIs],
-            account,
+            account: walletClient.account,
             value: totalMintFee,
         });
 
@@ -1042,12 +1016,12 @@ async function getOwnersByTokenIds(
             if (network.multicallAddress) {
                 const multicallResults = await publicClient.multicall({
                     contracts: batch.map((tokenId) => ({
-                        address: spgAddress as `0x${string}`,
+                        address: spgAddress as Hex,
                         abi: SPGNFTCollection.abi as Abi,
                         functionName: "ownerOf",
                         args: [tokenId],
                     })),
-                    multicallAddress: network.multicallAddress as `0x${string}`,
+                    multicallAddress: network.multicallAddress as Hex,
                 });
 
                 results.push(
@@ -1063,7 +1037,7 @@ async function getOwnersByTokenIds(
                 for (const tokenId of batch) {
                     try {
                         const owner = await publicClient.readContract({
-                            address: spgAddress as `0x${string}`,
+                            address: spgAddress as Hex,
                             abi: SPGNFTCollection.abi,
                             functionName: "ownerOf",
                             args: [tokenId],
@@ -1098,7 +1072,7 @@ async function getTotalSupply(
     spgAddress: string
 ): Promise<number> {
     const totalSupplyBigint = await publicClient.readContract({
-        address: spgAddress as `0x${string}`,
+        address: spgAddress as Hex,
         abi: SPGNFTCollection.abi,
         functionName: "totalSupply",
     });
@@ -1136,10 +1110,8 @@ export async function getOwners(
         throw new Error("SPG not found");
     }
 
-    const chain = await getChain(spg.network);
-    const publicClient = createPublicClient({
-        chain,
-        transport: http(),
+    const publicClient = await fetchPublicClient({
+        network: spg.network,
     });
 
     let tokenIds = input.tokenIds;
@@ -1189,10 +1161,8 @@ export async function getCirculation(
             throw new Error("SPG not found");
         }
 
-        const chain = await getChain(spg.network);
-        const publicClient = createPublicClient({
-            chain,
-            transport: http(),
+        const publicClient = await fetchPublicClient({
+            network: spg.network,
         });
 
         const totalSupply = await getTotalSupply(publicClient, spg.address);

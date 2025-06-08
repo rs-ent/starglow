@@ -10,81 +10,46 @@ import {
     Story_spgContract,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
-import DeploySPGNFT from "@/web3/artifacts/contracts/DeploySPGNFT.sol/DeploySPGNFT.json";
-import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
-import {
-    addEscrowWalletToSPG,
-    fetchEscrowWalletPrivateKey,
-} from "../escrowWallet/actions";
-import {
-    createWalletClient,
-    createPublicClient,
-    http,
-    Hex,
-    decodeEventLog,
-} from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { getChain } from "../network/actions";
+import SPGNFTFactory from "@/web3/artifacts/contracts/SPGNFTFactory.sol/SPGNFTFactory.json";
+import { Hex, decodeEventLog } from "viem";
 import { fetchURI } from "../metadata/actions";
+import { fetchPublicClient, fetchWalletClient } from "../client";
 
-export interface deployCustomSPGContractInput {
+export interface deploySPGNFTFactoryInput {
     userId: string;
     networkId: string;
     walletAddress: string;
 }
 
-export async function deployCustomSPGContract(
-    input: deployCustomSPGContractInput
+export async function deploySPGNFTFactory(
+    input: deploySPGNFTFactoryInput
 ): Promise<Story_spgContract> {
     try {
-        const network = await prisma.blockchainNetwork.findUnique({
-            where: {
-                id: input.networkId,
-            },
+        const publicClient = await fetchPublicClient({
+            networkId: input.networkId,
         });
 
-        if (!network) {
-            throw new Error("Network not found");
+        const walletClient = await fetchWalletClient({
+            networkId: input.networkId,
+            walletAddress: input.walletAddress,
+        });
+
+        if (!walletClient.account) {
+            throw new Error("Wallet account not found");
         }
 
-        const privateKey = await fetchEscrowWalletPrivateKey({
-            userId: input.userId,
-            address: input.walletAddress,
-        });
-
-        if (!privateKey) {
-            throw new Error("Private key not found");
-        }
-
-        // viem chain 설정
-        const chain = await getChain(network);
-
-        // viem account 생성
-        const account = privateKeyToAccount(privateKey as Hex);
-
-        // viem wallet client 생성
-        const walletClient = createWalletClient({
-            account,
-            chain,
-            transport: http(network.rpcUrl),
-        });
-
-        console.log("Deploying DeploySPGNFT factory contract with viem...");
+        console.log("Deploying SPGNFTFactory contract with viem...");
 
         // Deploy contract
         const hash = await walletClient.deployContract({
-            abi: DeploySPGNFT.abi,
-            bytecode: DeploySPGNFT.bytecode as Hex,
-            args: [], // constructor arguments (없음)
+            abi: SPGNFTFactory.abi,
+            bytecode: SPGNFTFactory.bytecode as Hex,
+            args: [],
+            account: walletClient.account,
+            chain: walletClient.chain,
         });
 
         console.log("Transaction hash:", hash);
-
-        // Public client로 receipt 대기
-        const publicClient = createPublicClient({
-            chain,
-            transport: http(network.rpcUrl),
-        });
 
         const receipt = await publicClient.waitForTransactionReceipt({
             hash,
@@ -142,55 +107,32 @@ export interface createSPGInput {
     selectedMetadata: ipfs;
     artistId: string;
     baseURI?: string;
+    tbaRegistry: string;
+    tbaImplementation: string;
 }
 
 export async function createSPG(
     input: createSPGInput
 ): Promise<Story_spg & { txHash: string }> {
     try {
-        const network = await prisma.blockchainNetwork.findUnique({
-            where: {
-                id: input.networkId,
-            },
+        const publicClient = await fetchPublicClient({
+            networkId: input.networkId,
         });
 
-        if (!network) {
-            throw new Error("Network not found");
+        const walletClient = await fetchWalletClient({
+            networkId: input.networkId,
+            walletAddress: input.walletAddress,
+        });
+
+        if (!walletClient.account) {
+            throw new Error("Wallet account not found");
         }
-
-        const privateKey = await fetchEscrowWalletPrivateKey({
-            userId: input.userId,
-            address: input.walletAddress,
-        });
-
-        if (!privateKey) {
-            throw new Error("Private key not found");
-        }
-
-        // viem chain 설정
-        const chain = await getChain(network);
-
-        // viem account 생성
-        const account = privateKeyToAccount(privateKey as Hex);
-
-        // viem wallet client 생성
-        const walletClient = createWalletClient({
-            account,
-            chain,
-            transport: http(network.rpcUrl),
-        });
-
-        const publicClient = createPublicClient({
-            chain,
-            transport: http(network.rpcUrl),
-        });
 
         console.log("Deploying SPG collection via factory...");
 
-        // Factory contract에서 deployStoryCollection 호출
         const { request } = await publicClient.simulateContract({
             address: input.contractAddress as Hex,
-            abi: DeploySPGNFT.abi,
+            abi: SPGNFTFactory.abi,
             functionName: "deployStoryCollection",
             args: [
                 input.name,
@@ -198,8 +140,11 @@ export async function createSPG(
                 input.baseURI || input.selectedMetadata.url,
                 input.selectedMetadata.url,
                 input.walletAddress,
+                input.tbaRegistry,
+                input.tbaImplementation,
             ],
-            account,
+            account: walletClient.account,
+            chain: walletClient.chain,
         });
 
         const hash = await walletClient.writeContract(request);
@@ -214,7 +159,7 @@ export async function createSPG(
         const deployedEvent = receipt.logs.find((log) => {
             try {
                 const decoded = decodeEventLog({
-                    abi: DeploySPGNFT.abi,
+                    abi: SPGNFTFactory.abi,
                     data: log.data,
                     topics: log.topics,
                 });
@@ -229,7 +174,7 @@ export async function createSPG(
         }
 
         const decodedEvent = decodeEventLog({
-            abi: DeploySPGNFT.abi,
+            abi: SPGNFTFactory.abi,
             data: deployedEvent.data,
             topics: deployedEvent.topics,
         });
@@ -254,19 +199,10 @@ export async function createSPG(
                 networkId: input.networkId,
                 ownerAddress: input.walletAddress,
                 artistId: input.artistId,
+                tbaRegistryAddress: input.tbaRegistry,
+                tbaImplementationAddress: input.tbaImplementation,
             },
         });
-
-        const { request: addEscrowWalletRequest } =
-            await publicClient.simulateContract({
-                address: spg.address as `0x${string}`,
-                abi: SPGNFTCollection.abi,
-                functionName: "addEscrowWallet",
-                args: [input.walletAddress],
-                account,
-            });
-
-        await walletClient.writeContract(addEscrowWalletRequest);
 
         return {
             ...spg,
@@ -476,5 +412,64 @@ export async function updateSPGUtils(input: updateSPGUtils): Promise<SPG> {
     } catch (error) {
         console.error(error);
         throw error;
+    }
+}
+
+// 특정 NFT의 TBA 주소를 계산하는 유틸리티 함수
+export interface getTBAAddressForNFTInput {
+    spgAddress: string;
+    tokenId: number;
+}
+
+export async function getTBAAddressForNFT(
+    input: getTBAAddressForNFTInput
+): Promise<string | null> {
+    try {
+        const spg = await prisma.story_spg.findUnique({
+            where: {
+                address: input.spgAddress,
+            },
+        });
+
+        if (!spg || !spg.tbaRegistryAddress || !spg.tbaImplementationAddress) {
+            return null;
+        }
+
+        const publicClient = await fetchPublicClient({
+            networkId: spg.networkId,
+        });
+
+        // ERC6551 Registry의 account 함수 호출
+        const tbaAddress = await publicClient.readContract({
+            address: spg.tbaRegistryAddress as Hex,
+            abi: [
+                {
+                    inputs: [
+                        { name: "implementation", type: "address" },
+                        { name: "chainId", type: "uint256" },
+                        { name: "tokenContract", type: "address" },
+                        { name: "tokenId", type: "uint256" },
+                        { name: "salt", type: "uint256" },
+                    ],
+                    name: "account",
+                    outputs: [{ name: "", type: "address" }],
+                    type: "function",
+                    stateMutability: "view",
+                },
+            ],
+            functionName: "account",
+            args: [
+                spg.tbaImplementationAddress as Hex,
+                BigInt(publicClient.chain?.id || 1),
+                spg.address as Hex,
+                BigInt(input.tokenId),
+                BigInt(0),
+            ],
+        });
+
+        return tbaAddress as string;
+    } catch (error) {
+        console.error("Error getting TBA address:", error);
+        return null;
     }
 }

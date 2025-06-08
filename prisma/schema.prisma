@@ -648,6 +648,7 @@ model BlockchainNetwork {
   story_spg Story_spg[]
   story_nfts Story_nft[]
   story_ipAssets Story_ipAsset[]
+  tbaContracts TBAContract[]
 
   @@index([isTestnet, isActive])
   @@index([isStoryNetwork])
@@ -1102,6 +1103,32 @@ model Story_spgContract {
   @@index([networkId])
 }
 
+enum TBAContractType {
+  REGISTRY
+  IMPLEMENTATION
+}
+
+model TBAContract {
+  id String @id @default(cuid())
+  address String @unique
+  type TBAContractType
+  name String?
+  version String?
+  abi Json?
+  bytecode String?
+  txHash String?
+  deployedBy String?
+  networkId String
+  network BlockchainNetwork @relation(fields: [networkId], references: [id])
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([networkId, type, address])
+  @@index([networkId, type])
+  @@index([networkId, type, isActive])
+}
+
 model Story_spg {
   id String @id @default(cuid())
   address String @unique
@@ -1125,6 +1152,10 @@ model Story_spg {
 
   artistId String?
   artist   Artist? @relation(fields: [artistId], references: [id])
+  
+  // TBA 관련 필드 추가
+  tbaRegistryAddress String?
+  tbaImplementationAddress String?
   
   isListed Boolean @default(false)
   reportUrl String?
@@ -1150,6 +1181,8 @@ model Story_spg {
   @@index([name])
   @@index([symbol])
   @@index([artistId])
+  @@index([tbaRegistryAddress])
+  @@index([tbaImplementationAddress])
 }
 
 model Story_nft {

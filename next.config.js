@@ -18,6 +18,10 @@ const nextConfig = {
                 protocol: "https",
                 hostname: "i3.ytimg.com",
             },
+            {
+                protocol: "https",
+                hostname: "w3s.link",
+            },
         ],
     },
 
@@ -32,7 +36,6 @@ const nextConfig = {
     ],
 
     experimental: {
-
         // 서버 액션 최적화
         serverActions: {
             bodySizeLimit: "50mb",

@@ -254,10 +254,19 @@ export default function AdminStoryManagementSPG({
 
     const [selectedWallet, setSelectedWallet] = useState<string>("");
 
+    const toISOString = (val?: string) =>
+        val ? new Date(val).toISOString() : undefined;
+
     const handleSave = async () => {
         try {
             await updateSPGUtilsMutationAsync({
                 ...form,
+                preOrderStart: toISOString(form.preOrderStart),
+                preOrderEnd: toISOString(form.preOrderEnd),
+                saleStart: toISOString(form.saleStart),
+                saleEnd: toISOString(form.saleEnd),
+                glowStart: toISOString(form.glowStart),
+                glowEnd: toISOString(form.glowEnd),
                 pageImages: form.pageImages.map((img) => img.url),
             });
             toast.success("SPG 정보가 성공적으로 업데이트되었습니다!");
@@ -659,10 +668,13 @@ export default function AdminStoryManagementSPG({
                                                                     (f) => ({
                                                                         ...f,
                                                                         sharePercentage:
-                                                                            Number(
-                                                                                e
-                                                                                    .target
-                                                                                    .value
+                                                                            Math.min(
+                                                                                Number(
+                                                                                    e
+                                                                                        .target
+                                                                                        .value
+                                                                                ),
+                                                                                1
                                                                             ),
                                                                     })
                                                                 )

@@ -11,7 +11,7 @@ const config = {
         settings: {
             optimizer: {
                 enabled: true,
-                runs: 200,
+                runs: 500,
                 details: {
                     yul: true,
                     yulDetails: {
@@ -25,7 +25,8 @@ const config = {
     },
     networks: {
         sepolia: {
-            url: process.env.SEPOLIA_RPC_URL ||
+            url:
+                process.env.SEPOLIA_RPC_URL ||
                 "https://ethereum-sepolia.rpc.subquery.network/public",
             accounts: process.env.ESCROW_PRIVATE_KEY
                 ? [process.env.ESCROW_PRIVATE_KEY]
@@ -33,7 +34,8 @@ const config = {
             chainId: 11155111,
         },
         polygonAmoy: {
-            url: process.env.POLYGON_RPC_URL ||
+            url:
+                process.env.POLYGON_RPC_URL ||
                 "https://rpc-amoy.polygon.technology",
             accounts: process.env.ESCROW_PRIVATE_KEY
                 ? [process.env.ESCROW_PRIVATE_KEY]

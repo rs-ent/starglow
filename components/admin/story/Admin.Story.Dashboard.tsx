@@ -3,7 +3,13 @@
 "use client";
 
 import { useState } from "react";
-import { FaNetworkWired, FaWallet, FaEdit, FaRocket } from "react-icons/fa";
+import {
+    FaNetworkWired,
+    FaWallet,
+    FaEdit,
+    FaRocket,
+    FaShieldAlt,
+} from "react-icons/fa";
 import { SiEthereum } from "react-icons/si";
 import { TbTopologyStar3 } from "react-icons/tb";
 import { FaCube } from "react-icons/fa";
@@ -14,6 +20,7 @@ import AdminStorySPG from "./Admin.Story.SPG";
 import AdminStoryMint from "./Admin.Story.Mint";
 import AdminStoryRegisterIPAsset from "./Admin.Story.RegisterIPAsset";
 import AdminStoryManagementSPG from "./Admin.Story.Management.SPG";
+import AdminStoryTBA from "./Admin.Story.TBA";
 
 export default function AdminStoryDashboard() {
     const [selection, setSelection] = useState<
@@ -24,6 +31,7 @@ export default function AdminStoryDashboard() {
         | "mint"
         | "register-ip"
         | "spg-management"
+        | "tba"
         | null
     >(null);
 
@@ -48,6 +56,9 @@ export default function AdminStoryDashboard() {
     if (selection === "spg-management") {
         return <AdminStoryManagementSPG onBack={() => setSelection(null)} />;
     }
+    if (selection === "tba") {
+        return <AdminStoryTBA onBack={() => setSelection(null)} />;
+    }
     return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center bg-gradient-to-br from-[#181c2b] to-[#2a2342] p-8 rounded-2xl shadow-2xl border border-blue-900/30 relative overflow-hidden">
             {/* Subtle background icons for protocol feel */}
@@ -71,6 +82,13 @@ export default function AdminStoryDashboard() {
                 >
                     <FaWallet className="text-2xl" />
                     Manage Wallets
+                </button>
+                <button
+                    className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-cyan-700 via-blue-700 to-purple-700 text-white font-bold rounded-xl shadow-xl hover:scale-105 hover:from-purple-700 hover:to-cyan-700 transition-all duration-200 text-lg tracking-wide border border-cyan-500/30"
+                    onClick={() => setSelection("tba")}
+                >
+                    <FaShieldAlt className="text-2xl" />
+                    Manage TBA
                 </button>
                 <button
                     className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-700 via-blue-700 to-purple-700 text-white font-bold rounded-xl shadow-xl hover:scale-105 hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 text-lg tracking-wide border border-indigo-500/30"

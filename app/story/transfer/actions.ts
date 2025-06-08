@@ -1,18 +1,10 @@
 /// app/story/transfer/actions.ts
 
-import {
-    createWalletClient,
-    createPublicClient,
-    http,
-    encodeFunctionData,
-    Hex,
-} from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { getChain } from "../network/actions";
+import { Hex } from "viem";
 import { prisma } from "@/lib/prisma/client";
 import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
-import { fetchEscrowWalletPrivateKey } from "../escrowWallet/actions";
 import { getOwners } from "../nft/actions";
+import { fetchPublicClient, fetchWalletClient } from "../client";
 
 export interface initialTransferInput {
     spgAddress: string;
@@ -20,29 +12,17 @@ export interface initialTransferInput {
     toAddress: string;
 }
 
-// Batch transfer result interface
 export interface BatchTransferResult {
     txHashes: string[];
     tokenIds: string[];
     totalGasUsed?: bigint;
 }
 
-// Constants for batch processing
-const BATCH_SIZES = {
-    SMALL: 20, // For escrowTransfer (legacy)
-    MEDIUM: 100, // For batchTransfer
-    LARGE: 500, // For chunked processing
-};
-
-/**
- * Get owned token IDs for batch transfer
- */
 async function getOwnedTokenIds(
     spgAddress: string,
     owner: string,
     quantity: number
 ): Promise<string[]> {
-    // Get a large range of potential token IDs
     const maxTokensToCheck = Math.min(quantity * 10, 10000);
     const tokenIds = await getOwners({
         spgAddress: spgAddress,
@@ -51,7 +31,6 @@ async function getOwnedTokenIds(
         ),
     });
 
-    // Filter owned tokens
     const ownedTokenIds = tokenIds
         .filter((token) => token.owner.toLowerCase() === owner.toLowerCase())
         .map((token) => token.tokenId)
@@ -66,9 +45,6 @@ async function getOwnedTokenIds(
     return ownedTokenIds;
 }
 
-/**
- * Main transfer function with industry-standard batch processing
- */
 export async function initialTransfer(
     input: initialTransferInput
 ): Promise<{ txHash: string; tokenIds: string[] } | BatchTransferResult> {
@@ -92,319 +68,45 @@ export async function initialTransfer(
         throw new Error("From address not found");
     }
 
-    const spender = await fetchEscrowWalletPrivateKey({
-        address: from,
+    const publicClient = await fetchPublicClient({
+        network: spg.network,
     });
 
-    if (!spender) {
-        throw new Error("Spender not found");
+    const walletClient = await fetchWalletClient({
+        network: spg.network,
+        walletAddress: spg.ownerAddress,
+    });
+
+    if (!walletClient.account) {
+        throw new Error("Wallet account not found");
     }
 
-    const spenderAccount = privateKeyToAccount(spender as Hex);
-
-    const chain = await getChain(spg.network);
-    const publicClient = createPublicClient({
-        chain,
-        transport: http(spg.network.rpcUrl),
-    });
-
-    const walletClient = createWalletClient({
-        account: spenderAccount,
-        chain,
-        transport: http(spg.network.rpcUrl),
-    });
-
-    // Get owned token IDs
     const ownedTokenIds = await getOwnedTokenIds(spgAddress, from, quantity);
 
-    // Determine transfer strategy based on quantity
-    if (quantity <= BATCH_SIZES.SMALL) {
-        // Use legacy escrowTransfer for small quantities
-        return legacyTransfer({
-            spgAddress,
-            from,
-            to: toAddress,
-            tokenIds: ownedTokenIds,
-            spenderAccount,
-            publicClient,
-            walletClient,
-            chain,
-        });
-    } else if (quantity <= BATCH_SIZES.MEDIUM) {
-        // Use single batchTransfer
-        return batchTransfer({
-            spgAddress,
-            from,
-            to: toAddress,
-            tokenIds: ownedTokenIds,
-            spenderAccount,
-            publicClient,
-            walletClient,
-            chain,
-        });
-    } else {
-        // Use multiple batch transfers for large quantities
-        return largeBatchTransfer({
-            spgAddress,
-            from,
-            to: toAddress,
-            tokenIds: ownedTokenIds,
-            spenderAccount,
-            publicClient,
-            walletClient,
-            chain,
-        });
-    }
-}
+    const deadline = Math.floor(Date.now() / 1000) + 3600;
+    const signature = "0x00";
 
-/**
- * Legacy transfer for backward compatibility (<=20 tokens)
- */
-async function legacyTransfer(
-    params: any
-): Promise<{ txHash: string; tokenIds: string[] }> {
-    const {
-        spgAddress,
-        from,
-        to,
-        tokenIds,
-        spenderAccount,
-        publicClient,
-        walletClient,
-        chain,
-    } = params;
-
-    const contractNonce = (await publicClient.readContract({
-        address: spgAddress as `0x${string}`,
+    const { request } = await publicClient.simulateContract({
+        address: spgAddress as Hex,
         abi: SPGNFTCollection.abi,
-        functionName: "getNonce",
-        args: [from as `0x${string}`],
-    })) as bigint;
-
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 30);
-    const domain = {
-        name: "SPGNFTCollection",
-        version: "1",
-        chainId: chain.id,
-        verifyingContract: spgAddress as `0x${string}`,
-    };
-
-    const types = {
-        TransferPermit: [
-            { name: "owner", type: "address" },
-            { name: "to", type: "address" },
-            { name: "tokenIds", type: "uint256[]" },
-            { name: "nonce", type: "uint256" },
-            { name: "deadline", type: "uint256" },
+        functionName: "escrowTransferBatch",
+        args: [
+            from,
+            toAddress,
+            ownedTokenIds[0],
+            quantity,
+            deadline,
+            signature,
         ],
-    };
-
-    const message = {
-        owner: from,
-        to: to,
-        tokenIds: tokenIds,
-        nonce: contractNonce,
-        deadline,
-    };
-
-    const signature = await spenderAccount.signTypedData({
-        domain,
-        types,
-        primaryType: "TransferPermit",
-        message,
+        account: walletClient.account,
+        chain: walletClient.chain,
     });
 
-    const txData = encodeFunctionData({
-        abi: SPGNFTCollection.abi,
-        functionName: "escrowTransferWithSignature",
-        args: [from, to, tokenIds, deadline, signature],
-    });
-
-    const gasEstimate = await publicClient.estimateGas({
-        account: spenderAccount.address,
-        to: spgAddress as `0x${string}`,
-        data: txData,
-    });
-
-    const txNonce = await publicClient.getTransactionCount({
-        address: spenderAccount.address,
-    });
-
-    const tx = {
-        to: spgAddress as `0x${string}`,
-        data: txData,
-        gas: gasEstimate,
-        nonce: txNonce,
-        ...(await publicClient.estimateFeesPerGas()),
-    };
-
-    const signedTx = await walletClient.signTransaction(tx);
-    const txHash = await publicClient.sendRawTransaction({
-        serializedTransaction: signedTx,
-    });
-
-    return { txHash, tokenIds };
-}
-
-/**
- * Industry-standard batch transfer (21-100 tokens)
- */
-async function batchTransfer(
-    params: any
-): Promise<{ txHash: string; tokenIds: string[] }> {
-    const {
-        spgAddress,
-        from,
-        to,
-        tokenIds,
-        spenderAccount,
-        publicClient,
-        walletClient,
-        chain,
-    } = params;
-
-    const contractNonce = (await publicClient.readContract({
-        address: spgAddress as `0x${string}`,
-        abi: SPGNFTCollection.abi,
-        functionName: "getNonce",
-        args: [from as `0x${string}`],
-    })) as bigint;
-
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 30);
-    const domain = {
-        name: "SPGNFTCollection",
-        version: "1",
-        chainId: chain.id,
-        verifyingContract: spgAddress as `0x${string}`,
-    };
-
-    const types = {
-        BatchTransferPermit: [
-            { name: "owner", type: "address" },
-            { name: "to", type: "address" },
-            { name: "tokenIds", type: "uint256[]" },
-            { name: "nonce", type: "uint256" },
-            { name: "deadline", type: "uint256" },
-        ],
-    };
-
-    const message = {
-        owner: from,
-        to: to,
-        tokenIds: tokenIds,
-        nonce: contractNonce,
-        deadline,
-    };
-
-    const signature = await spenderAccount.signTypedData({
-        domain,
-        types,
-        primaryType: "BatchTransferPermit",
-        message,
-    });
-
-    const txData = encodeFunctionData({
-        abi: SPGNFTCollection.abi,
-        functionName: "batchTransfer",
-        args: [from, to, tokenIds, deadline, signature],
-    });
-
-    const gasEstimate = await publicClient.estimateGas({
-        account: spenderAccount.address,
-        to: spgAddress as `0x${string}`,
-        data: txData,
-    });
-
-    const txNonce = await publicClient.getTransactionCount({
-        address: spenderAccount.address,
-    });
-
-    const tx = {
-        to: spgAddress as `0x${string}`,
-        data: txData,
-        gas: gasEstimate,
-        nonce: txNonce,
-        ...(await publicClient.estimateFeesPerGas()),
-    };
-
-    const signedTx = await walletClient.signTransaction(tx);
-    const txHash = await publicClient.sendRawTransaction({
-        serializedTransaction: signedTx,
-    });
-
-    return { txHash, tokenIds };
-}
-
-/**
- * Large batch transfer with chunking (>100 tokens)
- */
-async function largeBatchTransfer(params: any): Promise<BatchTransferResult> {
-    const {
-        spgAddress,
-        from,
-        to,
-        tokenIds,
-        spenderAccount,
-        publicClient,
-        walletClient,
-        chain,
-    } = params;
-
-    const txHashes: string[] = [];
-    const processedTokenIds: string[] = [];
-    let totalGasUsed = BigInt(0);
-
-    // Process in chunks
-    const chunkSize = BATCH_SIZES.MEDIUM;
-    for (let i = 0; i < tokenIds.length; i += chunkSize) {
-        const chunk = tokenIds.slice(i, i + chunkSize);
-
-        console.log(
-            `Processing batch ${Math.floor(i / chunkSize) + 1} of ${Math.ceil(
-                tokenIds.length / chunkSize
-            )}`
-        );
-
-        try {
-            const result = await batchTransfer({
-                spgAddress,
-                from,
-                to,
-                tokenIds: chunk,
-                spenderAccount,
-                publicClient,
-                walletClient,
-                chain,
-            });
-
-            txHashes.push(result.txHash);
-            processedTokenIds.push(...chunk);
-
-            // Wait for transaction receipt to get gas used
-            const receipt = await publicClient.waitForTransactionReceipt({
-                hash: result.txHash as `0x${string}`,
-            });
-
-            totalGasUsed += receipt.gasUsed;
-
-            // Delay between batches to avoid rate limiting
-            if (i + chunkSize < tokenIds.length) {
-                await new Promise((resolve) => setTimeout(resolve, 2000));
-            }
-        } catch (error) {
-            console.error(
-                `Batch ${Math.floor(i / chunkSize) + 1} failed:`,
-                error
-            );
-            // Optionally implement retry logic here
-            throw error;
-        }
-    }
+    const tx = await walletClient.writeContract(request);
 
     return {
-        txHashes,
-        tokenIds: processedTokenIds,
-        totalGasUsed,
+        txHash: tx,
+        tokenIds: ownedTokenIds,
     };
 }
 

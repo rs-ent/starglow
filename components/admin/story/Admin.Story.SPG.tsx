@@ -6,11 +6,13 @@ import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
 import { useMetadata } from "@/app/story/metadata/hooks";
 import { useArtistsGet } from "@/app/hooks/useArtists";
 import { useToast } from "@/app/hooks/useToast";
+import { useTBA } from "@/app/story/tba/hooks";
 import { useEffect, useState } from "react";
 import { TbTopologyStar3 } from "react-icons/tb";
 import { SiEthereum } from "react-icons/si";
+import { FaShieldAlt, FaCube } from "react-icons/fa";
 import { useSession } from "next-auth/react";
-import { BlockchainNetwork, ipfs } from "@prisma/client";
+import { BlockchainNetwork, ipfs, TBAContractType } from "@prisma/client";
 
 export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
     const toast = useToast();
@@ -24,6 +26,8 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
         networkId: string;
         walletAddress: string;
         contractAddress: string;
+        tbaRegistry: string;
+        tbaImplementation: string;
         selectedMetadata: ipfs | null;
         artistId: string;
     }>({
@@ -32,6 +36,8 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
         networkId: "",
         walletAddress: "",
         contractAddress: "",
+        tbaRegistry: "",
+        tbaImplementation: "",
         selectedMetadata: null,
         artistId: "",
     });
@@ -61,6 +67,16 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
         },
     });
 
+    const { tbaContracts, isTBAContractsLoading, tbaAddresses } = useTBA({
+        getTBAContractsInput: {
+            networkId: form.networkId || undefined,
+            isActive: true,
+        },
+        getTBAAddressesInput: {
+            networkId: form.networkId || "default",
+        },
+    });
+
     const {
         getSPGContractsData,
         getSPGContractsIsLoading,
@@ -74,10 +90,10 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
         getSPGsError,
         getSPGsRefetch,
 
-        deployCustomSPGContractMutation,
-        deployCustomSPGContractMutationAsync,
-        deployCustomSPGContractMutationIsPending,
-        deployCustomSPGContractMutationIsError,
+        deploySPGNFTFactoryMutation,
+        deploySPGNFTFactoryMutationAsync,
+        deploySPGNFTFactoryMutationIsPending,
+        deploySPGNFTFactoryMutationIsError,
 
         createSPGMutation,
         createSPGMutationAsync,
@@ -155,12 +171,32 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
         }
     }, [step, form.networkId, escrowWallets]);
 
-    // 배포 핸들러
+    // TBA 주소 자동 설정
+    useEffect(() => {
+        if (tbaAddresses && form.networkId) {
+            if (tbaAddresses.registry) {
+                setForm((f) => ({
+                    ...f,
+                    tbaRegistry: tbaAddresses.registry || "",
+                }));
+            }
+            if (tbaAddresses.implementation) {
+                setForm((f) => ({
+                    ...f,
+                    tbaImplementation: tbaAddresses.implementation || "",
+                }));
+            }
+        }
+    }, [tbaAddresses, form.networkId]);
+
+    // 배포 핸들러 - TBA 주소들을 직접 전달하도록 수정
     const handleDeploy = async () => {
         if (
             !form.networkId ||
             !form.walletAddress ||
             !form.contractAddress ||
+            !form.tbaRegistry ||
+            !form.tbaImplementation ||
             !form.selectedMetadata ||
             !form.artistId ||
             !form.name ||
@@ -183,11 +219,13 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                 symbol: form.symbol,
                 selectedMetadata: form.selectedMetadata,
                 artistId: form.artistId,
+                tbaRegistry: form.tbaRegistry,
+                tbaImplementation: form.tbaImplementation,
             });
 
             toast.success("SPG가 성공적으로 배포되었습니다!");
             setSuccessMsg(`Contract Address: ${result.address}`);
-            setStep(8); // 성공 화면으로 이동
+            setStep(9); // 성공 화면으로 이동
             getSPGsRefetch();
         } catch (err: any) {
             setError(err?.message || "배포 중 오류가 발생했습니다.");
@@ -204,6 +242,7 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
             "네트워크",
             "지갑",
             "컨트랙트",
+            "TBA",
             "메타데이터",
             "아티스트",
             "정보 입력",
@@ -391,7 +430,7 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
             )}
 
             {/* Progress Bar */}
-            {step > 0 && step < 8 && <ProgressBar />}
+            {step > 0 && step < 9 && <ProgressBar />}
 
             {/* Step 0: 인트로 */}
             {step === 0 && (
@@ -706,7 +745,7 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                                     onClick={async () => {
                                         try {
                                             const result =
-                                                await deployCustomSPGContractMutationAsync(
+                                                await deploySPGNFTFactoryMutationAsync(
                                                     {
                                                         userId,
                                                         networkId:
@@ -733,11 +772,11 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                                         }
                                     }}
                                     disabled={
-                                        deployCustomSPGContractMutationIsPending
+                                        deploySPGNFTFactoryMutationIsPending
                                     }
                                     className="rounded-2xl border-4 border-dashed border-orange-500/50 hover:border-orange-400 bg-orange-900/10 hover:bg-orange-900/20 transition-all duration-300 aspect-square flex flex-col items-center justify-center group"
                                 >
-                                    {deployCustomSPGContractMutationIsPending ? (
+                                    {deploySPGNFTFactoryMutationIsPending ? (
                                         <>
                                             <div className="w-12 h-12 border-4 border-orange-500/30 border-t-orange-500 rounded-full animate-spin mb-3"></div>
                                             <p className="text-orange-400 font-bold">
@@ -784,8 +823,219 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                 </div>
             )}
 
-            {/* Step 4: 메타데이터 선택 */}
+            {/* Step 4: TBA 선택 (새로 추가) */}
             {step === 4 && (
+                <div className="w-full max-w-4xl mx-auto">
+                    <h2 className="text-3xl font-bold text-white mb-2 text-center">
+                        Token Bound Account 설정
+                    </h2>
+                    <p className="text-blue-300 text-center mb-8">
+                        NFT와 연결될 TBA 컨트랙트를 선택하세요
+                    </p>
+
+                    {isTBAContractsLoading ? (
+                        <div className="text-center text-blue-200 py-8">
+                            TBA 컨트랙트 확인 중...
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {/* TBA Registry 선택 */}
+                            <div className="bg-gradient-to-br from-[#23243a] via-[#2a2342] to-[#181c2b] rounded-2xl p-6 border border-blue-800/30">
+                                <h3 className="text-lg font-bold text-cyan-300 mb-4 flex items-center gap-2">
+                                    <FaShieldAlt /> TBA Registry
+                                </h3>
+                                {tbaContracts?.filter(
+                                    (c) =>
+                                        c.type === TBAContractType.REGISTRY &&
+                                        c.networkId === form.networkId
+                                ).length === 0 ? (
+                                    <p className="text-blue-300 text-center py-4">
+                                        이 네트워크에 배포된 Registry가
+                                        없습니다.
+                                        <button
+                                            onClick={() => {
+                                                toast.info(
+                                                    "TBA 관리 페이지에서 Registry를 먼저 배포해주세요."
+                                                );
+                                            }}
+                                            className="block mx-auto mt-2 text-cyan-400 hover:text-cyan-300"
+                                        >
+                                            TBA 배포하러 가기 →
+                                        </button>
+                                    </p>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {tbaContracts
+                                            ?.filter(
+                                                (c) =>
+                                                    c.type ===
+                                                        TBAContractType.REGISTRY &&
+                                                    c.networkId ===
+                                                        form.networkId
+                                            )
+                                            .map((contract) => (
+                                                <button
+                                                    key={contract.id}
+                                                    onClick={() =>
+                                                        setForm((f) => ({
+                                                            ...f,
+                                                            tbaRegistry:
+                                                                contract.address,
+                                                        }))
+                                                    }
+                                                    className={`
+                                                        relative p-4 rounded-xl border-2 transition-all
+                                                        ${
+                                                            form.tbaRegistry ===
+                                                            contract.address
+                                                                ? "border-cyan-400 bg-cyan-900/30"
+                                                                : "border-blue-700/50 bg-blue-900/20 hover:border-cyan-500/50"
+                                                        }
+                                                    `}
+                                                >
+                                                    <p className="text-white font-semibold">
+                                                        {contract.name ||
+                                                            "Registry"}
+                                                    </p>
+                                                    <p className="text-xs text-blue-300 font-mono mt-1">
+                                                        {contract.address.slice(
+                                                            0,
+                                                            10
+                                                        )}
+                                                        ...
+                                                        {contract.address.slice(
+                                                            -8
+                                                        )}
+                                                    </p>
+                                                    {form.tbaRegistry ===
+                                                        contract.address && (
+                                                        <div className="absolute top-2 right-2">
+                                                            <div className="w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center">
+                                                                <span className="text-xs text-black">
+                                                                    ✓
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* TBA Implementation 선택 */}
+                            <div className="bg-gradient-to-br from-[#23243a] via-[#2a2342] to-[#181c2b] rounded-2xl p-6 border border-purple-800/30">
+                                <h3 className="text-lg font-bold text-purple-300 mb-4 flex items-center gap-2">
+                                    <FaCube /> TBA Implementation
+                                </h3>
+                                {tbaContracts?.filter(
+                                    (c) =>
+                                        c.type ===
+                                            TBAContractType.IMPLEMENTATION &&
+                                        c.networkId === form.networkId
+                                ).length === 0 ? (
+                                    <p className="text-blue-300 text-center py-4">
+                                        이 네트워크에 배포된 Implementation이
+                                        없습니다.
+                                        <button
+                                            onClick={() => {
+                                                toast.info(
+                                                    "TBA 관리 페이지에서 Implementation을 먼저 배포해주세요."
+                                                );
+                                            }}
+                                            className="block mx-auto mt-2 text-purple-400 hover:text-purple-300"
+                                        >
+                                            TBA 배포하러 가기 →
+                                        </button>
+                                    </p>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {tbaContracts
+                                            ?.filter(
+                                                (c) =>
+                                                    c.type ===
+                                                        TBAContractType.IMPLEMENTATION &&
+                                                    c.networkId ===
+                                                        form.networkId
+                                            )
+                                            .map((contract) => (
+                                                <button
+                                                    key={contract.id}
+                                                    onClick={() =>
+                                                        setForm((f) => ({
+                                                            ...f,
+                                                            tbaImplementation:
+                                                                contract.address,
+                                                        }))
+                                                    }
+                                                    className={`
+                                                        relative p-4 rounded-xl border-2 transition-all
+                                                        ${
+                                                            form.tbaImplementation ===
+                                                            contract.address
+                                                                ? "border-purple-400 bg-purple-900/30"
+                                                                : "border-purple-700/50 bg-purple-900/20 hover:border-purple-500/50"
+                                                        }
+                                                    `}
+                                                >
+                                                    <p className="text-white font-semibold">
+                                                        {contract.name ||
+                                                            "Implementation"}
+                                                    </p>
+                                                    <p className="text-xs text-purple-300 font-mono mt-1">
+                                                        {contract.address.slice(
+                                                            0,
+                                                            10
+                                                        )}
+                                                        ...
+                                                        {contract.address.slice(
+                                                            -8
+                                                        )}
+                                                    </p>
+                                                    {form.tbaImplementation ===
+                                                        contract.address && (
+                                                        <div className="absolute top-2 right-2">
+                                                            <div className="w-5 h-5 bg-purple-400 rounded-full flex items-center justify-center">
+                                                                <span className="text-xs text-black">
+                                                                    ✓
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-between mt-8">
+                        <button
+                            onClick={() => setStep(3)}
+                            className="px-6 py-3 bg-blue-900/50 text-blue-300 rounded-xl hover:bg-blue-800/50 transition-colors"
+                        >
+                            ← 이전
+                        </button>
+                        <button
+                            onClick={() => setStep(5)}
+                            disabled={
+                                !form.tbaRegistry || !form.tbaImplementation
+                            }
+                            className={`px-6 py-3 rounded-xl font-bold transition-all ${
+                                form.tbaRegistry && form.tbaImplementation
+                                    ? "bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 text-white hover:scale-105"
+                                    : "bg-gray-700 text-gray-400 cursor-not-allowed"
+                            }`}
+                        >
+                            다음 →
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Step 5: 메타데이터 선택 (기존 Step 4) */}
+            {step === 5 && (
                 <div className="w-full max-w-5xl mx-auto">
                     <h2 className="text-3xl font-bold text-white mb-2 text-center">
                         컬렉션 메타데이터를 선택하세요
@@ -864,13 +1114,13 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
 
                     <div className="flex justify-between">
                         <button
-                            onClick={() => setStep(3)}
+                            onClick={() => setStep(4)}
                             className="px-6 py-3 bg-blue-900/50 text-blue-300 rounded-xl hover:bg-blue-800/50 transition-colors"
                         >
                             ← 이전
                         </button>
                         <button
-                            onClick={() => setStep(5)}
+                            onClick={() => setStep(6)}
                             disabled={!form.selectedMetadata}
                             className={`px-6 py-3 rounded-xl font-bold transition-all ${
                                 form.selectedMetadata
@@ -884,8 +1134,8 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                 </div>
             )}
 
-            {/* Step 5: 아티스트 선택 */}
-            {step === 5 && (
+            {/* Step 6: 아티스트 선택 (기존 Step 5) */}
+            {step === 6 && (
                 <div className="w-full max-w-5xl mx-auto">
                     <h2 className="text-3xl font-bold text-white mb-2 text-center">
                         어떤 아티스트와 연결할까요?
@@ -940,13 +1190,13 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
 
                     <div className="flex justify-between">
                         <button
-                            onClick={() => setStep(4)}
+                            onClick={() => setStep(5)}
                             className="px-6 py-3 bg-blue-900/50 text-blue-300 rounded-xl hover:bg-blue-800/50 transition-colors"
                         >
                             ← 이전
                         </button>
                         <button
-                            onClick={() => setStep(6)}
+                            onClick={() => setStep(7)}
                             disabled={!form.artistId}
                             className={`px-6 py-3 rounded-xl font-bold transition-all ${
                                 form.artistId
@@ -960,8 +1210,8 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                 </div>
             )}
 
-            {/* Step 6: 컬렉션 정보 입력 */}
-            {step === 6 && (
+            {/* Step 7: 컬렉션 정보 입력 (기존 Step 6) */}
+            {step === 7 && (
                 <div className="w-full max-w-2xl mx-auto">
                     <h2 className="text-3xl font-bold text-white mb-2 text-center">
                         컬렉션 정보를 입력하세요
@@ -1018,13 +1268,13 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
 
                     <div className="flex justify-between mt-8">
                         <button
-                            onClick={() => setStep(5)}
+                            onClick={() => setStep(6)}
                             className="px-6 py-3 bg-blue-900/50 text-blue-300 rounded-xl hover:bg-blue-800/50 transition-colors"
                         >
                             ← 이전
                         </button>
                         <button
-                            onClick={() => setStep(7)}
+                            onClick={() => setStep(8)}
                             disabled={!form.name || !form.symbol}
                             className={`px-6 py-3 rounded-xl font-bold transition-all ${
                                 form.name && form.symbol
@@ -1038,8 +1288,8 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                 </div>
             )}
 
-            {/* Step 7: 최종 확인 */}
-            {step === 7 && (
+            {/* Step 8: 최종 확인 (기존 Step 7) */}
+            {step === 8 && (
                 <div className="w-full max-w-3xl mx-auto">
                     <h2 className="text-3xl font-bold text-white mb-2 text-center">
                         배포 정보를 확인하세요
@@ -1087,6 +1337,24 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                                     {form.selectedMetadata?.cid}
                                 </p>
                             </div>
+                            <div className="bg-indigo-900/20 rounded-xl p-4 border border-indigo-700/50">
+                                <h3 className="text-indigo-400 font-bold mb-2">
+                                    TBA Registry
+                                </h3>
+                                <p className="text-white font-mono text-xs">
+                                    {form.tbaRegistry.slice(0, 10)}...
+                                    {form.tbaRegistry.slice(-8)}
+                                </p>
+                            </div>
+                            <div className="bg-teal-900/20 rounded-xl p-4 border border-teal-700/50">
+                                <h3 className="text-teal-400 font-bold mb-2">
+                                    TBA Implementation
+                                </h3>
+                                <p className="text-white font-mono text-xs">
+                                    {form.tbaImplementation.slice(0, 10)}...
+                                    {form.tbaImplementation.slice(-8)}
+                                </p>
+                            </div>
                             <div className="bg-pink-900/20 rounded-xl p-4 border border-pink-700/50">
                                 <h3 className="text-pink-400 font-bold mb-2">
                                     아티스트
@@ -1126,7 +1394,7 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
 
                     <div className="flex justify-between mt-8">
                         <button
-                            onClick={() => setStep(6)}
+                            onClick={() => setStep(7)}
                             className="px-6 py-3 bg-blue-900/50 text-blue-300 rounded-xl hover:bg-blue-800/50 transition-colors"
                         >
                             ← 이전
@@ -1155,8 +1423,8 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                 </div>
             )}
 
-            {/* Step 8: 성공 화면 */}
-            {step === 8 && (
+            {/* Step 9: 성공 화면 (기존 Step 8) */}
+            {step === 9 && (
                 <div className="w-full max-w-3xl mx-auto text-center">
                     <div className="mb-8">
                         <div className="text-8xl mb-4 animate-bounce">🎉</div>
@@ -1184,6 +1452,8 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                                     networkId: "",
                                     walletAddress: "",
                                     contractAddress: "",
+                                    tbaRegistry: "",
+                                    tbaImplementation: "",
                                     selectedMetadata: null,
                                     artistId: "",
                                 });
