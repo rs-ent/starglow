@@ -5,9 +5,17 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 
 interface DoormanProps {
     text?: string;
+    iconSize?: number;
+    textSize?: number;
+    row?: boolean;
 }
 
-export default function Doorman({ text }: DoormanProps) {
+export default function Doorman({
+    text,
+    iconSize = 70,
+    textSize = 20,
+    row,
+}: DoormanProps) {
     return (
         <div
             className="absolute inset-0 z-30 flex items-center justify-center"
@@ -19,18 +27,23 @@ export default function Doorman({ text }: DoormanProps) {
                     "bg-gradient-to-br from-[rgba(22,11,59,0.2)] to-[rgba(104,77,153,0.2)]"
                 )}
             />
-            <div className="flex flex-col items-center gap-4">
+            <div
+                className={cn(
+                    "flex items-center gap-4",
+                    row ? "flex-row" : "flex-col"
+                )}
+            >
                 <img
                     src="/icons/lock.svg"
                     alt="lock"
                     className={cn(
-                        getResponsiveClass(70).frameClass,
+                        getResponsiveClass(iconSize).frameClass,
                         "aspect-square"
                     )}
                 />
                 <p
                     className={cn(
-                        getResponsiveClass(20).textClass,
+                        getResponsiveClass(textSize).textClass,
                         "text-center whitespace-break-spaces"
                     )}
                 >

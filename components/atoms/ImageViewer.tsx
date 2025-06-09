@@ -13,6 +13,7 @@ interface ImageViewerProps {
     framePadding?: number;
     showTitle?: boolean;
     className?: string;
+    bgColor?: string;
 }
 
 export default function ImageViewer({
@@ -21,10 +22,10 @@ export default function ImageViewer({
     framePadding = 1,
     showTitle,
     className,
+    bgColor = "rgba(132, 78, 236, 0.2)",
 }: ImageViewerProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [isError, setIsError] = useState(false);
-    const [bgColor, setBgColor] = useState("#000000");
 
     const handleImageLoad = () => {
         setIsLoading(false);
@@ -66,7 +67,7 @@ export default function ImageViewer({
                             limitToBounds={false}
                         >
                             <TransformComponent
-                                wrapperClass="w-full h-full"
+                                wrapperClass="w-full h-full flex items-center justify-center"
                                 wrapperStyle={{
                                     width: "100%",
                                     height: "100%",
@@ -81,8 +82,7 @@ export default function ImageViewer({
                                         objectFit: "cover",
                                         userSelect: "none",
                                         pointerEvents: "all",
-                                        boxShadow:
-                                            "0 0 12px 2px rgba(132, 78, 236, 0.2)",
+                                        boxShadow: `0 0 12px 2px ${bgColor}`,
                                     }}
                                     draggable={false}
                                     onLoad={handleImageLoad}

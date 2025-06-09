@@ -1,6 +1,6 @@
 /// components/atoms/Quests.Button.tsx
 
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Player, Quest, QuestLog, ReferralLog } from "@prisma/client";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import InviteFriendsModal from "../atoms/InviteFriends.Modal";
 import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
 import { TokenGatingData } from "@/app/story/nft/actions";
+import Doorman from "../atoms/Doorman";
 
 // 디바운스 지연 시간 (밀리초)
 const DEBOUNCE_DELAY = 500;
@@ -84,6 +85,14 @@ function QuestsButton({
         "gradient-border morp-glass-1"
     );
     const [isReady, setIsReady] = useState<boolean>(false);
+
+    const singlePermission = useMemo(() => {
+        if (quest.needTokenAddress) {
+            return tokenGating ? tokenGating.hasToken : false;
+        }
+
+        return true;
+    }, [quest, tokenGating]);
 
     // 연속 클릭 방지 함수
     const preventRapidClicks = useCallback(() => {
@@ -493,10 +502,18 @@ function QuestsButton({
                             )}
                             aria-disabled={buttonState.disabled}
                         >
+                            {!singlePermission && (
+                                <Doorman
+                                    iconSize={40}
+                                    textSize={15}
+                                    row={true}
+                                />
+                            )}
                             <div
                                 className={cn(
                                     "flex flex-row items-center",
-                                    gapClass
+                                    gapClass,
+                                    !singlePermission && "blur-sm"
                                 )}
                             >
                                 {/* 퀘스트 아이콘 - 최적화된 이미지 로딩 */}
