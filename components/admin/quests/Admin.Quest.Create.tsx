@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAssetsGet } from "@/app/hooks/useAssets";
-import { useFactoryGet } from "@/app/hooks/useFactoryContracts";
 import {
     Select,
     SelectTrigger,
@@ -38,6 +37,8 @@ import FileUploader from "@/components/atoms/FileUploader";
 import { getYoutubeVideoId } from "@/lib/utils/youtube";
 import YoutubeViewer from "@/components/atoms/YoutubeViewer";
 import DateTimePicker from "@/components/atoms/DateTimePicker";
+import { useSPG } from "@/app/story/spg/hooks";
+import { SPG } from "@/app/story/spg/actions";
 
 type QuestCreateInput = Omit<Quest, "id" | "createdAt" | "updatedAt">;
 type QuestUpdateInput = Partial<QuestCreateInput> & { id: string };
@@ -119,9 +120,9 @@ export default function AdminQuestCreate({
     const { assets, isLoading: isLoadingAssets } = useAssetsGet({
         getAssetsInput: { isActive: true },
     });
-    const { everyCollections, isLoading: isLoadingCollections } = useFactoryGet(
-        {}
-    );
+    const { getSPGsData, getSPGIsLoading } = useSPG({
+        getSPGsInput: {},
+    });
     const toast = useToast();
 
     // 퀘스트 타입
@@ -320,7 +321,8 @@ export default function AdminQuestCreate({
                     formData={formData}
                     artists={artists}
                     assets={assets}
-                    everyCollections={everyCollections}
+                    getSPGsData={getSPGsData}
+                    getSPGIsLoading={getSPGIsLoading}
                     isLoadingAssets={isLoadingAssets}
                     onChange={handleFormChange}
                     onSubmit={handleSubmit}
@@ -341,7 +343,8 @@ export default function AdminQuestCreate({
                     formData={formData}
                     artists={artists}
                     assets={assets}
-                    everyCollections={everyCollections}
+                    getSPGsData={getSPGsData}
+                    getSPGIsLoading={getSPGIsLoading}
                     isLoadingAssets={isLoadingAssets}
                     onChange={handleFormChange}
                     onSubmit={handleSubmit}
@@ -405,7 +408,8 @@ interface QuestFormProps {
               assets: Array<Asset> | undefined;
           }
         | undefined;
-    everyCollections: Array<CollectionContract> | undefined;
+    getSPGsData: Array<SPG> | undefined;
+    getSPGIsLoading: boolean;
     isLoadingAssets: boolean;
     onChange: (field: keyof QuestFormData, value: any) => void;
     onSubmit: (e: React.FormEvent) => void;
@@ -420,7 +424,8 @@ function URLQuestForm({
     formData,
     artists,
     assets,
-    everyCollections,
+    getSPGsData,
+    getSPGIsLoading,
     isLoadingAssets,
     onChange,
     onSubmit,
@@ -634,31 +639,33 @@ function URLQuestForm({
                                     placeholder="토큰 컨트랙트 주소를 입력하세요"
                                     className="mb-2"
                                 />
+                                {/* 컬렉션 선택 UI */}
                                 <div className="flex gap-4 overflow-auto">
-                                    {everyCollections?.map(
-                                        (collection: any) => (
-                                            <div
-                                                key={collection.address}
-                                                onClick={() =>
-                                                    onChange(
-                                                        "needTokenAddress",
-                                                        collection.address
-                                                    )
-                                                }
-                                                className={`cursor-pointer w-[300px] h-[150px] ${
-                                                    formData.needTokenAddress ===
-                                                    collection.address
-                                                        ? "ring-2 ring-primary"
-                                                        : ""
-                                                }`}
-                                            >
-                                                <CollectionCard
-                                                    collection={collection}
-                                                    isLinked={false}
-                                                />
-                                            </div>
-                                        )
-                                    )}
+                                    {getSPGsData?.map((spg) => (
+                                        <div
+                                            key={spg.address}
+                                            onClick={() =>
+                                                onChange(
+                                                    "needTokenAddress",
+                                                    spg.address
+                                                )
+                                            }
+                                            className={`cursor-pointer w-[300px] h-[150px] ${
+                                                formData.needTokenAddress ===
+                                                spg.address
+                                                    ? "ring-2 ring-primary"
+                                                    : ""
+                                            }`}
+                                        >
+                                            <CollectionCard
+                                                spg={spg}
+                                                showPrice={false}
+                                                showSharePercentage={false}
+                                                showCirculation={false}
+                                                isLinked={false}
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -1243,7 +1250,8 @@ function ReferralQuestForm({
     formData,
     artists,
     assets,
-    everyCollections,
+    getSPGsData,
+    getSPGIsLoading,
     isLoadingAssets,
     onChange,
     onSubmit,

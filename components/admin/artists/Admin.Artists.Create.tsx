@@ -3,7 +3,6 @@
 "use client";
 
 import { useArtistSet } from "@/app/hooks/useArtists";
-import { useFactoryGet } from "@/app/hooks/useFactoryContracts";
 import { Artist } from "@prisma/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,11 @@ import { Label } from "@/components/ui/label";
 import FileUploader from "@/components/atoms/FileUploader";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/tailwind";
+import { useSPG } from "@/app/story/spg/hooks";
+import { SPG } from "@/app/story/spg/actions";
+import CollectionCard from "@/components/nfts/NFTs.CollectionCard";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, Plus } from "lucide-react";
 
 interface AdminArtistsCreateProps {
     mode: "create" | "update";
@@ -35,8 +39,11 @@ export default function AdminArtistsCreate({
         isUpdating,
         updateArtistError,
     } = useArtistSet();
-    const { everyCollections, isLoading: isLoadingEveryCollections } =
-        useFactoryGet({});
+
+    const { getSPGsData, getSPGIsLoading } = useSPG({
+        getSPGsInput: {},
+    });
+
     const [name, setName] = useState(initialData?.name ?? "");
     const [description, setDescription] = useState(
         initialData?.description ?? ""
@@ -631,62 +638,6 @@ export default function AdminArtistsCreate({
                             )}
                         </div>
                     </div>
-                </div>
-
-                {/* 3. 컬렉션 및 추가 정보 */}
-                <div className="rounded-lg bg-card shadow p-6 mb-8">
-                    <h2 className="text-lg font-semibold mb-4 text-foreground">
-                        컬렉션 및 추가 정보
-                    </h2>
-                    <div className="mb-4">
-                        <Label className="text-foreground">Collections</Label>
-                        <div className="flex flex-wrap gap-2">
-                            {isLoadingEveryCollections ? (
-                                <div>Loading collections...</div>
-                            ) : (
-                                everyCollections?.map((col: any) => (
-                                    <label
-                                        key={col.id}
-                                        className="flex items-center gap-1"
-                                    >
-                                        <Checkbox
-                                            checked={selectedCollectionIds.includes(
-                                                col.id
-                                            )}
-                                            onCheckedChange={() =>
-                                                setSelectedCollectionIds(
-                                                    (prev) =>
-                                                        prev.includes(col.id)
-                                                            ? prev.filter(
-                                                                  (cid) =>
-                                                                      cid !==
-                                                                      col.id
-                                                              )
-                                                            : [...prev, col.id]
-                                                )
-                                            }
-                                        />
-                                        <span className="text-foreground">
-                                            {col.name}
-                                        </span>
-                                    </label>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                    <Label className="text-foreground">
-                        Additional Info (JSON)
-                    </Label>
-                    <Textarea
-                        placeholder="Additional Info (JSON)"
-                        value={
-                            typeof additionalInfo === "string"
-                                ? additionalInfo
-                                : JSON.stringify(additionalInfo)
-                        }
-                        onChange={(e) => setAdditionalInfo(e.target.value)}
-                        className="bg-background text-foreground"
-                    />
                 </div>
 
                 {/* 4. 제출 버튼 */}

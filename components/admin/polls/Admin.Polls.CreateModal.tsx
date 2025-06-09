@@ -8,7 +8,6 @@ import {
 } from "@/app/actions/polls";
 import { Poll, PollCategory, PollStatus } from "@prisma/client";
 import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
-import { useFactoryGet } from "@/app/hooks/useFactoryContracts";
 import { useAssetsGet } from "@/app/hooks/useAssets";
 import {
     Dialog,
@@ -55,6 +54,7 @@ import { ChevronDown } from "lucide-react";
 import YoutubeViewer from "@/components/atoms/YoutubeViewer";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useSPG } from "@/app/story/spg/hooks";
 
 function Section({
     title,
@@ -117,8 +117,9 @@ export default function AdminPollsCreateModal({
         };
     }, [pollsList]);
     const { createPoll, updatePoll, isLoading, error } = usePollsSet();
-    const { everyCollections, isLoading: isLoadingEveryCollections } =
-        useFactoryGet({});
+    const { getSPGsData, getSPGIsLoading } = useSPG({
+        getSPGsInput: {},
+    });
 
     const { assets, isLoading: isLoadingAssets } = useAssetsGet({
         getAssetsInput: {
@@ -700,45 +701,37 @@ export default function AdminPollsCreateModal({
 
                                                 {/* 컬렉션 선택 UI */}
                                                 <div className="flex gap-4 overflow-auto">
-                                                    {everyCollections?.map(
-                                                        (collection) => (
-                                                            <div
-                                                                key={
-                                                                    collection.address
+                                                    {getSPGsData?.map((spg) => (
+                                                        <div
+                                                            key={spg.address}
+                                                            onClick={() =>
+                                                                handleFormChange(
+                                                                    "needTokenAddress",
+                                                                    spg.address
+                                                                )
+                                                            }
+                                                            className={`cursor-pointer w-[300px] h-[150px] ${
+                                                                formData.needTokenAddress ===
+                                                                spg.address
+                                                                    ? "ring-2 ring-primary"
+                                                                    : ""
+                                                            }`}
+                                                        >
+                                                            <CollectionCard
+                                                                spg={spg}
+                                                                showPrice={
+                                                                    false
                                                                 }
-                                                                onClick={() =>
-                                                                    handleFormChange(
-                                                                        "needTokenAddress",
-                                                                        collection.address
-                                                                    )
+                                                                showSharePercentage={
+                                                                    false
                                                                 }
-                                                                className={`cursor-pointer w-[300px] h-[150px] ${
-                                                                    formData.needTokenAddress ===
-                                                                    collection.address
-                                                                        ? "ring-2 ring-primary"
-                                                                        : ""
-                                                                }`}
-                                                            >
-                                                                <CollectionCard
-                                                                    collection={
-                                                                        collection
-                                                                    }
-                                                                    showPrice={
-                                                                        false
-                                                                    }
-                                                                    showSharePercentage={
-                                                                        false
-                                                                    }
-                                                                    showCirculation={
-                                                                        false
-                                                                    }
-                                                                    isLinked={
-                                                                        false
-                                                                    }
-                                                                />
-                                                            </div>
-                                                        )
-                                                    )}
+                                                                showCirculation={
+                                                                    false
+                                                                }
+                                                                isLinked={false}
+                                                            />
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         </div>

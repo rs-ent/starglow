@@ -2,8 +2,6 @@
 
 "use client";
 
-import { CollectionContract } from "@prisma/client";
-import { useMetadata } from "@/app/hooks/useMetadata";
 import {
     Card,
     CardContent,
@@ -16,10 +14,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import Link from "next/link";
 import { CircleDollarSign, Users, CheckCircle2 } from "lucide-react";
-import { METADATA_TYPE } from "@/app/actions/metadata";
+import { SPG } from "@/app/story/spg/actions";
+import { useMemo } from "react";
 
 interface CollectionCardProps {
-    collection: CollectionContract;
+    spg: SPG;
     nftCount?: number;
     showPrice?: boolean;
     showSharePercentage?: boolean;
@@ -29,7 +28,7 @@ interface CollectionCardProps {
 }
 
 export default function CollectionCard({
-    collection,
+    spg,
     nftCount,
     showPrice = true,
     showSharePercentage = true,
@@ -37,24 +36,29 @@ export default function CollectionCard({
     isVerified = false,
     isLinked = true,
 }: CollectionCardProps) {
-    const { metadataByCollectionAddress } = useMetadata({
-        collectionAddress: collection.address,
-    });
+    const sharePercentage = useMemo(() => {
+        return spg.sharePercentage ?? 0;
+    }, [spg]);
 
-    const metadata = metadataByCollectionAddress?.metadata as METADATA_TYPE;
-    const sharePercentage = metadata?.attributes?.find(
-        (attr) => attr.trait_type === "Share Percentage"
-    )?.value;
+    // 배경색과 전경색이 없을 경우를 위한 기본값
+    const backgroundColor = spg.backgroundColor || "bg-card/50";
+    const foregroundColor = spg.foregroundColor || "text-foreground";
 
     return (
-        <Link href={isLinked ? `/collections/${collection.address}` : ""}>
-            <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 bg-card/50 hover:bg-card">
+        <Link href={isLinked ? `/collections/${spg.address}` : ""}>
+            <Card
+                className={`group overflow-hidden hover:shadow-xl transition-all duration-300 hover:bg-card border border-border/50`}
+                style={{
+                    background: `linear-gradient(to bottom, ${backgroundColor}, rgba(0, 0, 0, 0.5))`,
+                    color: spg.foregroundColor || undefined,
+                }}
+            >
                 {/* 이미지 섹션 */}
-                <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                    {metadata?.image ? (
+                <div className="relative aspect-[4/3] overflow-hidden bg-muted/50">
+                    {spg.imageUrl ? (
                         <Image
-                            src={metadata.image}
-                            alt={collection.name}
+                            src={spg.imageUrl}
+                            alt={spg.name}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -73,18 +77,24 @@ export default function CollectionCard({
                         {showPrice && (
                             <Badge
                                 variant="secondary"
-                                className="font-bold px-3 py-1.5"
+                                className="font-medium px-3 py-1.5 bg-background/90 backdrop-blur-sm border border-border/50"
+                                style={{
+                                    color: spg.foregroundColor || undefined,
+                                }}
                             >
-                                <CircleDollarSign className="w-4 h-4 mr-1 inline" />
-                                ${collection.price}
+                                <CircleDollarSign className="w-4 h-4 mr-1.5 inline" />
+                                ${spg.price}
                             </Badge>
                         )}
                         {nftCount !== undefined && (
                             <Badge
                                 variant="secondary"
-                                className="font-bold px-3 py-1.5"
+                                className="font-medium px-3 py-1.5 bg-background/90 backdrop-blur-sm border border-border/50"
+                                style={{
+                                    color: spg.foregroundColor || undefined,
+                                }}
                             >
-                                <Users className="w-4 h-4 mr-1 inline" />
+                                <Users className="w-4 h-4 mr-1.5 inline" />
                                 {nftCount > 1
                                     ? `Owned ${nftCount} NFTs`
                                     : "Owned 1 NFT"}
@@ -93,47 +103,59 @@ export default function CollectionCard({
                         {isVerified && (
                             <Badge
                                 variant="default"
-                                className="font-bold px-3 py-1.5"
+                                className="font-medium px-3 py-1.5 bg-primary/90 text-primary-foreground"
                             >
-                                <CheckCircle2 className="w-4 h-4 mr-1 inline" />
+                                <CheckCircle2 className="w-4 h-4 mr-1.5 inline" />
                                 Verified
                             </Badge>
                         )}
                     </div>
                 </div>
 
-                <CardHeader className="space-y-1 p-4">
-                    <CardTitle className="text-xl font-bold line-clamp-1">
-                        {collection.name}
+                <CardHeader className="space-y-1.5 p-4">
+                    <CardTitle
+                        className="text-xl font-semibold line-clamp-1 transition-colors"
+                        style={{
+                            color: spg.foregroundColor || undefined,
+                        }}
+                    >
+                        {spg.name}
                     </CardTitle>
-                    {metadata?.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                            {metadata.description}
-                        </p>
-                    )}
                 </CardHeader>
 
-                {showCirculation ||
-                    (showSharePercentage && (
-                        <CardFooter className="flex items-center justify-between p-4 pt-0">
-                            {showCirculation && (
-                                <div className="flex items-center gap-2 text-sm">
-                                    <Users className="w-4 h-4 text-muted-foreground" />
-                                    <span className="text-muted-foreground">
-                                        {collection.circulation}
-                                    </span>
-                                </div>
-                            )}
-                            {sharePercentage && showSharePercentage && (
-                                <Badge
-                                    variant="outline"
+                {(showCirculation || showSharePercentage) && (
+                    <CardFooter className="flex items-center justify-between p-4 pt-0">
+                        {showCirculation && (
+                            <div className="flex items-center gap-2 text-sm">
+                                <Users className="w-4 h-4 text-muted-foreground" />
+                                <span
                                     className="font-medium"
+                                    style={{
+                                        color: spg.foregroundColor
+                                            ? `${spg.foregroundColor}99`
+                                            : undefined,
+                                    }}
                                 >
-                                    {sharePercentage} Share
-                                </Badge>
-                            )}
-                        </CardFooter>
-                    ))}
+                                    {spg.circulation}
+                                </span>
+                            </div>
+                        )}
+                        {sharePercentage && showSharePercentage && (
+                            <Badge
+                                variant="outline"
+                                className="font-medium border-primary/20"
+                                style={{
+                                    color: spg.foregroundColor || undefined,
+                                    borderColor: spg.foregroundColor
+                                        ? `${spg.foregroundColor}40`
+                                        : undefined,
+                                }}
+                            >
+                                {sharePercentage} Share
+                            </Badge>
+                        )}
+                    </CardFooter>
+                )}
             </Card>
         </Link>
     );
