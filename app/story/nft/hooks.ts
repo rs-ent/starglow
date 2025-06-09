@@ -6,13 +6,24 @@ import {
     useMintAndRegisterAsIPAssetMutation,
     useBatchRegisterAsIPAssetMutation,
 } from "./mutations";
-import { useNFTsQuery, useOwnersQuery, useCirculationQuery } from "./queries";
-import { getNFTsInput, getOwnersInput, getCirculationInput } from "./actions";
+import {
+    useNFTsQuery,
+    useOwnersQuery,
+    useCirculationQuery,
+    useTokenGatingQuery,
+} from "./queries";
+import {
+    getNFTsInput,
+    getOwnersInput,
+    getCirculationInput,
+    TokenGatingInput,
+} from "./actions";
 
 export interface useNFTInput {
     getNFTsInput?: getNFTsInput;
     getOwnersInput?: getOwnersInput;
     getCirculationInput?: getCirculationInput;
+    tokenGatingInput?: TokenGatingInput;
 }
 
 export function useNFT(input?: useNFTInput) {
@@ -39,6 +50,14 @@ export function useNFT(input?: useNFTInput) {
         error: circulationError,
         refetch: refetchCirculation,
     } = useCirculationQuery(input?.getCirculationInput);
+
+    const {
+        data: tokenGating,
+        isLoading: isTokenGatingLoading,
+        isError: isTokenGatingError,
+        error: tokenGatingError,
+        refetch: refetchTokenGating,
+    } = useTokenGatingQuery(input?.tokenGatingInput);
 
     const {
         mutate: mint,
@@ -122,6 +141,12 @@ export function useNFT(input?: useNFTInput) {
         isBatchRegisterAsIPAssetSuccess,
         isBatchRegisterAsIPAssetError,
         batchRegisterAsIPAssetError,
+
+        tokenGating,
+        isTokenGatingLoading,
+        isTokenGatingError,
+        tokenGatingError,
+        refetchTokenGating,
 
         useMintMutation,
         useRegisterAsIPAssetMutation,

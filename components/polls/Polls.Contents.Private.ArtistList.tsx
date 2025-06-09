@@ -2,20 +2,20 @@
 
 "use client";
 
-import {AdvancedTokenGateResult} from "@/app/actions/blockchain";
-import {usePollsGet} from "@/app/hooks/usePolls";
-import {Artist, Player, PollLog} from "@prisma/client";
+import { TokenGatingResult } from "@/app/story/nft/actions";
+import { usePollsGet } from "@/app/hooks/usePolls";
+import { Artist, Player, PollLog } from "@prisma/client";
 import PollsList from "./Polls.List";
 import PartialLoading from "../atoms/PartialLoading";
-import {cn} from "@/lib/utils/tailwind";
-import {memo, useCallback, useEffect, useMemo, useState} from "react";
-import {AnimatePresence, motion} from "framer-motion";
+import { cn } from "@/lib/utils/tailwind";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface PollsContentsPrivateArtistListProps {
     artist: Artist;
     player: Player | null;
     pollLogs?: PollLog[];
-    tokenGatingResult?: AdvancedTokenGateResult | null;
+    tokenGating?: TokenGatingResult | null;
     className?: string;
     fgColorFrom?: string;
     fgColorTo?: string;
@@ -30,7 +30,7 @@ function PollsContentsPrivateArtistList({
     artist,
     player,
     pollLogs,
-    tokenGatingResult,
+    tokenGating,
     className,
     fgColorFrom,
     fgColorTo,
@@ -54,7 +54,7 @@ function PollsContentsPrivateArtistList({
     // 필터링된 폴 로그 메모이제이션
     const filteredPollLogs = useMemo(() => {
         if (!pollLogs || !pollsList?.items) return [];
-        
+
         return pollLogs.filter((log) =>
             pollsList.items.some((poll) => poll.id === log.pollId)
         );
@@ -66,7 +66,7 @@ function PollsContentsPrivateArtistList({
             if (pollsList?.items && pollsList.items.length > 0) {
                 setHasPolls(true);
                 // 토큰 게이팅 결과가 있으면 바로 준비 완료
-                if (tokenGatingResult) {
+                if (tokenGating) {
                     setIsReady(true);
                 }
             } else {
@@ -74,78 +74,90 @@ function PollsContentsPrivateArtistList({
                 setIsReady(true); // 폴이 없어도 준비 완료로 설정하여 "No polls found" 메시지 표시
             }
         }
-    }, [pollsList, tokenGatingResult, isLoading]);
+    }, [pollsList, tokenGating, isLoading]);
 
     // 토큰 게이팅 결과가 변경될 때 준비 상태 업데이트
     useEffect(() => {
-        if (tokenGatingResult && hasPolls) {
+        if (tokenGating && hasPolls) {
             setIsReady(true);
         }
-    }, [tokenGatingResult, hasPolls]);
+    }, [tokenGating, hasPolls]);
 
     // 애니메이션 변수
-    const animations = useMemo(() => ({
-        container: {
-            hidden: { opacity: 0 },
-            visible: { 
-                opacity: 1,
-                transition: { duration: 0.4 }
+    const animations = useMemo(
+        () => ({
+            container: {
+                hidden: { opacity: 0 },
+                visible: {
+                    opacity: 1,
+                    transition: { duration: 0.4 },
+                },
+                exit: {
+                    opacity: 0,
+                    transition: { duration: 0.3 },
+                },
             },
-            exit: { 
-                opacity: 0,
-                transition: { duration: 0.3 }
-            }
-        },
-        content: {
-            hidden: { opacity: 0, y: 20 },
-            visible: { 
-                opacity: 1, 
-                y: 0,
-                transition: { duration: 0.5 }
-            }
-        }
-    }), []);
+            content: {
+                hidden: { opacity: 0, y: 20 },
+                visible: {
+                    opacity: 1,
+                    y: 0,
+                    transition: { duration: 0.5 },
+                },
+            },
+        }),
+        []
+    );
 
     // 로딩 상태 렌더링 최적화
-    const renderLoading = useCallback(() => (
-        <motion.div
-            variants={animations.content}
-            initial="hidden"
-            animate="visible"
-            className="w-full py-8 flex justify-center"
-        >
-            <PartialLoading text="Loading polls..." size="sm" />
-        </motion.div>
-    ), [animations.content]);
+    const renderLoading = useCallback(
+        () => (
+            <motion.div
+                variants={animations.content}
+                initial="hidden"
+                animate="visible"
+                className="w-full py-8 flex justify-center"
+            >
+                <PartialLoading text="Loading polls..." size="sm" />
+            </motion.div>
+        ),
+        [animations.content]
+    );
 
     // 에러 상태 렌더링 최적화
-    const renderError = useCallback(() => (
-        <motion.div
-            variants={animations.content}
-            initial="hidden"
-            animate="visible"
-            className="text-center text-red-400 py-6"
-        >
-            Error: error?.message || "Failed to load polls"
-        </motion.div>
-    ), [animations.content, error]);
+    const renderError = useCallback(
+        () => (
+            <motion.div
+                variants={animations.content}
+                initial="hidden"
+                animate="visible"
+                className="text-center text-red-400 py-6"
+            >
+                Error: error?.message || "Failed to load polls"
+            </motion.div>
+        ),
+        [animations.content, error]
+    );
 
     // 폴 없음 상태 렌더링 최적화
-    const renderNoPolls = useCallback(() => (
-        <motion.div
-            variants={animations.content}
-            initial="hidden"
-            animate="visible"
-            className="text-center text-2xl py-10 text-white/80"
-        >
-            No polls found for this artist
-        </motion.div>
-    ), [animations.content]);
+    const renderNoPolls = useCallback(
+        () => (
+            <motion.div
+                variants={animations.content}
+                initial="hidden"
+                animate="visible"
+                className="text-center text-2xl py-10 text-white/80"
+            >
+                No polls found for this artist
+            </motion.div>
+        ),
+        [animations.content]
+    );
 
     // 폴 목록 렌더링 최적화
     const renderPollsList = useCallback(() => {
         if (!pollsList?.items || !isReady) return null;
-        
+
         return (
             <motion.div
                 variants={animations.content}
@@ -156,7 +168,7 @@ function PollsContentsPrivateArtistList({
                     polls={pollsList.items}
                     artist={artist}
                     player={player}
-                    tokenGatingData={tokenGatingResult}
+                    tokenGating={tokenGating}
                     pollLogs={filteredPollLogs}
                     fgColorFrom={fgColorFrom}
                     fgColorTo={fgColorTo}
@@ -169,20 +181,20 @@ function PollsContentsPrivateArtistList({
             </motion.div>
         );
     }, [
-        pollsList?.items, 
-        isReady, 
-        artist, 
-        player, 
-        tokenGatingResult, 
+        pollsList?.items,
+        isReady,
+        artist,
+        player,
+        tokenGating,
         filteredPollLogs,
-        fgColorFrom, 
-        fgColorTo, 
-        bgColorFrom, 
-        bgColorTo, 
-        bgColorAccentFrom, 
-        bgColorAccentTo, 
+        fgColorFrom,
+        fgColorTo,
+        bgColorFrom,
+        bgColorTo,
+        bgColorAccentFrom,
+        bgColorAccentTo,
         forceSlidesToShow,
-        animations.content
+        animations.content,
     ]);
 
     // 컨텐츠 렌더링 결정
@@ -190,17 +202,26 @@ function PollsContentsPrivateArtistList({
         if (!isReady || isLoading) {
             return renderLoading();
         }
-        
+
         if (error) {
             return renderError();
         }
-        
+
         if (!pollsList?.items || pollsList.items.length === 0) {
             return renderNoPolls();
         }
-        
+
         return renderPollsList();
-    }, [isReady, isLoading, error, pollsList?.items, renderLoading, renderError, renderNoPolls, renderPollsList]);
+    }, [
+        isReady,
+        isLoading,
+        error,
+        pollsList?.items,
+        renderLoading,
+        renderError,
+        renderNoPolls,
+        renderPollsList,
+    ]);
 
     return (
         <motion.div

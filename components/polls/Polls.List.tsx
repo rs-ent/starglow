@@ -4,8 +4,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Artist, Player, Poll, PollLog } from "@prisma/client";
-import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
-import { TokenGatingResult } from "@/app/actions/polls";
+import { TokenGatingResult, TokenGatingData } from "@/app/story/nft/actions";
 import PollsListCard from "@/components/polls/Polls.List.Card";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
@@ -21,7 +20,7 @@ interface PollsListProps {
     pollLogs?: PollLog[];
     artist?: Artist | null;
     isLoading?: boolean;
-    tokenGatingData?: AdvancedTokenGateResult | null;
+    tokenGating?: TokenGatingResult | null;
     forceSlidesToShow?: number;
     fgColorFrom?: string;
     fgColorTo?: string;
@@ -37,7 +36,7 @@ function PollsList({
     pollLogs,
     artist,
     isLoading,
-    tokenGatingData,
+    tokenGating,
     forceSlidesToShow = 3,
     fgColorFrom,
     fgColorTo,
@@ -258,35 +257,15 @@ function PollsList({
             <Slider ref={sliderRef} {...sliderSettings}>
                 {polls.map((poll, index) => {
                     // 토큰 게이팅 데이터 처리
-                    const specificTokenGatingData: TokenGatingResult =
+                    const specificTokenGatingData: TokenGatingData =
                         !poll.needToken ||
                         !poll.needTokenAddress ||
-                        !tokenGatingData?.data
+                        !tokenGating?.data
                             ? {
-                                  success: true,
-                                  data: {
-                                      hasToken: true,
-                                      tokenCount: 0,
-                                      ownerWallets: [],
-                                  },
+                                  hasToken: true,
+                                  detail: [],
                               }
-                            : {
-                                  success: tokenGatingData.success,
-                                  data: {
-                                      hasToken:
-                                          tokenGatingData.data.hasToken[
-                                              poll.needTokenAddress
-                                          ],
-                                      tokenCount:
-                                          tokenGatingData.data.tokenCount[
-                                              poll.needTokenAddress
-                                          ],
-                                      ownerWallets:
-                                          tokenGatingData.data.ownerWallets[
-                                              poll.needTokenAddress
-                                          ],
-                                  },
-                              };
+                            : tokenGating.data[poll.needTokenAddress];
 
                     // 카드 스케일 계산 (중앙에 있는 카드가 더 크게 보이도록)
                     const isCenter = index === centerIndex;
@@ -316,7 +295,7 @@ function PollsList({
                                 player={player}
                                 pollLogs={pollIdToLogs[poll.id] || []}
                                 artist={artist}
-                                tokenGatingData={specificTokenGatingData}
+                                tokenGating={specificTokenGatingData}
                                 isSelected={isCenter}
                                 bgColorFrom={bgColorFrom}
                                 bgColorTo={bgColorTo}

@@ -2,14 +2,13 @@
 
 "use client";
 
-import {getResponsiveClass} from "@/lib/utils/responsiveClass";
-import {cn} from "@/lib/utils/tailwind";
-import {Player} from "@prisma/client";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+import { Player } from "@prisma/client";
 import PollsContents from "@/components/polls/Polls.Contents";
-import {User} from "next-auth";
-import {motion} from "framer-motion";
-import {memo, useEffect} from "react";
-import {useInView} from "react-intersection-observer";
+import { User } from "next-auth";
+import { motion } from "framer-motion";
+import { memo } from "react";
 
 interface PollsProps {
     user: User | null;
@@ -17,16 +16,6 @@ interface PollsProps {
 }
 
 function Polls({ user, player }: PollsProps) {
-    const { ref, inView } = useInView({
-        threshold: 0.1,
-        triggerOnce: true,
-    });
-
-    // 페이지 진입 시 스크롤 위치 초기화
-    useEffect(() => {
-        window.scrollTo(0, 0);
-    }, []);
-
     const containerVariants = {
         hidden: { opacity: 0 },
         visible: {
@@ -48,9 +37,8 @@ function Polls({ user, player }: PollsProps) {
             <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
 
             <motion.div
-                ref={ref}
                 initial="hidden"
-                animate={inView ? "visible" : "hidden"}
+                animate="visible"
                 variants={containerVariants}
                 className="w-full"
             >

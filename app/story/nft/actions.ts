@@ -25,7 +25,7 @@ import {
     Story_spg,
 } from "@prisma/client";
 import { createHash } from "crypto";
-import { SPG } from "../spg/actions";
+import { Artist } from "@prisma/client";
 
 // 재시도 유틸리티 함수 (가스비 예측 및 최적화 포함)
 async function retryTransaction<T>(
@@ -1190,6 +1190,136 @@ export async function getCirculation(
         return {
             remain: 0,
             total: 0,
+        };
+    }
+}
+
+
+
+export interface TokenGatingInput {
+    artist: Artist | null;
+    userId: string | null;
+}
+
+export interface TokenGatingData {
+    hasToken: boolean;
+    detail: {
+        tokenId: string;
+        owner: string;
+    }[];
+}
+
+export interface TokenGatingResult {
+    success: boolean;
+    data: Record<string, TokenGatingData>;
+    error?: string;
+}
+
+export async function tokenGating(
+    input?: TokenGatingInput
+): Promise<TokenGatingResult> {
+    try {
+        const { artist, userId } = input || {};
+        if (!artist?.id || !userId) {
+            return {
+                success: false,
+                data: {},
+                error: "Artist or user not found",
+            };
+        }
+
+        // 1. 병렬 데이터 조회
+        const [spgs, user] = await Promise.all([
+            prisma.story_spg.findMany({
+                where: { artistId: artist.id },
+                select: { address: true },
+            }),
+            prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    wallets: {
+                        where: { status: "ACTIVE" },
+                        select: { address: true },
+                    },
+                },
+            }),
+        ]);
+
+        if (!spgs.length) {
+            return {
+                success: true,
+                data: {},
+                error: "No SPG found",
+            };
+        }
+
+        if (!user?.wallets?.length) {
+            return {
+                success: false,
+                error: user ? "User has no active wallets" : "User not found",
+                data: {},
+            };
+        }
+
+        // 2. 미리 정규화된 지갑 주소 Set 생성
+        const normalizedWalletAddresses = new Set(
+            user.wallets.map((w) => w.address.toLowerCase())
+        );
+
+        // 3. 에러 처리가 포함된 병렬 SPG 처리
+        const results = await Promise.allSettled(
+            spgs.map(async (spg) => {
+                try {
+                    const owners = await getOwners({ spgAddress: spg.address });
+                    const userOwnedTokens = owners.filter((owner) =>
+                        normalizedWalletAddresses.has(owner.owner.toLowerCase())
+                    );
+
+                    return {
+                        [spg.address]: {
+                            hasToken: userOwnedTokens.length > 0,
+                            detail: userOwnedTokens.map((token) => ({
+                                tokenId: token.tokenId,
+                                owner: token.owner,
+                            })),
+                        },
+                    };
+                } catch (error) {
+                    console.warn(
+                        `Failed to get owners for SPG ${spg.address}:`,
+                        error
+                    );
+                    return {
+                        [spg.address]: {
+                            hasToken: false,
+                            detail: [],
+                        },
+                    };
+                }
+            })
+        );
+
+        // 4. 성공한 결과만 병합
+        const mergedData = results.reduce((acc, result) => {
+            if (result.status === "fulfilled") {
+                return { ...acc, ...result.value };
+            }
+            return acc;
+        }, {});
+
+        return {
+            success: true,
+            data: mergedData,
+        };
+    } catch (error) {
+        console.error("Error in token gating:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to check token ownership",
+            data: {},
         };
     }
 }

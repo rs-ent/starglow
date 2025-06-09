@@ -9,15 +9,15 @@ import Image from "next/image";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import QuestsMissions from "./Quests.Missions";
-import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import InviteFriends from "../atoms/InviteFriends";
 import { AnimatePresence, motion } from "framer-motion";
+import { TokenGatingData, TokenGatingResult } from "@/app/story/nft/actions";
 
 interface QuestsArtistMissionsProps {
     artist: Artist;
     player: Player | null;
     questLogs: QuestLog[];
-    tokenGatingResult?: AdvancedTokenGateResult | null;
+    tokenGating?: TokenGatingResult | null;
     referralLogs: ReferralLog[];
     bgColorFrom?: string;
     bgColorTo?: string;
@@ -30,7 +30,7 @@ function QuestsArtistMissions({
     artist,
     player,
     questLogs,
-    tokenGatingResult,
+    tokenGating,
     referralLogs,
     bgColorFrom = "rgba(18,6,53,0.85)",
     bgColorTo = "rgba(55,34,160,0.7)",
@@ -45,8 +45,6 @@ function QuestsArtistMissions({
         },
     });
 
-    const [permission, setPermission] = useState(false);
-
     // 배경 스타일 메모이제이션
     const backgroundStyle = useMemo(
         () => ({
@@ -59,17 +57,12 @@ function QuestsArtistMissions({
     const responsiveClass30 = useMemo(() => getResponsiveClass(30), []);
     const responsiveClass25 = useMemo(() => getResponsiveClass(25), []);
 
-    // 토큰 게이팅 권한 체크
-    useEffect(() => {
-        if (tokenGatingResult?.success && tokenGatingResult?.data?.hasToken) {
-            const hasAnyToken = Object.values(
-                tokenGatingResult.data.hasToken
-            ).some(Boolean);
-            setPermission(hasAnyToken);
-        } else {
-            setPermission(false);
-        }
-    }, [tokenGatingResult]);
+    const permission = useMemo(() => {
+        if (!tokenGating) return false;
+        return Object.values(tokenGating.data).some(
+            (data: TokenGatingData) => data.hasToken
+        );
+    }, [tokenGating]);
 
     // 클레임된 퀘스트 로그 및 준비 상태 메모이제이션
     const { claimedQuestLogs, isReady } = useMemo(() => {
@@ -83,14 +76,14 @@ function QuestsArtistMissions({
         const ready =
             quests &&
             quests.items?.length > 0 &&
-            tokenGatingResult !== undefined &&
+            tokenGating !== undefined &&
             !isLoading;
 
         return {
             claimedQuestLogs: logs,
             isReady: ready,
         };
-    }, [questLogs, quests, tokenGatingResult, isLoading]);
+    }, [questLogs, quests, tokenGating, isLoading]);
 
     // 애니메이션 변수
     const containerVariants = {
@@ -218,7 +211,7 @@ function QuestsArtistMissions({
                         )}
                     </div>
 
-                    {quests?.items && questLogs && tokenGatingResult && (
+                    {quests?.items && questLogs && tokenGating && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -231,7 +224,7 @@ function QuestsArtistMissions({
                                 isLoading={isLoading}
                                 error={error}
                                 permission={permission}
-                                tokenGatingResult={tokenGatingResult}
+                                tokenGating={tokenGating}
                                 referralLogs={referralLogs || []}
                             />
                         </motion.div>
@@ -259,7 +252,7 @@ function QuestsArtistMissions({
             claimedQuestLogs.length,
             quests?.items,
             questLogs,
-            tokenGatingResult,
+            tokenGating,
             isLoading,
             error,
             permission,

@@ -7,6 +7,7 @@ import {
     registerAsIPAsset,
     mintAndRegisterAsIPAsset,
     batchRegisterAsIPAsset,
+    tokenGating,
 } from "./actions";
 
 export function useMintMutation() {

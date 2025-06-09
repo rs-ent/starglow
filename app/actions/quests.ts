@@ -15,7 +15,7 @@ import {
     User,
 } from "@prisma/client";
 import { updatePlayerAsset } from "./playerAssets";
-import { tokenGate } from "./blockchain";
+import { tokenGating, TokenGatingData } from "@/app/story/nft/actions";
 import { formatWaitTime } from "@/lib/utils/format";
 // Redis 캐싱 유틸리티 import
 import { getCachedData, invalidateCache } from "@/lib/cache/upstash-redis";
@@ -467,124 +467,64 @@ export async function deleteQuest(input: DeleteQuestInput): Promise<boolean> {
     }
 }
 
-export interface TokenGatingInput {
-    quest: Quest;
-    user: User;
+export interface TokenGatingQuestInput {
+    questId: string;
+    userId: string;
 }
 
-export interface TokenGatingResult {
-    success: boolean;
-    data?: {
-        hasToken: boolean;
-        tokenCount: number;
-        ownerWallets: string[];
-    };
-    error?: string;
-}
-
-export async function tokenGating(
-    input?: TokenGatingInput,
-    enableCache = true
-): Promise<TokenGatingResult> {
+export async function tokenGatingQuest(
+    input?: TokenGatingQuestInput
+): Promise<TokenGatingData> {
     try {
-        const { quest, user } = input || {};
-
-        if (!quest || !user) {
+        if (!input || !input.questId || !input.userId) {
             return {
-                success: true,
-                data: {
-                    hasToken: false,
-                    tokenCount: 0,
-                    ownerWallets: [],
-                },
+                hasToken: false,
+                detail: [],
             };
         }
 
-        if (!quest.needToken || !quest.needTokenAddress) {
+        const quest = await prisma.quest.findUnique({
+            where: { id: input.questId },
+            select: {
+                needToken: true,
+                needTokenAddress: true,
+                artist: true,
+            },
+        });
+
+        if (!quest) {
             return {
-                success: true,
-                data: {
-                    hasToken: true,
-                    tokenCount: 0,
-                    ownerWallets: [],
-                },
+                hasToken: false,
+                detail: [],
             };
         }
 
-        // 캐시 키 생성
-        const cacheKey = `tokenGate:${user.id}:${quest.needTokenAddress}`;
-
-        // 캐싱 적용
-        if (enableCache && quest.needTokenAddress) {
-            return await getCachedData(
-                cacheKey,
-                async () => {
-                    return await checkTokenGating(
-                        user.id,
-                        quest.needTokenAddress || ""
-                    );
-                },
-                {
-                    ttl: 1800, // 30분 캐싱
-                    tags: [CACHE_TAGS.TOKEN_GATE, `tokenGate:${user.id}`],
-                }
-            );
+        if (!quest.artist || !quest.needToken || !quest.needTokenAddress) {
+            return {
+                hasToken: true,
+                detail: [],
+            };
         }
 
-        // 캐싱을 사용하지 않는 경우 직접 체크
-        return await checkTokenGating(user.id, quest.needTokenAddress);
+        const result = await tokenGating({
+            userId: input.userId,
+            artist: quest.artist,
+        });
+
+        return result.data[quest.needTokenAddress];
     } catch (error) {
         console.error("Error in token gating:", error);
         return {
-            success: false,
-            error: "Failed to check token ownership",
+            hasToken: false,
+            detail: [],
         };
-    }
-}
-
-// 토큰 게이팅 체크 함수 분리
-async function checkTokenGating(
-    userId: string,
-    tokenAddress: string
-): Promise<TokenGatingResult> {
-    try {
-        const result = await tokenGate({
-            userId,
-            tokenType: "Collection",
-            tokenAddress,
-        });
-
-        return {
-            success: result.success,
-            data: result.data || {
-                hasToken: false,
-                tokenCount: 0,
-                ownerWallets: [],
-            },
-            error: result.error,
-        };
-    } catch (error) {
-        console.error("Error in checkTokenGating:", error);
-        return {
-            success: false,
-            error: "Failed to check token ownership",
-        };
-    }
-}
-
-// 토큰 게이팅 캐시 무효화 함수 추가
-export async function invalidateTokenGatingCache(userId?: string) {
-    if (userId) {
-        await invalidateCache({ tags: [`tokenGate:${userId}`] });
-    } else {
-        await invalidateCache({ tags: [CACHE_TAGS.TOKEN_GATE] });
     }
 }
 
 export interface CompleteQuestInput {
     quest: Quest;
     player: Player;
-    tokenGating?: TokenGatingResult;
+    tokenGating?: TokenGatingData;
 }
 
 export interface CompleteQuestResult {
@@ -604,7 +544,6 @@ export async function completeQuest(
             };
         }
 
-        // 토큰 게이팅 체크 최적화 - 캐시된 결과 사용
         if (input.quest.needToken && input.quest.needTokenAddress) {
             if (!input.tokenGating) {
                 return {
@@ -613,10 +552,7 @@ export async function completeQuest(
                 };
             }
 
-            if (
-                !input.tokenGating.success ||
-                !input.tokenGating.data?.hasToken
-            ) {
+            if (!input.tokenGating?.hasToken) {
                 return {
                     success: false,
                     error: "Token gating failed",
@@ -624,9 +560,7 @@ export async function completeQuest(
             }
         }
 
-        // 트랜잭션으로 묶어 원자성 보장
         const questLog = await prisma.$transaction(async (tx) => {
-            // 기존 로그 조회
             const log = await tx.questLog.findUnique({
                 where: {
                     playerId_questId: {
@@ -636,14 +570,12 @@ export async function completeQuest(
                 },
             });
 
-            // 이미 완료된 퀘스트 체크
             if (log?.completed && log.completedAt) {
                 throw new Error(
                     `You have already completed this quest at ${log.completedAt.toLocaleString()}.`
                 );
             }
 
-            // 이미 보상을 받은 퀘스트 체크
             if (log?.isClaimed && log.claimedAt) {
                 throw new Error(
                     `You have already claimed the reward for this quest at ${log.claimedAt?.toLocaleString()}.`

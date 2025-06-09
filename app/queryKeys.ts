@@ -4,7 +4,7 @@ import {
     GetPollLogsInput,
     GetPollsInput,
     PaginationInput,
-    TokenGatingInput as PollTokenGatingInput,
+    TokenGatingPollInput,
 } from "./actions/polls";
 import {
     CompleteQuestInput,
@@ -14,7 +14,7 @@ import {
     GetQuestInput,
     GetQuestLogsInput,
     GetQuestsInput,
-    TokenGatingInput as QuestTokenGatingInput,
+    TokenGatingQuestInput,
 } from "./actions/quests";
 import { GetDBUserFromPlayerInput } from "./actions/player";
 import { GetPlayerAssetsFilter } from "./actions/playerAssets";
@@ -529,7 +529,7 @@ export const pollKeys = {
     byId: (id: string) => ["polls", id] as const,
     byStatus: (status: string) => ["polls", "status", status] as const,
     byCategory: (category: string) => ["polls", "category", category] as const,
-    tokenGating: (input?: PollTokenGatingInput) =>
+    tokenGating: (input?: TokenGatingPollInput) =>
         [
             ...pollKeys.all,
             "token-gating",
@@ -562,12 +562,12 @@ export const questKeys = {
         [...questKeys.all, "detail", input?.id] as const,
 
     // 토큰 게이팅 키 - 구조 단순화
-    tokenGating: (input?: QuestTokenGatingInput) =>
+    tokenGating: (input?: TokenGatingQuestInput) =>
         [
             ...questKeys.all,
             "token-gating",
-            input?.quest?.id,
-            input?.user?.id,
+            input?.questId,
+            input?.userId,
         ] as const,
 
     // 퀘스트 완료 키 - 구조 단순화

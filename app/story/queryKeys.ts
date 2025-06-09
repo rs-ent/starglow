@@ -61,4 +61,9 @@ export const queryKeys = {
         addresses: (networkId: string) =>
             [...queryKeys.tba.all, "addresses", networkId] as const,
     },
+    tokenGating: {
+        all: ["tokenGating"] as const,
+        list: (artistId: string, userId: string) =>
+            [...queryKeys.tokenGating.all, "list", artistId, userId] as const,
+    },
 } as const;

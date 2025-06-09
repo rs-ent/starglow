@@ -7,13 +7,12 @@ import { cn } from "@/lib/utils/tailwind";
 import { useAssetsGet } from "@/app/hooks/useAssets";
 import { useQuestSet } from "@/app/hooks/useQuest";
 import { useToast } from "@/app/hooks/useToast";
-import { TokenGatingResult } from "@/app/actions/quests";
 import { formatWaitTime } from "@/lib/utils/format";
 import Countdown from "@/components/atoms/Countdown";
-import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import { AnimatePresence, motion } from "framer-motion";
 import InviteFriendsModal from "../atoms/InviteFriends.Modal";
 import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
+import { TokenGatingData } from "@/app/story/nft/actions";
 
 // 디바운스 지연 시간 (밀리초)
 const DEBOUNCE_DELAY = 500;
@@ -30,7 +29,7 @@ interface QuestsButtonProps {
     paddingSize?: number;
     gapSize?: number;
     arrowSize?: number;
-    tokenGatingResult?: AdvancedTokenGateResult | null;
+    tokenGating?: TokenGatingData | null;
     permission?: boolean;
     index: number;
     referralLogs: ReferralLog[];
@@ -48,7 +47,7 @@ function QuestsButton({
     paddingSize = 40,
     gapSize = 40,
     arrowSize = 30,
-    tokenGatingResult,
+    tokenGating,
     permission = false,
     index,
     referralLogs,
@@ -159,47 +158,6 @@ function QuestsButton({
         }
         if (blockFunction) return;
 
-        // 토큰 게이팅 처리
-        let tokenGating: TokenGatingResult = {
-            success: false,
-            data: {
-                hasToken: false,
-                tokenCount: 0,
-                ownerWallets: [],
-            },
-        };
-
-        if (quest.needTokenAddress) {
-            if (tokenGatingResult?.data) {
-                tokenGating = {
-                    success: tokenGatingResult.success,
-                    data: {
-                        hasToken:
-                            tokenGatingResult.data.hasToken[
-                                quest.needTokenAddress
-                            ] ?? false,
-                        tokenCount:
-                            tokenGatingResult.data.tokenCount[
-                                quest.needTokenAddress
-                            ] ?? 0,
-                        ownerWallets:
-                            tokenGatingResult.data.ownerWallets[
-                                quest.needTokenAddress
-                            ] ?? [],
-                    },
-                } as TokenGatingResult;
-            }
-        } else {
-            tokenGating = {
-                success: true,
-                data: {
-                    hasToken: true,
-                    tokenCount: 0,
-                    ownerWallets: [],
-                },
-            } as TokenGatingResult;
-        }
-
         try {
             isProcessingRef.current = true;
             setBlockFunction(true);
@@ -215,7 +173,7 @@ function QuestsButton({
             const result = await completeQuest({
                 quest,
                 player,
-                tokenGating,
+                tokenGating: tokenGating || undefined,
             });
 
             if (result.success) {
@@ -254,7 +212,7 @@ function QuestsButton({
         isClaimingQuestReward,
         waitDate,
         blockFunction,
-        tokenGatingResult,
+        tokenGating,
         completeQuest,
         toast,
         preventRapidClicks,

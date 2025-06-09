@@ -9,7 +9,6 @@ import PartialLoading from "@/components/atoms/PartialLoading";
 import PollsList from "./Polls.List";
 import { memo, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useInView } from "react-intersection-observer";
 
 interface PollsContentsPublicProps {
     player: Player | null;
@@ -22,11 +21,6 @@ function PollsContentsPublic({
     pollLogs,
     className,
 }: PollsContentsPublicProps) {
-    const { ref, inView } = useInView({
-        threshold: 0.1,
-        triggerOnce: true,
-    });
-
     // 폴 데이터 가져오기
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
@@ -52,9 +46,8 @@ function PollsContentsPublic({
 
     return (
         <motion.div
-            ref={ref}
             initial="hidden"
-            animate={inView ? "visible" : "hidden"}
+            animate="visible"
             variants={containerVariants}
             className={cn(
                 "max-w-[1400px] w-screen",

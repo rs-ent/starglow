@@ -2,16 +2,15 @@
 
 "use client";
 
-import {cn} from "@/lib/utils/tailwind";
-import {Player} from "@prisma/client";
-import {usePollsGet} from "@/app/hooks/usePolls";
-import {memo, useCallback, useState} from "react";
+import { cn } from "@/lib/utils/tailwind";
+import { Player } from "@prisma/client";
+import { usePollsGet } from "@/app/hooks/usePolls";
+import { memo, useCallback, useState } from "react";
 import PublicPrivateTab from "../atoms/PublicPrivateTab";
 import PollsContentsPublic from "./Polls.Contents.Public";
 import PollsContentsPrivate from "./Polls.Contents.Private";
-import {User} from "next-auth";
-import {AnimatePresence, motion} from "framer-motion";
-import {useInView} from "react-intersection-observer";
+import { User } from "next-auth";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface PollsContentsProps {
     user: User | null;
@@ -20,16 +19,13 @@ interface PollsContentsProps {
 
 function PollsContents({ user, player }: PollsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
-    const { ref, inView } = useInView({
-        threshold: 0.1,
-        triggerOnce: true,
-    });
 
-    // 캐싱 및 최적화를 위한 playerPollLogs 조회
     const { playerPollLogs, isLoading: isLogsLoading } = usePollsGet({
-        getPlayerPollLogsInput: player?.id ? {
-            playerId: player.id
-        } : undefined,
+        getPlayerPollLogsInput: player?.id
+            ? {
+                  playerId: player.id,
+              }
+            : undefined,
     });
 
     // 탭 전환 핸들러 메모이제이션
@@ -55,7 +51,6 @@ function PollsContents({ user, player }: PollsContentsProps) {
 
     return (
         <div
-            ref={ref}
             className={cn(
                 "flex flex-col items-center justify-center w-full",
                 "transition-all duration-700"
@@ -63,7 +58,7 @@ function PollsContents({ user, player }: PollsContentsProps) {
         >
             <motion.div
                 initial="hidden"
-                animate={inView ? "visible" : "hidden"}
+                animate="visible"
                 variants={tabVariants}
             >
                 <PublicPrivateTab

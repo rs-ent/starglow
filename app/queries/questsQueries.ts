@@ -11,6 +11,7 @@ import {
     getClaimableQuestLogs,
     getClaimedQuestLogs,
     getPlayerQuestLogs,
+    tokenGatingQuest,
 } from "../actions/quests";
 import type {
     GetQuestsInput,
@@ -20,8 +21,10 @@ import type {
     GetClaimableQuestLogsInput,
     GetClaimedQuestLogsInput,
     GetPlayerQuestLogsInput,
+    TokenGatingQuestInput,
 } from "../actions/quests";
 import { Quest, QuestLog } from "@prisma/client";
+import { TokenGatingData } from "../story/nft/actions";
 
 // 공통 캐싱 설정
 const DEFAULT_STALE_TIME = 5 * 60 * 1000; // 5분
@@ -178,5 +181,18 @@ export function usePlayerQuestLogsQuery({
         queryKey: questKeys.playerLogs(input),
         queryFn: () => getPlayerQuestLogs(input),
         enabled: !!input?.playerId,
+    });
+}
+
+export function useTokenGatingQuestQuery({
+    input,
+}: {
+    input?: TokenGatingQuestInput;
+}) {
+    return useQuery<TokenGatingData>({
+        queryKey: [...questKeys.tokenGating(input)],
+        queryFn: () => tokenGatingQuest(input),
+        staleTime: 1000 * 30,
+        enabled: !!input?.questId && !!input?.userId,
     });
 }

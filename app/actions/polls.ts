@@ -15,8 +15,7 @@ import {
     Asset,
     Artist,
 } from "@prisma/client";
-import { tokenGate } from "./blockchain";
-import { validatePlayerAsset } from "./playerAssets";
+import { tokenGating, TokenGatingData } from "@/app/story/nft/actions";
 import { updatePlayerAsset } from "./playerAssets";
 import { getCachedData, invalidateCache } from "@/lib/cache/upstash-redis";
 
@@ -430,35 +429,21 @@ export async function deletePoll(id: string): Promise<Poll> {
     }
 }
 
-export interface TokenGatingInput {
+export interface TokenGatingPollInput {
     pollId: string;
-    userId: string;
+    userId?: string;
 }
 
-export interface TokenGatingResult {
-    success: boolean;
-    data?: {
-        hasToken: boolean;
-        tokenCount: number;
-        ownerWallets: string[];
-    };
-    error?: string;
-}
-
-export async function tokenGating(
-    input?: TokenGatingInput
-): Promise<TokenGatingResult> {
+export async function tokenGatingPoll(
+    input?: TokenGatingPollInput
+): Promise<TokenGatingData> {
     try {
         const { pollId, userId } = input || {};
 
         if (!pollId || !userId) {
             return {
-                success: true,
-                data: {
-                    hasToken: false,
-                    tokenCount: 0,
-                    ownerWallets: [],
-                },
+                hasToken: false,
+                detail: [],
             };
         }
 
@@ -467,60 +452,35 @@ export async function tokenGating(
             select: {
                 needToken: true,
                 needTokenAddress: true,
+                artist: true,
             },
         });
 
         if (!poll) {
             return {
-                success: false,
-                error: "Poll not found",
-                data: {
-                    hasToken: false,
-                    tokenCount: 0,
-                    ownerWallets: [],
-                },
+                hasToken: false,
+                detail: [],
             };
         }
 
-        if (!poll.needToken || !poll.needTokenAddress) {
+        if (!poll.artist || !poll.needToken || !poll.needTokenAddress) {
             return {
-                success: true,
-                data: {
-                    hasToken: true,
-                    tokenCount: 0,
-                    ownerWallets: [],
-                },
+                hasToken: true,
+                detail: [],
             };
         }
 
-        const result = await tokenGate({
+        const result = await tokenGating({
             userId,
-            tokenType: "Collection",
-            tokenAddress: poll.needTokenAddress,
+            artist: poll.artist,
         });
 
-        if (!result.success) {
-            return {
-                success: false,
-                error: result.error,
-                data: result.data || {
-                    hasToken: false,
-                    tokenCount: 0,
-                    ownerWallets: [],
-                },
-            };
-        }
-
-        return {
-            success: true,
-            data: result.data,
-            error: result.error,
-        };
+        return result.data[poll.needTokenAddress];
     } catch (error) {
         console.error("Error in token gating:", error);
         return {
-            success: false,
-            error: "Failed to check token ownership",
+            hasToken: false,
+            detail: [],
         };
     }
 }
@@ -530,7 +490,7 @@ export interface ParticipatePollInput {
     player: Player;
     optionId: string;
     amount?: number;
-    tokenGating?: TokenGatingResult;
+    tokenGating?: TokenGatingData;
     alreadyVotedAmount?: number;
     ipAddress?: string;
     userAgent?: string;
@@ -589,24 +549,15 @@ export async function participatePoll(
         }
 
         if (poll.needToken && poll.needTokenAddress) {
-            if (!input.tokenGating)
+            if (!input.tokenGating || !input.tokenGating.hasToken)
                 return {
                     success: false,
                     error: "Token gating required. Please try again or contact technical support.",
                 };
-            if (
-                !input.tokenGating.success ||
-                !input.tokenGating.data?.hasToken
-            ) {
-                return {
-                    success: false,
-                    error: "Token gating failed. Please check your token balance. If the problem persists, please contact technical support.",
-                };
-            }
 
+            const alreadyVotedAmount = input.alreadyVotedAmount || 0;
             const remainingTokenCount =
-                input.tokenGating.data.tokenCount -
-                (amount + (input.alreadyVotedAmount || 0));
+                input.tokenGating.detail.length - (amount + alreadyVotedAmount);
             if (remainingTokenCount < 0) {
                 return {
                     success: false,

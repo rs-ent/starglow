@@ -7,7 +7,7 @@ import { Artist, Player, QuestLog, ReferralLog } from "@prisma/client";
 import ArtistMessage from "../artists/ArtistMessage";
 import ArtistSlideSelector from "../artists/ArtistSlideSelector";
 import QuestsArtistMissions from "./Quests.Contents.Private.ArtistMissions";
-import { useArtistsGet } from "@/app/hooks/useArtists";
+import { useNFT } from "@/app/story/nft/hooks";
 import { cn } from "@/lib/utils/tailwind";
 import { User } from "next-auth";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
@@ -34,8 +34,8 @@ function QuestsPrivate({
         "default" | "artist"
     >("default");
 
-    const { tokenGatingResult, isTokenGatingLoading } = useArtistsGet({
-        getTokenGatingInput: {
+    const { tokenGating, isTokenGatingLoading } = useNFT({
+        tokenGatingInput: {
             artist: selectedArtist,
             userId: user?.id || null,
         },
@@ -228,7 +228,7 @@ function QuestsPrivate({
                                     artist={selectedArtist}
                                     player={player}
                                     questLogs={questLogs}
-                                    tokenGatingResult={tokenGatingResult}
+                                    tokenGating={tokenGating}
                                     referralLogs={referralLogs || []}
                                     bgColorFrom={ArtistBG(
                                         selectedArtist,

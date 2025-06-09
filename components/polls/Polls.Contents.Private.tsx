@@ -6,12 +6,11 @@ import { Artist, Player, PollLog } from "@prisma/client";
 import PartialLoading from "../atoms/PartialLoading";
 import ArtistSlideSelector from "../artists/ArtistSlideSelector";
 import PollsContentsPrivateArtistList from "./Polls.Contents.Private.ArtistList";
-import { useArtistsGet } from "@/app/hooks/useArtists";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { User } from "next-auth";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { AnimatePresence, motion } from "framer-motion";
-import { useInView } from "react-intersection-observer";
+import { useNFT } from "@/app/story/nft/hooks";
 
 interface PollsContentsPrivateProps {
     user: User | null;
@@ -76,17 +75,12 @@ function PollsContentsPrivate({
         "default" | "artist"
     >("default");
 
-    const { ref, inView } = useInView({
-        threshold: 0.1,
-        triggerOnce: true,
-    });
-
     // 토큰 게이팅 쿼리 최적화 - 필요한 경우에만 실행
     const tokenGatingQueryEnabled = Boolean(selectedArtist && user?.id);
 
     // 토큰 게이팅 결과 가져오기
-    const { tokenGatingResult, isTokenGatingLoading } = useArtistsGet({
-        getTokenGatingInput: {
+    const { tokenGating, isTokenGatingLoading } = useNFT({
+        tokenGatingInput: {
             artist: selectedArtist,
             userId: user?.id || null,
         },
@@ -183,7 +177,7 @@ function PollsContentsPrivate({
                     <PollsContentsPrivateArtistList
                         artist={selectedArtist}
                         player={player}
-                        tokenGatingResult={tokenGatingResult || null}
+                        tokenGating={tokenGating || null}
                         pollLogs={pollLogs}
                         bgColorFrom={ArtistBG(selectedArtist, 0, 60)}
                         bgColorTo={ArtistBG(selectedArtist, 1, 30)}
@@ -199,20 +193,17 @@ function PollsContentsPrivate({
         shouldShowContent,
         selectedArtist,
         player,
-        tokenGatingResult,
+        tokenGating,
         pollLogs,
     ]);
 
     return (
-        <div
-            ref={ref}
-            className="w-full flex flex-col items-center justify-center"
-        >
+        <div className="w-full flex flex-col items-center justify-center">
             <motion.div
                 className="w-full flex items-center justify-center"
                 variants={animations.selectorVariants}
                 initial="hidden"
-                animate={inView ? "visible" : "hidden"}
+                animate="visible"
             >
                 <ArtistSlideSelector
                     className="mt-[5px] sm:mt-[10px] md:mt-[15px] lg:mt-[20px] xl:mt-[25px]"

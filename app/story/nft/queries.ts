@@ -9,6 +9,8 @@ import {
     getOwnersInput,
     getCirculation,
     getCirculationInput,
+    tokenGating,
+    TokenGatingInput,
 } from "./actions";
 
 export function useNFTsQuery(input?: getNFTsInput) {
@@ -36,5 +38,23 @@ export function useCirculationQuery(input?: getCirculationInput) {
         staleTime: 1000 * 60 * 60 * 24,
         gcTime: 1000 * 60 * 60 * 24,
         enabled: !!input?.spgAddress,
+    });
+}
+
+export function useTokenGatingQuery(input?: TokenGatingInput) {
+    return useQuery({
+        queryKey: queryKeys.tokenGating.list(
+            input?.artist?.id || "",
+            input?.userId || ""
+        ),
+        queryFn: () => tokenGating(input),
+        enabled: !!input?.artist?.id && !!input?.userId,
+        staleTime: 1000 * 60 * 60 * 24,
+        gcTime: 1000 * 60 * 60 * 24,
+
+        refetchOnWindowFocus: true,
+        refetchOnMount: true,
+        refetchInterval: 1000 * 60 * 5,
+        refetchOnReconnect: true,
     });
 }

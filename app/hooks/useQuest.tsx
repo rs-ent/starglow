@@ -2,14 +2,12 @@
 
 "use client";
 
-import {useCallback, useMemo} from 'react';
 import {
     useClaimQuestRewardMutation,
     useCompleteQuestMutation,
     useCreateQuestMutation,
     useDeleteQuestMutation,
     useSetReferralQuestLogsMutation,
-    useTokenGatingMutation,
     useUpdateQuestActiveMutation,
     useUpdateQuestMutation,
     useUpdateQuestOrderMutation,
@@ -20,6 +18,7 @@ import {
     GetPlayerQuestLogsInput,
     GetQuestLogsInput,
     GetQuestsInput,
+    TokenGatingQuestInput,
     PaginationInput,
 } from "../actions/quests";
 import {
@@ -28,6 +27,7 @@ import {
     usePlayerQuestLogsQuery,
     useQuestLogsQuery,
     useQuestsQuery,
+    useTokenGatingQuestQuery,
 } from "@/app/queries/questsQueries";
 
 export function useQuestGet({
@@ -36,6 +36,7 @@ export function useQuestGet({
     getClaimableQuestLogsInput,
     getClaimedQuestLogsInput,
     getPlayerQuestLogsInput,
+    getTokenGatingQuestInput,
     pagination,
 }: {
     getQuestsInput?: GetQuestsInput;
@@ -43,6 +44,7 @@ export function useQuestGet({
     getClaimableQuestLogsInput?: GetClaimableQuestLogsInput;
     getClaimedQuestLogsInput?: GetClaimedQuestLogsInput;
     getPlayerQuestLogsInput?: GetPlayerQuestLogsInput;
+    getTokenGatingQuestInput?: TokenGatingQuestInput;
     pagination?: PaginationInput;
 }) {
     const {
@@ -75,64 +77,29 @@ export function useQuestGet({
         error: playerQuestLogsError,
     } = usePlayerQuestLogsQuery({ input: getPlayerQuestLogsInput });
 
-    const isLoading = useMemo(() => 
+    const {
+        data: tokenGatingQuest,
+        isLoading: isLoadingTokenGatingQuest,
+        error: tokenGatingQuestError,
+    } = useTokenGatingQuestQuery({ input: getTokenGatingQuestInput });
+
+    const isLoading =
         isLoadingQuests ||
         isLoadingQuestLogs ||
         isLoadingClaimableQuestLogs ||
         isLoadingClaimedQuestLogs ||
-        isLoadingPlayerQuestLogs,
-    [
-        isLoadingQuests,
-        isLoadingQuestLogs,
-        isLoadingClaimableQuestLogs,
-        isLoadingClaimedQuestLogs,
-        isLoadingPlayerQuestLogs
-    ]);
+        isLoadingPlayerQuestLogs ||
+        isLoadingTokenGatingQuest;
 
-    const error = useMemo(() => 
+    const error =
         questsError ||
         questLogsError ||
         claimableQuestLogsError ||
         claimedQuestLogsError ||
-        playerQuestLogsError,
-    [
-        questsError,
-        questLogsError,
-        claimableQuestLogsError,
-        claimedQuestLogsError,
-        playerQuestLogsError
-    ]);
+        playerQuestLogsError ||
+        tokenGatingQuestError;
 
-    const findQuestLog = useCallback((questId) => {
-        if (!questLogs?.items) return null;
-        return questLogs.items.find(log => log.questId === questId);
-    }, [questLogs?.items]);
-
-    return useMemo(() => ({
-        quests,
-        isLoadingQuests,
-        questsError,
-
-        questLogs,
-        isLoadingQuestLogs,
-        questLogsError,
-
-        claimableQuestLogs,
-        isLoadingClaimableQuestLogs,
-        claimableQuestLogsError,
-
-        claimedQuestLogs,
-        isLoadingClaimedQuestLogs,
-        claimedQuestLogsError,
-
-        playerQuestLogs,
-        isLoadingPlayerQuestLogs,
-        playerQuestLogsError,
-
-        isLoading,
-        error,
-        findQuestLog,
-    }), [
+    return {
         quests,
         isLoadingQuests,
         questsError,
@@ -148,10 +115,12 @@ export function useQuestGet({
         playerQuestLogs,
         isLoadingPlayerQuestLogs,
         playerQuestLogsError,
+        tokenGatingQuest,
+        isLoadingTokenGatingQuest,
+        tokenGatingQuestError,
         isLoading,
         error,
-        findQuestLog
-    ]);
+    };
 }
 
 export function useQuestSet() {
@@ -180,12 +149,6 @@ export function useQuestSet() {
     } = useDeleteQuestMutation();
 
     const {
-        mutateAsync: tokenGating,
-        isPending: isTokenGating,
-        error: tokenGatingError,
-    } = useTokenGatingMutation();
-
-    const {
         mutateAsync: completeQuest,
         isPending: isCompleting,
         error: completeError,
@@ -209,51 +172,27 @@ export function useQuestSet() {
         error: updateQuestActiveError,
     } = useUpdateQuestActiveMutation();
 
-    const isLoading = useMemo(() => 
+    const isLoading =
         isCreating ||
         isUpdating ||
         isUpdatingOrder ||
         isDeleting ||
-        isTokenGating ||
         isCompleting ||
         isClaimingQuestReward ||
         isSettingReferralQuestLogs ||
-        isUpdatingQuestActive,
-    [
-        isCreating,
-        isUpdating,
-        isUpdatingOrder,
-        isDeleting,
-        isTokenGating,
-        isCompleting,
-        isClaimingQuestReward,
-        isSettingReferralQuestLogs,
-        isUpdatingQuestActive
-    ]);
+        isUpdatingQuestActive;
 
-    const error = useMemo(() => 
+    const error =
         createError ||
         updateError ||
         updateOrderError ||
         deleteError ||
-        tokenGatingError ||
         completeError ||
         claimQuestRewardError ||
         setReferralQuestLogsError ||
-        updateQuestActiveError,
-    [
-        createError,
-        updateError,
-        updateOrderError,
-        deleteError,
-        tokenGatingError,
-        completeError,
-        claimQuestRewardError,
-        setReferralQuestLogsError,
-        updateQuestActiveError
-    ]);
+        updateQuestActiveError;
 
-    return useMemo(() => ({
+    return {
         createQuest,
         isCreating,
         createError,
@@ -269,10 +208,6 @@ export function useQuestSet() {
         deleteQuest,
         isDeleting,
         deleteError,
-
-        tokenGating,
-        isTokenGating,
-        tokenGatingError,
 
         completeQuest,
         isCompleting,
@@ -292,35 +227,5 @@ export function useQuestSet() {
 
         isLoading,
         error,
-    }), [
-        createQuest,
-        isCreating,
-        createError,
-        updateQuest,
-        isUpdating,
-        updateError,
-        updateQuestOrder,
-        isUpdatingOrder,
-        updateOrderError,
-        deleteQuest,
-        isDeleting,
-        deleteError,
-        tokenGating,
-        isTokenGating,
-        tokenGatingError,
-        completeQuest,
-        isCompleting,
-        completeError,
-        claimQuestReward,
-        isClaimingQuestReward,
-        claimQuestRewardError,
-        setReferralQuestLogs,
-        isSettingReferralQuestLogs,
-        setReferralQuestLogsError,
-        updateQuestActive,
-        isUpdatingQuestActive,
-        updateQuestActiveError,
-        isLoading,
-        error
-    ]);
+    };
 }

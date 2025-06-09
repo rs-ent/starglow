@@ -3,7 +3,7 @@
 "use client";
 
 import { Artist, Player, Poll, PollLog } from "@prisma/client";
-import { PollOption, TokenGatingResult } from "@/app/actions/polls";
+import { PollOption } from "@/app/actions/polls";
 import PollThumbnail from "@/components/atoms/Polls.Thumbnail";
 import { formatDate } from "@/lib/utils/format";
 import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
@@ -20,6 +20,7 @@ import Button from "../atoms/Button";
 import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
 import { useAssetsGet } from "@/app/hooks/useAssets";
 import { motion } from "framer-motion";
+import { TokenGatingData } from "@/app/story/nft/actions";
 
 interface PollsCardProps {
     index?: number;
@@ -27,7 +28,7 @@ interface PollsCardProps {
     player: Player | null;
     pollLogs?: PollLog[];
     artist?: Artist | null;
-    tokenGatingData?: TokenGatingResult | null;
+    tokenGating?: TokenGatingData | null;
     isSelected?: boolean;
     fgColorFrom?: string;
     fgColorTo?: string;
@@ -41,7 +42,7 @@ function PollsListCard({
     poll,
     player,
     pollLogs,
-    tokenGatingData,
+    tokenGating,
     isSelected,
     fgColorFrom,
     fgColorTo,
@@ -145,15 +146,15 @@ function PollsListCard({
 
     // 투표 권한 및 제한 계산
     const { alreadyVotedAmount, maxVoteAmount, permission } = useMemo(() => {
-        const permission = tokenGatingData?.data?.hasToken;
+        const permission = tokenGating?.hasToken;
         const alreadyVotedAmount =
             pollLogs?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
 
         let maxVoteAmount = 0;
-        if (poll.needToken && tokenGatingData?.data) {
+        if (poll.needToken && tokenGating) {
             maxVoteAmount = Math.max(
                 0,
-                tokenGatingData.data.tokenCount - alreadyVotedAmount
+                tokenGating.detail.length - alreadyVotedAmount
             );
         }
 
@@ -162,7 +163,7 @@ function PollsListCard({
             maxVoteAmount,
             permission,
         };
-    }, [tokenGatingData, poll.needToken, pollLogs]);
+    }, [tokenGating, poll.needToken, pollLogs]);
 
     // 옵션 클릭 핸들러
     const handleOptionClick = useCallback(
@@ -220,7 +221,7 @@ function PollsListCard({
 
                 // 토큰 게이팅 검증
                 if (poll.needToken && poll.needTokenAddress) {
-                    if (!tokenGatingData || !tokenGatingData.data) {
+                    if (!tokenGating) {
                         toast.error(
                             "Please wait for the token gating process to complete."
                         );
@@ -228,7 +229,7 @@ function PollsListCard({
                         setShowAnswerPopup(false);
                         return;
                     }
-                    if (!tokenGatingData?.data.hasToken) {
+                    if (!tokenGating?.hasToken) {
                         toast.error(
                             "This polls is need an authentication. Please purchase the NFT before participation."
                         );
@@ -239,7 +240,7 @@ function PollsListCard({
 
                     // 남은 토큰 수량 검증
                     const remainingTokenCount =
-                        tokenGatingData.data.tokenCount -
+                        tokenGating.detail.length -
                         (voteAmount + alreadyVotedAmount);
                     if (remainingTokenCount < 0) {
                         toast.error(
@@ -257,7 +258,7 @@ function PollsListCard({
                     player: player,
                     optionId: selection.optionId,
                     amount: voteAmount,
-                    tokenGating: tokenGatingData || undefined,
+                    tokenGating: tokenGating || undefined,
                     alreadyVotedAmount,
                 });
 
@@ -292,7 +293,7 @@ function PollsListCard({
             player,
             selection,
             voteAmount,
-            tokenGatingData,
+            tokenGating,
             alreadyVotedAmount,
             confirmedAnswer,
             participatePoll,
@@ -735,12 +736,7 @@ function PollsListCard({
 
     // 토큰 게이팅 정보 렌더링 함수
     const renderTokenGatingInfo = useCallback(() => {
-        if (
-            !poll.needToken ||
-            !poll.needTokenAddress ||
-            !tokenGatingData ||
-            !tokenGatingData.data
-        ) {
+        if (!poll.needToken || !poll.needTokenAddress || !tokenGating) {
             return null;
         }
 
@@ -754,7 +750,7 @@ function PollsListCard({
     }, [
         poll.needToken,
         poll.needTokenAddress,
-        tokenGatingData,
+        tokenGating,
         maxVoteAmount,
         voteAmount,
     ]);

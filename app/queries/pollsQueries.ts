@@ -8,9 +8,8 @@ import {
     GetPollsInput,
     getPolls,
     getPoll,
-    tokenGating,
-    TokenGatingInput,
-    TokenGatingResult,
+    tokenGatingPoll,
+    TokenGatingPollInput,
     getPollResult,
     GetPollResultResponse,
     GetPollResultInput,
@@ -27,6 +26,7 @@ import {
     GetPlayerPollLogsInput,
 } from "../actions/polls";
 import { Poll, PollLog } from "@prisma/client";
+import { TokenGatingData } from "../story/nft/actions";
 
 export function usePollsQuery({
     input,
@@ -59,11 +59,11 @@ export function usePollQuery(id: string) {
     });
 }
 
-export function useTokenGatingQuery(input?: TokenGatingInput) {
-    return useQuery<TokenGatingResult>({
+export function useTokenGatingQuery(input?: TokenGatingPollInput) {
+    return useQuery<TokenGatingData>({
         queryKey: [...pollKeys.tokenGating(input)],
-        queryFn: () => tokenGating(input),
-        staleTime: 1000 * 60 * 5,
+        queryFn: () => tokenGatingPoll(input),
+        staleTime: 1000 * 30,
     });
 }
 
