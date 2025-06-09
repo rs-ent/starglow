@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "ERC721AStorage",
+  "sourceName": "erc721a-upgradeable/contracts/ERC721AStorage.sol",
+  "abi": [],
+  "bytecode": "0x608060405234601a57604051603f6020823930815050603f90f35b600080fdfe6080604052600080fdfea264697066735822122073c24a3a6a6fa0739e6562c7324bed605408403afdb57f6fb55928019bb3df2364736f6c634300081c0033",
+  "deployedBytecode": "0x6080604052600080fdfea264697066735822122073c24a3a6a6fa0739e6562c7324bed605408403afdb57f6fb55928019bb3df2364736f6c634300081c0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
