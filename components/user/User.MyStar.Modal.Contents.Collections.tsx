@@ -5,23 +5,18 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import UserMyStarModalContentsCollectionsCard from "./User.MyStar.Modal.Contents.Collections.Card";
 import { cn } from "@/lib/utils/tailwind";
-import {
-    Artist,
-    Player,
-    QuestLog,
-    PollLog,
-} from "@prisma/client";
-import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+import { Artist, Player, QuestLog, PollLog } from "@prisma/client";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef } from "react";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
 import ArtistSelector from "../atoms/ArtistSelector";
 import ArtistMessage from "../artists/ArtistMessage";
 import QuestsArtistMissions from "../quests/Quests.Contents.Private.ArtistMissions";
 import PollsContentsPrivateArtistList from "../polls/Polls.Contents.Private.ArtistList";
-import { AdvancedTokenGateResult } from "@/app/actions/blockchain";
 import ArtistFeed from "../artists/Artist.Feed";
 import { VerifiedSPG } from "@/app/story/interaction/actions";
+import { TokenGatingResult } from "@/app/story/nft/actions";
+import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 
 interface UserMyStarModalContentsCollectionsProps {
     player: Player | null;
@@ -29,6 +24,10 @@ interface UserMyStarModalContentsCollectionsProps {
     pollLogs: PollLog[];
     artist: Artist;
     verifiedSPGs: VerifiedSPG[];
+    onSelectFeed?: (
+        initialFeeds: ArtistFeedWithReactions[],
+        selectedFeedIndex: number
+    ) => void;
 }
 
 export default React.memo(function UserMyStarModalContentsCollections({
@@ -59,21 +58,21 @@ export default React.memo(function UserMyStarModalContentsCollections({
         }
     };
 
-    const tokenGatingResult: AdvancedTokenGateResult = useMemo(() => {
-        const result: AdvancedTokenGateResult = {
+    const tokenGatingResult: TokenGatingResult = useMemo(() => {
+        const result: TokenGatingResult = {
             success: true,
-            data: {
-                hasToken: verifiedSPGs.reduce((acc, spg) => {
-                    acc[spg.address] = spg.verifiedTokens.length > 0;
-                    return acc;
-                }, {} as Record<string, boolean>),
-                tokenCount: verifiedSPGs.reduce((acc, spg) => {
-                    acc[spg.address] = spg.verifiedTokens.length;
-                    return acc;
-                }, {} as Record<string, number>),
-                ownerWallets: {},
-            },
+            data: {},
         };
+
+        verifiedSPGs.forEach((spg) => {
+            result.data[spg.address] = {
+                hasToken: true,
+                detail: spg.verifiedTokens.map((token) => ({
+                    tokenId: token.toString(),
+                    owner: spg.ownerAddress,
+                })),
+            };
+        });
 
         console.log("Result", result);
 
@@ -140,6 +139,7 @@ export default React.memo(function UserMyStarModalContentsCollections({
                 <ArtistMessage
                     artistId={artist.id}
                     className={cn("mt-[10px]")}
+                    artist={artist}
                 />
 
                 <div
@@ -172,7 +172,7 @@ export default React.memo(function UserMyStarModalContentsCollections({
                         artist={artist}
                         player={player}
                         questLogs={questLogs}
-                        tokenGatingResult={tokenGatingResult}
+                        tokenGating={tokenGatingResult}
                         referralLogs={[]}
                         bgColorFrom={ArtistBG(artist, 2, 100)}
                         bgColorTo={ArtistBG(artist, 3, 100)}
@@ -183,7 +183,7 @@ export default React.memo(function UserMyStarModalContentsCollections({
             <PollsContentsPrivateArtistList
                 artist={artist}
                 player={player}
-                tokenGatingResult={tokenGatingResult}
+                tokenGating={tokenGatingResult}
                 pollLogs={pollLogs}
                 forceSlidesToShow={1}
                 bgColorFrom={ArtistBG(artist, 0, 100)}

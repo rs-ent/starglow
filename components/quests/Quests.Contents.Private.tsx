@@ -214,7 +214,10 @@ function QuestsPrivate({
                                     "flex items-center justify-center"
                                 )}
                             >
-                                <ArtistMessage artistId={selectedArtist.id} />
+                                <ArtistMessage
+                                    artistId={selectedArtist.id}
+                                    artist={selectedArtist}
+                                />
                             </motion.div>
 
                             <motion.div

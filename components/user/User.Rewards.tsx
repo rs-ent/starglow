@@ -20,7 +20,13 @@ export type PlayerAssetWithAsset = PlayerAsset & { asset: Asset };
 const UserRewardModalCardV2 = dynamic(
     () => import("./User.Reward.Modal.Card.V2"),
     {
-        loading: () => <div>Loading...</div>,
+        loading: () => {
+            return (
+                <div className="flex items-center justify-center w-full h-full">
+                    <PartialLoading text="Loading..." size="sm" />
+                </div>
+            );
+        },
         ssr: false,
     }
 );
@@ -47,8 +53,6 @@ export default function UserRewards({ user, player }: UserRewardsProps) {
         return { playerAssetList, slots };
     }, [playerAssets]);
 
-    console.log("playerAssetList", playerAssetList);
-
     return (
         <>
             <div
@@ -57,7 +61,9 @@ export default function UserRewards({ user, player }: UserRewardsProps) {
                 )}
             >
                 {isPlayerAssetsLoading ? (
-                    <PartialLoading text="Loading..." size="sm" />
+                    <div className="flex items-center justify-center w-full h-full">
+                        <PartialLoading text="Loading..." size="sm" />
+                    </div>
                 ) : (
                     <UserRewardModalCardV2
                         playerId={player?.id}

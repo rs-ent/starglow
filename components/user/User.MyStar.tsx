@@ -14,6 +14,8 @@ import PartialLoading from "../atoms/PartialLoading";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { useRouter } from "next/navigation";
 import { VerifiedSPG } from "@/app/story/interaction/actions";
+import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+import ArtistFeedModal from "@/components/artists/Artist.Feed.Modal";
 
 interface UserMyStarProps {
     user: User;
@@ -22,7 +24,13 @@ interface UserMyStarProps {
 }
 
 const UserMyStarModal = dynamic(() => import("./User.MyStar.Modal"), {
-    loading: () => <div>Loading...</div>,
+    loading: () => {
+        return (
+            <div className="flex items-center justify-center w-full h-full">
+                <PartialLoading text="Loading..." size="sm" />
+            </div>
+        );
+    },
     ssr: false,
 });
 

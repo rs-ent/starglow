@@ -2,7 +2,7 @@
 
 "use client";
 
-import { ArtistMessage as ArtistMessageType } from "@prisma/client";
+import { Artist, ArtistMessage as ArtistMessageType } from "@prisma/client";
 import ArtistMessageMessage from "@/components/artists/ArtistMessage.Message";
 import { useArtistsGet } from "@/app/hooks/useArtists";
 import { useEffect, useMemo, useState } from "react";
@@ -10,10 +10,12 @@ import PartialLoading from "@/components/atoms/PartialLoading";
 import ImageViewer from "../atoms/ImageViewer";
 import { cn } from "@/lib/utils/tailwind";
 import { AnimatePresence, motion } from "framer-motion";
+import { ArtistBG } from "@/lib/utils/get/artist-colors";
 
 interface ArtistMessageProps {
     artistId: string;
     className?: string;
+    artist?: Artist | null;
 }
 
 // 애니메이션 설정을 상수로 분리하여 재사용
@@ -31,6 +33,7 @@ const ANIMATION_TRANSITION = {
 export default function ArtistMessage({
     artistId,
     className,
+    artist,
 }: ArtistMessageProps) {
     const [message, setMessage] = useState<ArtistMessageType | null>(null);
     const [isReady, setIsReady] = useState(false);
@@ -39,10 +42,10 @@ export default function ArtistMessage({
     const queryInput = useMemo(
         () => ({
             getArtistMessagesInput: {
-                artistId: artistId,
+                artistId: artist?.id ?? artistId,
             },
         }),
-        [artistId]
+        [artist, artistId]
     );
 
     // 아티스트 메시지 데이터 가져오기
@@ -93,6 +96,9 @@ export default function ArtistMessage({
                             title={message.message}
                             framePadding={1}
                             showTitle={false}
+                            shadowColor={
+                                artist ? ArtistBG(artist, 0, 100) : undefined
+                            }
                         />
                     </motion.div>
                 )}

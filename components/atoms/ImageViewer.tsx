@@ -13,7 +13,7 @@ interface ImageViewerProps {
     framePadding?: number;
     showTitle?: boolean;
     className?: string;
-    bgColor?: string;
+    shadowColor?: string;
 }
 
 export default function ImageViewer({
@@ -22,7 +22,7 @@ export default function ImageViewer({
     framePadding = 1,
     showTitle,
     className,
-    bgColor = "rgba(132, 78, 236, 0.2)",
+    shadowColor = "rgba(132, 78, 236, 0.2)",
 }: ImageViewerProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [isError, setIsError] = useState(false);
@@ -82,7 +82,7 @@ export default function ImageViewer({
                                         objectFit: "cover",
                                         userSelect: "none",
                                         pointerEvents: "all",
-                                        boxShadow: `0 0 12px 2px ${bgColor}`,
+                                        boxShadow: `0 0 12px 2px ${shadowColor}`,
                                     }}
                                     draggable={false}
                                     onLoad={handleImageLoad}
