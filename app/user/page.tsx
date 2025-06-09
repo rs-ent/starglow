@@ -30,8 +30,6 @@ async function UserContent() {
         const userVerifiedSPGs = await getUserVerifiedSPGs({
             userId: user.id,
         });
-
-        console.log("userVerifiedSPGs", userVerifiedSPGs);
         return (
             <User
                 user={user}

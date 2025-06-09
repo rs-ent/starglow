@@ -5,13 +5,26 @@ import PublicPrivateTab from "../atoms/PublicPrivateTab";
 import { Player } from "@prisma/client";
 import type { User } from "next-auth";
 import { VerifiedSPG } from "@/app/story/interaction/actions";
+import PartialLoading from "../atoms/PartialLoading";
 
 const UserMyStar = dynamic(() => import("./User.MyStar"), {
-    loading: () => <div>Loading...</div>,
+    loading: () => {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <PartialLoading text="Loading My Star..." size="sm" />
+            </div>
+        );
+    },
     ssr: false,
 });
 const UserRewards = dynamic(() => import("./User.Rewards"), {
-    loading: () => <div>Loading...</div>,
+    loading: () => {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <PartialLoading text="Loading Rewards..." size="sm" />
+            </div>
+        );
+    },
     ssr: false,
 });
 

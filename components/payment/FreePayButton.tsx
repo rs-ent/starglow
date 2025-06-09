@@ -6,6 +6,9 @@ import { useState } from "react";
 import { PaymentResponse } from "@portone/browser-sdk/v2";
 import { Currency, PayMethod } from "@/lib/types/payment";
 import { Payment } from "@prisma/client";
+import { ShinyButton } from "../magicui/shiny-button";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
 
 interface FreePayButtonProps {
     payment: Payment;
@@ -39,12 +42,25 @@ export default function FreePayButton({
     };
 
     return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            className="w-full mt-4 py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
-        >
-            {isLoading ? <span>Processing...</span> : <span>Get Free!</span>}
-        </button>
+        <>
+            <ShinyButton
+                className={cn(
+                    "my-4",
+                    "bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300",
+                    "w-full"
+                )}
+                onClick={onClick}
+                disabled={disabled}
+            >
+                <h2
+                    className={cn(
+                        "text-center text-white",
+                        getResponsiveClass(20).textClass
+                    )}
+                >
+                    {isLoading ? "Processing..." : "Get Free!"}
+                </h2>
+            </ShinyButton>
+        </>
     );
 }

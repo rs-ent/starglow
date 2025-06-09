@@ -10,7 +10,6 @@ import { usePayment } from "@/app/hooks/usePayment";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useToast } from "@/app/hooks/useToast";
-import { H1, H2, H3, Paragraph } from "@/components/atoms/Typography";
 import { formatCurrency } from "@/lib/utils/format";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -35,9 +34,9 @@ import {
 } from "@/components/ui/select";
 import Icon from "@/components/atoms/Icon";
 import Badge from "@/components/atoms/Badge";
-import { cn } from "@/lib/utils/tailwind";
-import Button from "@/components/atoms/Button";
 import FreePayButton from "./FreePayButton";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
 
 interface PaymentProps {
     payment: Payment;
@@ -201,18 +200,22 @@ export default function Payments({
                                     />
                                 </div>
                                 <div>
-                                    <H2
-                                        size={28}
-                                        className="font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent"
+                                    <h2
+                                        className={cn(
+                                            "font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent",
+                                            getResponsiveClass(30).textClass
+                                        )}
                                     >
                                         Payment
-                                    </H2>
-                                    <Paragraph
-                                        size={14}
-                                        className="text-white/60 font-medium"
+                                    </h2>
+                                    <p
+                                        className={cn(
+                                            "text-white/60 font-medium",
+                                            getResponsiveClass(20).textClass
+                                        )}
                                     >
                                         Complete your transaction
-                                    </Paragraph>
+                                    </p>
                                 </div>
                             </div>
                             {paymentStatusBadge()}
@@ -220,7 +223,7 @@ export default function Payments({
                     </div>
 
                     {/* 메인 콘텐츠 */}
-                    <div className="p-8">
+                    <div className="p-4">
                         <div className="space-y-8">
                             {/* Product Details */}
                             <div className="bg-card/10 backdrop-blur-md p-6 rounded-2xl border border-border/5">
@@ -231,71 +234,54 @@ export default function Payments({
                                             className="w-5 h-5 text-primary"
                                         />
                                     </div>
-                                    <H3 size={20}>Product Details</H3>
+                                    <h3
+                                        className={cn(
+                                            "font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent",
+                                            getResponsiveClass(30).textClass
+                                        )}
+                                    >
+                                        Product Details
+                                    </h3>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1">
-                                        <Paragraph
-                                            size={12}
-                                            className="text-muted-foreground"
-                                        >
+                                        <p className="text-muted-foreground">
                                             Product Name
-                                        </Paragraph>
-                                        <Paragraph
-                                            size={15}
-                                            className="font-medium"
-                                        >
+                                        </p>
+                                        <p className="font-medium">
                                             {payment.productName}
-                                        </Paragraph>
+                                        </p>
                                     </div>
                                     <div className="space-y-1">
-                                        <Paragraph
-                                            size={12}
-                                            className="text-muted-foreground"
-                                        >
+                                        <p className="text-muted-foreground">
                                             Quantity
-                                        </Paragraph>
-                                        <Paragraph
-                                            size={15}
-                                            className="font-medium"
-                                        >
+                                        </p>
+                                        <p className="font-medium">
                                             {payment.quantity} units
-                                        </Paragraph>
+                                        </p>
                                     </div>
                                     <div className="space-y-1">
-                                        <Paragraph
-                                            size={12}
-                                            className="text-muted-foreground"
-                                        >
+                                        <p className="text-muted-foreground">
                                             Unit Price
-                                        </Paragraph>
-                                        <Paragraph
-                                            size={15}
-                                            className="font-medium"
-                                        >
+                                        </p>
+                                        <p className="font-medium">
                                             {formatCurrency(
                                                 payment.amount /
                                                     payment.quantity,
                                                 payment.currency
                                             )}
-                                        </Paragraph>
+                                        </p>
                                     </div>
                                     <div className="space-y-1">
-                                        <Paragraph
-                                            size={12}
-                                            className="text-muted-foreground"
-                                        >
+                                        <p className="text-muted-foreground">
                                             Total Amount
-                                        </Paragraph>
-                                        <Paragraph
-                                            size={20}
-                                            className="font-bold text-primary"
-                                        >
+                                        </p>
+                                        <p className="font-bold text-primary">
                                             {formatCurrency(
                                                 payment.amount,
                                                 payment.currency
                                             )}
-                                        </Paragraph>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -309,21 +295,22 @@ export default function Payments({
                                             className="w-5 h-5 text-primary"
                                         />
                                     </div>
-                                    <H3 size={20}>Payment Details</H3>
+                                    <h3
+                                        className={cn(
+                                            "font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent",
+                                            getResponsiveClass(30).textClass
+                                        )}
+                                    >
+                                        Payment Details
+                                    </h3>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1">
-                                        <Paragraph
-                                            size={12}
-                                            className="text-muted-foreground"
-                                        >
+                                        <p className="text-muted-foreground">
                                             Payment Method
-                                        </Paragraph>
+                                        </p>
                                         <div className="flex items-center mt-1">
-                                            <Paragraph
-                                                size={15}
-                                                className="font-medium"
-                                            >
+                                            <p className="font-medium">
                                                 {payment.payMethod === "PAYPAL"
                                                     ? "PayPal"
                                                     : payment.easyPayProvider
@@ -334,16 +321,13 @@ export default function Payments({
                                                     : payment.cardProvider
                                                     ? `Card`
                                                     : payment.payMethod}
-                                            </Paragraph>
+                                            </p>
                                         </div>
                                     </div>
                                     <div className="space-y-1">
-                                        <Paragraph
-                                            size={12}
-                                            className="text-muted-foreground"
-                                        >
+                                        <p className="text-muted-foreground">
                                             Payment Status
-                                        </Paragraph>
+                                        </p>
                                         <div className="flex items-center mt-1">
                                             <Icon
                                                 icon={
@@ -358,50 +342,35 @@ export default function Payments({
                                                         : "text-yellow-500"
                                                 )}
                                             />
-                                            <Paragraph
-                                                size={15}
-                                                className="font-medium capitalize"
-                                            >
+                                            <p className="font-medium capitalize">
                                                 {payment.status.toLowerCase()}
-                                            </Paragraph>
+                                            </p>
                                         </div>
                                     </div>
                                     {payment.paidAt && (
                                         <div className="space-y-1">
-                                            <Paragraph
-                                                size={12}
-                                                className="text-muted-foreground"
-                                            >
+                                            <p className="text-muted-foreground">
                                                 Payment Date
-                                            </Paragraph>
+                                            </p>
                                             <div className="flex items-center mt-1">
                                                 <Icon
                                                     icon={Calendar}
                                                     className="w-4 h-4 mr-2 text-muted-foreground"
                                                 />
-                                                <Paragraph
-                                                    size={15}
-                                                    className="font-medium"
-                                                >
+                                                <p className="font-medium">
                                                     {formatDate(payment.paidAt)}
-                                                </Paragraph>
+                                                </p>
                                             </div>
                                         </div>
                                     )}
                                     {payment.cardNumber && (
                                         <div className="space-y-1">
-                                            <Paragraph
-                                                size={12}
-                                                className="text-muted-foreground"
-                                            >
+                                            <p className="text-muted-foreground">
                                                 Card Number
-                                            </Paragraph>
-                                            <Paragraph
-                                                size={15}
-                                                className="font-medium font-mono"
-                                            >
+                                            </p>
+                                            <p className="font-medium font-mono">
                                                 •••• {payment.cardNumber}
-                                            </Paragraph>
+                                            </p>
                                         </div>
                                     )}
                                 </div>
@@ -417,7 +386,14 @@ export default function Payments({
                                                 className="w-5 h-5 text-primary"
                                             />
                                         </div>
-                                        <H3 size={20}>Receiving Wallet</H3>
+                                        <h3
+                                            className={cn(
+                                                "font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent",
+                                                getResponsiveClass(30).textClass
+                                            )}
+                                        >
+                                            Receiving Wallet
+                                        </h3>
                                     </div>
 
                                     {isLoadingWallets ? (
@@ -526,12 +502,9 @@ export default function Payments({
                                                         className="w-8 h-8 text-primary animate-spin"
                                                     />
                                                 </div>
-                                                <Paragraph
-                                                    size={15}
-                                                    className="text-muted-foreground"
-                                                >
+                                                <p className="text-muted-foreground">
                                                     Processing your payment...
-                                                </Paragraph>
+                                                </p>
                                             </motion.div>
                                         </div>
                                     ) : (

@@ -3,6 +3,7 @@ web3/cache/
 web3/typechain-types/
 web3/artifacts/
 web3/ignition/
+!web3/contracts
 !web3/artifacts/contracts/
 !web3/artifacts/contracts/**
 

@@ -81,10 +81,62 @@ export async function initialTransfer(
         throw new Error("Wallet account not found");
     }
 
+    const isEscrow = await publicClient.readContract({
+        address: spgAddress as Hex,
+        abi: SPGNFTCollection.abi,
+        functionName: "isEscrowWallet",
+        args: [walletClient.account.address],
+    });
+
+    if (!isEscrow) {
+        throw new Error("Wallet is not authorized as escrow wallet");
+    }
+
     const ownedTokenIds = await getOwnedTokenIds(spgAddress, from, quantity);
 
+    const nonce = await publicClient.readContract({
+        address: spgAddress as Hex,
+        abi: SPGNFTCollection.abi,
+        functionName: "getNonce",
+        args: [from],
+    });
+
+    const domain = {
+        name: "SPGNFTCollection",
+        version: "1",
+        chainId: spg.network.chainId,
+        verifyingContract: spgAddress as Hex,
+    };
+
+    const types = {
+        BatchTransferPermit: [
+            { name: "owner", type: "address" },
+            { name: "to", type: "address" },
+            { name: "startTokenId", type: "uint256" },
+            { name: "quantity", type: "uint256" },
+            { name: "nonce", type: "uint256" },
+            { name: "deadline", type: "uint256" },
+        ],
+    };
+
     const deadline = Math.floor(Date.now() / 1000) + 3600;
-    const signature = "0x00";
+
+    const message = {
+        owner: from,
+        to: toAddress,
+        startTokenId: BigInt(ownedTokenIds[0]),
+        quantity: BigInt(quantity),
+        nonce: nonce,
+        deadline: BigInt(deadline),
+    };
+
+    const signature = await walletClient.signTypedData({
+        account: walletClient.account,
+        domain,
+        types,
+        primaryType: "BatchTransferPermit",
+        message,
+    });
 
     const { request } = await publicClient.simulateContract({
         address: spgAddress as Hex,
