@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNFT } from "@/app/story/nft/hooks";
 import { useSPG } from "@/app/story/spg/hooks";
 import { useMetadata } from "@/app/story/metadata/hooks";
@@ -60,6 +60,63 @@ export default function AdminStoryMint({ onBack }: { onBack?: () => void }) {
             type: "erc721-metadata",
         },
     });
+
+    const [cachedMetadata, setCachedMetadata] = useState<Record<string, any>>(
+        {}
+    );
+
+    const fetchMetadata = async (url: string) => {
+        try {
+            const fetchedData = await fetch(url);
+            if (!fetchedData.ok) {
+                throw new Error(`HTTP error! status: ${fetchedData.status}`);
+            }
+            const data = await fetchedData.json();
+            return data;
+        } catch (error) {
+            console.error(`Failed to fetch metadata from ${url}:`, error);
+            return null;
+        }
+    };
+
+    useEffect(() => {
+        const loadMetadata = async () => {
+            if (!nftMetadataList?.length || isLoadingNFTMetadata) return;
+            const uncachedMetadata = nftMetadataList.filter(
+                (meta) => meta.url && !cachedMetadata[meta.url]
+            );
+
+            if (!uncachedMetadata.length) return;
+
+            try {
+                // Promise.all을 사용하여 병렬로 모든 요청 처리
+                const results = await Promise.all(
+                    uncachedMetadata.map(async (meta) => {
+                        const data = await fetchMetadata(meta.url!);
+                        return { url: meta.url, data };
+                    })
+                );
+
+                // 새로운 캐시 데이터 생성
+                const newCache = results.reduce((acc, { url, data }) => {
+                    if (data && url) {
+                        acc[url] = data;
+                    }
+                    return acc;
+                }, {} as Record<string, any>);
+
+                // 기존 캐시와 병합
+                setCachedMetadata((prev) => ({
+                    ...prev,
+                    ...newCache,
+                }));
+            } catch (error) {
+                console.error("Error loading metadata:", error);
+            }
+        };
+
+        loadMetadata();
+    }, [nftMetadataList, cachedMetadata, isLoadingNFTMetadata]);
 
     const {
         metadataList: ipAssetMetadataList,
@@ -502,16 +559,18 @@ export default function AdminStoryMint({ onBack }: { onBack?: () => void }) {
                             </div>
                         ) : (
                             <>
-                                {nftMetadataList.map((meta) => (
-                                    <button
-                                        key={meta.id}
-                                        onClick={() =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                nftMetadata: meta,
-                                            }))
-                                        }
-                                        className={`
+                                {nftMetadataList.map((meta) => {
+                                    const metadata = cachedMetadata[meta.url];
+                                    return (
+                                        <button
+                                            key={meta.id}
+                                            onClick={() =>
+                                                setForm((f) => ({
+                                                    ...f,
+                                                    nftMetadata: meta,
+                                                }))
+                                            }
+                                            className={`
                                             relative group rounded-2xl shadow-xl border-4 overflow-hidden
                                             transition-all duration-300 transform
                                             ${
@@ -520,25 +579,35 @@ export default function AdminStoryMint({ onBack }: { onBack?: () => void }) {
                                                     : "border-blue-800 hover:scale-105 hover:border-orange-500/50"
                                             }
                                         `}
-                                    >
-                                        <div className="aspect-square bg-gradient-to-br from-orange-900/20 to-red-900/20 p-4 flex items-center justify-center">
-                                            <FaImages className="text-5xl text-orange-400" />
-                                        </div>
-                                        <div className="p-4 bg-[#181c2b]/90">
-                                            <p className="text-orange-200 font-mono text-xs mb-2 truncate">
-                                                {meta.cid}
-                                            </p>
-                                            <p className="text-blue-300 text-sm">
-                                                ERC721 메타데이터
-                                            </p>
-                                        </div>
-                                        {form.nftMetadata?.id === meta.id && (
-                                            <div className="absolute -top-3 -right-3 bg-gradient-to-r from-orange-400 to-red-400 text-white rounded-full px-3 py-1 text-xs font-bold shadow-lg animate-pulse">
-                                                선택됨
+                                        >
+                                            <div className="aspect-square bg-gradient-to-br from-orange-900/20 to-red-900/20 p-4 flex items-center justify-center">
+                                                {metadata?.image ? (
+                                                    <img
+                                                        src={metadata.image}
+                                                        alt={metadata.name}
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <FaImages className="text-5xl text-orange-400" />
+                                                )}
                                             </div>
-                                        )}
-                                    </button>
-                                ))}
+                                            <div className="p-4 bg-[#181c2b]/90">
+                                                <p className="text-orange-200 font-mono text-xs mb-2 truncate">
+                                                    {metadata?.name}
+                                                </p>
+                                                <p className="text-blue-300 text-sm">
+                                                    ERC721 메타데이터
+                                                </p>
+                                            </div>
+                                            {form.nftMetadata?.id ===
+                                                meta.id && (
+                                                <div className="absolute -top-3 -right-3 bg-gradient-to-r from-orange-400 to-red-400 text-white rounded-full px-3 py-1 text-xs font-bold shadow-lg animate-pulse">
+                                                    선택됨
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                                 <button
                                     className="rounded-2xl border-4 border-dashed border-orange-500/50 hover:border-orange-400 bg-orange-900/10 hover:bg-orange-900/20 transition-all duration-300 aspect-square flex flex-col items-center justify-center group"
                                     onClick={() => {

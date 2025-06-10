@@ -95,7 +95,7 @@ export default function AdminStoryMetadataNFT({
                     attribute.display_type === "boost_number"
                         ? Number(attribute.value)
                         : attribute.display_type === "date"
-                        ? new Date(attribute.value)
+                        ? new Date(attribute.value).getTime()
                         : attribute.value,
             };
 
@@ -448,7 +448,9 @@ export default function AdminStoryMetadataNFT({
                                                                 ? attr.value
                                                                 : attr.value instanceof
                                                                   Date
-                                                                ? attr.value.toLocaleDateString()
+                                                                ? new Date(
+                                                                      attr.value
+                                                                  ).toLocaleDateString()
                                                                 : attr.value.toString()}
                                                         </span>
                                                         {attr.display_type &&

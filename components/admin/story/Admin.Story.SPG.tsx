@@ -143,6 +143,63 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
         Record<string, string>
     >({});
 
+    const [cachedMetadata, setCachedMetadata] = useState<Record<string, any>>(
+        {}
+    );
+
+    const fetchMetadata = async (url: string) => {
+        try {
+            const fetchedData = await fetch(url);
+            if (!fetchedData.ok) {
+                throw new Error(`HTTP error! status: ${fetchedData.status}`);
+            }
+            const data = await fetchedData.json();
+            return data;
+        } catch (error) {
+            console.error(`Failed to fetch metadata from ${url}:`, error);
+            return null;
+        }
+    };
+
+    useEffect(() => {
+        const loadMetadata = async () => {
+            if (!metadataList?.length || isLoadingMetadataList) return;
+            const uncachedMetadata = metadataList.filter(
+                (meta) => meta.url && !cachedMetadata[meta.url]
+            );
+
+            if (!uncachedMetadata.length) return;
+
+            try {
+                // Promise.all을 사용하여 병렬로 모든 요청 처리
+                const results = await Promise.all(
+                    uncachedMetadata.map(async (meta) => {
+                        const data = await fetchMetadata(meta.url!);
+                        return { url: meta.url, data };
+                    })
+                );
+
+                // 새로운 캐시 데이터 생성
+                const newCache = results.reduce((acc, { url, data }) => {
+                    if (data && url) {
+                        acc[url] = data;
+                    }
+                    return acc;
+                }, {} as Record<string, any>);
+
+                // 기존 캐시와 병합
+                setCachedMetadata((prev) => ({
+                    ...prev,
+                    ...newCache,
+                }));
+            } catch (error) {
+                console.error("Error loading metadata:", error);
+            }
+        };
+
+        loadMetadata();
+    }, [metadataList, cachedMetadata, isLoadingMetadataList]);
+
     useEffect(() => {
         if (
             step === 2 &&
@@ -1051,16 +1108,18 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                             </div>
                         ) : (
                             <>
-                                {metadataList?.map((meta: ipfs) => (
-                                    <button
-                                        key={meta.id}
-                                        onClick={() =>
-                                            setForm((f) => ({
-                                                ...f,
-                                                selectedMetadata: meta,
-                                            }))
-                                        }
-                                        className={`
+                                {metadataList?.map((meta: ipfs) => {
+                                    const metadata = cachedMetadata[meta.url];
+                                    return (
+                                        <button
+                                            key={meta.id}
+                                            onClick={() =>
+                                                setForm((f) => ({
+                                                    ...f,
+                                                    selectedMetadata: meta,
+                                                }))
+                                            }
+                                            className={`
                                             relative group rounded-2xl shadow-xl border-4 overflow-hidden
                                             transition-all duration-300 transform
                                             ${
@@ -1070,26 +1129,37 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                                                     : "border-blue-800 hover:scale-105 hover:border-green-500/50"
                                             }
                                         `}
-                                    >
-                                        <div className="aspect-square bg-gradient-to-br from-green-900/20 to-blue-900/20 p-4 flex items-center justify-center">
-                                            <div className="text-5xl">📦</div>
-                                        </div>
-                                        <div className="p-4 bg-[#181c2b]/90">
-                                            <p className="text-green-200 font-mono text-xs mb-2 truncate">
-                                                {meta.cid}
-                                            </p>
-                                            <p className="text-blue-300 text-sm">
-                                                {meta.type}
-                                            </p>
-                                        </div>
-                                        {form.selectedMetadata?.id ===
-                                            meta.id && (
-                                            <div className="absolute -top-3 -right-3 bg-gradient-to-r from-green-400 to-blue-400 text-white rounded-full px-3 py-1 text-xs font-bold shadow-lg animate-pulse">
-                                                선택됨
+                                        >
+                                            <div className="aspect-square bg-gradient-to-br from-green-900/20 to-blue-900/20 p-4 flex items-center justify-center">
+                                                {metadata?.image ? (
+                                                    <img
+                                                        src={metadata.image}
+                                                        alt={metadata.name}
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <div className="text-5xl">
+                                                        📦
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </button>
-                                ))}
+                                            <div className="p-4 bg-[#181c2b]/90">
+                                                <p className="text-green-200 font-mono text-xs mb-2 truncate">
+                                                    {metadata?.name}
+                                                </p>
+                                                <p className="text-blue-300 text-sm">
+                                                    {meta.type}
+                                                </p>
+                                            </div>
+                                            {form.selectedMetadata?.id ===
+                                                meta.id && (
+                                                <div className="absolute -top-3 -right-3 bg-gradient-to-r from-green-400 to-blue-400 text-white rounded-full px-3 py-1 text-xs font-bold shadow-lg animate-pulse">
+                                                    선택됨
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                                 <button
                                     className="rounded-2xl border-4 border-dashed border-green-500/50 hover:border-green-400 bg-green-900/10 hover:bg-green-900/20 transition-all duration-300 aspect-square flex flex-col items-center justify-center group"
                                     onClick={() => {
