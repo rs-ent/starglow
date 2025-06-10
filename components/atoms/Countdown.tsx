@@ -60,6 +60,12 @@ export default function Countdown({
             }
 
             setTimeLeft(`${dd}:${hh}:${mm}:${ss}`);
+
+            if (diffSec <= 0) {
+                if (onComplete) {
+                    onComplete();
+                }
+            }
         }, 1000);
 
         return () => clearInterval(timer);

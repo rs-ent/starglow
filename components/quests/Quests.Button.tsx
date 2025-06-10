@@ -85,6 +85,8 @@ function QuestsButton({
         "gradient-border morp-glass-1"
     );
     const [isReady, setIsReady] = useState<boolean>(false);
+    const [isCountdownComplete, setIsCountdownComplete] =
+        useState<boolean>(false);
 
     const singlePermission = useMemo(() => {
         if (quest.needTokenAddress) {
@@ -168,6 +170,7 @@ function QuestsButton({
         if (blockFunction) return;
 
         try {
+            setIsCountdownComplete(false);
             isProcessingRef.current = true;
             setBlockFunction(true);
             if (quest.multiClaimable && quest.urls && quest.urls.length > 0) {
@@ -283,6 +286,7 @@ function QuestsButton({
             }
 
             try {
+                setIsCountdownComplete(false);
                 isProcessingRef.current = true;
                 setBlockFunction(true);
 
@@ -603,11 +607,17 @@ function QuestsButton({
                                             quest.repeatableCount >
                                                 (questLog?.repeatCount || 0) &&
                                             waitDate.getTime() >
-                                                new Date().getTime() && (
+                                                new Date().getTime() &&
+                                            !isCountdownComplete && (
                                                 <Countdown
                                                     size={10}
                                                     endDate={waitDate}
                                                     className="font-digital text-[rgba(255,255,255,0.8)]"
+                                                    onComplete={() =>
+                                                        setIsCountdownComplete(
+                                                            true
+                                                        )
+                                                    }
                                                 />
                                             )}
                                     </div>
@@ -641,11 +651,17 @@ function QuestsButton({
                                                     (questLog?.repeatCount ||
                                                         0)) &&
                                             waitDate.getTime() >
-                                                new Date().getTime() && (
+                                                new Date().getTime() &&
+                                            !isCountdownComplete && (
                                                 <Countdown
                                                     size={10}
                                                     endDate={waitDate}
                                                     className="font-digital text-[rgba(255,255,255,0.8)]"
+                                                    onComplete={() =>
+                                                        setIsCountdownComplete(
+                                                            true
+                                                        )
+                                                    }
                                                 />
                                             )}
                                     </div>
