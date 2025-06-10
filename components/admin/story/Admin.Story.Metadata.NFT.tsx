@@ -19,6 +19,10 @@ import {
 import { TbTopologyStar3 } from "react-icons/tb";
 import { SiEthereum } from "react-icons/si";
 
+const formatDateForMetadata = (date: Date) => {
+    return date.toISOString().split("T")[0];
+};
+
 const nftInitialForm: ERC721Metadata = {
     name: "",
     description: "",
@@ -95,7 +99,7 @@ export default function AdminStoryMetadataNFT({
                     attribute.display_type === "boost_number"
                         ? Number(attribute.value)
                         : attribute.display_type === "date"
-                        ? new Date(attribute.value)
+                        ? formatDateForMetadata(new Date(attribute.value))
                         : attribute.value,
             };
 
