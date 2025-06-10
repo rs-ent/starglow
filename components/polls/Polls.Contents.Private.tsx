@@ -3,20 +3,21 @@
 "use client";
 
 import { Artist, Player, PollLog } from "@prisma/client";
-import PartialLoading from "../atoms/PartialLoading";
 import ArtistSlideSelector from "../artists/ArtistSlideSelector";
 import PollsContentsPrivateArtistList from "./Polls.Contents.Private.ArtistList";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { User } from "next-auth";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { AnimatePresence, motion } from "framer-motion";
-import { useNFT } from "@/app/story/nft/hooks";
+import { VerifiedSPG } from "@/app/story/interaction/actions";
+import { TokenGatingResult } from "@/app/story/nft/actions";
 
 interface PollsContentsPrivateProps {
     user: User | null;
     player: Player | null;
     privateTabClicked: boolean;
     pollLogs?: PollLog[];
+    verifiedSPGs?: VerifiedSPG[];
 }
 
 // 애니메이션 변수를 컴포넌트 외부로 이동하여 리렌더링 방지
@@ -67,24 +68,13 @@ function PollsContentsPrivate({
     user,
     player,
     pollLogs,
+    verifiedSPGs,
 }: PollsContentsPrivateProps) {
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
     const [previousArtist, setPreviousArtist] = useState<Artist | null>(null);
-    const [showArtistContents, setShowArtistContents] = useState(false);
     const [activeBackground, setActiveBackground] = useState<
         "default" | "artist"
     >("default");
-
-    // 토큰 게이팅 쿼리 최적화 - 필요한 경우에만 실행
-    const tokenGatingQueryEnabled = Boolean(selectedArtist && user?.id);
-
-    // 토큰 게이팅 결과 가져오기
-    const { tokenGating, isTokenGatingLoading } = useNFT({
-        tokenGatingInput: {
-            artist: selectedArtist,
-            userId: user?.id || null,
-        },
-    });
 
     // 아티스트 선택 핸들러 메모이제이션
     const handleArtistSelect = useCallback(
@@ -92,13 +82,33 @@ function PollsContentsPrivate({
             // 이전 아티스트 저장
             setPreviousArtist(selectedArtist);
             setSelectedArtist(artist);
-            setShowArtistContents(false);
 
             // 배경 상태 업데이트
             setActiveBackground(artist ? "artist" : "default");
         },
         [selectedArtist]
     );
+
+    const tokenGatingResult: TokenGatingResult = useMemo(() => {
+        const result: TokenGatingResult = {
+            success: true,
+            data: {},
+        };
+
+        if (!verifiedSPGs) return result;
+
+        verifiedSPGs.forEach((spg) => {
+            result.data[spg.address] = {
+                hasToken: true,
+                detail: spg.verifiedTokens.map((token) => ({
+                    tokenId: token.toString(),
+                    owner: spg.ownerAddress,
+                })),
+            };
+        });
+
+        return result;
+    }, [verifiedSPGs]);
 
     // 선택된 아티스트 배경 스타일 메모이제이션
     const selectedBackgroundStyle = useMemo(() => {
@@ -126,43 +136,9 @@ function PollsContentsPrivate({
         };
     }, [previousArtist]);
 
-    // 토큰 게이팅 결과에 따라 컨텐츠 표시 여부 결정
-    useEffect(() => {
-        // 로딩이 완료되면 컨텐츠 표시 (tokenGatingResult 유무와 관계없이)
-        if (
-            selectedArtist &&
-            (!isTokenGatingLoading || !tokenGatingQueryEnabled)
-        ) {
-            if (!tokenGatingQueryEnabled) {
-                console.log("no token gating");
-            }
-            setShowArtistContents(true);
-        }
-    }, [selectedArtist, isTokenGatingLoading, tokenGatingQueryEnabled]);
-
-    // 로딩 상태 메모이제이션
-    const isLoading = useMemo(
-        () => isTokenGatingLoading && tokenGatingQueryEnabled,
-        [isTokenGatingLoading, tokenGatingQueryEnabled]
-    );
-
-    // 컨텐츠 표시 조건 메모이제이션
-    const shouldShowContent = useMemo(
-        () =>
-            selectedArtist &&
-            showArtistContents &&
-            (!tokenGatingQueryEnabled || !isTokenGatingLoading),
-        [
-            selectedArtist,
-            showArtistContents,
-            tokenGatingQueryEnabled,
-            isTokenGatingLoading,
-        ]
-    );
-
     // 아티스트 컨텐츠 렌더링 최적화
     const renderArtistContent = useCallback(() => {
-        if (!shouldShowContent || !selectedArtist) return null;
+        if (!selectedArtist) return null;
 
         return (
             <motion.div
@@ -177,7 +153,7 @@ function PollsContentsPrivate({
                     <PollsContentsPrivateArtistList
                         artist={selectedArtist}
                         player={player}
-                        tokenGating={tokenGating || null}
+                        tokenGating={tokenGatingResult || null}
                         pollLogs={pollLogs}
                         bgColorFrom={ArtistBG(selectedArtist, 0, 60)}
                         bgColorTo={ArtistBG(selectedArtist, 1, 30)}
@@ -189,7 +165,7 @@ function PollsContentsPrivate({
                 </div>
             </motion.div>
         );
-    }, [shouldShowContent, selectedArtist, player, tokenGating, pollLogs]);
+    }, [selectedArtist, player, tokenGatingResult, pollLogs]);
 
     return (
         <div className="w-full flex flex-col items-center justify-center">
@@ -203,16 +179,9 @@ function PollsContentsPrivate({
                     className="mt-[5px] sm:mt-[10px] md:mt-[15px] lg:mt-[20px] xl:mt-[25px]"
                     onSelect={handleArtistSelect}
                     selectedArtist={selectedArtist}
-                    tokenGating={tokenGating}
+                    verifiedSPGs={verifiedSPGs}
                 />
             </motion.div>
-
-            {/* 로딩 상태 표시 */}
-            {isLoading && (
-                <div className="w-full h-full flex items-center justify-center my-6">
-                    <PartialLoading text="Authenticating..." size="sm" />
-                </div>
-            )}
 
             {/* 배경 그라데이션 - AnimatePresence로 부드러운 전환 구현 */}
             <div className="fixed inset-0 w-screen h-screen -z-20">

@@ -9,13 +9,15 @@ import PollsContents from "@/components/polls/Polls.Contents";
 import { User } from "next-auth";
 import { motion } from "framer-motion";
 import { memo } from "react";
+import { VerifiedSPG } from "@/app/story/interaction/actions";
 
 interface PollsProps {
     user: User | null;
     player: Player | null;
+    verifiedSPGs?: VerifiedSPG[];
 }
 
-function Polls({ user, player }: PollsProps) {
+function Polls({ user, player, verifiedSPGs }: PollsProps) {
     const containerVariants = {
         hidden: { opacity: 0 },
         visible: {
@@ -60,7 +62,11 @@ function Polls({ user, player }: PollsProps) {
                         "mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]"
                     )}
                 >
-                    <PollsContents user={user} player={player} />
+                    <PollsContents
+                        user={user}
+                        player={player}
+                        verifiedSPGs={verifiedSPGs}
+                    />
                 </motion.div>
             </motion.div>
         </div>

@@ -7,12 +7,12 @@ import { Artist, Player, QuestLog, ReferralLog } from "@prisma/client";
 import ArtistMessage from "../artists/ArtistMessage";
 import ArtistSlideSelector from "../artists/ArtistSlideSelector";
 import QuestsArtistMissions from "./Quests.Contents.Private.ArtistMissions";
-import { useNFT } from "@/app/story/nft/hooks";
 import { cn } from "@/lib/utils/tailwind";
 import { User } from "next-auth";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
-import PartialLoading from "../atoms/PartialLoading";
 import { AnimatePresence, motion } from "framer-motion";
+import { VerifiedSPG } from "@/app/story/interaction/actions";
+import { TokenGatingResult } from "@/app/story/nft/actions";
 
 interface QuestsPrivateProps {
     user: User | null;
@@ -20,6 +20,7 @@ interface QuestsPrivateProps {
     questLogs: QuestLog[];
     privateTabClicked: boolean;
     referralLogs?: ReferralLog[];
+    verifiedSPGs?: VerifiedSPG[];
 }
 
 function QuestsPrivate({
@@ -27,19 +28,13 @@ function QuestsPrivate({
     player,
     questLogs,
     referralLogs,
+    verifiedSPGs,
 }: QuestsPrivateProps) {
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
     const [previousArtist, setPreviousArtist] = useState<Artist | null>(null);
     const [activeBackground, setActiveBackground] = useState<
         "default" | "artist"
     >("default");
-
-    const { tokenGating, isTokenGatingLoading } = useNFT({
-        tokenGatingInput: {
-            artist: selectedArtist,
-            userId: user?.id || null,
-        },
-    });
 
     // 아티스트 선택 핸들러 메모이제이션
     const handleArtistSelect = useCallback(
@@ -58,6 +53,7 @@ function QuestsPrivate({
         }),
         []
     );
+
     const selectedBackgroundStyle = useMemo(() => {
         if (!selectedArtist) return defaultBackgroundStyle;
         return {
@@ -68,6 +64,7 @@ function QuestsPrivate({
             )}, ${ArtistBG(selectedArtist, 1, 100)})`,
         };
     }, [selectedArtist, defaultBackgroundStyle]);
+
     const previousBackgroundStyle = useMemo(() => {
         if (!previousArtist) return defaultBackgroundStyle;
         return {
@@ -79,7 +76,27 @@ function QuestsPrivate({
         };
     }, [previousArtist, defaultBackgroundStyle]);
 
-    // 애니메이션 변수 - 컴포넌트 외부로 이동하여 리렌더링 방지
+    const tokenGatingResult: TokenGatingResult = useMemo(() => {
+        const result: TokenGatingResult = {
+            success: true,
+            data: {},
+        };
+
+        if (!verifiedSPGs) return result;
+
+        verifiedSPGs.forEach((spg) => {
+            result.data[spg.address] = {
+                hasToken: true,
+                detail: spg.verifiedTokens.map((token) => ({
+                    tokenId: token.toString(),
+                    owner: spg.ownerAddress,
+                })),
+            };
+        });
+
+        return result;
+    }, [verifiedSPGs]);
+
     const animations = useMemo(
         () => ({
             contentVariants: {
@@ -115,18 +132,6 @@ function QuestsPrivate({
         []
     );
 
-    // 로딩 상태 메모이제이션
-    const isLoading = useMemo(
-        () => isTokenGatingLoading && !!selectedArtist,
-        [isTokenGatingLoading, selectedArtist]
-    );
-
-    // 컨텐츠 표시 조건 메모이제이션
-    const shouldShowContent = useMemo(
-        () => selectedArtist && !isTokenGatingLoading,
-        [selectedArtist, isTokenGatingLoading]
-    );
-
     return (
         <div className="w-full flex flex-col items-center justify-center">
             <motion.div
@@ -139,16 +144,9 @@ function QuestsPrivate({
                     className="mt-[10px] sm:mt-[15px] md:mt-[20px] lg:mt-[25px] xl:mt-[30px]"
                     onSelect={handleArtistSelect}
                     selectedArtist={selectedArtist}
-                    tokenGating={tokenGating}
+                    verifiedSPGs={verifiedSPGs}
                 />
             </motion.div>
-
-            {/* 로딩 상태 표시 */}
-            {isLoading && (
-                <div className="w-full h-full flex items-center justify-center my-6">
-                    <PartialLoading text="Authenticating..." size="sm" />
-                </div>
-            )}
 
             {/* 배경 그라데이션 - AnimatePresence로 부드러운 전환 구현 */}
             <div className="fixed inset-0 w-screen h-screen -z-50">
@@ -198,7 +196,7 @@ function QuestsPrivate({
 
             {/* 아티스트 콘텐츠 - AnimatePresence로 애니메이션 최적화 */}
             <AnimatePresence mode="wait">
-                {shouldShowContent && selectedArtist && (
+                {selectedArtist && (
                     <motion.div
                         className="relative w-full h-full"
                         key={selectedArtist.id}
@@ -232,7 +230,7 @@ function QuestsPrivate({
                                     artist={selectedArtist}
                                     player={player}
                                     questLogs={questLogs}
-                                    tokenGating={tokenGating}
+                                    tokenGating={tokenGatingResult || null}
                                     referralLogs={referralLogs || []}
                                     bgColorFrom={ArtistBG(
                                         selectedArtist,

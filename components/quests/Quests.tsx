@@ -9,13 +9,15 @@ import { cn } from "@/lib/utils/tailwind";
 import QuestsContents from "@/components/quests/Quests.Contents";
 import { User } from "next-auth";
 import { motion } from "framer-motion";
+import { VerifiedSPG } from "@/app/story/interaction/actions";
 
 interface QuestsProps {
     user: User | null;
     player: Player | null;
+    verifiedSPGs?: VerifiedSPG[];
 }
 
-function Quests({ user, player }: QuestsProps) {
+function Quests({ user, player, verifiedSPGs }: QuestsProps) {
     // 배경 애니메이션 설정
     const backgroundVariants = {
         initial: { opacity: 0 },
@@ -88,7 +90,11 @@ function Quests({ user, player }: QuestsProps) {
                         "mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]"
                     )}
                 >
-                    <QuestsContents user={user} player={player} />
+                    <QuestsContents
+                        user={user}
+                        player={player}
+                        verifiedSPGs={verifiedSPGs}
+                    />
                 </div>
             </motion.div>
         </div>

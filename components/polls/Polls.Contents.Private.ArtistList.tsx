@@ -43,7 +43,6 @@ function PollsContentsPrivateArtistList({
     const [isReady, setIsReady] = useState(false);
     const [hasPolls, setHasPolls] = useState(false);
 
-    // 폴 데이터 가져오기 - 아티스트 ID가 변경될 때만 재요청
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
             artistId: artist.id,

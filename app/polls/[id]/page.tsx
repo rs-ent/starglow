@@ -3,16 +3,16 @@
 import {
     getPoll,
     getPlayerPollLogs,
-    TokenGatingResult,
-    tokenGating,
+    tokenGatingPoll,
 } from "@/app/actions/polls";
 import { PollLog } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getAuthUserAndPlayer } from "@/app/auth/authUtils";
+import { auth } from "@/app/auth/authSettings";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { Metadata } from "next";
 import PollComponent from "@/components/polls/Poll";
+import { TokenGatingData } from "@/app/story/nft/actions";
 
 function PollsLoading() {
     return (
@@ -69,25 +69,25 @@ export async function generateMetadata({
 
 export default async function PollPage({ params }: { params: { id: string } }) {
     const { id } = await params;
+    const session = await auth();
+
     const poll = await getPoll(id);
-
-    const { user, player } = await getAuthUserAndPlayer();
-    let pollLogs: PollLog[] = [];
-    let tokenGatingResult: TokenGatingResult | null = null;
-    if (player && user) {
-        pollLogs = await getPlayerPollLogs({
-            playerId: player.id,
-            pollId: id,
-        });
-
-        tokenGatingResult = await tokenGating({
-            pollId: id,
-            userId: user.id,
-        });
-    }
-
     if (!poll) {
         return notFound();
+    }
+
+    let pollLogs: PollLog[] = [];
+    let tokenGating: TokenGatingData | null = null;
+    if (session?.player && session?.user) {
+        pollLogs = await getPlayerPollLogs({
+            playerId: session.player.id,
+            pollId: id,
+        });
+
+        tokenGating = await tokenGatingPoll({
+            pollId: id,
+            userId: session.user.id,
+        });
     }
 
     return (
@@ -108,10 +108,10 @@ export default async function PollPage({ params }: { params: { id: string } }) {
 
                 <PollComponent
                     poll={poll}
-                    player={player || null}
+                    player={session?.player || null}
                     artist={poll.artist || null}
                     pollLogs={pollLogs}
-                    tokenGatingData={tokenGatingResult}
+                    tokenGatingData={tokenGating}
                     bgColorAccentFrom={
                         poll.artist ? ArtistBG(poll.artist, 2, 100) : undefined
                     }

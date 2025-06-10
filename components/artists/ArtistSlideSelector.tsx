@@ -12,19 +12,20 @@ import { TokenGatingResult, TokenGatingData } from "@/app/story/nft/actions";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
+import { VerifiedSPG } from "@/app/story/interaction/actions";
 
 interface ArtistSlideSelectorProps {
     className?: string;
     onSelect?: (artist: Artist | null) => void;
     selectedArtist?: Artist | null;
-    tokenGating?: TokenGatingResult | null;
+    verifiedSPGs?: VerifiedSPG[];
 }
 
 export default function ArtistSlideSelector({
     className,
     onSelect,
     selectedArtist,
-    tokenGating,
+    verifiedSPGs,
 }: ArtistSlideSelectorProps) {
     const { artists, isLoading, error } = useArtistsGet({});
 
@@ -67,51 +68,58 @@ export default function ArtistSlideSelector({
         [artists]
     );
 
-    // 아티스트 선택 핸들러를 useCallback으로 최적화
+    const verifiedSPGsMap = useMemo(
+        () => new Map(verifiedSPGs?.map((spg) => [spg.id, spg]) || []),
+        [verifiedSPGs]
+    );
+
+    const getTokenCount = useCallback(
+        (artist: Artist & { story_spg: Story_spg[] }) => {
+            return (
+                artist.story_spg?.reduce((count, spg) => {
+                    const verifiedSPG = verifiedSPGsMap.get(spg.id);
+                    return count + (verifiedSPG?.verifiedTokens?.length || 0);
+                }, 0) || 0
+            );
+        },
+        [verifiedSPGsMap]
+    );
+
+    const sortedArtists = useMemo(() => {
+        if (!artists) return [];
+        return [...artists].sort((a, b) => {
+            const aArtist = a as Artist & { story_spg: Story_spg[] };
+            const bArtist = b as Artist & { story_spg: Story_spg[] };
+            const aTokenCount = getTokenCount(aArtist);
+            const bTokenCount = getTokenCount(bArtist);
+            if (bTokenCount !== aTokenCount) {
+                return bTokenCount - aTokenCount;
+            }
+            return aArtist.name.localeCompare(bArtist.name);
+        });
+    }, [artists, getTokenCount]);
+
+    useEffect(() => {
+        if (sortedArtists.length > 0 && !selectedArtist) {
+            onSelect?.(sortedArtists[0]);
+        }
+    }, [sortedArtists, selectedArtist, onSelect]);
+
     const handleArtistSelect = useCallback(
         (artist: Artist) => {
-            const newSelected =
-                selectedArtist?.id === artist.id ? null : artist;
-            onSelect?.(newSelected);
+            onSelect?.(selectedArtist?.id === artist.id ? null : artist);
         },
         [onSelect, selectedArtist]
     );
 
-    useEffect(() => {
-        if (artists && artists.length > 0 && !selectedArtist) {
-            onSelect?.(artists[0]);
-        }
-    }, [artists, selectedArtist, onSelect]);
-
-    // 아티스트 렌더링 최적화
     const renderArtists = useMemo(() => {
-        if (!artists || artists.length === 0) return null;
-
-        const sortedArtists = [...artists].sort((a, b) => {
-            const aWithSpg = a as Artist & { story_spg: Story_spg[] };
-            const bWithSpg = b as Artist & { story_spg: Story_spg[] };
-
-            const aTokenCount =
-                aWithSpg.story_spg?.reduce((count, spg) => {
-                    const tokenGatingData = tokenGating?.data[
-                        spg.address as keyof TokenGatingResult
-                    ] as unknown as TokenGatingData;
-                    return count + (tokenGatingData?.detail?.length || 0);
-                }, 0) || 0;
-
-            const bTokenCount =
-                bWithSpg.story_spg?.reduce((count, spg) => {
-                    const tokenGatingData = tokenGating?.data[
-                        spg.address as keyof TokenGatingResult
-                    ] as unknown as TokenGatingData;
-                    return count + (tokenGatingData?.detail?.length || 0);
-                }, 0) || 0;
-
-            if (bTokenCount !== aTokenCount) {
-                return bTokenCount - aTokenCount;
-            }
-            return a.name.localeCompare(b.name);
-        });
+        if (!sortedArtists.length) {
+            return (
+                <div className="w-full h-full flex items-center justify-center">
+                    No artists found
+                </div>
+            );
+        }
 
         return sortedArtists.map((artist: Artist) => {
             const selected = selectedArtist?.id === artist.id;
@@ -131,7 +139,7 @@ export default function ArtistSlideSelector({
                 </div>
             );
         });
-    }, [artists, selectedArtist, handleArtistSelect]);
+    }, [sortedArtists, selectedArtist, handleArtistSelect]);
 
     return (
         <div

@@ -11,13 +11,15 @@ import PollsContentsPublic from "./Polls.Contents.Public";
 import PollsContentsPrivate from "./Polls.Contents.Private";
 import { User } from "next-auth";
 import { AnimatePresence, motion } from "framer-motion";
+import { VerifiedSPG } from "@/app/story/interaction/actions";
 
 interface PollsContentsProps {
     user: User | null;
     player: Player | null;
+    verifiedSPGs?: VerifiedSPG[];
 }
 
-function PollsContents({ user, player }: PollsContentsProps) {
+function PollsContents({ user, player, verifiedSPGs }: PollsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
 
     const { playerPollLogs, isLoading: isLogsLoading } = usePollsGet({
@@ -92,6 +94,7 @@ function PollsContents({ user, player }: PollsContentsProps) {
                             player={player}
                             pollLogs={playerPollLogs}
                             privateTabClicked={!isPublic}
+                            verifiedSPGs={verifiedSPGs}
                         />
                     )}
                 </motion.div>

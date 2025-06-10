@@ -1,14 +1,16 @@
 /// app/quests/page.tsx
 
-import {auth} from "@/app/auth/authSettings";
+import { auth } from "@/app/auth/authSettings";
 import Quests from "@/components/quests/Quests";
-import {Suspense} from "react";
-import {Metadata} from "next";
+import { Suspense } from "react";
+import { Metadata } from "next";
+import { getUserVerifiedSPGs } from "../story/interaction/actions";
 
 // SEO 메타데이터 정의
 export const metadata: Metadata = {
     title: "Quests | Starglow",
-    description: "Complete quests to earn rewards and boost your artist valuation",
+    description:
+        "Complete quests to earn rewards and boost your artist valuation",
 };
 
 // 로딩 상태 컴포넌트
@@ -27,14 +29,16 @@ function QuestsLoading() {
 }
 
 export default async function QuestPage() {
-    // auth() 결과를 변수에 저장하여 재사용
     const session = await auth();
-    
+    const userVerifiedSPGs = await getUserVerifiedSPGs({
+        userId: session?.user?.id ?? "",
+    });
     return (
         <Suspense fallback={<QuestsLoading />}>
-            <Quests 
-                user={session?.user ?? null} 
-                player={session?.player ?? null} 
+            <Quests
+                user={session?.user ?? null}
+                player={session?.player ?? null}
+                verifiedSPGs={userVerifiedSPGs}
             />
         </Suspense>
     );

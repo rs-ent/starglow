@@ -1,9 +1,10 @@
 /// app\polls\page.tsx
 
-import {auth} from "@/app/auth/authSettings";
+import { auth } from "@/app/auth/authSettings";
 import Polls from "@/components/polls/Polls";
-import {Suspense} from "react";
-import {Metadata} from "next";
+import { Suspense } from "react";
+import { Metadata } from "next";
+import { getUserVerifiedSPGs } from "../story/interaction/actions";
 
 // SEO 메타데이터 정의
 export const metadata: Metadata = {
@@ -27,14 +28,17 @@ function PollsLoading() {
 }
 
 export default async function PollsPage() {
-    // auth() 결과를 변수에 저장하여 재사용
     const session = await auth();
+    const userVerifiedSPGs = await getUserVerifiedSPGs({
+        userId: session?.user?.id ?? "",
+    });
 
     return (
         <Suspense fallback={<PollsLoading />}>
             <Polls
                 user={session?.user ?? null}
                 player={session?.player ?? null}
+                verifiedSPGs={userVerifiedSPGs}
             />
         </Suspense>
     );

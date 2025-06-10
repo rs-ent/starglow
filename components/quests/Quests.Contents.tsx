@@ -2,23 +2,25 @@
 
 "use client";
 
-import {memo, useCallback, useState} from "react";
-import {cn} from "@/lib/utils/tailwind";
-import {Player} from "@prisma/client";
+import { memo, useCallback, useState } from "react";
+import { cn } from "@/lib/utils/tailwind";
+import { Player } from "@prisma/client";
 import PublicPrivateTab from "@/components/atoms/PublicPrivateTab";
 import QuestsPrivate from "./Quests.Contents.Private";
 import QuestsPublic from "./Quests.Contents.Public";
-import {useReferralGet} from "@/app/hooks/useReferral";
-import {useQuestGet} from "@/app/hooks/useQuest";
-import {User} from "next-auth";
-import {AnimatePresence, motion} from "framer-motion";
+import { useReferralGet } from "@/app/hooks/useReferral";
+import { useQuestGet } from "@/app/hooks/useQuest";
+import { User } from "next-auth";
+import { AnimatePresence, motion } from "framer-motion";
+import { VerifiedSPG } from "@/app/story/interaction/actions";
 
 interface QuestsContentsProps {
     user: User | null;
     player: Player | null;
+    verifiedSPGs?: VerifiedSPG[];
 }
 
-function QuestsContents({ user, player }: QuestsContentsProps) {
+function QuestsContents({ user, player, verifiedSPGs }: QuestsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
 
     // 탭 전환 핸들러 메모이제이션
@@ -35,14 +37,14 @@ function QuestsContents({ user, player }: QuestsContentsProps) {
     // 퀘스트 로그 데이터 가져오기
     const { playerQuestLogs } = useQuestGet({
         getPlayerQuestLogsInput: {
-            playerId
+            playerId,
         },
     });
 
     // 추천 로그 데이터 가져오기
     const { referralLogs } = useReferralGet({
         GetReferralLogsInput: {
-            playerId
+            playerId,
         },
     });
 
@@ -50,13 +52,13 @@ function QuestsContents({ user, player }: QuestsContentsProps) {
     const tabVariants = {
         initial: { opacity: 0 },
         animate: { opacity: 1, transition: { duration: 0.3 } },
-        exit: { opacity: 0, transition: { duration: 0.2 } }
+        exit: { opacity: 0, transition: { duration: 0.2 } },
     };
 
     const contentVariants = {
         initial: { opacity: 0 },
         animate: { opacity: 1, transition: { duration: 0.4 } },
-        exit: { opacity: 0, transition: { duration: 0.3 } }
+        exit: { opacity: 0, transition: { duration: 0.3 } },
     };
 
     return (
@@ -107,6 +109,7 @@ function QuestsContents({ user, player }: QuestsContentsProps) {
                             questLogs={playerQuestLogs || []}
                             privateTabClicked={!isPublic}
                             referralLogs={referralLogs}
+                            verifiedSPGs={verifiedSPGs}
                         />
                     )}
                 </motion.div>
