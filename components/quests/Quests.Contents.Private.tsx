@@ -139,6 +139,7 @@ function QuestsPrivate({
                     className="mt-[10px] sm:mt-[15px] md:mt-[20px] lg:mt-[25px] xl:mt-[30px]"
                     onSelect={handleArtistSelect}
                     selectedArtist={selectedArtist}
+                    tokenGating={tokenGating}
                 />
             </motion.div>
 

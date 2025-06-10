@@ -107,10 +107,7 @@ export async function getArtists(input?: GetArtistsInput): Promise<Artist[]> {
         if (!input) {
             return await prisma.artist.findMany({
                 include: {
-                    collectionContracts: true,
-                    messages: true,
-                    quests: true,
-                    polls: true,
+                    story_spg: true,
                 },
                 orderBy: {
                     name: "asc",
@@ -135,8 +132,7 @@ export async function getArtists(input?: GetArtistsInput): Promise<Artist[]> {
         const artists = await prisma.artist.findMany({
             where,
             include: {
-                collectionContracts: true,
-                messages: true,
+                story_spg: true,
             },
             orderBy: {
                 name: "asc",

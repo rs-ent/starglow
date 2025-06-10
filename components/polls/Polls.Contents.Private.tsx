@@ -189,13 +189,7 @@ function PollsContentsPrivate({
                 </div>
             </motion.div>
         );
-    }, [
-        shouldShowContent,
-        selectedArtist,
-        player,
-        tokenGating,
-        pollLogs,
-    ]);
+    }, [shouldShowContent, selectedArtist, player, tokenGating, pollLogs]);
 
     return (
         <div className="w-full flex flex-col items-center justify-center">
@@ -209,6 +203,7 @@ function PollsContentsPrivate({
                     className="mt-[5px] sm:mt-[10px] md:mt-[15px] lg:mt-[20px] xl:mt-[25px]"
                     onSelect={handleArtistSelect}
                     selectedArtist={selectedArtist}
+                    tokenGating={tokenGating}
                 />
             </motion.div>
 

@@ -6,8 +6,9 @@ import { useArtistsGet } from "@/app/hooks/useArtists";
 import ArtistSelector from "@/components/atoms/ArtistSelector";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
-import { Artist } from "@prisma/client";
+import { Artist, Story_spg } from "@prisma/client";
 import { useCallback, useEffect, useMemo } from "react";
+import { TokenGatingResult, TokenGatingData } from "@/app/story/nft/actions";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -16,12 +17,14 @@ interface ArtistSlideSelectorProps {
     className?: string;
     onSelect?: (artist: Artist | null) => void;
     selectedArtist?: Artist | null;
+    tokenGating?: TokenGatingResult | null;
 }
 
 export default function ArtistSlideSelector({
     className,
     onSelect,
     selectedArtist,
+    tokenGating,
 }: ArtistSlideSelectorProps) {
     const { artists, isLoading, error } = useArtistsGet({});
 
@@ -84,7 +87,33 @@ export default function ArtistSlideSelector({
     const renderArtists = useMemo(() => {
         if (!artists || artists.length === 0) return null;
 
-        return artists.map((artist: Artist) => {
+        const sortedArtists = [...artists].sort((a, b) => {
+            const aWithSpg = a as Artist & { story_spg: Story_spg[] };
+            const bWithSpg = b as Artist & { story_spg: Story_spg[] };
+
+            const aTokenCount =
+                aWithSpg.story_spg?.reduce((count, spg) => {
+                    const tokenGatingData = tokenGating?.data[
+                        spg.address as keyof TokenGatingResult
+                    ] as unknown as TokenGatingData;
+                    return count + (tokenGatingData?.detail?.length || 0);
+                }, 0) || 0;
+
+            const bTokenCount =
+                bWithSpg.story_spg?.reduce((count, spg) => {
+                    const tokenGatingData = tokenGating?.data[
+                        spg.address as keyof TokenGatingResult
+                    ] as unknown as TokenGatingData;
+                    return count + (tokenGatingData?.detail?.length || 0);
+                }, 0) || 0;
+
+            if (bTokenCount !== aTokenCount) {
+                return bTokenCount - aTokenCount;
+            }
+            return a.name.localeCompare(b.name);
+        });
+
+        return sortedArtists.map((artist: Artist) => {
             const selected = selectedArtist?.id === artist.id;
             return (
                 <div
