@@ -2,21 +2,21 @@
 
 "use client";
 
-import { TokenGatingResult } from "@/app/actions/quests";
 import { Player, Poll, Artist, PollLog } from "@prisma/client";
 import PollsListCard from "./Polls.List.Card";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useToast } from "@/app/hooks/useToast";
 import QRCodeModal from "../atoms/QRCode";
+import { TokenGatingData } from "@/app/story/nft/actions";
 
 interface PollProps {
     poll: Poll;
     player: Player | null;
     artist: Artist | null;
     pollLogs: PollLog[];
-    tokenGatingData: TokenGatingResult | null;
+    tokenGating: TokenGatingData | null;
     bgColorAccentFrom?: string | undefined;
     bgColorAccentTo?: string | undefined;
 }
@@ -26,7 +26,7 @@ export default function PollComponent({
     player,
     artist,
     pollLogs,
-    tokenGatingData,
+    tokenGating,
     bgColorAccentFrom,
     bgColorAccentTo,
 }: PollProps) {
@@ -104,7 +104,7 @@ export default function PollComponent({
                 player={player || null}
                 artist={artist || null}
                 pollLogs={pollLogs}
-                tokenGatingData={tokenGatingData}
+                tokenGating={tokenGating}
                 isSelected={true}
                 bgColorAccentFrom={bgColorAccentFrom}
                 bgColorAccentTo={bgColorAccentTo}

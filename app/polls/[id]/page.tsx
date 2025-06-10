@@ -111,7 +111,7 @@ export default async function PollPage({ params }: { params: { id: string } }) {
                     player={session?.player || null}
                     artist={poll.artist || null}
                     pollLogs={pollLogs}
-                    tokenGatingData={tokenGating}
+                    tokenGating={tokenGating}
                     bgColorAccentFrom={
                         poll.artist ? ArtistBG(poll.artist, 2, 100) : undefined
                     }
