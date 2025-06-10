@@ -74,8 +74,6 @@ export default React.memo(function UserMyStarModalContentsCollections({
             };
         });
 
-        console.log("Result", result);
-
         return result;
     }, [verifiedSPGs]);
 
@@ -114,17 +112,23 @@ export default React.memo(function UserMyStarModalContentsCollections({
                         onClick={() => handleSlide("prev")}
                     />
                     <Slider ref={sliderRef} {...settings}>
-                        {verifiedSPGs.map((spg) => (
-                            <div
-                                className="w-full h-full px-[20px] md:px-[30px]"
-                                key={spg.id}
-                            >
-                                <UserMyStarModalContentsCollectionsCard
-                                    artist={artist}
-                                    verifiedSPG={spg}
-                                />
-                            </div>
-                        ))}
+                        {verifiedSPGs
+                            .sort(
+                                (a, b) =>
+                                    b.verifiedTokens.length -
+                                    a.verifiedTokens.length
+                            )
+                            .map((spg) => (
+                                <div
+                                    className="w-full h-full px-[20px] md:px-[30px]"
+                                    key={spg.id}
+                                >
+                                    <UserMyStarModalContentsCollectionsCard
+                                        artist={artist}
+                                        verifiedSPG={spg}
+                                    />
+                                </div>
+                            ))}
                     </Slider>
                 </div>
                 <ArtistSelector
