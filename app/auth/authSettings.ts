@@ -12,7 +12,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma/client";
 import type { NextAuthConfig } from "next-auth";
 import { getPlayerByUserId, setPlayer } from "../actions/player";
-import { createPolygonWallet } from "../actions/defaultWallets";
+import { createWallet } from "../actions/defaultWallets";
 import crypto from "crypto";
 import Discord from "next-auth/providers/discord";
 const isProd = process.env.NODE_ENV === "production";
@@ -146,7 +146,7 @@ const authOptions: NextAuthConfig = {
                         }),
 
                         setPlayer({ user: user }),
-                        createPolygonWallet(user.id),
+                        createWallet(user.id),
                     ];
 
                     const [updatedUser, player, wallet] = await Promise.all(

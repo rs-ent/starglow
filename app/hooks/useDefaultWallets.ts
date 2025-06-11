@@ -3,25 +3,25 @@
 "use client";
 
 import { useState } from "react";
-import { usePolygonWallet } from "../queries/defaultWalletsQueries";
-import { useCreatePolygonWallet } from "../mutations/defaultWalletsMutation";
+import { useWallet } from "../queries/defaultWalletsQueries";
+import { useCreateWallet } from "../mutations/defaultWalletsMutation";
 import { useToast } from "./useToast";
 
 export function useDefaultWallets() {
     const [isCreating, setIsCreating] = useState(false);
     const toast = useToast();
 
-    const createPolygonWallet = useCreatePolygonWallet();
+    const createDefaultWallet = useCreateWallet();
 
-    const getPolygonWallet = () => {
-        const { data: wallet, isLoading } = usePolygonWallet();
+    const getWallet = () => {
+        const { data: wallet, isLoading } = useWallet();
         return { wallet, isLoading };
     };
 
     const createWallet = async (userId: string) => {
         setIsCreating(true);
         try {
-            const result = await createPolygonWallet.mutateAsync(userId);
+            const result = await createDefaultWallet.mutateAsync(userId);
             if (result.success) {
                 toast.success("Polygon wallet created successfully");
                 return result;
@@ -44,7 +44,7 @@ export function useDefaultWallets() {
 
     return {
         isCreating,
-        getPolygonWallet,
+        getWallet,
         createWallet,
     };
 }

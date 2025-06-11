@@ -5,7 +5,7 @@
 import { prisma } from "@/lib/prisma/client";
 import { Prisma, Player, User } from "@prisma/client";
 import { setPlayer, invitePlayer } from "./player";
-import { createPolygonWallet } from "./defaultWallets";
+import { createWallet } from "./defaultWallets";
 import { cookies } from "next/headers";
 import crypto from "crypto";
 
@@ -142,7 +142,7 @@ export async function setUserWithTelegram(
 
         const [player, wallet] = await Promise.all([
             setPlayer({ user }),
-            createPolygonWallet(user.id),
+            createWallet(user.id),
         ]);
 
         if (!player || !wallet) {
@@ -185,6 +185,100 @@ export async function setUserWithTelegram(
         return { user, player };
     } catch (error) {
         console.error("Failed to set user with telegram", error);
+        throw error;
+    }
+}
+
+export interface setUserWithWalletInput {
+    walletAddress: string;
+    provider: string;
+    referrerCode?: string;
+}
+
+export async function setUserWithWallet(
+    input: setUserWithWalletInput
+): Promise<{ user: User; player: Player }> {
+    try {
+        if (!input || !input.walletAddress) {
+            throw new Error("Invalid input");
+        }
+
+        // 기존 사용자 확인
+        const existingWallet = await prisma.wallet.findUnique({
+            where: {
+                address: input.walletAddress,
+            },
+            select: {
+                userId: true,
+                user: true,
+            },
+        });
+
+        let user = existingWallet?.user || null;
+
+        if (!user) {
+            // 새 사용자 생성
+            user = await prisma.user.create({
+                data: {
+                    name: input.walletAddress,
+                    lastLoginAt: new Date(),
+                    provider: input.provider,
+                },
+            });
+        } else {
+            // 기존 사용자 업데이트
+            user = await prisma.user.update({
+                where: { id: user.id },
+                data: {
+                    lastLoginAt: new Date(),
+                },
+            });
+        }
+
+        // 플레이어와 지갑 생성
+        const [player, wallet] = await Promise.all([
+            setPlayer({ user }),
+            createWallet(user.id),
+        ]);
+
+        if (!player || !wallet) {
+            throw new Error("Failed to create player or wallet");
+        }
+
+        // 추천인 코드가 있는 경우 처리
+        if (input.referrerCode) {
+            await invitePlayer({
+                referredUser: user,
+                referrerCode: input.referrerCode,
+                method: "webapp",
+            });
+        }
+
+        // 세션 생성
+        const sessionToken = crypto.randomUUID();
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 30);
+
+        await prisma.session.create({
+            data: {
+                sessionToken,
+                userId: user.id,
+                expires,
+            },
+        });
+
+        // 쿠키 설정
+        (await cookies()).set("next-auth.session-token", sessionToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            expires,
+            path: "/",
+            sameSite: "lax",
+        });
+
+        return { user, player };
+    } catch (error) {
+        console.error("Failed to set user with wallet", error);
         throw error;
     }
 }

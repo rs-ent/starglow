@@ -14,6 +14,7 @@ export interface createStoryNetworkInput {
     symbol: string;
     isTestnet: boolean;
     isActive: boolean;
+    defaultNetwork: boolean;
     multicallAddress?: string;
 }
 
@@ -32,10 +33,16 @@ export async function createStoryNetwork(
                 return "이미 존재하는 네트워크입니다.";
             }
 
+            if (input.defaultNetwork) {
+                await tx.blockchainNetwork.updateMany({
+                    where: { defaultNetwork: true },
+                    data: { defaultNetwork: false },
+                });
+            }
+
             const newNetwork = await tx.blockchainNetwork.create({
                 data: {
                     ...input,
-                    isStoryNetwork: true,
                 },
             });
 
@@ -113,8 +120,6 @@ export async function getStoryNetworks(
             where.isActive = input.isActive;
         }
 
-        where.isStoryNetwork = true;
-
         const result = await prisma.blockchainNetwork.findMany({
             where,
         });
@@ -136,6 +141,7 @@ export interface updateStoryNetworkInput {
     isTestnet?: boolean;
     isActive?: boolean;
     multicallAddress?: string;
+    defaultNetwork?: boolean;
 }
 
 export async function updateStoryNetwork(
@@ -155,11 +161,42 @@ export async function updateStoryNetwork(
 
             const { id, ...rest } = input;
 
+            if (
+                input.defaultNetwork !== undefined &&
+                input.defaultNetwork !== existingNetwork.defaultNetwork
+            ) {
+                if (input.defaultNetwork) {
+                    // 현재 네트워크를 default로 설정하는 경우
+                    await tx.blockchainNetwork.updateMany({
+                        where: {
+                            defaultNetwork: true,
+                            id: { not: input.id }, // 현재 네트워크 제외
+                        },
+                        data: { defaultNetwork: false },
+                    });
+                } else {
+                    // 현재 네트워크의 default를 해제하는 경우
+                    // 다른 네트워크 중 하나를 default로 설정해야 함
+                    const otherNetwork = await tx.blockchainNetwork.findFirst({
+                        where: {
+                            id: { not: input.id },
+                            isActive: true,
+                        },
+                    });
+
+                    if (otherNetwork) {
+                        await tx.blockchainNetwork.update({
+                            where: { id: otherNetwork.id },
+                            data: { defaultNetwork: true },
+                        });
+                    }
+                }
+            }
+
             const updatedNetwork = await tx.blockchainNetwork.update({
                 where: { id: input.id },
                 data: {
                     ...rest,
-                    isStoryNetwork: true,
                 },
             });
 

@@ -7,15 +7,30 @@ import { ethers } from "ethers";
 import { prisma } from "@/lib/prisma/client";
 import { decryptPrivateKey, encryptPrivateKey } from "@/lib/utils/encryption";
 
-export async function createPolygonWallet(userId: string) {
+export async function createWallet(userId: string) {
     try {
+        const defaultNetwork = await prisma.blockchainNetwork.findFirst({
+            where: { defaultNetwork: true },
+        });
+
+        if (!defaultNetwork) {
+            throw new Error("Default network not found");
+        }
+
         const existingWallet = await prisma.wallet.findFirst({
-            where: { userId, network: "polygon" },
+            where: { userId, network: defaultNetwork.chainId.toString() },
         });
 
         if (existingWallet) {
-            return { success: true, message: "Polygon wallet already exists" };
+            return {
+                success: true,
+                message: `${defaultNetwork.name} wallet already exists`,
+            };
         }
+
+        const hasDefaultWallet = await prisma.wallet.findFirst({
+            where: { userId, default: true },
+        });
 
         const wallet = ethers.Wallet.createRandom();
         const ecryptedParts = await encryptPrivateKey(wallet.privateKey);
@@ -27,9 +42,9 @@ export async function createPolygonWallet(userId: string) {
                 privateKey: ecryptedParts.dbPart,
                 keyHash: ecryptedParts.keyHash,
                 nonce: ecryptedParts.nonce,
-                network: "polygon",
+                network: defaultNetwork.chainId.toString(),
                 primary: 1,
-                default: true,
+                default: hasDefaultWallet ? false : true,
                 nickname: "My Starglow Wallet",
                 status: "ACTIVE",
             },

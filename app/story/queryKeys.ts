@@ -23,6 +23,15 @@ export const queryKeys = {
         balances: (addresses: string[]) =>
             [...queryKeys.escrowWallet.all, "balances", addresses] as const,
     },
+    userWallet: {
+        all: ["userWallet"] as const,
+        list: (userId: string) =>
+            [...queryKeys.userWallet.all, "list", userId] as const,
+        default: (userId: string) =>
+            [...queryKeys.userWallet.all, "default", userId] as const,
+        wallet: (address: string) =>
+            [...queryKeys.userWallet.all, "wallet", address] as const,
+    },
     metadata: {
         all: ["metadata"] as const,
         list: (filter?: object) =>

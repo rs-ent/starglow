@@ -84,6 +84,7 @@ model Wallet {
   address        String       @unique
   privateKey     String?
   network        String
+  provider       String       @default("starglow")
   createdAt      DateTime     @default(now())
   default        Boolean      @default(false)
   primary        Int?         @default(0)
@@ -639,6 +640,7 @@ model BlockchainNetwork {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   multicallAddress    String?
+  defaultNetwork      Boolean              @default(false)
   collectionContracts CollectionContract[]
   factoryContracts    FactoryContract[]
   nfts                NFT[]

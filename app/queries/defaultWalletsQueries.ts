@@ -5,7 +5,7 @@ import { queryKeys } from "../queryKeys";
 import { prisma } from "@/lib/prisma/client";
 import { auth } from "../auth/authSettings";
 
-export async function getUserPolygonWallet(): Promise<string | null> {
+export async function getUserWallet(): Promise<string | null> {
     const session = await auth();
     if (!session?.user) {
         throw new Error("Unauthorized");
@@ -27,9 +27,9 @@ export async function getUserPolygonWallet(): Promise<string | null> {
     return wallet?.address || null;
 }
 
-export function usePolygonWallet() {
+export function useWallet() {
     return useQuery({
         queryKey: queryKeys.defaultWallets.polygon,
-        queryFn: getUserPolygonWallet,
+        queryFn: getUserWallet,
     });
 }

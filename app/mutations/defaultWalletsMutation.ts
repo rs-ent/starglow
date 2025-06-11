@@ -4,14 +4,14 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../queryKeys";
-import { createPolygonWallet } from "../actions/defaultWallets";
+import { createWallet } from "../actions/defaultWallets";
 
-export function useCreatePolygonWallet() {
+export function useCreateWallet() {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async (userId: string) => {
-            return createPolygonWallet(userId);
+            return createWallet(userId);
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({

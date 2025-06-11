@@ -1,0 +1,5 @@
+{
+  "agentCanUpdateSnapshot": true,
+  "install": "yarn install",
+  "start": "yarn dev"
+}

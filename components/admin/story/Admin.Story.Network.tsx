@@ -3,7 +3,13 @@
 "use client";
 
 import { useState } from "react";
-import { FaPlus, FaEdit, FaTrash, FaNetworkWired, FaBackspace } from "react-icons/fa";
+import {
+    FaPlus,
+    FaEdit,
+    FaTrash,
+    FaNetworkWired,
+    FaBackspace,
+} from "react-icons/fa";
 import { TbTopologyStar3 } from "react-icons/tb";
 import { SiEthereum } from "react-icons/si";
 import { useStoryNetwork } from "@/app/story/network/hooks";
@@ -33,6 +39,7 @@ export default function AdminStoryNetwork({ onBack }: { onBack?: () => void }) {
         isActive: true,
         isTestnet: false,
         multicallAddress: "",
+        defaultNetwork: false,
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
@@ -48,6 +55,7 @@ export default function AdminStoryNetwork({ onBack }: { onBack?: () => void }) {
             explorerUrl: "",
             isActive: true,
             isTestnet: false,
+            defaultNetwork: false,
             multicallAddress: "",
         });
         setShowForm(true);
@@ -62,6 +70,7 @@ export default function AdminStoryNetwork({ onBack }: { onBack?: () => void }) {
             explorerUrl: network.explorerUrl,
             isActive: network.isActive,
             isTestnet: network.isTestnet,
+            defaultNetwork: network.defaultNetwork,
             multicallAddress: network.multicallAddress || "",
         });
         setShowForm(true);
@@ -176,6 +185,7 @@ export default function AdminStoryNetwork({ onBack }: { onBack?: () => void }) {
                         <table className="min-w-full text-sm text-blue-100">
                             <thead>
                                 <tr className="bg-[#23243a]/80 text-blue-300">
+                                    <th className="px-4 py-3">Default</th>
                                     <th className="px-4 py-3">Name</th>
                                     <th className="px-4 py-3">Chain ID</th>
                                     <th className="px-4 py-3">Symbol</th>
@@ -197,6 +207,11 @@ export default function AdminStoryNetwork({ onBack }: { onBack?: () => void }) {
                                                 key={network.id || index}
                                                 className="border-b border-blue-900/30 hover:bg-blue-900/10 transition"
                                             >
+                                                <td className="px-4 py-2 font-semibold">
+                                                    {network.defaultNetwork
+                                                        ? "Yes"
+                                                        : "No"}
+                                                </td>
                                                 <td className="px-4 py-2 font-semibold">
                                                     {network.name}
                                                 </td>
@@ -395,6 +410,16 @@ export default function AdminStoryNetwork({ onBack }: { onBack?: () => void }) {
                                         className="accent-yellow-400"
                                     />
                                     Testnet
+                                </label>
+                                <label className="flex items-center gap-2 text-blue-200">
+                                    <input
+                                        type="checkbox"
+                                        name="defaultNetwork"
+                                        checked={form.defaultNetwork}
+                                        onChange={handleChange}
+                                        className="accent-blue-500"
+                                    />
+                                    Default Network
                                 </label>
                             </div>
                             {error && (
