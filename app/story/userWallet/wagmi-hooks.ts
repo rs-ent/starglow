@@ -7,25 +7,32 @@ import {
     useChainId,
     useSwitchChain,
     useChains,
+    Connector,
 } from "wagmi";
 import { useUserWallet } from "./hooks";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { WalletStatus, BlockchainNetwork } from "@prisma/client";
 import { useStoryNetwork } from "../network/hooks";
+import { setUserWithWallet } from "@/app/actions/user";
+import { useSession } from "next-auth/react";
 
-export function useWagmiUserWallet() {
+export function useWagmiConnection() {
     const { storyNetworks } = useStoryNetwork({
         getStoryNetworksInput: {
             isActive: true,
         },
     });
 
+    const { data: session } = useSession();
     const { address, isConnected } = useAccount();
     const { connect, connectors } = useConnect();
     const { disconnect } = useDisconnect();
     const chainId = useChainId();
     const { switchChain } = useSwitchChain();
-    const chains = useChains();
+
+    const [selectedConnector, setSelectedConnector] =
+        useState<Connector | null>(null);
+    const [callbackUrl, setCallbackUrl] = useState<string | null>(null);
 
     const {
         connectWalletAsync,
@@ -53,30 +60,53 @@ export function useWagmiUserWallet() {
         : null;
 
     const handleConnect = useCallback(
-        async (userId: string) => {
+        async (selectedConnector: Connector, callbackUrl?: string) => {
             try {
-                connect({ connector: connectors[0] });
-
-                if (address) {
-                    await connectWalletAsync({
-                        address,
-                        network: chainId.toString(),
-                        provider: connectors[0].id,
-                        userId,
-                    });
-                }
+                setSelectedConnector(selectedConnector);
+                setCallbackUrl(callbackUrl || null);
+                connect({ connector: selectedConnector });
             } catch (error) {
                 console.error("Failed to connect wallet:", error);
                 throw error;
             }
         },
-        [connect, connectors, address, chainId, connectWalletAsync]
+        [connect, connectors, setSelectedConnector, setCallbackUrl]
     );
+
+    useEffect(() => {
+        const setUser = async () => {
+            if (isConnected && address && selectedConnector) {
+                let user = null;
+                if (session?.user) {
+                    user = session.user;
+                } else {
+                    const { user: newUser, player } = await setUserWithWallet({
+                        walletAddress: address,
+                        provider: selectedConnector.id,
+                    });
+                    user = newUser;
+                }
+
+                await connectWalletAsync({
+                    address,
+                    network: chainId.toString(),
+                    provider: selectedConnector.id,
+                    userId: user.id,
+                });
+
+                if (callbackUrl) {
+                    window.location.href = callbackUrl;
+                }
+            }
+        };
+
+        setUser();
+    }, [isConnected, address, chainId, selectedConnector, callbackUrl]);
 
     const handleSwitchChain = useCallback(
         async (targetChainId: number) => {
             try {
-                await switchChain({ chainId: targetChainId });
+                switchChain({ chainId: targetChainId as any });
             } catch (error) {
                 console.error("Failed to switch chain:", error);
                 throw error;
@@ -85,25 +115,23 @@ export function useWagmiUserWallet() {
         [switchChain]
     );
 
-    const handleDisconnect = useCallback(
-        async (userId: string) => {
-            try {
-                disconnect();
+    const handleDisconnect = useCallback(async () => {
+        try {
+            const prevAddress = address;
+            disconnect();
 
-                if (address) {
-                    await updateWalletAsync({
-                        userId,
-                        walletAddress: address,
-                        status: WalletStatus.INACTIVE,
-                    });
-                }
-            } catch (error) {
-                console.error("Failed to disconnect wallet:", error);
-                throw error;
+            if (prevAddress && session?.user?.id) {
+                await updateWalletAsync({
+                    userId: session.user.id,
+                    walletAddress: prevAddress,
+                    status: WalletStatus.INACTIVE,
+                });
             }
-        },
-        [disconnect, address, updateWalletAsync]
-    );
+        } catch (error) {
+            console.error("Failed to disconnect wallet:", error);
+            throw error;
+        }
+    }, [disconnect, address, updateWalletAsync, session]);
 
     return {
         isConnected,

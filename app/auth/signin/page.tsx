@@ -9,6 +9,8 @@ import { useToast } from "@/app/hooks/useToast";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import TelegramLoginButton from "@/components/atoms/TelegramLoginButton";
 import { useUserSet } from "@/app/hooks/useUser";
+import { useConnect } from "wagmi";
+import WalletAuthButton from "@/components/atoms/WalletAuthButton";
 
 function SignInButtons() {
     const toast = useToast();
@@ -20,6 +22,7 @@ function SignInButtons() {
     const error = params.get("error");
 
     const { setUserWithTelegram, isSetUserWithTelegramPending } = useUserSet();
+    const { connectors } = useConnect();
 
     useEffect(() => {
         if (error) {
@@ -78,6 +81,13 @@ function SignInButtons() {
                         />
                     );
                 })}
+                {connectors.map((connector) => (
+                    <WalletAuthButton
+                        key={connector.id}
+                        connector={connector}
+                        callbackUrl={callbackUrl}
+                    />
+                ))}
             </div>
             <div className="my-2 flex flex-row items-center justify-around">
                 <div className="w-full border-t border-gray-600"></div>

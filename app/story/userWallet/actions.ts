@@ -51,6 +51,7 @@ export async function connectWallet(
                     nickname: input.nickname,
                     status: WalletStatus.ACTIVE,
                     lastAccessedAt: new Date(),
+                    default: true,
                 },
             });
 

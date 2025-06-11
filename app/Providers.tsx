@@ -6,7 +6,7 @@ import { SessionProvider } from "next-auth/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { WagmiProvider, createConfig, http } from "wagmi";
-import { mainnet, sepolia } from "wagmi/chains";
+import { mainnet, sepolia, storyAeneid, berachainBepolia } from "wagmi/chains";
 import { useState } from "react";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -29,10 +29,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
     const [wagmiConfig] = useState(() =>
         createConfig({
-            chains: [mainnet, sepolia],
+            chains: [mainnet, sepolia, storyAeneid, berachainBepolia] as const,
             transports: {
                 [mainnet.id]: http(),
                 [sepolia.id]: http(),
+                [storyAeneid.id]: http(),
+                [berachainBepolia.id]: http(),
             },
             syncConnectedChain: true,
             ssr: true,
@@ -40,7 +42,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     );
 
     return (
-        <WagmiProvider config={wagmiConfig}>
+        <WagmiProvider config={wagmiConfig as any}>
             <QueryClientProvider client={queryClient}>
                 <SessionProvider>{children}</SessionProvider>
                 {process.env.NODE_ENV === "development" && (
