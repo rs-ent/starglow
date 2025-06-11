@@ -283,12 +283,13 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
             toast.success("SPG가 성공적으로 배포되었습니다!");
             setSuccessMsg(`Contract Address: ${result.address}`);
             setStep(9); // 성공 화면으로 이동
-            getSPGsRefetch();
         } catch (err: any) {
             setError(err?.message || "배포 중 오류가 발생했습니다.");
             toast.error("배포 실패");
         } finally {
             setIsSubmitting(false);
+            getSPGContractsRefetch();
+            getSPGsRefetch();
         }
     };
 
