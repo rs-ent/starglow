@@ -43,7 +43,7 @@ export async function generateMetadata({
         };
     }
 
-    const artistName = poll.artist?.name ? ` | ${poll.artist.name}` : "";
+    const artistName = poll.artist?.name || undefined;
     const title = artistName
         ? `${poll.title} | ${artistName} | Poll | Starglow`
         : `${poll.title} | Poll | Starglow`;
