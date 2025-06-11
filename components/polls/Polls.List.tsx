@@ -256,7 +256,6 @@ function PollsList({
             {/* 슬라이더 */}
             <Slider ref={sliderRef} {...sliderSettings}>
                 {polls.map((poll, index) => {
-                    // 토큰 게이팅 데이터 처리
                     const specificTokenGatingData: TokenGatingData =
                         !poll.needToken ||
                         !poll.needTokenAddress ||

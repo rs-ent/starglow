@@ -86,7 +86,7 @@ function QuestsPrivate({
 
         verifiedSPGs.forEach((spg) => {
             result.data[spg.address] = {
-                hasToken: true,
+                hasToken: spg.verifiedTokens.length > 0,
                 detail: spg.verifiedTokens.map((token) => ({
                     tokenId: token.toString(),
                     owner: spg.ownerAddress,
