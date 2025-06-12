@@ -47,7 +47,18 @@ export const WALLET_PROVIDERS: Record<WalletProviderType, WalletProvider> = {
         },
         detectFunction: () => {
             if (typeof window === "undefined") return false;
-            return !!(window.ethereum && window.ethereum.isMetaMask);
+
+            const isMetaMaskMobile = /MetaMaskMobile/.test(navigator.userAgent);
+
+            const isMetaMaskBrowser = !!(
+                window.ethereum && window.ethereum.isMetaMask
+            );
+
+            const isMetaMaskDeepLink = /metamask/.test(
+                navigator.userAgent.toLowerCase()
+            );
+
+            return isMetaMaskMobile || isMetaMaskBrowser || isMetaMaskDeepLink;
         },
     },
     walletconnect: {
