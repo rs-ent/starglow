@@ -38,19 +38,16 @@ function QuestsContents({ user, player, verifiedSPGs }: QuestsContentsProps) {
         setIsPublic(false);
     }, []);
 
-    // 플레이어 ID 기반 조건부 쿼리
-    const playerId = player?.id ?? "";
-    // 퀘스트 로그 데이터 가져오기
     const { playerQuestLogs } = useQuestGet({
         getPlayerQuestLogsInput: {
-            playerId,
+            playerId: player?.id ?? "",
         },
     });
 
     // 추천 로그 데이터 가져오기
     const { referralLogs } = useReferralGet({
         GetReferralLogsInput: {
-            playerId,
+            playerId: player?.id ?? "",
         },
     });
 

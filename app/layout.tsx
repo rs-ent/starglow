@@ -135,23 +135,6 @@ export const metadata: Metadata = {
             },
         ],
     },
-
-    // Viewport
-    viewport: {
-        width: "device-width",
-        initialScale: 1,
-        maximumScale: 1,
-        userScalable: false,
-    },
-
-    // Category
-    category: "technology",
-
-    // Classification
-    classification: "Web3 Platform",
-
-    // Referrer
-    referrer: "origin-when-cross-origin",
 };
 
 export default function RootLayout({

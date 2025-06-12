@@ -11,5 +11,7 @@ export const useReferralLogs = (input?: GetReferralLogsInput) => {
         queryKey: playerKeys.referralLogs(input),
         queryFn: () => getReferralLogs(input),
         enabled: !!input?.playerId,
+        staleTime: 1000 * 60 * 1,
+        gcTime: 1000 * 60 * 1,
     });
 };
