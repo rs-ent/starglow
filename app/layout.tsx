@@ -71,7 +71,6 @@ export const metadata: Metadata = {
     // Icons
     icons: {
         icon: [
-            { url: "/favicon.ico", rel: "shortcut icon" },
             {
                 url: "/favicon-gradient.svg",
                 sizes: "16x16",

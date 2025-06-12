@@ -17,7 +17,6 @@ import {
 import { updatePlayerAsset } from "./playerAssets";
 import { tokenGating, TokenGatingData } from "@/app/story/nft/actions";
 import { formatWaitTime } from "@/lib/utils/format";
-// Redis 캐싱 유틸리티 import
 import { getCachedData, invalidateCache } from "@/lib/cache/upstash-redis";
 
 // 캐시 태그 상수 정의
@@ -100,8 +99,10 @@ export interface GetQuestsInput {
     repeatable?: boolean;
     repeatableCount?: number;
     repeatableInterval?: number;
-    artistId?: string;
+    artistId?: string | null;
     isPublic?: boolean;
+    needToken?: boolean;
+    needTokenAddress?: string | null;
 }
 
 export async function getQuests({
@@ -258,14 +259,13 @@ async function fetchQuestsFromDB(
         where.repeatableInterval = input.repeatableInterval;
     }
 
-    if (input.artistId) {
-        where.artistId = input.artistId;
-    }
-
+    // isPublic 조건을 먼저 처리하여 조건 충돌 방지
     if (input.isPublic) {
         where.artistId = null;
         where.needToken = false;
         where.needTokenAddress = null;
+    } else if (input.artistId) {
+        where.artistId = input.artistId;
     }
 
     // Promise.all로 병렬 처리하여 성능 향상
