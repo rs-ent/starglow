@@ -14,7 +14,7 @@ import Navigation from "@/components/navigation/Navigation";
 export const metadata: Metadata = {
     // 기본 메타데이터
     title: {
-        default: "Starglow - RWA K-POP FanFi",
+        default: "Starglow: RWA K-POP FanFi",
         template: "%s | Starglow",
     },
     description: "✨ Glow and Grow Together with Your Star! 🌟",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
         locale: "en_US",
         url: "https://starglow.io",
         siteName: "Starglow",
-        title: "Starglow - K-POP FanFi",
+        title: "Starglow: RWA K-POP FanFi",
         description: "✨ Glow and Grow Together with Your Star! 🌟",
         images: [
             {
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
     // Twitter
     twitter: {
         card: "summary_large_image",
-        title: "Starglow - RWA K-POP FanFi",
+        title: "Starglow: RWA K-POP FanFi",
         description: "✨ Glow and Grow Together with Your Star! 🌟",
         creator: "@starglowP",
         images: ["https://starglow.io/default-og-image.png"],

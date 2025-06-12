@@ -6,7 +6,9 @@ export type ProviderType =
     | "coinbase"
     | "kakao"
     | "resend"
-    | "telegram";
+    | "telegram"
+    | "io.metamask"
+    | "walletConnect";
 
 export type Provider = {
     id: ProviderType;

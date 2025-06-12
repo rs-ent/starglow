@@ -55,7 +55,8 @@ export default React.memo(function ProfileName({
             >
                 {icon && (
                     <>
-                        {provider !== "telegram" ? (
+                        {provider !== "telegram" &&
+                        provider !== "io.metamask" ? (
                             <div
                                 className={cn(
                                     "rounded-full",
