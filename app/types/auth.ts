@@ -48,17 +48,30 @@ export const WALLET_PROVIDERS: Record<WalletProviderType, WalletProvider> = {
         detectFunction: () => {
             if (typeof window === "undefined") return false;
 
+            // 1. MetaMask Mobile 앱 확인
             const isMetaMaskMobile = /MetaMaskMobile/.test(navigator.userAgent);
 
+            // 2. 브라우저에서 MetaMask 확장 프로그램 확인
             const isMetaMaskBrowser = !!(
                 window.ethereum && window.ethereum.isMetaMask
             );
 
-            const isMetaMaskDeepLink = /metamask/.test(
-                navigator.userAgent.toLowerCase()
+            // 3. deeplink 패턴 확인 (metamask.app.link)
+            const isMetaMaskDeepLink = /metamask\.app\.link/.test(
+                window.location.href.toLowerCase()
             );
 
-            return isMetaMaskMobile || isMetaMaskBrowser || isMetaMaskDeepLink;
+            // 4. 모바일 환경에서의 deeplink 확인
+            const isMobileDeepLink =
+                /metamask/.test(navigator.userAgent.toLowerCase()) &&
+                /metamask\.app\.link/.test(window.location.href.toLowerCase());
+
+            return (
+                isMetaMaskMobile ||
+                isMetaMaskBrowser ||
+                isMetaMaskDeepLink ||
+                isMobileDeepLink
+            );
         },
     },
     walletconnect: {
