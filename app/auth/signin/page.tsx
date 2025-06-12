@@ -3,13 +3,12 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 import { getProviders } from "next-auth/react";
 import SocialAuthButton from "@/components/atoms/SocialAuthButton";
-import { Provider, ProviderType } from "@/app/types/auth";
+import { Provider, ProviderType, WALLET_PROVIDERS } from "@/app/types/auth";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "@/app/hooks/useToast";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import TelegramLoginButton from "@/components/atoms/TelegramLoginButton";
 import { useUserSet } from "@/app/hooks/useUser";
-import { useConnect } from "wagmi";
 import WalletAuthButton from "@/components/atoms/WalletAuthButton";
 
 function SignInButtons() {
@@ -22,7 +21,6 @@ function SignInButtons() {
     const error = params.get("error");
 
     const { setUserWithTelegram, isSetUserWithTelegramPending } = useUserSet();
-    const { connectors } = useConnect();
 
     useEffect(() => {
         if (error) {
@@ -82,10 +80,10 @@ function SignInButtons() {
                     );
                 })}
                 <div className="w-full border-t border-gray-600 h-[1px] my-1"></div>
-                {connectors.map((connector) => (
+                {Object.values(WALLET_PROVIDERS).map((provider) => (
                     <WalletAuthButton
-                        key={connector.id}
-                        connector={connector}
+                        key={provider.id}
+                        provider={provider}
                         callbackUrl={callbackUrl}
                     />
                 ))}

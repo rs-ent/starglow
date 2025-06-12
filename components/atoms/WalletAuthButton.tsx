@@ -1,69 +1,117 @@
 /// components/atoms/WalletAuthButton.tsx
 
 import { useWagmiConnection } from "@/app/story/userWallet/wagmi-hooks";
-import { Connector } from "wagmi";
+import { Connector, useConnect } from "wagmi";
 import Button from "./Button";
 import { cn } from "@/lib/utils/tailwind";
-import { useMemo } from "react";
-import { berachainBepolia, storyAeneid } from "viem/chains";
+import { useMemo, useState, useEffect } from "react";
+import {
+    WALLET_PROVIDERS,
+    WalletProvider,
+    WalletProviderType,
+    getInstallUrl,
+} from "@/app/types/auth";
 
 interface WalletAuthButtonProps {
-    connector: Connector;
+    provider: WalletProvider;
     className?: string;
     callbackUrl?: string;
 }
 
-const connectorColors: Record<string, string> = {
-    MetaMask:
-        "bg-[rgba(82,112,255,1.0)] border-[rgba(82,112,255,1.0)] text-[rgba(236,247,252,1.0)]",
-};
-
-const connectorIcons: Record<string, string> = {
-    MetaMask: "/icons/blockchain/metamask.svg",
-};
-
-const networkOptions = [
-    { id: berachainBepolia.id, name: "Berachain Bepolia" },
-    { id: storyAeneid.id, name: "Story Aeneid" },
-];
-
 export default function WalletAuthButton({
-    connector,
+    provider,
     className,
     callbackUrl,
 }: WalletAuthButtonProps) {
     const { connect, isPendingConnectWallet } = useWagmiConnection();
+    const { connectors } = useConnect();
+    const [isInstalled, setIsInstalled] = useState(false);
 
-    const { name, icon, color } = useMemo(() => {
-        console.log(connector.id);
-        console.log(connectorIcons[connector.name]);
-        console.log(connectorColors[connector.name]);
-        console.log(connector.name);
-        return {
-            name: connector.name,
-            icon: connectorIcons[connector.name],
-            color: connectorColors[connector.name],
+    const walletInfo = useMemo(() => {
+        const connectorId = provider.id.toLowerCase();
+        let walletType: WalletProviderType;
+        if (connectorId.includes("metamask")) {
+            walletType = "metamask";
+        } else if (connectorId.includes("walletconnect")) {
+            walletType = "walletconnect";
+        } else {
+            walletType = "metamask";
+        }
+
+        return WALLET_PROVIDERS[walletType];
+    }, [provider.id]);
+
+    useEffect(() => {
+        const checkInstallation = () => {
+            try {
+                const installed = walletInfo.detectFunction();
+                setIsInstalled(installed);
+            } catch (error) {
+                console.error("Error checking wallet installation:", error);
+                setIsInstalled(false);
+            }
         };
-    }, [connector]);
+
+        checkInstallation();
+
+        const timer = setTimeout(checkInstallation, 1000);
+        return () => clearTimeout(timer);
+    }, [walletInfo]);
+
+    const handleClick = () => {
+        if (isInstalled) {
+            const connector = connectors.find((connector) => {
+                const connectorId = connector.id.toLowerCase();
+                const providerId = provider.id.toLowerCase();
+
+                return (
+                    connectorId.includes(providerId) ||
+                    (providerId === "metamask" &&
+                        connectorId.includes("metamask")) ||
+                    (providerId === "walletconnect" &&
+                        connectorId.includes("walletconnect"))
+                );
+            });
+
+            if (!connector) {
+                console.error(`Connector for ${provider.id} not found`);
+                const installUrl = getInstallUrl(provider);
+                window.open(installUrl, "_blank");
+                return;
+            }
+
+            connect(connector, callbackUrl);
+        } else {
+            const installUrl = getInstallUrl(walletInfo);
+            window.open(installUrl, "_blank");
+        }
+    };
+
+    const buttonText = useMemo(() => {
+        if (isPendingConnectWallet) return "Connecting...";
+        if (isInstalled === null) return "Checking...";
+        if (isInstalled) return `Sign in with ${walletInfo.name}`;
+        return `Install ${walletInfo.name}`;
+    }, [isPendingConnectWallet, isInstalled, walletInfo.name]);
 
     return (
         <Button
             variant="outline"
-            onClick={() => connect(connector, callbackUrl)}
+            onClick={handleClick}
             className={cn(
                 "w-full items-center justify-center",
-                color,
+                walletInfo.color,
                 className
             )}
         >
-            {icon && (
+            {walletInfo.icon && (
                 <img
-                    src={icon}
-                    alt={`${connector.name} icon`}
+                    src={walletInfo.icon}
+                    alt={`${walletInfo.name} icon`}
                     style={{ width: "20px", height: "auto" }}
                 />
             )}
-            <span className="ml-2">{`Sign in with ${name}`}</span>
+            <span className="ml-2">{buttonText}</span>
         </Button>
     );
 }
