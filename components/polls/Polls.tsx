@@ -17,23 +17,23 @@ interface PollsProps {
     verifiedSPGs?: VerifiedSPG[];
 }
 
-function Polls({ user, player, verifiedSPGs }: PollsProps) {
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1,
-                delayChildren: 0.2,
-            },
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1,
+            delayChildren: 0.2,
         },
-    };
+    },
+} as const;
 
-    const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
-    };
+const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
+} as const;
 
+function Polls({ user, player, verifiedSPGs }: PollsProps) {
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
             <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
@@ -73,5 +73,4 @@ function Polls({ user, player, verifiedSPGs }: PollsProps) {
     );
 }
 
-// 메모이제이션을 통한 불필요한 리렌더링 방지
 export default memo(Polls);

@@ -17,26 +17,23 @@ interface QuestsProps {
     verifiedSPGs?: VerifiedSPG[];
 }
 
+const backgroundVariants = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1, transition: { duration: 0.8 } },
+};
+
+const contentVariants = {
+    initial: { opacity: 0, y: 20 },
+    animate: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.5, delay: 0.3 },
+    },
+};
+
 function Quests({ user, player, verifiedSPGs }: QuestsProps) {
-    // 배경 애니메이션 설정
-    const backgroundVariants = {
-        initial: { opacity: 0 },
-        animate: { opacity: 1, transition: { duration: 0.8 } },
-    };
-
-    // 콘텐츠 애니메이션 설정
-    const contentVariants = {
-        initial: { opacity: 0, y: 20 },
-        animate: {
-            opacity: 1,
-            y: 0,
-            transition: { duration: 0.5, delay: 0.3 },
-        },
-    };
-
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
-            {/* 배경 요소 - 메모리 최적화를 위해 별도 컴포넌트로 분리하지 않고 직접 포함 */}
             <motion.div
                 initial="initial"
                 animate="animate"
@@ -45,7 +42,6 @@ function Quests({ user, player, verifiedSPGs }: QuestsProps) {
             >
                 <div className="absolute inset-0 bg-gradient-to-b from-[#09011b] to-[#311473]" />
 
-                {/* 도넛 이미지 - 성능 최적화를 위해 width/height 속성 사용 */}
                 <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
                     <img
                         src="/elements/donut.svg"
@@ -67,7 +63,6 @@ function Quests({ user, player, verifiedSPGs }: QuestsProps) {
                 />
             </motion.div>
 
-            {/* 콘텐츠 영역 */}
             <motion.div
                 initial="initial"
                 animate="animate"

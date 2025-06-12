@@ -6,7 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import {
     getFilesByPurposeAndBucket,
     getFileById,
-    StoredFile,
+    getFilesMetadataByUrls,
+    GetFilesMetadataByUrlsParams,
 } from "@/app/actions/files";
 import { queryKeys } from "@/app/queryKeys";
 
@@ -24,5 +25,15 @@ export function useFileById(id: string) {
     return useQuery({
         queryKey: queryKeys.files.byId(id),
         queryFn: () => getFileById(id),
+    });
+}
+
+export function useFilesMetadataByUrls(input?: GetFilesMetadataByUrlsParams) {
+    return useQuery({
+        queryKey: queryKeys.files.metadataByUrls(input?.urls || []),
+        queryFn: () => getFilesMetadataByUrls(input),
+        enabled: input?.urls && input.urls.length > 0,
+        staleTime: 3600 * 24, // 1 day
+        gcTime: 3600 * 24 * 30, // 30 days
     });
 }

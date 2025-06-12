@@ -375,6 +375,8 @@ Table StoredFiles {
   order Int [default: 0]
   purpose String
   bucket String [not null]
+  focusX Float [not null, default: 0.5]
+  focusY Float [not null, default: 0.5]
   expiresAt DateTime
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]

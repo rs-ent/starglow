@@ -1,6 +1,6 @@
 /// lib\cache\upstash-redis.ts
 
-import {Redis} from "@upstash/redis";
+import { Redis } from "@upstash/redis";
 
 // 환경 변수 확인 - 접두사 없는 변수명 사용
 const kvUrl = process.env.KV_URL;
@@ -9,11 +9,16 @@ const redisUrl = process.env.REDIS_URL;
 const restApiUrl = process.env.KV_REST_API_URL;
 const restApiToken = process.env.KV_REST_API_TOKEN;
 
-// Upstash Redis 클라이언트 초기화 - REST API URL과 토큰 사용
+// Redis 클라이언트 타입 확장
+interface ExtendedRedis extends Redis {
+    call: (command: string, ...args: any[]) => Promise<any>;
+}
+
+// 타입 단언을 사용하여 Redis 클라이언트 확장
 const redis = new Redis({
     url: restApiUrl!,
     token: restApiToken!,
-});
+}) as ExtendedRedis;
 
 /**
  * @description 캐시 옵션
@@ -58,7 +63,7 @@ export function generateCacheKey(prefix: string, ...args: any[]): string {
  */
 async function addTagsToKey(key: string, tags: string[]): Promise<void> {
     if (!tags || tags.length === 0) return;
-    
+
     const tagKeys = tags.map((tag) => `tag:${tag}`);
     const saddPromises = tagKeys.map((tagKey) => redis.sadd(tagKey, key));
     await Promise.all(saddPromises);
@@ -71,7 +76,7 @@ async function addTagsToKey(key: string, tags: string[]): Promise<void> {
  */
 async function removeTagsFromKey(key: string, tags: string[]): Promise<void> {
     if (!tags || tags.length === 0) return;
-    
+
     const tagKeys = tags.map((tag) => `tag:${tag}`);
     const sremPromises = tagKeys.map((tagKey) => redis.srem(tagKey, key));
     await Promise.all(sremPromises);
@@ -83,16 +88,16 @@ async function removeTagsFromKey(key: string, tags: string[]): Promise<void> {
  */
 async function invalidateByTags(tags: string[]): Promise<void> {
     if (!tags || tags.length === 0) return;
-    
+
     for (const tag of tags) {
         const tagKey = `tag:${tag}`;
         const keys = await redis.smembers(tagKey);
-        
+
         if (keys && keys.length > 0) {
             const delPromises = keys.map((key) => redis.del(key));
             await Promise.all(delPromises);
         }
-        
+
         await redis.del(tagKey);
     }
 }
@@ -103,7 +108,7 @@ async function invalidateByTags(tags: string[]): Promise<void> {
  */
 async function invalidateByKeys(keys: string[]): Promise<void> {
     if (!keys || keys.length === 0) return;
-    
+
     const delPromises = keys.map((key) => redis.del(key));
     await Promise.all(delPromises);
 }
@@ -112,19 +117,21 @@ async function invalidateByKeys(keys: string[]): Promise<void> {
  * 캐시 무효화
  * @param options 무효화 옵션 (키 또는 태그)
  */
-export async function invalidateCache(options: InvalidateCacheOptions = {}): Promise<void> {
+export async function invalidateCache(
+    options: InvalidateCacheOptions = {}
+): Promise<void> {
     const { keys, tags } = options;
-    
+
     const promises: Promise<void>[] = [];
-    
+
     if (keys && keys.length > 0) {
         promises.push(invalidateByKeys(keys));
     }
-    
+
     if (tags && tags.length > 0) {
         promises.push(invalidateByTags(tags));
     }
-    
+
     await Promise.all(promises);
 }
 
@@ -151,7 +158,7 @@ export async function getCachedData<T>(
         // 강제 새로고침이 아니면 캐시 확인
         if (!forceRefresh) {
             const cachedData = await redis.get(key);
-            
+
             if (cachedData !== null && cachedData !== undefined) {
                 // 백그라운드에서 데이터 갱신 (staleWhileRevalidate가 설정된 경우)
                 if (staleWhileRevalidate) {
@@ -159,22 +166,26 @@ export async function getCachedData<T>(
                         .then(async (newData) => {
                             try {
                                 // 데이터 직렬화 처리
-                                const serializedData = typeof newData === 'string' 
-                                    ? newData 
-                                    : JSON.stringify(newData);
-                                
+                                const serializedData =
+                                    typeof newData === "string"
+                                        ? newData
+                                        : JSON.stringify(newData);
+
                                 await redis.set(
                                     key,
                                     serializedData,
                                     ttl ? { ex: ttl } : undefined
                                 );
-                                
+
                                 // 태그가 있으면 추가
                                 if (tags && tags.length > 0) {
                                     await addTagsToKey(key, tags);
                                 }
                             } catch (error) {
-                                console.error(`Background update serialization error for key ${key}:`, error);
+                                console.error(
+                                    `Background update serialization error for key ${key}:`,
+                                    error
+                                );
                             }
                         })
                         .catch((error) => {
@@ -184,13 +195,13 @@ export async function getCachedData<T>(
                             );
                         });
                 }
-                
+
                 // 데이터 역직렬화 처리
                 try {
                     // 이미 객체인 경우 그대로 반환, 문자열인 경우 파싱 시도
-                    if (typeof cachedData === 'object' && cachedData !== null) {
+                    if (typeof cachedData === "object" && cachedData !== null) {
                         return cachedData as T;
-                    } else if (typeof cachedData === 'string') {
+                    } else if (typeof cachedData === "string") {
                         try {
                             return JSON.parse(cachedData) as T;
                         } catch (e) {
@@ -201,7 +212,10 @@ export async function getCachedData<T>(
                         return cachedData as unknown as T;
                     }
                 } catch (error) {
-                    console.error(`Cache data parsing error for key ${key}:`, error);
+                    console.error(
+                        `Cache data parsing error for key ${key}:`,
+                        error
+                    );
                     // 파싱 오류 시 원본 데이터 반환
                     return cachedData as unknown as T;
                 }
@@ -210,16 +224,15 @@ export async function getCachedData<T>(
 
         // 캐시 미스 또는 강제 새로고침인 경우 데이터 가져오기
         const data = await fallback();
-        
+
         try {
             // 데이터 직렬화 처리
-            const serializedData = typeof data === 'string' 
-                ? data 
-                : JSON.stringify(data);
-            
+            const serializedData =
+                typeof data === "string" ? data : JSON.stringify(data);
+
             // 데이터 캐싱
             await redis.set(key, serializedData, ttl ? { ex: ttl } : undefined);
-            
+
             // 태그가 있으면 추가
             if (tags && tags.length > 0) {
                 await addTagsToKey(key, tags);
@@ -253,7 +266,7 @@ export async function addTimeSeriesData(
     } catch (error) {
         // 이미 존재하는 경우 무시
     }
-    
+
     // 데이터 추가
     await redis.call("TS.ADD", key, timestamp, value);
 }
@@ -296,9 +309,12 @@ export async function createTopK(key: string, k: number = 50): Promise<void> {
  * @param key Top-K 키
  * @param items 추가할 항목들
  */
-export async function addToTopK(key: string, ...items: string[]): Promise<void> {
+export async function addToTopK(
+    key: string,
+    ...items: string[]
+): Promise<void> {
     if (!items || items.length === 0) return;
-    
+
     try {
         await redis.call("TOPK.ADD", key, ...items);
     } catch (error) {
@@ -313,7 +329,7 @@ export async function addToTopK(key: string, ...items: string[]): Promise<void> 
  */
 export async function getTopK(key: string): Promise<string[]> {
     try {
-        return await redis.call("TOPK.LIST", key) as string[];
+        return (await redis.call("TOPK.LIST", key)) as string[];
     } catch (error) {
         console.error(`Error getting TopK for key ${key}:`, error);
         return [];
@@ -325,7 +341,10 @@ export async function getTopK(key: string): Promise<string[]> {
  * @param key T-Digest 키
  * @param compression 압축 계수 (기본값: 100)
  */
-export async function createTDigest(key: string, compression: number = 100): Promise<void> {
+export async function createTDigest(
+    key: string,
+    compression: number = 100
+): Promise<void> {
     try {
         await redis.call("TDIGEST.CREATE", key, "COMPRESSION", compression);
     } catch (error) {
@@ -338,9 +357,12 @@ export async function createTDigest(key: string, compression: number = 100): Pro
  * @param key T-Digest 키
  * @param values 추가할 값들
  */
-export async function addToTDigest(key: string, ...values: number[]): Promise<void> {
+export async function addToTDigest(
+    key: string,
+    ...values: number[]
+): Promise<void> {
     if (!values || values.length === 0) return;
-    
+
     try {
         await redis.call("TDIGEST.ADD", key, ...values);
     } catch (error) {
@@ -354,13 +376,23 @@ export async function addToTDigest(key: string, ...values: number[]): Promise<vo
  * @param percentiles 조회할 백분위수 배열
  * @returns 백분위수 값 배열
  */
-export async function getTDigestPercentiles(key: string, ...percentiles: number[]): Promise<number[]> {
+export async function getTDigestPercentiles(
+    key: string,
+    ...percentiles: number[]
+): Promise<number[]> {
     if (!percentiles || percentiles.length === 0) return [];
-    
+
     try {
-        return await redis.call("TDIGEST.QUANTILE", key, ...percentiles) as number[];
+        return (await redis.call(
+            "TDIGEST.QUANTILE",
+            key,
+            ...percentiles
+        )) as number[];
     } catch (error) {
-        console.error(`Error getting TDigest percentiles for key ${key}:`, error);
+        console.error(
+            `Error getting TDigest percentiles for key ${key}:`,
+            error
+        );
         return [];
     }
 }

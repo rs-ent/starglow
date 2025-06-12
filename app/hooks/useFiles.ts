@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { StoredFile } from "@/app/actions/files";
+import { GetFilesMetadataByUrlsParams, StoredFile } from "@/app/actions/files";
 import {
     useFilesByPurposeAndBucket,
     useFileById,
+    useFilesMetadataByUrls,
 } from "@/app/queries/filesQueries";
 import {
     useUploadFile,
@@ -126,5 +127,23 @@ export function useFiles() {
         deleteFiles,
         updateFileOrder,
         updateFilesOrder,
+    };
+}
+
+export interface UseFilesV2Input {
+    getFilesMetadataInput?: GetFilesMetadataByUrlsParams;
+}
+
+export function useFilesV2(input?: UseFilesV2Input) {
+    const {
+        data: filesMetadata = new Map(),
+        isLoading: isLoadingFilesMetadata,
+        refetch: refetchFilesMetadata,
+    } = useFilesMetadataByUrls(input?.getFilesMetadataInput);
+
+    return {
+        filesMetadata,
+        isLoadingFilesMetadata,
+        refetchFilesMetadata,
     };
 }

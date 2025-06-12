@@ -487,6 +487,8 @@ model StoredFiles {
   order     Int?      @default(0)
   purpose   String?   @db.VarChar(50)
   bucket    String    @db.VarChar(50)
+  focusX    Float     @default(0.5)
+  focusY    Float     @default(0.5)
   expiresAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -494,6 +496,7 @@ model StoredFiles {
   @@unique([sourceUrl, type])
   @@index([bucket, purpose])
   @@index([url, type])
+  @@index([url])
 }
 
 model LoginAttemptLog {

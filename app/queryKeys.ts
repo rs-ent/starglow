@@ -67,6 +67,8 @@ export const queryKeys = {
         byId: (id: string) => ["files", id] as const,
         byPurposeAndBucket: (purpose: string, bucket: string) =>
             ["files", purpose, bucket] as const,
+        metadataByUrls: (urls: string[]) =>
+            ["files", "metadata", "urls", urls] as const,
     },
     exchangeRate: {
         info: ["exchangeRate", "info"] as const,

@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma/client";
 import { v4 as uuidv4 } from "uuid";
 import sharp from "sharp";
 import { requireAuth } from "../auth/authUtils";
-import { revalidatePath } from "next/cache";
+import { getCachedData, generateCacheKey } from "@/lib/cache/upstash-redis";
 
 export interface StoredFile {
     id: string;
@@ -19,6 +19,24 @@ export interface StoredFile {
     bucket: string;
     order: number;
     createdAt: Date;
+}
+
+async function getImageDimensions(
+    file: File
+): Promise<{ width: number; height: number } | null> {
+    if (!file.type.startsWith("image/")) return null;
+
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            resolve({
+                width: img.naturalWidth,
+                height: img.naturalHeight,
+            });
+        };
+        img.onerror = () => resolve(null);
+        img.src = URL.createObjectURL(file);
+    });
 }
 
 async function optimizeImage(
@@ -41,19 +59,25 @@ export async function uploadFile(
     let optimizedBuffer: Buffer | null = null;
     let optimizedType = file.type;
     let optimizedSize = file.size;
+    let dimensions: { width: number; height: number } | null = null;
 
     if (file.type.startsWith("image/")) {
         try {
             optimizedBuffer = await optimizeImage(file);
             optimizedType = "image/webp";
             optimizedSize = optimizedBuffer.length;
+
+            dimensions = await getImageDimensions(file);
         } catch (error) {
             console.error("Error optimizing image:", error);
         }
     }
 
     const fileExt = optimizedBuffer ? "webp" : file.name.split(".").pop();
-    const fileName = `${uuidv4()}.${fileExt}`;
+    const sizeSuffix = dimensions
+        ? `_${dimensions.width}x${dimensions.height}`
+        : "";
+    const fileName = `${uuidv4()}${sizeSuffix}.${fileExt}`;
 
     const fileToUpload = optimizedBuffer || file;
 
@@ -71,6 +95,8 @@ export async function uploadFile(
             order: 0,
             purpose,
             bucket,
+            width: dimensions?.width || 0,
+            height: dimensions?.height || 0,
         },
     });
 
@@ -130,12 +156,15 @@ export async function uploadFiles(
             let optimizedBuffer: Buffer | null = null;
             let optimizedType = file.type;
             let optimizedSize = file.size;
+            let dimensions: { width: number; height: number } | null = null;
 
             if (file.type.startsWith("image/")) {
                 try {
                     optimizedBuffer = await optimizeImage(file);
                     optimizedType = "image/webp";
                     optimizedSize = optimizedBuffer.length;
+
+                    dimensions = await getImageDimensions(file);
                 } catch (error) {
                     console.error("Error optimizing image:", error);
                 }
@@ -144,7 +173,10 @@ export async function uploadFiles(
             const fileExt = optimizedBuffer
                 ? "webp"
                 : file.name.split(".").pop();
-            const fileName = `${uuidv4()}.${fileExt}`;
+            const sizeSuffix = dimensions
+                ? `_${dimensions.width}x${dimensions.height}`
+                : "";
+            const fileName = `${uuidv4()}${sizeSuffix}.${fileExt}`;
 
             const fileToUpload = optimizedBuffer || file;
 
@@ -162,6 +194,8 @@ export async function uploadFiles(
                     purpose,
                     order: nextOrder + index,
                     bucket: bucket,
+                    width: dimensions?.width || 0,
+                    height: dimensions?.height || 0,
                 },
             });
 
@@ -290,3 +324,94 @@ export async function updateFilesOrder(
     }));
 }
 
+export interface GetFilesMetadataByUrlsParams {
+    urls: string[];
+}
+
+export async function getFilesMetadataByUrls(
+    input?: GetFilesMetadataByUrlsParams
+): Promise<
+    Map<
+        string,
+        {
+            width: number;
+            height: number;
+            focusX: number;
+            focusY: number;
+        }
+    >
+> {
+    if (!input) {
+        return new Map();
+    }
+
+    const CACHE_PREFIX = "file:metadata";
+    const CACHE_TTL = 3600 * 24; // 1 day
+    const CACHE_TAGS = ["file-metadata"];
+
+    try {
+        const uniqueUrls = [...new Set(input.urls)];
+        const filesMap = new Map<
+            string,
+            { width: number; height: number; focusX: number; focusY: number }
+        >();
+
+        // URL이 없는 경우 빈 Map 즉시 반환
+        if (uniqueUrls.length === 0) {
+            return filesMap;
+        }
+
+        // 배치 처리
+        const BATCH_SIZE = 100;
+        for (let i = 0; i < uniqueUrls.length; i += BATCH_SIZE) {
+            const batchUrls = uniqueUrls.slice(i, i + BATCH_SIZE);
+
+            // 각 URL에 대해 캐시된 메타데이터 가져오기
+            const batchPromises = batchUrls.map((url) =>
+                getCachedData(
+                    generateCacheKey(CACHE_PREFIX, url),
+                    async () => {
+                        const file = await prisma.storedFiles.findUnique({
+                            where: { url },
+                            select: {
+                                width: true,
+                                height: true,
+                                focusX: true,
+                                focusY: true,
+                            },
+                        });
+
+                        return file
+                            ? {
+                                  width: file.width || 0,
+                                  height: file.height || 0,
+                                  focusX: file.focusX || 0.5,
+                                  focusY: file.focusY || 0.5,
+                              }
+                            : null;
+                    },
+                    {
+                        ttl: CACHE_TTL,
+                        tags: CACHE_TAGS,
+                        staleWhileRevalidate: 3600 * 12, // 12 hours
+                    }
+                )
+            );
+
+            const results = await Promise.all(batchPromises);
+
+            // 결과를 Map에 추가
+            batchUrls.forEach((url, index) => {
+                const metadata = results[index];
+                if (metadata) {
+                    filesMap.set(url, metadata);
+                }
+            });
+        }
+
+        return filesMap;
+    } catch (error) {
+        console.error("Error getting files by urls:", error);
+        return new Map();
+    }
+}

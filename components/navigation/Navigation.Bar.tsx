@@ -5,28 +5,27 @@ import LinkButton from "../atoms/LinkButton";
 import AuthButton from "../atoms/AuthButton";
 import { User } from "next-auth";
 import VerticalButton from "../atoms/VerticalButton";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import RewardPanel from "../atoms/RewardPanel";
 import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
 import { usePathname } from "next/navigation";
 import UserNavigation from "../user/User.Navigation";
 
-// 타입 정의 추가
+// 타입 정의
 type MenuItem = {
     name: string;
     href: string;
     icon: string;
 };
 
-// 기본 메뉴 항목
+// 기본 메뉴 항목 - 컴포넌트 외부로 이동하여 재생성 방지
 const defaultMenuItems: MenuItem[] = [
     { name: "Quest", href: "/quests", icon: "/ui/navigation/nav-quest.svg" },
     { name: "NFT", href: "/nfts", icon: "/ui/navigation/nav-nft.svg" },
     { name: "Poll", href: "/polls", icon: "/ui/navigation/nav-poll.svg" },
 ];
 
-// 마이페이지 메뉴 항목
 const myPageItem: MenuItem = {
     name: "My",
     href: "/user",
@@ -38,7 +37,7 @@ interface NavigationBarProps {
     player: Player | null;
 }
 
-// 메모이제이션된 로고 컴포넌트
+// Logo 컴포넌트
 const Logo = memo(function Logo() {
     return (
         <LinkButton
@@ -57,7 +56,7 @@ const Logo = memo(function Logo() {
     );
 });
 
-// 메모이제이션된 데스크톱 메뉴 컴포넌트
+// DesktopMenu 컴포넌트
 const DesktopMenu = memo(function DesktopMenu({
     menuItems,
     user,
@@ -66,7 +65,7 @@ const DesktopMenu = memo(function DesktopMenu({
     onShowUserNavigation,
     isActivePath,
 }: {
-    menuItems: typeof defaultMenuItems;
+    menuItems: MenuItem[];
     user: User | null;
     player: Player | null;
     pathname: string;
@@ -112,21 +111,17 @@ const DesktopMenu = memo(function DesktopMenu({
     );
 });
 
-// 메모이제이션된 모바일 메뉴 컴포넌트
+// MobileMenu 컴포넌트
 const MobileMenu = memo(function MobileMenu({
     menuItems,
     player,
     pathname,
-    active,
-    onActiveChange,
     onShowUserNavigation,
     isActivePath,
 }: {
-    menuItems: typeof defaultMenuItems;
+    menuItems: MenuItem[];
     player: Player | null;
     pathname: string;
-    active: string;
-    onActiveChange: (name: string) => void;
     onShowUserNavigation: () => void;
     isActivePath: (href: string) => boolean;
 }) {
@@ -201,7 +196,6 @@ const MobileMenu = memo(function MobileMenu({
                             if (isActivePath(href)) {
                                 e.preventDefault();
                             }
-                            onActiveChange(name);
                         }}
                         href={href}
                         className={cn(
@@ -219,19 +213,15 @@ const MobileMenu = memo(function MobileMenu({
 // 메인 NavigationBar 컴포넌트
 function NavigationBar({ user, player }: NavigationBarProps) {
     const pathname = usePathname();
-    const [active, setActive] = useState<string>("");
     const [showUserNavigation, setShowUserNavigation] =
         useState<boolean>(false);
 
-    // 메뉴 항목 메모이제이션
-    const menu = useMemo(() => {
-        if (user?.id) {
-            return [...defaultMenuItems, myPageItem];
-        }
-        return defaultMenuItems;
-    }, [user?.id]);
+    // 메뉴 항목 계산 - useMemo 제거
+    const menuItems = user?.id
+        ? [...defaultMenuItems, myPageItem]
+        : defaultMenuItems;
 
-    // 이벤트 핸들러 메모이제이션
+    // 이벤트 핸들러
     const handleShowUserNavigation = useCallback(() => {
         setShowUserNavigation(true);
     }, []);
@@ -239,16 +229,6 @@ function NavigationBar({ user, player }: NavigationBarProps) {
     const handleCloseUserNavigation = useCallback(() => {
         setShowUserNavigation(false);
     }, []);
-
-    const handleActiveChange = useCallback(
-        (name: string) => {
-            if (active !== name) {
-                // 불필요한 상태 업데이트 방지
-                setActive(name);
-            }
-        },
-        [active]
-    );
 
     const isActivePath = useCallback(
         (href: string) => pathname === href,
@@ -279,7 +259,7 @@ function NavigationBar({ user, player }: NavigationBarProps) {
             >
                 <Logo />
                 <DesktopMenu
-                    menuItems={menu}
+                    menuItems={menuItems}
                     user={user}
                     player={player}
                     pathname={pathname}
@@ -289,11 +269,9 @@ function NavigationBar({ user, player }: NavigationBarProps) {
             </nav>
 
             <MobileMenu
-                menuItems={menu}
+                menuItems={menuItems}
                 player={player}
                 pathname={pathname}
-                active={active}
-                onActiveChange={handleActiveChange}
                 onShowUserNavigation={handleShowUserNavigation}
                 isActivePath={isActivePath}
             />
