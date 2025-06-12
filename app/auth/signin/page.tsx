@@ -81,6 +81,7 @@ function SignInButtons() {
                         />
                     );
                 })}
+                <div className="w-full border-t border-gray-600 h-[1px] my-1"></div>
                 {connectors.map((connector) => (
                     <WalletAuthButton
                         key={connector.id}
@@ -90,9 +91,9 @@ function SignInButtons() {
                 ))}
             </div>
             <div className="my-2 flex flex-row items-center justify-around">
-                <div className="w-full border-t border-gray-600"></div>
+                <div className="w-full border-t border-gray-600 h-[1px]"></div>
                 <span className="px-1 text-sm text-gray-400">or</span>
-                <div className="w-full border-t border-gray-600"></div>
+                <div className="w-full border-t border-gray-600 h-[1px]"></div>
             </div>
             <TelegramLoginButton onAuth={handleTelegramAuth} size="large" />
         </div>

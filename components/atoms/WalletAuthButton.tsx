@@ -3,6 +3,8 @@
 import { useWagmiConnection } from "@/app/story/userWallet/wagmi-hooks";
 import { Connector } from "wagmi";
 import Button from "./Button";
+import { cn } from "@/lib/utils/tailwind";
+import { useMemo } from "react";
 
 interface WalletAuthButtonProps {
     connector: Connector;
@@ -10,10 +12,13 @@ interface WalletAuthButtonProps {
     callbackUrl?: string;
 }
 
+const connectorColors: Record<string, string> = {
+    MetaMask:
+        "bg-[rgba(82,112,255,1.0)] border-[rgba(82,112,255,1.0)] text-[rgba(236,247,252,1.0)]",
+};
+
 const connectorIcons: Record<string, string> = {
-    metamask: "/icons/blockchain/metamask.svg",
-    // walletConnect: "/icons/blockchain/walletconnect.svg", // 예시, 실제 파일 필요
-    // 추가 connector는 여기에...
+    MetaMask: "/icons/blockchain/metamask.svg",
 };
 
 export default function WalletAuthButton({
@@ -23,22 +28,36 @@ export default function WalletAuthButton({
 }: WalletAuthButtonProps) {
     const { connect, isPendingConnectWallet } = useWagmiConnection();
 
-    const icon = connectorIcons[connector.id] || undefined;
+    const { name, icon, color } = useMemo(() => {
+        console.log(connector.id);
+        console.log(connectorIcons[connector.name]);
+        console.log(connectorColors[connector.name]);
+        console.log(connector.name);
+        return {
+            name: connector.name,
+            icon: connectorIcons[connector.name],
+            color: connectorColors[connector.name],
+        };
+    }, [connector]);
 
     return (
         <Button
-            onClick={() => connect(connector, callbackUrl)}
-            img={icon}
-            imgLeft
-            frameSize={24}
-            textSize={18}
-            paddingSize={20}
-            gapSize={16}
-            disabled={isPendingConnectWallet}
             variant="outline"
-            className={className}
+            onClick={() => connect(connector, callbackUrl)}
+            className={cn(
+                "w-full items-center justify-center",
+                color,
+                className
+            )}
         >
-            {`Sign in with ${connector.name}`}
+            {icon && (
+                <img
+                    src={icon}
+                    alt={`${connector.name} icon`}
+                    style={{ width: "20px", height: "auto" }}
+                />
+            )}
+            <span className="ml-2">{`Sign in with ${name}`}</span>
         </Button>
     );
 }
