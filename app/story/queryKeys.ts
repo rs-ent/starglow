@@ -74,5 +74,7 @@ export const queryKeys = {
         all: ["tokenGating"] as const,
         list: (artistId: string, userId: string) =>
             [...queryKeys.tokenGating.all, "list", artistId, userId] as const,
+        verifiedSPGs: (userId: string) =>
+            [...queryKeys.tokenGating.all, "verifiedSPGs", userId] as const,
     },
 } as const;

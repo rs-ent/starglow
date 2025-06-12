@@ -16,6 +16,7 @@ import InteractFeedback from "../atoms/Popup.InteractFeedback";
 import WarningPopup from "../atoms/WarningPopup";
 import { SPG } from "@/app/story/spg/actions";
 import { useNFT } from "@/app/story/nft/hooks";
+import { useWeb3Interactions } from "@/app/story/interaction/hooks";
 import { useSession } from "next-auth/react";
 
 interface NFTContentsProps {
@@ -24,10 +25,15 @@ interface NFTContentsProps {
 
 export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
     const { data: session } = useSession();
-
     const [showFeedback, setShowFeedback] = useState(false);
     const [showWaitWarning, setShowWaitWarning] = useState(false);
     const [forceCloseWaitWarning, setForceCloseWaitWarning] = useState(false);
+
+    const { refetchVerifiedSPGs } = useWeb3Interactions({
+        getUserVerifiedSPGsInput: {
+            userId: session?.user?.id || "",
+        },
+    });
 
     const { circulation, isCirculationLoading, refetchTokenGating } = useNFT({
         getCirculationInput: {
@@ -128,14 +134,16 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
         setShowWaitWarning(false);
         setShowFeedback(true);
         refetchTokenGating();
-    }, [refetchTokenGating]);
+        refetchVerifiedSPGs();
+    }, [refetchTokenGating, refetchVerifiedSPGs]);
 
     const handlePaymentError = useCallback(
         (error?: Error) => {
             setShowWaitWarning(false);
             refetchTokenGating();
+            refetchVerifiedSPGs();
         },
-        [refetchTokenGating]
+        [refetchTokenGating, refetchVerifiedSPGs]
     );
 
     return (

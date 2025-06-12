@@ -8,15 +8,29 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import QuestsContents from "@/components/quests/Quests.Contents";
 import { User } from "next-auth";
-import { VerifiedSPG } from "@/app/story/interaction/actions";
+import PartialLoading from "../atoms/PartialLoading";
+import { useWeb3Interactions } from "@/app/story/interaction/hooks";
 
 interface QuestsProps {
     user: User | null;
     player: Player | null;
-    verifiedSPGs?: VerifiedSPG[];
 }
 
-function Quests({ user, player, verifiedSPGs }: QuestsProps) {
+function Quests({ user, player }: QuestsProps) {
+    const { verifiedSPGs, isLoadingVerifiedSPGs } = useWeb3Interactions({
+        getUserVerifiedSPGsInput: {
+            userId: user?.id || "",
+        },
+    });
+
+    if (isLoadingVerifiedSPGs) {
+        return (
+            <div className="w-full h-full flex justify-center items-center">
+                <PartialLoading text="Loading..." size="sm" />
+            </div>
+        );
+    }
+
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
             <div className="fixed inset-0 -z-20">
