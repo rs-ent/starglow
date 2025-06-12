@@ -24,8 +24,6 @@ function QuestsPublic({ player, questLogs, referralLogs }: QuestsPublicProps) {
         },
     });
 
-    console.log("Quests Public", quests);
-
     const [selectedType, setSelectedType] = useState<string>("All");
 
     // 퀘스트 타입 목록 메모이제이션
@@ -50,34 +48,20 @@ function QuestsPublic({ player, questLogs, referralLogs }: QuestsPublicProps) {
             : quests.items.filter((quest) => quest.type === selectedType);
     }, [quests?.items, selectedType]);
 
-    // 레퍼럴 퀘스트 데이터 메모이제이션
-    const referralQuestLogsData = useMemo(() => {
-        if (
-            !player?.id ||
-            !quests?.items ||
-            !questLogs.length ||
-            !referralLogs
-        ) {
-            return null;
-        }
-
-        return {
-            player,
-            referralQuests:
-                quests.items.filter((quest) => quest.isReferral) || [],
-            questLogs,
-            referralLogs,
-        };
-    }, [player, quests?.items, questLogs, referralLogs]);
-
     const { setReferralQuestLogs } = useQuestSet();
 
-    // 레퍼럴 퀘스트 로그 설정
     useEffect(() => {
-        if (referralQuestLogsData) {
-            setReferralQuestLogs(referralQuestLogsData);
-        }
-    }, [referralQuestLogsData, setReferralQuestLogs]);
+        if (!player || !quests || !questLogs || !referralLogs) return;
+
+        const referralQuests =
+            quests.items.filter((quest) => quest.isReferral) || [];
+        setReferralQuestLogs({
+            player,
+            referralQuests,
+            questLogs,
+            referralLogs,
+        });
+    }, [quests]);
 
     // 타입 클릭 핸들러 메모이제이션
     const handleTypeClick = useCallback((type: string) => {

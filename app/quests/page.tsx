@@ -29,6 +29,7 @@ function QuestsLoading() {
 
 export default async function QuestPage() {
     const session = await auth();
+
     return (
         <Suspense fallback={<QuestsLoading />}>
             <Quests

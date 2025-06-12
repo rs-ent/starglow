@@ -161,7 +161,8 @@ export function useQuestSet() {
     } = useClaimQuestRewardMutation();
 
     const {
-        mutateAsync: setReferralQuestLogs,
+        mutate: setReferralQuestLogs,
+        mutateAsync: setReferralQuestLogsAsync,
         isPending: isSettingReferralQuestLogs,
         error: setReferralQuestLogsError,
     } = useSetReferralQuestLogsMutation();
@@ -218,6 +219,7 @@ export function useQuestSet() {
         claimQuestRewardError,
 
         setReferralQuestLogs,
+        setReferralQuestLogsAsync,
         isSettingReferralQuestLogs,
         setReferralQuestLogsError,
 

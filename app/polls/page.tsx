@@ -29,6 +29,8 @@ function PollsLoading() {
 export default async function PollsPage() {
     const session = await auth();
 
+    console.log("Polls Page", session);
+
     return (
         <Suspense fallback={<PollsLoading />}>
             <Polls
