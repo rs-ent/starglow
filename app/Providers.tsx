@@ -29,9 +29,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
     const [wagmiConfig] = useState(() =>
         createConfig({
-            chains: [mainnet, sepolia, storyAeneid, berachainBepolia] as const,
+            chains: [sepolia, storyAeneid, berachainBepolia] as const,
             transports: {
-                [mainnet.id]: http(),
                 [sepolia.id]: http(),
                 [storyAeneid.id]: http(),
                 [berachainBepolia.id]: http(),

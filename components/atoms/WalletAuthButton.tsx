@@ -5,6 +5,7 @@ import { Connector } from "wagmi";
 import Button from "./Button";
 import { cn } from "@/lib/utils/tailwind";
 import { useMemo } from "react";
+import { berachainBepolia, storyAeneid } from "viem/chains";
 
 interface WalletAuthButtonProps {
     connector: Connector;
@@ -20,6 +21,11 @@ const connectorColors: Record<string, string> = {
 const connectorIcons: Record<string, string> = {
     MetaMask: "/icons/blockchain/metamask.svg",
 };
+
+const networkOptions = [
+    { id: berachainBepolia.id, name: "Berachain Bepolia" },
+    { id: storyAeneid.id, name: "Story Aeneid" },
+];
 
 export default function WalletAuthButton({
     connector,
