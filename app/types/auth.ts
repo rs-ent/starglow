@@ -29,8 +29,86 @@ export type WalletProvider = {
         android: string;
         default: string;
     };
-    detectFunction: () => boolean;
+    detectFunction: () => Promise<boolean>;
 };
+
+// 이더리움 프로바이더 타입 정의 추가
+interface EthereumProvider {
+    isMetaMask?: boolean;
+    providers?: EthereumProvider[];
+    request?: (args: { method: string; params?: any[] }) => Promise<any>;
+}
+
+// EIP-6963 프로바이더 정보 타입
+interface EIP6963ProviderInfo {
+    uuid: string;
+    name: string;
+    icon: string;
+    rdns: string;
+}
+
+interface EIP6963ProviderDetail {
+    info: EIP6963ProviderInfo;
+    provider: EthereumProvider;
+}
+
+declare global {
+    interface Window {
+        ethereum?: any;
+    }
+}
+
+// MetaMask 감지를 위한 유틸리티 함수들
+function detectMetaMaskEIP6963(): Promise<boolean> {
+    return new Promise((resolve) => {
+        let providerFound = false;
+
+        // EIP-6963 이벤트 리스너
+        const handleAnnouncement = (
+            event: CustomEvent<EIP6963ProviderDetail>
+        ) => {
+            if (event.detail.info.rdns === "io.metamask") {
+                providerFound = true;
+                resolve(true);
+            }
+        };
+
+        window.addEventListener(
+            "eip6963:announceProvider",
+            handleAnnouncement as EventListener
+        );
+
+        // 프로바이더 요청
+        window.dispatchEvent(new Event("eip6963:requestProvider"));
+
+        // 200ms 후 타임아웃 (EIP-6963 감지 시간)
+        setTimeout(() => {
+            window.removeEventListener(
+                "eip6963:announceProvider",
+                handleAnnouncement as EventListener
+            );
+            if (!providerFound) {
+                resolve(false);
+            }
+        }, 200);
+    });
+}
+
+function detectMetaMaskLegacy(): boolean {
+    if (typeof window === "undefined") return false;
+
+    return !!(
+        window.ethereum?.isMetaMask ||
+        window.ethereum?.providers?.some(
+            (provider: EthereumProvider) => provider.isMetaMask
+        )
+    );
+}
+
+function isMobileDevice(): boolean {
+    if (typeof window === "undefined") return false;
+    return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
 
 export const WALLET_PROVIDERS: Record<WalletProviderType, WalletProvider> = {
     metamask: {
@@ -45,33 +123,21 @@ export const WALLET_PROVIDERS: Record<WalletProviderType, WalletProvider> = {
                 "https://play.google.com/store/apps/details?id=io.metamask",
             default: "https://metamask.io/download/",
         },
-        detectFunction: () => {
+        detectFunction: async () => {
             if (typeof window === "undefined") return false;
 
-            // 1. MetaMask Mobile 앱 확인
-            const isMetaMaskMobile = /MetaMaskMobile/.test(navigator.userAgent);
+            const isMobile = isMobileDevice();
 
-            // 2. 브라우저에서 MetaMask 확장 프로그램 확인
-            const isMetaMaskBrowser = !!(
-                window.ethereum && window.ethereum.isMetaMask
-            );
+            if (isMobile) {
+                return true;
+            }
 
-            // 3. deeplink 패턴 확인 (metamask.app.link)
-            const isMetaMaskDeepLink = /metamask\.app\.link/.test(
-                window.location.href.toLowerCase()
-            );
-
-            // 4. 모바일 환경에서의 deeplink 확인
-            const isMobileDeepLink =
-                /metamask/.test(navigator.userAgent.toLowerCase()) &&
-                /metamask\.app\.link/.test(window.location.href.toLowerCase());
-
-            return (
-                isMetaMaskMobile ||
-                isMetaMaskBrowser ||
-                isMetaMaskDeepLink ||
-                isMobileDeepLink
-            );
+            try {
+                const eip6963Result = await detectMetaMaskEIP6963();
+                return eip6963Result || detectMetaMaskLegacy();
+            } catch {
+                return detectMetaMaskLegacy();
+            }
         },
     },
     walletconnect: {
@@ -85,7 +151,9 @@ export const WALLET_PROVIDERS: Record<WalletProviderType, WalletProvider> = {
             android: "https://walletconnect.com/",
             default: "https://walletconnect.com/",
         },
-        detectFunction: () => true,
+        detectFunction: async () => {
+            return true;
+        },
     },
 };
 

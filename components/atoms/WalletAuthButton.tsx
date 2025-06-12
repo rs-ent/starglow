@@ -25,7 +25,7 @@ export default function WalletAuthButton({
 }: WalletAuthButtonProps) {
     const { connect, isPendingConnectWallet } = useWagmiConnection();
     const { connectors } = useConnect();
-    const [isInstalled, setIsInstalled] = useState(false);
+    const [isInstalled, setIsInstalled] = useState<boolean | null>(null);
 
     const walletInfo = useMemo(() => {
         const connectorId = provider.id.toLowerCase();
@@ -42,9 +42,9 @@ export default function WalletAuthButton({
     }, [provider.id]);
 
     useEffect(() => {
-        const checkInstallation = () => {
+        const checkInstallation = async () => {
             try {
-                const installed = walletInfo.detectFunction();
+                const installed = await walletInfo.detectFunction();
                 setIsInstalled(installed);
             } catch (error) {
                 console.error("Error checking wallet installation:", error);
@@ -53,9 +53,6 @@ export default function WalletAuthButton({
         };
 
         checkInstallation();
-
-        const timer = setTimeout(checkInstallation, 1000);
-        return () => clearTimeout(timer);
     }, [walletInfo]);
 
     const handleClick = () => {
@@ -75,6 +72,12 @@ export default function WalletAuthButton({
 
             if (!connector) {
                 console.error(`Connector for ${provider.id} not found`);
+                if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                    window.location.href =
+                        "https://metamask.app.link/dapp/" +
+                        window.location.origin;
+                    return;
+                }
                 const installUrl = getInstallUrl(provider);
                 window.open(installUrl, "_blank");
                 return;

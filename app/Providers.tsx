@@ -8,6 +8,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { sepolia, storyAeneid, berachainBepolia } from "wagmi/chains";
 import { metaMask, walletConnect } from "@wagmi/connectors";
+import { MetaMaskProvider } from "@metamask/sdk-react";
 import { useState } from "react";
 
 export const defaultConnectors = [
@@ -16,6 +17,17 @@ export const defaultConnectors = [
             name: "Starglow",
             url: process.env.NEXT_PUBLIC_BASE_URL,
             iconUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/logo/l-gradien-purple.svg`,
+        },
+        extensionOnly: false,
+        enableAnalytics: false,
+        useDeeplink: true,
+        openDeeplink: (link: string) => {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(
+                navigator.userAgent
+            );
+            if (isMobile) {
+                window.location.href = link;
+            }
         },
     }),
     walletConnect({
@@ -66,13 +78,28 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     );
 
     return (
-        <WagmiProvider config={wagmiConfig as any}>
-            <QueryClientProvider client={queryClient}>
-                <SessionProvider>{children}</SessionProvider>
-                {process.env.NODE_ENV === "development" && (
-                    <ReactQueryDevtools initialIsOpen={false} />
-                )}
-            </QueryClientProvider>
-        </WagmiProvider>
+        <MetaMaskProvider
+            debug={process.env.NODE_ENV === "development"}
+            sdkOptions={{
+                dappMetadata: {
+                    name: "Starglow",
+                    url:
+                        process.env.NEXT_PUBLIC_BASE_URL ||
+                        "https://starglow.io",
+                },
+                extensionOnly: false,
+                useDeeplink: true,
+                enableAnalytics: false,
+            }}
+        >
+            <WagmiProvider config={wagmiConfig as any}>
+                <QueryClientProvider client={queryClient}>
+                    <SessionProvider>{children}</SessionProvider>
+                    {process.env.NODE_ENV === "development" && (
+                        <ReactQueryDevtools initialIsOpen={false} />
+                    )}
+                </QueryClientProvider>
+            </WagmiProvider>
+        </MetaMaskProvider>
     );
 }
