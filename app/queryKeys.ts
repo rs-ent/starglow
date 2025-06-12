@@ -556,8 +556,8 @@ export const questKeys = {
     all: ["quests"] as const,
 
     // 리스트 조회 키
-    list: (input?: GetQuestsInput, pagination?: PaginationInput) =>
-        [...questKeys.all, "list", { input, pagination }] as const,
+    list: (input?: GetQuestsInput) =>
+        [...questKeys.all, "list", input] as const,
 
     // 상세 조회 키
     detail: (input?: GetQuestInput) =>
