@@ -32,7 +32,7 @@ const providerColors: Record<ProviderType, string> = {
     "io.metamask":
         "bg-[rgba(255,255,255,1)] text-[rgba(0,0,0,1)] hover:bg-[rgba(255,255,255,1)] hover:text-[rgba(0,0,0,1)] hover:scale-105",
     walletConnect:
-        "bg-[#3B99FC] text-[#ffffff] hover:bg-[#3B99FC] hover:text-[#ffffff] hover:scale-105",
+        "bg-[#ffffff] text-[#3B99FC] hover:bg-[#ffffff] hover:text-[#3B99FC] hover:scale-105",
 };
 
 export function getProviderIdentity(providerId?: ProviderType) {

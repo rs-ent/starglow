@@ -71,9 +71,33 @@ export const metadata: Metadata = {
     // Icons
     icons: {
         icon: [
-            { url: "/favicon.ico" },
-            { url: "/favicon-96x96.png", sizes: "16x16", type: "image/png" },
-            { url: "/favicon-96x96.png", sizes: "32x32", type: "image/png" },
+            { url: "/favicon.ico", rel: "shortcut icon" },
+            {
+                url: "/favicon-gradient.svg",
+                sizes: "16x16",
+                type: "image/svg+xml",
+                rel: "icon",
+            },
+            {
+                url: "/favicon-gradient.svg",
+                sizes: "32x32",
+                type: "image/svg+xml",
+            },
+            {
+                url: "/favicon-gradient.svg",
+                sizes: "96x96",
+                type: "image/svg+xml",
+            },
+            {
+                url: "/favicon-gradient.svg",
+                sizes: "192x192",
+                type: "image/svg+xml",
+            },
+            {
+                url: "/favicon-gradient.svg",
+                sizes: "512x512",
+                type: "image/svg+xml",
+            },
         ],
         apple: [
             {
@@ -85,8 +109,8 @@ export const metadata: Metadata = {
         other: [
             {
                 rel: "mask-icon",
-                url: "/icon.svg",
-                color: "#6d28d9",
+                url: "/favicon-gradient.svg",
+                color: "#000000",
             },
         ],
     },
