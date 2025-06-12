@@ -4,11 +4,10 @@ import { auth } from "@/app/auth/authSettings";
 import Quests from "@/components/quests/Quests";
 import { Suspense } from "react";
 import { Metadata } from "next";
-import { getUserVerifiedSPGs } from "../story/interaction/actions";
 
 // SEO 메타데이터 정의
 export const metadata: Metadata = {
-    title: "Quests | Starglow",
+    title: "Quests",
     description:
         "Complete quests to earn rewards and boost your artist valuation",
 };
@@ -30,15 +29,11 @@ function QuestsLoading() {
 
 export default async function QuestPage() {
     const session = await auth();
-    const userVerifiedSPGs = await getUserVerifiedSPGs({
-        userId: session?.user?.id ?? "",
-    });
     return (
         <Suspense fallback={<QuestsLoading />}>
             <Quests
                 user={session?.user ?? null}
                 player={session?.player ?? null}
-                verifiedSPGs={userVerifiedSPGs}
             />
         </Suspense>
     );

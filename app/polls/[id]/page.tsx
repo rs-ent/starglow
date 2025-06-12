@@ -45,8 +45,8 @@ export async function generateMetadata({
 
     const artistName = poll.artist?.name || undefined;
     const title = artistName
-        ? `${poll.title} | ${artistName} | Poll | Starglow`
-        : `${poll.title} | Poll | Starglow`;
+        ? `${poll.title} | ${artistName} | Poll`
+        : `${poll.title} | Poll`;
     const description = poll.description || "Vote in the latest Starglow poll!";
     const image = poll.imgUrl || "/default-og-image.png";
 
