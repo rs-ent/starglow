@@ -3,18 +3,11 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import {
-    Prisma,
-    User as DBUser,
-    Player,
-    PlayerAsset,
-    AssetType,
-    ReferralLog,
-} from "@prisma/client";
-import type { RewardCurrency } from "@/app/types/player";
+import { Prisma, User as DBUser, Player, ReferralLog } from "@prisma/client";
 import type { User } from "next-auth";
 import { nanoid } from "nanoid";
 import { setDefaultPlayerAsset } from "./playerAssets";
+import { revalidatePath } from "next/cache";
 
 export interface GetPlayerInput {
     playerId: string;
@@ -264,7 +257,7 @@ export async function updatePlayerSettings(
     }
 
     try {
-        return await prisma.player.update({
+        const updatedPlayer = await prisma.player.update({
             where: { id: input.playerId },
             data: {
                 nickname: input.nickname,
@@ -272,6 +265,10 @@ export async function updatePlayerSettings(
                 email: input.email,
             },
         });
+
+        revalidatePath("/user/*");
+
+        return updatedPlayer;
     } catch (error) {
         console.error("[updatePlayerSettings] Error:", error);
         return null;
