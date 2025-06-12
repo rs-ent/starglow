@@ -19,6 +19,12 @@ interface PollsContentsProps {
     verifiedSPGs?: VerifiedSPG[];
 }
 
+const contentVariants = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1, transition: { duration: 0.4 } },
+    exit: { opacity: 0, transition: { duration: 0.3 } },
+};
+
 function PollsContents({ user, player, verifiedSPGs }: PollsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
 
@@ -39,18 +45,6 @@ function PollsContents({ user, player, verifiedSPGs }: PollsContentsProps) {
         setIsPublic(false);
     }, []);
 
-    // 애니메이션 변수
-    const tabVariants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { duration: 0.5 } },
-    };
-
-    const contentVariants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { duration: 0.5 } },
-        exit: { opacity: 0, transition: { duration: 0.3 } },
-    };
-
     return (
         <div
             className={cn(
@@ -58,11 +52,7 @@ function PollsContents({ user, player, verifiedSPGs }: PollsContentsProps) {
                 "transition-all duration-700"
             )}
         >
-            <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={tabVariants}
-            >
+            <div>
                 <PublicPrivateTab
                     isPublic={isPublic}
                     onPublic={handlePublicTab}
@@ -72,9 +62,9 @@ function PollsContents({ user, player, verifiedSPGs }: PollsContentsProps) {
                     gapSize={5}
                     paddingSize={10}
                 />
-            </motion.div>
+            </div>
 
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
                 <motion.div
                     key={isPublic ? "public" : "private"}
                     initial="hidden"

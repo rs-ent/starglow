@@ -8,7 +8,6 @@ import { Player, PollLog } from "@prisma/client";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import PollsList from "./Polls.List";
 import { memo, useMemo } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 
 interface PollsContentsPublicProps {
     player: Player | null;
@@ -21,7 +20,6 @@ function PollsContentsPublic({
     pollLogs,
     className,
 }: PollsContentsPublicProps) {
-    // 폴 데이터 가져오기
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
             category: "PUBLIC",
@@ -32,23 +30,8 @@ function PollsContentsPublic({
 
     const polls = useMemo(() => pollsList?.items, [pollsList?.items]);
 
-    // 애니메이션 변수
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1,
-                delayChildren: 0.2,
-            },
-        },
-    };
-
     return (
-        <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
+        <div
             className={cn(
                 "max-w-[1400px] w-screen",
                 "px-[10px] sm:px-[10px] md:px-[20px] lg:px-[20px]",
@@ -56,7 +39,6 @@ function PollsContentsPublic({
                 className
             )}
         >
-            {/* 폴 목록 */}
             <div className="relative">
                 {isLoading ? (
                     <PartialLoading text="Loading polls..." size="sm" />
@@ -65,39 +47,30 @@ function PollsContentsPublic({
                         Error: {error.message}
                     </div>
                 ) : (
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={"public-polls"}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            {polls && polls.length > 0 ? (
-                                <PollsList
-                                    polls={polls}
-                                    player={player}
-                                    pollLogs={
-                                        pollLogs &&
-                                        pollLogs.filter((log) =>
-                                            polls.some(
-                                                (poll) => poll.id === log.pollId
-                                            )
+                    <div key={"public-polls"}>
+                        {polls && polls.length > 0 ? (
+                            <PollsList
+                                polls={polls}
+                                player={player}
+                                pollLogs={
+                                    pollLogs &&
+                                    pollLogs.filter((log) =>
+                                        polls.some(
+                                            (poll) => poll.id === log.pollId
                                         )
-                                    }
-                                />
-                            ) : (
-                                <div className="text-center text-2xl py-10">
-                                    No polls found
-                                </div>
-                            )}
-                        </motion.div>
-                    </AnimatePresence>
+                                    )
+                                }
+                            />
+                        ) : (
+                            <div className="text-center text-2xl py-10">
+                                No polls found
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
-        </motion.div>
+        </div>
     );
 }
 
-// 메모이제이션을 통한 불필요한 리렌더링 방지
 export default memo(PollsContentsPublic);

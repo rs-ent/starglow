@@ -20,6 +20,12 @@ interface QuestsContentsProps {
     verifiedSPGs?: VerifiedSPG[];
 }
 
+const contentVariants = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1, transition: { duration: 0.4 } },
+    exit: { opacity: 0, transition: { duration: 0.3 } },
+};
+
 function QuestsContents({ user, player, verifiedSPGs }: QuestsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
 
@@ -48,19 +54,6 @@ function QuestsContents({ user, player, verifiedSPGs }: QuestsContentsProps) {
         },
     });
 
-    // 애니메이션 변수
-    const tabVariants = {
-        initial: { opacity: 0 },
-        animate: { opacity: 1, transition: { duration: 0.3 } },
-        exit: { opacity: 0, transition: { duration: 0.2 } },
-    };
-
-    const contentVariants = {
-        initial: { opacity: 0 },
-        animate: { opacity: 1, transition: { duration: 0.4 } },
-        exit: { opacity: 0, transition: { duration: 0.3 } },
-    };
-
     return (
         <div
             className={cn(
@@ -69,12 +62,7 @@ function QuestsContents({ user, player, verifiedSPGs }: QuestsContentsProps) {
             )}
         >
             {/* 탭 컴포넌트 */}
-            <motion.div
-                initial="initial"
-                animate="animate"
-                variants={tabVariants}
-                className="w-full flex justify-center"
-            >
+            <div className="w-full flex justify-center">
                 <PublicPrivateTab
                     isPublic={isPublic}
                     onPublic={handlePublicTab}
@@ -84,7 +72,7 @@ function QuestsContents({ user, player, verifiedSPGs }: QuestsContentsProps) {
                     gapSize={5}
                     paddingSize={10}
                 />
-            </motion.div>
+            </div>
 
             {/* 콘텐츠 영역 */}
             <AnimatePresence mode="wait" initial={false}>

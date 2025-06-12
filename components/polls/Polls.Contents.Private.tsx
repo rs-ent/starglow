@@ -22,30 +22,6 @@ interface PollsContentsPrivateProps {
 
 // 애니메이션 변수를 컴포넌트 외부로 이동하여 리렌더링 방지
 const animations = {
-    contentVariants: {
-        hidden: { opacity: 0, y: 20 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: {
-                duration: 0.5,
-                staggerChildren: 0.1,
-            },
-        },
-        exit: {
-            opacity: 0,
-            y: -20,
-            transition: { duration: 0.3 },
-        },
-    },
-    selectorVariants: {
-        hidden: { opacity: 0, y: -10 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: { duration: 0.4 },
-        },
-    },
     backgroundVariants: {
         hidden: { opacity: 0 },
         visible: {
@@ -141,14 +117,7 @@ function PollsContentsPrivate({
         if (!selectedArtist) return null;
 
         return (
-            <motion.div
-                className="relative w-full h-full"
-                key={selectedArtist.id}
-                variants={animations.contentVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-            >
+            <div className="relative w-full h-full" key={selectedArtist.id}>
                 <div className="w-screen max-w-[1400px] mx-auto z-0 relative">
                     <PollsContentsPrivateArtistList
                         artist={selectedArtist}
@@ -163,25 +132,20 @@ function PollsContentsPrivate({
                         fgColorTo={ArtistBG(selectedArtist, 1, 100)}
                     />
                 </div>
-            </motion.div>
+            </div>
         );
     }, [selectedArtist, player, tokenGatingResult, pollLogs]);
 
     return (
         <div className="w-full flex flex-col items-center justify-center">
-            <motion.div
-                className="w-full flex items-center justify-center"
-                variants={animations.selectorVariants}
-                initial="hidden"
-                animate="visible"
-            >
+            <div className="w-full flex items-center justify-center">
                 <ArtistSlideSelector
                     className="mt-[5px] sm:mt-[10px] md:mt-[15px] lg:mt-[20px] xl:mt-[25px]"
                     onSelect={handleArtistSelect}
                     selectedArtist={selectedArtist}
                     verifiedSPGs={verifiedSPGs}
                 />
-            </motion.div>
+            </div>
 
             {/* 배경 그라데이션 - AnimatePresence로 부드러운 전환 구현 */}
             <div className="fixed inset-0 w-screen h-screen -z-20">
@@ -231,10 +195,7 @@ function PollsContentsPrivate({
                 </AnimatePresence>
             </div>
 
-            {/* 아티스트 콘텐츠 - AnimatePresence로 애니메이션 최적화 */}
-            <AnimatePresence mode="wait">
-                {renderArtistContent()}
-            </AnimatePresence>
+            {renderArtistContent()}
         </div>
     );
 }

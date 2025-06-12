@@ -10,7 +10,6 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import QuestsMissions from "./Quests.Missions";
 import InviteFriends from "../atoms/InviteFriends";
-import { AnimatePresence, motion } from "framer-motion";
 import { TokenGatingData, TokenGatingResult } from "@/app/story/nft/actions";
 
 interface QuestsArtistMissionsProps {
@@ -109,53 +108,34 @@ function QuestsArtistMissions({
     // 상태별 렌더 함수 분리
     const renderLoading = useCallback(
         () => (
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="w-full py-8 flex justify-center"
-            >
+            <div className="w-full py-8 flex justify-center">
                 <div className="text-white/80 text-lg">Loading quests...</div>
-            </motion.div>
+            </div>
         ),
         []
     );
 
     const renderError = useCallback(
         () => (
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center text-red-400 py-6"
-            >
+            <div className="text-center text-red-400 py-6">
                 Error: {error?.message || "Failed to load quests"}
-            </motion.div>
+            </div>
         ),
         [error]
     );
 
     const renderNoQuests = useCallback(
         () => (
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center text-2xl py-10 text-white/80"
-            >
+            <div className="text-center text-2xl py-10 text-white/80">
                 No quests found for this artist
-            </motion.div>
+            </div>
         ),
         []
     );
 
     const renderQuestsList = useCallback(
         () => (
-            <motion.div
-                key={artist.id}
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="relative"
-            >
+            <div key={artist.id} className="relative">
                 <div
                     className={cn(
                         "duration-1000 transition-all",
@@ -212,11 +192,7 @@ function QuestsArtistMissions({
                     </div>
 
                     {quests?.items && questLogs && tokenGating && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.3, duration: 0.5 }}
-                        >
+                        <div>
                             <QuestsMissions
                                 player={player}
                                 quests={quests.items}
@@ -227,24 +203,19 @@ function QuestsArtistMissions({
                                 tokenGating={tokenGating}
                                 referralLogs={referralLogs || []}
                             />
-                        </motion.div>
+                        </div>
                     )}
                     {showInviteFriends && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.5, duration: 0.5 }}
-                            className="mt-[70px] md:mt-[80px] lg:mt-[90px] mb-[100px] lg:mb-[0px]"
-                        >
+                        <div className="mt-[70px] md:mt-[80px] lg:mt-[90px] mb-[100px] lg:mb-[0px]">
                             <InviteFriends
                                 player={player}
                                 bgColorFrom={bgColorFromInviteFriends}
                                 bgColorTo={bgColorToInviteFriends}
                             />
-                        </motion.div>
+                        </div>
                     )}
                 </div>
-            </motion.div>
+            </div>
         ),
         [
             artist.id,
@@ -288,7 +259,7 @@ function QuestsArtistMissions({
         renderQuestsList,
     ]);
 
-    return <AnimatePresence mode="wait">{renderContent()}</AnimatePresence>;
+    return renderContent();
 }
 
 export default memo(QuestsArtistMissions);

@@ -9,7 +9,6 @@ import PollsList from "./Polls.List";
 import PartialLoading from "../atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 
 interface PollsContentsPrivateArtistListProps {
     artist: Artist;
@@ -64,13 +63,12 @@ function PollsContentsPrivateArtistList({
         if (!isLoading) {
             if (pollsList?.items && pollsList.items.length > 0) {
                 setHasPolls(true);
-                // 토큰 게이팅 결과가 있으면 바로 준비 완료
                 if (tokenGating) {
                     setIsReady(true);
                 }
             } else {
                 setHasPolls(false);
-                setIsReady(true); // 폴이 없어도 준비 완료로 설정하여 "No polls found" 메시지 표시
+                setIsReady(true);
             }
         }
     }, [pollsList, tokenGating, isLoading]);
@@ -82,102 +80,55 @@ function PollsContentsPrivateArtistList({
         }
     }, [tokenGating, hasPolls]);
 
-    // 애니메이션 변수
-    const animations = useMemo(
-        () => ({
-            container: {
-                hidden: { opacity: 0 },
-                visible: {
-                    opacity: 1,
-                    transition: { duration: 0.4 },
-                },
-                exit: {
-                    opacity: 0,
-                    transition: { duration: 0.3 },
-                },
-            },
-            content: {
-                hidden: { opacity: 0, y: 20 },
-                visible: {
-                    opacity: 1,
-                    y: 0,
-                    transition: { duration: 0.5 },
-                },
-            },
-        }),
+    // 로딩 상태 렌더링
+    const renderLoading = useCallback(
+        () => (
+            <div className="w-full py-8 flex justify-center">
+                <PartialLoading text="Loading polls..." size="sm" />
+            </div>
+        ),
         []
     );
 
-    // 로딩 상태 렌더링 최적화
-    const renderLoading = useCallback(
-        () => (
-            <motion.div
-                variants={animations.content}
-                initial="hidden"
-                animate="visible"
-                className="w-full py-8 flex justify-center"
-            >
-                <PartialLoading text="Loading polls..." size="sm" />
-            </motion.div>
-        ),
-        [animations.content]
-    );
-
-    // 에러 상태 렌더링 최적화
+    // 에러 상태 렌더링
     const renderError = useCallback(
         () => (
-            <motion.div
-                variants={animations.content}
-                initial="hidden"
-                animate="visible"
-                className="text-center text-red-400 py-6"
-            >
-                Error: error?.message || "Failed to load polls"
-            </motion.div>
+            <div className="text-center text-red-400 py-6">
+                Error: {error?.message || "Failed to load polls"}
+            </div>
         ),
-        [animations.content, error]
+        [error]
     );
 
-    // 폴 없음 상태 렌더링 최적화
+    // 폴 없음 상태 렌더링
     const renderNoPolls = useCallback(
         () => (
-            <motion.div
-                variants={animations.content}
-                initial="hidden"
-                animate="visible"
-                className="text-center text-2xl py-10 text-white/80"
-            >
+            <div className="text-center text-2xl py-10 text-white/80">
                 No polls found for this artist
-            </motion.div>
+            </div>
         ),
-        [animations.content]
+        []
     );
 
-    // 폴 목록 렌더링 최적화
+    // 폴 목록 렌더링
     const renderPollsList = useCallback(() => {
         if (!pollsList?.items || !isReady) return null;
 
         return (
-            <motion.div
-                variants={animations.content}
-                initial="hidden"
-                animate="visible"
-            >
-                <PollsList
-                    polls={pollsList.items}
-                    artist={artist}
-                    player={player}
-                    tokenGating={tokenGating}
-                    pollLogs={filteredPollLogs}
-                    fgColorFrom={fgColorFrom}
-                    fgColorTo={fgColorTo}
-                    bgColorFrom={bgColorFrom}
-                    bgColorTo={bgColorTo}
-                    bgColorAccentFrom={bgColorAccentFrom}
-                    bgColorAccentTo={bgColorAccentTo}
-                    forceSlidesToShow={forceSlidesToShow}
-                />
-            </motion.div>
+            <PollsList
+                polls={pollsList.items}
+                artist={artist}
+                player={player}
+                tokenGating={tokenGating}
+                pollLogs={filteredPollLogs}
+                fgColorFrom={fgColorFrom}
+                fgColorTo={fgColorTo}
+                bgColorFrom={bgColorFrom}
+                bgColorTo={bgColorTo}
+                bgColorAccentFrom={bgColorAccentFrom}
+                bgColorAccentTo={bgColorAccentTo}
+                forceSlidesToShow={forceSlidesToShow}
+            />
         );
     }, [
         pollsList?.items,
@@ -193,7 +144,6 @@ function PollsContentsPrivateArtistList({
         bgColorAccentFrom,
         bgColorAccentTo,
         forceSlidesToShow,
-        animations.content,
     ]);
 
     // 컨텐츠 렌더링 결정
@@ -223,26 +173,19 @@ function PollsContentsPrivateArtistList({
     ]);
 
     return (
-        <motion.div
+        <div
             className={cn(
                 "w-full",
                 "px-[10px] sm:px-[10px] md:px-[20px] lg:px-[20px]",
                 "mt-[10px] sm:mt-[15px] md:mt-[20px] lg:mt-[25px] xl:mt-[30px]",
                 className
             )}
-            variants={animations.container}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
         >
-            <AnimatePresence mode="wait">
-                <div key={`artist-polls-${artist.id}`} className="relative">
-                    {renderContent()}
-                </div>
-            </AnimatePresence>
-        </motion.div>
+            <div key={`artist-polls-${artist.id}`} className="relative">
+                {renderContent()}
+            </div>
+        </div>
     );
 }
 
-// 메모이제이션을 통한 불필요한 리렌더링 방지
 export default memo(PollsContentsPrivateArtistList);

@@ -6,7 +6,6 @@ import QuestsButton from "./Quests.Button";
 import PartialLoading from "../atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
 import { TokenGatingData, TokenGatingResult } from "@/app/story/nft/actions";
-import { AnimatePresence, motion } from "framer-motion";
 import Doorman from "../atoms/Doorman";
 
 interface QuestsMissionsProps {
@@ -49,64 +48,42 @@ function QuestsMissions({
         return map;
     }, [questLogs]);
 
-    // 애니메이션 변수
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1,
-                delayChildren: 0.2,
-            },
-        },
-    };
-
-    const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 },
-    };
-
     return (
         <div className="relative transition-all duration-700">
             {!permission && <Doorman />}
 
-            <AnimatePresence>
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className={cn(
-                        "flex flex-col gap-4 my-4",
-                        !permission && "blur-sm"
-                    )}
-                >
-                    {quests.map((quest, index) => {
-                        const specificTokenGatingData: TokenGatingData =
-                            !quest.needToken ||
-                            !quest.needTokenAddress ||
-                            !tokenGating?.data
-                                ? {
-                                      hasToken: true,
-                                      detail: [],
-                                  }
-                                : tokenGating.data[quest.needTokenAddress];
+            <div
+                className={cn(
+                    "flex flex-col gap-4 my-4",
+                    !permission && "blur-sm"
+                )}
+            >
+                {quests.map((quest, index) => {
+                    const specificTokenGatingData: TokenGatingData =
+                        !quest.needToken ||
+                        !quest.needTokenAddress ||
+                        !tokenGating?.data
+                            ? {
+                                  hasToken: true,
+                                  detail: [],
+                              }
+                            : tokenGating.data[quest.needTokenAddress];
 
-                        return (
-                            <motion.div key={quest.id} variants={itemVariants}>
-                                <QuestsButton
-                                    player={player}
-                                    quest={quest}
-                                    questLog={questLogMap.get(quest.id) || null}
-                                    tokenGating={specificTokenGatingData}
-                                    permission={permission}
-                                    index={index}
-                                    referralLogs={referralLogs}
-                                />
-                            </motion.div>
-                        );
-                    })}
-                </motion.div>
-            </AnimatePresence>
+                    return (
+                        <div key={quest.id}>
+                            <QuestsButton
+                                player={player}
+                                quest={quest}
+                                questLog={questLogMap.get(quest.id) || null}
+                                tokenGating={specificTokenGatingData}
+                                permission={permission}
+                                index={index}
+                                referralLogs={referralLogs}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }

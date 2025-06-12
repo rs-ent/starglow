@@ -11,8 +11,7 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import PartialLoading from "../atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
-import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface PollsListProps {
     polls: Poll[];
@@ -198,7 +197,7 @@ function PollsList({
     }
 
     return (
-        <motion.div
+        <div
             className="mb-[100px] relative"
             style={{
                 position: "relative",
@@ -219,40 +218,7 @@ function PollsList({
             }}
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
         >
-            {/* 네비게이션 버튼 */}
-            <AnimatePresence>
-                {isHovering && !isMobile && (
-                    <>
-                        <motion.button
-                            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/30 hover:bg-black/50 rounded-full p-2 text-white/90 transition-all"
-                            onClick={handlePrev}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -10 }}
-                            transition={{ duration: 0.2 }}
-                            aria-label="Previous poll"
-                        >
-                            <ChevronLeft size={24} />
-                        </motion.button>
-                        <motion.button
-                            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/30 hover:bg-black/50 rounded-full p-2 text-white/90 transition-all"
-                            onClick={handleNext}
-                            initial={{ opacity: 0, x: 10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 10 }}
-                            transition={{ duration: 0.2 }}
-                            aria-label="Next poll"
-                        >
-                            <ChevronRight size={24} />
-                        </motion.button>
-                    </>
-                )}
-            </AnimatePresence>
-
             {/* 슬라이더 */}
             <Slider ref={sliderRef} {...sliderSettings}>
                 {polls.map((poll, index) => {
@@ -326,7 +292,7 @@ function PollsList({
                     ))}
                 </div>
             )}
-        </motion.div>
+        </div>
     );
 }
 

@@ -97,56 +97,16 @@ function QuestsPrivate({
         return result;
     }, [verifiedSPGs]);
 
-    const animations = useMemo(
-        () => ({
-            contentVariants: {
-                hidden: { opacity: 0, y: 20 },
-                visible: {
-                    opacity: 1,
-                    y: 0,
-                    transition: {
-                        duration: 0.5,
-                        staggerChildren: 0.1,
-                    },
-                },
-                exit: {
-                    opacity: 0,
-                    y: -20,
-                    transition: { duration: 0.3 },
-                },
-            },
-            selectorVariants: {
-                hidden: { opacity: 0, y: -10 },
-                visible: {
-                    opacity: 1,
-                    y: 0,
-                    transition: { duration: 0.4 },
-                },
-            },
-            backgroundVariants: {
-                hidden: { opacity: 0 },
-                visible: { opacity: 1, transition: { duration: 1.5 } },
-                exit: { opacity: 0, transition: { duration: 1.5 } },
-            },
-        }),
-        []
-    );
-
     return (
         <div className="w-full flex flex-col items-center justify-center">
-            <motion.div
-                className="w-full flex items-center justify-center"
-                variants={animations.selectorVariants}
-                initial="hidden"
-                animate="visible"
-            >
+            <div className="w-full flex items-center justify-center">
                 <ArtistSlideSelector
                     className="mt-[10px] sm:mt-[15px] md:mt-[20px] lg:mt-[25px] xl:mt-[30px]"
                     onSelect={handleArtistSelect}
                     selectedArtist={selectedArtist}
                     verifiedSPGs={verifiedSPGs}
                 />
-            </motion.div>
+            </div>
 
             {/* 배경 그라데이션 - AnimatePresence로 부드러운 전환 구현 */}
             <div className="fixed inset-0 w-screen h-screen -z-50">
@@ -194,67 +154,51 @@ function QuestsPrivate({
                 </AnimatePresence>
             </div>
 
-            {/* 아티스트 콘텐츠 - AnimatePresence로 애니메이션 최적화 */}
-            <AnimatePresence mode="wait">
-                {selectedArtist && (
-                    <motion.div
-                        className="relative w-full h-full"
-                        key={selectedArtist.id}
-                        variants={animations.contentVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                    >
-                        <div className="w-full h-full z-0 relative">
-                            <motion.div
-                                variants={animations.contentVariants}
-                                className={cn(
-                                    "mt-[20px] sm:mt-[35px] md:mt-[40px] lg:mt-[45px] xl:mt-[50px]",
-                                    "flex items-center justify-center"
-                                )}
-                            >
-                                <ArtistMessage
-                                    artistId={selectedArtist.id}
-                                    artist={selectedArtist}
-                                />
-                            </motion.div>
-
-                            <motion.div
-                                variants={animations.contentVariants}
-                                className={cn(
-                                    "w-full h-full",
-                                    "mt-[20px] sm:mt-[35px] md:mt-[40px] lg:mt-[45px] xl:mt-[50px]"
-                                )}
-                            >
-                                <QuestsArtistMissions
-                                    artist={selectedArtist}
-                                    player={player}
-                                    questLogs={questLogs}
-                                    tokenGating={tokenGatingResult || null}
-                                    referralLogs={referralLogs || []}
-                                    bgColorFrom={ArtistBG(
-                                        selectedArtist,
-                                        2,
-                                        100
-                                    )}
-                                    bgColorTo={ArtistBG(selectedArtist, 0, 100)}
-                                    showInviteFriends={true}
-                                    bgColorFromInviteFriends={ArtistBG(
-                                        selectedArtist,
-                                        2,
-                                        100
-                                    )}
-                                    bgColorToInviteFriends={ArtistBG(
-                                        selectedArtist,
-                                        3,
-                                        100
-                                    )}
-                                />
-                            </motion.div>
+            {selectedArtist && (
+                <div className="relative w-full h-full" key={selectedArtist.id}>
+                    <div className="w-full h-full z-0 relative">
+                        <div
+                            className={cn(
+                                "mt-[20px] sm:mt-[35px] md:mt-[40px] lg:mt-[45px] xl:mt-[50px]",
+                                "flex items-center justify-center"
+                            )}
+                        >
+                            <ArtistMessage
+                                artistId={selectedArtist.id}
+                                artist={selectedArtist}
+                            />
                         </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+
+                        <div
+                            className={cn(
+                                "w-full h-full",
+                                "mt-[20px] sm:mt-[35px] md:mt-[40px] lg:mt-[45px] xl:mt-[50px]"
+                            )}
+                        >
+                            <QuestsArtistMissions
+                                artist={selectedArtist}
+                                player={player}
+                                questLogs={questLogs}
+                                tokenGating={tokenGatingResult || null}
+                                referralLogs={referralLogs || []}
+                                bgColorFrom={ArtistBG(selectedArtist, 2, 100)}
+                                bgColorTo={ArtistBG(selectedArtist, 0, 100)}
+                                showInviteFriends={true}
+                                bgColorFromInviteFriends={ArtistBG(
+                                    selectedArtist,
+                                    2,
+                                    100
+                                )}
+                                bgColorToInviteFriends={ArtistBG(
+                                    selectedArtist,
+                                    3,
+                                    100
+                                )}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

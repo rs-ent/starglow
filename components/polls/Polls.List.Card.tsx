@@ -144,7 +144,6 @@ function PollsListCard({
     const [showInteractFeedback, setShowInteractFeedback] = useState(false);
     const [rewarded, setRewarded] = useState(false);
 
-    // 투표 권한 및 제한 계산
     const { alreadyVotedAmount, maxVoteAmount, permission } = useMemo(() => {
         const permission = tokenGating?.hasToken;
         const alreadyVotedAmount =

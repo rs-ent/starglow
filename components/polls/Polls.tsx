@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
 import PollsContents from "@/components/polls/Polls.Contents";
 import { User } from "next-auth";
-import { motion } from "framer-motion";
 import { memo } from "react";
 import { VerifiedSPG } from "@/app/story/interaction/actions";
 
@@ -17,35 +16,13 @@ interface PollsProps {
     verifiedSPGs?: VerifiedSPG[];
 }
 
-const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-        opacity: 1,
-        transition: {
-            staggerChildren: 0.1,
-            delayChildren: 0.2,
-        },
-    },
-} as const;
-
-const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
-} as const;
-
 function Polls({ user, player, verifiedSPGs }: PollsProps) {
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
             <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
 
-            <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={containerVariants}
-                className="w-full"
-            >
-                <motion.h2
-                    variants={itemVariants}
+            <div className="w-full">
+                <h2
                     className={cn(
                         "text-center text-4xl font-bold",
                         "mt-[70px] md:mt-[80px] lg:mt-[20px]",
@@ -53,10 +30,9 @@ function Polls({ user, player, verifiedSPGs }: PollsProps) {
                     )}
                 >
                     Polls
-                </motion.h2>
+                </h2>
 
-                <motion.div
-                    variants={itemVariants}
+                <div
                     className={cn(
                         "flex justify-center items-center",
                         "mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]"
@@ -67,8 +43,8 @@ function Polls({ user, player, verifiedSPGs }: PollsProps) {
                         player={player}
                         verifiedSPGs={verifiedSPGs}
                     />
-                </motion.div>
-            </motion.div>
+                </div>
+            </div>
         </div>
     );
 }

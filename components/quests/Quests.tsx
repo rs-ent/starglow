@@ -8,7 +8,6 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import QuestsContents from "@/components/quests/Quests.Contents";
 import { User } from "next-auth";
-import { motion } from "framer-motion";
 import { VerifiedSPG } from "@/app/story/interaction/actions";
 
 interface QuestsProps {
@@ -17,29 +16,10 @@ interface QuestsProps {
     verifiedSPGs?: VerifiedSPG[];
 }
 
-const backgroundVariants = {
-    initial: { opacity: 0 },
-    animate: { opacity: 1, transition: { duration: 0.8 } },
-};
-
-const contentVariants = {
-    initial: { opacity: 0, y: 20 },
-    animate: {
-        opacity: 1,
-        y: 0,
-        transition: { duration: 0.5, delay: 0.3 },
-    },
-};
-
 function Quests({ user, player, verifiedSPGs }: QuestsProps) {
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
-            <motion.div
-                initial="initial"
-                animate="animate"
-                variants={backgroundVariants}
-                className="fixed inset-0 -z-20"
-            >
+            <div className="fixed inset-0 -z-20">
                 <div className="absolute inset-0 bg-gradient-to-b from-[#09011b] to-[#311473]" />
 
                 <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
@@ -61,14 +41,9 @@ function Quests({ user, player, verifiedSPGs }: QuestsProps) {
                     loading="eager"
                     fetchPriority="high"
                 />
-            </motion.div>
+            </div>
 
-            <motion.div
-                initial="initial"
-                animate="animate"
-                variants={contentVariants}
-                className="relative z-10"
-            >
+            <div className="relative z-10">
                 <h2
                     className={cn(
                         "text-center text-4xl",
@@ -91,7 +66,7 @@ function Quests({ user, player, verifiedSPGs }: QuestsProps) {
                         verifiedSPGs={verifiedSPGs}
                     />
                 </div>
-            </motion.div>
+            </div>
         </div>
     );
 }
