@@ -23,18 +23,17 @@ async function getOwnedTokenIds(
     owner: string,
     quantity: number
 ): Promise<string[]> {
-    const maxTokensToCheck = Math.min(quantity * 10, 10000);
     const tokenIds = await getOwners({
         spgAddress: spgAddress,
-        tokenIds: Array.from({ length: maxTokensToCheck }, (_, i) =>
-            BigInt(i).toString()
-        ),
     });
 
     const ownedTokenIds = tokenIds
         .filter((token) => token.owner.toLowerCase() === owner.toLowerCase())
         .map((token) => token.tokenId)
         .slice(0, quantity);
+
+    console.log("Token IDs: ", tokenIds);
+    console.log("Owned Token IDs: ", ownedTokenIds);
 
     if (ownedTokenIds.length < quantity) {
         throw new Error(

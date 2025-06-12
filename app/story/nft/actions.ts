@@ -1194,8 +1194,6 @@ export async function getCirculation(
     }
 }
 
-
-
 export interface TokenGatingInput {
     artist: Artist | null;
     userId: string | null;

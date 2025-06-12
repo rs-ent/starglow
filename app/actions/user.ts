@@ -236,13 +236,10 @@ export async function setUserWithWallet(
         }
 
         // 플레이어와 지갑 생성
-        const [player, wallet] = await Promise.all([
-            setPlayer({ user }),
-            createWallet(user.id),
-        ]);
+        const [player] = await Promise.all([setPlayer({ user })]);
 
-        if (!player || !wallet) {
-            throw new Error("Failed to create player or wallet");
+        if (!player) {
+            throw new Error("Failed to create player");
         }
 
         // 추천인 코드가 있는 경우 처리
