@@ -54,7 +54,7 @@ function QuestsMissions({
 
             <div
                 className={cn(
-                    "flex flex-col gap-4 my-4",
+                    "flex flex-col gap-4 my-4 overflow-hidden",
                     !permission && "blur-sm"
                 )}
             >

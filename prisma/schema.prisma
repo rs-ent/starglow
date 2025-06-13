@@ -35,10 +35,13 @@ model User {
   telegramId             String?                 @unique
   collectionParticipants CollectionParticipant[]
 
+  xId                    String?                 @unique
+
   @@index([telegramId])
   @@index([email, active])
   @@index([role, active])
   @@index([lastLoginAt])
+  @@index([xId])
 }
 
 model Account {
@@ -1246,6 +1249,52 @@ model Story_ipAsset {
   @@unique([chainId, tokenContract, tokenId])
   @@index([ipId])
   @@index([networkId])
+}
+
+model Tweet {
+  id String @id @default(cuid())
+  tweetId String @unique
+  text String
+  authorId String
+  createdAt DateTime @default(now())
+
+  @@index([authorId])
+  @@index([tweetId])
+  @@index([createdAt])
+}
+
+model TweetSyncData {
+  id Int @id @default(autoincrement())
+  lastTweetId String?
+  lastSyncAt DateTime @default(now())
+  syncStatus String @default("success")
+  errorMessage String?
+  totalTweetsFound Int @default(0)
+  newTweetsAdded Int @default(0)
+  apiRequestsUsed Int @default(0)
+  rateLimitRemaining Int?
+  executionTimeMs Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tweetResponses TweetResponse[]
+
+  @@index([lastSyncAt])
+}
+
+model TweetResponse {
+  id String @id @default(cuid())
+  tweetSyncDataId Int
+  rawResponse Json
+  requestParams Json
+  responseCode Int
+  requestTimestamp DateTime @default(now())
+  processingTimeMs Int?
+
+  tweetSyncData TweetSyncData @relation(fields: [tweetSyncDataId], references: [id], onDelete: Cascade)
+
+  @@index([tweetSyncDataId])
+  @@index([requestTimestamp])
 }
 
 enum PaymentStatus {
