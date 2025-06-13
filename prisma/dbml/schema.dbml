@@ -23,7 +23,8 @@ Table User {
   provider String
   telegramId String [unique]
   collectionParticipants CollectionParticipant [not null]
-  xId String [unique]
+  tweetAuthorId String [unique]
+  tweetAuthor TweetAuthor
 }
 
 Table Account {
@@ -1016,6 +1017,16 @@ Table Story_ipAsset {
   }
 }
 
+Table TweetAuthor {
+  id String [pk]
+  authorId String [unique, not null]
+  name String
+  username String
+  profileImageUrl String
+  tweets Tweet [not null]
+  user User
+}
+
 Table Tweet {
   id String [pk]
   tweetId String [unique, not null]
@@ -1024,6 +1035,7 @@ Table Tweet {
   authorUsername String
   authorProfileImageUrl String
   authorId String [not null]
+  author TweetAuthor [not null]
   createdAt DateTime [default: `now()`, not null]
 }
 
@@ -1157,6 +1169,8 @@ Enum MetadataType {
   nft
 }
 
+Ref: User.tweetAuthorId - TweetAuthor.authorId
+
 Ref: Account.userId > User.id [delete: Cascade]
 
 Ref: Session.userId > User.id [delete: Cascade]
@@ -1286,5 +1300,7 @@ Ref: Story_nft.contractAddress > Story_spg.address
 Ref: Story_nft.ipId > Story_ipAsset.ipId
 
 Ref: Story_ipAsset.networkId > BlockchainNetwork.id
+
+Ref: Tweet.authorId > TweetAuthor.authorId
 
 Ref: TweetResponse.tweetSyncDataId > TweetSyncData.id [delete: Cascade]

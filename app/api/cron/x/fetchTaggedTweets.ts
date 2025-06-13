@@ -242,6 +242,28 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                 });
             }
 
+            const authorPromises = Array.from(allUsers.entries()).map(
+                ([authorId, userData]) =>
+                    tx.tweetAuthor.upsert({
+                        where: {
+                            authorId: authorId,
+                        },
+                        create: {
+                            authorId: authorId,
+                            name: userData.name,
+                            username: userData.username,
+                            profileImageUrl: userData.profile_image_url,
+                        },
+                        update: {
+                            name: userData.name,
+                            username: userData.username,
+                            profileImageUrl: userData.profile_image_url,
+                        },
+                    })
+            );
+
+            await Promise.all(authorPromises);
+
             const existingTweets = await tx.tweet.findMany({
                 where: {
                     tweetId: {

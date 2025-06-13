@@ -35,13 +35,13 @@ model User {
   telegramId             String?                 @unique
   collectionParticipants CollectionParticipant[]
 
-  xId                    String?                 @unique
+  tweetAuthorId String? @unique
+  tweetAuthor TweetAuthor? @relation("UserToTweetAuthor", fields: [tweetAuthorId], references: [authorId])
 
   @@index([telegramId])
   @@index([email, active])
   @@index([role, active])
   @@index([lastLoginAt])
-  @@index([xId])
 }
 
 model Account {
@@ -1251,6 +1251,19 @@ model Story_ipAsset {
   @@index([networkId])
 }
 
+model TweetAuthor {
+  id String @id @default(cuid())
+  authorId String @unique
+  name String?
+  username String?
+  profileImageUrl String?
+  
+  tweets Tweet[]
+  user User? @relation("UserToTweetAuthor")
+
+  @@index([authorId])
+}
+
 model Tweet {
   id String @id @default(cuid())
   tweetId String @unique
@@ -1259,6 +1272,7 @@ model Tweet {
   authorUsername String?
   authorProfileImageUrl String?
   authorId String
+  author TweetAuthor @relation(fields: [authorId], references: [authorId])
   createdAt DateTime @default(now())
 
   @@index([authorId])
