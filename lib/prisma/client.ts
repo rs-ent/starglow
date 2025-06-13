@@ -1,6 +1,7 @@
 // lib/prisma/client.ts
 
-import {PrismaClient} from "@prisma/client";
+import { PrismaClient } from "@prisma/client/edge";
+import { withAccelerate } from "@prisma/extension-accelerate";
 
 /**
  * PrismaClient is attached to the `global` object in development to prevent
@@ -12,33 +13,21 @@ import {PrismaClient} from "@prisma/client";
 
 declare global {
     // eslint-disable-next-line no-var
-    var prisma: PrismaClient | undefined;
+    var prisma: ReturnType<typeof getPrismaClient> | undefined;
 }
 
-// Add pgbouncer=true to prevent prepared statement errors in both development and production
+// Prisma Accelerate를 사용한 최적화된 클라이언트 설정
 const getPrismaClient = () => {
-    let url = process.env.POSTGRES_PRISMA_URL || "";
-
-    // Add pgbouncer and connection_limit params if not already present
-    if (!url.includes("pgbouncer=true")) {
-        url += url.includes("?") ? "&pgbouncer=true" : "?pgbouncer=true";
-    }
-
-    if (!url.includes("connection_limit=")) {
-        url += "&connection_limit=1";
-    }
-
-    return new PrismaClient({
-        log: ["error"],
-        datasources: {
-            db: { url },
-        },
-        // 트랜잭션 타임아웃 설정 (1시간)
-        transactionOptions: {
-            maxWait: 3600000, // 1시간 대기
-            timeout: 3600000,  // 1시간 타임아웃
-        },
+    // Accelerate를 사용할 때는 CONNECTION_POOL_TIMEOUT 등이 필요없음
+    const client = new PrismaClient({
+        log:
+            process.env.NODE_ENV === "development"
+                ? ["error", "warn"]
+                : ["error"],
     });
+
+    // Accelerate extension 적용
+    return client.$extends(withAccelerate());
 };
 
 export const prisma = global.prisma || getPrismaClient();

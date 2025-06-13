@@ -5,7 +5,7 @@
 import { prisma } from "@/lib/prisma/client";
 import { Prisma, Player, User } from "@prisma/client";
 import { setPlayer, invitePlayer } from "./player";
-import { createWallet } from "./defaultWallets";
+import { createWallet } from "../story/userWallet/actions";
 import { cookies } from "next/headers";
 import crypto from "crypto";
 
@@ -145,7 +145,7 @@ export async function setUserWithTelegram(
             createWallet(user.id),
         ]);
 
-        if (!player || !wallet) {
+        if (!player.player || !wallet) {
             throw new Error("Failed to create player or wallet");
         }
 
@@ -159,7 +159,7 @@ export async function setUserWithTelegram(
         }
 
         if (input.withoutSessionRefresh) {
-            return { user, player };
+            return { user, player: player.player };
         }
 
         const sessionToken = crypto.randomUUID();
@@ -182,7 +182,7 @@ export async function setUserWithTelegram(
             sameSite: "lax",
         });
 
-        return { user, player };
+        return { user, player: player.player };
     } catch (error) {
         console.error("Failed to set user with telegram", error);
         throw error;
@@ -238,7 +238,7 @@ export async function setUserWithWallet(
         // 플레이어와 지갑 생성
         const [player] = await Promise.all([setPlayer({ user })]);
 
-        if (!player) {
+        if (!player.player) {
             throw new Error("Failed to create player");
         }
 
@@ -273,7 +273,7 @@ export async function setUserWithWallet(
             sameSite: "lax",
         });
 
-        return { user, player };
+        return { user, player: player.player };
     } catch (error) {
         console.error("Failed to set user with wallet", error);
         throw error;

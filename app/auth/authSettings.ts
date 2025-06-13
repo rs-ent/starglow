@@ -12,7 +12,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma/client";
 import type { NextAuthConfig } from "next-auth";
 import { getPlayerByUserId, setPlayer } from "../actions/player";
-import { createWallet } from "../actions/defaultWallets";
+import { createWallet } from "../story/userWallet/actions";
 import crypto from "crypto";
 import Discord from "next-auth/providers/discord";
 import { fetchAuthorMetricsFromX } from "../actions/x/actions";
@@ -158,18 +158,45 @@ const authOptions: NextAuthConfig = {
                     }
 
                     const promises = [
-                        prisma.user.update({
-                            where: { id: user.id },
-                            data: updateData,
+                        prisma.user
+                            .update({
+                                where: { id: user.id },
+                                data: updateData,
+                            })
+                            .catch((error) => {
+                                console.error("Failed to update user:", error);
+                                return null;
+                            }),
+
+                        setPlayer({
+                            user: user,
+                            tweetAuthorId: tweetAuthorId,
+                        }).catch((error) => {
+                            console.error("Failed to set player:", error);
+                            return null;
                         }),
 
-                        setPlayer({ user: user, tweetAuthorId: tweetAuthorId }),
-                        createWallet(user.id),
+                        createWallet(user.id).catch((error) => {
+                            console.error("Failed to create wallet:", error);
+                            return null;
+                        }),
                     ];
 
-                    const [updatedUser, playerResult, wallet] =
-                        await Promise.all(promises);
+                    const results = await Promise.allSettled(promises);
 
+                    results.forEach((result, index) => {
+                        if (result.status === "rejected") {
+                            const operations = [
+                                "user update",
+                                "player setup",
+                                "wallet creation",
+                            ];
+                            console.error(
+                                `SignIn ${operations[index]} failed:`,
+                                result.reason
+                            );
+                        }
+                    });
                 }
             } catch (error) {
                 console.error("Error in signIn callback:", error);

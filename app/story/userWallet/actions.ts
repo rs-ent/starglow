@@ -10,6 +10,110 @@ import {
     WalletStatus,
 } from "@prisma/client";
 import { Hex, verifyMessage } from "viem";
+import { ethers } from "ethers";
+import { decryptPrivateKey, encryptPrivateKey } from "@/lib/utils/encryption";
+
+export async function createWallet(userId: string) {
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            const defaultNetwork = await tx.blockchainNetwork.findFirst({
+                where: { defaultNetwork: true },
+            });
+
+            const networkValue = defaultNetwork?.chainId?.toString() || "EVM";
+            const networkName = defaultNetwork?.name || "EVM";
+
+            const existingWallet = await tx.wallet.findFirst({
+                where: {
+                    userId,
+                    network: networkValue,
+                },
+            });
+
+            if (existingWallet) {
+                return {
+                    success: true,
+                    message: `${networkName} wallet already exists`,
+                };
+            }
+
+            const hasDefaultWallet = await tx.wallet.findFirst({
+                where: { userId, default: true },
+            });
+
+            const wallet = ethers.Wallet.createRandom();
+            const ecryptedParts = await encryptPrivateKey(wallet.privateKey);
+
+            const newWallet = await tx.wallet.create({
+                data: {
+                    userId: userId,
+                    address: wallet.address,
+                    privateKey: ecryptedParts.dbPart,
+                    keyHash: ecryptedParts.keyHash,
+                    nonce: ecryptedParts.nonce,
+                    network: networkValue,
+                    primary: 1,
+                    default: hasDefaultWallet ? false : true,
+                    nickname: "My Starglow Wallet",
+                    status: "ACTIVE",
+                    provider: "starglow",
+                    lastAccessedAt: new Date(),
+                },
+            });
+
+            return {
+                success: true,
+                address: newWallet.address,
+            };
+        });
+
+        return result;
+    } catch (error) {
+        console.error("Error creating wallet", error);
+        return {
+            success: false,
+            message: "Failed to create wallet",
+        };
+    }
+}
+
+/**
+ * @security
+ * This function handles sensitive key encryption and should not be modified
+ */
+export async function getPrivateKey(address: string) {
+    try {
+        const wallet = await prisma.wallet.findUnique({
+            where: { address },
+            select: {
+                userId: true,
+                privateKey: true,
+                keyHash: true,
+                nonce: true,
+            },
+        });
+
+        if (!wallet) {
+            throw new Error("Wallet not found");
+        }
+
+        if (!wallet.privateKey || !wallet.keyHash || !wallet.nonce) {
+            throw new Error("This wallet is not created by Starglow");
+        }
+
+        const decryptedKey = await decryptPrivateKey({
+            dbPart: wallet.privateKey,
+            blobPart: wallet.keyHash,
+            keyHash: wallet.keyHash,
+            nonce: wallet.nonce,
+        });
+
+        return decryptedKey;
+    } catch (error) {
+        console.error("Error getting private key", error);
+        throw new Error("Failed to get private key");
+    }
+}
 
 export interface conectWalletInput {
     address: string;
