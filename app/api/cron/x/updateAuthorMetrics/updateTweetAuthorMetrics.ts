@@ -115,7 +115,7 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
         );
 
         // 3. Rate Limit 고려한 배치 처리 (24시간 기준 500회 제한)
-        const maxRequestsPerRun = Math.min(10, Math.floor(500 / 24));
+        const maxRequestsPerRun = Math.min(8, Math.floor(500 / 48));
 
         for (const batch of batches) {
             if (requestCount >= maxRequestsPerRun) {

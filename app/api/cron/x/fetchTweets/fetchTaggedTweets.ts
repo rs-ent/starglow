@@ -147,7 +147,7 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
         do {
             requestCount++;
 
-            if (requestCount > 7) {
+            if (requestCount > 5) {
                 console.warn(
                     `Rate limit protection: stopping at ${requestCount} requests`
                 );
