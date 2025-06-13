@@ -104,7 +104,7 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
             }
 
             const requestParams = {
-                query: "@starglowP",
+                query: "@StarglowP",
                 "tweet.fields": "created_at,author_id,public_metrics",
                 "user.fields": "username,name,profile_image_url",
                 expansions: "author_id",

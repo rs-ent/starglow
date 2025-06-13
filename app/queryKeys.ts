@@ -649,8 +649,9 @@ export const artistFeedKeys = {
     }) => [...artistFeedKeys.all, "reactions", params] as const,
 };
 
-export const xKeys = {
-    all: ["x"] as const,
-    latestSyncData: () => [...xKeys.all, "latest-sync-data"] as const,
-    tweets: () => [...xKeys.all, "tweets"] as const,
+export const tweetKeys = {
+    all: ["tweets"] as const,
+    latestSyncData: () => [...tweetKeys.all, "latest-sync-data"] as const,
+    tweets: () => [...tweetKeys.all, "tweets"] as const,
+    authors: () => [...tweetKeys.all, "authors"] as const,
 };

@@ -2,15 +2,26 @@
 
 "use client";
 
-import { useLatestSyncDataQuery, useTweetsQuery } from "./queries";
+import {
+    useLatestSyncDataQuery,
+    useTweetsQuery,
+    useTweetAuthorsQuery,
+} from "./queries";
 
-export function useX() {
+export function useTweets() {
     const {
         data: latestSyncData,
         isLoading: isLatestSyncDataLoading,
         error: latestSyncDataError,
         refetch: refetchLatestSyncData,
     } = useLatestSyncDataQuery();
+
+    const {
+        data: tweetAuthors,
+        isLoading: isTweetAuthorsLoading,
+        error: tweetAuthorsError,
+        refetch: refetchTweetAuthors,
+    } = useTweetAuthorsQuery();
 
     const {
         data: tweets,
@@ -24,6 +35,11 @@ export function useX() {
         isLatestSyncDataLoading,
         latestSyncDataError,
         refetchLatestSyncData,
+
+        tweetAuthors,
+        isTweetAuthorsLoading,
+        tweetAuthorsError,
+        refetchTweetAuthors,
 
         tweets,
         isTweetsLoading,
