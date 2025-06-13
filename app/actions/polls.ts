@@ -8,8 +8,6 @@ import {
     PollStatus,
     PollCategory,
     PollLog,
-    RewardsLog,
-    RewardCurrency,
     Prisma,
     Player,
     Asset,
@@ -17,14 +15,6 @@ import {
 } from "@prisma/client";
 import { tokenGating, TokenGatingData } from "@/app/story/nft/actions";
 import { updatePlayerAsset } from "./playerAssets";
-import { getCachedData, invalidateCache } from "@/lib/cache/upstash-redis";
-
-// 캐시 태그 상수 정의
-const CACHE_TAGS = {
-    POLLS: "polls",
-    POLL_LOGS: "pollLogs",
-    TOKEN_GATE: "tokenGate",
-};
 
 export type PaginationInput = {
     currentPage: number;
@@ -108,9 +98,6 @@ export async function createPoll(input: CreatePollInput): Promise<Poll> {
             },
         });
 
-        // 캐시 무효화
-        await invalidatePollsCache();
-
         return poll;
     } catch (error) {
         console.error("Error creating poll:", error);
@@ -152,35 +139,91 @@ export async function getPolls({
     totalPages: number;
 }> {
     try {
-        // 캐시 키 생성
-        const cacheKey = `polls:${JSON.stringify(input)}:${JSON.stringify(
-            pagination
-        )}`;
-        // Redis 환경 변수 체크
-        const redisConfigured = Boolean(
-            process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
-        );
-        // 캐싱 적용 (enableCache가 true이고 input이 있고 Redis가 구성된 경우에만)
-        if (enableCache && input && redisConfigured) {
-            try {
-                return await getCachedData(
-                    cacheKey,
-                    async () => {
-                        return await fetchPollsFromDB(input, pagination);
-                    },
-                    {
-                        ttl: 300, // 5분 캐싱
-                        tags: [CACHE_TAGS.POLLS],
-                    }
-                );
-            } catch (cacheError) {
-                console.error("Cache error in getPolls:", cacheError);
-                // 캐싱 오류 시 직접 DB 조회
-                return await fetchPollsFromDB(input, pagination);
-            }
+        if (!pagination) {
+            pagination = {
+                currentPage: 1,
+                itemsPerPage: Number.MAX_SAFE_INTEGER,
+            };
         }
-        // 캐싱을 사용하지 않는 경우 직접 DB 조회
-        return await fetchPollsFromDB(input, pagination);
+        const where: Prisma.PollWhereInput = {};
+        if (input?.id) where.id = input.id;
+        if (input?.category) where.category = input.category;
+        if (input?.status) where.status = input.status;
+        if (input?.needToken) where.needToken = input.needToken;
+        if (input?.needTokenAddress)
+            where.needTokenAddress = input.needTokenAddress;
+        if (
+            input?.startDate &&
+            !input.startDateBefore &&
+            !input.startDateAfter
+        ) {
+            where.startDate = {
+                lte: input.startDate,
+            };
+        } else if (
+            input?.startDateBefore &&
+            !input.startDateAfter &&
+            !input.startDate
+        ) {
+            where.startDate = {
+                lt: input.startDateBefore,
+            };
+        } else if (
+            input?.startDateAfter &&
+            !input.startDateBefore &&
+            !input.startDate
+        ) {
+            where.startDate = {
+                gt: input.startDateAfter,
+            };
+        }
+        if (input?.endDate && !input.endDateBefore && !input.endDateAfter) {
+            where.endDate = {
+                gte: input.endDate,
+            };
+        } else if (
+            input?.endDateBefore &&
+            !input.endDateAfter &&
+            !input.endDate
+        ) {
+            where.endDate = {
+                lt: input.endDateBefore,
+            };
+        } else if (
+            input?.endDateAfter &&
+            !input.endDateBefore &&
+            !input.endDate
+        ) {
+            where.endDate = {
+                gt: input.endDateAfter,
+            };
+        }
+        if (input?.exposeInScheduleTab)
+            where.exposeInScheduleTab = input.exposeInScheduleTab;
+        if (input?.bettingMode) where.bettingMode = input.bettingMode;
+        if (input?.bettingAssetId) where.bettingAssetId = input.bettingAssetId;
+        if (input?.participationRewardAssetId)
+            where.participationRewardAssetId = input.participationRewardAssetId;
+        if (input?.artistId === null) where.artistId = null;
+        else if (input?.artistId) where.artistId = input.artistId;
+        if (input?.isActive) where.isActive = input.isActive;
+        const [items, totalItems] = await Promise.all([
+            prisma.poll.findMany({
+                where,
+                orderBy: {
+                    id: "desc",
+                },
+                skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
+                take: pagination.itemsPerPage,
+            }),
+            prisma.poll.count({ where }),
+        ]);
+        const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
+        return {
+            items,
+            totalItems,
+            totalPages,
+        };
     } catch (error) {
         console.error("Error getting polls:", error);
         return {
@@ -189,90 +232,6 @@ export async function getPolls({
             totalPages: 0,
         };
     }
-}
-
-// DB에서 투표 목록을 조회하는 함수 분리 (재사용성 향상)
-async function fetchPollsFromDB(
-    input?: GetPollsInput,
-    pagination?: PaginationInput
-): Promise<{
-    items: Poll[];
-    totalItems: number;
-    totalPages: number;
-}> {
-    if (!pagination) {
-        pagination = {
-            currentPage: 1,
-            itemsPerPage: Number.MAX_SAFE_INTEGER,
-        };
-    }
-    const where: Prisma.PollWhereInput = {};
-    if (input?.id) where.id = input.id;
-    if (input?.category) where.category = input.category;
-    if (input?.status) where.status = input.status;
-    if (input?.needToken) where.needToken = input.needToken;
-    if (input?.needTokenAddress)
-        where.needTokenAddress = input.needTokenAddress;
-    if (input?.startDate && !input.startDateBefore && !input.startDateAfter) {
-        where.startDate = {
-            lte: input.startDate,
-        };
-    } else if (
-        input?.startDateBefore &&
-        !input.startDateAfter &&
-        !input.startDate
-    ) {
-        where.startDate = {
-            lt: input.startDateBefore,
-        };
-    } else if (
-        input?.startDateAfter &&
-        !input.startDateBefore &&
-        !input.startDate
-    ) {
-        where.startDate = {
-            gt: input.startDateAfter,
-        };
-    }
-    if (input?.endDate && !input.endDateBefore && !input.endDateAfter) {
-        where.endDate = {
-            gte: input.endDate,
-        };
-    } else if (input?.endDateBefore && !input.endDateAfter && !input.endDate) {
-        where.endDate = {
-            lt: input.endDateBefore,
-        };
-    } else if (input?.endDateAfter && !input.endDateBefore && !input.endDate) {
-        where.endDate = {
-            gt: input.endDateAfter,
-        };
-    }
-    if (input?.exposeInScheduleTab)
-        where.exposeInScheduleTab = input.exposeInScheduleTab;
-    if (input?.bettingMode) where.bettingMode = input.bettingMode;
-    if (input?.bettingAssetId) where.bettingAssetId = input.bettingAssetId;
-    if (input?.participationRewardAssetId)
-        where.participationRewardAssetId = input.participationRewardAssetId;
-    if (input?.artistId === null) where.artistId = null;
-    else if (input?.artistId) where.artistId = input.artistId;
-    if (input?.isActive) where.isActive = input.isActive;
-    const [items, totalItems] = await Promise.all([
-        prisma.poll.findMany({
-            where,
-            orderBy: {
-                id: "desc",
-            },
-            skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
-            take: pagination.itemsPerPage,
-        }),
-        prisma.poll.count({ where }),
-    ]);
-    const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
-    return {
-        items,
-        totalItems,
-        totalPages,
-    };
 }
 
 export async function getPoll(id: string): Promise<
@@ -403,9 +362,6 @@ export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
             },
         });
 
-        // 캐시 무효화
-        await invalidatePollsCache();
-
         return poll;
     } catch (error) {
         console.error("Error updating poll:", error);
@@ -418,9 +374,6 @@ export async function deletePoll(id: string): Promise<Poll> {
         const deletedPoll = await prisma.poll.delete({
             where: { id },
         });
-
-        // 캐시 무효화
-        await invalidatePollsCache();
 
         return deletedPoll;
     } catch (error) {
@@ -1043,9 +996,4 @@ export async function updateActivePoll(
         console.error("Error updating poll:", error);
         return false;
     }
-}
-
-// 투표 캐시 무효화 함수 추가
-export async function invalidatePollsCache() {
-    await invalidateCache({ tags: [CACHE_TAGS.POLLS] });
 }

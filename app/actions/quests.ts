@@ -17,14 +17,6 @@ import {
 import { updatePlayerAsset } from "./playerAssets";
 import { tokenGating, TokenGatingData } from "@/app/story/nft/actions";
 import { formatWaitTime } from "@/lib/utils/format";
-import { getCachedData, invalidateCache } from "@/lib/cache/upstash-redis";
-
-// 캐시 태그 상수 정의
-const CACHE_TAGS = {
-    QUESTS: "quests",
-    QUEST_LOGS: "questLogs",
-    TOKEN_GATE: "tokenGate",
-};
 
 export type PaginationInput = {
     currentPage: number;
@@ -81,9 +73,6 @@ export async function createQuest(input: CreateQuestInput) {
         },
     });
 
-    // 퀘스트 생성 후 캐시 무효화
-    await invalidateQuestsCache();
-
     return quest;
 }
 
@@ -119,38 +108,128 @@ export async function getQuests({
     totalPages: number;
 }> {
     try {
-        // 캐시 키 생성
-        const cacheKey = `quests:${JSON.stringify(input)}:${JSON.stringify(
-            pagination
-        )}`;
+        if (!pagination) {
+            pagination = {
+                currentPage: 1,
+                itemsPerPage: Number.MAX_SAFE_INTEGER,
+            };
+        }
 
-        // Redis 환경 변수가 설정되어 있고 캐싱이 활성화된 경우에만 캐싱 사용
-        const redisConfigured = Boolean(
-            process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
-        );
+        if (!input) {
+            const items = await prisma.quest.findMany({
+                orderBy: {
+                    order: "asc",
+                },
+                include: {
+                    artist: true,
+                    rewardAsset: true,
+                },
+                skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
+                take: pagination.itemsPerPage,
+            });
 
-        // 캐싱 적용 (enableCache가 true이고 input이 있고 Redis가 구성된 경우에만)
-        if (enableCache && input && redisConfigured) {
-            try {
-                return await getCachedData(
-                    cacheKey,
-                    async () => {
-                        return await fetchQuestsFromDB(input, pagination);
-                    },
-                    {
-                        ttl: 300, // 5분 캐싱
-                        tags: [CACHE_TAGS.QUESTS],
-                    }
-                );
-            } catch (cacheError) {
-                console.error("Cache error in getQuests:", cacheError);
-                // 캐싱 오류 시 직접 DB 조회
-                return await fetchQuestsFromDB(input, pagination);
+            return {
+                items,
+                totalItems: items.length,
+                totalPages: Math.ceil(items.length / pagination.itemsPerPage),
+            };
+        }
+
+        const where: Prisma.QuestWhereInput = {};
+
+        if (input.startDate && input.startDateIndicator) {
+            if (input.startDateIndicator === "before") {
+                where.startDate = {
+                    lte: input.startDate,
+                };
+            } else if (input.startDateIndicator === "after") {
+                where.startDate = {
+                    gte: input.startDate,
+                };
+            } else if (input.startDateIndicator === "on") {
+                where.startDate = {
+                    equals: input.startDate,
+                };
             }
         }
 
-        // 캐싱을 사용하지 않는 경우 직접 DB 조회
-        return await fetchQuestsFromDB(input, pagination);
+        if (input.endDate && input.endDateIndicator) {
+            if (input.endDateIndicator === "before") {
+                where.endDate = {
+                    lte: input.endDate,
+                };
+            } else if (input.endDateIndicator === "after") {
+                where.endDate = {
+                    gte: input.endDate,
+                };
+            } else if (input.endDateIndicator === "on") {
+                where.endDate = {
+                    equals: input.endDate,
+                };
+            }
+        }
+
+        if (input.permanent !== undefined) {
+            where.permanent = input.permanent;
+        }
+
+        if (input.isActive !== undefined) {
+            where.isActive = input.isActive;
+        }
+
+        if (input.type) {
+            where.type = input.type;
+        }
+
+        if (input.rewardAssetId) {
+            where.rewardAssetId = input.rewardAssetId;
+        }
+
+        if (input.repeatable !== undefined) {
+            where.repeatable = input.repeatable;
+        }
+
+        if (input.repeatableCount) {
+            where.repeatableCount = input.repeatableCount;
+        }
+
+        if (input.repeatableInterval) {
+            where.repeatableInterval = input.repeatableInterval;
+        }
+
+        // isPublic 조건을 먼저 처리하여 조건 충돌 방지
+        if (input.isPublic) {
+            where.artistId = null;
+            where.needToken = false;
+            where.needTokenAddress = null;
+        } else if (input.artistId) {
+            where.artistId = input.artistId;
+        }
+
+        // Promise.all로 병렬 처리하여 성능 향상
+        const [items, totalItems] = await Promise.all([
+            prisma.quest.findMany({
+                where,
+                orderBy: {
+                    order: "asc",
+                },
+                skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
+                take: pagination.itemsPerPage,
+                include: {
+                    artist: true,
+                    rewardAsset: true,
+                },
+            }),
+            prisma.quest.count({ where }),
+        ]);
+
+        const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
+
+        return {
+            items,
+            totalItems,
+            totalPages,
+        };
     } catch (error) {
         console.error("Error in getQuests:", error);
         return {
@@ -159,139 +238,6 @@ export async function getQuests({
             totalPages: 0,
         };
     }
-}
-
-// 데이터베이스에서 퀘스트를 조회하는 함수 분리 (코드 재사용성 향상)
-async function fetchQuestsFromDB(
-    input?: GetQuestsInput,
-    pagination?: PaginationInput
-): Promise<{
-    items: Quest[];
-    totalItems: number;
-    totalPages: number;
-}> {
-    if (!pagination) {
-        pagination = {
-            currentPage: 1,
-            itemsPerPage: Number.MAX_SAFE_INTEGER,
-        };
-    }
-
-    if (!input) {
-        const items = await prisma.quest.findMany({
-            orderBy: {
-                order: "asc",
-            },
-            include: {
-                artist: true,
-                rewardAsset: true,
-            },
-            skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
-            take: pagination.itemsPerPage,
-        });
-
-        return {
-            items,
-            totalItems: items.length,
-            totalPages: Math.ceil(items.length / pagination.itemsPerPage),
-        };
-    }
-
-    const where: Prisma.QuestWhereInput = {};
-
-    if (input.startDate && input.startDateIndicator) {
-        if (input.startDateIndicator === "before") {
-            where.startDate = {
-                lte: input.startDate,
-            };
-        } else if (input.startDateIndicator === "after") {
-            where.startDate = {
-                gte: input.startDate,
-            };
-        } else if (input.startDateIndicator === "on") {
-            where.startDate = {
-                equals: input.startDate,
-            };
-        }
-    }
-
-    if (input.endDate && input.endDateIndicator) {
-        if (input.endDateIndicator === "before") {
-            where.endDate = {
-                lte: input.endDate,
-            };
-        } else if (input.endDateIndicator === "after") {
-            where.endDate = {
-                gte: input.endDate,
-            };
-        } else if (input.endDateIndicator === "on") {
-            where.endDate = {
-                equals: input.endDate,
-            };
-        }
-    }
-
-    if (input.permanent !== undefined) {
-        where.permanent = input.permanent;
-    }
-
-    if (input.isActive !== undefined) {
-        where.isActive = input.isActive;
-    }
-
-    if (input.type) {
-        where.type = input.type;
-    }
-
-    if (input.rewardAssetId) {
-        where.rewardAssetId = input.rewardAssetId;
-    }
-
-    if (input.repeatable !== undefined) {
-        where.repeatable = input.repeatable;
-    }
-
-    if (input.repeatableCount) {
-        where.repeatableCount = input.repeatableCount;
-    }
-
-    if (input.repeatableInterval) {
-        where.repeatableInterval = input.repeatableInterval;
-    }
-
-    // isPublic 조건을 먼저 처리하여 조건 충돌 방지
-    if (input.isPublic) {
-        where.artistId = null;
-        where.needToken = false;
-        where.needTokenAddress = null;
-    } else if (input.artistId) {
-        where.artistId = input.artistId;
-    }
-
-    // Promise.all로 병렬 처리하여 성능 향상
-    const [items, totalItems] = await Promise.all([
-        prisma.quest.findMany({
-            where,
-            orderBy: {
-                order: "asc",
-            },
-            skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
-            take: pagination.itemsPerPage,
-            include: {
-                artist: true,
-                rewardAsset: true,
-            },
-        }),
-        prisma.quest.count({ where }),
-    ]);
-
-    const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
-
-    return {
-        items,
-        totalItems,
-        totalPages,
-    };
 }
 
 export interface GetQuestInput {
@@ -386,9 +332,6 @@ export async function updateQuest(
             },
         });
 
-        // 퀘스트 업데이트 후 캐시 무효화
-        await invalidateQuestsCache();
-
         return quest;
     } catch (error) {
         console.error(error);
@@ -456,9 +399,6 @@ export async function deleteQuest(input: DeleteQuestInput): Promise<boolean> {
                 where: { id: input.id },
             });
         });
-
-        // 퀘스트 삭제 후 캐시 무효화
-        await invalidateQuestsCache();
 
         return true;
     } catch (error) {
@@ -863,37 +803,65 @@ export async function getQuestLogs({
     totalPages: number;
 }> {
     try {
-        // 캐시 키 생성
-        const cacheKey = `questLogs:${JSON.stringify(input)}:${JSON.stringify(
-            pagination
-        )}`;
-
-        // Redis 환경 변수 확인
-        const redisConfigured = Boolean(
-            process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
-        );
-
-        // 캐싱 적용
-        if (enableCache && input && redisConfigured) {
-            try {
-                return await getCachedData(
-                    cacheKey,
-                    async () => {
-                        return await fetchQuestLogsFromDB(input, pagination);
-                    },
-                    {
-                        ttl: 300, // 5분 캐싱
-                        tags: [CACHE_TAGS.QUEST_LOGS],
-                    }
-                );
-            } catch (cacheError) {
-                console.error("Cache error in getQuestLogs:", cacheError);
-                return await fetchQuestLogsFromDB(input, pagination);
-            }
+        if (!pagination) {
+            pagination = {
+                currentPage: 1,
+                itemsPerPage: Number.MAX_SAFE_INTEGER,
+            };
         }
 
-        // 캐싱을 사용하지 않는 경우 직접 DB 조회
-        return await fetchQuestLogsFromDB(input, pagination);
+        const where: Prisma.QuestLogWhereInput = {};
+
+        if (input?.questId) {
+            where.questId = input.questId;
+        }
+
+        if (input?.playerId) {
+            where.playerId = input.playerId;
+        }
+
+        if (input?.isClaimed !== undefined) {
+            where.isClaimed = input.isClaimed;
+        }
+
+        if (input?.artistId) {
+            where.quest = {
+                artistId: input.artistId,
+            };
+        }
+
+        if (input?.isPublic) {
+            where.quest = {
+                artistId: null,
+                needToken: false,
+                needTokenAddress: null,
+            };
+        }
+
+        if (input?.deprecated) {
+            where.deprecated = input.deprecated;
+        }
+
+        // Promise.all로 병렬 처리하여 성능 향상
+        const [items, totalItems] = await Promise.all([
+            prisma.questLog.findMany({
+                where,
+                orderBy: {
+                    completedAt: "desc",
+                },
+                skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
+                take: pagination.itemsPerPage,
+            }),
+            prisma.questLog.count({ where }),
+        ]);
+
+        const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
+
+        return {
+            items,
+            totalItems,
+            totalPages,
+        };
     } catch (error) {
         console.error("Error in getQuestLogs:", error);
         return {
@@ -902,76 +870,6 @@ export async function getQuestLogs({
             totalPages: 0,
         };
     }
-}
-
-// 데이터베이스에서 퀘스트 로그를 조회하는 함수 분리
-async function fetchQuestLogsFromDB(
-    input?: GetQuestLogsInput,
-    pagination?: PaginationInput
-): Promise<{
-    items: QuestLog[];
-    totalItems: number;
-    totalPages: number;
-}> {
-    if (!pagination) {
-        pagination = {
-            currentPage: 1,
-            itemsPerPage: Number.MAX_SAFE_INTEGER,
-        };
-    }
-
-    const where: Prisma.QuestLogWhereInput = {};
-
-    if (input?.questId) {
-        where.questId = input.questId;
-    }
-
-    if (input?.playerId) {
-        where.playerId = input.playerId;
-    }
-
-    if (input?.isClaimed !== undefined) {
-        where.isClaimed = input.isClaimed;
-    }
-
-    if (input?.artistId) {
-        where.quest = {
-            artistId: input.artistId,
-        };
-    }
-
-    if (input?.isPublic) {
-        where.quest = {
-            artistId: null,
-            needToken: false,
-            needTokenAddress: null,
-        };
-    }
-
-    if (input?.deprecated) {
-        where.deprecated = input.deprecated;
-    }
-
-    // Promise.all로 병렬 처리하여 성능 향상
-    const [items, totalItems] = await Promise.all([
-        prisma.questLog.findMany({
-            where,
-            orderBy: {
-                completedAt: "desc",
-            },
-            skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
-            take: pagination.itemsPerPage,
-        }),
-        prisma.questLog.count({ where }),
-    ]);
-
-    const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
-
-    return {
-        items,
-        totalItems,
-        totalPages,
-    };
 }
 
 export interface GetPlayerQuestLogsInput {
@@ -1170,9 +1068,4 @@ export async function updateQuestActive(
         console.error(error);
         return false;
     }
-}
-
-// 퀘스트 캐시 무효화 함수 추가
-export async function invalidateQuestsCache() {
-    await invalidateCache({ tags: [CACHE_TAGS.QUESTS] });
 }

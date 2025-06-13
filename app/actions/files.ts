@@ -7,7 +7,6 @@ import { prisma } from "@/lib/prisma/client";
 import { v4 as uuidv4 } from "uuid";
 import sharp from "sharp";
 import { requireAuth } from "../auth/authUtils";
-import { getCachedData, generateCacheKey } from "@/lib/cache/upstash-redis";
 
 export interface StoredFile {
     id: string;
@@ -345,10 +344,6 @@ export async function getFilesMetadataByUrls(
         return new Map();
     }
 
-    const CACHE_PREFIX = "file:metadata";
-    const CACHE_TTL = 3600 * 24; // 1 day
-    const CACHE_TAGS = ["file-metadata"];
-
     try {
         const uniqueUrls = [...new Set(input.urls)];
         const filesMap = new Map<
@@ -367,40 +362,29 @@ export async function getFilesMetadataByUrls(
             const batchUrls = uniqueUrls.slice(i, i + BATCH_SIZE);
 
             // 각 URL에 대해 캐시된 메타데이터 가져오기
-            const batchPromises = batchUrls.map((url) =>
-                getCachedData(
-                    generateCacheKey(CACHE_PREFIX, url),
-                    async () => {
-                        const file = await prisma.storedFiles.findUnique({
-                            where: { url },
-                            select: {
-                                width: true,
-                                height: true,
-                                focusX: true,
-                                focusY: true,
-                            },
-                        });
-
-                        return file
-                            ? {
-                                  width: file.width || 0,
-                                  height: file.height || 0,
-                                  focusX: file.focusX || 0.5,
-                                  focusY: file.focusY || 0.5,
-                              }
-                            : null;
+            const batchPromises = batchUrls.map(async (url) => {
+                const file = await prisma.storedFiles.findUnique({
+                    where: { url },
+                    select: {
+                        width: true,
+                        height: true,
+                        focusX: true,
+                        focusY: true,
                     },
-                    {
-                        ttl: CACHE_TTL,
-                        tags: CACHE_TAGS,
-                        staleWhileRevalidate: 3600 * 12, // 12 hours
-                    }
-                )
-            );
+                });
+
+                return file
+                    ? {
+                          width: file.width || 0,
+                          height: file.height || 0,
+                          focusX: file.focusX || 0.5,
+                          focusY: file.focusY || 0.5,
+                      }
+                    : null;
+            });
 
             const results = await Promise.all(batchPromises);
 
-            // 결과를 Map에 추가
             batchUrls.forEach((url, index) => {
                 const metadata = results[index];
                 if (metadata) {
