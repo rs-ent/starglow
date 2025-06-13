@@ -1025,6 +1025,21 @@ Table TweetAuthor {
   profileImageUrl String
   tweets Tweet [not null]
   user User
+  metrics TweetAuthorMetrics [not null]
+}
+
+Table TweetAuthorMetrics {
+  id String [pk]
+  tweetAuthorId String [not null]
+  tweetAuthor TweetAuthor [not null]
+  followersCount Int [not null]
+  followingCount Int [not null]
+  tweetCount Int [not null]
+  listedCount Int [not null]
+  verified Boolean [not null, default: false]
+  recordedAt DateTime [default: `now()`, not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
 }
 
 Table Tweet {
@@ -1036,6 +1051,37 @@ Table Tweet {
   authorProfileImageUrl String
   authorId String [not null]
   author TweetAuthor [not null]
+  isDeleted Boolean [not null, default: false]
+  deletedAt DateTime
+  metricsHistory TweetMetrics [not null]
+  media TweetMedia [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table TweetMetrics {
+  id String [pk]
+  tweetId String [not null]
+  tweet Tweet [not null]
+  replyCount Int [not null]
+  retweetCount Int [not null]
+  likeCount Int [not null]
+  quoteCount Int [not null]
+  recordedAt DateTime [default: `now()`, not null]
+}
+
+Table TweetMedia {
+  id String [pk]
+  mediaKey String [unique, not null]
+  tweetId String [not null]
+  tweet Tweet [not null]
+  type String [not null]
+  url String
+  previewImageUrl String
+  width Int
+  height Int
+  durationMs Int
+  altText String
   createdAt DateTime [default: `now()`, not null]
 }
 
@@ -1301,6 +1347,12 @@ Ref: Story_nft.ipId > Story_ipAsset.ipId
 
 Ref: Story_ipAsset.networkId > BlockchainNetwork.id
 
+Ref: TweetAuthorMetrics.tweetAuthorId > TweetAuthor.authorId
+
 Ref: Tweet.authorId > TweetAuthor.authorId
+
+Ref: TweetMetrics.tweetId > Tweet.tweetId
+
+Ref: TweetMedia.tweetId > Tweet.tweetId
 
 Ref: TweetResponse.tweetSyncDataId > TweetSyncData.id [delete: Cascade]

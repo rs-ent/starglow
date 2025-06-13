@@ -10,16 +10,45 @@ interface TweetRawData {
     text: string;
     created_at: string;
     author_id: string;
+    public_metrics?: {
+        retweet_count: number;
+        reply_count: number;
+        like_count: number;
+        quote_count: number;
+    };
+    attachments?: {
+        media_keys?: string[];
+    };
 }
 
 interface XApiResponse {
     data?: TweetRawData[];
     includes?: {
-        users: Array<{
+        users?: Array<{
             id: string;
             username: string;
             name: string;
             profile_image_url: string | null;
+            public_metrics?: {
+                followers_count: number;
+                following_count: number;
+                tweet_count: number;
+                listed_count: number;
+            };
+            verified?: boolean;
+        }>;
+        media?: Array<{
+            media_key: string;
+            type: string;
+            url?: string;
+            preview_image_url?: string;
+            width?: number;
+            height?: number;
+            duration_ms?: number;
+            alt_text?: string;
+            public_metrics?: {
+                view_count?: number;
+            };
         }>;
     };
     meta: {
@@ -78,6 +107,7 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
         );
 
         let nextToken: string | undefined;
+
         let allTweets: TweetRawData[] = [];
         let allUsers = new Map<
             string,
@@ -85,6 +115,27 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                 username: string;
                 name: string;
                 profile_image_url: string | null;
+                public_metrics?: {
+                    followers_count: number;
+                    following_count: number;
+                    tweet_count: number;
+                    listed_count: number;
+                };
+                verified?: boolean;
+            }
+        >();
+        let allMedia = new Map<
+            string,
+            {
+                media_key: string;
+                type: string;
+                url?: string;
+                preview_image_url?: string;
+                width?: number;
+                height?: number;
+                duration_ms?: number;
+                alt_text?: string;
+                view_count?: number;
             }
         >();
 
@@ -96,7 +147,7 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
         do {
             requestCount++;
 
-            if (requestCount > 5) {
+            if (requestCount > 7) {
                 console.warn(
                     `Rate limit protection: stopping at ${requestCount} requests`
                 );
@@ -105,9 +156,13 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
 
             const requestParams = {
                 query: "@StarglowP",
-                "tweet.fields": "created_at,author_id,public_metrics",
-                "user.fields": "username,name,profile_image_url",
-                expansions: "author_id",
+                "tweet.fields":
+                    "created_at,author_id,public_metrics,attachments",
+                "user.fields":
+                    "username,name,profile_image_url,public_metrics,verified",
+                "media.fields":
+                    "type,url,preview_image_url,public_metrics,width,height,duration_ms,alt_text",
+                expansions: "author_id,attachments.media_keys",
                 max_results: "100",
                 ...(lastSuccessSync?.lastTweetId && {
                     since_id: lastSuccessSync.lastTweetId,
@@ -143,7 +198,7 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
             rateLimitRemaining = response.headers.get("x-rate-limit-remaining");
             const resetTime = response.headers.get("x-rate-limit-reset");
 
-            if (rateLimitRemaining && parseInt(rateLimitRemaining) < 10) {
+            if (rateLimitRemaining && parseInt(rateLimitRemaining) < 13) {
                 const resetDate = new Date(parseInt(resetTime!) * 1000);
                 console.warn(
                     `Rate limit warning: ${rateLimitRemaining} requests remaining. Reset at: ${resetDate}`
@@ -186,9 +241,28 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                         username: user.username,
                         name: user.name,
                         profile_image_url: user.profile_image_url || null,
+                        public_metrics: user.public_metrics,
+                        verified: user.verified || false,
                     });
                 });
             }
+
+            if (data.includes?.media) {
+                data.includes.media.forEach((media) => {
+                    allMedia.set(media.media_key, {
+                        media_key: media.media_key,
+                        type: media.type,
+                        url: media.url,
+                        preview_image_url: media.preview_image_url,
+                        width: media.width,
+                        height: media.height,
+                        duration_ms: media.duration_ms,
+                        alt_text: media.alt_text,
+                        view_count: media.public_metrics?.view_count,
+                    });
+                });
+            }
+
             apiLogs.push({
                 params: requestParams,
                 response: data,
@@ -264,6 +338,28 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
 
             await Promise.all(authorPromises);
 
+            const authorMetricsPromises = Array.from(allUsers.entries()).map(
+                ([authorId, userData]) => {
+                    if (!userData.public_metrics) return Promise.resolve();
+
+                    return tx.tweetAuthorMetrics.create({
+                        data: {
+                            tweetAuthorId: authorId,
+                            followersCount:
+                                userData.public_metrics.followers_count,
+                            followingCount:
+                                userData.public_metrics.following_count,
+                            tweetCount: userData.public_metrics.tweet_count,
+                            listedCount: userData.public_metrics.listed_count,
+                            verified: userData.verified || false,
+                            recordedAt: new Date(),
+                        },
+                    });
+                }
+            );
+
+            await Promise.all(authorMetricsPromises.filter(Boolean));
+
             const existingTweets = await tx.tweet.findMany({
                 where: {
                     tweetId: {
@@ -293,6 +389,9 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                         authorProfileImageUrl:
                             author?.profile_image_url || null,
                         createdAt: new Date(tweet.created_at),
+                        updatedAt: new Date(),
+                        isDeleted: false,
+                        deletedAt: null,
                     };
                 });
 
@@ -303,6 +402,49 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                 });
                 console.log(`Saved ${newTweetsData.length} new tweets`);
             }
+
+            const tweetMetricsPromises = allTweets.map((tweet) => {
+                if (!tweet.public_metrics) return Promise.resolve();
+
+                return tx.tweetMetrics.create({
+                    data: {
+                        tweetId: tweet.id,
+                        replyCount: tweet.public_metrics.reply_count,
+                        retweetCount: tweet.public_metrics.retweet_count,
+                        likeCount: tweet.public_metrics.like_count,
+                        quoteCount: tweet.public_metrics.quote_count,
+                        recordedAt: new Date(),
+                    },
+                });
+            });
+
+            await Promise.all(tweetMetricsPromises.filter(Boolean));
+
+            const mediaPromises = allTweets
+                .filter((tweet) => tweet.attachments?.media_keys)
+                .flatMap((tweet) =>
+                    tweet.attachments!.media_keys!.map((mediaKey) => {
+                        const mediaData = allMedia.get(mediaKey);
+                        if (!mediaData) return Promise.resolve();
+
+                        return tx.tweetMedia.create({
+                            data: {
+                                mediaKey: mediaData.media_key,
+                                tweetId: tweet.id,
+                                type: mediaData.type,
+                                url: mediaData.url || null,
+                                previewImageUrl:
+                                    mediaData.preview_image_url || null,
+                                width: mediaData.width || null,
+                                height: mediaData.height || null,
+                                durationMs: mediaData.duration_ms || null,
+                                altText: mediaData.alt_text || null,
+                            },
+                        });
+                    })
+                );
+
+            await Promise.all(mediaPromises.filter(Boolean));
 
             const newestTweetId =
                 allTweets.length > 0

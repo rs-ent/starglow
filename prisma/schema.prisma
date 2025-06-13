@@ -1260,8 +1260,25 @@ model TweetAuthor {
   
   tweets Tweet[]
   user User? @relation("UserToTweetAuthor")
+  metrics TweetAuthorMetrics[]
 
   @@index([authorId])
+}
+
+model TweetAuthorMetrics {
+  id String @id @default(cuid())
+  tweetAuthorId String
+  tweetAuthor TweetAuthor @relation(fields: [tweetAuthorId], references: [authorId])
+  
+  followersCount Int
+  followingCount Int
+  tweetCount Int
+  listedCount Int
+  verified Boolean @default(false)
+  
+  recordedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Tweet {
@@ -1273,11 +1290,52 @@ model Tweet {
   authorProfileImageUrl String?
   authorId String
   author TweetAuthor @relation(fields: [authorId], references: [authorId])
+  isDeleted Boolean @default(false)
+  deletedAt DateTime?
+  metricsHistory TweetMetrics[]
+  media TweetMedia[]
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([authorId])
   @@index([tweetId])
   @@index([createdAt])
+}
+
+model TweetMetrics {
+  id String @id @default(cuid())
+  tweetId String
+  tweet Tweet @relation(fields: [tweetId], references: [tweetId])
+  
+  replyCount Int
+  retweetCount Int
+  likeCount Int
+  quoteCount Int
+  
+  recordedAt DateTime @default(now())
+  
+  @@index([tweetId, recordedAt])
+  @@index([recordedAt])
+}
+
+model TweetMedia {
+  id String @id @default(cuid())
+  mediaKey String @unique
+  tweetId String
+  tweet Tweet @relation(fields: [tweetId], references: [tweetId])
+  
+  type String
+  url String?
+  previewImageUrl String?
+  width Int?
+  height Int?
+  durationMs Int?
+  altText String?
+  
+  createdAt DateTime @default(now())
+  
+  @@index([tweetId])
+  @@index([mediaKey])
 }
 
 model TweetSyncData {

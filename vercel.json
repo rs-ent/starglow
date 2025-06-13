@@ -1,8 +1,16 @@
 {
   "crons": [
     {
-      "path": "/api/cron/x",
+      "path": "/api/cron/x/fetchTweets",
       "schedule": "*/3 * * * *"
+    },
+    {
+      "path": "/api/cron/x/updateAuthorMetrics",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/x/updateTweetMetrics",
+      "schedule": "0/10 * * * *"
     }
   ]
 }
