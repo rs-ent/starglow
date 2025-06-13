@@ -1020,6 +1020,9 @@ Table Tweet {
   id String [pk]
   tweetId String [unique, not null]
   text String [not null]
+  authorName String
+  authorUsername String
+  authorProfileImageUrl String
   authorId String [not null]
   createdAt DateTime [default: `now()`, not null]
 }

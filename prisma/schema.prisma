@@ -1255,6 +1255,9 @@ model Tweet {
   id String @id @default(cuid())
   tweetId String @unique
   text String
+  authorName String?
+  authorUsername String?
+  authorProfileImageUrl String?
   authorId String
   createdAt DateTime @default(now())
 

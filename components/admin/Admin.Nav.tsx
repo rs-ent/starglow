@@ -32,6 +32,7 @@ export default function AdminNav() {
             label: "Data Migrations",
             icon: PartyPopperIcon,
         },
+        { href: "/admin/x", label: "X", icon: PartyPopperIcon },
         { href: "/admin/settings", label: "Settings", icon: CogIcon },
     ];
 

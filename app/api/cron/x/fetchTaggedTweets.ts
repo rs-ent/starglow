@@ -19,6 +19,7 @@ interface XApiResponse {
             id: string;
             username: string;
             name: string;
+            profile_image_url: string | null;
         }>;
     };
     meta: {
@@ -78,6 +79,14 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
 
         let nextToken: string | undefined;
         let allTweets: TweetRawData[] = [];
+        let allUsers = new Map<
+            string,
+            {
+                username: string;
+                name: string;
+                profile_image_url: string | null;
+            }
+        >();
 
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
         const startTimeForBackup = lastSuccessSync?.lastTweetId
@@ -171,6 +180,15 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
 
             const data: XApiResponse = await response.json();
 
+            if (data.includes?.users) {
+                data.includes.users.forEach((user) => {
+                    allUsers.set(user.id, {
+                        username: user.username,
+                        name: user.name,
+                        profile_image_url: user.profile_image_url || null,
+                    });
+                });
+            }
             apiLogs.push({
                 params: requestParams,
                 response: data,
@@ -241,12 +259,20 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
 
             const newTweetsData: TweetCreateData[] = allTweets
                 .filter((tweet) => !existingTweetIds.has(tweet.id))
-                .map((tweet) => ({
-                    tweetId: tweet.id,
-                    text: tweet.text,
-                    authorId: tweet.author_id,
-                    createdAt: new Date(tweet.created_at),
-                }));
+                .map((tweet) => {
+                    const author = allUsers.get(tweet.author_id);
+
+                    return {
+                        tweetId: tweet.id,
+                        text: tweet.text,
+                        authorId: tweet.author_id,
+                        authorName: author?.name || null,
+                        authorUsername: author?.username || null,
+                        authorProfileImageUrl:
+                            author?.profile_image_url || null,
+                        createdAt: new Date(tweet.created_at),
+                    };
+                });
 
             if (newTweetsData.length > 0) {
                 await tx.tweet.createMany({
