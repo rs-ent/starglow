@@ -224,14 +224,14 @@ export default function AdminXTweets() {
                                         <img
                                             src={
                                                 author.profileImageUrl ||
-                                                "/default-avatar.png"
+                                                "/default-avatar.jpg"
                                             }
                                             alt=""
                                             className="w-10 h-10 rounded-full"
                                             onError={(e) => {
                                                 (
                                                     e.target as HTMLImageElement
-                                                ).src = "/default-avatar.png";
+                                                ).src = "/default-avatar.jpg";
                                             }}
                                         />
                                         {/* 순위 표시 (검색 시에만) */}
@@ -333,13 +333,13 @@ export default function AdminXTweets() {
                                     <img
                                         src={
                                             selectedAuthor.profileImageUrl ||
-                                            "/default-avatar.png"
+                                            "/default-avatar.jpg"
                                         }
                                         alt=""
                                         className="w-12 h-12 rounded-full"
                                         onError={(e) => {
                                             (e.target as HTMLImageElement).src =
-                                                "/default-avatar.png";
+                                                "/default-avatar.jpg";
                                         }}
                                     />
                                     <div>
