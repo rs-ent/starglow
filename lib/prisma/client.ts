@@ -2,6 +2,7 @@
 
 import { PrismaClient } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";
+import { withOptimize } from "@prisma/extension-optimize";
 
 /**
  * PrismaClient is attached to the `global` object in development to prevent
@@ -27,7 +28,9 @@ const getPrismaClient = () => {
     });
 
     // Accelerate extension 적용
-    return client.$extends(withAccelerate());
+    return client
+        .$extends(withOptimize({ apiKey: process.env.OPTIMIZE_API_KEY || "" }))
+        .$extends(withAccelerate());
 };
 
 export const prisma = global.prisma || getPrismaClient();
