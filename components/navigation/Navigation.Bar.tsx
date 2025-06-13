@@ -94,6 +94,7 @@ const DesktopMenu = memo(function DesktopMenu({
                 textSize={15}
                 paddingSize={10}
                 gapSize={10}
+                className="flex flex-row"
             />
             {player && (
                 <RewardPanel playerId={player.id} assetNames={["SGP"]} />

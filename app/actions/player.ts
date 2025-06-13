@@ -50,13 +50,13 @@ export async function getPlayerByUserId(
     }
 }
 
-export interface SetPlayerInput {
+export interface CreatePlayerInput {
     user: User;
     tweetAuthorId?: string;
 }
 
-export async function setPlayer(
-    input?: SetPlayerInput
+export async function createPlayer(
+    input?: CreatePlayerInput
 ): Promise<Player | null> {
     if (!input || !input.user) {
         return null;
@@ -64,13 +64,8 @@ export async function setPlayer(
 
     try {
         const referralCode = await generateReferralCode();
-        const player = await prisma.player.upsert({
-            where: { userId: input.user.id },
-            update: {
-                name: input.user.name || "New Player",
-                tweetAuthorId: input.tweetAuthorId,
-            },
-            create: {
+        const player = await prisma.player.create({
+            data: {
                 name: input.user.name || "New Player",
                 userId: input.user.id,
                 referralCode: referralCode,
@@ -86,8 +81,128 @@ export async function setPlayer(
 
         return player;
     } catch (error) {
-        console.error("[setPlayer] Error:", error);
+        console.error("[createPlayer] Error:", error);
         return null;
+    }
+}
+
+export interface UpdatePlayerInput {
+    playerId: string;
+    tweetAuthorId?: string;
+}
+
+export async function updatePlayer(
+    input?: UpdatePlayerInput
+): Promise<Player | null> {
+    if (!input || !input.playerId) {
+        return null;
+    }
+
+    try {
+        const player = await prisma.player.update({
+            where: { id: input.playerId },
+            data: {
+                tweetAuthorId: input.tweetAuthorId,
+                lastConnectedAt: new Date(),
+            },
+        });
+
+        return player;
+    } catch (error) {
+        console.error("[updatePlayer] Error:", error);
+        return null;
+    }
+}
+
+export interface SetPlayerInput {
+    user: User;
+    tweetAuthorId?: string;
+}
+
+export interface SetPlayerResult {
+    player: Player | null;
+    isNew: boolean;
+    error?: string;
+}
+
+export async function setPlayer(
+    input?: SetPlayerInput
+): Promise<SetPlayerResult> {
+    if (!input || !input.user) {
+        return {
+            player: null,
+            isNew: false,
+            error: "Invalid input",
+        };
+    }
+
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            let error: string | undefined = undefined;
+            const referralCode = await generateReferralCode();
+            const existingPlayer = await tx.player.findUnique({
+                where: { userId: input.user.id },
+                select: {
+                    tweetAuthorId: true,
+                },
+            });
+
+            const updateData: Prisma.PlayerUpdateInput = {
+                name: input.user.name || "New Player",
+                lastConnectedAt: new Date(),
+            };
+
+            if (input.tweetAuthorId && !existingPlayer?.tweetAuthorId) {
+                const existingPlayerWithTweetAuthorId =
+                    await tx.player.findUnique({
+                        where: { tweetAuthorId: input.tweetAuthorId },
+                    });
+
+                if (!existingPlayerWithTweetAuthorId) {
+                    updateData.tweetAuthor = {
+                        connect: { authorId: input.tweetAuthorId },
+                    };
+                } else {
+                    error = "TWEET_AUTHOR_ID_ALREADY_USED";
+                    console.error(
+                        "TWEET_AUTHOR_ID_ALREADY_USED",
+                        input.tweetAuthorId
+                    );
+                }
+            }
+
+            const player = await tx.player.upsert({
+                where: { userId: input.user.id },
+                update: updateData,
+                create: {
+                    name: input.user.name || "New Player",
+                    userId: input.user.id,
+                    referralCode: referralCode,
+                    tweetAuthorId: input.tweetAuthorId,
+                },
+            });
+
+            if (player) {
+                await setDefaultPlayerAsset({
+                    playerId: player.id,
+                });
+            }
+
+            return {
+                player: player,
+                isNew: !existingPlayer,
+                error: error,
+            };
+        });
+
+        return result;
+    } catch (error) {
+        console.error("[setPlayer] Error:", error);
+        return {
+            player: null,
+            isNew: false,
+            error: "Failed to set player",
+        };
     }
 }
 

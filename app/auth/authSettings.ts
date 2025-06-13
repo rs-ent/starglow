@@ -147,7 +147,7 @@ const authOptions: NextAuthConfig = {
                     ) {
                         tweetAuthorId = account.providerAccountId;
 
-                        fetchAuthorMetricsFromX({
+                        await fetchAuthorMetricsFromX({
                             authorId: account.providerAccountId,
                         }).catch((error) => {
                             console.error(
@@ -167,9 +167,9 @@ const authOptions: NextAuthConfig = {
                         createWallet(user.id),
                     ];
 
-                    const [updatedUser, player, wallet] = await Promise.all(
-                        promises
-                    );
+                    const [updatedUser, playerResult, wallet] =
+                        await Promise.all(promises);
+
                 }
             } catch (error) {
                 console.error("Error in signIn callback:", error);

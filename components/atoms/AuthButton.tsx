@@ -2,12 +2,13 @@
 
 "use client";
 
-import {signIn, useSession} from "next-auth/react";
-import {LoaderCircle, LogIn} from "lucide-react";
+import { signIn, useSession } from "next-auth/react";
+import { LoaderCircle, LogIn } from "lucide-react";
 import Button from "./Button";
-import {useLoading} from "@/app/hooks/useLoading";
-import {usePathname, useRouter} from "next/navigation";
-import {memo, useCallback} from "react";
+import { useLoading } from "@/app/hooks/useLoading";
+import { usePathname, useRouter } from "next/navigation";
+import { memo, useCallback } from "react";
+import { cn } from "@/lib/utils/tailwind";
 
 interface AuthButtonProps {
     frameSize?: number;
@@ -56,33 +57,16 @@ const AuthButton = memo(function AuthButton({
         }
     }, [pathname, router, startLoading, endLoading]);
 
-    // 로딩 상태 처리
-    if (status === "loading") {
-        return (
-            <Button
-                disabled={true}
-                variant={variant}
-                className={className}
-                frameSize={frameSize}
-                textSize={textSize}
-                paddingSize={paddingSize}
-                gapSize={gapSize}
-                icon={LoaderCircle}
-                iconSpinning={true}
-                aria-label="Authentication in progress"
-            >
-                Loading
-            </Button>
-        );
-    }
-
     // 로그인되지 않은 경우에만 로그인 버튼 표시
     return (
         (!session || !session.user) && (
             <Button
                 onClick={handleSignIn}
                 variant={variant}
-                className={className}
+                className={cn(
+                    status === "loading" ? "hidden" : "block",
+                    className
+                )}
                 frameSize={frameSize}
                 textSize={textSize}
                 paddingSize={paddingSize}
