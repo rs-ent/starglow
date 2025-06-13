@@ -10,7 +10,6 @@ import RewardPanel from "../atoms/RewardPanel";
 import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
 import { usePathname } from "next/navigation";
-import UserNavigation from "../user/User.Navigation";
 
 // 타입 정의
 type MenuItem = {
@@ -96,17 +95,9 @@ const DesktopMenu = memo(function DesktopMenu({
                 paddingSize={10}
                 gapSize={10}
             />
-            {player &&
-                (pathname !== "/user" ? (
-                    <RewardPanel playerId={player.id} assetNames={["SGP"]} />
-                ) : (
-                    <img
-                        src="/ui/settings.svg"
-                        alt="Settings"
-                        className="w-[20px] h-[20px] opacity-80 hover:opacity-100 transition-opacity duration-300 cursor-pointer"
-                        onClick={onShowUserNavigation}
-                    />
-                ))}
+            {player && (
+                <RewardPanel playerId={player.id} assetNames={["SGP"]} />
+            )}
         </div>
     );
 });
@@ -149,19 +140,7 @@ const MobileMenu = memo(function MobileMenu({
                     />
                 </LinkButton>
                 {player ? (
-                    pathname !== "/user" ? (
-                        <RewardPanel
-                            playerId={player.id}
-                            assetNames={["SGP"]}
-                        />
-                    ) : (
-                        <img
-                            src="/ui/settings.svg"
-                            alt="Settings"
-                            className="w-[20px] h-[20px] opacity-80 hover:opacity-100 transition-opacity duration-300 cursor-pointer"
-                            onClick={onShowUserNavigation}
-                        />
-                    )
+                    <RewardPanel playerId={player.id} assetNames={["SGP"]} />
                 ) : (
                     <AuthButton
                         frameSize={10}
@@ -237,13 +216,6 @@ function NavigationBar({ user, player }: NavigationBarProps) {
 
     return (
         <>
-            {showUserNavigation && (
-                <UserNavigation
-                    user={user}
-                    player={player}
-                    onClose={handleCloseUserNavigation}
-                />
-            )}
             <nav
                 className="
                 hidden lg:flex

@@ -15,6 +15,7 @@ import { getPlayerByUserId, setPlayer } from "../actions/player";
 import { createWallet } from "../actions/defaultWallets";
 import crypto from "crypto";
 import Discord from "next-auth/providers/discord";
+import { fetchAuthorMetricsFromX } from "../actions/x/actions";
 const isProd = process.env.NODE_ENV === "production";
 const isVercelPreview = process.env.VERCEL_ENV === "preview";
 
@@ -139,13 +140,30 @@ const authOptions: NextAuthConfig = {
                         updateData.provider = account.provider;
                     }
 
+                    let tweetAuthorId: string | undefined;
+                    if (
+                        account?.provider === "twitter" &&
+                        account.providerAccountId
+                    ) {
+                        tweetAuthorId = account.providerAccountId;
+
+                        fetchAuthorMetricsFromX({
+                            authorId: account.providerAccountId,
+                        }).catch((error) => {
+                            console.error(
+                                "Failed to fetch Twitter metrics:",
+                                error
+                            );
+                        });
+                    }
+
                     const promises = [
                         prisma.user.update({
                             where: { id: user.id },
                             data: updateData,
                         }),
 
-                        setPlayer({ user: user }),
+                        setPlayer({ user: user, tweetAuthorId: tweetAuthorId }),
                         createWallet(user.id),
                     ];
 

@@ -23,8 +23,6 @@ Table User {
   provider String
   telegramId String [unique]
   collectionParticipants CollectionParticipant [not null]
-  tweetAuthorId String [unique]
-  tweetAuthor TweetAuthor
 }
 
 Table Account {
@@ -88,6 +86,8 @@ Table Player {
   id String [pk]
   userId String [unique]
   telegramId String [unique]
+  tweetAuthorId String [unique]
+  tweetVerified Boolean [not null, default: false]
   name String
   nickname String
   image String
@@ -101,6 +101,7 @@ Table Player {
   createdAt DateTime [default: `now()`, not null]
   lastConnectedAt DateTime [not null]
   user User
+  tweetAuthor TweetAuthor
   playerAssets PlayerAsset [not null]
   pollLogs PollLog [not null]
   questLogs QuestLog [not null]
@@ -1024,7 +1025,7 @@ Table TweetAuthor {
   username String
   profileImageUrl String
   tweets Tweet [not null]
-  user User
+  player Player
   metrics TweetAuthorMetrics [not null]
 }
 
@@ -1215,8 +1216,6 @@ Enum MetadataType {
   nft
 }
 
-Ref: User.tweetAuthorId - TweetAuthor.authorId
-
 Ref: Account.userId > User.id [delete: Cascade]
 
 Ref: Session.userId > User.id [delete: Cascade]
@@ -1226,6 +1225,8 @@ Ref: Wallet.userId > User.id [delete: Cascade]
 Ref: Player.referredBy - Player.id
 
 Ref: Player.userId - User.id [delete: Cascade]
+
+Ref: Player.tweetAuthorId - TweetAuthor.authorId
 
 Ref: ReferralLog.referredPlayerId > Player.id [delete: Cascade]
 

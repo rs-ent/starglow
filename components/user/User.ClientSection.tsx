@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
-import PublicPrivateTab from "../atoms/PublicPrivateTab";
+import UserMenu, { Tab } from "./User.Menu";
 import { Player } from "@prisma/client";
 import type { User } from "next-auth";
 import { VerifiedSPG } from "@/app/story/interaction/actions";
@@ -27,6 +27,16 @@ const UserRewards = dynamic(() => import("./User.Rewards"), {
     },
     ssr: false,
 });
+const UserSettings = dynamic(() => import("./User.Settings"), {
+    loading: () => {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <PartialLoading text="Loading Settings..." size="sm" />
+            </div>
+        );
+    },
+    ssr: false,
+});
 
 interface Props {
     user: User;
@@ -39,36 +49,34 @@ const UserClientSection = React.memo(function UserClientSection({
     player,
     userVerifiedSPGs,
 }: Props) {
-    const [isPublic, setIsPublic] = useState(true);
+    const [selectedTab, setSelectedTab] = useState<Tab>("mystar");
 
-    const handlePublic = useCallback(() => setIsPublic(true), []);
-    const handlePrivate = useCallback(() => setIsPublic(false), []);
+    const handleTabChange = useCallback((tab: Tab) => {
+        setSelectedTab(tab);
+    }, []);
 
-    return (
-        <>
-            <PublicPrivateTab
-                isPublic={isPublic}
-                onPublic={handlePublic}
-                onPrivate={handlePrivate}
-                className="mt-[50px] mb-[10px]"
-                frameSize={20}
-                textSize={30}
-                gapSize={5}
-                paddingSize={10}
-                publicText="My Star"
-                publicIcon="/ui/user/user-mystar.svg"
-                privateText="Rewards"
-                privateIcon="/ui/user/user-rewards.svg"
-            />
-            {isPublic ? (
+    const renderContent = useMemo(() => {
+        if (selectedTab === "mystar") {
+            return (
                 <UserMyStar
                     user={user}
                     player={player}
                     userVerifiedSPGs={userVerifiedSPGs ?? []}
                 />
-            ) : (
-                <UserRewards user={user} player={player} />
-            )}
+            );
+        } else if (selectedTab === "rewards") {
+            return <UserRewards user={user} player={player} />;
+        } else if (selectedTab === "yap") {
+            return <div>YAP</div>;
+        } else if (selectedTab === "settings") {
+            return <UserSettings user={user} player={player} />;
+        }
+    }, [selectedTab, user, player, userVerifiedSPGs]);
+
+    return (
+        <>
+            <UserMenu onTabChange={handleTabChange} />
+            {renderContent}
         </>
     );
 });

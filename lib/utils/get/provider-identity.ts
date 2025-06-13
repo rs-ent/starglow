@@ -12,6 +12,7 @@ const providerIcons: Record<ProviderType, string> = {
     resend: "/icons/providers/resend.svg",
     telegram: "/icons/providers/telegram.svg",
     "io.metamask": "/icons/blockchain/metamask.svg",
+    metaMaskSDK: "/icons/blockchain/metamask.svg",
     walletConnect: "/icons/blockchain/walletconnect.svg",
 };
 
@@ -30,6 +31,8 @@ const providerColors: Record<ProviderType, string> = {
     telegram:
         "bg-[rgba(27,146,209,1)] text-[rgba(255,255,255,1)] hover:bg-[rgba(27,146,209,1)] hover:text-[rgba(255,255,255,1)] hover:scale-105",
     "io.metamask":
+        "bg-[rgba(255,255,255,1)] text-[rgba(0,0,0,1)] hover:bg-[rgba(255,255,255,1)] hover:text-[rgba(0,0,0,1)] hover:scale-105",
+    metaMaskSDK:
         "bg-[rgba(255,255,255,1)] text-[rgba(0,0,0,1)] hover:bg-[rgba(255,255,255,1)] hover:text-[rgba(0,0,0,1)] hover:scale-105",
     walletConnect:
         "bg-[#ffffff] text-[#3B99FC] hover:bg-[#ffffff] hover:text-[#3B99FC] hover:scale-105",

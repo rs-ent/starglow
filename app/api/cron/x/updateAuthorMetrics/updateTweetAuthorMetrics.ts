@@ -95,7 +95,7 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
                     },
                 },
             ],
-            take: 2000, // Basic Plan: 500회/24시간 → 하루 2000명 처리 가능
+            take: 200,
         });
 
         console.log(

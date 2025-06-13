@@ -8,6 +8,7 @@ export type ProviderType =
     | "resend"
     | "telegram"
     | "io.metamask"
+    | "metaMaskSDK"
     | "walletConnect";
 
 export type Provider = {

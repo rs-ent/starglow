@@ -35,9 +35,6 @@ model User {
   telegramId             String?                 @unique
   collectionParticipants CollectionParticipant[]
 
-  tweetAuthorId String? @unique
-  tweetAuthor TweetAuthor? @relation("UserToTweetAuthor", fields: [tweetAuthorId], references: [authorId])
-
   @@index([telegramId])
   @@index([email, active])
   @@index([role, active])
@@ -107,6 +104,8 @@ model Player {
   id                  String               @id @default(cuid())
   userId              String?              @unique
   telegramId          String?              @unique
+  tweetAuthorId       String?              @unique
+  tweetVerified       Boolean              @default(false)
   name                String?
   nickname            String?
   image               String?
@@ -120,6 +119,7 @@ model Player {
   createdAt           DateTime             @default(now())
   lastConnectedAt     DateTime             @updatedAt
   user                User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tweetAuthor         TweetAuthor?         @relation("PlayerToTweetAuthor", fields: [tweetAuthorId], references: [authorId])
   playerAssets        PlayerAsset[]
   pollLogs            PollLog[]
   questLogs           QuestLog[]
@@ -1259,7 +1259,7 @@ model TweetAuthor {
   profileImageUrl String?
   
   tweets Tweet[]
-  user User? @relation("UserToTweetAuthor")
+  player Player? @relation("PlayerToTweetAuthor")
   metrics TweetAuthorMetrics[]
 
   @@index([authorId])

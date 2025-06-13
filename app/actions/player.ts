@@ -52,6 +52,7 @@ export async function getPlayerByUserId(
 
 export interface SetPlayerInput {
     user: User;
+    tweetAuthorId?: string;
 }
 
 export async function setPlayer(
@@ -67,11 +68,13 @@ export async function setPlayer(
             where: { userId: input.user.id },
             update: {
                 name: input.user.name || "New Player",
+                tweetAuthorId: input.tweetAuthorId,
             },
             create: {
                 name: input.user.name || "New Player",
                 userId: input.user.id,
                 referralCode: referralCode,
+                tweetAuthorId: input.tweetAuthorId,
             },
         });
 

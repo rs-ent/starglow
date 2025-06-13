@@ -7,8 +7,7 @@ import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { User } from "next-auth";
 import { Player } from "@prisma/client";
-import { useMemo, useState } from "react";
-import UserSettings from "../user/User.Settings";
+import { useMemo } from "react";
 import { getProviderIdentity } from "@/lib/utils/get/provider-identity";
 import { ProviderType } from "@/app/types/auth";
 
@@ -23,7 +22,6 @@ export default React.memo(function ProfileName({
     player,
     size = 20,
 }: ProfileNameProps) {
-    const [showUserSettings, setShowUserSettings] = useState(false);
     const { provider, icon, color, nickname } = useMemo(() => {
         const provider = (user as any).provider as ProviderType | undefined;
         const { icon, color } = getProviderIdentity(provider);
@@ -41,22 +39,12 @@ export default React.memo(function ProfileName({
 
     return (
         <>
-            {showUserSettings && (
-                <UserSettings
-                    user={user}
-                    player={player}
-                    onClose={() => setShowUserSettings(false)}
-                    showImage={false}
-                />
-            )}
-            <div
-                className="flex flex-row gap-[5px] items-center justify-center group cursor-pointer"
-                onClick={() => setShowUserSettings(true)}
-            >
+            <div className="flex flex-row gap-[5px] items-center justify-center group cursor-pointer">
                 {icon && (
                     <>
                         {provider !== "telegram" &&
-                        provider !== "io.metamask" ? (
+                        provider !== "io.metamask" &&
+                        provider !== "metaMaskSDK" ? (
                             <div
                                 className={cn(
                                     "rounded-full",
