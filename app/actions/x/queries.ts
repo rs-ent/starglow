@@ -4,7 +4,15 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { tweetKeys } from "@/app/queryKeys";
-import { getLatestSyncData, getTweets, getTweetAuthors } from "./actions";
+import {
+    getLatestSyncData,
+    getTweets,
+    getTweetAuthors,
+    getTweetMetricsHistory,
+    GetTweetMetricsHistoryInput,
+    getAuthorMetricsHistory,
+    GetAuthorMetricsHistoryInput,
+} from "./actions";
 
 export function useLatestSyncDataQuery() {
     return useQuery({
@@ -33,5 +41,29 @@ export function useTweetsQuery() {
         staleTime: 1000 * 60 * 3, // 3 minutes
         gcTime: 1000 * 60 * 3, // 3 minutes
         refetchOnWindowFocus: true,
+    });
+}
+
+export function useTweetMetricsHistoryQuery(
+    input?: GetTweetMetricsHistoryInput
+) {
+    return useQuery({
+        queryKey: tweetKeys.tweetMetricsHistory(input || {}),
+        queryFn: () => getTweetMetricsHistory(input),
+        enabled: Boolean(input?.tweetId),
+        staleTime: 1000 * 60 * 3, // 3 minutes
+        gcTime: 1000 * 60 * 3, // 3 minutes
+    });
+}
+
+export function useAuthorMetricsHistoryQuery(
+    input?: GetAuthorMetricsHistoryInput
+) {
+    return useQuery({
+        queryKey: tweetKeys.authorMetricsHistory(input || {}),
+        queryFn: () => getAuthorMetricsHistory(input),
+        enabled: Boolean(input?.authorId),
+        staleTime: 1000 * 60 * 3, // 3 minutes
+        gcTime: 1000 * 60 * 3, // 3 minutes
     });
 }

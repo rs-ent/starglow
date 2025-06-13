@@ -654,4 +654,8 @@ export const tweetKeys = {
     latestSyncData: () => [...tweetKeys.all, "latest-sync-data"] as const,
     tweets: () => [...tweetKeys.all, "tweets"] as const,
     authors: () => [...tweetKeys.all, "authors"] as const,
+    tweetMetricsHistory: (input: object) =>
+        [...tweetKeys.all, "tweet-metrics-history", input] as const,
+    authorMetricsHistory: (input: object) =>
+        [...tweetKeys.all, "author-metrics-history", input] as const,
 };

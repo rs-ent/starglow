@@ -6,9 +6,20 @@ import {
     useLatestSyncDataQuery,
     useTweetsQuery,
     useTweetAuthorsQuery,
+    useTweetMetricsHistoryQuery,
+    useAuthorMetricsHistoryQuery,
 } from "./queries";
+import {
+    GetTweetMetricsHistoryInput,
+    GetAuthorMetricsHistoryInput,
+} from "./actions";
 
-export function useTweets() {
+export interface useTweetsInput {
+    getTweetMetricsHistoryInput?: GetTweetMetricsHistoryInput;
+    getAuthorMetricsHistoryInput?: GetAuthorMetricsHistoryInput;
+}
+
+export function useTweets(input?: useTweetsInput) {
     const {
         data: latestSyncData,
         isLoading: isLatestSyncDataLoading,
@@ -30,6 +41,20 @@ export function useTweets() {
         refetch: refetchTweets,
     } = useTweetsQuery();
 
+    const {
+        data: tweetMetricsHistory,
+        isLoading: isTweetMetricsHistoryLoading,
+        error: tweetMetricsHistoryError,
+        refetch: refetchTweetMetricsHistory,
+    } = useTweetMetricsHistoryQuery(input?.getTweetMetricsHistoryInput);
+
+    const {
+        data: authorMetricsHistory,
+        isLoading: isAuthorMetricsHistoryLoading,
+        error: authorMetricsHistoryError,
+        refetch: refetchAuthorMetricsHistory,
+    } = useAuthorMetricsHistoryQuery(input?.getAuthorMetricsHistoryInput);
+
     return {
         latestSyncData,
         isLatestSyncDataLoading,
@@ -45,5 +70,15 @@ export function useTweets() {
         isTweetsLoading,
         tweetsError,
         refetchTweets,
+
+        tweetMetricsHistory,
+        isTweetMetricsHistoryLoading,
+        tweetMetricsHistoryError,
+        refetchTweetMetricsHistory,
+
+        authorMetricsHistory,
+        isAuthorMetricsHistoryLoading,
+        authorMetricsHistoryError,
+        refetchAuthorMetricsHistory,
     };
 }
