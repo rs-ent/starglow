@@ -8,15 +8,13 @@ import {
     createQuest,
     deleteQuest,
     updateQuest,
-    tokenGatingQuest,
     completeQuest,
     claimQuestReward,
     setReferralQuestLogs,
     updateQuestOrder,
     updateQuestActive,
-    invalidateQuestsCache,
 } from "../actions/quests";
-import { Quest, QuestLog } from "@prisma/client";
+import { Quest } from "@prisma/client";
 
 /**
  * 퀘스트 생성 뮤테이션 훅
@@ -49,9 +47,6 @@ export function useCreateQuestMutation() {
                     queryKey: questKeys.detail({ id: data.id }),
                 });
             }
-
-            // 서버 측 Redis 캐시도 무효화 (선택적)
-            invalidateQuestsCache().catch(console.error);
         },
         onError: (error, variables, context) => {
             console.error("Error creating quest:", error);
@@ -109,9 +104,6 @@ export function useUpdateQuestMutation() {
             queryClient.invalidateQueries({
                 queryKey: questKeys.detail({ id: variables.id }),
             });
-
-            // 서버 측 Redis 캐시도 무효화 (선택적)
-            invalidateQuestsCache().catch(console.error);
         },
         onError: (error, variables, context) => {
             console.error("Error updating quest:", error);
@@ -152,9 +144,6 @@ export function useUpdateQuestOrderMutation() {
             // 서버에서 반환된 데이터로 캐시 업데이트
             queryClient.invalidateQueries({ queryKey: questKeys.all });
             queryClient.invalidateQueries({ queryKey: questKeys.list() });
-
-            // 서버 측 Redis 캐시도 무효화 (선택적)
-            invalidateQuestsCache().catch(console.error);
         },
         onError: (error, variables, context) => {
             console.error("Error updating quest order:", error);
@@ -219,9 +208,6 @@ export function useDeleteQuestMutation() {
             queryClient.removeQueries({
                 queryKey: questKeys.detail({ id: variables.id }),
             });
-
-            // 서버 측 Redis 캐시도 무효화 (선택적)
-            invalidateQuestsCache().catch(console.error);
         },
         onError: (error, variables, context) => {
             console.error("Error deleting quest:", error);
