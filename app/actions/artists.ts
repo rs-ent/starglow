@@ -9,6 +9,7 @@ import {
     ArtistMessage,
     User,
     CollectionContract,
+    Story_spg,
 } from "@prisma/client";
 import { advancedTokenGate, AdvancedTokenGateResult } from "./blockchain";
 import { getOwners } from "../story/nft/actions";
@@ -372,7 +373,7 @@ export async function tokenGating(
                         select: { address: true },
                     },
                 },
-            }),
+            }) as Promise<{ wallets: { address: string }[] } | null>,
         ]);
 
         if (!spgs.length) {
@@ -386,7 +387,7 @@ export async function tokenGating(
             };
         }
 
-        if (!user?.wallets?.length) {
+        if (!user?.wallets || !user.wallets.length) {
             return {
                 success: false,
                 error: user ? "User has no active wallets" : "User not found",

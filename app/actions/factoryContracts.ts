@@ -404,13 +404,13 @@ export async function getCollections(
 ): Promise<GetCollectionResult> {
     try {
         if (!input) {
-            const collections = await prisma.collectionContract.findMany({
+            const collections = (await prisma.collectionContract.findMany({
                 orderBy: { createdAt: "desc" },
                 include: {
                     metadata: true,
                     artist: true,
                 },
-            });
+            })) as Collection[];
 
             return {
                 success: true,
@@ -446,14 +446,14 @@ export async function getCollections(
             where.isListed = input.isListed;
         }
 
-        const collections = await prisma.collectionContract.findMany({
+        const collections = (await prisma.collectionContract.findMany({
             where,
             orderBy: { createdAt: "desc" },
             include: {
                 metadata: true,
                 artist: true,
             },
-        });
+        })) as Collection[];
 
         return {
             success: true,

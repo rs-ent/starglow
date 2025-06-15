@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,73 +36,14 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-    Loader2,
-    Search,
-    ArrowUpDown,
-    MoreVertical,
-    Layers,
-} from "lucide-react";
+import { Loader2, MoreVertical, Layers } from "lucide-react";
 import { CollectionContract, NFT } from "@prisma/client";
-import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
-import {
-    useNFTs,
-    useNFTDetails,
-    useGetOwnerByTokenIds,
-} from "@/app/hooks/useNFTs";
+import { useNFTs, useGetOwnerByTokenIds } from "@/app/hooks/useNFTs";
 import { NFTFilters, NFTPaginationParams } from "./OnChain.types";
 import { useToast } from "@/app/hooks/useToast";
-import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
-import {
-    useCollectionsByNetwork,
-    useTokensLockStatus,
-} from "@/app/queries/collectionContractsQueries";
+import { useTokensLockStatus } from "@/app/queries/collectionContractsQueries";
 import { useCollectionSet } from "@/app/hooks/useCollectionContracts";
 import { useSession } from "next-auth/react";
-function CollectionList({
-    collections,
-    selectedCollection,
-    onSelectCollection,
-}: {
-    collections: CollectionContract[];
-    selectedCollection: CollectionContract | null;
-    onSelectCollection: (collection: CollectionContract) => void;
-}) {
-    return (
-        <div className="space-y-2">
-            {collections.map((collection) => (
-                <Card
-                    key={collection.id}
-                    className={`cursor-pointer transition-colors ${
-                        selectedCollection?.id === collection.id
-                            ? "border-primary"
-                            : ""
-                    }`}
-                    onClick={() => onSelectCollection(collection)}
-                >
-                    <CardContent className="p-4">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h3 className="font-semibold">
-                                    {collection.name}
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                    {collection.symbol}
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-sm">
-                                    {collection.mintedCount} /{" "}
-                                    {collection.maxSupply}
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            ))}
-        </div>
-    );
-}
 
 export function NFTList({ collection }: { collection: CollectionContract }) {
     const toast = useToast();
@@ -123,10 +64,8 @@ export function NFTList({ collection }: { collection: CollectionContract }) {
 
     const { data: nfts, isLoading } = useNFTs(filters, pagination);
 
-    const [copied, setCopied] = useState(false);
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        setCopied(true);
         toast.success(`Copied to clipboard: ${text}`);
     };
 

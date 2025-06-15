@@ -4,7 +4,7 @@
 "use client";
 
 import { useState } from "react";
-import { useFactoryGet, useFactorySet } from "@/app/hooks/useFactoryContracts";
+import { useFactoryGet } from "@/app/hooks/useFactoryContracts";
 import {
     Card,
     CardContent,
@@ -20,7 +20,6 @@ import {
     ExternalLink,
     PlusCircle,
     ChevronDown,
-    Activity,
     Shield,
     Clock,
     CheckCircle2,
@@ -80,8 +79,8 @@ export default function FactoryList({
             setCopiedAddress(text);
             setTimeout(() => setCopiedAddress(null), 2000);
             toast.success("주소가 클립보드에 복사되었습니다");
-        } catch (err) {
-            toast.error("주소 복사 실패");
+        } catch (error) {
+            toast.error("주소 복사 실패: " + error);
         }
     }
 
@@ -91,7 +90,7 @@ export default function FactoryList({
             await factoriesQuery.refetch();
             toast.success("팩토리 목록이 새로고침되었습니다");
         } catch (error) {
-            toast.error("팩토리 목록 새로고침 실패");
+            toast.error("팩토리 목록 새로고침 실패: " + error);
         } finally {
             setIsRefreshing(false);
         }

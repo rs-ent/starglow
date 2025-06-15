@@ -244,7 +244,12 @@ async function getProduct<T extends ProductTable>({
         return { productPrice: null, defaultCurrency: null, productName: null };
     }
 
-    const product = await PRODUCT_MAP.product[productTable]({ productId, tx });
+    // 타입 안전성을 위해 클라이언트를 명시적으로 캐스팅
+    const client = (tx || prisma) as typeof prisma;
+    const product = await PRODUCT_MAP.product[productTable]({
+        productId,
+        tx: client,
+    });
 
     const productPrice = product[PRODUCT_MAP.amountField[productTable]] as
         | number
@@ -285,7 +290,8 @@ async function getTotalPrice({
     let promotionActivated = false;
     let promotion = null;
     if (promotionCode) {
-        promotion = await (tx ?? prisma).paymentPromotion.findUnique({
+        const client = tx ?? prisma;
+        promotion = await client.paymentPromotion.findUnique({
             where: {
                 code: promotionCode,
             },
@@ -552,7 +558,7 @@ export async function createPayment(
                     await getProduct({
                         productTable: input.productTable,
                         productId: input.productId,
-                        tx,
+                        tx: tx as any,
                     });
 
                 console.log("Product Price", productPrice);
@@ -586,7 +592,7 @@ export async function createPayment(
                 const exchangeRateInfo = await getExchangeRateInfo({
                     fromCurrency: defaultCurrency,
                     toCurrency: input.currency,
-                    tx,
+                    tx: tx as any,
                 });
 
                 txScope.log(`Exchange rate info retrieved`, {
@@ -603,7 +609,7 @@ export async function createPayment(
                         quantity: input.quantity,
                         promotionCode: input.promotionCode,
                         exchangeRateInfo,
-                        tx,
+                        tx: tx as any, // Prisma v6 트랜잭션 타입 호환성을 위한 캐스팅
                     });
 
                 txScope.log(`Price calculation completed`, {
@@ -1191,7 +1197,7 @@ export async function verifyPayment(
                                 productTable:
                                     currentPayment.productTable as ProductTable,
                                 productId: currentPayment.productId,
-                                tx,
+                                tx: tx as any, // Prisma v6 트랜잭션 타입 호환성을 위한 캐스팅
                             });
 
                             if (
@@ -1243,7 +1249,7 @@ export async function verifyPayment(
                                 promotionCode:
                                     currentPayment.promotionCode ?? undefined,
                                 exchangeRateInfo,
-                                tx,
+                                tx: tx as any,
                             });
 
                             logDebug(`Price calculation result`, {

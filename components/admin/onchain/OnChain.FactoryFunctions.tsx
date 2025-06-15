@@ -5,34 +5,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-    Check,
-    Plus,
-    X,
-    Trash2,
-    RefreshCw,
-    Loader2,
-    AlertTriangle,
-    Key,
-} from "lucide-react";
+import { Check, Plus, Loader2, Key } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/app/hooks/useToast";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
+import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
@@ -52,10 +28,8 @@ import { Label } from "@/components/ui/label";
 import CreateCollection from "./OnChain.CreateCollection";
 import { CreateCollectionResult } from "./OnChain.Factory";
 import { Factory } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { useFactoryGet, useFactorySet } from "@/app/hooks/useFactoryContracts";
 import { useEscrowWalletManager } from "@/app/hooks/useBlockchain";
-import { CollectionContract } from "@prisma/client";
 interface FactoryFunctionsProps {
     factory: {
         address: string;
@@ -83,13 +57,7 @@ export default function FactoryFunctions({
     const [selectedWalletId, setSelectedWalletId] = useState<string>("");
 
     // 에스크로 지갑 관리자 가져오기
-    const { wallets, getWalletWithPrivateKey } = useEscrowWalletManager();
-
-    // useFactoryGet hook 사용하여 Factory의 컬렉션 목록 가져오기
-    const { collections, isLoadingCollections } = useFactoryGet({
-        networkId: factory.networkId,
-        factoryId: factory.id,
-    });
+    const { wallets } = useEscrowWalletManager();
 
     // useFactorySet hook 사용하여 Factory의 작업 수행
     const {

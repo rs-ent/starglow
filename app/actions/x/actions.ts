@@ -33,7 +33,7 @@ export type Author = TweetAuthor & {
 };
 
 export async function getTweetAuthors(): Promise<Author[]> {
-    return await prisma.tweetAuthor.findMany({
+    return (await prisma.tweetAuthor.findMany({
         include: {
             tweets: {
                 include: {
@@ -52,7 +52,7 @@ export async function getTweetAuthors(): Promise<Author[]> {
                 take: 1,
             },
         },
-    });
+    })) as Author[];
 }
 
 export interface GetAuthorMetricsHistoryInput {
@@ -141,7 +141,7 @@ export async function fetchAuthorMetricsFromX(
             throw new Error("No user data returned from Twitter API");
         }
 
-        const currentAuthor = await prisma.tweetAuthor.findUnique({
+        const currentAuthor = (await prisma.tweetAuthor.findUnique({
             where: { authorId: input.authorId },
             include: {
                 metrics: {
@@ -149,7 +149,7 @@ export async function fetchAuthorMetricsFromX(
                     take: 1,
                 },
             },
-        });
+        })) as Author | null;
 
         const hasChanged =
             !currentAuthor?.metrics[0] ||

@@ -28,11 +28,9 @@ import { z } from "zod";
 import { useToast } from "@/app/hooks/useToast";
 import FileUploader from "@/components/atoms/FileUploader";
 import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
 import {
     Plus,
     Trash2,
-    RefreshCw,
     Eye,
     Calendar,
     X,
@@ -78,7 +76,6 @@ import {
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils/tailwind";
-import { UploadResponse } from "pinata";
 import { Metadata } from "@prisma/client";
 import { useMetadata } from "@/app/hooks/useMetadata";
 
@@ -117,7 +114,6 @@ function MetadataPreviewDialog({
                     {/* Image Section */}
                     <div className="space-y-4">
                         <h3 className="font-semibold text-lg flex items-center gap-2">
-                            <Image className="h-5 w-5 text-primary" />
                             미리보기 이미지
                         </h3>
                         <div className="aspect-square w-full bg-black/5 rounded-xl overflow-hidden border shadow-sm hover:shadow-md transition-shadow">
@@ -910,9 +906,7 @@ export function OnChainMetadata({
     const [previewMetadata, setPreviewMetadata] =
         useState<METADATA_TYPE | null>(null);
 
-    const { linkableMetadata, createCollection, linkMetadata } = useMetadata(
-        {}
-    );
+    const { linkableMetadata, createCollection } = useMetadata({});
 
     const form = useForm<MetadataFormValues>({
         resolver: zodResolver(metadataFormSchema),
@@ -951,6 +945,8 @@ export function OnChainMetadata({
             setIsUploading(true);
 
             const { collectionName, collectionKey, ...metadataFields } = data;
+            console.log("Collection name:", collectionName);
+            console.log("Collection key:", collectionKey);
 
             if (metadataFields.background_color) {
                 metadataFields.background_color =

@@ -90,7 +90,10 @@ export async function getArtistFeeds({
                   }
                 : null;
 
-        return { feeds: artistFeeds, nextCursor };
+        return {
+            feeds: artistFeeds as ArtistFeedWithReactions[],
+            nextCursor,
+        };
     } catch (error) {
         console.error(error);
         return { feeds: [], nextCursor: null };

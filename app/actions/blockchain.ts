@@ -18,7 +18,7 @@ import {
     getContract,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { BlockchainNetwork } from "@prisma/client";
+import { BlockchainNetwork, User } from "@prisma/client";
 import { GetContractReturnType } from "viem";
 import { getTokenOwners } from "./collectionContracts";
 import { User2 } from "lucide-react";
@@ -831,7 +831,7 @@ export async function tokenGate(
     try {
         const { userId, tokenType, tokenAddress } = input;
 
-        const user = await prisma.user.findUnique({
+        const user = (await prisma.user.findUnique({
             where: { id: userId },
             select: {
                 wallets: {
@@ -839,9 +839,9 @@ export async function tokenGate(
                     select: { address: true },
                 },
             },
-        });
+        })) as (User & { wallets: { address: string }[] }) | null;
 
-        if (!user?.wallets?.length) {
+        if (!user?.wallets || !user.wallets.length) {
             return {
                 success: false,
                 error: user ? "User has no active wallets" : "User not found",
@@ -956,7 +956,7 @@ export async function advancedTokenGate(
     try {
         const { userId, tokens } = input;
 
-        const user = await prisma.user.findUnique({
+        const user = (await prisma.user.findUnique({
             where: { id: userId },
             select: {
                 wallets: {
@@ -964,9 +964,9 @@ export async function advancedTokenGate(
                     select: { address: true },
                 },
             },
-        });
+        })) as (User & { wallets: { address: string }[] }) | null;
 
-        if (!user?.wallets?.length) {
+        if (!user?.wallets || !user.wallets.length) {
             return {
                 success: false,
                 error: user ? "User has no active wallets" : "User not found",

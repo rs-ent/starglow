@@ -11,18 +11,6 @@ const EXCHANGE_RATE_FALLBACK = 1300;
 const DEFAULT_FROM_CURRENCY = "CURRENCY_USD" as const;
 const DEFAULT_TO_CURRENCY = "CURRENCY_KRW" as const;
 
-type prismaTransaction =
-    | PrismaClient
-    | Omit<
-          PrismaClient,
-          | "$connect"
-          | "$disconnect"
-          | "$on"
-          | "$transaction"
-          | "$use"
-          | "$extends"
-      >;
-
 export interface ExchangeRateInfo {
     fromCurrency: PortOne.Entity.Currency;
     toCurrency: PortOne.Entity.Currency;
@@ -42,7 +30,7 @@ export async function getExchangeRateInfo({
 }: {
     fromCurrency: PortOne.Entity.Currency;
     toCurrency: PortOne.Entity.Currency;
-    tx?: prismaTransaction;
+    tx?: PrismaClient;
 }): Promise<ExchangeRateInfo> {
     try {
         if (fromCurrency === toCurrency) {
@@ -57,7 +45,9 @@ export async function getExchangeRateInfo({
         const fromCurrencyStr = convertToApiCurrency(fromCurrency);
         const toCurrencyStr = convertToApiCurrency(toCurrency);
 
-        const latestRate = await (tx ?? prisma).exchangeRate.findFirst({
+        const client = (tx ?? prisma) as PrismaClient;
+
+        const latestRate = await client.exchangeRate.findFirst({
             where: {
                 fromCurrency: fromCurrencyStr,
                 toCurrency: toCurrencyStr,
@@ -87,7 +77,7 @@ export async function getExchangeRateInfo({
         const data = await response.json();
         const newRate = data.rates[toCurrencyStr];
 
-        const savedRate = await (tx ?? prisma).exchangeRate.create({
+        const savedRate = await client.exchangeRate.create({
             data: {
                 fromCurrency: fromCurrencyStr,
                 toCurrency: toCurrencyStr,
@@ -97,7 +87,7 @@ export async function getExchangeRateInfo({
         });
 
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        await (tx ?? prisma).exchangeRate.deleteMany({
+        await client.exchangeRate.deleteMany({
             where: {
                 createdAt: {
                     lt: thirtyDaysAgo,
@@ -115,7 +105,9 @@ export async function getExchangeRateInfo({
     } catch (error) {
         console.error("Error fetching exchange rate:", error);
 
-        const fallbackRate = await (tx ?? prisma).exchangeRate.findFirst({
+        const client = (tx ?? prisma) as PrismaClient;
+
+        const fallbackRate = await client.exchangeRate.findFirst({
             where: {
                 fromCurrency: convertToApiCurrency(fromCurrency),
                 toCurrency: convertToApiCurrency(toCurrency),
@@ -150,7 +142,7 @@ export async function convertAmount(
     fromCurrency: PortOne.Entity.Currency,
     toCurrency: PortOne.Entity.Currency,
     exchangeRateInfo?: ExchangeRateInfo,
-    tx?: prismaTransaction
+    tx?: PrismaClient
 ): Promise<number> {
     const exchangeInfo =
         exchangeRateInfo ??

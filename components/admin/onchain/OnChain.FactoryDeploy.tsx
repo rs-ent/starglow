@@ -45,8 +45,7 @@ export default function FactoryDeploy({
     onCancel,
     onDeploySuccess,
 }: FactoryDeployProps) {
-    const { networks, isLoading: isLoadingNetworks } =
-        useBlockchainNetworksManager();
+    const { networks } = useBlockchainNetworksManager();
 
     const {
         deployFactory,
@@ -67,8 +66,6 @@ export default function FactoryDeploy({
     );
     const [selectedWalletId, setSelectedWalletId] = useState<string>("");
     const [showPrivateKey, setShowPrivateKey] = useState(false);
-    const [deploymentResult, setDeploymentResult] =
-        useState<DeployFactoryResult | null>(null);
     const [deploymentConfig, setDeploymentConfig] = useState({
         useDefaultGas: true,
         gasSettings: {
@@ -151,7 +148,6 @@ export default function FactoryDeploy({
             };
 
             const result = await deployFactory(deployInput);
-            setDeploymentResult(result);
 
             if (!result.success || !result.data) {
                 throw new Error(result.error || "Deployment failed");

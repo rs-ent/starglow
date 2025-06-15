@@ -20,7 +20,6 @@ import {
     AlertTriangle,
     ExternalLink,
     Eye,
-    EyeOff,
     Code,
     FileText,
     Settings,
@@ -73,7 +72,6 @@ export default function CreateCollection({
 
     // 상태 관리
     const [privateKey, setPrivateKey] = useState("");
-    const [showPrivateKey, setShowPrivateKey] = useState(false);
     const [selectedWalletId, setSelectedWalletId] = useState<string>("");
     const [selectedMetadata, setSelectedMetadata] = useState<Metadata | null>(
         null
@@ -102,11 +100,7 @@ export default function CreateCollection({
     const [isCreating, setIsCreating] = useState(false);
 
     // Hooks
-    const {
-        wallets,
-        isLoading: isLoadingWallets,
-        getWalletWithPrivateKey,
-    } = useEscrowWalletManager();
+    const { wallets, getWalletWithPrivateKey } = useEscrowWalletManager();
     const { networks } = useBlockchainNetworksManager();
     const { createCollection } = useFactorySet({
         networkId: factory.networkId,
@@ -600,17 +594,6 @@ export default function CreateCollection({
                                     </option>
                                 ))}
                             </select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="privateKey">Private Key</Label>
-                            <Input
-                                id="privateKey"
-                                type={showPrivateKey ? "text" : "password"}
-                                value={privateKey}
-                                disabled
-                                className="font-mono bg-background/50"
-                            />
                         </div>
                     </div>
                 </CardContent>

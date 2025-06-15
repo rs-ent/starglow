@@ -6,17 +6,7 @@ export type PayMethod = PortOne.Entity.PayMethod;
 export type EasyPayProvider = PortOne.Entity.EasyPayProvider;
 export type CardProvider = PortOne.Entity.Country;
 export type Currency = PortOne.Entity.Currency;
-export type prismaTransaction =
-    | PrismaClient
-    | Omit<
-          PrismaClient,
-          | "$connect"
-          | "$disconnect"
-          | "$on"
-          | "$transaction"
-          | "$use"
-          | "$extends"
-      >;
+export type prismaTransaction = any;
 
 export type ProductTableMap = {
     events: Events;
@@ -43,14 +33,16 @@ export const PRODUCT_MAP: {
 } = {
     product: {
         events: async ({ productId, tx }) => {
-            const product = await (tx ?? prisma).events.findUnique({
+            const client = (tx ?? prisma) as typeof prisma;
+            const product = await client.events.findUnique({
                 where: { id: productId },
             });
             if (!product) throw new Error("Product not found");
             return product;
         },
         nfts: async ({ productId, tx }) => {
-            const product = await (tx ?? prisma).story_spg.findUnique({
+            const client = (tx ?? prisma) as typeof prisma;
+            const product = await client.story_spg.findUnique({
                 where: { id: productId },
             });
             if (!product) throw new Error("Product not found");

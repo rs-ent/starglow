@@ -250,7 +250,7 @@ export async function getStakeRewards(
             }
         }
 
-        const stakeRewards = await prisma.stakeReward.findMany({
+        const stakeRewards = (await prisma.stakeReward.findMany({
             where,
             orderBy: {
                 stakeDuration: "asc",
@@ -259,7 +259,7 @@ export async function getStakeRewards(
                 asset: true,
                 collection: true,
             },
-        });
+        })) as StakeRewardWithAsset[];
 
         return stakeRewards;
     } catch (error) {

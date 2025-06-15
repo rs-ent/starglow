@@ -145,7 +145,7 @@ export interface UpdatePlayerAssetInput {
 
 export async function updatePlayerAsset(
     input?: UpdatePlayerAssetInput,
-    trx?: Prisma.TransactionClient
+    trx?: any // Prisma v6 트랜잭션 타입 호환성을 위한 변경
 ): Promise<PlayerAssetResult<PlayerAsset | null>> {
     if (!input) {
         return {
@@ -155,7 +155,7 @@ export async function updatePlayerAsset(
         };
     }
 
-    const tx = trx || prisma;
+    const tx = (trx || prisma) as typeof prisma;
     const playerAsset = await tx.playerAsset.findUnique({
         where: {
             playerId_assetId: {
@@ -422,7 +422,7 @@ export interface ValidatePlayerAssetResult {
 
 export async function validatePlayerAsset(
     input?: ValidatePlayerAssetInput,
-    externalTx?: Prisma.TransactionClient
+    externalTx?: any // Prisma v6 트랜잭션 타입 호환성을 위한 변경
 ): Promise<ValidatePlayerAssetResult> {
     if (!input) {
         return {
@@ -433,7 +433,7 @@ export async function validatePlayerAsset(
     }
 
     try {
-        const tx = externalTx || prisma;
+        const tx = (externalTx || prisma) as typeof prisma;
         const asset = await tx.asset.findUnique({
             where: { id: input.assetId },
         });

@@ -83,7 +83,6 @@ export default function OnChainDashboard() {
                         value="nfts"
                         className="data-[state=active]:bg-background flex items-center gap-2 py-3 rounded-lg transition-all"
                     >
-                        <Image className="h-4 w-4" />
                         <span>NFT</span>
                     </TabsTrigger>
                 </TabsList>
@@ -128,13 +127,12 @@ export default function OnChainDashboard() {
                             />
                         ) : (
                             <div className="flex flex-col items-center justify-center h-64 text-center">
-                                <Image className="h-12 w-12 text-muted-foreground/40 mb-4" />
                                 <p className="text-muted-foreground">
                                     컬렉션을 선택해주세요.
                                 </p>
                                 <p className="text-sm text-muted-foreground/60 max-w-md mt-2">
-                                    컬렉션 탭에서 원하는 컬렉션을 선택한 후 "NFT
-                                    목록" 버튼을 클릭하면 이 곳에서 해당
+                                    컬렉션 탭에서 원하는 컬렉션을 선택한 후
+                                    「NFT 목록」 버튼을 클릭하면 이 곳에서 해당
                                     컬렉션의 NFT 목록을 볼 수 있습니다.
                                 </p>
                             </div>

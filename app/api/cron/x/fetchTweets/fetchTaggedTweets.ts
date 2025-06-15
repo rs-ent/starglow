@@ -534,5 +534,31 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
         }
 
         throw error;
+    } finally {
+        // 오래된 tweetSyncData, tweetResponse 정리 (3일 이전)
+        const cutoffDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+        try {
+            // 1. 3일 이전 tweetSyncData id 목록 조회
+            const oldSyncData = await prisma.tweetSyncData.findMany({
+                where: { lastSyncAt: { lt: cutoffDate } },
+                select: { id: true },
+            });
+            const oldIds = oldSyncData.map((d) => d.id);
+            if (oldIds.length > 0) {
+                // 2. tweetResponse 먼저 삭제
+                await prisma.tweetResponse.deleteMany({
+                    where: { tweetSyncDataId: { in: oldIds } },
+                });
+                // 3. tweetSyncData 삭제
+                await prisma.tweetSyncData.deleteMany({
+                    where: { id: { in: oldIds } },
+                });
+                console.log(
+                    `🧹 Deleted old tweetSyncData & tweetResponse (${oldIds.length} sets)`
+                );
+            }
+        } catch (cleanupError) {
+            console.error("Cleanup failed:", cleanupError);
+        }
     }
 }

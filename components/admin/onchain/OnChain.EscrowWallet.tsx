@@ -11,7 +11,6 @@ import {
     CardContent,
     CardHeader,
     CardTitle,
-    CardDescription,
     CardFooter,
 } from "@/components/ui/card";
 import {
@@ -59,7 +58,6 @@ interface Wallet {
 export default function OnChainEscrowWallet() {
     const {
         wallets,
-        activeWallet,
         isLoading,
         error,
         isError,
@@ -70,8 +68,6 @@ export default function OnChainEscrowWallet() {
         getWalletBalance,
         isSavingWallet,
         isGeneratingWallet,
-        isUpdatingBalance,
-        isGettingBalance,
     } = useEscrowWalletManager();
 
     const { networks, isLoading: isLoadingNetworks } =
@@ -231,7 +227,7 @@ export default function OnChainEscrowWallet() {
         }
     }
 
-    function formatBalance(balance: JsonValue, networkIds: string[] = []) {
+    function formatBalance(balance: JsonValue) {
         if (
             !balance ||
             typeof balance !== "object" ||
@@ -243,7 +239,7 @@ export default function OnChainEscrowWallet() {
 
         try {
             return Object.entries(balance as Record<string, string>)
-                .map(([token, amount]) => `${amount}`)
+                .map(([_, amount]) => `${amount}`)
                 .join(", ");
         } catch (error) {
             console.error("Error formatting balance:", error);
@@ -616,8 +612,7 @@ export default function OnChainEscrowWallet() {
                                             <TableCell>
                                                 <div className="font-mono text-sm">
                                                     {formatBalance(
-                                                        wallet.balance,
-                                                        wallet.networkIds
+                                                        wallet.balance
                                                     )}
                                                 </div>
                                             </TableCell>

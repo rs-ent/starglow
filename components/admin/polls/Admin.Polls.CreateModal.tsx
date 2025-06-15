@@ -32,7 +32,7 @@ import FileUploader from "@/components/atoms/FileUploader";
 import Image from "next/image";
 import { useLoading } from "@/app/hooks/useLoading";
 import { useToast } from "@/app/hooks/useToast";
-import { getYoutubeVideoId, getYoutubeThumbnailUrl } from "@/lib/utils/youtube";
+import { getYoutubeVideoId } from "@/lib/utils/youtube";
 import { useArtistsGet } from "@/app/hooks/useArtists";
 import {
     DndContext,
@@ -92,11 +92,7 @@ export default function AdminPollsCreateModal({
 }: PollCreateModalProps) {
     const { startLoading, endLoading } = useLoading();
     const toast = useToast();
-    const {
-        pollsList,
-        isLoading: isLoadingPolls,
-        error: errorPolls,
-    } = usePollsGet({});
+    const { pollsList } = usePollsGet({});
     const { polls, newPollId } = useMemo(() => {
         const sortedPolls = pollsList?.items
             ?.slice()
@@ -116,8 +112,8 @@ export default function AdminPollsCreateModal({
             newPollId: `p${(maxId + 1).toString().padStart(4, "0")}`,
         };
     }, [pollsList]);
-    const { createPoll, updatePoll, isLoading, error } = usePollsSet();
-    const { getSPGsData, getSPGIsLoading } = useSPG({
+    const { createPoll, updatePoll, isLoading } = usePollsSet();
+    const { getSPGsData } = useSPG({
         getSPGsInput: {},
     });
 
@@ -127,7 +123,7 @@ export default function AdminPollsCreateModal({
         },
     });
 
-    const { artists, isLoading: isLoadingArtists } = useArtistsGet({});
+    const { artists } = useArtistsGet({});
 
     // Form data state
     const [formData, setFormData] = useState<Partial<CreatePollInput>>({
