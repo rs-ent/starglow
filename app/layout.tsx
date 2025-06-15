@@ -14,22 +14,26 @@ import Navigation from "@/components/navigation/Navigation";
 export const metadata: Metadata = {
     // 기본 메타데이터
     title: {
-        default: "Starglow: RWA K-POP FanFi",
+        default:
+            "Starglow: The Next-Gen Web3 Platform for K-POP & Fan Engagement",
         template: "%s | Starglow",
     },
-    description: "✨ Glow and Grow Together with Your Star! 🌟",
+    description:
+        "Starglow is a next-generation Web3 entertainment platform revolutionizing K-POP fan engagement and artist valuation through blockchain, NFTs, and real-world asset integration. Join a global community where fans and artists grow together, transparently and securely.",
     keywords: [
         "Web3",
         "Blockchain",
         "NFT",
-        "Story Protocol",
-        "Decentralized",
-        "Starglow",
-        "RWA",
         "K-POP",
+        "Fan Engagement",
         "FanFi",
+        "Real World Assets",
+        "Starglow",
         "DAO",
         "DeFi",
+        "Artist Valuation",
+        "Music Platform",
+        "Entertainment",
     ],
     authors: [{ name: "Starglow Team" }],
     creator: "Starglow",
@@ -46,14 +50,15 @@ export const metadata: Metadata = {
         locale: "en_US",
         url: "https://starglow.io",
         siteName: "Starglow",
-        title: "Starglow: RWA K-POP FanFi",
-        description: "✨ Glow and Grow Together with Your Star! 🌟",
+        title: "Starglow: The Next-Gen Web3 Platform for K-POP & Fan Engagement",
+        description:
+            "Starglow is a next-generation Web3 entertainment platform for K-POP, connecting fans and artists through blockchain, NFTs, and real-world assets.",
         images: [
             {
                 url: "https://starglow.io/default-og-image.png",
                 width: 1087,
                 height: 614,
-                alt: "Starglow - RWA K-POP FanFi",
+                alt: "Starglow - Web3 K-POP Platform",
             },
         ],
     },
@@ -61,8 +66,9 @@ export const metadata: Metadata = {
     // Twitter
     twitter: {
         card: "summary_large_image",
-        title: "Starglow: RWA K-POP FanFi",
-        description: "✨ Glow and Grow Together with Your Star! 🌟",
+        title: "Starglow: The Next-Gen Web3 Platform for K-POP & Fan Engagement",
+        description:
+            "Revolutionizing K-POP fan engagement and artist valuation with blockchain, NFTs, and real-world assets. Join Starglow today.",
         creator: "@starglowP",
         images: ["https://starglow.io/default-og-image.png"],
         site: "@starglowP",
@@ -71,6 +77,11 @@ export const metadata: Metadata = {
     // Icons
     icons: {
         icon: [
+            {
+                url: "/favicon.ico",
+                sizes: "32x32",
+                type: "image/x-icon",
+            },
             {
                 url: "/favicon-gradient.svg",
                 sizes: "16x16",
