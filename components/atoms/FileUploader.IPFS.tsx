@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMetadata } from "@/app/story/metadata/hooks";
+import { uploadMediaOutput } from "@/app/story/metadata/actions";
 import { ipfsType } from "@/app/story/metadata/actions";
 import FileUploader, { FileData } from "./FileUploader";
 import { SiIpfs } from "react-icons/si";
@@ -11,9 +12,7 @@ import Image from "next/image";
 interface FileUploaderIPFSProps {
     userId: string;
     type: ipfsType;
-    onComplete?: (
-        results: { cid: string; url: string; type: ipfsType }[]
-    ) => void;
+    onComplete?: (results: uploadMediaOutput[]) => void;
     multiple?: boolean;
     className?: string;
 }
@@ -44,7 +43,7 @@ export default function FileUploaderIPFS({
                     previewSizeBytes: fileData.sizeBytes,
                     type,
                 });
-                return result;
+                return result as uploadMediaOutput;
             })
         );
         onComplete?.(results);

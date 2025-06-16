@@ -7,16 +7,11 @@ import { Artist } from "@prisma/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState, useCallback, useEffect } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import FileUploader from "@/components/atoms/FileUploader";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/tailwind";
 import { useSPG } from "@/app/story/spg/hooks";
-import { SPG } from "@/app/story/spg/actions";
-import CollectionCard from "@/components/nfts/NFTs.CollectionCard";
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Plus } from "lucide-react";
 
 interface AdminArtistsCreateProps {
     mode: "create" | "update";

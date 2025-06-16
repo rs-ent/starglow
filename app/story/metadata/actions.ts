@@ -258,6 +258,17 @@ export interface UploadMediaInput {
     type: ipfsType;
 }
 
+export interface uploadMediaOutput {
+    cid: string;
+    url: string;
+    type: ipfsType;
+    previewUrl?: string;
+    previewWidth?: number;
+    previewHeight?: number;
+    previewMimeType?: string;
+    previewSizeBytes?: number;
+}
+
 export async function uploadMedia(input: UploadMediaInput) {
     if (!SPACE_PROOF) {
         throw new Error("Web3.Storage 인증 정보가 누락되었습니다.");
@@ -297,7 +308,16 @@ export async function uploadMedia(input: UploadMediaInput) {
         },
     });
 
-    return { cid, url, type: input.type };
+    return {
+        cid,
+        url,
+        type: input.type,
+        previewUrl: input.previewUrl,
+        previewWidth: input.previewWidth,
+        previewHeight: input.previewHeight,
+        previewMimeType: input.previewMimeType,
+        previewSizeBytes: input.previewSizeBytes,
+    } as uploadMediaOutput;
 }
 
 export interface createTokenURIsMetadataInput {

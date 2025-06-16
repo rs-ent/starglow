@@ -11,17 +11,13 @@ import {
     StoryConfig,
     SupportedChainIds,
 } from "@story-protocol/core-sdk";
-import {
-    http,
-    formatUnits,
-    createPublicClient,
-    createWalletClient,
-    Hex,
-} from "viem";
-import { privateKeyToAccount, Address, Account } from "viem/accounts";
-import { getChain } from "@/app/actions/blockchain";
+import { http, formatUnits, Hex, Address } from "viem";
 import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
-import { fetchPublicClient, fetchWalletClient } from "@/app/story/client";
+import {
+    fetchPublicClient,
+    fetchWalletClient,
+    fetchStoryClient,
+} from "@/app/story/client";
 
 export interface registerEscrowWalletInput {
     address: string;
@@ -183,21 +179,19 @@ export async function fetchEscrowWalletsBalance(
             return [];
         }
 
-        const config: StoryConfig = {
-            account: "0x0000000000000000000000000000000000000000",
-            transport: http(network.rpcUrl as `http${string}`),
-            chainId: network.name.toLowerCase() as SupportedChainIds,
-        };
-
-        const storyClient = StoryClient.newClient(config);
+        const publicClient = await fetchPublicClient({
+            network: network,
+        });
 
         const balances = await Promise.all(
             addresses.map(async (address) => {
-                const balance = await fetchEscrowWalletBalance({
-                    storyClient,
-                    address,
+                const balance = await publicClient.getBalance({
+                    address: address as Address,
                 });
-                return { address, balance };
+
+                const formattedBalance = formatUnits(balance, 18);
+
+                return { address, balance: formattedBalance };
             })
         );
 

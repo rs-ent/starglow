@@ -26,7 +26,6 @@ const ADMIN_KEY = process.env.WEB3STORAGE_ADMIN_KEY;
 export const StoryClientCache = new Map<string, StoryClient>();
 
 export interface fetchStoryClientInput {
-    userId: string;
     networkId?: string;
     network?: BlockchainNetwork;
     wallet?: EscrowWallet;
@@ -102,7 +101,6 @@ export async function fetchStoryClient(
     }
 
     const privateKey = await fetchEscrowWalletPrivateKey({
-        userId: input.userId,
         address: wallet.address,
     });
 
