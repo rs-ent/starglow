@@ -27,6 +27,18 @@ const UserRewards = dynamic(() => import("./User.Rewards"), {
     },
     ssr: false,
 });
+
+const UserYapping = dynamic(() => import("./User.Yapping"), {
+    loading: () => {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <PartialLoading text="Loading Yapping..." size="sm" />
+            </div>
+        );
+    },
+    ssr: false,
+});
+
 const UserSettings = dynamic(() => import("./User.Settings"), {
     loading: () => {
         return (
@@ -67,7 +79,7 @@ const UserClientSection = React.memo(function UserClientSection({
         } else if (selectedTab === "rewards") {
             return <UserRewards user={user} player={player} />;
         } else if (selectedTab === "yap") {
-            return <div>YAP</div>;
+            return <UserYapping user={user} player={player} />;
         } else if (selectedTab === "settings") {
             return <UserSettings user={user} player={player} />;
         }

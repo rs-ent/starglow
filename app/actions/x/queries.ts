@@ -12,6 +12,8 @@ import {
     GetTweetMetricsHistoryInput,
     getAuthorMetricsHistory,
     GetAuthorMetricsHistoryInput,
+    getAuthorByPlayerId,
+    GetAuthorByPlayerIdInput,
 } from "./actions";
 
 export function useLatestSyncDataQuery() {
@@ -65,5 +67,15 @@ export function useAuthorMetricsHistoryQuery(
         enabled: Boolean(input?.authorId),
         staleTime: 1000 * 60 * 3, // 3 minutes
         gcTime: 1000 * 60 * 3, // 3 minutes
+    });
+}
+
+export function useAuthorByPlayerIdQuery(input?: GetAuthorByPlayerIdInput) {
+    return useQuery({
+        queryKey: tweetKeys.authorByPlayerId(input?.playerId || ""),
+        queryFn: () => getAuthorByPlayerId(input),
+        enabled: Boolean(input?.playerId),
+        staleTime: 1000 * 60 * 60 * 24, // 24 hours
+        gcTime: 1000 * 60 * 60 * 24, // 24 hours
     });
 }

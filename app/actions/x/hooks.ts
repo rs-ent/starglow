@@ -8,15 +8,19 @@ import {
     useTweetAuthorsQuery,
     useTweetMetricsHistoryQuery,
     useAuthorMetricsHistoryQuery,
+    useAuthorByPlayerIdQuery,
 } from "./queries";
+import { useValidateRegisterXAuthorMutation } from "./mutations";
 import {
     GetTweetMetricsHistoryInput,
     GetAuthorMetricsHistoryInput,
+    GetAuthorByPlayerIdInput,
 } from "./actions";
 
 export interface useTweetsInput {
     getTweetMetricsHistoryInput?: GetTweetMetricsHistoryInput;
     getAuthorMetricsHistoryInput?: GetAuthorMetricsHistoryInput;
+    getAuthorByPlayerIdInput?: GetAuthorByPlayerIdInput;
 }
 
 export function useTweets(input?: useTweetsInput) {
@@ -55,6 +59,21 @@ export function useTweets(input?: useTweetsInput) {
         refetch: refetchAuthorMetricsHistory,
     } = useAuthorMetricsHistoryQuery(input?.getAuthorMetricsHistoryInput);
 
+    const {
+        data: authorByPlayerId,
+        isLoading: isAuthorByPlayerIdLoading,
+        error: authorByPlayerIdError,
+        refetch: refetchAuthorByPlayerId,
+    } = useAuthorByPlayerIdQuery(input?.getAuthorByPlayerIdInput);
+
+    const {
+        mutate: validateRegisterXAuthor,
+        mutateAsync: validateRegisterXAuthorAsync,
+        isPending: isValidateRegisterXAuthorPending,
+        isError: isValidateRegisterXAuthorError,
+        error: validateRegisterXAuthorError,
+    } = useValidateRegisterXAuthorMutation();
+
     return {
         latestSyncData,
         isLatestSyncDataLoading,
@@ -80,5 +99,16 @@ export function useTweets(input?: useTweetsInput) {
         isAuthorMetricsHistoryLoading,
         authorMetricsHistoryError,
         refetchAuthorMetricsHistory,
+
+        authorByPlayerId,
+        isAuthorByPlayerIdLoading,
+        authorByPlayerIdError,
+        refetchAuthorByPlayerId,
+
+        validateRegisterXAuthor,
+        validateRegisterXAuthorAsync,
+        isValidateRegisterXAuthorPending,
+        isValidateRegisterXAuthorError,
+        validateRegisterXAuthorError,
     };
 }

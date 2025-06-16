@@ -658,6 +658,8 @@ export const tweetKeys = {
         [...tweetKeys.all, "tweet-metrics-history", input] as const,
     authorMetricsHistory: (input: object) =>
         [...tweetKeys.all, "author-metrics-history", input] as const,
-    authorByUserId: (key: string) =>
-        [...tweetKeys.all, "author-by-user-id", key] as const,
+    authorByPlayerId: (key: string) =>
+        [...tweetKeys.all, "author-by-player-id", key] as const,
+    validateRegisterXAuthor: (input: object) =>
+        [...tweetKeys.all, "validate-register-x-author", input] as const,
 };
