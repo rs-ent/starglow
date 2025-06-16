@@ -48,7 +48,7 @@ export default function UserYapping({ user, player }: UserYappingProps) {
             )}
         >
             <h2 className="text-2xl font-bold">Yapping</h2>
-            {authorByPlayerId.authorId ? (
+            {authorByPlayerId.registered ? (
                 <button className="bg-blue-500 text-white px-4 py-2 rounded-md">
                     Start!
                 </button>

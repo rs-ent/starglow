@@ -9,8 +9,12 @@ import {
     TweetMetrics,
     TweetAuthorMetrics,
     TweetMedia,
-    Player,
 } from "@prisma/client";
+import crypto from "crypto";
+
+const BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN;
+const CLIENT_ID = process.env.TWITTER_CLIENT_ID;
+const CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;
 
 interface TweetMention {
     start: number;
@@ -38,13 +42,49 @@ interface TweetEntities {
 interface UserTweetData {
     id: string;
     text: string;
+    created_at?: string;
+    edit_history_tweet_ids?: string[];
     entities?: TweetEntities;
+    public_metrics?: {
+        retweet_count: number;
+        reply_count: number;
+        like_count: number;
+        quote_count: number;
+    };
 }
 
 interface XApiUserTweetsResponse {
-    data?: UserTweetData[];
+    data?: Array<{
+        id: string;
+        text: string;
+        created_at?: string;
+        entities?: TweetEntities;
+        public_metrics?: {
+            retweet_count: number;
+            reply_count: number;
+            like_count: number;
+            quote_count: number;
+        };
+    }>;
+    includes?: {
+        users?: Array<{
+            id: string;
+            username: string;
+            name: string;
+            profile_image_url: string | null;
+            public_metrics?: {
+                followers_count: number;
+                following_count: number;
+                tweet_count: number;
+                listed_count: number;
+            };
+            verified?: boolean;
+        }>;
+    };
     meta: {
         result_count: number;
+        newest_id?: string;
+        oldest_id?: string;
         next_token?: string;
         previous_token?: string;
     };
@@ -321,13 +361,6 @@ export async function validateRegisterXAuthor(
             };
         }
 
-        if (player.tweetAuthorId) {
-            return {
-                isValid: false,
-                message: "You already registered with X Account.",
-            };
-        }
-
         const existingAuthor = await prisma.tweetAuthor.findUnique({
             where: {
                 authorId: input.tweetAuthorId,
@@ -392,7 +425,12 @@ export async function checkIsActiveXAuthor(
         }
 
         const response = await fetch(
-            `https://api.twitter.com/2/users/${input.tweetAuthorId}/tweets?max_results=5&tweet.fields=entities&expansions=author_id&user.fields=username,name,profile_image_url,public_metrics,verified`,
+            `https://api.twitter.com/2/users/${input.tweetAuthorId}/tweets?` +
+                new URLSearchParams({
+                    max_results: "5",
+                    "tweet.fields": "entities",
+                    expansions: "author_id",
+                }),
             {
                 headers: {
                     Authorization: `Bearer ${BEARER_TOKEN}`,
@@ -417,6 +455,16 @@ export async function checkIsActiveXAuthor(
                     mention.username.toLowerCase() === "starglowp"
             )
         );
+
+        if (hasMentioned) {
+            await prisma.tweetAuthor.update({
+                where: { authorId: input.tweetAuthorId },
+                data: {
+                    validated: true,
+                    validatedAt: new Date(),
+                },
+            });
+        }
 
         return {
             isActive: hasMentioned,
@@ -444,7 +492,6 @@ export interface ConfirmRegisterXAuthorInput {
 
 export interface ConfirmRegisterXAuthorOutput {
     success: boolean;
-    data?: TweetAuthor;
     message?: string;
 }
 
@@ -460,52 +507,40 @@ export async function confirmRegisterXAuthor(
             };
         }
 
-        const player = await prisma.player.findUnique({
-            where: {
-                id: input.playerId,
-            },
-            include: {
-                tweetAuthor: true,
-            },
-        });
-
-        if (!player) {
-            return {
-                success: false,
-                message:
-                    "Player not found. Please try again. If the problem persists, please contact support.",
-            };
-        }
-
         const tweetAuthor = await prisma.tweetAuthor.findUnique({
-            where: {
-                authorId: input.tweetAuthorId,
-            },
-            include: {
-                player: true,
+            where: { authorId: input.tweetAuthorId },
+            select: {
+                validated: true,
+                validatedAt: true,
+                registered: true,
+                registeredAt: true,
             },
         });
 
         if (!tweetAuthor) {
             return {
                 success: false,
-                message:
-                    "X Account not found. Please try again. If the problem persists, please contact support.",
+                message: "X Account not found.",
             };
         }
 
-        const updatedPlayer = await prisma.player.update({
-            where: {
-                id: input.playerId,
-            },
+        if (!tweetAuthor.validated) {
+            return {
+                success: false,
+                message: "X Account is not validated. Please try again.",
+            };
+        }
+
+        await prisma.tweetAuthor.update({
+            where: { authorId: input.tweetAuthorId },
             data: {
-                tweetAuthorId: input.tweetAuthorId,
+                registered: true,
+                registeredAt: new Date(),
             },
         });
 
         return {
             success: true,
-            data: tweetAuthor,
         };
     } catch (error) {
         console.error("Error occurred while registering X author:", error);
@@ -513,6 +548,360 @@ export async function confirmRegisterXAuthor(
             success: false,
             message:
                 "Error occurred while registering X author. Please try again. If the problem persists, please contact support.",
+        };
+    }
+}
+
+export interface StartXAuthInput {
+    playerId: string;
+}
+
+export interface StartXAuthOutput {
+    authUrl: string;
+    state: string;
+    codeVerifier: string;
+}
+
+export async function startXAuth(
+    input: StartXAuthInput
+): Promise<StartXAuthOutput> {
+    try {
+        if (!CLIENT_ID) {
+            throw new Error("TWITTER_CLIENT_ID is not configured");
+        }
+
+        const codeVerifier = generateCodeVerifier();
+        const codeChallenge = await generateCodeChallenge(codeVerifier);
+        const state = crypto.randomUUID();
+
+        await prisma.xAuthSession.create({
+            data: {
+                state,
+                codeVerifier,
+                playerId: input.playerId,
+                expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+            },
+        });
+
+        const authUrl = new URL("https://twitter.com/i/oauth2/authorize");
+        authUrl.searchParams.set("response_type", "code");
+        authUrl.searchParams.set("client_id", CLIENT_ID);
+
+        const redirectUri = `${process.env.NEXTAUTH_URL}/api/integration/x/callback`;
+        console.log("Redirect URI:", redirectUri);
+
+        authUrl.searchParams.set("redirect_uri", redirectUri);
+
+        authUrl.searchParams.set(
+            "scope",
+            "tweet.read users.read offline.access"
+        );
+
+        authUrl.searchParams.set("state", state);
+        authUrl.searchParams.set("code_challenge", codeChallenge);
+        authUrl.searchParams.set("code_challenge_method", "S256");
+
+        console.log("Auth URL:", authUrl.toString());
+
+        return {
+            authUrl: authUrl.toString(),
+            state,
+            codeVerifier,
+        };
+    } catch (error) {
+        console.error("Error starting X auth:", error);
+        throw new Error("Failed to start X authentication");
+    }
+}
+
+export interface ExchangeXTokenInput {
+    code: string;
+    state: string;
+}
+
+export interface ExchangeXTokenOutput {
+    success: boolean;
+    authorId?: string;
+    userData?: any;
+    message?: string;
+}
+
+export async function exchangeXToken(
+    input: ExchangeXTokenInput
+): Promise<ExchangeXTokenOutput> {
+    try {
+        if (!CLIENT_ID || !CLIENT_SECRET) {
+            throw new Error("Twitter credentials not configured");
+        }
+
+        const authSession = await prisma.xAuthSession.findUnique({
+            where: { state: input.state },
+        });
+
+        if (!authSession || authSession.expiresAt < new Date()) {
+            return {
+                success: false,
+                message: "Invalid or expired authentication session",
+            };
+        }
+
+        const tokenResponse = await fetch(
+            "https://api.twitter.com/2/oauth2/token",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    Authorization: `Basic ${Buffer.from(
+                        `${CLIENT_ID}:${CLIENT_SECRET}`
+                    ).toString("base64")}`,
+                },
+                body: new URLSearchParams({
+                    code: input.code,
+                    grant_type: "authorization_code",
+                    client_id: CLIENT_ID,
+                    redirect_uri: `${process.env.NEXTAUTH_URL}/api/integration/x/callback`,
+                    code_verifier: authSession.codeVerifier,
+                }),
+            }
+        );
+
+        if (!tokenResponse.ok) {
+            const error = await tokenResponse.text();
+            console.error("Token exchange failed:", error);
+            return {
+                success: false,
+                message: "Failed to exchange authorization code",
+            };
+        }
+
+        const tokens = await tokenResponse.json();
+
+        const userResponse = await fetch(
+            "https://api.twitter.com/2/users/me?user.fields=username,name,profile_image_url,public_metrics,verified",
+            {
+                headers: {
+                    Authorization: `Bearer ${tokens.access_token}`,
+                },
+            }
+        );
+
+        if (!userResponse.ok) {
+            return {
+                success: false,
+                message: "Failed to fetch user data",
+            };
+        }
+
+        const userData = await userResponse.json();
+
+        await prisma.xAuthSession.delete({
+            where: { state: input.state },
+        });
+
+        await prisma.$transaction(async (tx) => {
+            // Player를 통해 User 찾기
+            const player = await tx.player.findUnique({
+                where: { id: authSession.playerId },
+                include: { user: true },
+            });
+
+            if (!player || !player.userId || !player.user) {
+                throw new Error("Player or associated user not found");
+            }
+
+            const alreadyConnectedPlayer = await tx.player.findUnique({
+                where: { tweetAuthorId: userData.data.id },
+            });
+
+            if (alreadyConnectedPlayer?.id !== player.id) {
+                throw new Error(
+                    "This Twitter account is already linked to another user"
+                );
+            }
+
+            // TweetAuthor 생성/업데이트
+            const tweetAuthor = await tx.tweetAuthor.upsert({
+                where: { authorId: userData.data.id },
+                create: {
+                    authorId: userData.data.id,
+                    name: userData.data.name,
+                    username: userData.data.username,
+                    profileImageUrl: userData.data.profile_image_url || null,
+                },
+                update: {
+                    name: userData.data.name,
+                    username: userData.data.username,
+                    profileImageUrl: userData.data.profile_image_url || null,
+                },
+            });
+
+            // TweetAuthorMetrics 생성
+            if (userData.data.public_metrics) {
+                await tx.tweetAuthorMetrics.create({
+                    data: {
+                        tweetAuthorId: userData.data.id,
+                        followersCount:
+                            userData.data.public_metrics.followers_count,
+                        followingCount:
+                            userData.data.public_metrics.following_count,
+                        tweetCount: userData.data.public_metrics.tweet_count,
+                        listedCount: userData.data.public_metrics.listed_count,
+                        verified: userData.data.verified || false,
+                        recordedAt: new Date(),
+                    },
+                });
+            }
+
+            // Player의 tweetAuthorId 업데이트
+            await tx.player.update({
+                where: { id: authSession.playerId },
+                data: {
+                    tweetAuthorId: tweetAuthor.authorId,
+                },
+            });
+
+            const existingAccount = await tx.account.findUnique({
+                where: {
+                    provider_providerAccountId: {
+                        provider: "twitter",
+                        providerAccountId: userData.data.id,
+                    },
+                },
+            });
+
+            console.log("existingAccount", existingAccount);
+
+            if (!existingAccount) {
+                // Account 생성
+                const newAccount = await tx.account.create({
+                    data: {
+                        userId: player.userId,
+                        type: "oauth",
+                        provider: "twitter",
+                        providerAccountId: userData.data.id,
+                        access_token: tokens.access_token,
+                        refresh_token: tokens.refresh_token || null,
+                        expires_at: tokens.expires_in
+                            ? Math.floor(Date.now() / 1000) + tokens.expires_in
+                            : null,
+                        token_type: tokens.token_type || null,
+                        scope: tokens.scope || null,
+                    },
+                });
+                console.log("newAccount", newAccount);
+            } else {
+                // 같은 유저의 기존 연동 정보 업데이트
+                await tx.account.update({
+                    where: {
+                        provider_providerAccountId: {
+                            provider: "twitter",
+                            providerAccountId: userData.data.id,
+                        },
+                    },
+                    data: {
+                        access_token: tokens.access_token,
+                        refresh_token: tokens.refresh_token || null,
+                        expires_at: tokens.expires_in
+                            ? Math.floor(Date.now() / 1000) + tokens.expires_in
+                            : null,
+                    },
+                });
+            }
+
+            // User의 lastLoginAt 업데이트 (선택사항)
+            await tx.user.update({
+                where: { id: player.userId },
+                data: {
+                    lastLoginAt: new Date(),
+                },
+            });
+        });
+
+        return {
+            success: true,
+            authorId: userData.data.id,
+            userData: userData.data,
+        };
+    } catch (error) {
+        console.error("Error exchanging X token:", error);
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to complete authentication",
+        };
+    }
+}
+
+function generateCodeVerifier(): string {
+    return crypto.randomBytes(32).toString("base64url");
+}
+
+async function generateCodeChallenge(verifier: string): Promise<string> {
+    const hash = crypto.createHash("sha256");
+    hash.update(verifier);
+    return hash.digest("base64url");
+}
+
+export async function cleanupExpiredXAuthSessions() {
+    try {
+        await prisma.xAuthSession.deleteMany({
+            where: {
+                expiresAt: {
+                    lt: new Date(),
+                },
+            },
+        });
+    } catch (error) {
+        console.error("Failed to cleanup expired sessions:", error);
+    }
+}
+
+export interface DisconnectXAccountInput {
+    playerId: string;
+}
+
+export async function disconnectXAccount(
+    input: DisconnectXAccountInput
+): Promise<{ success: boolean; message?: string }> {
+    try {
+        const player = await prisma.player.findUnique({
+            where: { id: input.playerId },
+            include: { user: true },
+        });
+
+        if (!player || !player.userId || !player.tweetAuthorId) {
+            return {
+                success: false,
+                message: "No X account connected",
+            };
+        }
+
+        await prisma.$transaction(async (tx) => {
+            // Player의 tweetAuthorId 제거
+            await tx.player.update({
+                where: { id: input.playerId },
+                data: {
+                    tweetAuthorId: null,
+                },
+            });
+
+            // Account 레코드 삭제
+            await tx.account.deleteMany({
+                where: {
+                    userId: player.userId || "",
+                    provider: "twitter",
+                },
+            });
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error disconnecting X account:", error);
+        return {
+            success: false,
+            message: "Failed to disconnect X account",
         };
     }
 }

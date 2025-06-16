@@ -662,4 +662,8 @@ export const tweetKeys = {
         [...tweetKeys.all, "author-by-player-id", key] as const,
     validateRegisterXAuthor: (input: object) =>
         [...tweetKeys.all, "validate-register-x-author", input] as const,
+    checkIsActiveXAuthor: (input: object) =>
+        [...tweetKeys.all, "check-is-active-x-author", input] as const,
+    confirmRegisterXAuthor: (input: object) =>
+        [...tweetKeys.all, "confirm-register-x-author", input] as const,
 };

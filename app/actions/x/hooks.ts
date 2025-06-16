@@ -10,7 +10,11 @@ import {
     useAuthorMetricsHistoryQuery,
     useAuthorByPlayerIdQuery,
 } from "./queries";
-import { useValidateRegisterXAuthorMutation } from "./mutations";
+import {
+    useValidateRegisterXAuthorMutation,
+    useCheckIsActiveXAuthorMutation,
+    useConfirmRegisterXAuthorMutation,
+} from "./mutations";
 import {
     GetTweetMetricsHistoryInput,
     GetAuthorMetricsHistoryInput,
@@ -74,6 +78,22 @@ export function useTweets(input?: useTweetsInput) {
         error: validateRegisterXAuthorError,
     } = useValidateRegisterXAuthorMutation();
 
+    const {
+        mutate: checkIsActiveXAuthor,
+        mutateAsync: checkIsActiveXAuthorAsync,
+        isPending: isCheckIsActiveXAuthorPending,
+        isError: isCheckIsActiveXAuthorError,
+        error: checkIsActiveXAuthorError,
+    } = useCheckIsActiveXAuthorMutation();
+
+    const {
+        mutate: confirmRegisterXAuthor,
+        mutateAsync: confirmRegisterXAuthorAsync,
+        isPending: isConfirmRegisterXAuthorPending,
+        isError: isConfirmRegisterXAuthorError,
+        error: confirmRegisterXAuthorError,
+    } = useConfirmRegisterXAuthorMutation();
+
     return {
         latestSyncData,
         isLatestSyncDataLoading,
@@ -110,5 +130,17 @@ export function useTweets(input?: useTweetsInput) {
         isValidateRegisterXAuthorPending,
         isValidateRegisterXAuthorError,
         validateRegisterXAuthorError,
+
+        checkIsActiveXAuthor,
+        checkIsActiveXAuthorAsync,
+        isCheckIsActiveXAuthorPending,
+        isCheckIsActiveXAuthorError,
+        checkIsActiveXAuthorError,
+
+        confirmRegisterXAuthor,
+        confirmRegisterXAuthorAsync,
+        isConfirmRegisterXAuthorPending,
+        isConfirmRegisterXAuthorError,
+        confirmRegisterXAuthorError,
     };
 }

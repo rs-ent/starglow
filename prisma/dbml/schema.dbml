@@ -1024,6 +1024,10 @@ Table TweetAuthor {
   name String
   username String
   profileImageUrl String
+  validated Boolean [not null, default: false]
+  validatedAt DateTime
+  registered Boolean [not null, default: false]
+  registeredAt DateTime
   tweets Tweet [not null]
   player Player
   metrics TweetAuthorMetrics [not null]
@@ -1127,6 +1131,15 @@ Table TweetResponse {
   requestTimestamp DateTime [default: `now()`, not null]
   processingTimeMs Int
   tweetSyncData TweetSyncData [not null]
+}
+
+Table XAuthSession {
+  id String [pk]
+  state String [unique, not null]
+  codeVerifier String [not null]
+  playerId String [not null]
+  expiresAt DateTime [not null]
+  createdAt DateTime [default: `now()`, not null]
 }
 
 Table StakeReward {

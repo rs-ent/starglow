@@ -1118,6 +1118,11 @@ model TweetAuthor {
   name String?
   username String?
   profileImageUrl String?
+
+  validated Boolean @default(false)
+  validatedAt DateTime?
+  registered Boolean @default(false)
+  registeredAt DateTime?
   
   tweets Tweet[]
   player Player? @relation("PlayerToTweetAuthor")
@@ -1249,6 +1254,17 @@ model TweetResponse {
 
   @@index([tweetSyncDataId])
   @@index([requestTimestamp])
+}
+
+model XAuthSession {
+  id           String   @id @default(cuid())
+  state        String   @unique
+  codeVerifier String
+  playerId     String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  
+  @@index([expiresAt])
 }
 
 enum PlayerAssetStatus {
