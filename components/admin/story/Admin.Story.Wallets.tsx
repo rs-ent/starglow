@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import {
     FaWallet,
     FaEye,
-    FaSync,
     FaKey,
     FaCheck,
     FaTimes,
@@ -17,6 +16,7 @@ import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
 import { useStoryNetwork } from "@/app/story/network/hooks";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/app/hooks/useToast";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
     const { data: session } = useSession();
@@ -26,11 +26,6 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
         isLoadingEscrowWallets,
         isErrorEscrowWallets,
         refetchEscrowWallets,
-
-        registeredEscrowWallets,
-        isLoadingRegisteredEscrowWallets,
-        isErrorRegisteredEscrowWallets,
-        refetchRegisteredEscrowWallets,
 
         setActiveEscrowWalletAsync,
         isPendingSetActiveEscrowWallet,
@@ -69,6 +64,16 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
     const [selectedNetworkId, setSelectedNetworkId] = useState<
         string | undefined
     >(undefined);
+    const [showAddWalletModal, setShowAddWalletModal] = useState(false);
+    const [addWalletMode, setAddWalletMode] = useState<"random" | "privateKey">(
+        "random"
+    );
+    const [inputPrivateKey, setInputPrivateKey] = useState("");
+    const [isAddWalletLoading, setIsAddWalletLoading] = useState(false);
+    const [createdWalletInfo, setCreatedWalletInfo] = useState<{
+        address: string;
+        privateKey: string;
+    } | null>(null);
 
     useEffect(() => {
         if (selectedNetworkId && escrowWallets && escrowWallets.length > 0) {
@@ -119,14 +124,15 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
 
     // 새 지갑 등록 (예시)
     const handleRegisterWallet = async () => {
-        setIsRegistering(true);
-        // 실제로는 privateKey, address 등 입력받아야 함
-        await registerEscrowWalletAsync({
-            address: "0x...",
-            privateKey: "...",
-        });
-        setIsRegistering(false);
-        refetchEscrowWallets();
+        setShowAddWalletModal(true);
+    };
+
+    const handleAddWalletModalClose = () => {
+        setShowAddWalletModal(false);
+        setAddWalletMode("random");
+        setInputPrivateKey("");
+        setCreatedWalletInfo(null);
+        setIsAddWalletLoading(false);
     };
 
     const handleFetchBalance = async (address: string) => {
@@ -158,6 +164,49 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
 
     const handleBack = () => {
         onBack?.();
+    };
+
+    const handleAddWallet = async () => {
+        setIsAddWalletLoading(true);
+        try {
+            // 프라이빗키 입력 등록 - viem 사용
+            let pk = inputPrivateKey.trim();
+            if (!pk.startsWith("0x")) pk = `0x${pk}`;
+
+            let account;
+            try {
+                account = privateKeyToAccount(pk as `0x${string}`);
+            } catch (e) {
+                toast.error("유효하지 않은 프라이빗키입니다.");
+                setIsAddWalletLoading(false);
+                return;
+            }
+
+            const address = account.address;
+            const privateKey = pk;
+            const result = await registerEscrowWalletAsync({
+                address,
+                privateKey,
+            });
+            if (typeof result === "object" && result && "address" in result) {
+                toast.success("에스크로 지갑이 등록되었습니다.");
+                refetchEscrowWallets();
+                handleAddWalletModalClose();
+            } else if (
+                typeof result === "string" &&
+                result.includes("unique")
+            ) {
+                toast.error("이미 등록된 지갑입니다.");
+            } else if (typeof result === "string") {
+                toast.error(result);
+            } else {
+                toast.error("지갑 등록에 실패했습니다.");
+            }
+        } catch (err) {
+            toast.error("지갑 등록 중 오류가 발생했습니다.");
+        } finally {
+            setIsAddWalletLoading(false);
+        }
     };
 
     return (
@@ -371,6 +420,151 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
                     </div>
                 )}
             </div>
+
+            {/* Add Wallet Modal */}
+            {showAddWalletModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+                    <div className="bg-[#23243a] rounded-2xl shadow-2xl p-8 w-full max-w-md relative">
+                        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                            <FaWallet className="text-purple-400" />
+                            에스크로 지갑 추가
+                        </h3>
+                        {createdWalletInfo ? (
+                            <div className="mb-6">
+                                <div className="mb-4 text-blue-200">
+                                    <b>새 지갑이 생성되었습니다!</b>
+                                    <br />
+                                    아래 프라이빗키와 주소를 반드시 안전하게
+                                    백업하세요.
+                                    <br />
+                                    <span className="text-red-400">
+                                        (분실 시 복구 불가)
+                                    </span>
+                                </div>
+                                <div className="mb-2">
+                                    <label className="block text-blue-200 mb-1 font-semibold">
+                                        지갑 주소
+                                    </label>
+                                    <div
+                                        className="font-mono bg-[#181c2b] text-blue-100 rounded px-3 py-2 break-all cursor-pointer"
+                                        onClick={() =>
+                                            copyToClipboard(
+                                                createdWalletInfo.address,
+                                                "지갑 주소가"
+                                            )
+                                        }
+                                    >
+                                        {createdWalletInfo.address}
+                                    </div>
+                                </div>
+                                <div className="mb-2">
+                                    <label className="block text-blue-200 mb-1 font-semibold">
+                                        프라이빗키
+                                    </label>
+                                    <div
+                                        className="font-mono bg-[#181c2b] text-blue-100 rounded px-3 py-2 break-all cursor-pointer"
+                                        onClick={() =>
+                                            copyToClipboard(
+                                                createdWalletInfo.privateKey,
+                                                "프라이빗키가"
+                                            )
+                                        }
+                                    >
+                                        {createdWalletInfo.privateKey}
+                                    </div>
+                                </div>
+                                <div className="text-xs text-blue-400 mt-2">
+                                    프라이빗키는 절대 외부에 노출되지 않도록
+                                    주의하세요.
+                                </div>
+                                <div className="flex justify-end gap-3 mt-8">
+                                    <button
+                                        className="px-4 py-2 rounded bg-blue-700 text-white font-semibold hover:bg-blue-800 transition"
+                                        onClick={handleAddWalletModalClose}
+                                    >
+                                        확인
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex gap-4 mb-6">
+                                    <button
+                                        className={`px-4 py-2 rounded-lg font-semibold transition-all duration-150 ${
+                                            addWalletMode === "privateKey"
+                                                ? "bg-blue-700 text-white"
+                                                : "bg-gray-700 text-blue-200"
+                                        }`}
+                                        onClick={() =>
+                                            setAddWalletMode("privateKey")
+                                        }
+                                        disabled={isAddWalletLoading}
+                                    >
+                                        프라이빗키로 등록
+                                    </button>
+                                </div>
+                                {addWalletMode === "random" ? (
+                                    <div className="mb-6 text-blue-200">
+                                        <p>
+                                            새로운 랜덤 에스크로 지갑을
+                                            생성합니다.
+                                            <br />
+                                            생성된 프라이빗키는 반드시 안전하게
+                                            보관하세요.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="mb-6">
+                                        <label className="block text-blue-200 mb-2 font-semibold">
+                                            프라이빗키 입력
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="w-full px-3 py-2 rounded bg-[#181c2b] text-white border border-blue-800 focus:outline-none font-mono"
+                                            placeholder="0x..."
+                                            value={inputPrivateKey}
+                                            onChange={(e) =>
+                                                setInputPrivateKey(
+                                                    e.target.value
+                                                )
+                                            }
+                                            disabled={isAddWalletLoading}
+                                        />
+                                        <p className="text-xs text-blue-400 mt-2">
+                                            프라이빗키는 절대 외부에 노출되지
+                                            않도록 주의하세요.
+                                        </p>
+                                    </div>
+                                )}
+                                <div className="flex justify-end gap-3 mt-8">
+                                    <button
+                                        className="px-4 py-2 rounded bg-gray-700 text-blue-200 hover:bg-gray-600 transition"
+                                        onClick={handleAddWalletModalClose}
+                                        disabled={isAddWalletLoading}
+                                    >
+                                        취소
+                                    </button>
+                                    <button
+                                        className="px-4 py-2 rounded bg-blue-700 text-white font-semibold hover:bg-blue-800 transition"
+                                        disabled={
+                                            isAddWalletLoading ||
+                                            (addWalletMode === "privateKey" &&
+                                                !inputPrivateKey)
+                                        }
+                                        onClick={handleAddWallet}
+                                    >
+                                        {isAddWalletLoading
+                                            ? "처리중..."
+                                            : addWalletMode === "random"
+                                            ? "지갑 생성"
+                                            : "등록하기"}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

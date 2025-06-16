@@ -14,15 +14,15 @@ Table User {
   active Boolean [not null, default: true]
   createdAt DateTime [default: `now()`, not null]
   lastLoginAt DateTime
+  provider String
+  telegramId String [unique]
   accounts Account [not null]
+  collectionParticipants CollectionParticipant [not null]
   loginAttempts LoginAttemptLog [not null]
   payments Payment [not null]
   player Player
   sessions Session [not null]
   wallets Wallet [not null]
-  provider String
-  telegramId String [unique]
-  collectionParticipants CollectionParticipant [not null]
 }
 
 Table Account {
@@ -94,22 +94,22 @@ Table Player {
   email String
   referralCount Int [not null, default: 0]
   referredBy String
-  referrer Player
-  referredPlayers Player [not null]
   referredMethod String
   referredAt DateTime [default: `now()`, not null]
   createdAt DateTime [default: `now()`, not null]
   lastConnectedAt DateTime [not null]
-  user User
+  referralCode String [unique, not null]
+  artistFeedReactions ArtistFeedReaction [not null]
+  referrer Player
+  referredPlayers Player [not null]
   tweetAuthor TweetAuthor
+  user User
   playerAssets PlayerAsset [not null]
   pollLogs PollLog [not null]
   questLogs QuestLog [not null]
-  rewardLogs RewardsLog [not null]
-  artistFeedReactions ArtistFeedReaction [not null]
   referredPlayerLogs ReferralLog [not null]
   referrerPlayerLogs ReferralLog [not null]
-  referralCode String [unique, not null]
+  rewardLogs RewardsLog [not null]
 
   indexes {
     (userId, telegramId) [unique]
@@ -128,11 +128,11 @@ Table PlayerOldData {
 Table ReferralLog {
   id String [pk]
   referredPlayerId String [not null]
-  referredPlayer Player [not null]
   referrerPlayerId String [not null]
-  referrerPlayer Player [not null]
   method String
   createdAt DateTime [default: `now()`, not null]
+  referredPlayer Player [not null]
+  referrerPlayer Player [not null]
 
   indexes {
     (referredPlayerId, referrerPlayerId) [unique]
@@ -144,10 +144,10 @@ Table PlayerAsset {
   playerId String [not null]
   assetId String [not null]
   balance Int [not null, default: 0]
-  player Player [not null]
-  asset Asset [not null]
   status PlayerAssetStatus [not null, default: 'ACTIVE']
   updatedAt DateTime [not null]
+  asset Asset [not null]
+  player Player [not null]
 
   indexes {
     (playerId, assetId) [unique]
@@ -166,7 +166,6 @@ Table Quest {
   youtubeUrl String
   rewardAssetId String
   rewardAmount Int
-  rewardAsset Asset
   startDate DateTime
   endDate DateTime
   needToken Boolean [not null, default: false]
@@ -184,10 +183,11 @@ Table Quest {
   order Int [default: 0]
   effects String
   type String
-  questLogs QuestLog [not null]
-  rewardLogs RewardsLog [not null]
   artistId String
   artist Artist
+  rewardAsset Asset
+  questLogs QuestLog [not null]
+  rewardLogs RewardsLog [not null]
 }
 
 Table QuestLog {
@@ -198,7 +198,6 @@ Table QuestLog {
   completedAt DateTime
   rewardAssetId String
   rewardAmount Int
-  rewardAsset Asset
   repeatCount Int [not null, default: 1]
   completedDates DateTime[] [not null]
   reclaimable Boolean [not null, default: false]
@@ -209,6 +208,7 @@ Table QuestLog {
   claimedAt DateTime
   player Player [not null]
   quest Quest [not null]
+  rewardAsset Asset
   rewardLogs RewardsLog [not null]
 
   indexes {
@@ -249,12 +249,10 @@ Table Poll {
   voteLimit Int
   bettingMode Boolean [not null, default: false]
   bettingAssetId String
-  bettingAsset Asset
   minimumBet Int [not null, default: 1000]
   maximumBet Int [not null, default: 10000]
   participationRewardAssetId String
   participationRewardAmount Int
-  participationRewardAsset Asset
   viewCount Int [not null, default: 0]
   uniqueVoters Int [not null, default: 0]
   totalVotes Int [not null, default: 0]
@@ -269,6 +267,8 @@ Table Poll {
   updatedAt DateTime [not null]
   artistId String
   artist Artist
+  bettingAsset Asset
+  participationRewardAsset Asset
   pollLogs PollLog [not null]
   rewardLogs RewardsLog [not null]
 }
@@ -287,10 +287,10 @@ Table PollLog {
   updatedAt DateTime [not null]
   rewardAssetId String
   rewardAmount Int
-  rewardAsset Asset
   record Json
   player Player [not null]
   poll Poll [not null]
+  rewardAsset Asset
   rewardLogs RewardsLog [not null]
 
   indexes {
@@ -311,8 +311,8 @@ Table RewardsLog {
   amount Int [not null]
   reason String
   createdAt DateTime [default: `now()`, not null]
-  player Player [not null]
   asset Asset
+  player Player [not null]
   poll Poll
   pollLog PollLog
   quest Quest
@@ -520,15 +520,15 @@ Table BlockchainNetwork {
   updatedAt DateTime [not null]
   multicallAddress String
   defaultNetwork Boolean [not null, default: false]
+  assets Asset [not null]
+  assetsContracts AssetsContract [not null]
   collectionContracts CollectionContract [not null]
   factoryContracts FactoryContract [not null]
   nfts NFT [not null]
-  assets Asset [not null]
-  assetsContracts AssetsContract [not null]
-  story_spg_contracts Story_spgContract [not null]
-  story_spg Story_spg [not null]
-  story_nfts Story_nft [not null]
   story_ipAssets Story_ipAsset [not null]
+  story_nfts Story_nft [not null]
+  story_spg Story_spg [not null]
+  story_spg_contracts Story_spgContract [not null]
   tbaContracts TBAContract [not null]
 }
 
@@ -540,11 +540,11 @@ Table AssetsContract {
   abi Json
   bytecode String
   networkId String [not null]
-  network BlockchainNetwork [not null]
-  assets Asset [not null]
   creatorAddress String
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  assets Asset [not null]
+  network BlockchainNetwork [not null]
 }
 
 Table Asset {
@@ -564,20 +564,20 @@ Table Asset {
   creatorAddress String
   assetId String
   assetsContractAddress String
-  assetsContract AssetsContract
   networkId String
-  network BlockchainNetwork
-  playerAssets PlayerAsset [not null]
-  rewardsLogs RewardsLog [not null]
-  pollBettingAssets Poll [not null]
-  pollParticipationRewardAssets Poll [not null]
-  questRewardAssets Quest [not null]
-  pollLogRewardAssets PollLog [not null]
-  questLogRewardAssets QuestLog [not null]
-  stakeRewards StakeReward [not null]
-  stakeRewardLogs StakeRewardLog [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  assetsContract AssetsContract
+  network BlockchainNetwork
+  playerAssets PlayerAsset [not null]
+  pollBettingAssets Poll [not null]
+  pollParticipationRewardAssets Poll [not null]
+  pollLogRewardAssets PollLog [not null]
+  questRewardAssets Quest [not null]
+  questLogRewardAssets QuestLog [not null]
+  rewardsLogs RewardsLog [not null]
+  stakeRewards StakeReward [not null]
+  stakeRewardLogs StakeRewardLog [not null]
 }
 
 Table AssetTransaction {
@@ -692,11 +692,11 @@ Table CollectionContract {
   artist Artist
   factory FactoryContract [not null]
   network BlockchainNetwork [not null]
+  participants CollectionParticipant [not null]
   metadata Metadata
-  stakeRewards StakeReward [not null]
   nfts NFT [not null]
   events NFTEvent [not null]
-  participants CollectionParticipant [not null]
+  stakeRewards StakeReward [not null]
 }
 
 Table NFT {
@@ -750,10 +750,10 @@ Table CollectionParticipant {
   id String [pk]
   type CollectionParticipantType [not null]
   userId String [not null]
-  user User [not null]
   collectionAddress String [not null]
-  collection CollectionContract [not null]
   createdAt DateTime [default: `now()`, not null]
+  collection CollectionContract [not null]
+  user User [not null]
 
   indexes {
     (userId, collectionAddress, type) [unique]
@@ -763,24 +763,21 @@ Table CollectionParticipant {
 Table StakeReward {
   id String [pk]
   assetId String [not null]
-  asset Asset [not null]
   amount Int [not null]
   stakeDuration BigInt [not null]
   collectionAddress String [not null]
-  collection CollectionContract [not null]
-  stakeRewardLogs StakeRewardLog [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  asset Asset [not null]
+  collection CollectionContract [not null]
+  stakeRewardLogs StakeRewardLog [not null]
 }
 
 Table StakeRewardLog {
   id String [pk]
   stakeRewardId String [not null]
-  stakeReward StakeReward [not null]
   nftId String [not null]
-  nft NFT [not null]
   assetId String [not null]
-  asset Asset [not null]
   amount Int [not null]
   isDistributed Boolean [not null, default: false]
   distributedAt DateTime
@@ -788,6 +785,9 @@ Table StakeRewardLog {
   claimedAt DateTime
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  asset Asset [not null]
+  nft NFT [not null]
+  stakeReward StakeReward [not null]
 }
 
 Table NFTEvent {
@@ -827,8 +827,8 @@ Table Artist {
   updatedAt DateTime [not null]
   feeds ArtistFeed [not null]
   members ArtistMember [not null]
-  collectionContracts CollectionContract [not null]
   messages ArtistMessage [not null]
+  collectionContracts CollectionContract [not null]
   polls Poll [not null]
   quests Quest [not null]
   story_spg Story_spg [not null]
@@ -877,25 +877,25 @@ Table ArtistMessage {
 Table ArtistFeed {
   id String [pk]
   artistId String [not null]
-  artist Artist [not null]
   imageUrls String[] [not null]
   videoUrls String[] [not null]
   text String
-  reactions ArtistFeedReaction [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  artist Artist [not null]
+  reactions ArtistFeedReaction [not null]
 }
 
 Table ArtistFeedReaction {
   id String [pk]
   artistFeedId String [not null]
-  artistFeed ArtistFeed [not null]
   playerId String [not null]
-  player Player [not null]
   reaction String [not null]
   comment String
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  artistFeed ArtistFeed [not null]
+  player Player [not null]
 
   indexes {
     (artistFeedId, playerId, reaction) [unique]
@@ -909,10 +909,10 @@ Table Story_spgContract {
   bytecode String
   txHash String
   networkId String [not null]
-  network BlockchainNetwork [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   story_spg Story_spg [not null]
+  network BlockchainNetwork [not null]
 }
 
 Table TBAContract {
@@ -926,10 +926,10 @@ Table TBAContract {
   txHash String
   deployedBy String
   networkId String [not null]
-  network BlockchainNetwork [not null]
   isActive Boolean [not null, default: true]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  network BlockchainNetwork [not null]
 
   indexes {
     (networkId, type, address) [unique]
@@ -948,12 +948,9 @@ Table Story_spg {
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   contractAddress String
-  contract Story_spgContract
   networkId String [not null]
-  network BlockchainNetwork [not null]
   ownerAddress String [not null]
   artistId String
-  artist Artist
   tbaRegistryAddress String
   tbaImplementationAddress String
   isListed Boolean [not null, default: false]
@@ -971,6 +968,9 @@ Table Story_spg {
   backgroundColor String
   foregroundColor String
   story_nfts Story_nft [not null]
+  artist Artist
+  contract Story_spgContract
+  network BlockchainNetwork [not null]
 }
 
 Table Story_nft {
@@ -978,16 +978,16 @@ Table Story_nft {
   tokenId String [not null]
   ownerAddress String [not null]
   networkId String [not null]
-  network BlockchainNetwork [not null]
   tokenURI String [not null]
   tokenURICid String [not null]
   mintTxHash String
   contractAddress String [not null]
-  spgCollection Story_spg
   ipId String
-  ipAsset Story_ipAsset
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  spgCollection Story_spg [not null]
+  ipAsset Story_ipAsset
+  network BlockchainNetwork [not null]
 
   indexes {
     (contractAddress, tokenId) [unique]
@@ -1008,10 +1008,10 @@ Table Story_ipAsset {
   licenseTermsId String
   licenseTermsURI String
   networkId String [not null]
-  network BlockchainNetwork [not null]
-  nfts Story_nft [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  network BlockchainNetwork [not null]
+  nfts Story_nft [not null]
 
   indexes {
     (chainId, tokenContract, tokenId) [unique]
@@ -1027,6 +1027,9 @@ Table TweetAuthor {
   tweets Tweet [not null]
   player Player
   metrics TweetAuthorMetrics [not null]
+  isBlacklisted Boolean [not null, default: false]
+  blacklistedAt DateTime
+  blacklistData TweetAuthorBlacklist
 }
 
 Table TweetAuthorMetrics {
@@ -1043,6 +1046,19 @@ Table TweetAuthorMetrics {
   updatedAt DateTime [not null]
 }
 
+Table TweetAuthorBlacklist {
+  id String [pk]
+  authorId String [unique, not null]
+  author TweetAuthor [not null]
+  reason String
+  tweetCount Int [not null, default: 0]
+  periodStart DateTime
+  periodEnd DateTime
+  isActive Boolean [not null, default: true]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
 Table Tweet {
   id String [pk]
   tweetId String [unique, not null]
@@ -1051,31 +1067,30 @@ Table Tweet {
   authorUsername String
   authorProfileImageUrl String
   authorId String [not null]
-  author TweetAuthor [not null]
   isDeleted Boolean [not null, default: false]
   deletedAt DateTime
-  metricsHistory TweetMetrics [not null]
-  media TweetMedia [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  author TweetAuthor [not null]
+  media TweetMedia [not null]
+  metricsHistory TweetMetrics [not null]
 }
 
 Table TweetMetrics {
   id String [pk]
   tweetId String [not null]
-  tweet Tweet [not null]
   replyCount Int [not null]
   retweetCount Int [not null]
   likeCount Int [not null]
   quoteCount Int [not null]
   recordedAt DateTime [default: `now()`, not null]
+  tweet Tweet [not null]
 }
 
 Table TweetMedia {
   id String [pk]
   mediaKey String [unique, not null]
   tweetId String [not null]
-  tweet Tweet [not null]
   type String [not null]
   url String
   previewImageUrl String
@@ -1084,6 +1099,7 @@ Table TweetMedia {
   durationMs Int
   altText String
   createdAt DateTime [default: `now()`, not null]
+  tweet Tweet [not null]
 }
 
 Table TweetSyncData {
@@ -1224,43 +1240,43 @@ Ref: Wallet.userId > User.id [delete: Cascade]
 
 Ref: Player.referredBy - Player.id
 
-Ref: Player.userId - User.id [delete: Cascade]
-
 Ref: Player.tweetAuthorId - TweetAuthor.authorId
+
+Ref: Player.userId - User.id [delete: Cascade]
 
 Ref: ReferralLog.referredPlayerId > Player.id [delete: Cascade]
 
 Ref: ReferralLog.referrerPlayerId > Player.id [delete: Cascade]
 
-Ref: PlayerAsset.playerId > Player.id [delete: Cascade]
-
 Ref: PlayerAsset.assetId > Asset.id [delete: Cascade]
 
-Ref: Quest.rewardAssetId > Asset.id
+Ref: PlayerAsset.playerId > Player.id [delete: Cascade]
 
 Ref: Quest.artistId > Artist.id
 
-Ref: QuestLog.rewardAssetId > Asset.id
+Ref: Quest.rewardAssetId > Asset.id
 
 Ref: QuestLog.playerId > Player.id [delete: Cascade]
 
 Ref: QuestLog.questId > Quest.id
 
-Ref: Poll.bettingAssetId > Asset.id
-
-Ref: Poll.participationRewardAssetId > Asset.id
+Ref: QuestLog.rewardAssetId > Asset.id
 
 Ref: Poll.artistId > Artist.id
 
-Ref: PollLog.rewardAssetId > Asset.id
+Ref: Poll.bettingAssetId > Asset.id
+
+Ref: Poll.participationRewardAssetId > Asset.id
 
 Ref: PollLog.playerId > Player.id [delete: Cascade]
 
 Ref: PollLog.pollId > Poll.id
 
-Ref: RewardsLog.playerId > Player.id [delete: Cascade]
+Ref: PollLog.rewardAssetId > Asset.id
 
 Ref: RewardsLog.assetId > Asset.id
+
+Ref: RewardsLog.playerId > Player.id [delete: Cascade]
 
 Ref: RewardsLog.pollId > Poll.id
 
@@ -1302,19 +1318,19 @@ Ref: NFT.collectionId > CollectionContract.id
 
 Ref: NFT.networkId > BlockchainNetwork.id
 
-Ref: CollectionParticipant.userId > User.id
-
 Ref: CollectionParticipant.collectionAddress > CollectionContract.address
+
+Ref: CollectionParticipant.userId > User.id
 
 Ref: StakeReward.assetId > Asset.id
 
 Ref: StakeReward.collectionAddress > CollectionContract.address
 
-Ref: StakeRewardLog.stakeRewardId > StakeReward.id
+Ref: StakeRewardLog.assetId > Asset.id
 
 Ref: StakeRewardLog.nftId > NFT.id
 
-Ref: StakeRewardLog.assetId > Asset.id
+Ref: StakeRewardLog.stakeRewardId > StakeReward.id
 
 Ref: NFTEvent.collectionId > CollectionContract.id
 
@@ -1334,21 +1350,23 @@ Ref: Story_spgContract.networkId > BlockchainNetwork.id
 
 Ref: TBAContract.networkId > BlockchainNetwork.id
 
+Ref: Story_spg.artistId > Artist.id
+
 Ref: Story_spg.contractAddress > Story_spgContract.address
 
 Ref: Story_spg.networkId > BlockchainNetwork.id
-
-Ref: Story_spg.artistId > Artist.id
-
-Ref: Story_nft.networkId > BlockchainNetwork.id
 
 Ref: Story_nft.contractAddress > Story_spg.address
 
 Ref: Story_nft.ipId > Story_ipAsset.ipId
 
+Ref: Story_nft.networkId > BlockchainNetwork.id
+
 Ref: Story_ipAsset.networkId > BlockchainNetwork.id
 
 Ref: TweetAuthorMetrics.tweetAuthorId > TweetAuthor.authorId
+
+Ref: TweetAuthorBlacklist.authorId - TweetAuthor.authorId
 
 Ref: Tweet.authorId > TweetAuthor.authorId
 
