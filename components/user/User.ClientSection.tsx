@@ -87,7 +87,7 @@ const UserClientSection = React.memo(function UserClientSection({
 
     return (
         <>
-            <UserMenu onTabChange={handleTabChange} />
+            <UserMenu selectedTab={selectedTab} onTabChange={handleTabChange} />
             {renderContent}
         </>
     );

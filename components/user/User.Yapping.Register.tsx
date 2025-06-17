@@ -11,12 +11,14 @@ interface UserYappingRegisterProps {
     user: User | null;
     player: Player | null;
     tweetAuthor?: TweetAuthor | null;
+    onXAuthSuccess?: () => void;
 }
 
 export default function UserYappingRegister({
     user,
     player,
     tweetAuthor,
+    onXAuthSuccess,
 }: UserYappingRegisterProps) {
     const [tweetAuthorId, setTweetAuthorId] = useState<string | null>(null);
     const [isValidated, setIsValidated] = useState<boolean>(false);
@@ -201,6 +203,8 @@ https://starglow.io
 
             if (confirmResult.success) {
                 setIsConfirmed(true);
+                // 등록 완료 후 부모 컴포넌트의 데이터 새로고침
+                onXAuthSuccess?.();
             } else {
                 toast.error(
                     confirmResult.message ||
@@ -229,6 +233,8 @@ https://starglow.io
                             toast.success(
                                 `@${userData.username} account connected!`
                             );
+                            // X 계정 연결 후 부모 컴포넌트의 데이터 새로고침
+                            onXAuthSuccess?.();
                         }}
                         onError={(error) => {
                             toast.error(error);

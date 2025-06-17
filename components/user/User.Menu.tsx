@@ -1,6 +1,6 @@
 /// components/user/User.Menu.tsx
 
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback } from "react";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 
@@ -30,16 +30,20 @@ const menuItems = [
 ];
 
 interface UserMenuProps {
+    selectedTab: Tab;
     onTabChange: (tab: Tab) => void;
 }
 
-export default memo(function UserMenu({ onTabChange }: UserMenuProps) {
-    const [selectedTab, setSelectedTab] = useState<Tab>("mystar");
-
-    const handleTabChange = useCallback((tab: Tab) => {
-        setSelectedTab(tab);
-        onTabChange(tab);
-    }, []);
+export default memo(function UserMenu({
+    selectedTab,
+    onTabChange,
+}: UserMenuProps) {
+    const handleTabChange = useCallback(
+        (tab: Tab) => {
+            onTabChange(tab);
+        },
+        [onTabChange]
+    );
 
     return (
         <div>

@@ -82,13 +82,6 @@ export default function TwitterIntegration({
 
             if (isMobile) {
                 // 모바일: 현재 창에서 직접 이동
-                const currentUrl = new URL(window.location.href);
-                const redirectUrl = `${currentUrl.origin}${currentUrl.pathname}`;
-
-                // 상태 저장
-                sessionStorage.setItem("x_auth_redirect_url", redirectUrl);
-                sessionStorage.setItem("x_auth_player_id", playerId);
-
                 // X 인증 페이지로 직접 이동
                 window.location.href = authData.authUrl;
             } else {

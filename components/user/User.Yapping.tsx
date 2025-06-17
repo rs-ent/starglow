@@ -36,7 +36,14 @@ export default function UserYapping({ user, player }: UserYappingProps) {
     }
 
     if (!authorByPlayerId) {
-        return <UserYappingRegister user={user} player={player} />;
+        return (
+            <UserYappingRegister
+                user={user}
+                player={player}
+                tweetAuthor={null}
+                onXAuthSuccess={refetchAuthorByPlayerId}
+            />
+        );
     }
 
     return (
@@ -53,7 +60,12 @@ export default function UserYapping({ user, player }: UserYappingProps) {
                     Start!
                 </button>
             ) : (
-                <UserYappingRegister user={user} player={player} />
+                <UserYappingRegister
+                    user={user}
+                    player={player}
+                    tweetAuthor={authorByPlayerId}
+                    onXAuthSuccess={refetchAuthorByPlayerId}
+                />
             )}
         </div>
     );
