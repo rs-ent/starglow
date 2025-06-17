@@ -61,8 +61,7 @@ export default function InvitePage() {
 
         // 2. 인증 체크
         if (!authenticated || !user) {
-            // useRequireAuth가 자동으로 리다이렉트 처리를 해주지만
-            // 명시적으로 리다이렉트하려면:
+            // 인증 페이지로 리다이렉트 (requireAuth 훅이 자동으로 리다이렉트 처리하지만 명시적으로 리다이렉트트)
             router.push(
                 `/auth/signin?callbackUrl=${encodeURIComponent(currentUrl)}`
             );

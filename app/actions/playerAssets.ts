@@ -536,6 +536,19 @@ export async function setDefaultPlayerAsset(
 
     try {
         return await prisma.$transaction(async (tx) => {
+            // 먼저 Player가 존재하는지 확인
+            const player = await tx.player.findUnique({
+                where: { id: input.playerId },
+            });
+
+            if (!player) {
+                return {
+                    success: false,
+                    data: false,
+                    error: "Player not found",
+                };
+            }
+
             const defaultAssets = await tx.asset.findMany({
                 where: {
                     isDefault: true,
