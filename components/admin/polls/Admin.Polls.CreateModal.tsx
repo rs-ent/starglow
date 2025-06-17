@@ -233,7 +233,8 @@ export default function AdminPollsCreateModal({
 
     // Form validation
     const isFormValid = (): boolean => {
-        if (!formData.id || polls?.length === 0) {
+        if (!formData.id) {
+            toast.error("ID를 입력해주세요.");
             return false;
         }
 
@@ -314,6 +315,7 @@ export default function AdminPollsCreateModal({
             startLoading();
 
             if (!isFormValid()) {
+                console.log("Invalid form");
                 return;
             }
 

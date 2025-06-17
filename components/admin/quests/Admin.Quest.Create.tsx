@@ -197,8 +197,12 @@ export default function AdminQuestCreate({
             intervalSeconds
         );
 
+        const filteredUrls =
+            restFormData.urls?.filter((url) => url !== undefined) || [];
+
         const submitData: SubmitQuestData = {
             ...restFormData,
+            urls: filteredUrls,
             repeatableInterval: formData.repeatable ? interval : undefined,
             multiClaimInterval: formData.multiClaimable ? interval : undefined,
         };
@@ -1213,7 +1217,7 @@ function URLQuestForm({
                                                             []),
                                                     ];
                                                     newUrls[idx] =
-                                                        e.target.value;
+                                                        e.target.value || "";
                                                     onChange("urls", newUrls);
                                                 }}
                                             />
