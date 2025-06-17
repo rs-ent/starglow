@@ -30,11 +30,6 @@ function QuestsPublic({ player, questLogs, referralLogs }: QuestsPublicProps) {
         },
     });
 
-    console.log(
-        "Quest Public",
-        quests?.items?.filter((quest) => quest.isReferral)
-    );
-
     const [selectedType, setSelectedType] = useState<string>("All");
 
     // 퀘스트 타입 목록 메모이제이션

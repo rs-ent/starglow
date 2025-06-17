@@ -46,6 +46,8 @@ function PollsListCard({
     isSelected,
     fgColorFrom,
     fgColorTo,
+    bgColorFrom = "rgba(139,92,246,0.9)",
+    bgColorTo = "rgba(139,92,246,1)",
     bgColorAccentFrom = "rgba(109,40,217,1)",
     bgColorAccentTo = "rgba(109,40,217,0.45)",
 }: PollsCardProps) {
@@ -347,11 +349,6 @@ function PollsListCard({
                 animate: { opacity: 1, y: 0, transition: { duration: 0.4 } },
                 exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
             },
-            option: {
-                initial: { opacity: 0, x: -10 },
-                animate: { opacity: 1, x: 0, transition: { duration: 0.3 } },
-                hover: { scale: 1.02, transition: { duration: 0.2 } },
-            },
             submit: {
                 initial: { opacity: 0, y: 10 },
                 animate: { opacity: 1, y: 0, transition: { duration: 0.3 } },
@@ -402,13 +399,12 @@ function PollsListCard({
                                 "bg-[rgba(0,0,0,0.05)] inner-shadow",
                                 "transition-all duration-300",
                                 "hover:bg-[rgba(0,0,0,0.35)]",
-                                "hover:scale-105",
+                                "hover:scale-[1.02]",
                                 "hover:border-[rgba(255,255,255,0.4)]",
                                 "cursor-pointer",
                                 "relative overflow-hidden",
                                 "mx-auto"
                             )}
-                            variants={animations.option}
                             initial="initial"
                             animate="animate"
                             whileHover="hover"
@@ -441,7 +437,6 @@ function PollsListCard({
                                             "border-2 border-[rgba(255,255,255,0.3)]",
                                             "relative",
                                             "transition-all duration-300",
-                                            "transform hover:scale-105",
                                             "flex-shrink-0",
                                             getResponsiveClass(20).frameClass,
                                             selection?.optionId ===
@@ -519,7 +514,6 @@ function PollsListCard({
         fgColorTo,
         selection,
         handleOptionClick,
-        animations.option,
     ]);
 
     // 결과 차트 렌더링 함수
@@ -593,18 +587,20 @@ function PollsListCard({
                     poll.needTokenAddress && (
                         <div
                             className={cn(
-                                "flex flex-row justify-center items-center overflow-hidden mb-1",
+                                "flex flex-row justify-center items-center overflow-hidden mb-[10px]",
                                 getResponsiveClass(30).gapClass
                             )}
                         >
                             <button
                                 className={cn(
                                     "cursor-pointer",
-                                    "bg-[rgba(139,92,246,0.9)] hover:bg-[rgba(139,92,246,1)]",
                                     "rounded-full text-center",
                                     getResponsiveClass(30).frameClass,
                                     getResponsiveClass(15).textClass
                                 )}
+                                style={{
+                                    background: `linear-gradient(to bottom right, ${bgColorFrom}, ${bgColorTo})`,
+                                }}
                                 onClick={decreaseVoteAmount}
                                 aria-label="Decrease amount"
                             >
@@ -642,11 +638,13 @@ function PollsListCard({
                             <button
                                 className={cn(
                                     "cursor-pointer",
-                                    "bg-[rgba(139,92,246,0.9)] hover:bg-[rgba(139,92,246,1)]",
                                     "rounded-full text-center",
                                     getResponsiveClass(30).frameClass,
                                     getResponsiveClass(15).textClass
                                 )}
+                                style={{
+                                    background: `linear-gradient(to bottom right, ${bgColorFrom}, ${bgColorTo})`,
+                                }}
                                 onClick={increaseVoteAmount}
                                 aria-label="Increase amount"
                             >
@@ -659,12 +657,15 @@ function PollsListCard({
                     onClick={() => handleSubmit()}
                     className={cn(
                         "cursor-pointer",
-                        "w-full bg-[#8b5cf6]/90 hover:bg-[#8b5cf6] hover:glow-purple rounded-full font-main",
+                        "w-full hover:glow-purple rounded-full font-main",
                         "transition-all duration-300 ease-in",
                         "mb-[30px]",
                         getResponsiveClass(15).paddingClass,
                         getResponsiveClass(15).textClass
                     )}
+                    style={{
+                        background: `linear-gradient(to bottom right, ${bgColorFrom}, ${bgColorTo})`,
+                    }}
                 >
                     SUBMIT
                 </button>

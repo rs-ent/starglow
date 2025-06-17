@@ -71,20 +71,22 @@ function PollsContentsPrivate({
             data: {},
         };
 
-        if (!verifiedSPGs) return result;
+        if (!verifiedSPGs || !selectedArtist) return result;
 
-        verifiedSPGs.forEach((spg) => {
-            result.data[spg.address] = {
-                hasToken: spg.verifiedTokens.length > 0,
-                detail: spg.verifiedTokens.map((token) => ({
-                    tokenId: token.toString(),
-                    owner: spg.ownerAddress,
-                })),
-            };
-        });
+        verifiedSPGs
+            .filter((spg) => spg.artistId === selectedArtist.id)
+            .forEach((spg) => {
+                result.data[spg.address] = {
+                    hasToken: spg.verifiedTokens.length > 0,
+                    detail: spg.verifiedTokens.map((token) => ({
+                        tokenId: token.toString(),
+                        owner: spg.ownerAddress,
+                    })),
+                };
+            });
 
         return result;
-    }, [verifiedSPGs]);
+    }, [verifiedSPGs, selectedArtist]);
 
     // 선택된 아티스트 배경 스타일 메모이제이션
     const selectedBackgroundStyle = useMemo(() => {

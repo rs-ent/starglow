@@ -82,20 +82,24 @@ function QuestsPrivate({
             data: {},
         };
 
-        if (!verifiedSPGs) return result;
+        if (!verifiedSPGs || !selectedArtist) return result;
 
-        verifiedSPGs.forEach((spg) => {
-            result.data[spg.address] = {
-                hasToken: spg.verifiedTokens.length > 0,
-                detail: spg.verifiedTokens.map((token) => ({
-                    tokenId: token.toString(),
-                    owner: spg.ownerAddress,
-                })),
-            };
-        });
+        verifiedSPGs
+            .filter((spg) => spg.artistId === selectedArtist.id)
+            .forEach((spg) => {
+                result.data[spg.address] = {
+                    hasToken: spg.verifiedTokens.length > 0,
+                    detail: spg.verifiedTokens.map((token) => ({
+                        tokenId: token.toString(),
+                        owner: spg.ownerAddress,
+                    })),
+                };
+            });
+
+        console.log("Token Gating Result", result);
 
         return result;
-    }, [verifiedSPGs]);
+    }, [verifiedSPGs, selectedArtist]);
 
     return (
         <div className="w-full flex flex-col items-center justify-center">

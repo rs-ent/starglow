@@ -17,6 +17,7 @@ export type VerifiedSPG = Story_spg & {
 export async function getUserVerifiedSPGs(
     input?: GetUserVerifiedSPGsInput
 ): Promise<VerifiedSPG[]> {
+    console.log("input", input);
     if (!input || !input.userId) {
         return [];
     }
