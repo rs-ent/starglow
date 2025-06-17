@@ -62,33 +62,25 @@ export default function ArtistFeed({ artist, onSelectFeed }: ArtistFeedProps) {
 
     return (
         <>
-            <div
-                className={cn(
-                    "grid grid-cols-3 gap-1 w-full",
-                    getResponsiveClass(30).paddingClass
-                )}
-                style={{
-                    WebkitMaskImage:
-                        feeds.length <= 6
-                            ? "none"
-                            : "linear-gradient(to bottom, black 40%, transparent 80%)",
-                    maskImage:
-                        feeds.length <= 6
-                            ? "none"
-                            : "linear-gradient(to bottom, black 40%, transparent 80%)",
-                }}
-            >
-                {feeds.slice(0, 9).map((feed, index) => (
-                    <ArtistFeedCard
-                        key={feed.id}
-                        feed={feed}
-                        artist={artist}
-                        onClick={() => {
-                            onSelectFeed?.(feeds, index);
-                        }}
-                    />
-                ))}
-            </div>
+            {feeds.length > 0 && (
+                <div
+                    className={cn(
+                        "grid grid-cols-3 gap-1 w-full",
+                        getResponsiveClass(30).paddingClass
+                    )}
+                >
+                    {feeds.slice(0, 9).map((feed, index) => (
+                        <ArtistFeedCard
+                            key={feed.id}
+                            feed={feed}
+                            artist={artist}
+                            onClick={() => {
+                                onSelectFeed?.(feeds, index);
+                            }}
+                        />
+                    ))}
+                </div>
+            )}
         </>
     );
 }
