@@ -7,7 +7,6 @@ import { queryKeys } from "../queryKeys";
 import { getUserVerifiedSPGs, GetUserVerifiedSPGsInput } from "./actions";
 
 export function useGetUserVerifiedSPGsQuery(input?: GetUserVerifiedSPGsInput) {
-    console.log("[useGetUserVerifiedSPGsQuery] input", input);
     return useQuery({
         queryKey: queryKeys.tokenGating.verifiedSPGs(input?.userId ?? ""),
         queryFn: () => getUserVerifiedSPGs(input),
