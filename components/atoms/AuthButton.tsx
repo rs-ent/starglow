@@ -65,6 +65,7 @@ const AuthButton = memo(function AuthButton({
                 variant={variant}
                 className={cn(
                     status === "loading" ? "hidden" : "block",
+                    "flex flex-row",
                     className
                 )}
                 frameSize={frameSize}

@@ -59,19 +59,20 @@ function Button({
     const { gapClass } = getResponsiveClass(gapSize);
 
     // 이미지 렌더링 함수 - 코드 중복 제거
-    const renderImage = (position: 'left' | 'right') => {
+    const renderImage = (position: "left" | "right") => {
         if (!img) return null;
-        if ((position === 'left' && !imgLeft) || (position === 'right' && imgLeft)) return null;
+        if (
+            (position === "left" && !imgLeft) ||
+            (position === "right" && imgLeft)
+        )
+            return null;
 
         if (img.endsWith(".svg")) {
             return (
                 <img
                     src={img}
                     alt="Button Image"
-                    className={cn(
-                        frameClass,
-                        imgSpinning && "animate-spin"
-                    )}
+                    className={cn(frameClass, imgSpinning && "animate-spin")}
                     style={{ width: `${frameSize}px`, height: "auto" }}
                 />
             );
@@ -83,27 +84,23 @@ function Button({
                 alt="Button Image"
                 width={frameSize}
                 height={frameSize}
-                className={cn(
-                    frameClass,
-                    imgSpinning && "animate-spin"
-                )}
+                className={cn(frameClass, imgSpinning && "animate-spin")}
                 style={{ objectFit: "contain" }}
             />
         );
     };
 
     // 아이콘 렌더링 함수 - 코드 중복 제거
-    const renderIcon = (position: 'left' | 'right') => {
+    const renderIcon = (position: "left" | "right") => {
         if (!Icon) return null;
-        if ((position === 'left' && !iconLeft) || (position === 'right' && iconLeft)) return null;
+        if (
+            (position === "left" && !iconLeft) ||
+            (position === "right" && iconLeft)
+        )
+            return null;
 
         return (
-            <div
-                className={cn(
-                    frameClass,
-                    "flex items-center justify-center"
-                )}
-            >
+            <div className={cn(frameClass, "flex items-center justify-center")}>
                 <Icon
                     strokeWidth={2}
                     className={cn(
@@ -123,18 +120,18 @@ function Button({
                 variant={variant}
                 disabled={disabled}
                 className={cn(
-                    "flex items-center justify-center cursor-pointer transition-all",
+                    "flex flex-row items-center justify-center cursor-pointer transition-all whitespace-nowrap",
                     textClass,
                     paddingClass,
                     gapClass,
                     className
                 )}
             >
-                {renderIcon('left')}
-                {renderImage('left')}
+                {renderIcon("left")}
+                {renderImage("left")}
                 {children}
-                {renderIcon('right')}
-                {renderImage('right')}
+                {renderIcon("right")}
+                {renderImage("right")}
             </ShadcnButton>
 
             {beautify && (

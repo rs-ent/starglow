@@ -89,15 +89,16 @@ const DesktopMenu = memo(function DesktopMenu({
                     {name}
                 </LinkButton>
             ))}
-            <AuthButton
-                frameSize={15}
-                textSize={15}
-                paddingSize={10}
-                gapSize={10}
-                className="flex flex-row"
-            />
-            {player && (
+
+            {player ? (
                 <RewardPanel playerId={player.id} assetNames={["SGP"]} />
+            ) : (
+                <AuthButton
+                    frameSize={15}
+                    textSize={15}
+                    paddingSize={10}
+                    gapSize={10}
+                />
             )}
         </div>
     );
