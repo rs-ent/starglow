@@ -77,6 +77,17 @@ export default React.memo(function UserMyStarModalContentsCollections({
         return result;
     }, [verifiedSPGs]);
 
+    const backgroundStyle = useMemo(
+        () => ({
+            background: `linear-gradient(to bottom right, ${ArtistBG(
+                artist,
+                2,
+                100
+            )}, ${ArtistBG(artist, 3, 100)})`,
+        }),
+        [artist]
+    );
+
     return (
         <div className={cn("w-full flex flex-col items-center justify-center")}>
             <div
@@ -152,19 +163,7 @@ export default React.memo(function UserMyStarModalContentsCollections({
                         "mb-[30px]"
                     )}
                 >
-                    <div
-                        className={cn(
-                            "w-full rounded-[16px] gradient-border",
-                            "py-[10px]",
-                            "morp-glass-3",
-                            "bg-gradient-to-br from-[rgba(0,0,0,0.1)] to-[rgba(0,0,0,0.2)]"
-                        )}
-                    >
-                        <ArtistFeed
-                            artist={artist}
-                            onSelectFeed={onSelectFeed}
-                        />
-                    </div>
+                    <ArtistFeed artist={artist} onSelectFeed={onSelectFeed} />
                 </div>
 
                 <div
@@ -184,19 +183,30 @@ export default React.memo(function UserMyStarModalContentsCollections({
                     />
                 </div>
             </div>
-            <PollsContentsPrivateArtistList
-                artist={artist}
-                player={player}
-                tokenGating={tokenGatingResult}
-                pollLogs={pollLogs}
-                forceSlidesToShow={1}
-                bgColorFrom={ArtistBG(artist, 0, 100)}
-                bgColorTo={ArtistBG(artist, 1, 100)}
-                bgColorAccentFrom={ArtistBG(artist, 2, 100)}
-                bgColorAccentTo={ArtistBG(artist, 3, 100)}
-                fgColorFrom={ArtistBG(artist, 2, 10)}
-                fgColorTo={ArtistBG(artist, 1, 100)}
-            />
+            <div className="w-full h-full px-[20px] sm:px-[30px] md:px-[40px] lg:px-[50px]">
+                <div
+                    className={cn(
+                        "duration-1000 transition-all",
+                        "w-full rounded-3xl"
+                    )}
+                    style={backgroundStyle}
+                >
+                    <PollsContentsPrivateArtistList
+                        artist={artist}
+                        player={player}
+                        tokenGating={tokenGatingResult}
+                        pollLogs={pollLogs}
+                        forceSlidesToShow={1}
+                        bgColorFrom={ArtistBG(artist, 0, 100)}
+                        bgColorTo={ArtistBG(artist, 1, 100)}
+                        bgColorAccentFrom={ArtistBG(artist, 2, 100)}
+                        bgColorAccentTo={ArtistBG(artist, 3, 100)}
+                        fgColorFrom={ArtistBG(artist, 2, 10)}
+                        fgColorTo={ArtistBG(artist, 1, 100)}
+                        className="px-[1px]"
+                    />
+                </div>
+            </div>
         </div>
     );
 });

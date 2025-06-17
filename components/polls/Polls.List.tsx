@@ -232,7 +232,6 @@ function PollsList({
                               }
                             : tokenGating.data[poll.needTokenAddress];
 
-                    // 카드 스케일 계산 (중앙에 있는 카드가 더 크게 보이도록)
                     const isCenter = index === centerIndex;
                     const scale = isCenter ? 1.0 : 0.95;
                     const opacity = isCenter ? 1 : 0.85;
@@ -240,7 +239,7 @@ function PollsList({
                     return (
                         <motion.div
                             key={poll.id}
-                            className={cn("px-[8px]")}
+                            className={cn("px-[2px]")}
                             onClick={() => handleCardClick(index)}
                             initial={{ scale: 0.9, opacity: 0.7 }}
                             animate={{
@@ -276,7 +275,7 @@ function PollsList({
 
             {/* 인디케이터 (모바일에서만 표시) */}
             {isMobile && (
-                <div className="flex justify-center mt-2 gap-1">
+                <div className="flex justify-center mt-1 pb-[10px] gap-1">
                     {polls.map((_, index) => (
                         <button
                             key={index}

@@ -610,7 +610,7 @@ function QuestsButton({
                                                 new Date().getTime() &&
                                             !isCountdownComplete && (
                                                 <Countdown
-                                                    size={10}
+                                                    size={15}
                                                     endDate={waitDate}
                                                     className="font-digital text-[rgba(255,255,255,0.8)]"
                                                     onComplete={() =>
@@ -627,7 +627,14 @@ function QuestsButton({
                                 {!quest.isReferral && quest.multiClaimable && (
                                     <div className="flex flex-col items-end text-right gap-[2px]">
                                         {Number(quest.multiClaimLimit) > 0 && (
-                                            <div>
+                                            <div
+                                                className={cn(
+                                                    getResponsiveClass(
+                                                        infoTextSize
+                                                    ).textClass,
+                                                    "opacity-85"
+                                                )}
+                                            >
                                                 {questLog?.repeatCount || 0}/
                                                 {quest.multiClaimLimit}
                                             </div>
@@ -654,7 +661,7 @@ function QuestsButton({
                                                 new Date().getTime() &&
                                             !isCountdownComplete && (
                                                 <Countdown
-                                                    size={10}
+                                                    size={15}
                                                     endDate={waitDate}
                                                     className="font-digital text-[rgba(255,255,255,0.8)]"
                                                     onComplete={() =>

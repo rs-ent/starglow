@@ -65,11 +65,11 @@ export default memo(function UserMenu({ onTabChange }: UserMenuProps) {
                         <img
                             src={item.icon}
                             alt={item.label}
-                            className={cn(getResponsiveClass(20).frameClass)}
+                            className={cn(getResponsiveClass(25).frameClass)}
                         />
                         <span
                             className={cn(
-                                getResponsiveClass(15).textClass,
+                                getResponsiveClass(20).textClass,
                                 selectedTab === item.value && "text-white"
                             )}
                         >
