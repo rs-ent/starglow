@@ -21,9 +21,7 @@ export default function UserTweetsRegister({
     onXAuthSuccess,
 }: UserTweetsRegisterProps) {
     const [tweetAuthorId, setTweetAuthorId] = useState<string | null>(null);
-    const [isValidated, setIsValidated] = useState<boolean>(false);
-    const [isTweetChecked, setIsTweetChecked] = useState<boolean>(false);
-    const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
+    const [validateFailed, setValidateFailed] = useState<boolean>(false);
     const [step, setStep] = useState<
         "login" | "validate" | "post" | "confirm" | "complete"
     >("login");
@@ -89,9 +87,6 @@ https://starglow.io
 
     const handleValidateRegisterXAuthor = async () => {
         try {
-            console.log("tweetAuthorId", tweetAuthorId);
-            console.log("player", player);
-            // 트위터 로그인 후 로그인한 account의 정보를 활용하여 setTweetAuthorId(author_id) 함수를 통해 값을 설정해야 함
             if (!tweetAuthorId || !player?.id) {
                 toast.error(
                     "Invalid input. Please try again. If the problem persists, please contact support."
@@ -105,18 +100,15 @@ https://starglow.io
             });
 
             if (validateResult.isValid) {
-                setIsValidated(true);
-                // 검증 성공 시 부모 컴포넌트의 데이터 새로고침
-                onXAuthSuccess?.();
-                setTimeout(() => {
-                    setStep("post");
-                }, 1000);
+                toast.success("Successfully validated your X Account!");
+                setValidateFailed(false);
+                setStep("post");
             } else {
                 toast.error(
                     validateResult.message ||
                         "Invalid input. Please try again. If the problem persists, please contact support."
                 );
-                setIsValidated(false);
+                setValidateFailed(true);
             }
         } catch (error) {
             console.error(error);
@@ -148,18 +140,15 @@ https://starglow.io
                 tweetAuthorId: tweetAuthorId || "",
             });
 
-            console.log("checkResult", checkResult);
-
             if (checkResult.isActive) {
-                setIsTweetChecked(true);
-                setTimeout(() => {
-                    setStep("confirm");
-                }, 1000);
+                toast.success(
+                    "Successfully found your tweet from your X Account!"
+                );
+                setStep("confirm");
             } else {
                 toast.error(
                     "We couldn't find any recent tweets mentioning @StarglowP. Please try again."
                 );
-                setIsTweetChecked(false);
             }
         } catch (error) {
             console.error(error);
@@ -203,12 +192,8 @@ https://starglow.io
             });
 
             if (confirmResult.success) {
-                setIsConfirmed(true);
+                toast.success("X Account Registration Complete!");
                 setStep("complete");
-                // 등록 완료 후 부모 컴포넌트의 데이터 새로고침
-                setTimeout(() => {
-                    onXAuthSuccess?.();
-                }, 1500);
             } else {
                 toast.error(
                     confirmResult.message ||
@@ -227,7 +212,7 @@ https://starglow.io
         <div className="flex flex-col items-center justify-center h-full space-y-6 p-6">
             {/* Step 1: X 계정 연결 */}
             {step === "login" && (
-                <div className="text-center">
+                <div className="text-center flex flex-col items-center justify-center">
                     <h3 className="text-lg font-semibold mb-4">
                         Step 1: Connect your X Account
                     </h3>
@@ -238,10 +223,7 @@ https://starglow.io
                             toast.success(
                                 `@${userData.username} account connected!`
                             );
-                            // 자연스럽게 다음 단계로 진행
-                            setTimeout(() => {
-                                setStep("validate");
-                            }, 1000);
+                            setStep("validate");
                         }}
                         onError={(error) => {
                             toast.error(error);
@@ -253,7 +235,7 @@ https://starglow.io
 
             {/* Step 2: 계정 검증 */}
             {step === "validate" && (
-                <div className="text-center">
+                <div className="text-center flex flex-col items-center justify-center">
                     <h3 className="text-lg font-semibold mb-4">
                         Step 2: Validate Account
                     </h3>
@@ -266,12 +248,30 @@ https://starglow.io
                             ? "Validating..."
                             : "Validate Account"}
                     </button>
+
+                    {validateFailed && (
+                        <div>
+                            <p className="text-red-500 text-sm mt-2">
+                                Please try again or sign in with your other X
+                                account.
+                            </p>
+                            <button
+                                onClick={() => {
+                                    setStep("login");
+                                    setValidateFailed(false);
+                                }}
+                                className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                            >
+                                Try with other X Account
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 
             {/* Step 3: 트윗 게시 */}
             {step === "post" && (
-                <div className="text-center space-y-4">
+                <div className="text-center flex flex-col items-center justify-center space-y-4">
                     <h3 className="text-lg font-semibold">Step 3: Post on X</h3>
                     <p className="text-sm text-gray-600">
                         Post a tweet mentioning @StarglowP to verify your
@@ -304,7 +304,7 @@ https://starglow.io
 
             {/* Step 4: 최종 확인 */}
             {step === "confirm" && (
-                <div className="text-center">
+                <div className="text-center flex flex-col items-center justify-center">
                     <h3 className="text-lg font-semibold mb-4">
                         Step 4: Complete Registration
                     </h3>
@@ -322,7 +322,7 @@ https://starglow.io
 
             {/* 완료 상태 */}
             {step === "complete" && (
-                <div className="text-center">
+                <div className="text-center flex flex-col items-center justify-center">
                     <div className="text-6xl mb-4">🎉</div>
                     <h3 className="text-lg font-semibold text-green-600 mb-2">
                         Registration Complete!
@@ -331,6 +331,14 @@ https://starglow.io
                         Your X account has been successfully connected to
                         Starglow.
                     </p>
+                    <button
+                        onClick={() => {
+                            onXAuthSuccess?.();
+                        }}
+                        className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                    >
+                        Start!
+                    </button>
                 </div>
             )}
         </div>

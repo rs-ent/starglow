@@ -35,17 +35,6 @@ export default function UserTweets({ user, player }: UserTweetsProps) {
         );
     }
 
-    if (!authorByPlayerId) {
-        return (
-            <UserTweetsRegister
-                user={user}
-                player={player}
-                tweetAuthor={null}
-                onXAuthSuccess={refetchAuthorByPlayerId}
-            />
-        );
-    }
-
     return (
         <div
             className={cn(
@@ -55,7 +44,7 @@ export default function UserTweets({ user, player }: UserTweetsProps) {
             )}
         >
             <h2 className="text-2xl font-bold">TWEETS</h2>
-            {authorByPlayerId.registered ? (
+            {authorByPlayerId && authorByPlayerId.registered ? (
                 <button className="bg-blue-500 text-white px-4 py-2 rounded-md">
                     Start!
                 </button>
