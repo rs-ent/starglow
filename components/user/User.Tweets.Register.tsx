@@ -1,4 +1,4 @@
-/// components/user/User.Yapping.Register.tsx
+/// components/user/User.Tweets.Register.tsx
 
 import { useTweets } from "@/app/actions/x/hooks";
 import { User } from "next-auth";
@@ -7,19 +7,19 @@ import { useToast } from "@/app/hooks/useToast";
 import TwitterIntegration from "../atoms/TwitterIntegration";
 import { useEffect, useState } from "react";
 
-interface UserYappingRegisterProps {
+interface UserTweetsRegisterProps {
     user: User | null;
     player: Player | null;
     tweetAuthor?: TweetAuthor | null;
     onXAuthSuccess?: () => void;
 }
 
-export default function UserYappingRegister({
+export default function UserTweetsRegister({
     user,
     player,
     tweetAuthor,
     onXAuthSuccess,
-}: UserYappingRegisterProps) {
+}: UserTweetsRegisterProps) {
     const [tweetAuthorId, setTweetAuthorId] = useState<string | null>(null);
     const [isValidated, setIsValidated] = useState<boolean>(false);
     const [isTweetChecked, setIsTweetChecked] = useState<boolean>(false);

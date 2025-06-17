@@ -1,19 +1,19 @@
-/// components/user/User.Yapping.tsx
+/// components/user/User.Tweets.tsx
 
 import { useTweets } from "@/app/actions/x/hooks";
 import { User } from "next-auth";
 import { Player } from "@prisma/client";
 import { useToast } from "@/app/hooks/useToast";
 import PartialLoading from "../atoms/PartialLoading";
-import UserYappingRegister from "./User.Yapping.Register";
+import UserTweetsRegister from "./User.Tweets.Register";
 import { cn } from "@/lib/utils/tailwind";
 
-interface UserYappingProps {
+interface UserTweetsProps {
     user: User | null;
     player: Player | null;
 }
 
-export default function UserYapping({ user, player }: UserYappingProps) {
+export default function UserTweets({ user, player }: UserTweetsProps) {
     const toast = useToast();
 
     const {
@@ -37,7 +37,7 @@ export default function UserYapping({ user, player }: UserYappingProps) {
 
     if (!authorByPlayerId) {
         return (
-            <UserYappingRegister
+            <UserTweetsRegister
                 user={user}
                 player={player}
                 tweetAuthor={null}
@@ -54,13 +54,13 @@ export default function UserYapping({ user, player }: UserYappingProps) {
                 "gap-[15px]"
             )}
         >
-            <h2 className="text-2xl font-bold">Yapping</h2>
+            <h2 className="text-2xl font-bold">TWEETS</h2>
             {authorByPlayerId.registered ? (
                 <button className="bg-blue-500 text-white px-4 py-2 rounded-md">
                     Start!
                 </button>
             ) : (
-                <UserYappingRegister
+                <UserTweetsRegister
                     user={user}
                     player={player}
                     tweetAuthor={authorByPlayerId}

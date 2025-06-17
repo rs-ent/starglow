@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
 import UserMenu, { Tab } from "./User.Menu";
 import { Player } from "@prisma/client";
@@ -28,11 +28,11 @@ const UserRewards = dynamic(() => import("./User.Rewards"), {
     ssr: false,
 });
 
-const UserYapping = dynamic(() => import("./User.Yapping"), {
+const UserTweets = dynamic(() => import("./User.Tweets"), {
     loading: () => {
         return (
             <div className="flex items-center justify-center h-full">
-                <PartialLoading text="Loading Yapping..." size="sm" />
+                <PartialLoading text="Loading..." size="sm" />
             </div>
         );
     },
@@ -63,6 +63,28 @@ const UserClientSection = React.memo(function UserClientSection({
 }: Props) {
     const [selectedTab, setSelectedTab] = useState<Tab>("mystar");
 
+    // URL 해시를 감지해서 해당 탭으로 자동 전환
+    useEffect(() => {
+        const hash = window.location.hash.replace("#", "");
+
+        if (
+            hash === "tweets" ||
+            hash === "mystar" ||
+            hash === "rewards" ||
+            hash === "settings"
+        ) {
+            setSelectedTab(hash as Tab);
+            // 해시 제거 (깔끔한 URL 유지) - 약간의 딜레이 후 실행
+            setTimeout(() => {
+                window.history.replaceState(
+                    null,
+                    "",
+                    window.location.pathname + window.location.search
+                );
+            }, 100);
+        }
+    }, []);
+
     const handleTabChange = useCallback((tab: Tab) => {
         setSelectedTab(tab);
     }, []);
@@ -78,8 +100,8 @@ const UserClientSection = React.memo(function UserClientSection({
             );
         } else if (selectedTab === "rewards") {
             return <UserRewards user={user} player={player} />;
-        } else if (selectedTab === "yap") {
-            return <UserYapping user={user} player={player} />;
+        } else if (selectedTab === "tweets") {
+            return <UserTweets user={user} player={player} />;
         } else if (selectedTab === "settings") {
             return <UserSettings user={user} player={player} />;
         }

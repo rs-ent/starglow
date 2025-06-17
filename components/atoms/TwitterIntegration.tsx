@@ -33,6 +33,8 @@ export default function TwitterIntegration({
                 const result = await exchangeXToken({ code, state });
 
                 if (result.success) {
+                    // 모바일에서도 YAP 탭으로 전환 (이미 URL redirect로 처리되지만 보험)
+                    window.location.hash = "yap";
                     onSuccess?.(result.authorId!, result.userData);
                 } else {
                     onError?.(result.message || "Authentication failed");
@@ -118,6 +120,8 @@ export default function TwitterIntegration({
                         });
 
                         if (result.success) {
+                            // 데스크톱에서도 YAP 탭으로 전환
+                            window.location.hash = "yap";
                             onSuccess?.(result.authorId!, result.userData);
                         } else {
                             onError?.(

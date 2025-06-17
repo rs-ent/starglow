@@ -4,7 +4,7 @@ import { memo, useCallback } from "react";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 
-export type Tab = "mystar" | "rewards" | "yap" | "settings";
+export type Tab = "mystar" | "rewards" | "tweets" | "settings";
 
 const menuItems = [
     {
@@ -18,9 +18,9 @@ const menuItems = [
         value: "rewards" as Tab,
     },
     {
-        label: "YAP",
-        icon: "/ui/user/user-yap.svg",
-        value: "yap" as Tab,
+        label: "Tweets",
+        icon: "/ui/user/user-tweets.svg",
+        value: "tweets" as Tab,
     },
     {
         label: "Settings",
