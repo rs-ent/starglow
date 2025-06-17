@@ -4,6 +4,7 @@ import { auth } from "@/app/auth/authSettings";
 import Quests from "@/components/quests/Quests";
 import { Suspense } from "react";
 import { Metadata } from "next";
+import { setReferralQuestLogs } from "@/app/actions/referral";
 
 // SEO 메타데이터 정의
 export const metadata: Metadata = {

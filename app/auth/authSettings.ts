@@ -132,9 +132,6 @@ const authOptions: NextAuthConfig = {
             try {
                 if (user.id) {
                     const updateData: any = { lastLoginAt: new Date() };
-                    console.log("user", user);
-                    console.log("account", account);
-                    console.log("profile", profile);
 
                     if (user.email === null && profile?.email) {
                         updateData.email = profile.email;
@@ -160,8 +157,6 @@ const authOptions: NextAuthConfig = {
                             );
                         });
                     }
-
-                    console.log("updateData", updateData);
 
                     const promises = [
                         prisma.user

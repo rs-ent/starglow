@@ -184,6 +184,15 @@ export async function setPlayer(
             });
 
             if (player) {
+                setReferralQuestLogs({
+                    player: player,
+                }).catch((error) => {
+                    console.error(
+                        "[SetReferral] Failed to set referral quest logs:",
+                        error
+                    );
+                });
+
                 await setDefaultPlayerAsset({
                     player: player,
                     trx: tx,
