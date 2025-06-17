@@ -75,7 +75,7 @@ export async function createPlayer(
 
         if (player) {
             await setDefaultPlayerAsset({
-                playerId: player.id,
+                player: player,
             });
         }
 
@@ -137,9 +137,9 @@ export async function setPlayer(
     }
 
     try {
+        let error: string | undefined = undefined;
+        const referralCode = await generateReferralCode();
         const result = await prisma.$transaction(async (tx) => {
-            let error: string | undefined = undefined;
-            const referralCode = await generateReferralCode();
             const existingPlayer = await tx.player.findUnique({
                 where: { userId: input.user.id },
                 select: {
@@ -184,7 +184,8 @@ export async function setPlayer(
 
             if (player) {
                 await setDefaultPlayerAsset({
-                    playerId: player.id,
+                    player: player,
+                    trx: tx,
                 });
             }
 

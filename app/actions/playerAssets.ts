@@ -11,6 +11,7 @@ import {
     AssetType,
     PlayerAssetStatus,
     Asset,
+    Player,
 } from "@prisma/client";
 import type { AssetStatusChangeEvent } from "./assets";
 
@@ -520,7 +521,8 @@ export async function validatePlayerAsset(
 }
 
 export interface SetDefaultPlayerAssetInput {
-    playerId: string;
+    player: Player;
+    trx?: any;
 }
 
 export async function setDefaultPlayerAsset(
@@ -535,60 +537,52 @@ export async function setDefaultPlayerAsset(
     }
 
     try {
-        return await prisma.$transaction(async (tx) => {
-            // 먼저 Player가 존재하는지 확인
-            const player = await tx.player.findUnique({
-                where: { id: input.playerId },
-            });
+        const tx = (input.trx || prisma) as typeof prisma;
+        if (!input.player) {
+            return {
+                success: false,
+                data: false,
+                error: "Player not found",
+            };
+        }
 
-            if (!player) {
-                return {
-                    success: false,
-                    data: false,
-                    error: "Player not found",
-                };
-            }
-
-            const defaultAssets = await tx.asset.findMany({
-                where: {
-                    isDefault: true,
-                    isActive: true,
-                    NOT: {
-                        playerAssets: {
-                            some: {
-                                playerId: input.playerId,
-                            },
+        const defaultAssets = await tx.asset.findMany({
+            where: {
+                isDefault: true,
+                isActive: true,
+                NOT: {
+                    playerAssets: {
+                        some: {
+                            playerId: input.player.id,
                         },
                     },
                 },
-                select: {
-                    id: true,
-                },
-            });
+            },
+            select: {
+                id: true,
+            },
+        });
 
-            if (defaultAssets.length === 0) {
-                return {
-                    success: true,
-                    data: true,
-                    message: "No new default assets to create",
-                };
-            }
-
-            await tx.playerAsset.createMany({
-                data: defaultAssets.map(({ id }) => ({
-                    playerId: input.playerId,
-                    assetId: id,
-                    balance: 0,
-                    status: "ACTIVE",
-                })),
-            });
-
+        if (defaultAssets.length === 0) {
             return {
                 success: true,
                 data: true,
-                message: `Created ${defaultAssets.length} default assets`,
             };
+        }
+
+        await tx.playerAsset.createMany({
+            data: defaultAssets.map(({ id }) => ({
+                playerId: input.player.id,
+                assetId: id,
+                balance: 0,
+                status: "ACTIVE",
+            })),
         });
+
+        return {
+            success: true,
+            data: true,
+        };
     } catch (error) {
         console.error("Failed to set default player asset:", error);
         return {
