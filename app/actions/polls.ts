@@ -128,11 +128,9 @@ export interface GetPollsInput {
 export async function getPolls({
     input,
     pagination,
-    enableCache = true,
 }: {
     input?: GetPollsInput;
     pagination?: PaginationInput;
-    enableCache?: boolean;
 }): Promise<{
     items: Poll[];
     totalItems: number;

@@ -97,11 +97,9 @@ export interface GetQuestsInput {
 export async function getQuests({
     input,
     pagination,
-    enableCache = true,
 }: {
     input?: GetQuestsInput;
     pagination?: PaginationInput;
-    enableCache?: boolean;
 }): Promise<{
     items: Quest[];
     totalItems: number;
@@ -136,38 +134,6 @@ export async function getQuests({
         }
 
         const where: Prisma.QuestWhereInput = {};
-
-        if (input.startDate && input.startDateIndicator) {
-            if (input.startDateIndicator === "before") {
-                where.startDate = {
-                    lte: input.startDate,
-                };
-            } else if (input.startDateIndicator === "after") {
-                where.startDate = {
-                    gte: input.startDate,
-                };
-            } else if (input.startDateIndicator === "on") {
-                where.startDate = {
-                    equals: input.startDate,
-                };
-            }
-        }
-
-        if (input.endDate && input.endDateIndicator) {
-            if (input.endDateIndicator === "before") {
-                where.endDate = {
-                    lte: input.endDate,
-                };
-            } else if (input.endDateIndicator === "after") {
-                where.endDate = {
-                    gte: input.endDate,
-                };
-            } else if (input.endDateIndicator === "on") {
-                where.endDate = {
-                    equals: input.endDate,
-                };
-            }
-        }
 
         if (input.permanent !== undefined) {
             where.permanent = input.permanent;
@@ -206,6 +172,8 @@ export async function getQuests({
             where.artistId = input.artistId;
         }
 
+        console.log("Where", where);
+
         // Promise.all로 병렬 처리하여 성능 향상
         const [items, totalItems] = await Promise.all([
             prisma.quest.findMany({
@@ -223,10 +191,24 @@ export async function getQuests({
             prisma.quest.count({ where }),
         ]);
 
+        let filteredItems = items;
+        if (input.startDate !== undefined && input.endDate !== undefined) {
+            filteredItems = filteredItems.filter((quest) => {
+                if (quest.startDate && quest.endDate) {
+                    return (
+                        quest.startDate >= input.startDate! &&
+                        quest.endDate <= input.endDate!
+                    );
+                }
+                if (quest.permanent) return true;
+                return true;
+            });
+        }
+
         const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
 
         return {
-            items,
+            items: filteredItems,
             totalItems,
             totalPages,
         };
@@ -792,11 +774,9 @@ export interface GetQuestLogsInput {
 export async function getQuestLogs({
     input,
     pagination,
-    enableCache = true,
 }: {
     input?: GetQuestLogsInput;
     pagination?: PaginationInput;
-    enableCache?: boolean;
 }): Promise<{
     items: QuestLog[];
     totalItems: number;

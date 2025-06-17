@@ -16,13 +16,21 @@ interface QuestsPublicProps {
     referralLogs?: ReferralLog[];
 }
 
+const now = new Date();
+
 function QuestsPublic({ player, questLogs, referralLogs }: QuestsPublicProps) {
     const { quests, isLoading, error } = useQuestGet({
         getQuestsInput: {
             isPublic: true,
             isActive: true,
+            startDate: now,
+            endDate: now,
+            startDateIndicator: "after",
+            endDateIndicator: "before",
         },
     });
+
+    const { setReferralQuestLogs } = useQuestSet();
 
     const [selectedType, setSelectedType] = useState<string>("All");
 
@@ -48,13 +56,15 @@ function QuestsPublic({ player, questLogs, referralLogs }: QuestsPublicProps) {
             : quests.items.filter((quest) => quest.type === selectedType);
     }, [quests?.items, selectedType]);
 
-    const { setReferralQuestLogs } = useQuestSet();
-
     useEffect(() => {
         if (!player || !quests || !questLogs || !referralLogs) return;
+        if (quests.items.length === 0) return;
 
         const referralQuests =
             quests.items.filter((quest) => quest.isReferral) || [];
+
+        if (referralQuests.length === 0) return;
+
         setReferralQuestLogs({
             player,
             referralQuests,
