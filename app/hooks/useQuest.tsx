@@ -7,7 +7,6 @@ import {
     useCompleteQuestMutation,
     useCreateQuestMutation,
     useDeleteQuestMutation,
-    useSetReferralQuestLogsMutation,
     useUpdateQuestActiveMutation,
     useUpdateQuestMutation,
     useUpdateQuestOrderMutation,
@@ -161,13 +160,6 @@ export function useQuestSet() {
     } = useClaimQuestRewardMutation();
 
     const {
-        mutate: setReferralQuestLogs,
-        mutateAsync: setReferralQuestLogsAsync,
-        isPending: isSettingReferralQuestLogs,
-        error: setReferralQuestLogsError,
-    } = useSetReferralQuestLogsMutation();
-
-    const {
         mutateAsync: updateQuestActive,
         isPending: isUpdatingQuestActive,
         error: updateQuestActiveError,
@@ -180,7 +172,6 @@ export function useQuestSet() {
         isDeleting ||
         isCompleting ||
         isClaimingQuestReward ||
-        isSettingReferralQuestLogs ||
         isUpdatingQuestActive;
 
     const error =
@@ -190,7 +181,6 @@ export function useQuestSet() {
         deleteError ||
         completeError ||
         claimQuestRewardError ||
-        setReferralQuestLogsError ||
         updateQuestActiveError;
 
     return {
@@ -217,11 +207,6 @@ export function useQuestSet() {
         claimQuestReward,
         isClaimingQuestReward,
         claimQuestRewardError,
-
-        setReferralQuestLogs,
-        setReferralQuestLogsAsync,
-        isSettingReferralQuestLogs,
-        setReferralQuestLogsError,
 
         updateQuestActive,
         isUpdatingQuestActive,

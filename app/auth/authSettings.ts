@@ -16,6 +16,7 @@ import { createWallet } from "../story/userWallet/actions";
 import crypto from "crypto";
 import Discord from "next-auth/providers/discord";
 import { fetchAuthorMetricsFromX } from "../actions/x/actions";
+import { Player } from "@prisma/client";
 const isProd = process.env.NODE_ENV === "production";
 const isVercelPreview = process.env.VERCEL_ENV === "preview";
 
@@ -187,11 +188,7 @@ const authOptions: NextAuthConfig = {
                         }),
                     ];
 
-                    console.log("promises", promises);
-
                     const results = await Promise.allSettled(promises);
-
-                    console.log("results", results);
 
                     results.forEach((result, index) => {
                         if (result.status === "rejected") {

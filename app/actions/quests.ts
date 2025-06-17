@@ -48,6 +48,8 @@ export interface CreateQuestInput {
     artistId?: string | null;
     needToken?: boolean;
     needTokenAddress?: string | null;
+    isReferral?: boolean;
+    referralCount?: number | null;
 }
 
 export async function createQuest(input: CreateQuestInput) {
@@ -60,6 +62,17 @@ export async function createQuest(input: CreateQuestInput) {
         }
     }
 
+    // REFERRAL 타입 퀘스트 검증
+    if (input.questType === QuestType.REFERRAL) {
+        if (!input.referralCount || input.referralCount < 1) {
+            throw new Error(
+                "Referral quest must have referralCount of at least 1"
+            );
+        }
+        // isReferral을 자동으로 true로 설정
+        input.isReferral = true;
+    }
+
     const { rewardAssetId, artistId, ...rest } = input;
 
     const quest = await prisma.quest.create({
@@ -70,6 +83,8 @@ export async function createQuest(input: CreateQuestInput) {
             permanent: input.permanent ?? false,
             isActive: input.isActive ?? true,
             order: input.order ?? 0,
+            isReferral: input.isReferral ?? false,
+            referralCount: input.referralCount || null,
         },
     });
 
@@ -171,8 +186,6 @@ export async function getQuests({
         } else if (input.artistId) {
             where.artistId = input.artistId;
         }
-
-        console.log("Where", where);
 
         // Promise.all로 병렬 처리하여 성능 향상
         const [items, totalItems] = await Promise.all([
@@ -278,6 +291,8 @@ export interface UpdateQuestInput {
     artist?: Artist | null;
     needToken?: boolean;
     needTokenAddress?: string | null;
+    isReferral?: boolean;
+    referralCount?: number | null;
 }
 
 export async function updateQuest(
@@ -291,6 +306,21 @@ export async function updateQuest(
             if (!rewardAsset || !rewardAsset.isActive) {
                 throw new Error("Reward asset not found");
             }
+        }
+
+        // REFERRAL 타입 퀘스트 검증
+        if (input.questType === QuestType.REFERRAL) {
+            if (
+                input.referralCount !== undefined &&
+                input.referralCount !== null &&
+                input.referralCount < 1
+            ) {
+                throw new Error(
+                    "Referral quest must have referralCount of at least 1"
+                );
+            }
+            // isReferral을 자동으로 true로 설정
+            input.isReferral = true;
         }
 
         const { id, rewardAssetId, artistId, rewardAsset, artist, ...rest } =
@@ -311,6 +341,14 @@ export async function updateQuest(
                 permanent: input.permanent ?? false,
                 isActive: input.isActive ?? true,
                 order: input.order ?? 0,
+                isReferral:
+                    input.isReferral !== undefined
+                        ? input.isReferral
+                        : undefined,
+                referralCount:
+                    input.referralCount !== undefined
+                        ? input.referralCount
+                        : undefined,
             },
         });
 
@@ -944,88 +982,6 @@ export async function getClaimedQuestLogs(
     } catch (error) {
         console.error(error);
         return [];
-    }
-}
-
-export interface SetReferralQuestLogsInput {
-    referralQuests: Quest[];
-    questLogs: QuestLog[];
-    referralLogs: ReferralLog[];
-    player: Player;
-}
-
-export async function setReferralQuestLogs(
-    input: SetReferralQuestLogsInput
-): Promise<boolean> {
-    try {
-        if (!input.referralQuests?.length || !input.player?.id) {
-            console.error("Invalid input: missing required data");
-            return false;
-        }
-
-        const completableQuests = input.referralQuests.filter((quest) => {
-            const existingLogs = input.questLogs.filter(
-                (log) => log.questId === quest.id && log.isClaimed
-            );
-
-            if (
-                quest.repeatable &&
-                quest.referralCount &&
-                existingLogs.length > 0
-            ) {
-                const claimedCount = existingLogs.length;
-                const remainingReferrals =
-                    input.referralLogs.length -
-                    quest.referralCount * claimedCount;
-
-                return remainingReferrals >= quest.referralCount;
-            }
-
-            if (
-                existingLogs.length > 0 ||
-                existingLogs.some((log) => log.completed)
-            ) {
-                return false;
-            }
-
-            return (
-                quest.referralCount &&
-                quest.referralCount <= input.referralLogs.length
-            );
-        });
-
-        if (!completableQuests.length) {
-            return true;
-        }
-
-        const newDataToCreate = completableQuests.map((quest) => {
-            const existingLogs = input.questLogs.filter(
-                (log) => log.questId === quest.id && log.isClaimed
-            );
-
-            return {
-                playerId: input.player.id,
-                questId: quest.id,
-                completed: true,
-                completedAt: input.referralLogs[0].createdAt,
-                rewardAssetId: quest.rewardAssetId,
-                rewardAmount: quest.rewardAmount,
-                repeatCount: existingLogs.length + 1,
-                completedDates: [input.referralLogs[0].createdAt],
-            };
-        });
-
-        await prisma.$transaction(async (tx) => {
-            await tx.questLog.createMany({
-                data: newDataToCreate,
-                skipDuplicates: true,
-            });
-        });
-
-        return true;
-    } catch (error) {
-        console.error(error);
-        return false;
     }
 }
 

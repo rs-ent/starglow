@@ -8,6 +8,7 @@ import type { User } from "next-auth";
 import { nanoid } from "nanoid";
 import { setDefaultPlayerAsset } from "./playerAssets";
 import { revalidatePath } from "next/cache";
+import { setReferralQuestLogs } from "./referral";
 
 export interface GetPlayerInput {
     playerId: string;
@@ -228,7 +229,7 @@ export async function invitePlayer(
     }
 
     try {
-        return await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             if (input.telegramId) {
                 const existingPlayer = await tx.player.findUnique({
                     where: { telegramId: input.telegramId },
@@ -310,6 +311,20 @@ export async function invitePlayer(
                 referralLog: createdReferralLog,
             };
         });
+
+        // Referral Quest 자동 완료 처리
+        if (result && result.referrerPlayer) {
+            await setReferralQuestLogs({
+                player: result.referrerPlayer,
+            }).catch((error) => {
+                console.error(
+                    "[invitePlayer] Failed to set referral quest logs:",
+                    error
+                );
+            });
+        }
+
+        return result;
     } catch (error) {
         console.error("[invitePlayer] Error:", error);
         throw error;

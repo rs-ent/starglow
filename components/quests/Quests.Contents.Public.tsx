@@ -5,7 +5,7 @@
 import { Player, QuestLog, ReferralLog } from "@prisma/client";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import QuestsMissions from "./Quests.Missions";
-import { useQuestGet, useQuestSet } from "@/app/hooks/useQuest";
+import { useQuestGet } from "@/app/hooks/useQuest";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import InviteFriends from "../atoms/InviteFriends";
@@ -30,7 +30,10 @@ function QuestsPublic({ player, questLogs, referralLogs }: QuestsPublicProps) {
         },
     });
 
-    const { setReferralQuestLogs } = useQuestSet();
+    console.log(
+        "Quest Public",
+        quests?.items?.filter((quest) => quest.isReferral)
+    );
 
     const [selectedType, setSelectedType] = useState<string>("All");
 
@@ -55,23 +58,6 @@ function QuestsPublic({ player, questLogs, referralLogs }: QuestsPublicProps) {
             ? quests.items
             : quests.items.filter((quest) => quest.type === selectedType);
     }, [quests?.items, selectedType]);
-
-    useEffect(() => {
-        if (!player || !quests || !questLogs || !referralLogs) return;
-        if (quests.items.length === 0) return;
-
-        const referralQuests =
-            quests.items.filter((quest) => quest.isReferral) || [];
-
-        if (referralQuests.length === 0) return;
-
-        setReferralQuestLogs({
-            player,
-            referralQuests,
-            questLogs,
-            referralLogs,
-        });
-    }, [quests]);
 
     // 타입 클릭 핸들러 메모이제이션
     const handleTypeClick = useCallback((type: string) => {
