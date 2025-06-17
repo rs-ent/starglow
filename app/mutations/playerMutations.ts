@@ -21,7 +21,7 @@ export function useSetPlayerMutation(input?: SetPlayerInput) {
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: playerKeys.all });
             queryClient.invalidateQueries({
-                queryKey: playerKeys.byId(data?.id || ""),
+                queryKey: playerKeys.byId(data?.player?.id || ""),
             });
         },
     });
