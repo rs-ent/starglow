@@ -42,21 +42,17 @@ export async function requireAuthUser(callbackUrl: string): Promise<User> {
 }
 
 export async function requireAuthUserAndPlayer(redirectTo: string = "/") {
-    try {
-        const session = await auth();
-        if (!session?.user || !session?.player) {
-            const encodedCallback = encodeURIComponent(redirectTo);
-            redirect(`/auth/signin?callbackUrl=${encodedCallback}`);
-        }
-        return {
-            user: session.user,
-            player: session.player,
-        };
-    } catch (error) {
-        console.error("Authentication error:", error);
+    const session = await auth();
+
+    if (!session?.user || !session?.player) {
         const encodedCallback = encodeURIComponent(redirectTo);
         redirect(`/auth/signin?callbackUrl=${encodedCallback}`);
     }
+
+    return {
+        user: session.user,
+        player: session.player,
+    };
 }
 
 export async function requireAdmin() {
