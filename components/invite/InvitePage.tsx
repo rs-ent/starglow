@@ -1,4 +1,4 @@
-/// components\invite\Invite.tsx
+/// components\invite\InvitePage.tsx
 
 "use client";
 
@@ -124,6 +124,5 @@ export default function InvitePage() {
         );
     }
 
-    // 정상적인 경우 자동으로 처리되므로 빈 화면
     return null;
 }
