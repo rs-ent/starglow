@@ -5,7 +5,7 @@ import LinkButton from "../atoms/LinkButton";
 import AuthButton from "../atoms/AuthButton";
 import { User } from "next-auth";
 import VerticalButton from "../atoms/VerticalButton";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import RewardPanel from "../atoms/RewardPanel";
 import { cn } from "@/lib/utils/tailwind";
 import { Player } from "@prisma/client";
@@ -196,10 +196,9 @@ function NavigationBar({ user, player }: NavigationBarProps) {
     const [showUserNavigation, setShowUserNavigation] =
         useState<boolean>(false);
 
-    // 메뉴 항목 계산 - useMemo 제거
-    const menuItems = user?.id
-        ? [...defaultMenuItems, myPageItem]
-        : defaultMenuItems;
+    const menuItems = useMemo(() => {
+        return user?.id ? [...defaultMenuItems, myPageItem] : defaultMenuItems;
+    }, [user?.id]);
 
     // 이벤트 핸들러
     const handleShowUserNavigation = useCallback(() => {
