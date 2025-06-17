@@ -1,5 +1,7 @@
 /// app/story/userWallet/wagmi-hooks.ts
 
+"use client";
+
 import {
     useAccount,
     useConnect,

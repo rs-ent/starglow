@@ -1,5 +1,7 @@
 /// app/story/userWallet/hooks.ts
 
+"use client";
+
 import { useGetDefaultUserWalletQuery, useGetWalletsQuery } from "./queries";
 import {
     useConnectWalletMutation,

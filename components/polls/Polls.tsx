@@ -8,15 +8,29 @@ import { Player } from "@prisma/client";
 import PollsContents from "@/components/polls/Polls.Contents";
 import { User } from "next-auth";
 import { memo } from "react";
-import { VerifiedSPG } from "@/app/story/interaction/actions";
+import { useStoryInteractions } from "@/app/story/interaction/hooks";
+import PartialLoading from "../atoms/PartialLoading";
 
 interface PollsProps {
     user: User | null;
     player: Player | null;
-    verifiedSPGs: VerifiedSPG[];
 }
 
-function Polls({ user, player, verifiedSPGs }: PollsProps) {
+function Polls({ user, player }: PollsProps) {
+    const { verifiedSPGs, isLoadingVerifiedSPGs } = useStoryInteractions({
+        getUserVerifiedSPGsInput: {
+            userId: user?.id || "",
+        },
+    });
+
+    if (isLoadingVerifiedSPGs) {
+        return (
+            <div className="w-full h-full flex justify-center items-center">
+                <PartialLoading text="Loading..." size="sm" />
+            </div>
+        );
+    }
+
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
             <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />

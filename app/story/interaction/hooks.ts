@@ -1,13 +1,15 @@
 /// app/story/interaction/hooks.ts
 
+"use client";
+
 import { useGetUserVerifiedSPGsQuery } from "./queries";
 import { GetUserVerifiedSPGsInput } from "./actions";
 
-interface UseWeb3InteractionsInput {
+interface UseStoryInteractionsInput {
     getUserVerifiedSPGsInput: GetUserVerifiedSPGsInput;
 }
 
-export function useWeb3Interactions(input?: UseWeb3InteractionsInput) {
+export function useStoryInteractions(input?: UseStoryInteractionsInput) {
     const {
         data: verifiedSPGs,
         isLoading: isLoadingVerifiedSPGs,

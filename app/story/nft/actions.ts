@@ -23,6 +23,8 @@ import {
     Prisma,
     Story_nft,
     Story_spg,
+    User,
+    Wallet,
 } from "@prisma/client";
 import { createHash } from "crypto";
 import { Artist } from "@prisma/client";
@@ -549,7 +551,6 @@ export async function registerAsIPAsset(
 
         // Story SDK 클라이언트 가져오기
         const client = await fetchStoryClient({
-            userId: input.userId,
             networkId: input.networkId,
             walletAddress: input.walletAddress,
         });
@@ -981,7 +982,7 @@ export async function getNFTs(input?: getNFTsInput): Promise<NFT[]> {
             where.ipId = null;
         }
 
-        return await prisma.story_nft.findMany({
+        return (await prisma.story_nft.findMany({
             where,
             include: {
                 spgCollection: true,
@@ -989,7 +990,7 @@ export async function getNFTs(input?: getNFTsInput): Promise<NFT[]> {
             orderBy: {
                 tokenId: "asc",
             },
-        });
+        })) as NFT[];
     } catch (error) {
         console.error("Error getting NFTs:", error);
         return [];
@@ -1227,19 +1228,17 @@ export async function tokenGating(
         }
 
         // 1. 병렬 데이터 조회
-        const [spgs, user] = await Promise.all([
+        const [spgs, wallets] = await Promise.all([
             prisma.story_spg.findMany({
                 where: { artistId: artist.id },
                 select: { address: true },
             }),
-            prisma.user.findUnique({
-                where: { id: userId },
-                select: {
-                    wallets: {
-                        where: { status: "ACTIVE" },
-                        select: { address: true },
-                    },
+            prisma.wallet.findMany({
+                where: {
+                    userId: userId,
+                    status: "ACTIVE",
                 },
+                select: { address: true },
             }),
         ]);
 
@@ -1251,17 +1250,19 @@ export async function tokenGating(
             };
         }
 
-        if (!user?.wallets?.length) {
+        if (wallets?.length === 0) {
             return {
                 success: false,
-                error: user ? "User has no active wallets" : "User not found",
+                error: wallets
+                    ? "User has no active wallets"
+                    : "User not found",
                 data: {},
             };
         }
 
         // 2. 미리 정규화된 지갑 주소 Set 생성
         const normalizedWalletAddresses = new Set(
-            user.wallets.map((w) => w.address.toLowerCase())
+            wallets.map((w) => w.address.toLowerCase())
         );
 
         // 3. 에러 처리가 포함된 병렬 SPG 처리

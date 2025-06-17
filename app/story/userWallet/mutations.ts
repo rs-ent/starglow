@@ -1,5 +1,7 @@
 /// app/story/userWallet/mutations.ts
 
+"use client";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../queryKeys";
 import {

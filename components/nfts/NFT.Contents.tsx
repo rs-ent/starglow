@@ -16,7 +16,7 @@ import InteractFeedback from "../atoms/Popup.InteractFeedback";
 import WarningPopup from "../atoms/WarningPopup";
 import { SPG } from "@/app/story/spg/actions";
 import { useNFT } from "@/app/story/nft/hooks";
-import { useWeb3Interactions } from "@/app/story/interaction/hooks";
+import { useStoryInteractions } from "@/app/story/interaction/hooks";
 import { useSession } from "next-auth/react";
 
 interface NFTContentsProps {
@@ -29,7 +29,7 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
     const [showWaitWarning, setShowWaitWarning] = useState(false);
     const [forceCloseWaitWarning, setForceCloseWaitWarning] = useState(false);
 
-    const { refetchVerifiedSPGs } = useWeb3Interactions({
+    const { refetchVerifiedSPGs } = useStoryInteractions({
         getUserVerifiedSPGsInput: {
             userId: session?.user?.id || "",
         },

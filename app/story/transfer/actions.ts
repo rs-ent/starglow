@@ -1,5 +1,7 @@
 /// app/story/transfer/actions.ts
 
+"use server";
+
 import { Hex } from "viem";
 import { prisma } from "@/lib/prisma/client";
 import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";

@@ -1,5 +1,7 @@
 /// app/story/interaction/actions.ts
 
+"use server";
+
 import { Story_spg, Artist, BlockchainNetwork } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 import { getOwners } from "../nft/actions";
@@ -17,8 +19,12 @@ export type VerifiedSPG = Story_spg & {
 export async function getUserVerifiedSPGs(
     input?: GetUserVerifiedSPGsInput
 ): Promise<VerifiedSPG[]> {
-    console.log("input", input);
     if (!input || !input.userId) {
+        console.log(
+            "[getUserVerifiedSPGs] No input or userId",
+            input,
+            input?.userId
+        );
         return [];
     }
 
