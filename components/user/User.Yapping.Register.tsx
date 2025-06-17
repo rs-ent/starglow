@@ -60,6 +60,7 @@ export default function UserYappingRegister({
         if (!tweetAuthor) {
             setStep("login");
         } else {
+            setTweetAuthorId(tweetAuthor.authorId);
             if (tweetAuthor.registered) {
                 setStep("complete");
             } else if (tweetAuthor.validated && !tweetAuthor.registered) {
@@ -88,6 +89,8 @@ https://starglow.io
 
     const handleValidateRegisterXAuthor = async () => {
         try {
+            console.log("tweetAuthorId", tweetAuthorId);
+            console.log("player", player);
             // 트위터 로그인 후 로그인한 account의 정보를 활용하여 setTweetAuthorId(author_id) 함수를 통해 값을 설정해야 함
             if (!tweetAuthorId || !player?.id) {
                 toast.error(
