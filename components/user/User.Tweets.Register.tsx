@@ -50,7 +50,6 @@ export default function UserTweetsRegister({
     } = useTweets();
 
     useEffect(() => {
-        // 이미 계정을 연결한 상태라면 step을 강제로 변경하지 않음
         if (hasConnectedAccount) {
             return;
         }
