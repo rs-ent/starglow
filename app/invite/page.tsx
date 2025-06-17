@@ -10,6 +10,9 @@ export default async function InviteAuthPage({
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     const { ref, method, tgId } = await searchParams;
+    console.log("ref", ref);
+    console.log("method", method);
+    console.log("tgId", tgId);
 
     if (!ref) {
         redirect("/");
@@ -32,6 +35,7 @@ export default async function InviteAuthPage({
     }
 
     const user = await requireAuthUser(`/invite?ref=${ref}&method=${method}`);
+    console.log("user", user);
 
     try {
         const result = await invitePlayer({

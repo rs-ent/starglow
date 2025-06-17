@@ -1,7 +1,7 @@
-import {redirect} from "next/navigation";
-import type {User} from "next-auth";
-import {auth} from "./authSettings";
-import {prisma} from "@/lib/prisma/client";
+import { redirect } from "next/navigation";
+import type { User } from "next-auth";
+import { auth } from "./authSettings";
+import { prisma } from "@/lib/prisma/client";
 
 export async function requireAuth() {
     const session = await auth();
@@ -31,18 +31,14 @@ export async function isAuthenticated() {
 }
 
 export async function requireAuthUser(callbackUrl: string): Promise<User> {
-    try {
-        const session = await auth();
-        if (!session?.user) {
-            const encodedCallback = encodeURIComponent(callbackUrl);
-            redirect(`/auth/signin?callbackUrl=${encodedCallback}`);
-        }
-        return session.user;
-    } catch (error) {
-        console.error("Authentication error:", error);
+    const session = await auth();
+
+    if (!session?.user) {
         const encodedCallback = encodeURIComponent(callbackUrl);
         redirect(`/auth/signin?callbackUrl=${encodedCallback}`);
     }
+
+    return session.user;
 }
 
 export async function requireAuthUserAndPlayer(redirectTo: string = "/") {
