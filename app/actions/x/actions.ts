@@ -713,7 +713,12 @@ export async function exchangeXToken(
                 where: { tweetAuthorId: userData.data.id },
             });
 
-            if (alreadyConnectedPlayer?.id !== player.id) {
+            console.log("alreadyConnectedPlayer", alreadyConnectedPlayer);
+
+            if (
+                alreadyConnectedPlayer &&
+                alreadyConnectedPlayer?.id !== player.id
+            ) {
                 throw new Error(
                     "This Twitter account is already linked to another user"
                 );

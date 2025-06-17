@@ -136,9 +136,14 @@ https://starglow.io
                 tweetAuthorId: tweetAuthorId || "",
             });
 
+            console.log("checkResult", checkResult);
+
             if (checkResult.isActive) {
                 setIsTweetChecked(true);
             } else {
+                toast.error(
+                    "We couldn't find any recent tweets mentioning @StarglowP. Please try again."
+                );
                 setIsTweetChecked(false);
             }
         } catch (error) {
