@@ -13,17 +13,17 @@ import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { Metadata } from "next";
 import PollComponent from "@/components/polls/Poll";
 import { TokenGatingData } from "@/app/story/nft/actions";
+import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 
 function PollsLoading() {
     return (
-        <div className="relative flex flex-col w-full h-full overflow-hidden">
-            <div className="fixed inset-0 bg-gradient-to-b from-[#09011b] to-[#311473] -z-20" />
-            <div className="flex justify-center items-center h-screen">
-                <div className="animate-pulse text-center">
-                    <h2 className="text-4xl mb-4">Poll</h2>
-                    <p className="text-muted-foreground">Loading poll...</p>
-                </div>
-            </div>
+        <div className="relative flex flex-col w-full h-screen overflow-hidden items-center justify-center">
+            <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
+            <PartialLoadingServer
+                text="Loading poll..."
+                loadingSize={70}
+                textSize={10}
+            />
         </div>
     );
 }
