@@ -6,7 +6,9 @@ import { Player } from "@prisma/client";
 import { useToast } from "@/app/hooks/useToast";
 import PartialLoading from "../atoms/PartialLoading";
 import UserTweetsRegister from "./User.Tweets.Register";
+import UserTweetsTutorialModal from "./User.Tweets.Tutorial.Modal";
 import { cn } from "@/lib/utils/tailwind";
+import { useState, useEffect } from "react";
 
 interface UserTweetsProps {
     user: User | null;
@@ -15,6 +17,8 @@ interface UserTweetsProps {
 
 export default function UserTweets({ user, player }: UserTweetsProps) {
     const toast = useToast();
+    const [showTutorial, setShowTutorial] = useState(false);
+    const [hasSeenTutorial, setHasSeenTutorial] = useState(false);
 
     const {
         authorByPlayerId,
@@ -26,6 +30,19 @@ export default function UserTweets({ user, player }: UserTweetsProps) {
             playerId: player?.id || "",
         },
     });
+
+    useEffect(() => {
+        const tutorialSeen = localStorage.getItem("tweets-tutorial-seen");
+        if (!tutorialSeen && !isAuthorByPlayerIdLoading) {
+            setShowTutorial(true);
+        }
+    }, [isAuthorByPlayerIdLoading]);
+
+    const handleTutorialComplete = () => {
+        localStorage.setItem("tweets-tutorial-seen", "true");
+        setHasSeenTutorial(true);
+        setShowTutorial(false);
+    };
 
     if (isAuthorByPlayerIdLoading) {
         return (
@@ -45,9 +62,17 @@ export default function UserTweets({ user, player }: UserTweetsProps) {
         >
             <h2 className="text-2xl font-bold">TWEETS</h2>
             {authorByPlayerId && authorByPlayerId.registered ? (
-                <button className="bg-blue-500 text-white px-4 py-2 rounded-md">
-                    Start!
-                </button>
+                <div className="flex flex-col items-center gap-4">
+                    <button className="bg-blue-500 text-white px-4 py-2 rounded-md">
+                        Start!
+                    </button>
+                    <button
+                        onClick={() => setShowTutorial(true)}
+                        className="text-sm text-gray-400 hover:text-gray-300 underline"
+                    >
+                        View Tutorial Again
+                    </button>
+                </div>
             ) : (
                 <UserTweetsRegister
                     user={user}
@@ -56,6 +81,12 @@ export default function UserTweets({ user, player }: UserTweetsProps) {
                     onXAuthSuccess={refetchAuthorByPlayerId}
                 />
             )}
+
+            <UserTweetsTutorialModal
+                isOpen={showTutorial}
+                onClose={() => setShowTutorial(false)}
+                onComplete={handleTutorialComplete}
+            />
         </div>
     );
 }
