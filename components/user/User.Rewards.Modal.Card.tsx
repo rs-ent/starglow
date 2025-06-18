@@ -1,15 +1,15 @@
 /// components/user/User.Rewards.Modal.Card.tsx
 
-import {memo, useCallback, useState} from "react";
-import {PlayerAssetWithAsset} from "./User.Rewards";
-import {getResponsiveClass} from "@/lib/utils/responsiveClass";
-import {cn} from "@/lib/utils/tailwind";
-import {XIcon} from "lucide-react";
+import { memo, useCallback, useState } from "react";
+import { PlayerAssetWithAsset } from "./User.Rewards";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+import { XIcon } from "lucide-react";
 import Funds from "../atoms/Funds";
-import {Button} from "../ui/button";
-import {useRewardsLogsGet} from "@/app/hooks/useRewardsLogs";
+import { Button } from "../ui/button";
+import { useRewardsLogsGet } from "@/app/hooks/useRewardsLogs";
 import PartialLoading from "../atoms/PartialLoading";
-import {formatDistanceToNow} from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 
 interface UserRewardsModalCardProps {
     playerId?: string;
@@ -35,24 +35,19 @@ function UserRewardsModalCard({
                 playerId: playerId ?? "",
                 assetId: reward.asset.id,
             },
-            // 캐싱 최적화
-            options: {
-                staleTime: 5 * 60 * 1000, // 5분
-                cacheTime: 30 * 60 * 1000, // 30분
-            },
         });
 
     // 포인트 미싱 팝업 토글 핸들러
     const togglePointsMissing = useCallback(() => {
-        setShowPointsMissing(prev => !prev);
+        setShowPointsMissing((prev) => !prev);
     }, []);
 
     // 날짜 포맷팅 함수
     const formatDate = useCallback((date: Date) => {
         const formattedDate = date.toLocaleDateString();
-        const formattedTime = date.toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit' 
+        const formattedTime = date.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
         });
         return `${formattedDate} ${formattedTime}`;
     }, []);
@@ -170,7 +165,8 @@ function UserRewardsModalCard({
                             className={getResponsiveClass(40).frameClass}
                             loading="lazy"
                             onError={(e) => {
-                                (e.target as HTMLImageElement).src = "/elements/el03.svg";
+                                (e.target as HTMLImageElement).src =
+                                    "/elements/el03.svg";
                             }}
                         />
                     </div>
@@ -215,16 +211,19 @@ function UserRewardsModalCard({
                         "px-6 pb-6"
                     )}
                 >
-                    <div className={cn("h-full mt-[20px]", "overflow-y-auto", "scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent")}>
+                    <div
+                        className={cn(
+                            "h-full mt-[20px]",
+                            "overflow-y-auto",
+                            "scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent"
+                        )}
+                    >
                         <div className="max-w-[800px] mx-auto pb-2">
                             <div className="space-y-3 h-[300px] sm:h-[350px] md:h-[400px] lg:h-[450px] xl:h-[500px]">
                                 {/* 로딩 상태 */}
                                 {isRewardsLogsLoading && (
                                     <div className="py-8">
-                                        <PartialLoading
-                                            text="Loading reward history..."
-                                            size="sm"
-                                        />
+                                        <PartialLoading text="Loading reward history..." />
                                     </div>
                                 )}
 
@@ -234,9 +233,11 @@ function UserRewardsModalCard({
                                         <p className="text-red-400">
                                             Failed to load reward history
                                         </p>
-                                        <button 
+                                        <button
                                             className="mt-2 text-sm text-white/60 underline underline-offset-2"
-                                            onClick={() => window.location.reload()}
+                                            onClick={() =>
+                                                window.location.reload()
+                                            }
                                         >
                                             Try again
                                         </button>
@@ -289,14 +290,23 @@ function UserRewardsModalCard({
                                                 <div className="flex items-center mt-1">
                                                     <time
                                                         className={cn(
-                                                            getResponsiveClass(10)
-                                                                .textClass,
+                                                            getResponsiveClass(
+                                                                10
+                                                            ).textClass,
                                                             "text-white/50",
                                                             "block"
                                                         )}
-                                                        title={formatDate(new Date(log.createdAt))}
+                                                        title={formatDate(
+                                                            new Date(
+                                                                log.createdAt
+                                                            )
+                                                        )}
                                                     >
-                                                        {getRelativeTime(new Date(log.createdAt))}
+                                                        {getRelativeTime(
+                                                            new Date(
+                                                                log.createdAt
+                                                            )
+                                                        )}
                                                     </time>
                                                 </div>
                                             </div>
@@ -306,7 +316,9 @@ function UserRewardsModalCard({
                                                     getResponsiveClass(15)
                                                         .textClass,
                                                     "font-main",
-                                                    log.amount >= 0 ? "text-green-400" : "text-red-400"
+                                                    log.amount >= 0
+                                                        ? "text-green-400"
+                                                        : "text-red-400"
                                                 )}
                                             >
                                                 <div
@@ -318,7 +330,9 @@ function UserRewardsModalCard({
                                                     {log.amount >= 0
                                                         ? "+"
                                                         : "-"}
-                                                    {Math.abs(log.amount).toLocaleString()}{" "}
+                                                    {Math.abs(
+                                                        log.amount
+                                                    ).toLocaleString()}{" "}
                                                     {log.asset?.symbol}
                                                 </div>
                                             </div>

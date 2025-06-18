@@ -1,6 +1,6 @@
 /// components/user/User.Reward.Modal.Card.V2.tsx
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PlayerAssetWithAsset } from "./User.Rewards";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -23,15 +23,23 @@ export default function UserRewardModalCardV2({
 }: UserRewardModalCardV2Props) {
     const [showPointsMissing, setShowPointsMissing] = useState(false);
 
-    console.log("reward", reward);
+    const {
+        rewardsLogs,
+        isRewardsLogsLoading,
+        rewardsLogsError,
+        refetchRewardsLogs,
+    } = useRewardsLogsGet({
+        getRewardsLogsInput: {
+            playerId: playerId ?? "",
+            assetId: reward.asset.id,
+        },
+    });
 
-    const { rewardsLogs, isRewardsLogsLoading, rewardsLogsError } =
-        useRewardsLogsGet({
-            getRewardsLogsInput: {
-                playerId: playerId ?? "",
-                assetId: reward.asset.id,
-            },
-        });
+    useEffect(() => {
+        if (playerId && reward.asset.id) {
+            refetchRewardsLogs();
+        }
+    }, [playerId, reward.asset.id]);
 
     return (
         <div
@@ -159,10 +167,7 @@ export default function UserRewardModalCardV2({
                             <div className="space-y-3 h-[300px]">
                                 {isRewardsLogsLoading && (
                                     <div className="py-8">
-                                        <PartialLoading
-                                            text="Loading reward history..."
-                                            size="sm"
-                                        />
+                                        <PartialLoading text="Loading reward history..." />
                                     </div>
                                 )}
 

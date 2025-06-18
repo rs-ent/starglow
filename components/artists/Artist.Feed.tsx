@@ -40,7 +40,7 @@ export default function ArtistFeed({ artist, onSelectFeed }: ArtistFeedProps) {
 
     // Loading state
     if (isLoading) {
-        return <PartialLoading text="Loading feeds..." size="sm" />;
+        return <PartialLoading text="Loading..." />;
     }
 
     // Error state

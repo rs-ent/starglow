@@ -26,7 +26,7 @@ function Quests({ user, player }: QuestsProps) {
     if (isLoadingVerifiedSPGs) {
         return (
             <div className="w-full h-full flex justify-center items-center">
-                <PartialLoading text="Loading..." size="sm" />
+                <PartialLoading text="Loading..." />
             </div>
         );
     }

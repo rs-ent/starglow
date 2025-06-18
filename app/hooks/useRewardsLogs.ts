@@ -24,6 +24,7 @@ export function useRewardsLogsGet({
         rewardsLogs,
         isRewardsLogsLoading,
         rewardsLogsError,
+        refetchRewardsLogs,
 
         isLoading,
         error,

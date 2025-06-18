@@ -11,7 +11,7 @@ const UserMyStar = dynamic(() => import("./User.MyStar"), {
     loading: () => {
         return (
             <div className="flex items-center justify-center h-full">
-                <PartialLoading text="Loading My Star..." size="sm" />
+                <PartialLoading text="Loading My Star..." />
             </div>
         );
     },
@@ -21,7 +21,7 @@ const UserRewards = dynamic(() => import("./User.Rewards"), {
     loading: () => {
         return (
             <div className="flex items-center justify-center h-full">
-                <PartialLoading text="Loading Rewards..." size="sm" />
+                <PartialLoading text="Loading Rewards..." />
             </div>
         );
     },
@@ -32,7 +32,7 @@ const UserTweets = dynamic(() => import("./User.Tweets"), {
     loading: () => {
         return (
             <div className="flex items-center justify-center h-full">
-                <PartialLoading text="Loading..." size="sm" />
+                <PartialLoading text="Loading..." />
             </div>
         );
     },
@@ -43,7 +43,7 @@ const UserSettings = dynamic(() => import("./User.Settings"), {
     loading: () => {
         return (
             <div className="flex items-center justify-center h-full">
-                <PartialLoading text="Loading Settings..." size="sm" />
+                <PartialLoading text="Loading Settings..." />
             </div>
         );
     },

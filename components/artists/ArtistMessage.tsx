@@ -109,8 +109,7 @@ export default function ArtistMessage({
 
     // 로딩 상태 메모이제이션
     const loadingElement = useMemo(
-        () =>
-            isLoading ? <PartialLoading text="Loading..." size="sm" /> : null,
+        () => (isLoading ? <PartialLoading text="Loading..." /> : null),
         [isLoading]
     );
 

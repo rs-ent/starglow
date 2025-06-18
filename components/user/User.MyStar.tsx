@@ -27,7 +27,7 @@ const UserMyStarModal = dynamic(() => import("./User.MyStar.Modal"), {
     loading: () => {
         return (
             <div className="flex items-center justify-center w-full h-full">
-                <PartialLoading text="Loading..." size="sm" />
+                <PartialLoading text="Loading..." />
             </div>
         );
     },
@@ -216,7 +216,7 @@ export default React.memo(function UserMyStar({
     if (isPollsLoading || isQuestsLoading) {
         return (
             <div className="w-full flex justify-center items-center py-20">
-                <PartialLoading text="Loading..." size="sm" />
+                <PartialLoading text="Loading..." />
             </div>
         );
     }

@@ -84,7 +84,7 @@ function PollsContentsPrivateArtistList({
     const renderLoading = useCallback(
         () => (
             <div className="w-full py-8 flex justify-center">
-                <PartialLoading text="Loading polls..." size="sm" />
+                <PartialLoading text="Loading..." />
             </div>
         ),
         []

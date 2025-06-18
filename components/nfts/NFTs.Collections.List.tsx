@@ -281,13 +281,7 @@ export default function NFTsCollectionsList({
 
     // 프리로딩 완료 후에만 렌더링
     if (!isPreloaded) {
-        return (
-            <PartialLoading
-                className="w-full h-[400px]"
-                text="Loading NFTs..."
-                size="md"
-            />
-        );
+        return <PartialLoading text="Loading NFTs..." />;
     }
 
     return (

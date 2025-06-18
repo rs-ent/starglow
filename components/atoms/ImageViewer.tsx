@@ -37,7 +37,7 @@ export default function ImageViewer({
 
     return (
         <div className="relative">
-            {isLoading && <PartialLoading text="Loading..." size="sm" />}
+            {isLoading && <PartialLoading text="Loading..." />}
             {isError && <div className="text-red-500">Error loading image</div>}
             <div className="w-full">
                 <div

@@ -59,7 +59,7 @@ function SignInButtons() {
     }
 
     if (!providers) {
-        return <PartialLoading text="Loading providers..." />;
+        return <PartialLoading text="Loading..." />;
     }
 
     const DONOT_SHOW_PROVIDERS = ["spotify", "coinbase", "discord", "kakao"];

@@ -31,7 +31,7 @@ function QuestsMissions({
 }: QuestsMissionsProps) {
     // 로딩 상태 처리
     if (isLoading) {
-        return <PartialLoading text="Quest lists are loading..." size="sm" />;
+        return <PartialLoading text="Quest lists are loading..." />;
     }
 
     // 에러 상태 처리

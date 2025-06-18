@@ -184,7 +184,7 @@ function PollsList({
 
     // 로딩 상태 처리
     if (isLoading) {
-        return <PartialLoading text="Loading polls..." size="sm" />;
+        return <PartialLoading text="Loading..." />;
     }
 
     // 폴이 없는 경우 처리

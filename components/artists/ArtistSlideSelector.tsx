@@ -149,7 +149,7 @@ export default function ArtistSlideSelector({
             )}
         >
             <div className="relative">
-                {isLoading && <PartialLoading text="Loading..." size="sm" />}
+                {isLoading && <PartialLoading text="Loading..." />}
                 {error && <div>Error: {error.message}</div>}
                 {artists && !isLoading && artists.length > 0 && (
                     <Slider {...sliderSettings}>{renderArtists}</Slider>

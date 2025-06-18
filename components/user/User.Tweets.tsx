@@ -47,7 +47,7 @@ export default function UserTweets({ user, player }: UserTweetsProps) {
     if (isAuthorByPlayerIdLoading) {
         return (
             <div className="flex flex-col items-center justify-center h-full">
-                <PartialLoading text="Loading..." size="sm" />
+                <PartialLoading text="Loading..." />
             </div>
         );
     }

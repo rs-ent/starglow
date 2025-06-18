@@ -41,7 +41,7 @@ function PollsContentsPublic({
         >
             <div className="relative">
                 {isLoading ? (
-                    <PartialLoading text="Loading polls..." size="sm" />
+                    <PartialLoading text="Loading..." />
                 ) : error ? (
                     <div className="text-center text-red-400 py-4">
                         Error: {error.message}

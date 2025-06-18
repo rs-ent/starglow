@@ -23,7 +23,7 @@ const UserRewardModalCardV2 = dynamic(
         loading: () => {
             return (
                 <div className="flex items-center justify-center w-full h-full">
-                    <PartialLoading text="Loading..." size="sm" />
+                    <PartialLoading text="Loading..." />
                 </div>
             );
         },
@@ -62,7 +62,7 @@ export default function UserRewards({ user, player }: UserRewardsProps) {
             >
                 {isPlayerAssetsLoading ? (
                     <div className="flex items-center justify-center w-full h-full">
-                        <PartialLoading text="Loading..." size="sm" />
+                        <PartialLoading text="Loading..." />
                     </div>
                 ) : (
                     <UserRewardModalCardV2
