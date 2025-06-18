@@ -1,19 +1,16 @@
-/// components/atoms/PartialLoading.tsx
-
-"use client";
+/// components/atoms/PartialLoadingServer.tsx
 
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { memo } from "react";
 
 interface PartialLoadingProps {
-    text: string;
+    text?: string;
     loadingSize?: number;
     textSize?: number;
 }
 
-function PartialLoading({
-    text = "Loading...",
+export default function PartialLoadingServer({
+    text,
     loadingSize = 50,
     textSize = 5,
 }: PartialLoadingProps) {
@@ -42,17 +39,17 @@ function PartialLoading({
                     <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-purple-500/30 via-pink-500/10 to-cyan-500/15 blur-sm animate-pulse" />
                 </div>
                 {/* Web3 스타일 텍스트 */}
-                <p
-                    className={cn(
-                        "mt-1 text-sm font-medium bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent animate-pulse",
-                        getResponsiveClass(textSize).textClass
-                    )}
-                >
-                    {text}
-                </p>
+                {text && (
+                    <p
+                        className={cn(
+                            "mt-1 text-sm font-medium bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent animate-pulse",
+                            getResponsiveClass(textSize).textClass
+                        )}
+                    >
+                        {text}
+                    </p>
+                )}
             </div>
         </div>
     );
 }
-
-export default memo(PartialLoading);

@@ -4,20 +4,17 @@ import { Suspense } from "react";
 import User from "@/components/user/User";
 import { requireAuthUserAndPlayer } from "@/app/auth/authUtils";
 import { getUserVerifiedSPGs } from "@/app/story/interaction/actions";
-
-export const dynamic = "force-dynamic";
+import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 
 // 로딩 상태 컴포넌트
 function UserLoading() {
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
-            <div className="fixed inset-0 bg-gradient-to-b from-[#09011b] to-[#311473] -z-20" />
-            <div className="flex justify-center items-center h-screen">
-                <div className="animate-pulse text-center">
-                    <h2 className="text-4xl mb-4">User</h2>
-                    <p className="text-muted-foreground">Loading...</p>
-                </div>
-            </div>
+            <PartialLoadingServer
+                text="Building a private space...🏠"
+                loadingSize={70}
+                textSize={10}
+            />
         </div>
     );
 }

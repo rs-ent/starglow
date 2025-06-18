@@ -12,7 +12,7 @@ import { useSession } from "next-auth/react";
 import { useUserSet } from "@/app/hooks/useUser";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import PartialLoading from "@/components/atoms/PartialLoading";
 
 declare global {
     interface Window {
