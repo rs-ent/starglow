@@ -36,8 +36,8 @@ export default function TwitterIntegration({
                 const result = await exchangeXToken({ code, state });
 
                 if (result.success) {
-                    // 모바일에서도 tweet 탭으로 전환 (이미 URL redirect로 처리되지만 보험)
-                    window.location.hash = "tweet";
+                    // 모바일에서도 tweets 탭으로 전환 (이미 URL redirect로 처리되지만 보험)
+                    window.location.hash = "tweets";
                     onSuccess?.(result.authorId!, result.userData);
                 } else {
                     onError?.(result.message || "Authentication failed");
@@ -48,11 +48,13 @@ export default function TwitterIntegration({
             } finally {
                 setIsLoading(false);
                 // URL 정리
-                window.history.replaceState(
-                    {},
-                    document.title,
-                    window.location.pathname
-                );
+                setTimeout(() => {
+                    window.history.replaceState(
+                        {},
+                        document.title,
+                        window.location.pathname
+                    );
+                }, 100);
             }
         },
         [onSuccess, onError]
@@ -123,8 +125,8 @@ export default function TwitterIntegration({
                         });
 
                         if (result.success) {
-                            // 데스크톱에서도 tweet 탭으로 전환
-                            window.location.hash = "tweet";
+                            // 데스크톱에서도 tweets 탭으로 전환
+                            window.location.hash = "tweets";
                             onSuccess?.(result.authorId!, result.userData);
                         } else {
                             onError?.(
