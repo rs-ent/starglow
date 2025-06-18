@@ -147,7 +147,7 @@ export default function InviteFriendsModal({
                                         src={item.icon}
                                         alt={item.title}
                                         className={cn(
-                                            getResponsiveClass(50).frameClass
+                                            getResponsiveClass(40).frameClass
                                         )}
                                     />
                                     <p

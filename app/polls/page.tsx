@@ -26,15 +26,19 @@ function PollsLoading() {
     );
 }
 
-export default async function PollsPage() {
+// 사용자 데이터를 가져오는 컴포넌트
+async function PollsContent() {
     const session = await auth();
 
     return (
+        <Polls user={session?.user ?? null} player={session?.player ?? null} />
+    );
+}
+
+export default function PollsEntryPage() {
+    return (
         <Suspense fallback={<PollsLoading />}>
-            <Polls
-                user={session?.user ?? null}
-                player={session?.player ?? null}
-            />
+            <PollsContent />
         </Suspense>
     );
 }

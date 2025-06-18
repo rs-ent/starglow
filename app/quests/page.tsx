@@ -28,15 +28,18 @@ function QuestsLoading() {
     );
 }
 
-export default async function QuestPage() {
+async function QuestsContent() {
     const session = await auth();
 
     return (
+        <Quests user={session?.user ?? null} player={session?.player ?? null} />
+    );
+}
+
+export default function QuestsEntryPage() {
+    return (
         <Suspense fallback={<QuestsLoading />}>
-            <Quests
-                user={session?.user ?? null}
-                player={session?.player ?? null}
-            />
+            <QuestsContent />
         </Suspense>
     );
 }
