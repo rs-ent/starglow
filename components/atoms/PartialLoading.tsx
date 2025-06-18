@@ -14,7 +14,7 @@ interface PartialLoadingProps {
 
 function PartialLoading({
     text = "Loading...",
-    loadingSize = 50,
+    loadingSize = 40,
     textSize = 5,
 }: PartialLoadingProps) {
     return (
@@ -33,18 +33,29 @@ function PartialLoading({
                         getResponsiveClass(loadingSize).frameClass
                     )}
                 >
-                    {/* 외부 회전 링 */}
-                    <div className="absolute inset-0 rounded-full border-2 border-transparent bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 animate-spin">
-                        <div className="absolute inset-1 rounded-full bg-background" />
-                    </div>
-
                     {/* 글로우 효과 */}
-                    <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-purple-500/30 via-pink-500/10 to-cyan-500/15 blur-sm animate-pulse" />
+                    <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-cyan-500/10 blur-sm animate-pulse" />
+
+                    {/* 외부 회전 링 - 이미지로 마스킹 */}
+                    <div
+                        className="absolute inset-0 border-2 border-transparent"
+                        style={{
+                            mask: "url(/logo/l-gradient-purple.svg) no-repeat center",
+                            maskSize: "contain",
+                            WebkitMask:
+                                "url(/logo/l-gradient-purple.svg) no-repeat center",
+                            WebkitMaskSize: "contain",
+                            filter: "blur(15px)",
+                        }}
+                    >
+                        {/* 회전하는 그라데이션 배경 */}
+                        <div className="absolute inset-0 scale-125 bg-gradient-to-r from-purple-300 via-pink-200 to-cyan-200 animate-spin" />
+                    </div>
                 </div>
                 {/* Web3 스타일 텍스트 */}
                 <p
                     className={cn(
-                        "mt-1 text-sm font-medium bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent animate-pulse",
+                        "mt-1 text-sm font-medium bg-gradient-to-r from-purple-400 via-pink-300 to-cyan-300 bg-clip-text text-transparent animate-pulse",
                         getResponsiveClass(textSize).textClass
                     )}
                 >

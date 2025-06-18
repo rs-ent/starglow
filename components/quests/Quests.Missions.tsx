@@ -70,7 +70,7 @@ function QuestsMissions({
                             : tokenGating.data[quest.needTokenAddress];
 
                     return (
-                        <div key={quest.id}>
+                        <div key={quest.id} className="overflow-hidden">
                             <QuestsButton
                                 player={player}
                                 quest={quest}
