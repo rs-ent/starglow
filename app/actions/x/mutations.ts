@@ -6,6 +6,7 @@ import {
     validateRegisterXAuthor,
     checkIsActiveXAuthor,
     confirmRegisterXAuthor,
+    disconnectXAccount,
 } from "./actions";
 
 export function useValidateRegisterXAuthorMutation() {
@@ -40,6 +41,18 @@ export function useConfirmRegisterXAuthorMutation() {
             queryClient.invalidateQueries({
                 queryKey: tweetKeys.confirmRegisterXAuthor(variables || {}),
             });
+            queryClient.invalidateQueries({
+                queryKey: tweetKeys.authorByPlayerId(variables?.playerId || ""),
+            });
+        },
+    });
+}
+
+export function useDisconnectXAccountMutation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: disconnectXAccount,
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({
                 queryKey: tweetKeys.authorByPlayerId(variables?.playerId || ""),
             });

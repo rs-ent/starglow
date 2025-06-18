@@ -3,12 +3,12 @@
 import { useTweets } from "@/app/actions/x/hooks";
 import { User } from "next-auth";
 import { Player } from "@prisma/client";
-import { useToast } from "@/app/hooks/useToast";
 import PartialLoading from "../atoms/PartialLoading";
 import UserTweetsRegister from "./User.Tweets.Register";
 import UserTweetsTutorialModal from "./User.Tweets.Tutorial.Modal";
 import { cn } from "@/lib/utils/tailwind";
 import { useState, useEffect } from "react";
+import UserTweetsDashboard from "./User.Tweets.Dashboard";
 
 interface UserTweetsProps {
     user: User | null;
@@ -16,14 +16,11 @@ interface UserTweetsProps {
 }
 
 export default function UserTweets({ user, player }: UserTweetsProps) {
-    const toast = useToast();
     const [showTutorial, setShowTutorial] = useState(false);
-    const [hasSeenTutorial, setHasSeenTutorial] = useState(false);
 
     const {
         authorByPlayerId,
         isAuthorByPlayerIdLoading,
-        authorByPlayerIdError,
         refetchAuthorByPlayerId,
     } = useTweets({
         getAuthorByPlayerIdInput: {
@@ -34,14 +31,18 @@ export default function UserTweets({ user, player }: UserTweetsProps) {
     useEffect(() => {
         const tutorialSeen = localStorage.getItem("tweets-tutorial-seen");
         if (!tutorialSeen && !isAuthorByPlayerIdLoading) {
+            localStorage.setItem("tweets-tutorial-seen", "true");
             setShowTutorial(true);
         }
     }, [isAuthorByPlayerIdLoading]);
 
     const handleTutorialComplete = () => {
         localStorage.setItem("tweets-tutorial-seen", "true");
-        setHasSeenTutorial(true);
         setShowTutorial(false);
+    };
+
+    const handleXDisconnect = () => {
+        refetchAuthorByPlayerId();
     };
 
     if (isAuthorByPlayerIdLoading) {
@@ -61,18 +62,17 @@ export default function UserTweets({ user, player }: UserTweetsProps) {
             )}
         >
             <h2 className="text-2xl font-bold">TWEETS</h2>
-            {authorByPlayerId && authorByPlayerId.registered ? (
-                <div className="flex flex-col items-center gap-4">
-                    <button className="bg-blue-500 text-white px-4 py-2 rounded-md">
-                        Start!
-                    </button>
-                    <button
-                        onClick={() => setShowTutorial(true)}
-                        className="text-sm text-gray-400 hover:text-gray-300 underline"
-                    >
-                        View Tutorial Again
-                    </button>
-                </div>
+            {authorByPlayerId &&
+            authorByPlayerId.registered &&
+            user &&
+            player ? (
+                <UserTweetsDashboard
+                    user={user}
+                    player={player}
+                    tweetAuthor={authorByPlayerId}
+                    setShowTutorial={setShowTutorial}
+                    onXDisconnect={handleXDisconnect}
+                />
             ) : (
                 <UserTweetsRegister
                     user={user}

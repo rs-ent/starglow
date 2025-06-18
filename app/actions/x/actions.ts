@@ -884,19 +884,20 @@ export async function disconnectXAccount(
         }
 
         await prisma.$transaction(async (tx) => {
-            // Player의 tweetAuthorId 제거
+            await tx.tweetAuthor.update({
+                where: { authorId: player.tweetAuthorId! },
+                data: {
+                    registered: false,
+                    registeredAt: null,
+                    validated: false,
+                    validatedAt: null,
+                },
+            });
+
             await tx.player.update({
                 where: { id: input.playerId },
                 data: {
                     tweetAuthorId: null,
-                },
-            });
-
-            // Account 레코드 삭제
-            await tx.account.deleteMany({
-                where: {
-                    userId: player.userId || "",
-                    provider: "twitter",
                 },
             });
         });

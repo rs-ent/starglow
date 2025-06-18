@@ -14,6 +14,7 @@ import {
     useValidateRegisterXAuthorMutation,
     useCheckIsActiveXAuthorMutation,
     useConfirmRegisterXAuthorMutation,
+    useDisconnectXAccountMutation,
 } from "./mutations";
 import {
     GetTweetMetricsHistoryInput,
@@ -94,6 +95,14 @@ export function useTweets(input?: useTweetsInput) {
         error: confirmRegisterXAuthorError,
     } = useConfirmRegisterXAuthorMutation();
 
+    const {
+        mutate: disconnectXAccount,
+        mutateAsync: disconnectXAccountAsync,
+        isPending: isDisconnectXAccountPending,
+        isError: isDisconnectXAccountError,
+        error: disconnectXAccountError,
+    } = useDisconnectXAccountMutation();
+
     return {
         latestSyncData,
         isLatestSyncDataLoading,
@@ -142,5 +151,11 @@ export function useTweets(input?: useTweetsInput) {
         isConfirmRegisterXAuthorPending,
         isConfirmRegisterXAuthorError,
         confirmRegisterXAuthorError,
+
+        disconnectXAccount,
+        disconnectXAccountAsync,
+        isDisconnectXAccountPending,
+        isDisconnectXAccountError,
+        disconnectXAccountError,
     };
 }

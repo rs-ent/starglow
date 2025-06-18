@@ -426,11 +426,15 @@ export default function UserTweetsTutorialModal({
 
                                 {/* Navigation */}
                                 {currentStep < steps.length - 1 && (
-                                    <div className="flex justify-between mt-8">
+                                    <div className="flex justify-between mt-[20px]">
                                         <button
                                             onClick={prevStep}
                                             className={cn(
-                                                "px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors",
+                                                "rounded-lg text-gray-400 hover:text-white transition-colors",
+                                                getResponsiveClass(15)
+                                                    .paddingClass,
+                                                getResponsiveClass(15)
+                                                    .textClass,
                                                 currentStep === 0 && "invisible"
                                             )}
                                         >
@@ -438,10 +442,21 @@ export default function UserTweetsTutorialModal({
                                         </button>
                                         <button
                                             onClick={nextStep}
-                                            className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all flex items-center gap-2"
+                                            className={cn(
+                                                "bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all flex items-center gap-2",
+                                                getResponsiveClass(20)
+                                                    .textClass,
+                                                getResponsiveClass(25)
+                                                    .paddingClass
+                                            )}
                                         >
                                             Next
-                                            <ArrowRight className="w-4 h-4" />
+                                            <ArrowRight
+                                                className={cn(
+                                                    getResponsiveClass(20)
+                                                        .frameClass
+                                                )}
+                                            />
                                         </button>
                                     </div>
                                 )}
