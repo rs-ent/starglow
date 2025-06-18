@@ -36,7 +36,7 @@ export default function TwitterIntegration({
                 const result = await exchangeXToken({ code, state });
 
                 if (result.success) {
-                    // 모바일에서도 tweets 탭으로 전환 (이미 URL redirect로 처리되지만 보험)
+                    // 모바일에서도 tweets 탭으로 전환
                     window.location.hash = "tweets";
                     onSuccess?.(result.authorId!, result.userData);
                 } else {
@@ -47,14 +47,12 @@ export default function TwitterIntegration({
                 onError?.("Authentication failed");
             } finally {
                 setIsLoading(false);
-                // URL 정리
-                setTimeout(() => {
-                    window.history.replaceState(
-                        {},
-                        document.title,
-                        window.location.pathname
-                    );
-                }, 100);
+                // URL 정리 - 처리 완료 후 즉시 정리
+                window.history.replaceState(
+                    {},
+                    document.title,
+                    window.location.pathname
+                );
             }
         },
         [onSuccess, onError]
@@ -67,9 +65,10 @@ export default function TwitterIntegration({
         const state = urlParams.get("x_auth_state");
         const error = urlParams.get("x_auth_error");
 
+        // URL 파라미터가 있는 경우에만 처리하고 즉시 정리
         if (error) {
             onError?.(decodeURIComponent(error));
-            // URL 정리
+            // URL 즉시 정리
             window.history.replaceState(
                 {},
                 document.title,
@@ -77,8 +76,9 @@ export default function TwitterIntegration({
             );
         } else if (code && state) {
             handleMobileAuthCallback(code, state);
+            // handleMobileAuthCallback 내부에서 URL 정리하므로 여기서는 불필요
         }
-    }, [onError, handleMobileAuthCallback]);
+    }, []); // 🔑 의존성 배열을 비워서 마운트 시 한 번만 실행
 
     const handleXConnect = async () => {
         setIsLoading(true);
