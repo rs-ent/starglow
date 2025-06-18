@@ -35,6 +35,7 @@ export default function TwitterIntegration({
                 const result = await exchangeXToken({ code, state });
 
                 if (result.success) {
+                    window.location.hash = "tweets";
                     onSuccess?.(result.authorId!, result.userData);
                 } else {
                     onError?.(result.message || "Authentication failed");
@@ -44,11 +45,11 @@ export default function TwitterIntegration({
                 onError?.("Authentication failed");
             } finally {
                 setIsLoading(false);
-                window.history.replaceState(
-                    {},
-                    document.title,
-                    window.location.pathname
-                );
+                const url = new URL(window.location.href);
+                url.searchParams.delete("x_auth_code");
+                url.searchParams.delete("x_auth_state");
+                url.searchParams.delete("x_auth_error");
+                window.history.replaceState({}, document.title, url.toString());
             }
         },
         [onSuccess, onError]
@@ -62,11 +63,9 @@ export default function TwitterIntegration({
 
         if (error) {
             onError?.(decodeURIComponent(error));
-            window.history.replaceState(
-                {},
-                document.title,
-                window.location.pathname
-            );
+            const url = new URL(window.location.href);
+            url.searchParams.delete("x_auth_error");
+            window.history.replaceState({}, document.title, url.toString());
         } else if (code && state) {
             handleMobileAuthCallback(code, state);
         }
@@ -114,6 +113,7 @@ export default function TwitterIntegration({
                         });
 
                         if (result.success) {
+                            window.location.hash = "tweets";
                             onSuccess?.(result.authorId!, result.userData);
                         } else {
                             onError?.(

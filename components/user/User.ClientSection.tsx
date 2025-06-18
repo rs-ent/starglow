@@ -63,10 +63,8 @@ const UserClientSection = React.memo(function UserClientSection({
 }: Props) {
     const [selectedTab, setSelectedTab] = useState<Tab>("mystar");
 
-    // URL 해시를 감지해서 해당 탭으로 자동 전환
     useEffect(() => {
         const hash = window.location.hash.replace("#", "");
-
         if (
             hash === "tweets" ||
             hash === "mystar" ||
@@ -74,16 +72,29 @@ const UserClientSection = React.memo(function UserClientSection({
             hash === "settings"
         ) {
             setSelectedTab(hash as Tab);
-            window.history.replaceState(
-                null,
-                "",
-                window.location.pathname + window.location.search
-            );
         }
+    }, []);
+
+    useEffect(() => {
+        const handleHashChange = () => {
+            const hash = window.location.hash.replace("#", "");
+            if (
+                hash === "tweets" ||
+                hash === "mystar" ||
+                hash === "rewards" ||
+                hash === "settings"
+            ) {
+                setSelectedTab(hash as Tab);
+            }
+        };
+
+        window.addEventListener("hashchange", handleHashChange);
+        return () => window.removeEventListener("hashchange", handleHashChange);
     }, []);
 
     const handleTabChange = useCallback((tab: Tab) => {
         setSelectedTab(tab);
+        window.location.hash = tab;
     }, []);
 
     const renderContent = useMemo(() => {
