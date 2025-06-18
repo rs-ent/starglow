@@ -74,14 +74,11 @@ const UserClientSection = React.memo(function UserClientSection({
             hash === "settings"
         ) {
             setSelectedTab(hash as Tab);
-            // 해시 제거 (깔끔한 URL 유지) - 약간의 딜레이 후 실행
-            setTimeout(() => {
-                window.history.replaceState(
-                    null,
-                    "",
-                    window.location.pathname + window.location.search
-                );
-            }, 100);
+            window.history.replaceState(
+                null,
+                "",
+                window.location.pathname + window.location.search
+            );
         }
     }, []);
 

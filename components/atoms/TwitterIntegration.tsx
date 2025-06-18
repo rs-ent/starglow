@@ -12,7 +12,6 @@ interface TwitterIntegrationProps {
     isConnected?: boolean;
 }
 
-// 모바일 환경 감지 함수
 const isMobileDevice = () => {
     return (
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -36,8 +35,6 @@ export default function TwitterIntegration({
                 const result = await exchangeXToken({ code, state });
 
                 if (result.success) {
-                    // 모바일에서도 tweets 탭으로 전환
-                    window.location.hash = "tweets";
                     onSuccess?.(result.authorId!, result.userData);
                 } else {
                     onError?.(result.message || "Authentication failed");
@@ -47,7 +44,6 @@ export default function TwitterIntegration({
                 onError?.("Authentication failed");
             } finally {
                 setIsLoading(false);
-                // URL 정리 - 처리 완료 후 즉시 정리
                 window.history.replaceState(
                     {},
                     document.title,
@@ -58,17 +54,14 @@ export default function TwitterIntegration({
         [onSuccess, onError]
     );
 
-    // 페이지 로드 시 URL에서 인증 결과 확인 (모바일 redirect 처리)
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get("x_auth_code");
         const state = urlParams.get("x_auth_state");
         const error = urlParams.get("x_auth_error");
 
-        // URL 파라미터가 있는 경우에만 처리하고 즉시 정리
         if (error) {
             onError?.(decodeURIComponent(error));
-            // URL 즉시 정리
             window.history.replaceState(
                 {},
                 document.title,
@@ -76,9 +69,8 @@ export default function TwitterIntegration({
             );
         } else if (code && state) {
             handleMobileAuthCallback(code, state);
-            // handleMobileAuthCallback 내부에서 URL 정리하므로 여기서는 불필요
         }
-    }, []); // 🔑 의존성 배열을 비워서 마운트 시 한 번만 실행
+    }, []);
 
     const handleXConnect = async () => {
         setIsLoading(true);
@@ -88,11 +80,8 @@ export default function TwitterIntegration({
             const isMobile = isMobileDevice();
 
             if (isMobile) {
-                // 모바일: 현재 창에서 직접 이동
-                // X 인증 페이지로 직접 이동
                 window.location.href = authData.authUrl;
             } else {
-                // 데스크톱: 기존 팝업 방식
                 const popup = window.open(
                     authData.authUrl,
                     "x-auth",
@@ -125,8 +114,6 @@ export default function TwitterIntegration({
                         });
 
                         if (result.success) {
-                            // 데스크톱에서도 tweets 탭으로 전환
-                            window.location.hash = "tweets";
                             onSuccess?.(result.authorId!, result.userData);
                         } else {
                             onError?.(
