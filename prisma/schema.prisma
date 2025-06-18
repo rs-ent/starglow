@@ -38,6 +38,7 @@ model User {
   @@index([email, active])
   @@index([role, active])
   @@index([lastLoginAt])
+  @@index([createdAt])
 }
 
 model Account {
@@ -97,6 +98,8 @@ model Wallet {
 
   @@index([userId, network, default])
   @@index([address, network])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Player {
@@ -132,6 +135,8 @@ model Player {
   @@index([userId, telegramId])
   @@index([referredBy])
   @@index([referralCode])
+  @@index([createdAt])
+  @@index([lastConnectedAt])
 }
 
 model PlayerOldData {
@@ -210,6 +215,8 @@ model Quest {
   @@index([permanent, isActive, startDate])
   @@index([type, isActive])
   @@index([order, isActive])
+  @@index([artistId, isActive])
+  @@index([questType, isActive])
 }
 
 model QuestLog {
@@ -296,6 +303,8 @@ model Poll {
 
   @@index([category])
   @@index([artistId])
+  @@index([status, startDate])
+  @@index([isActive, startDate])
 }
 
 model PollLog {
@@ -394,6 +403,8 @@ model Events {
   @@index([category, status, startDate])
   @@index([location, startDate])
   @@index([isFeatured, isActive, startDate])
+  @@index([artistUrl])
+  @@index([createdAt])
 }
 
 model StoredFiles {
@@ -501,6 +512,11 @@ model Payment {
 
   @@index([userId])
   @@index([userId, status])
+  @@index([status, createdAt])
+  @@index([productTable, productId])
+  @@index([channelKey])
+  @@index([paymentId])
+  @@index([createdAt])
 }
 
 model PaymentPromotion {
@@ -817,6 +833,9 @@ model NFT {
   @@index([tokenId])
   @@index([currentOwnerAddress])
   @@index([ownerAddress])
+  @@index([isStaked, stakedAt])
+  @@index([isListed])
+  @@index([mintedAt])
 }
 
 model CollectionParticipant {
@@ -966,6 +985,8 @@ model ArtistFeed {
   updatedAt DateTime             @updatedAt
   artist    Artist               @relation(fields: [artistId], references: [id])
   reactions ArtistFeedReaction[]
+
+  @@index([artistId, createdAt])
 }
 
 model ArtistFeedReaction {
@@ -1190,6 +1211,7 @@ model Tweet {
   @@index([authorId])
   @@index([tweetId])
   @@index([createdAt])
+  @@index([isDeleted])
 }
 
 model TweetMetrics {

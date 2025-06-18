@@ -113,7 +113,6 @@ export default function TwitterIntegration({
                         });
 
                         if (result.success) {
-                            window.location.hash = "tweets";
                             onSuccess?.(result.authorId!, result.userData);
                         } else {
                             onError?.(
