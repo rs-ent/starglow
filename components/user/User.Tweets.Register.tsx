@@ -5,7 +5,7 @@ import { User } from "next-auth";
 import { Player, TweetAuthor } from "@prisma/client";
 import { useToast } from "@/app/hooks/useToast";
 import TwitterIntegration from "../atoms/TwitterIntegration";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     UserPlus,
@@ -36,6 +36,8 @@ const tweetText = `@StarglowP
 Join us on Starglow!
 https://starglow.io
 `;
+
+const steps = ["login", "validate", "post", "confirm", "complete"];
 
 export default function UserTweetsRegister({
     user,
@@ -73,23 +75,32 @@ export default function UserTweetsRegister({
         confirmRegisterXAuthorError,
     } = useTweets();
 
-    // Step configuration for progress bar
-    const steps = ["login", "validate", "post", "confirm", "complete"];
-    const currentStepIndex = steps.indexOf(step);
-    const progressPercentage = ((currentStepIndex + 1) / steps.length) * 100;
+    const { currentStepIndex, progressPercentage } = useMemo(() => {
+        const currentStepIndex = steps.indexOf(step);
+        const progressPercentage =
+            ((currentStepIndex + 1) / steps.length) * 100;
+        return { currentStepIndex, progressPercentage };
+    }, [step]);
 
     useEffect(() => {
         if (hasConnectedAccount) {
+            setStep("validate");
             return;
         }
 
         if (!tweetAuthor) {
+            console.log("!tweetAuthor", !tweetAuthor);
             setStep("login");
         } else {
             setTweetAuthorId(tweetAuthor.authorId);
             if (tweetAuthor.registered) {
+                console.log("tweetAuthor.registered", tweetAuthor.registered);
                 setStep("complete");
             } else if (tweetAuthor.validated && !tweetAuthor.registered) {
+                console.log(
+                    "tweetAuthor.validated && !tweetAuthor.registered",
+                    tweetAuthor.validated && !tweetAuthor.registered
+                );
                 setStep("confirm");
             }
         }
@@ -104,35 +115,29 @@ export default function UserTweetsRegister({
     };
 
     const handleValidateRegisterXAuthor = async () => {
-        try {
-            if (!tweetAuthorId || !player?.id) {
-                toast.error(
-                    "Invalid input. Please try again. If the problem persists, please contact support."
-                );
-                return;
-            }
-
-            const validateResult = await validateRegisterXAuthorAsync({
-                playerId: player?.id || "",
-                tweetAuthorId: tweetAuthorId || "",
-            });
-
-            if (validateResult.isValid) {
-                toast.success("Successfully validated your X Account!");
-                setValidateFailed(false);
-                setStep("post");
-            } else {
-                toast.error(
-                    validateResult.message ||
-                        "Invalid input. Please try again. If the problem persists, please contact support."
-                );
-                setValidateFailed(true);
-            }
-        } catch (error) {
-            console.error(error);
+        if (!tweetAuthorId || !player?.id) {
             toast.error(
-                "Error occurred while validating X Account. Please try again. If the problem persists, please contact support."
+                "Invalid input. Please try again. If the problem persists, please contact support."
             );
+            return;
+        }
+
+        const validateResult = await validateRegisterXAuthorAsync({
+            playerId: player?.id || "",
+            tweetAuthorId: tweetAuthorId || "",
+        });
+
+        if (validateResult.isValid) {
+            toast.success("Successfully validated your X Account!");
+            setValidateFailed(false);
+            setStep("post");
+            console.log("validateResult.isValid", validateResult.isValid);
+        } else {
+            toast.error(
+                validateResult.message ||
+                    "Invalid input. Please try again. If the problem persists, please contact support."
+            );
+            setValidateFailed(true);
         }
     };
 
@@ -141,37 +146,28 @@ export default function UserTweetsRegister({
     };
 
     const handleCheckIsActiveXAuthor = async () => {
-        try {
-            if (!tweetAuthorId || !player?.id) {
-                toast.error(
-                    "Invalid input. Please try again. If the problem persists, please contact support."
-                );
-                return;
-            }
-
-            if (step !== "post") {
-                toast.error("Please complete previous steps first.");
-                return;
-            }
-
-            const checkResult = await checkIsActiveXAuthorAsync({
-                tweetAuthorId: tweetAuthorId || "",
-            });
-
-            if (checkResult.isActive) {
-                toast.success(
-                    "Successfully found your tweet from your X Account!"
-                );
-                setStep("confirm");
-            } else {
-                toast.error(
-                    "We couldn't find any recent tweets mentioning @StarglowP. Please try again."
-                );
-            }
-        } catch (error) {
-            console.error(error);
+        if (!tweetAuthorId || !player?.id) {
             toast.error(
-                "Error occurred while checking X Account Activity. Please try again. If the problem persists, please contact support."
+                "Invalid input. Please try again. If the problem persists, please contact support."
+            );
+            return;
+        }
+
+        if (step !== "post") {
+            toast.error("Please complete previous steps first.");
+            return;
+        }
+
+        const checkResult = await checkIsActiveXAuthorAsync({
+            tweetAuthorId: tweetAuthorId || "",
+        });
+
+        if (checkResult.isActive) {
+            toast.success("Successfully found your tweet from your X Account!");
+            setStep("confirm");
+        } else {
+            toast.error(
+                "We couldn't find any recent tweets mentioning @StarglowP. Please try again."
             );
         }
     };

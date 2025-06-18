@@ -76,7 +76,8 @@ export default function TwitterIntegration({
 
         try {
             const authData = await startXAuth({ playerId });
-            const isMobile = isMobileDevice();
+            //const isMobile = isMobileDevice();
+            const isMobile = true;
 
             if (isMobile) {
                 window.location.href = authData.authUrl;

@@ -63,35 +63,6 @@ const UserClientSection = React.memo(function UserClientSection({
 }: Props) {
     const [selectedTab, setSelectedTab] = useState<Tab>("mystar");
 
-    useEffect(() => {
-        const hash = window.location.hash.replace("#", "");
-        if (
-            hash === "tweets" ||
-            hash === "mystar" ||
-            hash === "rewards" ||
-            hash === "settings"
-        ) {
-            setSelectedTab(hash as Tab);
-        }
-    }, []);
-
-    useEffect(() => {
-        const handleHashChange = () => {
-            const hash = window.location.hash.replace("#", "");
-            if (
-                hash === "tweets" ||
-                hash === "mystar" ||
-                hash === "rewards" ||
-                hash === "settings"
-            ) {
-                setSelectedTab(hash as Tab);
-            }
-        };
-
-        window.addEventListener("hashchange", handleHashChange);
-        return () => window.removeEventListener("hashchange", handleHashChange);
-    }, []);
-
     const handleTabChange = useCallback((tab: Tab) => {
         setSelectedTab(tab);
         window.location.hash = tab;
@@ -114,6 +85,19 @@ const UserClientSection = React.memo(function UserClientSection({
             return <UserSettings user={user} player={player} />;
         }
     }, [selectedTab, user, player, userVerifiedSPGs]);
+
+    useEffect(() => {
+        const updateTabFromHash = () => {
+            if (window === undefined) return;
+            const hash = window.location.hash.replace("#", "");
+            setSelectedTab(hash as Tab);
+        };
+        updateTabFromHash();
+        window.addEventListener("hashchange", updateTabFromHash);
+        return () => {
+            window.removeEventListener("hashchange", updateTabFromHash);
+        };
+    }, []);
 
     return (
         <>
