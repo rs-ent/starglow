@@ -1,7 +1,6 @@
 /// app\user\page.tsx
 
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
 import User from "@/components/user/User";
 import { requireAuthUserAndPlayer } from "@/app/auth/authUtils";
 import { getUserVerifiedSPGs } from "@/app/story/interaction/actions";
@@ -25,22 +24,13 @@ function UserLoading() {
 
 // 사용자 데이터를 가져오는 컴포넌트
 async function UserContent() {
-    try {
-        const { user, player } = await requireAuthUserAndPlayer("/user");
-        const userVerifiedSPGs = await getUserVerifiedSPGs({
-            userId: user.id,
-        });
-        return (
-            <User
-                user={user}
-                player={player}
-                userVerifiedSPGs={userVerifiedSPGs}
-            />
-        );
-    } catch (error) {
-        console.error("Error loading user:", error);
-        notFound();
-    }
+    const { user, player } = await requireAuthUserAndPlayer("/user");
+    const userVerifiedSPGs = await getUserVerifiedSPGs({
+        userId: user.id,
+    });
+    return (
+        <User user={user} player={player} userVerifiedSPGs={userVerifiedSPGs} />
+    );
 }
 
 export default function UserEntryPage() {

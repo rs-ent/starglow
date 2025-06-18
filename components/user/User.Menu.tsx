@@ -59,7 +59,7 @@ export default memo(function UserMenu({
                         className={cn(
                             "flex items-center justify-center gap-2 cursor-pointer",
                             "border border-[rgba(255,255,255,0.3)]",
-                            "rounded-[10px] hover:bg-[rgba(255,255,255,0.1)]",
+                            "rounded-[6px] hover:bg-[rgba(255,255,255,0.1)]",
                             getResponsiveClass(20).paddingClass,
                             selectedTab === item.value &&
                                 "bg-[rgba(255,255,255,0.1)]"
