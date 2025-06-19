@@ -35,7 +35,6 @@ export default function TwitterIntegration({
                 const result = await exchangeXToken({ code, state });
 
                 if (result.success) {
-                    window.location.hash = "tweets";
                     onSuccess?.(result.authorId!, result.userData);
                 } else {
                     onError?.(result.message || "Authentication failed");
@@ -76,8 +75,7 @@ export default function TwitterIntegration({
 
         try {
             const authData = await startXAuth({ playerId });
-            //const isMobile = isMobileDevice();
-            const isMobile = true;
+            const isMobile = isMobileDevice();
 
             if (isMobile) {
                 window.location.href = authData.authUrl;

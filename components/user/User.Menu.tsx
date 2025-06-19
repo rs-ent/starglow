@@ -1,49 +1,38 @@
 /// components/user/User.Menu.tsx
 
-import { memo, useCallback } from "react";
+"use client";
+
+import { memo } from "react";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-
-export type Tab = "mystar" | "rewards" | "tweets" | "settings";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const menuItems = [
     {
         label: "My Star",
         icon: "/ui/user/user-mystar.svg",
-        value: "mystar" as Tab,
+        href: "/user/mystar",
     },
     {
         label: "Rewards",
         icon: "/ui/user/user-rewards.svg",
-        value: "rewards" as Tab,
+        href: "/user/rewards",
     },
     {
         label: "Tweets",
         icon: "/ui/user/user-tweets.svg",
-        value: "tweets" as Tab,
+        href: "/user/tweets",
     },
     {
         label: "Settings",
         icon: "/ui/settings.svg",
-        value: "settings" as Tab,
+        href: "/user/settings",
     },
 ];
 
-interface UserMenuProps {
-    selectedTab: Tab;
-    onTabChange: (tab: Tab) => void;
-}
-
-export default memo(function UserMenu({
-    selectedTab,
-    onTabChange,
-}: UserMenuProps) {
-    const handleTabChange = useCallback(
-        (tab: Tab) => {
-            onTabChange(tab);
-        },
-        [onTabChange]
-    );
+export default memo(function UserMenu() {
+    const pathname = usePathname();
 
     return (
         <div>
@@ -54,17 +43,17 @@ export default memo(function UserMenu({
                 )}
             >
                 {menuItems.map((item) => (
-                    <div
-                        key={item.value}
+                    <Link
+                        key={item.href}
+                        href={item.href}
                         className={cn(
                             "flex items-center justify-center gap-2 cursor-pointer",
                             "border border-[rgba(255,255,255,0.3)]",
                             "rounded-[6px] hover:bg-[rgba(255,255,255,0.1)]",
                             getResponsiveClass(20).paddingClass,
-                            selectedTab === item.value &&
+                            pathname === item.href &&
                                 "bg-[rgba(255,255,255,0.1)]"
                         )}
-                        onClick={() => handleTabChange(item.value)}
                     >
                         <img
                             src={item.icon}
@@ -74,12 +63,12 @@ export default memo(function UserMenu({
                         <span
                             className={cn(
                                 getResponsiveClass(20).textClass,
-                                selectedTab === item.value && "text-white"
+                                "text-white"
                             )}
                         >
                             {item.label}
                         </span>
-                    </div>
+                    </Link>
                 ))}
             </div>
         </div>

@@ -16,12 +16,11 @@ export async function GET(request: NextRequest) {
 
     if (error) {
         if (isMobile) {
-            // 모바일: 에러와 함께 TWEETS 탭으로 redirect
+            // 모바일: 에러와 함께 TWEETS 페이지로 redirect
             const redirectUrl =
                 request.nextUrl.origin +
-                "/user?x_auth_error=" +
-                encodeURIComponent(error) +
-                "#tweets";
+                "/user/tweets?x_auth_error=" +
+                encodeURIComponent(error);
             return NextResponse.redirect(redirectUrl);
         } else {
             // 데스크톱: 기존 postMessage 방식
@@ -35,8 +34,8 @@ export async function GET(request: NextRequest) {
                         }, '*');
                         window.close();
                     } else {
-                        // fallback for mobile - redirect to TWEETS tab
-                        window.location.href = '${request.nextUrl.origin}/user?x_auth_error=' + encodeURIComponent('${error}') + '#tweets';
+                        // fallback for mobile - redirect to TWEETS 페이지
+                        window.location.href = '${request.nextUrl.origin}/user/tweets?x_auth_error=' + encodeURIComponent('${error}');
                     }
                 </script>
             `,
@@ -49,12 +48,11 @@ export async function GET(request: NextRequest) {
         const errorMsg = "Missing authorization parameters";
 
         if (isMobile) {
-            // 모바일: 에러와 함께 TWEETS 탭으로 redirect
+            // 모바일: 에러와 함께 TWEETS 페이지로 redirect
             const redirectUrl =
                 request.nextUrl.origin +
-                "/user?x_auth_error=" +
-                encodeURIComponent(errorMsg) +
-                "#tweets";
+                "/user/tweets?x_auth_error=" +
+                encodeURIComponent(errorMsg);
             return NextResponse.redirect(redirectUrl);
         } else {
             // 데스크톱: 기존 postMessage 방식
@@ -68,7 +66,7 @@ export async function GET(request: NextRequest) {
                         }, '*');
                         window.close();
                     } else {
-                        window.location.href = '${request.nextUrl.origin}/user?x_auth_error=' + encodeURIComponent('${errorMsg}') + '#tweets';
+                        window.location.href = '${request.nextUrl.origin}/user/tweets?x_auth_error=' + encodeURIComponent('${errorMsg}');
                     }
                 </script>
             `,
@@ -78,14 +76,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (isMobile) {
-        // 모바일: 성공 파라미터와 함께 TWEETS 탭으로 redirect
+        // 모바일: 성공 파라미터와 함께 TWEETS 페이지로 redirect
         const redirectUrl =
             request.nextUrl.origin +
-            "/user?x_auth_code=" +
+            "/user/tweets?x_auth_code=" +
             encodeURIComponent(code) +
             "&x_auth_state=" +
-            encodeURIComponent(state) +
-            "#tweets";
+            encodeURIComponent(state);
         return NextResponse.redirect(redirectUrl);
     } else {
         // 데스크톱: 기존 postMessage 방식
@@ -100,7 +97,7 @@ export async function GET(request: NextRequest) {
                     }, '*');
                     window.close();
                 } else {
-                    window.location.href = '${request.nextUrl.origin}/user?x_auth_code=' + encodeURIComponent('${code}') + '&x_auth_state=' + encodeURIComponent('${state}') + '#tweets';
+                    window.location.href = '${request.nextUrl.origin}/user/tweets?x_auth_code=' + encodeURIComponent('${code}') + '&x_auth_state=' + encodeURIComponent('${state}');
                 }
             </script>
         `,

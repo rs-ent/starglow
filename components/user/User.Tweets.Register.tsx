@@ -653,13 +653,35 @@ export default function UserTweetsRegister({
                                 )}
                             >
                                 {isConfirmRegisterXAuthorPending ? (
-                                    <span className="flex items-center gap-2">
-                                        <RefreshCcw className="w-4 h-4 animate-spin" />
+                                    <span
+                                        className={cn(
+                                            "flex items-center gap-2",
+                                            getResponsiveClass(20).textClass,
+                                            getResponsiveClass(20).paddingClass
+                                        )}
+                                    >
+                                        <RefreshCcw
+                                            className={cn(
+                                                getResponsiveClass(25)
+                                                    .frameClass
+                                            )}
+                                        />
                                         Confirming...
                                     </span>
                                 ) : (
-                                    <span className="flex items-center gap-2">
-                                        <CheckCircle2 className="w-4 h-4" />
+                                    <span
+                                        className={cn(
+                                            "flex items-center gap-2",
+                                            getResponsiveClass(20).textClass,
+                                            getResponsiveClass(20).paddingClass
+                                        )}
+                                    >
+                                        <CheckCircle2
+                                            className={cn(
+                                                getResponsiveClass(25)
+                                                    .frameClass
+                                            )}
+                                        />
                                         Complete Registration
                                     </span>
                                 )}

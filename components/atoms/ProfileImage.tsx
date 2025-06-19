@@ -8,8 +8,7 @@ import { cn } from "@/lib/utils/tailwind";
 import { User } from "next-auth";
 import { Player } from "@prisma/client";
 import { useMemo, useState } from "react";
-import UserSettings from "../user/User.Settings";
-import Image from "next/image";
+import UserSettingsProfileModal from "../user/User.Settings.Profile.Modal";
 
 interface ProfileImageProps {
     user: User;
@@ -43,10 +42,11 @@ export default React.memo(function ProfileImage({
     return (
         <>
             {showUserSettings && (
-                <UserSettings
-                    user={user}
+                <UserSettingsProfileModal
                     player={player}
+                    user={user}
                     showNickname={false}
+                    showImage={true}
                     onClose={() => setShowUserSettings(false)}
                 />
             )}
