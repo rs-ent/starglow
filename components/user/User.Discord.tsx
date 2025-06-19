@@ -43,7 +43,7 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
     };
 
     const handleCopyCode = () => {
-        navigator.clipboard.writeText(discordCode);
+        navigator.clipboard.writeText(`!verify ${discordCode}`);
         setCopiedCode(true);
         toast.success("Code copied to clipboard!");
         setTimeout(() => setCopiedCode(false), 2000);
@@ -165,7 +165,7 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
                             getResponsiveClass(25).textClass
                         )}
                     >
-                        🎉 Your Verification Code
+                        Verification Code
                     </h3>
                     <p
                         className={cn(
@@ -259,7 +259,7 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
                             <p className="text-gray-400">
                                 2. Type:{" "}
                                 <code
-                                    className="bg-black/30 px-2 py-1 rounded text-cyan-300"
+                                    className="bg-black/30 px-2 py-1 rounded text-cyan-300 cursor-pointer"
                                     onClick={() => {
                                         navigator.clipboard.writeText(
                                             `!verify ${discordCode}`
