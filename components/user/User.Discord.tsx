@@ -258,8 +258,18 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
                             </p>
                             <p className="text-gray-400">
                                 2. Type:{" "}
-                                <code className="bg-black/30 px-2 py-1 rounded text-cyan-300">
-                                    /verify {discordCode}
+                                <code
+                                    className="bg-black/30 px-2 py-1 rounded text-cyan-300"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(
+                                            `!verify ${discordCode}`
+                                        );
+                                        toast.success(
+                                            "Code copied to clipboard!"
+                                        );
+                                    }}
+                                >
+                                    !verify {discordCode}
                                 </code>
                             </p>
                             <p className="text-gray-400">
