@@ -667,3 +667,9 @@ export const tweetKeys = {
     confirmRegisterXAuthor: (input: object) =>
         [...tweetKeys.all, "confirm-register-x-author", input] as const,
 };
+
+export const discordKeys = {
+    all: ["discord"] as const,
+    discordCode: (code: string) =>
+        [...discordKeys.all, "discord-code", code] as const,
+};

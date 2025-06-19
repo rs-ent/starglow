@@ -23,6 +23,8 @@ Table User {
   player Player
   sessions Session [not null]
   wallets Wallet [not null]
+  discordId String
+  discordCode DiscordCode [not null]
 }
 
 Table Account {
@@ -43,6 +45,22 @@ Table Account {
   indexes {
     (provider, providerAccountId) [unique]
   }
+}
+
+Table DiscordAccount {
+  id String [pk]
+  discordId String [unique, not null]
+  userIds String[] [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table DiscordCode {
+  id String [pk]
+  code String [unique, not null]
+  expiresAt DateTime [not null]
+  userId String [not null]
+  user User [not null]
 }
 
 Table VerificationToken {
@@ -1246,6 +1264,8 @@ Enum MetadataType {
 }
 
 Ref: Account.userId > User.id [delete: Cascade]
+
+Ref: DiscordCode.userId > User.id [delete: Cascade]
 
 Ref: Session.userId > User.id [delete: Cascade]
 

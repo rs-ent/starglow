@@ -27,7 +27,10 @@ export default function UserSettingsProfileModal({
                 className="fixed inset-0 bg-[rgba(0,0,0,0.3)] flex items-center justify-center z-50 p-2"
                 onClick={onClose}
             >
-                <div className="relative w-screen max-w-[1000px] mx-auto rounded-lg overflow-hidden bg-[rgba(0,0,0,1)]">
+                <div
+                    className="relative w-screen max-w-[1000px] mx-auto rounded-lg overflow-hidden bg-[rgba(0,0,0,1)]"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <XIcon
                         className="absolute top-4 right-4 cursor-pointer"
                         onClick={onClose}

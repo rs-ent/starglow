@@ -25,6 +25,11 @@ const menuItems = [
         href: "/user/tweets",
     },
     {
+        label: "Discord",
+        icon: "/icons/providers/discord.svg",
+        href: "/user/discord",
+    },
+    {
         label: "Settings",
         icon: "/ui/settings.svg",
         href: "/user/settings",
