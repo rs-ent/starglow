@@ -175,3 +175,75 @@ export async function verify({ input }: { input: VerifyInput }) {
         };
     }
 }
+
+export interface VerifyHolderByDiscordIdInput {
+    discordId: string;
+}
+
+export async function verifyHolderByDiscordId({
+    input,
+}: {
+    input: VerifyHolderByDiscordIdInput;
+}) {
+    const { discordId } = input;
+
+    try {
+        // Discord ID로 사용자 찾기
+        const user = await prisma.user.findFirst({
+            where: {
+                discordId,
+            },
+            select: {
+                id: true,
+            },
+        });
+
+        if (!user) {
+            return {
+                success: false,
+                message: "User not found with this Discord ID",
+                collections: [],
+            };
+        }
+
+        // 사용자의 검증된 SPG NFT 가져오기
+        const verifiedSPGs = await getUserVerifiedSPGs({
+            userId: user.id,
+        });
+
+        // NFT가 없는 경우
+        const hasNFTs = verifiedSPGs.some(
+            (spg) => spg.verifiedTokens.length > 0
+        );
+
+        if (!hasNFTs) {
+            return {
+                success: false,
+                message: "No NFT ownership found",
+                collections: [],
+            };
+        }
+
+        const collections = verifiedSPGs
+            .filter((spg) => spg.verifiedTokens.length > 0)
+            .map((spg) => ({
+                name: spg.name,
+                symbol: spg.symbol,
+                verifiedTokens: spg.verifiedTokens,
+                artist: spg.artist?.name || null,
+                network: spg.network?.name || null,
+            }));
+
+        return {
+            success: true,
+            collections,
+        };
+    } catch (error) {
+        console.error("VerifyHolderByDiscordId error:", error);
+        return {
+            success: false,
+            message: "Verification failed",
+            collections: [],
+        };
+    }
+}
