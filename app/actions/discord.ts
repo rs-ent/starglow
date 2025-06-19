@@ -1,5 +1,7 @@
 /// app/actions/discord.ts
 
+"use server";
+
 import { User } from "next-auth";
 import { prisma } from "@/lib/prisma/client";
 import {
