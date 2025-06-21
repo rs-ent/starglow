@@ -3,10 +3,15 @@
 "use client";
 
 import Slider from "react-slick";
-import YoutubeViewer, { YoutubeViewerProps } from "../atoms/YoutubeViewer";
-import ImageViewer, { ImageViewerProps } from "../atoms/ImageViewer";
+
 import { cn } from "@/lib/utils/tailwind";
-import { useState } from "react";
+
+import ImageViewer from "../atoms/ImageViewer";
+import YoutubeViewer from "../atoms/YoutubeViewer";
+
+import type { ImageViewerProps } from "../atoms/ImageViewer";
+import type { YoutubeViewerProps } from "../atoms/YoutubeViewer";
+
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
@@ -106,10 +111,8 @@ export default function MediaCarousel({
                                 />
                             ) : (
                                 <ImageViewer
-                                    url={item.url}
-                                    title={showTitle ? item.title : ""}
                                     img={item.img}
-                                    framePadding={framePadding}
+                                    title={showTitle ? item.title : ""}
                                     className="w-full mx-auto"
                                 />
                             )}

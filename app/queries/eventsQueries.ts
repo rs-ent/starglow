@@ -1,8 +1,10 @@
 /// app\queries\eventQueries.ts
 
 import { useQuery } from "@tanstack/react-query";
+
 import { getEvents, getEventById } from "@/app/actions/events";
-import { EventCategory, EventStatus, Events } from "@prisma/client";
+
+import type { EventCategory, EventStatus, Events } from "@prisma/client";
 
 type EventsResponse = {
     events: Events[];

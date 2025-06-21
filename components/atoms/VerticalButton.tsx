@@ -1,12 +1,16 @@
 /// components/atoms/VerticalButton.tsx
 
-import { Button as ShadcnButton } from "@/components/ui/button";
-import { LucideIcon } from "lucide-react";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { cn } from "@/lib/utils/tailwind";
-import { Paragraph } from "./Typography";
+
 import Image from "next/image";
 import Link from "next/link";
+
+import { Button as ShadcnButton } from "@/components/ui/button";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+
+import { Paragraph } from "./Typography";
+
+import type { LucideIcon } from "lucide-react";
 
 interface VerticalButtonProps {
     icon?: LucideIcon;

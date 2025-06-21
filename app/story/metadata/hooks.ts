@@ -1,6 +1,5 @@
 /// app/story/metadata/hooks.ts
 
-import { useGetMetadataQuery, useGetMetadataListQuery } from "./queries";
 import {
     useCreateMetadataMutation,
     useUpdateMetadataMutation,
@@ -8,7 +7,9 @@ import {
     useUploadMediaMutation,
     useCreateBaseURIMutation,
 } from "./mutations";
-import { getMetadataInput, getMetadataListInput } from "./actions";
+import { useGetMetadataQuery, useGetMetadataListQuery } from "./queries";
+
+import type { getMetadataInput, getMetadataListInput } from "./actions";
 
 interface useMetadataInput {
     getMetadataInput?: getMetadataInput;

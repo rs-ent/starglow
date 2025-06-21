@@ -1,6 +1,7 @@
 /// app\user\tweets\page.tsx
 
 import { Suspense } from "react";
+
 import { requireAuthUserAndPlayer } from "@/app/auth/authUtils";
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 import UserSettings from "@/components/user/User.Settings";

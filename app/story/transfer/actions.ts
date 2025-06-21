@@ -2,11 +2,14 @@
 
 "use server";
 
-import { Hex } from "viem";
+
 import { prisma } from "@/lib/prisma/client";
 import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
-import { getOwners } from "../nft/actions";
+
 import { fetchPublicClient, fetchWalletClient } from "../client";
+import { getOwners } from "../nft/actions";
+
+import type { Hex } from "viem";
 
 export interface initialTransferInput {
     spgAddress: string;

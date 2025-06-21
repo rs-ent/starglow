@@ -3,30 +3,33 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { pollKeys } from "../queryKeys";
+
 import {
-    GetPollsInput,
     getPolls,
     getPoll,
     tokenGatingPoll,
-    TokenGatingPollInput,
     getPollResult,
+    getPollsResults,
+    getUserSelection,
+    getPollLogs,
+    getPlayerPollLogs
+} from "../actions/polls";
+import { pollKeys } from "../queryKeys";
+
+import type {
+    GetPollsInput,
+    TokenGatingPollInput,
     GetPollResultResponse,
     GetPollResultInput,
-    getPollsResults,
     GetPollsResultsInput,
     GetPollsResultsResponse,
-    getUserSelection,
     GetUserSelectionInput,
     GetUserSelectionResponse,
     PaginationInput,
-    getPollLogs,
     GetPollLogsInput,
-    getPlayerPollLogs,
-    GetPlayerPollLogsInput,
-} from "../actions/polls";
-import { Poll, PollLog } from "@prisma/client";
-import { TokenGatingData } from "../story/nft/actions";
+    GetPlayerPollLogsInput} from "../actions/polls";
+import type { TokenGatingData } from "../story/nft/actions";
+import type { Poll, PollLog } from "@prisma/client";
 
 export function usePollsQuery({
     input,

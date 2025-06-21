@@ -1,10 +1,12 @@
 /// components/atoms/Funds.tsx
 
 import {memo, useMemo} from "react";
+
 import Image from "next/image";
+import CountUp from "react-countup";
+
 import {getResponsiveClass} from "@/lib/utils/responsiveClass";
 import {cn} from "@/lib/utils/tailwind";
-import CountUp from "react-countup";
 
 interface FundsProps {
     funds: number;

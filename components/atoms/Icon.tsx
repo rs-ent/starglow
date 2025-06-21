@@ -1,8 +1,9 @@
 /// components\atoms\Icon.tsx
 
-import type { LucideIcon } from "lucide-react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+
+import type { LucideIcon } from "lucide-react";
 
 interface IconProps {
     icon?: LucideIcon;

@@ -2,13 +2,16 @@
 
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
-import { LoaderCircle, LogIn } from "lucide-react";
-import Button from "./Button";
-import { useLoading } from "@/app/hooks/useLoading";
-import { usePathname, useRouter } from "next/navigation";
 import { memo, useCallback } from "react";
+
+import { LogIn } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
+
+import { useLoading } from "@/app/hooks/useLoading";
 import { cn } from "@/lib/utils/tailwind";
+
+import Button from "./Button";
 
 interface AuthButtonProps {
     frameSize?: number;

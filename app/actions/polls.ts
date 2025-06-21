@@ -2,19 +2,24 @@
 
 "use server";
 
-import { prisma } from "@/lib/prisma/client";
 import {
+    PollStatus
+} from "@prisma/client";
+
+import { tokenGating } from "@/app/story/nft/actions";
+import { prisma } from "@/lib/prisma/client";
+
+import { updatePlayerAsset } from "./playerAssets";
+
+import type { TokenGatingData } from "@/app/story/nft/actions";
+import type {
     Poll,
-    PollStatus,
     PollCategory,
     PollLog,
     Prisma,
     Player,
     Asset,
-    Artist,
-} from "@prisma/client";
-import { tokenGating, TokenGatingData } from "@/app/story/nft/actions";
-import { updatePlayerAsset } from "./playerAssets";
+    Artist} from "@prisma/client";
 
 export type PaginationInput = {
     currentPage: number;
@@ -786,7 +791,7 @@ export async function getPlayerPollLogs(
     }
 
     try {
-        let where: Prisma.PollLogWhereInput = {};
+        const where: Prisma.PollLogWhereInput = {};
         if (input.pollId) where.pollId = input.pollId;
         if (input.playerId) where.playerId = input.playerId;
 

@@ -1,13 +1,16 @@
 /// app/story/escrowWallet/queries.ts
 
 import { useQuery } from "@tanstack/react-query";
+
 import { queryKeys } from "../queryKeys";
 import {
     getEscrowWallets,
-    getEscrowWalletsInput,
-    getRegisteredEscrowWallets,
-    getRegisteredEscrowWalletsInput,
+    getRegisteredEscrowWallets
 } from "./actions";
+
+import type {
+    getEscrowWalletsInput,
+    getRegisteredEscrowWalletsInput} from "./actions";
 
 export function useGetEscrowWalletsQuery(input?: getEscrowWalletsInput) {
     return useQuery({

@@ -1,8 +1,8 @@
 /// app/user/layout.tsx
 
-import UserProfile from "@/components/user/User.Profile";
-import UserMenu from "@/components/user/User.Menu";
 import { requireAuthUserAndPlayer } from "@/app/auth/authUtils";
+import UserMenu from "@/components/user/User.Menu";
+import UserProfile from "@/components/user/User.Profile";
 
 export const dynamic = "force-dynamic";
 

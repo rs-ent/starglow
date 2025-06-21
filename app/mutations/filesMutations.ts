@@ -3,7 +3,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/app/queryKeys";
+
 import {
     uploadFile,
     deleteFile,
@@ -11,6 +11,7 @@ import {
     updateFilesOrder,
     StoredFile,
 } from "@/app/actions/files";
+import { queryKeys } from "@/app/queryKeys";
 
 export function useUploadFile() {
     const queryClient = useQueryClient();

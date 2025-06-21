@@ -3,15 +3,17 @@
 "use client";
 
 import { useState } from "react";
-import FileUploader from "@/components/atoms/FileUploader";
+
+import { useArtistSet } from "@/app/hooks/useArtists";
+import { useToast } from "@/app/hooks/useToast";
 import DateTimePicker from "@/components/atoms/DateTimePicker";
+import FileUploader from "@/components/atoms/FileUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { useArtistSet } from "@/app/hooks/useArtists";
-import { ArtistMessage } from "@prisma/client";
-import { useToast } from "@/app/hooks/useToast";
 import { cn } from "@/lib/utils/tailwind";
+
+import type { ArtistMessage } from "@prisma/client";
 
 interface CreateArtistMessageProps {
     mode: "create" | "update";
@@ -65,7 +67,8 @@ export default function CreateArtistMessage({
                 endDate,
             });
             toast.success("메시지가 성공적으로 등록되었습니다.");
-        } catch (error) {
+            onSuccess?.();
+        } catch (_error) {
             toast.error(
                 "메시지 등록에 실패했습니다. 잠시 후 다시 시도해주세요."
             );

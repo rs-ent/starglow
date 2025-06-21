@@ -1,8 +1,10 @@
 /// app\admin\onchain\page.tsx
 
-import OnChainDashboard from "@/components/admin/onchain/OnChain.Dashboard";
 import { Suspense } from "react";
+
 import { Loader2 } from "lucide-react";
+
+import OnChainDashboard from "@/components/admin/onchain/OnChain.Dashboard";
 
 export default function OnChainPage() {
     return (

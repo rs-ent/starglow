@@ -3,8 +3,9 @@
 "use client";
 
 import {memo} from "react";
-import {cn} from "@/lib/utils/tailwind";
+
 import PublicPrivateButton from "@/components/atoms/PublicPrivateButton";
+import {cn} from "@/lib/utils/tailwind";
 
 interface PublicPrivateTabProps {
     isPublic: boolean;

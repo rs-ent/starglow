@@ -2,18 +2,10 @@
 
 "use server";
 
-import { prisma } from "@/lib/prisma/client";
-import { AssetsContract, Asset, AssetType } from "@prisma/client";
-import { revalidatePath } from "next/cache";
-import { Prisma } from "@prisma/client";
-import {
-    deployContract,
-    getChain,
-    getEscrowWalletWithPrivateKey,
-} from "./blockchain";
+import type { AssetsContract, Asset, AssetType , Prisma } from "@prisma/client";
 
+import { revalidatePath } from "next/cache";
 import {
-    Address,
     createPublicClient,
     getContract,
     createWalletClient,
@@ -21,14 +13,25 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
+import { prisma } from "@/lib/prisma/client";
 import assetsJson from "@/web3/artifacts/contracts/Assets.sol/Assets.json";
+
+import {
+    deployContract,
+    getChain,
+    getEscrowWalletWithPrivateKey,
+} from "./blockchain";
 const abi = assetsJson.abi;
 const bytecode = assetsJson.bytecode as `0x${string}`;
 
 import {
-    PlayerAssetResult,
     updatePlayerAssetsOnAssetChange,
 } from "./playerAssets";
+
+import type {
+    PlayerAssetResult} from "./playerAssets";
+import type {
+    Address} from "viem";
 
 export interface DeployAssetsContractInput {
     walletId: string;

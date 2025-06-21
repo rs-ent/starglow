@@ -2,9 +2,12 @@
 
 "use server";
 
-import { Story_spg, Artist, BlockchainNetwork } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma/client";
+
 import { getOwners } from "../nft/actions";
+
+import type { Story_spg, Artist, BlockchainNetwork } from "@prisma/client";
 
 export interface GetUserVerifiedSPGsInput {
     userId: string;

@@ -1,10 +1,13 @@
 /// app/quests/page.tsx
 
-import { auth } from "@/app/auth/authSettings";
-import Quests from "@/components/quests/Quests";
 import { Suspense } from "react";
-import { Metadata } from "next";
+
+
+import { auth } from "@/app/auth/authSettings";
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
+import Quests from "@/components/quests/Quests";
+
+import type { Metadata } from "next";
 
 // SEO 메타데이터 정의
 export const metadata: Metadata = {

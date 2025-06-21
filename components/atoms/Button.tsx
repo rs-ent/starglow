@@ -3,11 +3,16 @@
 "use client";
 
 import { memo } from "react";
+
+
+import Image from "next/image";
+
 import { Button as ShadcnButton } from "@/components/ui/button";
-import { LucideIcon } from "lucide-react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import Image from "next/image";
+
+import type { LucideIcon } from "lucide-react";
+
 
 interface ButtonProps {
     children: React.ReactNode;

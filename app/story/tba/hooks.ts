@@ -1,12 +1,13 @@
 /// app/story/tba/hooks.ts
 
-import { useGetTBAContractsQuery, useGetTBAAddressesQuery } from "./queries";
 import {
     useDeployTBARegistryMutation,
     useDeployTBAImplementationMutation,
     useSetTBAAddressMutation,
 } from "./mutations";
-import { getTBAContractsInput, getTBAAddressesInput } from "./actions";
+import { useGetTBAContractsQuery, useGetTBAAddressesQuery } from "./queries";
+
+import type { getTBAContractsInput, getTBAAddressesInput } from "./actions";
 
 interface useTBAInput {
     getTBAContractsInput?: getTBAContractsInput;

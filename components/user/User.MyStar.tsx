@@ -3,22 +3,24 @@
 "use client";
 
 import React, { useCallback, useMemo, useState } from "react";
-import { Artist, Player, Poll, Quest } from "@prisma/client";
-import { User } from "next-auth";
-import { cn } from "@/lib/utils/tailwind";
+
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { useQuestGet } from "@/app/hooks/useQuest";
-import ArtistButton from "../atoms/Artist.Button";
-import dynamic from "next/dynamic";
-import PartialLoading from "../atoms/PartialLoading";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { useRouter } from "next/navigation";
-import { VerifiedSPG } from "@/app/story/interaction/actions";
-import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import ArtistFeedModal from "@/components/artists/Artist.Feed.Modal";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+
+import ArtistButton from "../atoms/Artist.Button";
+import PartialLoading from "../atoms/PartialLoading";
+
+import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+import type { VerifiedSPG } from "@/app/story/interaction/actions";
+import type { Artist, Player, Poll, Quest } from "@prisma/client";
 
 interface UserMyStarProps {
-    user: User;
     player: Player;
     userVerifiedSPGs: VerifiedSPG[];
 }
@@ -35,7 +37,6 @@ const UserMyStarModal = dynamic(() => import("./User.MyStar.Modal"), {
 });
 
 export default React.memo(function UserMyStar({
-    user,
     player,
     userVerifiedSPGs,
 }: UserMyStarProps) {
@@ -225,7 +226,7 @@ export default React.memo(function UserMyStar({
         return (
             <div className="text-center py-10 text-white/80 text-xl">
                 <h4 className={cn(getResponsiveClass(20).textClass)}>
-                    You don't have any NFTs yet.
+                    {`You don't have any NFTs yet.`}
                 </h4>
                 <p
                     className={cn(

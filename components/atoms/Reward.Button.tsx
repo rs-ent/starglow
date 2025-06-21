@@ -2,12 +2,13 @@
 
 "use client";
 
+import React, { useCallback } from "react";
+
 import { motion } from "framer-motion";
+import Image from "next/image";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import Image from "next/image";
-import { useState } from "react";
-import React from "react";
 
 interface RewardButtonProps {
     index: number;
@@ -36,19 +37,17 @@ export default React.memo(function RewardButton({
     balanceSize = 20,
     onClick,
 }: RewardButtonProps) {
-    const [showBalance, setShowBalance] = useState(false);
-
     const frameClass = getResponsiveClass(frameSize).frameClass;
     const textClass = getResponsiveClass(textSize).textClass;
     const gapClass = getResponsiveClass(gapSize).gapClass;
     const paddingClass = getResponsiveClass(paddingSize).paddingClass;
     const balanceClass = getResponsiveClass(balanceSize).textClass;
 
-    const handleClick = () => {
+    const handleClick = useCallback(() => {
         if (onClick) {
             onClick();
         }
-    };
+    }, [onClick]);
 
     return (
         <div className="relative w-full h-full">
@@ -79,6 +78,7 @@ export default React.memo(function RewardButton({
                     "bg-gradient-to-br from-[rgba(255,255,255,0.2)] to-[rgba(255,255,255,0.05)]",
                     "shadow-lg",
                     gapClass,
+                    paddingClass,
                     className
                 )}
                 onClick={handleClick}
@@ -102,6 +102,9 @@ export default React.memo(function RewardButton({
                     {name}
                 </h2>
             </motion.div>
+            <div className={cn("absolute top-0 right-0", balanceClass)}>
+                {balance}
+            </div>
         </div>
     );
 });

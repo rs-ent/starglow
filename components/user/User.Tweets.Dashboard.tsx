@@ -3,24 +3,17 @@
 "use client";
 
 import { useTweets } from "@/app/actions/x/hooks";
-import { Player, TweetAuthor } from "@prisma/client";
-import { User } from "next-auth";
 import { useToast } from "@/app/hooks/useToast";
+import type { Player } from "@prisma/client";
 
 interface UserTweetsDashboardProps {
-    user: User;
     player: Player;
-    tweetAuthor: TweetAuthor;
     setShowTutorial: (show: boolean) => void;
-    onXDisconnect: () => void;
 }
 
 export default function UserTweetsDashboard({
-    user,
     player,
-    tweetAuthor,
     setShowTutorial,
-    onXDisconnect,
 }: UserTweetsDashboardProps) {
     const toast = useToast();
     const { disconnectXAccountAsync } = useTweets();

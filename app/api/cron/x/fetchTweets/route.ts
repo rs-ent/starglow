@@ -1,6 +1,7 @@
 /// app/api/cron/x/route.ts
 
 import { NextResponse } from "next/server";
+
 import { fetchTaggedTweets } from "./fetchTaggedTweets";
 
 export async function GET(request: Request) {

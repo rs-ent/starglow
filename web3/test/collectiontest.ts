@@ -1,9 +1,10 @@
 // test/Collection.test.ts
 
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
 import { Contract } from "ethers";
-import { CollectionFactory, Collection } from "../typechain-types";
+import { ethers, upgrades } from "hardhat";
+
+import type { CollectionFactory, Collection } from "../typechain-types";
 
 describe("Collection Factory Test", function () {
     let owner: any;

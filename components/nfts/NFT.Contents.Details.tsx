@@ -2,18 +2,11 @@
 
 "use client";
 
-import Image from "next/image";
-import { Copy } from "lucide-react";
-import { Collection } from "@/app/actions/factoryContracts";
-import { METADATA_TYPE } from "@/app/actions/metadata";
-import { H2, H3 } from "../atoms/Typography";
+import React, { useMemo, useCallback } from "react";
+
 import {
-    Globe,
-    ExternalLink,
-    Share2,
+    Copy,
     CircleDollarSign,
-    Calendar,
-    Users,
     UserPlus,
     Package,
     Wallet,
@@ -21,40 +14,37 @@ import {
     StopCircle,
     Percent,
 } from "lucide-react";
+import Image from "next/image";
+
+import { useToast } from "@/app/hooks/useToast";
+import Countdown from "@/components/atoms/Countdown";
+import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/utils/format";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { useMemo, useState, useCallback } from "react";
-import { useToast } from "@/app/hooks/useToast";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import Countdown from "@/components/atoms/Countdown";
-import { useCollectionGet } from "@/app/hooks/useCollectionContracts";
-import { CollectionParticipantType } from "@prisma/client";
-import React from "react";
-import { SPG } from "@/app/story/spg/actions";
-import { formatDate } from "@/lib/utils/format";
+
+import { H2 } from "../atoms/Typography";
+
+import type { SPG } from "@/app/story/spg/actions";
+import type { CollectionParticipantType } from "@prisma/client";
 
 interface NFTContentsDetailsProps {
     spg: SPG;
     participantsType: CollectionParticipantType;
     status: string;
-    dateLabel: string;
     dateValue: string;
     circulation: {
         remain: number;
         total: number;
     } | null;
-    isCirculationLoading: boolean;
 }
 
 export default React.memo(function NFTContentsDetails({
     spg,
     participantsType,
     status,
-    dateLabel,
     dateValue,
     circulation,
-    isCirculationLoading,
 }: NFTContentsDetailsProps) {
     const toast = useToast();
 
@@ -63,23 +53,19 @@ export default React.memo(function NFTContentsDetails({
             await navigator.clipboard.writeText(spg.address);
             toast.success("Collection address copied to clipboard");
         } catch (error) {
+            console.error("Failed to copy collection address:", error);
             toast.error("Failed to copy collection address");
         }
     }, [spg.address, toast]);
-    const { sharePercentage, glowStartDate, glowEndDate, reportUrl } =
-        useMemo(() => {
-            const sharePercentage = spg.sharePercentage ?? 0;
+    const { sharePercentage, glowStartDate, glowEndDate } = useMemo(() => {
+        const sharePercentage = spg.sharePercentage ?? 0;
 
-            const glowStartDate = spg.glowStart;
-            console.log("glowStartDate", glowStartDate);
+        const glowStartDate = spg.glowStart;
 
-            const glowEndDate = spg.glowEnd;
-            console.log("glowEndDate", glowEndDate);
+        const glowEndDate = spg.glowEnd;
 
-            const reportUrl = spg.reportUrl;
-
-            return { sharePercentage, glowStartDate, glowEndDate, reportUrl };
-        }, [spg]);
+        return { sharePercentage, glowStartDate, glowEndDate };
+    }, [spg]);
 
     // 원하는 size를 지정 (예: 20)
     const size = 20;
@@ -226,8 +212,9 @@ export default React.memo(function NFTContentsDetails({
                                 className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
                             />
                             <span>
-                                Share: {sharePercentage * 100}% of Artist's
-                                Total Sales
+                                {`Share: ${
+                                    sharePercentage * 100
+                                }% of Artist's Total Sales`}
                             </span>
                         </div>
                     )}

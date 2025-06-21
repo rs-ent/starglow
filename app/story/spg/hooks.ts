@@ -1,18 +1,19 @@
 /// app/story/spg/hooks.ts
 
 import {
-    useGetSPGContractsQuery,
-    useGetSPGQuery,
-    useGetSPGsQuery,
-} from "./queries";
-import {
     useDeploySPGNFTFactoryMutation,
     useCreateSPGMutation,
     useUpdateSPGMutation,
     useDeleteSPGMutation,
     useUpdateSPGUtilsMutation,
 } from "./mutations";
-import { getSPGInput, getSPGsInput, getSPGContractsInput } from "./actions";
+import {
+    useGetSPGContractsQuery,
+    useGetSPGQuery,
+    useGetSPGsQuery,
+} from "./queries";
+
+import type { getSPGInput, getSPGsInput, getSPGContractsInput } from "./actions";
 
 interface useSPGInput {
     getSPGInput?: getSPGInput;

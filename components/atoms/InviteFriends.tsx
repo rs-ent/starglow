@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { H3 } from "./Typography";
-import { Player } from "@prisma/client";
+
+
 import InviteFriendsModal from "./InviteFriends.Modal";
+import { H3 } from "./Typography";
+
+import type { Player } from "@prisma/client";
 
 interface InviteFriendsProps {
     player: Player | null;

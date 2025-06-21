@@ -2,21 +2,26 @@
 
 "use server";
 
-import { prisma } from "@/lib/prisma/client";
 import {
+    QuestType,
+    ReferralLog,
+    User,
+} from "@prisma/client";
+
+import { tokenGating } from "@/app/story/nft/actions";
+import { prisma } from "@/lib/prisma/client";
+import { formatWaitTime } from "@/lib/utils/format";
+
+import { updatePlayerAsset } from "./playerAssets";
+
+import type { TokenGatingData } from "@/app/story/nft/actions";
+import type {
     Artist,
     Asset,
     Player,
     Prisma,
     Quest,
-    QuestLog,
-    QuestType,
-    ReferralLog,
-    User,
-} from "@prisma/client";
-import { updatePlayerAsset } from "./playerAssets";
-import { tokenGating, TokenGatingData } from "@/app/story/nft/actions";
-import { formatWaitTime } from "@/lib/utils/format";
+    QuestLog} from "@prisma/client";
 
 export type PaginationInput = {
     currentPage: number;

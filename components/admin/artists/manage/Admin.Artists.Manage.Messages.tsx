@@ -2,28 +2,8 @@
 
 "use client";
 
-import { Artist, ArtistMessage } from "@prisma/client";
-import { useArtistsGet } from "@/app/hooks/useArtists";
-import { useArtistSet } from "@/app/hooks/useArtists";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import CreateArtistMessage from "./Admin.Artists.Manage.CreateArtistMessage";
+import { useState } from "react";
+
 import {
     Pencil,
     Trash2,
@@ -37,14 +17,36 @@ import {
     AlertCircle,
     Loader2,
     Power,
-    Sparkles,
 } from "lucide-react";
 import Image from "next/image";
+
+import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
+import { useToast } from "@/app/hooks/useToast";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { useState } from "react";
-import { useToast } from "@/app/hooks/useToast";
+
+import CreateArtistMessage from "./Admin.Artists.Manage.CreateArtistMessage";
+
+import type { Artist, ArtistMessage } from "@prisma/client";
 
 interface AdminArtistsManageMessagesProps {
     artist: Artist;

@@ -3,21 +3,23 @@
 "use client";
 
 import {
-    useDBUserFromPlayerQuery,
-    usePlayerQuery,
-} from "@/app/queries/playerQueries";
+    InvitePlayerParams,
+    SetPlayerInput,
+    UpdatePlayerSettingsInput,
+} from "@/app/actions/player";
 import {
     useSetPlayerMutation,
     useInvitePlayerMutation,
     useUpdatePlayerSettingsMutation,
 } from "@/app/mutations/playerMutations";
 import {
+    useDBUserFromPlayerQuery,
+    usePlayerQuery,
+} from "@/app/queries/playerQueries";
+
+import type {
     GetPlayerInput,
-    InvitePlayerParams,
-    SetPlayerInput,
-    GetDBUserFromPlayerInput,
-    UpdatePlayerSettingsInput,
-} from "@/app/actions/player";
+    GetDBUserFromPlayerInput} from "@/app/actions/player";
 
 export function usePlayerGet({
     getPlayerInput,

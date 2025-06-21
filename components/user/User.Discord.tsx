@@ -2,9 +2,8 @@
 
 "use client";
 
-import { Player } from "@prisma/client";
-import { User } from "next-auth";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+
 import { motion } from "framer-motion";
 import {
     Copy,
@@ -13,18 +12,21 @@ import {
     Sparkles,
     RefreshCcw,
     ExternalLink,
+    Link,
 } from "lucide-react";
+
+import { useDiscord } from "@/app/hooks/useDiscord";
+import { useToast } from "@/app/hooks/useToast";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { useToast } from "@/app/hooks/useToast";
-import { useDiscord } from "@/app/hooks/useDiscord";
+
+import type { User } from "next-auth";
 
 interface UserDiscordProps {
     user: User;
-    player: Player;
 }
 
-export default function UserDiscord({ user, player }: UserDiscordProps) {
+export default function UserDiscord({ user }: UserDiscordProps) {
     const [discordCode, setDiscordCode] = useState<string>("");
     const [copiedCode, setCopiedCode] = useState(false);
 
@@ -42,12 +44,15 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
         }
     };
 
-    const handleCopyCode = () => {
-        navigator.clipboard.writeText(`!verify ${discordCode}`);
-        setCopiedCode(true);
-        toast.success("Code copied to clipboard!");
-        setTimeout(() => setCopiedCode(false), 2000);
-    };
+    const handleCopy = useCallback(
+        async (value: string) => {
+            await navigator.clipboard.writeText(value);
+            setCopiedCode(true);
+            toast.success("Copied to clipboard");
+            setTimeout(() => setCopiedCode(false), 2000);
+        },
+        [toast]
+    );
 
     return (
         <div
@@ -74,6 +79,7 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
                     >
                         <img
                             src="/icons/providers/discord.svg"
+                            alt="Discord"
                             className={cn(
                                 "mx-auto text-indigo-400",
                                 getResponsiveClass(60).frameClass
@@ -110,7 +116,7 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
                             "disabled:opacity-50 disabled:cursor-not-allowed",
                             "transition-all duration-300 shadow-lg",
                             "flex items-center gap-2 mx-auto",
-                            getResponsiveClass(25).paddingClass,
+                            getResponsiveClass(20).paddingClass,
                             getResponsiveClass(20).textClass
                         )}
                     >
@@ -201,7 +207,7 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={handleCopyCode}
+                        onClick={() => handleCopy(discordCode)}
                         className={cn(
                             "bg-gradient-to-r from-emerald-500 to-cyan-500",
                             "text-white font-bold rounded-full mb-6",
@@ -209,14 +215,14 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
                             "transition-all duration-300 shadow-lg",
                             "flex items-center gap-2 mx-auto",
                             getResponsiveClass(20).paddingClass,
-                            getResponsiveClass(18).textClass
+                            getResponsiveClass(20).textClass
                         )}
                     >
                         {copiedCode ? (
                             <>
                                 <CheckCircle2
                                     className={cn(
-                                        getResponsiveClass(20).frameClass
+                                        getResponsiveClass(25).frameClass
                                     )}
                                 />
                                 Copied!
@@ -225,7 +231,7 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
                             <>
                                 <Copy
                                     className={cn(
-                                        getResponsiveClass(20).frameClass
+                                        getResponsiveClass(25).frameClass
                                     )}
                                 />
                                 Copy Code
@@ -242,7 +248,7 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
                         <h4
                             className={cn(
                                 "font-bold text-blue-300 mb-2",
-                                getResponsiveClass(18).textClass
+                                getResponsiveClass(25).textClass
                             )}
                         >
                             📋 How to Use:
@@ -253,23 +259,29 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
                                 getResponsiveClass(15).textClass
                             )}
                         >
-                            <p className="text-gray-400">
+                            <Link
+                                href="https://discord.gg/starglow"
+                                target="_blank"
+                                className="text-gray-400 underline"
+                            >
                                 1. Join our Discord server
-                            </p>
+                            </Link>
                             <p className="text-gray-400">
                                 2. Type:{" "}
                                 <code
                                     className="bg-black/30 px-2 py-1 rounded text-cyan-300 cursor-pointer"
                                     onClick={() => {
-                                        navigator.clipboard.writeText(
-                                            `!verify ${discordCode}`
-                                        );
-                                        toast.success(
-                                            "Code copied to clipboard!"
-                                        );
+                                        handleCopy(
+                                            `/verify ${discordCode}`
+                                        ).catch((error) => {
+                                            console.error(
+                                                "Failed to copy code:",
+                                                error
+                                            );
+                                        });
                                     }}
                                 >
-                                    !verify {discordCode}
+                                    /verify {discordCode}
                                 </code>
                             </p>
                             <p className="text-gray-400">
@@ -292,13 +304,13 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
                                 "flex-1 bg-indigo-600 text-white font-bold rounded-full",
                                 "hover:bg-indigo-700 transition-all duration-300",
                                 "flex items-center justify-center gap-2",
-                                getResponsiveClass(18).paddingClass,
-                                getResponsiveClass(15).textClass
+                                getResponsiveClass(20).paddingClass,
+                                getResponsiveClass(20).textClass
                             )}
                         >
                             <ExternalLink
                                 className={cn(
-                                    getResponsiveClass(18).frameClass
+                                    getResponsiveClass(25).frameClass
                                 )}
                             />
                             Join Discord
@@ -314,13 +326,13 @@ export default function UserDiscord({ user, player }: UserDiscordProps) {
                                 "hover:from-purple-600 hover:to-pink-600",
                                 "transition-all duration-300",
                                 "flex items-center justify-center gap-2",
-                                getResponsiveClass(18).paddingClass,
-                                getResponsiveClass(15).textClass
+                                getResponsiveClass(20).paddingClass,
+                                getResponsiveClass(20).textClass
                             )}
                         >
                             <RefreshCcw
                                 className={cn(
-                                    getResponsiveClass(18).frameClass
+                                    getResponsiveClass(25).frameClass
                                 )}
                             />
                             New Code

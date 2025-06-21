@@ -1,18 +1,20 @@
 /// components/artists/Artist.Feed.Modal.tsx
 
-import { useState, useRef, useMemo, useEffect } from "react";
-import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
-import { useArtistFeedsGet } from "@/app/hooks/useArtistFeeds";
-import { Artist } from "@prisma/client";
+import React, { useState, useMemo, useEffect } from "react";
+
 import { X } from "lucide-react";
-import { cn } from "@/lib/utils/tailwind";
-import ArtistFeedModalCard from "./Artist.Feed.Modal.Card";
+import dynamic from "next/dynamic";
+
+import { useArtistFeedsGet } from "@/app/hooks/useArtistFeeds";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+
+import ArtistFeedModalCard from "./Artist.Feed.Modal.Card";
 import Portal from "../atoms/Portal";
-import dynamic from "next/dynamic";
-import React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+
+import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+import type { Artist } from "@prisma/client";
 
 interface ArtistFeedModalProps {
     initialFeeds: ArtistFeedWithReactions[];
@@ -51,9 +53,15 @@ export default React.memo(function ArtistFeedModal({
         };
     }, [isOpen]);
 
-    const infiniteFeeds = artistFeedsInfiniteQuery.data
-        ? artistFeedsInfiniteQuery.data.pages.flatMap((page) => page.feeds)
-        : [];
+    const infiniteFeeds = useMemo(
+        () =>
+            artistFeedsInfiniteQuery.data
+                ? artistFeedsInfiniteQuery.data.pages.flatMap(
+                      (page) => page.feeds
+                  )
+                : [],
+        [artistFeedsInfiniteQuery.data]
+    );
 
     const fetchNextPage = artistFeedsInfiniteQuery.fetchNextPage;
     const hasNextPage = artistFeedsInfiniteQuery.hasNextPage;
@@ -75,7 +83,9 @@ export default React.memo(function ArtistFeedModal({
     const handleIndexChange = (next: number) => {
         setCurrentIndex(next);
         if (hasNextPage && next >= allFeeds.length - 3 && !isFetchingNextPage) {
-            fetchNextPage();
+            fetchNextPage().catch((error) => {
+                console.error("Failed to fetch next page:", error);
+            });
         }
     };
 

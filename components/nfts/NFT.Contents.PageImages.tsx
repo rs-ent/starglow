@@ -2,11 +2,12 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import React from "react";
-import { SPG } from "@/app/story/spg/actions";
+
+import type { SPG } from "@/app/story/spg/actions";
 interface NFTContentsPageImagesProps {
     spg: SPG;
 }

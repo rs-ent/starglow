@@ -1,21 +1,19 @@
 // components/nfts/NFTs.Collections.Card.R3F.tsx
 
-import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
-import { useFrame, useThree } from "@react-three/fiber";
-import { Mesh, DoubleSide, LinearFilter, Vector3 } from "three";
-import { RoundedBox, Text, useCursor } from "@react-three/drei";
-import { SPG } from "@/app/story/spg/actions";
-import { useNFT } from "@/app/story/nft/hooks";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+
 import { CollectionParticipantType } from "@prisma/client";
 import { animated, useSpring } from "@react-spring/three";
-import { formatDate, formatColor } from "@/lib/utils/format";
+import { RoundedBox, Text, useCursor } from "@react-three/drei";
+import { useFrame, useThree } from "@react-three/fiber";
+import { DoubleSide, LinearFilter, Vector3 } from "three";
+
+import { useNFT } from "@/app/story/nft/hooks";
+import { formatDate } from "@/lib/utils/format";
 import { useCachedTexture } from "@/lib/utils/useCachedTexture";
+
+import type { SPG } from "@/app/story/spg/actions";
+import type { Mesh } from "three";
 
 /**
  * CardMesh 컴포넌트에 전달되는 props 타입
@@ -143,7 +141,7 @@ function getDetailLevel(
     distance: number
 ): "high" | "medium" | "low" {
     if (isSelected) return "high";
-    if (distance < 15) return "medium";
+    if (distance < 25) return "medium";
     return "low";
 }
 
@@ -235,7 +233,7 @@ const InfoBox = React.memo(function InfoBox({
                             : valuePosition
                     }
                     maxWidth={3}
-                    color="#fff"
+                    color={foregroundColor}
                     outlineColor={backgroundColor}
                     {...CONSTANTS.TEXT.COMMON}
                     {...CONSTANTS.TEXT.VALUE}
@@ -255,13 +253,11 @@ const CardMesh = React.memo(function CardMesh({
     status,
     dateLabel,
     dateValue,
-    participants,
     remainStock,
     totalStock,
     circulationLoading,
     artistName,
     position = [0, 0, 0],
-    rotationY = 0,
     isSelected = false,
     onClick,
     onBuyNowClick,
@@ -360,7 +356,6 @@ const CardMesh = React.memo(function CardMesh({
         },
     });
 
-    // 불필요한 useCallback 제거 (핸들러 단순화)
     const handlePointerOver = () => setHovered(true);
     const handlePointerOut = () => setHovered(false);
     const handleBuyNowClick = (e: React.MouseEvent | React.TouchEvent) => {
@@ -368,13 +363,8 @@ const CardMesh = React.memo(function CardMesh({
         onBuyNowClick?.();
     };
 
-    // 디테일 레벨에 따른 렌더링 최적화
-    const { smoothness, textDetail, emissiveIntensity } = useMemo(
+    const { emissiveIntensity } = useMemo(
         () => ({
-            smoothness:
-                detailLevel === "high" ? 5 : detailLevel === "medium" ? 3 : 2,
-            textDetail:
-                detailLevel === "high" ? 4 : detailLevel === "medium" ? 2 : 1,
             emissiveIntensity:
                 detailLevel === "high"
                     ? 0.1
@@ -392,15 +382,40 @@ const CardMesh = React.memo(function CardMesh({
             opacity: 0.95,
             roughness: 0.01,
             metalness: 0.2,
-            clearcoat: detailLevel === "low" ? 0 : 1.5,
+            clearcoat:
+                detailLevel === "high"
+                    ? 1.5
+                    : detailLevel === "medium"
+                    ? 0.75
+                    : 0.1,
             clearcoatRoughness: 0.2,
-            transmission: detailLevel === "low" ? 0 : 0.3,
-            ior: detailLevel === "low" ? 1.5 : 2.5,
-            reflectivity: detailLevel === "low" ? 0.5 : 0.8,
+            transmission:
+                detailLevel === "high"
+                    ? 0.3
+                    : detailLevel === "medium"
+                    ? 0.15
+                    : 0.05,
+            ior:
+                detailLevel === "high"
+                    ? 2.5
+                    : detailLevel === "medium"
+                    ? 2.0
+                    : 1.5,
+            reflectivity:
+                detailLevel === "high"
+                    ? 0.8
+                    : detailLevel === "medium"
+                    ? 0.65
+                    : 0.5,
             thickness: 0.5,
             emissive: backgroundColor,
             emissiveIntensity: emissiveIntensity,
-            envMapIntensity: detailLevel === "low" ? 0.8 : 1.2,
+            envMapIntensity:
+                detailLevel === "high"
+                    ? 1.2
+                    : detailLevel === "medium"
+                    ? 1.0
+                    : 0.8,
         }),
         [backgroundColor, detailLevel, emissiveIntensity]
     );
@@ -580,8 +595,6 @@ const CardMesh = React.memo(function CardMesh({
                     />
                 </RoundedBox>
             </mesh>
-            // 카드 뒷면 로고+배경
-            {/* 로고 */}
             <mesh position={[0, 0, -0.45]}>
                 <planeGeometry args={[4.5, 4.5]} />
                 {logoTexture && logoTexture.image ? (
@@ -616,13 +629,7 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
     onBuyNowClick,
     confirmedAlpha,
 }: NFTsCollectionsCard3DR3FProps) {
-    const {
-        circulation,
-        isCirculationLoading,
-        isCirculationError,
-        circulationError,
-        refetchCirculation,
-    } = useNFT({
+    const { circulation, isCirculationLoading } = useNFT({
         getCirculationInput: {
             spgAddress: spg.address,
         },
@@ -636,7 +643,6 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
         status,
         dateLabel,
         dateValue,
-        participantsType,
         artistName,
     } = useMemo(() => {
         const now = new Date();

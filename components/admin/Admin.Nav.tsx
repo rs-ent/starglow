@@ -25,7 +25,6 @@ export default function AdminNav() {
         { href: "/admin/assets", label: "Assets", icon: PartyPopperIcon },
         { href: "/admin/onchain", label: "On Chain", icon: PartyPopperIcon },
         { href: "/admin/story", label: "Story", icon: PartyPopperIcon },
-        { href: "/admin/staking", label: "Staking", icon: PartyPopperIcon },
         { href: "/admin/users", label: "Users", icon: UsersIcon },
         {
             href: "/admin/data-migrations",

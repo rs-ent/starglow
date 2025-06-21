@@ -2,11 +2,8 @@
 
 import { auth } from "@/app/auth/authSettings";
 import NavigationBar from "@/components/navigation/Navigation.Bar";
-import { memo } from "react";
 
-export const dynamic = "auto";
-
-async function Navigation() {
+export default async function Navigation() {
     const session = await auth();
 
     return (
@@ -16,5 +13,3 @@ async function Navigation() {
         />
     );
 }
-
-export default memo(Navigation);

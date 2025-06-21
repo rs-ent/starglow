@@ -3,24 +3,29 @@
 "use server";
 
 import * as PortOne from "@portone/browser-sdk/v2";
-import { PaymentStatus, PrismaClient, Wallet } from "@prisma/client";
+import { PaymentStatus, PrismaClient, Wallet , Events, PaymentPromotionDiscountType } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma/client";
-import { Payment, Events, PaymentPromotionDiscountType } from "@prisma/client";
+import {
+    PRODUCT_MAP,
+} from "@/lib/types/payment";
 import { encrypt, decrypt } from "@/lib/utils/encryption";
+
 import {
     getExchangeRateInfo,
-    convertAmount,
-    ExchangeRateInfo,
+    convertAmount
 } from "./exchangeRate";
-import {
+
+import type {
+    ExchangeRateInfo} from "./exchangeRate";
+import type {
     PayMethod,
     EasyPayProvider,
     CardProvider,
     ProductTable,
     Currency,
-    prismaTransaction,
-    PRODUCT_MAP,
-} from "@/lib/types/payment";
+    prismaTransaction} from "@/lib/types/payment";
+import type { Payment} from "@prisma/client";
 
 const PAYMENT_SECRET =
     process.env.PAYMENT_SECRET || "&^%$#-super-secret-v0-!##@!#";

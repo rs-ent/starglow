@@ -2,13 +2,17 @@
 
 "use client";
 
-import React from "react";
+import React, { useMemo, useState } from "react";
+
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { User } from "next-auth";
-import { Player } from "@prisma/client";
-import { useMemo, useState } from "react";
+
 import UserSettingsProfileModal from "../user/User.Settings.Profile.Modal";
+
+import type { Player } from "@prisma/client";
+import type { User } from "next-auth";
+
 
 interface ProfileImageProps {
     user: User;

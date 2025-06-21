@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
-import type { User } from "next-auth";
-import { auth } from "./authSettings";
+
 import { prisma } from "@/lib/prisma/client";
+
+import { auth } from "./authSettings";
+
+import type { User } from "next-auth";
 
 export async function requireAuth() {
     const session = await auth();

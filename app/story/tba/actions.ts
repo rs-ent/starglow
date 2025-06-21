@@ -2,14 +2,20 @@
 
 "use server";
 
-import { prisma } from "@/lib/prisma/client";
-import { fetchPublicClient, fetchWalletClient } from "../client";
-import StarglowTBA from "@/web3/artifacts/contracts/StarglowTBA.sol/StarglowTBA.json";
-import { Hex, decodeEventLog } from "viem";
 import {
     TBAContract as PrismaTBAContract,
     TBAContractType,
 } from "@prisma/client";
+import { decodeEventLog } from "viem";
+
+
+import { prisma } from "@/lib/prisma/client";
+import StarglowTBA from "@/web3/artifacts/contracts/StarglowTBA.sol/StarglowTBA.json";
+
+import { fetchPublicClient, fetchWalletClient } from "../client";
+
+import type { Hex} from "viem";
+
 
 export interface deployTBAImplementationInput {
     userId: string;
@@ -289,7 +295,7 @@ export async function getOrDeployTBA(
     input: getOrDeployTBAInput
 ): Promise<TBAAddresses> {
     try {
-        let addresses = await getTBAAddresses({ networkId: input.networkId });
+        const addresses = await getTBAAddresses({ networkId: input.networkId });
 
         if (!addresses.registry) {
             const registry = await deployTBARegistry(input);

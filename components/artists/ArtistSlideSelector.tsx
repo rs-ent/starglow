@@ -1,18 +1,20 @@
-/// components/molecules/ArtistSlideSelector.tsx
+/// components/artists/ArtistSlideSelector.tsx
 
 "use client";
+
+import { useCallback, useEffect, useMemo } from "react";
+
+import Slider from "react-slick";
 
 import { useArtistsGet } from "@/app/hooks/useArtists";
 import ArtistSelector from "@/components/atoms/ArtistSelector";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
-import { Artist, Story_spg } from "@prisma/client";
-import { useCallback, useEffect, useMemo } from "react";
-import { TokenGatingResult, TokenGatingData } from "@/app/story/nft/actions";
-import Slider from "react-slick";
+
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import { VerifiedSPG } from "@/app/story/interaction/actions";
+import type { VerifiedSPG } from "@/app/story/interaction/actions";
+import type { Artist, Story_spg } from "@prisma/client";
 
 interface ArtistSlideSelectorProps {
     className?: string;

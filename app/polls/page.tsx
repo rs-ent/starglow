@@ -1,10 +1,13 @@
 /// app\polls\page.tsx
 
-import { auth } from "@/app/auth/authSettings";
-import Polls from "@/components/polls/Polls";
 import { Suspense } from "react";
-import { Metadata } from "next";
+
+
+import { auth } from "@/app/auth/authSettings";
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
+import Polls from "@/components/polls/Polls";
+
+import type { Metadata } from "next";
 
 // SEO 메타데이터 정의
 export const metadata: Metadata = {

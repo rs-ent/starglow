@@ -3,8 +3,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getReferralLogs, GetReferralLogsInput } from "../actions/referral";
+
+import { getReferralLogs } from "../actions/referral";
 import { playerKeys } from "../queryKeys";
+
+import type { GetReferralLogsInput } from "../actions/referral";
 
 export const useReferralLogs = (input?: GetReferralLogsInput) => {
     return useQuery({

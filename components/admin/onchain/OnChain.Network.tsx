@@ -4,8 +4,14 @@
 "use client";
 
 import { useState } from "react";
+
+import { Loader2, ExternalLink, PlusCircle, Edit, X } from "lucide-react";
+
 import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
 import { useAddBlockchainNetwork } from "@/app/mutations/blockchainMutations";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
     Card,
     CardContent,
@@ -14,6 +20,9 @@ import {
     CardDescription,
     CardFooter,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
     Table,
     TableBody,
@@ -22,13 +31,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Loader2, ExternalLink, PlusCircle, Edit, X } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 
 interface OnChainNetworkProps {
     onDeployClick: (networkId: string) => void;

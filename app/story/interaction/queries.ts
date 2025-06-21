@@ -3,8 +3,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+
 import { queryKeys } from "../queryKeys";
-import { getUserVerifiedSPGs, GetUserVerifiedSPGsInput } from "./actions";
+import { getUserVerifiedSPGs } from "./actions";
+
+import type { GetUserVerifiedSPGsInput } from "./actions";
 
 export function useGetUserVerifiedSPGsQuery(input?: GetUserVerifiedSPGsInput) {
     return useQuery({

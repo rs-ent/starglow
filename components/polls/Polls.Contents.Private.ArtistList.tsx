@@ -2,13 +2,16 @@
 
 "use client";
 
-import { TokenGatingResult } from "@/app/story/nft/actions";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+
 import { usePollsGet } from "@/app/hooks/usePolls";
-import { Artist, Player, PollLog } from "@prisma/client";
+import { cn } from "@/lib/utils/tailwind";
+
 import PollsList from "./Polls.List";
 import PartialLoading from "../atoms/PartialLoading";
-import { cn } from "@/lib/utils/tailwind";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+
+import type { TokenGatingResult } from "@/app/story/nft/actions";
+import type { Artist, Player, PollLog } from "@prisma/client";
 
 interface PollsContentsPrivateArtistListProps {
     artist: Artist;

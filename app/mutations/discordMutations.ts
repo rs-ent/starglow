@@ -1,8 +1,9 @@
 /// app/mutations/discordMutations.ts
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { discordKeys } from "../queryKeys";
+
 import { createDiscordCode } from "../actions/discord";
+import { discordKeys } from "../queryKeys";
 
 export function useCreateDiscordCodeMutation() {
     const queryClient = useQueryClient();

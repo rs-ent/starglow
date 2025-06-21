@@ -2,28 +2,31 @@
 
 "use client";
 
-import {
+import { useEffect, useState, useMemo } from "react";
+import { ShoppingBasket } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+import { getPayment } from "@/app/actions/payment";
+import { useAuthUserId } from "@/app/auth/authUtils.Client";
+import { useExchangeRate } from "@/app/hooks/useExchangeRate";
+import { useLoading } from "@/app/hooks/useLoading";
+import { usePayment } from "@/app/hooks/usePayment";
+import { usePaymentPostProcessor } from "@/app/hooks/usePaymentPostProcessor";
+import { useToast } from "@/app/hooks/useToast";
+
+import PaymentSelector from "./PaymentSelector";
+import Button from "../atoms/Button";
+import WarningPopup from "../atoms/WarningPopup";
+
+import type { PaymentPostProcessorDetails } from "@/app/hooks/usePaymentPostProcessor";
+import type {
     PayMethod,
     ProductTable,
     Currency,
     EasyPayProvider,
     CardProvider,
 } from "@/lib/types/payment";
-import { Payment, Wallet } from "@prisma/client";
-import { useRouter, useSearchParams } from "next/navigation";
-import PaymentSelector from "./PaymentSelector";
-import { useEffect, useState, useMemo } from "react";
-import Button from "../atoms/Button";
-import { ShoppingBasket } from "lucide-react";
-import { useExchangeRate } from "@/app/hooks/useExchangeRate";
-import { usePayment } from "@/app/hooks/usePayment";
-import { useAuthUserId } from "@/app/auth/authUtils.Client";
-import { useToast } from "@/app/hooks/useToast";
-import { useLoading } from "@/app/hooks/useLoading";
-import { getPayment } from "@/app/actions/payment";
-import { usePaymentPostProcessor } from "@/app/hooks/usePaymentPostProcessor";
-import WarningPopup from "../atoms/WarningPopup";
-import { PaymentPostProcessorDetails } from "@/app/hooks/usePaymentPostProcessor";
+import type { Payment } from "@prisma/client";
 
 interface PaymentModuleProps {
     productTable: ProductTable;
@@ -89,19 +92,12 @@ export default function PaymentModule({
     );
 
     const { getExchangeRate } = useExchangeRate();
-    const {
-        initiatePayment,
-        resetAndInitiatePayment,
-        isCreatingPayment,
-        currentPaymentId,
-        currentPayment,
-        setCurrentPaymentId,
-    } = usePayment();
+    const { initiatePayment, isCreatingPayment, currentPaymentId } =
+        usePayment();
 
     const {
         processPayment: postProcess,
         isLoading: isPostProcessing,
-        error: postProcessError,
         status: postProcessStatus,
         details: postProcessDetails,
     } = usePaymentPostProcessor(currentPaymentId ?? "", {
@@ -210,28 +206,28 @@ export default function PaymentModule({
                         setMessage(
                             "NFTs are being transferred. Please keep this window open."
                         );
-                        postProcess(payment);
+                        postProcess(payment).catch((error) => {
+                            console.error("Failed to post process:", error);
+                        });
                         onPaymentSuccess?.(payment);
                         break;
                     case "FAILED":
-                        console.log("Payment Failed", payment);
                         toast.error("Payment failed");
                         onPaymentError?.(
                             new Error(payment.statusReason || "Payment failed")
                         );
                         break;
                     case "CANCELLED":
-                        console.log("Payment Cancelled", payment);
                         toast.error("Payment cancelled");
                         onPaymentCancel?.(payment);
                         break;
                     case "REFUNDED":
-                        console.log("Payment Refunded", payment);
                         toast.success("Payment refunded");
                         onPaymentRefund?.(payment);
                         break;
                 }
             } catch (error) {
+                console.error("Failed to handle payment result:", error);
                 onPaymentError?.(
                     error instanceof Error
                         ? error
@@ -240,8 +236,18 @@ export default function PaymentModule({
             }
         };
 
-        handlePaymentResult();
-    }, [paymentResult.paymentId]);
+        void handlePaymentResult();
+    }, [
+        paymentResult.paymentId,
+        startLoading,
+        endLoading,
+        postProcess,
+        onPaymentSuccess,
+        toast,
+        onPaymentError,
+        onPaymentCancel,
+        onPaymentRefund,
+    ]);
 
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -272,7 +278,7 @@ export default function PaymentModule({
                 onPaymentComplete?.(postProcessDetails);
             }
         }
-    }, [postProcessStatus, postProcessDetails]);
+    }, [postProcessStatus, postProcessDetails, onPaymentComplete, toast]);
 
     useEffect(() => {
         if (currentPaymentId && !isCreatingPayment) {
@@ -284,7 +290,7 @@ export default function PaymentModule({
         } else if (!currentPaymentId && !isCreatingPayment) {
             endLoading();
         }
-    }, [currentPaymentId, isCreatingPayment]);
+    }, [currentPaymentId, isCreatingPayment, router, endLoading]);
 
     return (
         <div>

@@ -3,7 +3,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import { ArtistFeed, ArtistFeedReaction } from "@prisma/client";
+
+import type { ArtistFeed, ArtistFeedReaction } from "@prisma/client";
 
 export type ArtistFeedWithReactions = ArtistFeed & {
     reactions: ArtistFeedReaction[];
@@ -256,9 +257,11 @@ export async function updateArtistFeedReaction({
     input: UpdateArtistFeedReactionInput;
 }): Promise<ArtistFeedReaction | null> {
     try {
-        const { id, artistFeedId, playerId, ...data } = input;
+        const { id, ...data } = input;
         return await prisma.artistFeedReaction.update({
-            where: { id },
+            where: {
+                id: id,
+            },
             data,
         });
     } catch (error) {
@@ -269,8 +272,6 @@ export async function updateArtistFeedReaction({
 
 export interface DeleteArtistFeedReactionInput {
     id: string;
-    artistFeedId: string;
-    playerId: string;
 }
 
 export async function deleteArtistFeedReaction({
@@ -280,7 +281,9 @@ export async function deleteArtistFeedReaction({
 }): Promise<boolean> {
     try {
         await prisma.artistFeedReaction.delete({
-            where: { id: input.id },
+            where: {
+                id: input.id,
+            },
         });
         return true;
     } catch (error) {

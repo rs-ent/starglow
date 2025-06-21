@@ -1,10 +1,14 @@
 /// app\nfts\page.tsx
 
-import NFTs from "@/components/nfts/NFTs";
-import { getSPGs } from "../story/spg/actions";
 import { Suspense } from "react";
-import { Metadata } from "next";
+
+
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
+import NFTs from "@/components/nfts/NFTs";
+
+import { getSPGs } from "../story/spg/actions";
+
+import type { Metadata } from "next";
 
 // SEO 메타데이터 정의
 export const metadata: Metadata = {

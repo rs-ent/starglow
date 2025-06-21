@@ -2,29 +2,30 @@
 
 "use client";
 
-import { Player, PlayerAsset, Asset } from "@prisma/client";
-import { User } from "next-auth";
-import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
-import { cn } from "@/lib/utils/tailwind";
-import RewardButton from "@/components/atoms/Reward.Button";
 import { useMemo, useState } from "react";
+
+import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
+import RewardButton from "@/components/atoms/Reward.Button";
+import { cn } from "@/lib/utils/tailwind";
+
 import UserRewardsModal from "./User.Rewards.Modal";
+
+import type { Player, PlayerAsset, Asset } from "@prisma/client";
+
 interface UserRewardsProps {
-    user: User;
     player: Player | null;
 }
 
 export type PlayerAssetWithAsset = PlayerAsset & { asset: Asset };
 
-export default function UserRewards({ user, player }: UserRewardsProps) {
-    const { playerAssets, isPlayerAssetsLoading, playerAssetsError } =
-        usePlayerAssetsGet({
-            getPlayerAssetsInput: {
-                filter: {
-                    playerId: player?.id ?? "",
-                },
+export default function UserRewards({ player }: UserRewardsProps) {
+    const { playerAssets } = usePlayerAssetsGet({
+        getPlayerAssetsInput: {
+            filter: {
+                playerId: player?.id ?? "",
             },
-        });
+        },
+    });
 
     const { playerAssetList, slots } = useMemo(() => {
         const playerAssetList = (playerAssets?.data ??

@@ -3,6 +3,12 @@
 "use client";
 
 import {
+    useValidateRegisterXAuthorMutation,
+    useCheckIsActiveXAuthorMutation,
+    useConfirmRegisterXAuthorMutation,
+    useDisconnectXAccountMutation,
+} from "./mutations";
+import {
     useLatestSyncDataQuery,
     useTweetsQuery,
     useTweetAuthorsQuery,
@@ -10,13 +16,8 @@ import {
     useAuthorMetricsHistoryQuery,
     useAuthorByPlayerIdQuery,
 } from "./queries";
-import {
-    useValidateRegisterXAuthorMutation,
-    useCheckIsActiveXAuthorMutation,
-    useConfirmRegisterXAuthorMutation,
-    useDisconnectXAccountMutation,
-} from "./mutations";
-import {
+
+import type {
     GetTweetMetricsHistoryInput,
     GetAuthorMetricsHistoryInput,
     GetAuthorByPlayerIdInput,

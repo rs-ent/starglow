@@ -43,10 +43,3 @@ export interface RequestPaymentResponse {
     errorMessage?: string;
     [key: string]: any; // For additional response fields
 }
-
-// Declare PortOne namespace for global use
-declare global {
-    namespace PortOne {
-        function requestPayment(params: any): Promise<any>;
-    }
-}

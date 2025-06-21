@@ -1,11 +1,15 @@
 /// components/organisms/EventsDetail.tsx
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+
+import { Loader2 } from "lucide-react";
+
 import { useEvent } from "@/app/hooks/useEvents";
+
 import EventDescription from "./EventDescription";
 import EventPayment from "./EventPayment";
-import { Loader2 } from "lucide-react";
+import Link from "next/link";
 
 interface EventsDetailProps {
     eventId: string;
@@ -19,16 +23,17 @@ export default function EventsDetail({
     const { event, isLoading, error } = useEvent(eventId);
     const [purchaseSuccess, setPurchaseSuccess] = useState(false);
 
-    const handlePurchase = (quantity: number) => {
-        console.log(`Purchasing ${quantity} tickets for event ${eventId}`);
-
-        setTimeout(() => {
-            setPurchaseSuccess(true);
-            if (onPurchase) {
-                onPurchase(quantity);
-            }
-        }, 1500);
-    };
+    const handlePurchase = useCallback(
+        (quantity: number) => {
+            setTimeout(() => {
+                setPurchaseSuccess(true);
+                if (onPurchase) {
+                    onPurchase(quantity);
+                }
+            }, 1500);
+        },
+        [eventId, onPurchase]
+    );
 
     if (isLoading) {
         return (
@@ -83,12 +88,12 @@ export default function EventsDetail({
 
                 {/* Back button - only visible on mobile */}
                 <div className="mt-8 flex justify-center lg:hidden">
-                    <a
+                    <Link
                         href="/events"
                         className="px-4 py-2 bg-secondary/50 hover:bg-secondary/70 text-foreground rounded-lg border border-border/30 text-sm transition-colors"
                     >
                         Back to Events
-                    </a>
+                    </Link>
                 </div>
             </div>
         </div>

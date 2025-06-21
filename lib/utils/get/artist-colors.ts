@@ -1,7 +1,8 @@
 /// lib/utils/get/artist-colors.ts
 
-import { Artist } from "@prisma/client";
 import { formatHexToRGBA } from "@/lib/utils/format";
+
+import type { Artist } from "@prisma/client";
 
 // HSL 기반의 기본 색상
 const defaultBGColors = [
@@ -45,13 +46,6 @@ export const ArtistFG = (
     const alpha = (opacity ?? 100) / 100;
     return formatHexToRGBA(baseColor, alpha);
 };
-
-function getHexOpacity(opacity?: number): string {
-    const normalizedOpacity = Math.min(Math.max(opacity || 100, 0), 100);
-    return Math.round((normalizedOpacity * 255) / 100)
-        .toString(16)
-        .padStart(2, "0");
-}
 
 function hexToHSL(hex: string): [number, number, number] {
     if (colorCache.has(hex)) {

@@ -1,6 +1,7 @@
 /// app\user\discord\page.tsx
 
 import { Suspense } from "react";
+
 import { requireAuthUserAndPlayer } from "@/app/auth/authUtils";
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 import UserDiscord from "@/components/user/User.Discord";
@@ -14,9 +15,9 @@ function UserDiscordLoading() {
 
 // 사용자 데이터를 가져오는 컴포넌트
 async function UserDiscordContent() {
-    const { user, player } = await requireAuthUserAndPlayer("/user");
+    const { user } = await requireAuthUserAndPlayer("/user");
 
-    return <UserDiscord user={user} player={player} />;
+    return <UserDiscord user={user} />;
 }
 
 export default function UserDiscordEntryPage() {

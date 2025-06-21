@@ -1,9 +1,10 @@
 /// web3\scripts\deploy-factory.ts
 
-import { formatEther, parseGwei } from "viem";
-import hre from "hardhat";
 import fs from "fs";
 import path from "path";
+
+import hre from "hardhat";
+import { formatEther, parseGwei } from "viem";
 
 interface DeploymentConfig {
     gasSettings: {

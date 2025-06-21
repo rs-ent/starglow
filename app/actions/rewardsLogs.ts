@@ -3,7 +3,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import {
+
+import type {
     Prisma,
     RewardsLog,
     Quest,
@@ -11,6 +12,7 @@ import {
     PollLog,
     Asset,
 } from "@prisma/client";
+
 
 export type RewardLog = RewardsLog & {
     quest?: Quest | null;

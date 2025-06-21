@@ -2,19 +2,22 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+
 import { useSession } from "next-auth/react";
+import { FaCube, FaRocket, FaFilter, FaSearch } from "react-icons/fa";
+import { SiEthereum } from "react-icons/si";
+import { TbTopologyStar3 } from "react-icons/tb";
+import { keccak256, toHex } from "viem";
+
 import { useToast } from "@/app/hooks/useToast";
-import { useNFT } from "@/app/story/nft/hooks";
+import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
 import { useMetadata } from "@/app/story/metadata/hooks";
 import { useStoryNetwork } from "@/app/story/network/hooks";
-import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
-import { TbTopologyStar3 } from "react-icons/tb";
-import { SiEthereum } from "react-icons/si";
-import { FaCube, FaRocket, FaFilter, FaSearch } from "react-icons/fa";
-import { Story_nft, ipfs } from "@prisma/client";
-import { keccak256, toHex } from "viem";
+import { useNFT } from "@/app/story/nft/hooks";
+
 import type { IPAssetMetadata } from "@/app/story/metadata/actions";
+import type { Story_nft, ipfs } from "@prisma/client";
 
 export default function AdminStoryRegisterIPAsset({
     onBack,
@@ -33,11 +36,7 @@ export default function AdminStoryRegisterIPAsset({
         nftsError,
         refetchNFTs,
 
-        registerAsIPAssetAsync,
-        isRegisterAsIPAssetPending,
-
         batchRegisterAsIPAssetAsync,
-        isBatchRegisterAsIPAssetPending,
     } = useNFT({
         getNFTsInput: {
             unregistered: true,
@@ -48,7 +47,6 @@ export default function AdminStoryRegisterIPAsset({
     const {
         metadataList: ipAssetMetadataList,
         isLoadingMetadataList: isLoadingIPAssetMetadata,
-        refetchMetadataList: refetchIPAssetMetadata,
     } = useMetadata({
         getMetadataListInput: {
             type: "ip-asset-metadata",
@@ -117,8 +115,7 @@ export default function AdminStoryRegisterIPAsset({
 
             setRegistrationProgress(70);
 
-            // IP Asset으로 등록
-            const result = await batchRegisterAsIPAssetAsync({
+            await batchRegisterAsIPAssetAsync({
                 userId,
                 networkId: selectedNFTs[0].networkId,
                 walletAddress: wallet.address,
@@ -128,6 +125,8 @@ export default function AdminStoryRegisterIPAsset({
                 ipMetadataHash: keccak256(toHex(JSON.stringify(ipMetadata))),
                 nftMetadataURIs: selectedNFTs.map((nft) => nft.tokenURI || ""),
                 nftMetadataHashes: nftMetadataHashes,
+            }).catch((err) => {
+                console.error(err);
             });
 
             setRegistrationProgress(100);
@@ -465,8 +464,7 @@ export default function AdminStoryRegisterIPAsset({
                             disabled={
                                 !selectedNFTs.length ||
                                 !selectedIPMetadata ||
-                                isRegistering ||
-                                isRegisterAsIPAssetPending
+                                isRegistering
                             }
                             className={`
                                 w-full py-4 rounded-xl font-bold text-lg transition-all duration-300

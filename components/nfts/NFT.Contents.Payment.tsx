@@ -2,20 +2,22 @@
 
 "use client";
 
-import { Collection } from "@/app/actions/factoryContracts";
-import { useMemo, useState, useCallback } from "react";
-import { H3 } from "../atoms/Typography";
+import React, { useMemo, useState, useCallback } from "react";
+
 import { Ticket, AlertCircle, CheckCircle2 } from "lucide-react";
-import PaymentModule from "../payment/PaymentModule";
-import { Currency } from "@/lib/types/payment";
+
 import { formatCurrency } from "@/lib/utils/format";
-import { Payment } from "@prisma/client";
-import React from "react";
-import { PaymentPostProcessorDetails } from "@/app/hooks/usePaymentPostProcessor";
-import { SPG } from "@/app/story/spg/actions";
+
+import { H3 } from "../atoms/Typography";
+import PaymentModule from "../payment/PaymentModule";
+
+import type { PaymentPostProcessorDetails } from "@/app/hooks/usePaymentPostProcessor";
+import type { SPG } from "@/app/story/spg/actions";
+import type { Currency } from "@/lib/types/payment";
+import type { Payment } from "@prisma/client";
+
 interface NFTContentsPaymentProps {
     spg: SPG;
-    onPurchase?: (quantity: number) => void;
     collectionStock:
         | {
               remain: number;
@@ -31,7 +33,6 @@ const initialCurrency = "CURRENCY_USD" as Currency;
 
 export default React.memo(function NFTContentsPayment({
     spg,
-    onPurchase,
     onPaymentSuccess,
     onPaymentComplete,
     onPaymentError,

@@ -1,6 +1,7 @@
 /// app/hooks/useRewardsLogs.ts
 
 import { getRewardsLogsQuery } from "../queries/rewardsLogsQueries";
+
 import type { GetRewardsLogsInput } from "../actions/rewardsLogs";
 
 export function useRewardsLogsGet({

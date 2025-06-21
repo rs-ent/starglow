@@ -2,17 +2,20 @@
 
 import {
     useInfiniteQuery,
-    useQuery,
-    UseInfiniteQueryResult,
-    InfiniteData,
+    useQuery
 } from "@tanstack/react-query";
-import { artistFeedKeys } from "../queryKeys";
+
 import { getArtistFeeds, getArtistFeedReactions } from "../actions/artistFeeds";
+import { artistFeedKeys } from "../queryKeys";
+
 import type {
     GetArtistFeedsInput,
     GetArtistFeedReactionsInput,
     ArtistFeedWithReactions,
 } from "../actions/artistFeeds";
+import type {
+    UseInfiniteQueryResult,
+    InfiniteData} from "@tanstack/react-query";
 
 export function useArtistFeedsQuery(input?: GetArtistFeedsInput) {
     return useQuery({

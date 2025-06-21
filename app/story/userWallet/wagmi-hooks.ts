@@ -2,21 +2,25 @@
 
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
+
+import { WalletStatus } from "@prisma/client";
+import { useSession } from "next-auth/react";
 import {
     useAccount,
     useConnect,
     useDisconnect,
     useChainId,
     useSwitchChain,
-    useChains,
-    Connector,
 } from "wagmi";
-import { useUserWallet } from "./hooks";
-import { useCallback, useEffect, useState } from "react";
-import { WalletStatus, BlockchainNetwork } from "@prisma/client";
-import { useStoryNetwork } from "../network/hooks";
+
 import { setUserWithWallet } from "@/app/actions/user";
-import { useSession } from "next-auth/react";
+
+import { useUserWallet } from "./hooks";
+import { useStoryNetwork } from "../network/hooks";
+
+import type { BlockchainNetwork } from "@prisma/client";
+import type { Connector } from "wagmi";
 
 export function useWagmiConnection() {
     const { storyNetworks } = useStoryNetwork({
@@ -149,9 +153,13 @@ export function useWagmiConnection() {
         isPendingConnectWallet,
         isSuccessConnectWallet,
         isErrorConnectWallet,
+        verifyWalletSignature,
+        verifyWalletSignatureAsync,
         isPendingVerifyWalletSignature,
         isSuccessVerifyWalletSignature,
         isErrorVerifyWalletSignature,
+
+        updateWallet,
         isPendingUpdateWallet,
         isSuccessUpdateWallet,
         isErrorUpdateWallet,

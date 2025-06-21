@@ -1,16 +1,16 @@
 /// components/atoms/WalletAuthButton.tsx
 
-import { useWagmiConnection } from "@/app/story/userWallet/wagmi-hooks";
-import { Connector, useConnect } from "wagmi";
-import Button from "./Button";
-import { cn } from "@/lib/utils/tailwind";
 import { useMemo, useState, useEffect } from "react";
-import {
-    WALLET_PROVIDERS,
-    WalletProvider,
-    WalletProviderType,
-    getInstallUrl,
-} from "@/app/types/auth";
+
+import { useConnect } from "wagmi";
+
+import { useWagmiConnection } from "@/app/story/userWallet/wagmi-hooks";
+import { WALLET_PROVIDERS, getInstallUrl } from "@/app/types/auth";
+import { cn } from "@/lib/utils/tailwind";
+
+import Button from "./Button";
+
+import type { WalletProvider, WalletProviderType } from "@/app/types/auth";
 
 interface WalletAuthButtonProps {
     provider: WalletProvider;
@@ -52,7 +52,10 @@ export default function WalletAuthButton({
             }
         };
 
-        checkInstallation();
+        checkInstallation().catch((error) => {
+            console.error("Error checking wallet installation:", error);
+            setIsInstalled(false);
+        });
     }, [walletInfo]);
 
     const handleClick = () => {
@@ -83,7 +86,9 @@ export default function WalletAuthButton({
                 return;
             }
 
-            connect(connector, callbackUrl);
+            connect(connector, callbackUrl).catch((error) => {
+                console.error("Failed to connect wallet:", error);
+            });
         } else {
             const installUrl = getInstallUrl(walletInfo);
             window.open(installUrl, "_blank");

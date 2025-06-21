@@ -2,12 +2,18 @@
 
 "use client";
 
-import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
-import AdminArtistsCreate from "./Admin.Artists.Create";
-import { Artist } from "@prisma/client";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+
+
 import Link from "next/link";
+
+import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
+import { Button } from "@/components/ui/button";
+
+import AdminArtistsCreate from "./Admin.Artists.Create";
+
+import type { Artist } from "@prisma/client";
+
 
 export default function AdminArtistsList() {
     const { artists, isLoading, error } = useArtistsGet({});

@@ -1,6 +1,7 @@
 /// components/main/Main.FollowUs.tsx
 
 import {memo} from "react";
+
 import FollowUs from "./FollowUs";
 
 // 메모이제이션된 MainFollowUs 컴포넌트

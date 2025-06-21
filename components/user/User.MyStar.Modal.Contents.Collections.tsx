@@ -1,22 +1,30 @@
 /// components/user/User.MyStar.Modal.Contents.Collections.tsx
 
 import Slider from "react-slick";
+
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import UserMyStarModalContentsCollectionsCard from "./User.MyStar.Modal.Contents.Collections.Card";
-import { cn } from "@/lib/utils/tailwind";
-import { Artist, Player, QuestLog, PollLog } from "@prisma/client";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import React, { useMemo, useRef } from "react";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
-import ArtistSelector from "../atoms/ArtistSelector";
-import ArtistMessage from "../artists/ArtistMessage";
-import QuestsArtistMissions from "../quests/Quests.Contents.Private.ArtistMissions";
-import PollsContentsPrivateArtistList from "../polls/Polls.Contents.Private.ArtistList";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+
+import UserMyStarModalContentsCollectionsCard from "./User.MyStar.Modal.Contents.Collections.Card";
 import ArtistFeed from "../artists/Artist.Feed";
-import { VerifiedSPG } from "@/app/story/interaction/actions";
-import { TokenGatingResult } from "@/app/story/nft/actions";
-import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+import ArtistMessage from "../artists/ArtistMessage";
+import ArtistSelector from "../atoms/ArtistSelector";
+import PollsContentsPrivateArtistList from "../polls/Polls.Contents.Private.ArtistList";
+import QuestsArtistMissions from "../quests/Quests.Contents.Private.ArtistMissions";
+
+import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+import type { VerifiedSPG } from "@/app/story/interaction/actions";
+import type { TokenGatingResult } from "@/app/story/nft/actions";
+import type { Artist, Player, QuestLog, PollLog } from "@prisma/client";
+
+
+import React, { useMemo, useRef } from "react";
+
+
+
 
 interface UserMyStarModalContentsCollectionsProps {
     player: Player | null;
@@ -220,7 +228,7 @@ function Arrow(props: any) {
             onClick={onClick}
         >
             <img
-                src={`/ui/arrow-right.svg`}
+                src="/ui/arrow-right.svg"
                 alt={`Arrow ${role}`}
                 className={cn("w-full h-full")}
                 style={{

@@ -3,18 +3,20 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { artistKeys } from "../queryKeys";
-import type {
-    GetArtistInput,
-    GetArtistMessagesInput,
-    GetArtistsInput,
-    TokenGatingInput,
-} from "../actions/artists";
+
 import {
     getArtist,
     getArtistMessages,
     getArtists,
     tokenGating,
+} from "../actions/artists";
+import { artistKeys } from "../queryKeys";
+
+import type {
+    GetArtistInput,
+    GetArtistMessagesInput,
+    GetArtistsInput,
+    TokenGatingInput,
 } from "../actions/artists";
 
 export function useArtists(input?: GetArtistsInput) {

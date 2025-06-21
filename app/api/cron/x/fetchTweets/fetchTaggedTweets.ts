@@ -1,7 +1,10 @@
 /// app/api/cron/x/fetchTaggedTweets.ts
 
+import { TweetResponse, TweetSyncData } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma/client";
-import { Tweet, TweetResponse, TweetSyncData } from "@prisma/client";
+
+import type { Tweet} from "@prisma/client";
 
 type TweetCreateData = Omit<Tweet, "id">;
 
@@ -92,7 +95,7 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
     let syncDataId: number;
     let requestCount = 0;
     let rateLimitRemaining: string | null = null;
-    let apiLogs: ApiRequestLog[] = [];
+    const apiLogs: ApiRequestLog[] = [];
 
     try {
         const lastSuccessSync = await prisma.tweetSyncData.findFirst({
@@ -109,7 +112,7 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
         let nextToken: string | undefined;
 
         let allTweets: TweetRawData[] = [];
-        let allUsers = new Map<
+        const allUsers = new Map<
             string,
             {
                 username: string;
@@ -124,7 +127,7 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                 verified?: boolean;
             }
         >();
-        let allMedia = new Map<
+        const allMedia = new Map<
             string,
             {
                 media_key: string;

@@ -3,13 +3,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+
 import {
     getDefaultUserWallet,
-    getDefaultUserWalletInput,
-    getWallets,
-    getWalletsInput,
+    getWallets
 } from "./actions";
 import { queryKeys } from "../queryKeys";
+
+import type {
+    getDefaultUserWalletInput,
+    getWalletsInput} from "./actions";
 
 export function useGetDefaultUserWalletQuery(
     input?: getDefaultUserWalletInput

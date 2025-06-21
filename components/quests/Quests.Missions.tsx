@@ -1,12 +1,20 @@
-/// components/molecules/Missions.tsx
+/// components/quests/Quests.Missions.tsx
 
-import { Player, Quest, QuestLog, ReferralLog } from "@prisma/client";
+"use client";
+
 import { memo, useMemo } from "react";
-import QuestsButton from "./Quests.Button";
-import PartialLoading from "../atoms/PartialLoading";
+
 import { cn } from "@/lib/utils/tailwind";
-import { TokenGatingData, TokenGatingResult } from "@/app/story/nft/actions";
+
+import QuestsButton from "./Quests.Button";
 import Doorman from "../atoms/Doorman";
+import PartialLoading from "../atoms/PartialLoading";
+
+import type {
+    TokenGatingData,
+    TokenGatingResult,
+} from "@/app/story/nft/actions";
+import type { Player, Quest, QuestLog, ReferralLog } from "@prisma/client";
 
 interface QuestsMissionsProps {
     player: Player | null;
@@ -29,17 +37,6 @@ function QuestsMissions({
     tokenGating,
     referralLogs,
 }: QuestsMissionsProps) {
-    // 로딩 상태 처리
-    if (isLoading) {
-        return <PartialLoading text="Quest lists are loading..." />;
-    }
-
-    // 에러 상태 처리
-    if (error) {
-        return <div>Error: {error.message}</div>;
-    }
-
-    // 퀘스트 로그 매핑을 미리 계산하여 반복 검색 방지
     const questLogMap = useMemo(() => {
         const map = new Map<string, QuestLog>();
         questLogs.forEach((log) => {
@@ -47,6 +44,14 @@ function QuestsMissions({
         });
         return map;
     }, [questLogs]);
+
+    if (isLoading) {
+        return <PartialLoading text="Quest lists are loading..." />;
+    }
+
+    if (error) {
+        return <div>Error: {error.message}</div>;
+    }
 
     return (
         <div className="relative transition-all duration-700">
@@ -88,5 +93,4 @@ function QuestsMissions({
     );
 }
 
-// 메모이제이션을 통해 불필요한 리렌더링 방지
 export default memo(QuestsMissions);

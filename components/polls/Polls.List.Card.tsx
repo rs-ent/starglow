@@ -2,25 +2,29 @@
 
 "use client";
 
-import { Artist, Player, Poll, PollLog } from "@prisma/client";
-import { PollOption } from "@/app/actions/polls";
+import { memo, useCallback, useMemo, useState } from "react";
+
+import { motion } from "framer-motion";
+
+import { useAssetsGet } from "@/app/hooks/useAssets";
+import { useLoading } from "@/app/hooks/useLoading";
+import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
+import { useToast } from "@/app/hooks/useToast";
+import PollBar from "@/components/atoms/Polls.Bar";
 import PollThumbnail from "@/components/atoms/Polls.Thumbnail";
 import { formatDate } from "@/lib/utils/format";
-import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
-import PollBar from "@/components/atoms/Polls.Bar";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { memo, useCallback, useMemo, useState } from "react";
-import { useToast } from "@/app/hooks/useToast";
-import { useLoading } from "@/app/hooks/useLoading";
+
+import Button from "../atoms/Button";
 import Countdown from "../atoms/Countdown";
 import Doorman from "../atoms/Doorman";
 import Popup from "../atoms/Popup";
-import Button from "../atoms/Button";
 import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
-import { useAssetsGet } from "@/app/hooks/useAssets";
-import { motion } from "framer-motion";
-import { TokenGatingData } from "@/app/story/nft/actions";
+
+import type { PollOption } from "@/app/actions/polls";
+import type { TokenGatingData } from "@/app/story/nft/actions";
+import type { Artist, Player, Poll, PollLog } from "@prisma/client";
 
 interface PollsCardProps {
     index?: number;
@@ -371,7 +375,7 @@ function PollsListCard({
                 animate={{ opacity: 1 }}
                 transition={{ staggerChildren: 0.1, delayChildren: 0.2 }}
             >
-                {options.map((option: PollOption, idx: number) => {
+                {options.map((option: PollOption) => {
                     const result = sortedResults.find(
                         (result) => result.optionId === option.optionId
                     );
@@ -654,7 +658,7 @@ function PollsListCard({
                     )}
 
                 <button
-                    onClick={() => handleSubmit()}
+                    onClick={() => void handleSubmit()}
                     className={cn(
                         "cursor-pointer",
                         "w-full hover:glow-purple rounded-full font-main",
@@ -684,6 +688,8 @@ function PollsListCard({
         increaseVoteAmount,
         handleSubmit,
         animations.submit,
+        bgColorFrom,
+        bgColorTo,
     ]);
 
     // 투표 결과 보기 버튼 렌더링 함수
@@ -732,7 +738,7 @@ function PollsListCard({
                 </div>
             </>
         );
-    }, [status, poll.hasAnswer, pollLogs, showOngoingResults]);
+    }, [status, poll.hasAnswer, pollLogs, showOngoingResults, poll.id]);
 
     // 토큰 게이팅 정보 렌더링 함수
     const renderTokenGatingInfo = useCallback(() => {
@@ -808,7 +814,7 @@ function PollsListCard({
                     <Button
                         onClick={() => {
                             setConfirmedAnswer(true);
-                            handleSubmit(true);
+                            void handleSubmit(true);
                         }}
                         textSize={15}
                     >

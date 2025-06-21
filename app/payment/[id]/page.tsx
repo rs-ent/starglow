@@ -1,7 +1,7 @@
 /// app\payment\[id]\page.tsx
 
-import { requireAuthUser } from "@/app/auth/authUtils";
 import { getPayment, updatePaymentUserId } from "@/app/actions/payment";
+import { requireAuthUser } from "@/app/auth/authUtils";
 import PaymentReceipt from "@/components/payment/PaymentReceipt";
 
 export default async function PaymentPage({

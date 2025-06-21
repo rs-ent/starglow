@@ -1,6 +1,7 @@
 /// components/atoms/Countdown.tsx
 
 import { useState, useEffect } from "react";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
@@ -69,7 +70,7 @@ export default function Countdown({
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [endDate, onTick]);
+    }, [endDate, onTick, blinkingThreshold, onComplete]);
 
     return (
         <div

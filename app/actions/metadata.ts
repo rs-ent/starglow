@@ -2,9 +2,12 @@
 
 "use server";
 
-import { prisma } from "@/lib/prisma/client";
-import { Metadata, MetadataType, CollectionContract } from "@prisma/client";
+import { MetadataType } from "@prisma/client";
 import { put } from "@vercel/blob";
+
+import { prisma } from "@/lib/prisma/client";
+
+import type { Metadata, CollectionContract } from "@prisma/client";
 
 /**
  * NFT 메타데이터 타입

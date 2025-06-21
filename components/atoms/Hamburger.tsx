@@ -3,10 +3,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+
 import dynamic from "next/dynamic";
+
 import { cn } from "@/lib/utils/tailwind";
-import type { LottieRefCurrentProps } from "lottie-react";
+
 import animationData from "../../public/ui/menu-to-x.json";
+
+import type { LottieRefCurrentProps } from "lottie-react";
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 

@@ -3,14 +3,17 @@
 "use client";
 
 import { useState } from "react";
-import PartialLoading from "./PartialLoading";
-import { cn } from "@/lib/utils/tailwind";
+
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
-interface ImageViewerProps {
+import { cn } from "@/lib/utils/tailwind";
+
+import PartialLoading from "./PartialLoading";
+import Image from "next/image";
+
+export interface ImageViewerProps {
     img: string;
     title?: string;
-    framePadding?: number;
     showTitle?: boolean;
     className?: string;
     shadowColor?: string;
@@ -19,7 +22,6 @@ interface ImageViewerProps {
 export default function ImageViewer({
     img,
     title,
-    framePadding = 1,
     showTitle,
     className,
     shadowColor = "rgba(132, 78, 236, 0.2)",
@@ -36,7 +38,7 @@ export default function ImageViewer({
     };
 
     return (
-        <div className="relative">
+        <div className={cn("relative", className)}>
             {isLoading && <PartialLoading text="Loading..." />}
             {isError && <div className="text-red-500">Error loading image</div>}
             <div className="w-full">
@@ -73,7 +75,7 @@ export default function ImageViewer({
                                     height: "100%",
                                 }}
                             >
-                                <img
+                                <Image
                                     src={img}
                                     alt={title || ""}
                                     style={{

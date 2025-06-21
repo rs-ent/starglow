@@ -1,11 +1,13 @@
 /// components/atoms/QRCode.tsx
 
 import { useRef } from "react";
-import { QRCodeSVG } from "qrcode.react";
+
 import { toPng } from "html-to-image";
+import { QRCodeSVG } from "qrcode.react";
+
 import { useToast } from "@/app/hooks/useToast";
-import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
 
 interface QRCodeProps {
     url: string;
@@ -26,7 +28,8 @@ export default function QRCodeModal({ url, onClose }: QRCodeProps) {
                 new window.ClipboardItem({ "image/png": blob }),
             ]);
             toast.success("QR Code copied to clipboard");
-        } catch (e) {
+        } catch (error) {
+            console.error("Failed to copy QR Code:", error);
             toast.error(
                 "Failed to copy QR Code. Please check your browser support."
             );
@@ -46,7 +49,9 @@ export default function QRCodeModal({ url, onClose }: QRCodeProps) {
                     ref={qrRef}
                     onClick={(e) => {
                         e.stopPropagation();
-                        handleCopyImage();
+                        handleCopyImage().catch((error) => {
+                            console.error("Failed to copy QR Code:", error);
+                        });
                     }}
                 >
                     <QRCodeSVG value={url} size={200} />
@@ -59,7 +64,9 @@ export default function QRCodeModal({ url, onClose }: QRCodeProps) {
                 )}
                 onClick={(e) => {
                     e.stopPropagation();
-                    handleCopyImage();
+                    handleCopyImage().catch((error) => {
+                        console.error("Failed to copy QR Code:", error);
+                    });
                 }}
             >
                 Click QR Code Image to Copy

@@ -1,8 +1,11 @@
 /// app/api/telegram/integrate/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma/client";
+import { NextResponse } from "next/server";
+
 import { auth } from "@/app/auth/authSettings";
+import { prisma } from "@/lib/prisma/client";
+
+import type { NextRequest} from "next/server";
 
 export async function GET(req: NextRequest) {
     const baseUrl = req.nextUrl.origin;

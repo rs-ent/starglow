@@ -1,10 +1,13 @@
 import fs from "fs";
 import path from "path";
+
 import { parse } from "@babel/parser";
 import traverse from "@babel/traverse";
 import * as t from "@babel/types";
+
 import { generateMermaidDiagram } from "./generateMermaidDiagram";
-import { ComponentInfo, TemplateAnalysis } from "./types";
+
+import type { ComponentInfo, TemplateAnalysis } from "./types";
 
 // 분석한 컴포넌트 캐시 - 중복 분석 방지
 const analyzedComponents: Map<string, ComponentInfo> = new Map();

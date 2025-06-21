@@ -1,22 +1,30 @@
 // app/auth/authSettings.ts
 
-import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
-import Twitter from "next-auth/providers/twitter";
-import Kakao from "next-auth/providers/kakao";
-import Spotify from "next-auth/providers/spotify";
-import Coinbase from "next-auth/providers/coinbase";
-import Resend from "next-auth/providers/resend";
-import { sendVerificationRequest } from "./authSendRequest";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma/client";
-import type { NextAuthConfig } from "next-auth";
-import { getPlayerByUserId, setPlayer } from "../actions/player";
-import { createWallet } from "../story/userWallet/actions";
 import crypto from "crypto";
-import Discord from "next-auth/providers/discord";
-import { fetchAuthorMetricsFromX } from "../actions/x/actions";
+
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import { Player } from "@prisma/client";
+import NextAuth from "next-auth";
+import Coinbase from "next-auth/providers/coinbase";
+import Discord from "next-auth/providers/discord";
+import Google from "next-auth/providers/google";
+import Kakao from "next-auth/providers/kakao";
+import Resend from "next-auth/providers/resend";
+import Spotify from "next-auth/providers/spotify";
+import Twitter from "next-auth/providers/twitter";
+
+import { prisma } from "@/lib/prisma/client";
+
+import { sendVerificationRequest } from "./authSendRequest";
+import { getPlayerByUserId, setPlayer } from "../actions/player";
+import { fetchAuthorMetricsFromX } from "../actions/x/actions";
+import { createWallet } from "../story/userWallet/actions";
+
+import type { NextAuthConfig } from "next-auth";
+
+
+
+
 const isProd = process.env.NODE_ENV === "production";
 const isVercelPreview = process.env.VERCEL_ENV === "preview";
 

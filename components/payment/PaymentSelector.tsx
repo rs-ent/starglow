@@ -3,14 +3,17 @@
 "use client";
 
 import { useEffect } from "react";
+
 import { CreditCardIcon, Smartphone, Wallet } from "lucide-react";
-import {
+
+import Button from "../atoms/Button";
+
+import type {
     PayMethod,
     Currency,
     EasyPayProvider,
     CardProvider,
 } from "@/lib/types/payment";
-import Button from "../atoms/Button";
 
 interface PaymentSelectorProps {
     payMethod: PayMethod;
@@ -48,7 +51,14 @@ export default function PaymentSelector({
         } else if (payMethod === "PAYPAL") {
             onCurrencyChange("CURRENCY_USD");
         }
-    }, [payMethod]);
+    }, [
+        payMethod,
+        cardProvider,
+        easyPayProvider,
+        onCurrencyChange,
+        onCardProviderChange,
+        onEasyPayProviderChange,
+    ]);
 
     return (
         <div className="space-y-5 md:space-y-6">
@@ -236,7 +246,7 @@ export default function PaymentSelector({
                             paddingSize={16}
                             className="w-full h-12"
                         >
-                            {""}
+                            <></>
                         </Button>
                         <Button
                             onClick={() =>
@@ -255,7 +265,7 @@ export default function PaymentSelector({
                             paddingSize={16}
                             className="w-full h-12"
                         >
-                            {""}
+                            <></>
                         </Button>
                     </div>
                 </div>

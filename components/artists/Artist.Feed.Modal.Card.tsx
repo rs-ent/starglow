@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, useMemo, memo, useCallback, useEffect } from "react";
-import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
-import { Artist } from "@prisma/client";
+
+import { formatDistanceToNow } from "date-fns";
+import { Heart } from "lucide-react";
+import dynamic from "next/dynamic";
+import Image from "next/image";
+import { useSession } from "next-auth/react";
+
 import { useArtistFeedsSet } from "@/app/hooks/useArtistFeeds";
 import { useToast } from "@/app/hooks/useToast";
-import { Heart, MessageCircle } from "lucide-react";
-import { cn } from "@/lib/utils/tailwind";
-import { formatDistanceToNow } from "date-fns";
-import { useSession } from "next-auth/react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import Image from "next/image";
-import dynamic from "next/dynamic";
+import { cn } from "@/lib/utils/tailwind";
+
+import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+import type { Artist } from "@prisma/client";
 
 interface ArtistFeedModalCardProps {
     feed: ArtistFeedWithReactions;
@@ -74,31 +77,26 @@ export default memo(function ArtistFeedModalCard({
     }, [feed]);
 
     // Calculate reactions
-    const { userLikeReaction, isLiked, likeCount, commentCount } =
-        useMemo(() => {
-            const userLikeReaction = feed.reactions?.find(
-                (r) => r.playerId === player?.id && r.reaction === "like"
-            );
+    const { userLikeReaction, isLiked, likeCount } = useMemo(() => {
+        const userLikeReaction = feed.reactions?.find(
+            (r) => r.playerId === player?.id && r.reaction === "like"
+        );
 
-            const serverIsLiked = Boolean(userLikeReaction);
-            const serverLikeCount =
-                feed.reactions?.filter((r) => r.reaction === "like").length ||
-                0;
+        const serverIsLiked = Boolean(userLikeReaction);
+        const serverLikeCount =
+            feed.reactions?.filter((r) => r.reaction === "like").length || 0;
 
-            const isLiked =
-                optimisticLikeState !== null
-                    ? optimisticLikeState.isLiked
-                    : serverIsLiked;
-            const likeCount =
-                optimisticLikeState !== null
-                    ? optimisticLikeState.likeCount
-                    : serverLikeCount;
+        const isLiked =
+            optimisticLikeState !== null
+                ? optimisticLikeState.isLiked
+                : serverIsLiked;
+        const likeCount =
+            optimisticLikeState !== null
+                ? optimisticLikeState.likeCount
+                : serverLikeCount;
 
-            const commentCount =
-                feed.reactions?.filter((r) => r.comment).length || 0;
-
-            return { userLikeReaction, isLiked, likeCount, commentCount };
-        }, [feed, player, optimisticLikeState]);
+        return { userLikeReaction, isLiked, likeCount };
+    }, [feed, player, optimisticLikeState]);
 
     // Like toggle handler
     const handleLikeToggle = async () => {
@@ -118,8 +116,6 @@ export default memo(function ArtistFeedModalCard({
                 await deleteArtistFeedReaction({
                     input: {
                         id: userLikeReaction.id,
-                        artistFeedId: feed.id,
-                        playerId: player.id,
                     },
                 });
             } else {
@@ -133,6 +129,7 @@ export default memo(function ArtistFeedModalCard({
             }
         } catch (error) {
             setOptimisticLikeState(null);
+            console.error(error);
             toast.error("Failed to update like. Please try again.");
         }
     };
@@ -176,7 +173,7 @@ export default memo(function ArtistFeedModalCard({
                 loadImage(media.url, i).catch(console.error);
             }
         }
-    }, [allMedia, currentIndex]);
+    }, [allMedia, currentIndex, imageLoadStates]);
 
     return (
         <div className="relative max-w-[768px] mx-auto w-full h-[100dvh] bg-black flex items-center justify-center">

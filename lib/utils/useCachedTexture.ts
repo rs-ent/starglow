@@ -1,5 +1,10 @@
-import { useRef, useEffect } from "react";
-import { TextureLoader, Texture, LinearFilter } from "three";
+"use client";
+
+import { useRef } from "react";
+
+import { TextureLoader, LinearFilter } from "three";
+
+import type { Texture } from "three";
 
 const textureCache = new Map<string, Texture>();
 

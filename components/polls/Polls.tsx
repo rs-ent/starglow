@@ -2,14 +2,17 @@
 
 "use client";
 
+import { memo } from "react";
+
+import { useStoryInteractions } from "@/app/story/interaction/hooks";
+import PollsContents from "@/components/polls/Polls.Contents";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { Player } from "@prisma/client";
-import PollsContents from "@/components/polls/Polls.Contents";
-import { User } from "next-auth";
-import { memo } from "react";
-import { useStoryInteractions } from "@/app/story/interaction/hooks";
+
 import PartialLoading from "../atoms/PartialLoading";
+
+import type { Player } from "@prisma/client";
+import type { User } from "next-auth";
 
 interface PollsProps {
     user: User | null;
@@ -53,7 +56,6 @@ function Polls({ user, player }: PollsProps) {
                     )}
                 >
                     <PollsContents
-                        user={user}
                         player={player}
                         verifiedSPGs={verifiedSPGs}
                     />

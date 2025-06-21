@@ -3,9 +3,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+
 import { tokenGate } from "@/app/actions/blockchain";
-import type { TokenGateInput } from "@/app/actions/blockchain";
+
 import { blockchainKeys } from "../queryKeys";
+
+import type { TokenGateInput } from "@/app/actions/blockchain";
 
 export function useTokenGateQuery(input?: TokenGateInput) {
     return useQuery({

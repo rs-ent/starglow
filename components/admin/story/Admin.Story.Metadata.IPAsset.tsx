@@ -1,12 +1,15 @@
 /// components/admin/story/Admin.Story.Metadata.IPAsset.tsx
 
-import type { IPAssetMetadata } from "@/app/story/metadata/actions";
 import { useState } from "react";
-import { useMetadata } from "@/app/story/metadata/hooks";
+
 import { useSession } from "next-auth/react";
-import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
-import FileUploaderIPFS from "@/components/atoms/FileUploader.IPFS";
+
 import { useToast } from "@/app/hooks/useToast";
+import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
+import { useMetadata } from "@/app/story/metadata/hooks";
+import FileUploaderIPFS from "@/components/atoms/FileUploader.IPFS";
+
+import type { IPAssetMetadata } from "@/app/story/metadata/actions";
 
 interface AdminStoryMetadataIPAssetProps {
     onBack: () => void;
@@ -32,7 +35,6 @@ export default function AdminStoryMetadataIPAsset({
     const { data: session } = useSession();
     const toast = useToast();
     const [form, setForm] = useState<IPAssetMetadata>(ipAssetInitialForm);
-    const [creatorInput, setCreatorInput] = useState("");
     const [tagInput, setTagInput] = useState("");
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -196,7 +198,9 @@ export default function AdminStoryMetadataIPAsset({
             });
             setForm(ipAssetInitialForm);
             setSuccessMsg("메타데이터가 성공적으로 등록되었습니다!");
-            refetchMetadataList();
+            refetchMetadataList().catch((err) => {
+                console.error(err);
+            });
         } catch (err: any) {
             setError(err?.message || "등록 중 오류가 발생했습니다.");
         } finally {
@@ -212,7 +216,9 @@ export default function AdminStoryMetadataIPAsset({
         try {
             await deleteMetadataAsync({ id });
             setSuccessMsg("삭제되었습니다.");
-            refetchMetadataList();
+            refetchMetadataList().catch((err) => {
+                console.error(err);
+            });
         } catch (err: any) {
             setError(err?.message || "삭제 중 오류가 발생했습니다.");
         }
@@ -268,9 +274,11 @@ export default function AdminStoryMetadataIPAsset({
                                         <td
                                             className="px-4 py-2 font-mono max-w-[180px] truncate cursor-pointer"
                                             onClick={() => {
-                                                navigator.clipboard.writeText(
-                                                    item.cid
-                                                );
+                                                navigator.clipboard
+                                                    .writeText(item.cid)
+                                                    .catch((err) => {
+                                                        console.error(err);
+                                                    });
                                                 toast.success(
                                                     "CID가 복사되었습니다."
                                                 );
@@ -487,7 +495,7 @@ export default function AdminStoryMetadataIPAsset({
                         </div>
                         {form.creators && form.creators.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-2">
-                                {form.creators.map((creator, index) => (
+                                {form.creators.map((creator) => (
                                     <span
                                         key={creator.address}
                                         className="bg-blue-900/40 text-blue-200 px-3 py-1 rounded-full flex items-center gap-2 shadow"

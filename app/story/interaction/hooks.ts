@@ -3,7 +3,8 @@
 "use client";
 
 import { useGetUserVerifiedSPGsQuery } from "./queries";
-import { GetUserVerifiedSPGsInput } from "./actions";
+
+import type { GetUserVerifiedSPGsInput } from "./actions";
 
 interface UseStoryInteractionsInput {
     getUserVerifiedSPGsInput: GetUserVerifiedSPGsInput;

@@ -3,9 +3,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+
 import { getPayment, getPaymentsByUserId } from "@/app/actions/payment";
 import { queryKeys } from "@/app/queryKeys";
-import { Payment, PaymentStatus } from "@prisma/client";
+
+import type { Payment, PaymentStatus } from "@prisma/client";
 
 export function usePaymentQuery(paymentId: string) {
     return useQuery<Payment | null>({

@@ -2,14 +2,18 @@
 
 "use client";
 
-import { Player, Poll, Artist, PollLog } from "@prisma/client";
-import PollsListCard from "./Polls.List.Card";
-import { cn } from "@/lib/utils/tailwind";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { useState } from "react";
+
+
 import { useToast } from "@/app/hooks/useToast";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+
+import PollsListCard from "./Polls.List.Card";
 import QRCodeModal from "../atoms/QRCode";
-import { TokenGatingData } from "@/app/story/nft/actions";
+
+import type { TokenGatingData } from "@/app/story/nft/actions";
+import type { Player, Poll, Artist, PollLog } from "@prisma/client";
 
 interface PollProps {
     poll: Poll;

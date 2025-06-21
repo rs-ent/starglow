@@ -3,10 +3,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+
 import * as PortOne from "@portone/browser-sdk/v2";
+
 import { useToast } from "@/app/hooks/useToast";
-import { PaymentResponse } from "@portone/browser-sdk/v2";
-import { Payment } from "@prisma/client";
+
+import type { PaymentResponse } from "@portone/browser-sdk/v2";
+import type { Payment } from "@prisma/client";
 
 interface PayPalButtonProps {
     payment: Payment;
@@ -49,12 +52,15 @@ export default function PayPalButton({
                     }
                 );
             } catch (error) {
+                console.error("Failed to initialize PayPal:", error);
                 toast.error("Failed to initialize PayPal");
             }
         };
 
-        initPayPal();
-    }, [payment]);
+        initPayPal().catch((error) => {
+            console.error("Failed to initialize PayPal:", error);
+        });
+    }, [payment, onPaymentProceed, toast]);
 
     return (
         <div className="relative my-3">

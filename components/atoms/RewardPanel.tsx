@@ -3,12 +3,16 @@
 "use client";
 
 import {memo, useCallback, useMemo, useState} from "react";
+
+import {Loader2} from "lucide-react";
+
 import {usePlayerAssetsGet} from "@/app/hooks/usePlayerAssets";
 import Funds from "@/components/atoms/Funds";
-import {Loader2} from "lucide-react";
-import {Asset, PlayerAsset} from "@prisma/client";
-import UserRewardsModal from "../user/User.Rewards.Modal";
 import {cn} from "@/lib/utils/tailwind";
+
+import UserRewardsModal from "../user/User.Rewards.Modal";
+
+import type {Asset, PlayerAsset} from "@prisma/client";
 
 export type PlayerAssetWithAsset = PlayerAsset & { asset: Asset };
 

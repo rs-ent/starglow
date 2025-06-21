@@ -2,11 +2,14 @@
 
 "use client";
 
-import { useArtistsGet } from "@/app/hooks/useArtists";
-import ArtistsCreate from "./Admin.Artists.Create";
-import { Artist } from "@prisma/client";
 import { useState } from "react";
+
+import { useArtistsGet } from "@/app/hooks/useArtists";
 import { Button } from "@/components/ui/button";
+
+import ArtistsCreate from "./Admin.Artists.Create";
+
+import type { Artist } from "@prisma/client";
 
 export default function ArtistsList() {
     const { artists, isLoading, error } = useArtistsGet({});
@@ -135,12 +138,6 @@ export default function ArtistsList() {
                                             <Button
                                                 variant="destructive"
                                                 size="sm"
-                                                onClick={() => {
-                                                    console.log(
-                                                        "Delete artist:",
-                                                        artist.id
-                                                    );
-                                                }}
                                             >
                                                 삭제
                                             </Button>

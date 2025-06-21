@@ -1,15 +1,18 @@
 /// app/story/spg/queries.ts
 
 import { useQuery } from "@tanstack/react-query";
+
 import { queryKeys } from "../queryKeys";
 import {
     getSPGContracts,
-    getSPGContractsInput,
     getSPG,
-    getSPGInput,
-    getSPGs,
-    getSPGsInput,
+    getSPGs
 } from "./actions";
+
+import type {
+    getSPGContractsInput,
+    getSPGInput,
+    getSPGsInput} from "./actions";
 
 export function useGetSPGContractsQuery(input?: getSPGContractsInput) {
     return useQuery({

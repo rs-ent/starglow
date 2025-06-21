@@ -4,17 +4,8 @@
 "use client";
 
 import { useState } from "react";
-import { useFactoryGet } from "@/app/hooks/useFactoryContracts";
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+
+import { format } from "date-fns";
 import {
     Code,
     ExternalLink,
@@ -28,12 +19,27 @@ import {
     Copy,
     Layers,
 } from "lucide-react";
-import { format } from "date-fns";
-import PartialLoading from "@/components/atoms/PartialLoading";
-import FactoryFunctions from "./OnChain.FactoryFunctions";
-import { useToast } from "@/app/hooks/useToast";
-import { FactoryContract } from "@prisma/client";
+
 import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
+import { useFactoryGet } from "@/app/hooks/useFactoryContracts";
+import { useToast } from "@/app/hooks/useToast";
+import PartialLoading from "@/components/atoms/PartialLoading";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CardDescription,
+} from "@/components/ui/card";
+
+import FactoryFunctions from "./OnChain.FactoryFunctions";
+
+
+import type { FactoryContract } from "@prisma/client";
+
 
 interface FactoryListProps {
     networkId: string;

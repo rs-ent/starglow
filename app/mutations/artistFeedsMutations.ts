@@ -3,6 +3,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import {
     createArtistFeed,
     updateArtistFeed,
@@ -147,19 +148,18 @@ export function useDeleteArtistFeedReaction() {
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({
                 queryKey: artistFeedKeys.reactions({
-                    artistFeedId: variables.input.artistFeedId,
+                    artistFeedId: variables.input.id,
                 }),
             });
             queryClient.invalidateQueries({
                 queryKey: artistFeedKeys.all,
             });
             queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.byId(variables.input.artistFeedId),
+                queryKey: artistFeedKeys.byId(variables.input.id),
             });
             queryClient.invalidateQueries({
                 queryKey: artistFeedKeys.reactions({
-                    artistFeedId: variables.input.artistFeedId,
-                    playerId: variables.input.playerId,
+                    artistFeedId: variables.input.id,
                 }),
             });
         },

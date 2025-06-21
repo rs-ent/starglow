@@ -2,9 +2,12 @@
 
 "use server";
 
+
 import { prisma } from "@/lib/prisma/client";
-import { EventCategory, Events, EventStatus } from "@prisma/client";
+
 import { requireAuth } from "../auth/authUtils";
+
+import type { EventCategory, Events, EventStatus } from "@prisma/client";
 
 export type CreateEventRequest = {
     title: string;

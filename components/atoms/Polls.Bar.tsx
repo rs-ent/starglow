@@ -2,10 +2,12 @@
 
 "use client";
 
-import { PollOptionResult } from "@/app/actions/polls";
+import Image from "next/image";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import Image from "next/image";
+
+import type { PollOptionResult } from "@/app/actions/polls";
 
 export default function PollBar({
     result,

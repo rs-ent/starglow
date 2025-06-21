@@ -3,10 +3,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { SPG } from "@/app/story/spg/actions";
-import { cn } from "@/lib/utils/tailwind";
+
 import { useRouter } from "next/navigation";
+
+import { cn } from "@/lib/utils/tailwind";
+
 import NFTsCollections from "./NFTs.Collections";
+
+import type { SPG } from "@/app/story/spg/actions";
 
 export default function NFTs({
     spgs,

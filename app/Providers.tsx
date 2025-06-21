@@ -2,14 +2,16 @@
 
 "use client";
 
-import { SessionProvider } from "next-auth/react";
+import { useState } from "react";
+
+import { MetaMaskProvider } from "@metamask/sdk-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { metaMask, walletConnect } from "@wagmi/connectors";
+import { SessionProvider } from "next-auth/react";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { sepolia, storyAeneid, berachainBepolia } from "wagmi/chains";
-import { metaMask, walletConnect } from "@wagmi/connectors";
-import { MetaMaskProvider } from "@metamask/sdk-react";
-import { useState } from "react";
+
 
 export const defaultConnectors = [
     metaMask({

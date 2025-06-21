@@ -3,17 +3,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 import {
     Loader2,
     Check,
@@ -25,16 +15,30 @@ import {
     Settings,
     Cog,
 } from "lucide-react";
-import { useToast } from "@/app/hooks/useToast";
+
+import { useEscrowWalletManager , useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
 import { useFactorySet } from "@/app/hooks/useFactoryContracts";
-import { useEscrowWalletManager } from "@/app/hooks/useBlockchain";
-import { OnChainMetadata } from "./OnChain.Metadata";
-import { Switch } from "@/components/ui/switch";
-import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
-import { METADATA_TYPE } from "@/app/actions/metadata";
-import { Metadata } from "@prisma/client";
 import { useMetadata } from "@/app/hooks/useMetadata";
+import { useToast } from "@/app/hooks/useToast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils/tailwind";
+
+import { OnChainMetadata } from "./OnChain.Metadata";
+
+import type { METADATA_TYPE } from "@/app/actions/metadata";
+import type { Metadata } from "@prisma/client";
+
 
 /**
  * 컬렉션 생성 결과 인터페이스

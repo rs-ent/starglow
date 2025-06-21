@@ -3,13 +3,16 @@
 "use client";
 
 import { memo } from "react";
-import { Player } from "@prisma/client";
+
+import { useStoryInteractions } from "@/app/story/interaction/hooks";
+import QuestsContents from "@/components/quests/Quests.Contents";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import QuestsContents from "@/components/quests/Quests.Contents";
-import { User } from "next-auth";
+
 import PartialLoading from "../atoms/PartialLoading";
-import { useStoryInteractions } from "@/app/story/interaction/hooks";
+
+import type { Player } from "@prisma/client";
+import type { User } from "next-auth";
 
 interface QuestsProps {
     user: User | null;
@@ -75,7 +78,6 @@ function Quests({ user, player }: QuestsProps) {
                     )}
                 >
                     <QuestsContents
-                        user={user}
                         player={player}
                         verifiedSPGs={verifiedSPGs}
                     />

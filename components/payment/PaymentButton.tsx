@@ -3,10 +3,13 @@
 "use client";
 
 import { useState } from "react";
+
 import * as PortOne from "@portone/browser-sdk/v2";
-import { Payment } from "@prisma/client";
-import { PaymentResponse } from "@portone/browser-sdk/v2";
-import { Currency, PayMethod } from "@/lib/types/payment";
+
+import type { Currency, PayMethod } from "@/lib/types/payment";
+import type { PaymentResponse } from "@portone/browser-sdk/v2";
+import type { Payment } from "@prisma/client";
+
 
 interface PaymentButtonProps {
     payment: Payment;

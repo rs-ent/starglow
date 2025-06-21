@@ -1,5 +1,6 @@
 /// lib\utils\encryption.ts
 import crypto from "crypto";
+
 import { put } from "@vercel/blob";
 
 const algorithm = process.env.ENCRYPTION_METHOD || "aes-256-cbc";

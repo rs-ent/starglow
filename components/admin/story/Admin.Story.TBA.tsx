@@ -1,16 +1,18 @@
 /// components/admin/story/Admin.Story.TBA.tsx
 
 import { useState, useEffect } from "react";
-import { useTBA } from "@/app/story/tba/hooks";
-import { useStoryNetwork } from "@/app/story/network/hooks";
-import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
-import { useToast } from "@/app/hooks/useToast";
-import { useSession } from "next-auth/react";
-import { TbTopologyStar3 } from "react-icons/tb";
-import { SiEthereum } from "react-icons/si";
-import { FaShieldAlt, FaCube, FaPlus, FaCheck, FaTimes } from "react-icons/fa";
+
 import { TBAContractType } from "@prisma/client";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
+import { FaShieldAlt, FaCube } from "react-icons/fa";
+import { SiEthereum } from "react-icons/si";
+import { TbTopologyStar3 } from "react-icons/tb";
+
+import { useToast } from "@/app/hooks/useToast";
+import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
+import { useStoryNetwork } from "@/app/story/network/hooks";
+import { useTBA } from "@/app/story/tba/hooks";
 
 export default function AdminStoryTBA({ onBack }: { onBack?: () => void }) {
     const toast = useToast();
@@ -54,7 +56,6 @@ export default function AdminStoryTBA({ onBack }: { onBack?: () => void }) {
         tbaContractsError,
         refetchTBAContracts,
 
-        tbaAddresses,
         refetchTBAAddresses,
 
         deployTBARegistryMutation,
@@ -99,9 +100,11 @@ export default function AdminStoryTBA({ onBack }: { onBack?: () => void }) {
                     );
                 }
             };
-            fetchAllBalances();
+            fetchAllBalances().catch((err) => {
+                console.error(err);
+            });
         }
-    }, [step, form.networkId, escrowWallets]);
+    }, [step, form.networkId, escrowWallets, fetchEscrowWalletsBalanceAsync]);
 
     const handleDeploy = async () => {
         if (!form.type || !form.networkId || !form.walletAddress) {
@@ -127,8 +130,12 @@ export default function AdminStoryTBA({ onBack }: { onBack?: () => void }) {
                 );
             }
 
-            refetchTBAContracts();
-            refetchTBAAddresses();
+            refetchTBAContracts().catch((err) => {
+                console.error(err);
+            });
+            refetchTBAAddresses().catch((err) => {
+                console.error(err);
+            });
             setStep(5); // 성공 화면
         } catch (error: any) {
             toast.error(error?.message || "배포 중 오류가 발생했습니다.");
@@ -155,8 +162,12 @@ export default function AdminStoryTBA({ onBack }: { onBack?: () => void }) {
             });
 
             toast.success("TBA 주소가 성공적으로 등록되었습니다!");
-            refetchTBAContracts();
-            refetchTBAAddresses();
+            refetchTBAContracts().catch((err) => {
+                console.error(err);
+            });
+            refetchTBAAddresses().catch((err) => {
+                console.error(err);
+            });
             setStep(-1);
         } catch (error: any) {
             toast.error(error?.message || "주소 등록 중 오류가 발생했습니다.");

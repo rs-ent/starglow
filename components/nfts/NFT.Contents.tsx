@@ -3,21 +3,25 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import NFTContentsDetails from "./NFT.Contents.Details";
-import NFTContentsPayment from "./NFT.Contents.Payment";
-import NFTContentsReport from "./NFT.Contents.Report";
-import NFTContentsPageImages from "./NFT.Contents.PageImages";
+
+import { CollectionParticipantType } from "@prisma/client";
+import { useSession } from "next-auth/react";
+
+import { useStoryInteractions } from "@/app/story/interaction/hooks";
+import { useNFT } from "@/app/story/nft/hooks";
 import { ShinyButton } from "@/components/magicui/shiny-button";
-import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { CollectionParticipantType, Payment } from "@prisma/client";
+import { cn } from "@/lib/utils/tailwind";
+
+import NFTContentsDetails from "./NFT.Contents.Details";
+import NFTContentsPageImages from "./NFT.Contents.PageImages";
+import NFTContentsPayment from "./NFT.Contents.Payment";
 import NFTContentsPreRegistration from "./NFT.Contents.PreRegistration";
+import NFTContentsReport from "./NFT.Contents.Report";
 import InteractFeedback from "../atoms/Popup.InteractFeedback";
 import WarningPopup from "../atoms/WarningPopup";
-import { SPG } from "@/app/story/spg/actions";
-import { useNFT } from "@/app/story/nft/hooks";
-import { useStoryInteractions } from "@/app/story/interaction/hooks";
-import { useSession } from "next-auth/react";
+
+import type { SPG } from "@/app/story/spg/actions";
 
 interface NFTContentsProps {
     spg: SPG;
@@ -35,7 +39,7 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
         },
     });
 
-    const { circulation, isCirculationLoading, refetchTokenGating } = useNFT({
+    const { circulation, refetchTokenGating } = useNFT({
         getCirculationInput: {
             spgAddress: spg.address,
         },
@@ -45,7 +49,7 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
         },
     });
 
-    const { status, dateLabel, dateValue, participantsType } = useMemo(() => {
+    const { status, dateValue, participantsType } = useMemo(() => {
         const now = new Date();
         const preSaleStart = spg.preOrderStart;
         const preSaleEnd = spg.preOrderEnd;
@@ -55,7 +59,6 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
         const glowEnd = spg.glowEnd;
 
         let status = "SCHEDULED";
-        let dateLabel = "Sale Open";
         let dateValue = "Unknown";
         let participantsType: CollectionParticipantType =
             CollectionParticipantType.PREREGISTRATION;
@@ -64,17 +67,14 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
             if (now < glowStart) {
                 participantsType = CollectionParticipantType.GLOW;
                 status = "GLOWING";
-                dateLabel = "Glow Start";
                 dateValue = formatDate(glowStart.toISOString());
             } else if (now > glowStart && now < glowEnd) {
                 participantsType = CollectionParticipantType.GLOW;
                 status = "GLOWING";
-                dateLabel = "Glow End";
                 dateValue = formatDate(glowEnd.toISOString());
             } else {
                 participantsType = CollectionParticipantType.GLOW;
                 status = "GLOWED";
-                dateLabel = "Glow Ended";
                 dateValue = formatDate(glowEnd.toISOString());
             }
         }
@@ -83,12 +83,10 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
             if (now < saleStart) {
                 participantsType = CollectionParticipantType.PRIVATESALE;
                 status = "SCHEDULED";
-                dateLabel = "Sale Open";
                 dateValue = formatDate(saleStart.toISOString());
             } else if (now > saleStart && now < saleEnd) {
                 participantsType = CollectionParticipantType.PUBLICSALE;
                 status = "ONGOING";
-                dateLabel = "Sale End";
                 dateValue = formatDate(saleEnd.toISOString());
             }
         }
@@ -97,51 +95,42 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
             if (now < preSaleStart) {
                 participantsType = CollectionParticipantType.PREREGISTRATION;
                 status = "PREORDER";
-                dateLabel = "Pre Order Open";
                 dateValue = formatDate(preSaleStart.toISOString());
             } else if (now > preSaleStart && now < preSaleEnd) {
                 participantsType = CollectionParticipantType.PREREGISTRATION;
                 status = "PREORDER";
-                dateLabel = "Pre Order End";
                 dateValue = formatDate(preSaleEnd.toISOString());
             }
         }
 
         return {
             status,
-            dateLabel,
             dateValue,
             participantsType,
         };
     }, [spg]);
 
-    const handlePurchase = useCallback(
-        (quantity: number) => {
-            console.log(
-                `Purchasing ${quantity} NFTs from collection ${spg.address}`
-            );
-        },
-        [spg.address]
-    );
-
-    const handlePaymentSuccess = useCallback((payment: Payment) => {
-        console.log("Payment success");
+    const handlePaymentSuccess = useCallback(() => {
         setShowWaitWarning(true);
         setForceCloseWaitWarning(false);
     }, []);
 
-    const handlePaymentComplete = useCallback(() => {
+    const handlePaymentComplete = useCallback(async () => {
         setShowWaitWarning(false);
         setShowFeedback(true);
-        refetchTokenGating();
-        refetchVerifiedSPGs();
+        await refetchTokenGating();
+        await refetchVerifiedSPGs();
     }, [refetchTokenGating, refetchVerifiedSPGs]);
 
     const handlePaymentError = useCallback(
-        (error?: Error) => {
+        async (error?: Error) => {
             setShowWaitWarning(false);
-            refetchTokenGating();
-            refetchVerifiedSPGs();
+            await refetchTokenGating();
+            await refetchVerifiedSPGs();
+
+            if (error) {
+                console.error(error.message);
+            }
         },
         [refetchTokenGating, refetchVerifiedSPGs]
     );
@@ -156,10 +145,8 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
                             spg={spg}
                             participantsType={participantsType}
                             status={status}
-                            dateLabel={dateLabel}
                             dateValue={dateValue}
                             circulation={circulation ?? null}
-                            isCirculationLoading={isCirculationLoading}
                         />
                         <h2
                             className={cn(
@@ -191,7 +178,6 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
                             CollectionParticipantType.PUBLICSALE ? (
                                 <NFTContentsPayment
                                     spg={spg}
-                                    onPurchase={handlePurchase}
                                     collectionStock={{
                                         remain: circulation?.remain ?? 0,
                                         total: circulation?.total ?? 0,
@@ -204,7 +190,6 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
                                 <NFTContentsPreRegistration
                                     spg={spg}
                                     participantsType={participantsType}
-                                    status={status}
                                 />
                             )}
                         </div>

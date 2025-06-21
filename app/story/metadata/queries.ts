@@ -1,13 +1,16 @@
 /// app/story/metadata/queries.ts
 
 import { useQuery } from "@tanstack/react-query";
+
 import { queryKeys } from "../queryKeys";
 import {
     getMetadata,
-    getMetadataList,
-    getMetadataInput,
-    getMetadataListInput,
+    getMetadataList
 } from "./actions";
+
+import type {
+    getMetadataInput,
+    getMetadataListInput} from "./actions";
 
 export function useGetMetadataQuery(input?: getMetadataInput) {
     return useQuery({

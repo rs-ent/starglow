@@ -1,12 +1,21 @@
 /// app/queryKeys.ts
-import {
+import type {
+    GetArtistInput,
+    GetArtistMessagesInput,
+    GetArtistsInput,
+    TokenGatingInput as ArtistTokenGatingInput,
+} from "./actions/artists";
+import type { TokenGateInput } from "./actions/blockchain";
+import type { GetDBUserFromPlayerInput } from "./actions/player";
+import type { GetPlayerAssetsFilter } from "./actions/playerAssets";
+import type {
     GetPlayerPollLogsInput,
     GetPollLogsInput,
     GetPollsInput,
     PaginationInput,
     TokenGatingPollInput,
 } from "./actions/polls";
-import {
+import type {
     CompleteQuestInput,
     GetClaimableQuestLogsInput,
     GetClaimedQuestLogsInput,
@@ -16,24 +25,15 @@ import {
     GetQuestsInput,
     TokenGatingQuestInput,
 } from "./actions/quests";
-import { GetDBUserFromPlayerInput } from "./actions/player";
-import { GetPlayerAssetsFilter } from "./actions/playerAssets";
-import {
-    GetArtistInput,
-    GetArtistMessagesInput,
-    GetArtistsInput,
-    TokenGatingInput as ArtistTokenGatingInput,
-} from "./actions/artists";
-import { GetReferralLogsInput } from "./actions/referral";
-import { GetUsersInput } from "./actions/user";
-import {
+import type { GetReferralLogsInput } from "./actions/referral";
+import type { GetRewardsLogsInput } from "./actions/rewardsLogs";
+import type {
     GetStakeRewardInput,
     GetUserStakeRewardLogsInput,
     GetUserStakingTokensInput,
 } from "./actions/staking";
-import { TokenGateInput } from "./actions/blockchain";
-import { CollectionParticipantType } from "@prisma/client";
-import { GetRewardsLogsInput } from "./actions/rewardsLogs";
+import type { GetUsersInput } from "./actions/user";
+import type { CollectionParticipantType } from "@prisma/client";
 
 export const queryKeys = {
     user: {

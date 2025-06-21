@@ -2,13 +2,18 @@
 
 
 import {memo, useCallback, useEffect, useRef, useState} from "react";
+
+import Slider from "react-slick";
+
 import {getResponsiveClass} from "@/lib/utils/responsiveClass";
 import {cn} from "@/lib/utils/tailwind";
-import {PlayerAssetWithAsset} from "./User.Rewards";
-import Slider from "react-slick";
+
+import type {PlayerAssetWithAsset} from "./User.Rewards";
+
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import UserRewardsModalCard from "./User.Rewards.Modal.Card";
+
 import Portal from "@/components/atoms/Portal";
 import {useKeyPressMap} from "@/app/hooks/useKeyPress";
 

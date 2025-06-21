@@ -1,21 +1,24 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import {
     addBlockchainNetwork,
-    addBlockchainNetworkParams,
     updateBlockchainNetwork,
     saveEscrowWallet,
-    saveEscrowWalletParams,
     updateEscrowWalletStatus,
     updateEscrowWalletBalance,
     generateWallet,
     getWalletBalance,
     getEscrowWalletWithPrivateKey,
-    estimateGasForTransactions,
-    EstimateGasForTransactionsInput,
+    estimateGasForTransactions
 } from "../actions/blockchain";
 import { QUERY_KEYS } from "../queryKeys";
+
+import type {
+    addBlockchainNetworkParams,
+    saveEscrowWalletParams,
+    EstimateGasForTransactionsInput} from "../actions/blockchain";
 
 /**
  * 블록체인 네트워크 추가 뮤테이션 훅

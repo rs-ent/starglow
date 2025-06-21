@@ -1,8 +1,9 @@
 "use client";
 
-import { useSession, signIn, getSession } from "next-auth/react";
-import type { User } from "next-auth";
 import { useRouter } from "next/navigation";
+import { useSession, signIn, getSession } from "next-auth/react";
+
+import type { User } from "next-auth";
 
 /**
  * 클라이언트에서 현재 로그인한 사용자의 ID를 가져옵니다.

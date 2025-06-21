@@ -1,6 +1,7 @@
 /// app/story/network/mutations.ts
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { queryKeys } from "../queryKeys";
 import {
     createStoryNetwork,
@@ -25,7 +26,7 @@ export function useCreateStoryNetworkMutation() {
             );
             return { previousData };
         },
-        onError: (error, variables, context) => {
+        onError: (_error, _variables, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(
                     queryKeys.storyNetwork.list(),
@@ -33,7 +34,7 @@ export function useCreateStoryNetworkMutation() {
                 );
             }
         },
-        onSettled: (data, error, variables, context) => {
+        onSettled: (data) => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.storyNetwork.list(),
             });
@@ -66,7 +67,7 @@ export function useUpdateStoryNetworkMutation() {
             );
             return { previousData };
         },
-        onError: (error, variables, context) => {
+        onError: (_error, variables, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(
                     queryKeys.storyNetwork.network(variables.id),
@@ -74,7 +75,7 @@ export function useUpdateStoryNetworkMutation() {
                 );
             }
         },
-        onSettled: (data, error, variables, context) => {
+        onSettled: (_data, _error, variables, _context) => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.storyNetwork.network(variables.id),
             });
@@ -105,7 +106,7 @@ export function useDeleteStoryNetworkMutation() {
             );
             return { previousData };
         },
-        onError: (error, variables, context) => {
+        onError: (_error, variables, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(
                     queryKeys.storyNetwork.network(variables.id),
@@ -113,7 +114,7 @@ export function useDeleteStoryNetworkMutation() {
                 );
             }
         },
-        onSettled: (data, error, variables, context) => {
+        onSettled: (_data, _error, variables, _context) => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.storyNetwork.list(),
             });

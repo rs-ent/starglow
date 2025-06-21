@@ -3,8 +3,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { playerKeys, queryKeys } from "@/app/queryKeys";
+
 import { getDBUserFromPlayer, getPlayer } from "@/app/actions/player";
+import { playerKeys, queryKeys } from "@/app/queryKeys";
+
 import type {
     GetDBUserFromPlayerInput,
     GetPlayerInput,

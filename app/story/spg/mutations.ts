@@ -1,6 +1,7 @@
 /// app/story/spg/mutations.ts
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { queryKeys } from "../queryKeys";
 import {
     deploySPGNFTFactory,
@@ -15,7 +16,7 @@ export function useDeploySPGNFTFactoryMutation() {
 
     return useMutation({
         mutationFn: deploySPGNFTFactory,
-        onSuccess: (data, variables, context) => {
+        onSuccess: (data, _variables, _context) => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.spg.contracts(),
             });
@@ -31,7 +32,7 @@ export function useCreateSPGMutation() {
 
     return useMutation({
         mutationFn: createSPG,
-        onSuccess: (data, variables, context) => {
+        onSuccess: (data, _variables, _context) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.spg.all });
             queryClient.invalidateQueries({ queryKey: queryKeys.spg.list() });
             queryClient.invalidateQueries({
@@ -61,7 +62,7 @@ export function useUpdateSPGMutation() {
             );
             return { previousData };
         },
-        onError: (error, variables, context) => {
+        onError: (_error, _variables, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(
                     queryKeys.storyNetwork.list(),
@@ -69,7 +70,7 @@ export function useUpdateSPGMutation() {
                 );
             }
         },
-        onSettled: (data, error, variables, context) => {
+        onSettled: (_data, _error, variables, _context) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.spg.all });
             queryClient.invalidateQueries({ queryKey: queryKeys.spg.list() });
             queryClient.invalidateQueries({
@@ -85,7 +86,7 @@ export function useDeleteSPGMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: deleteSPG,
-        onSuccess: (data, variables, context) => {
+        onSuccess: (_data, variables, _context) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.spg.all });
             queryClient.invalidateQueries({ queryKey: queryKeys.spg.list() });
             queryClient.invalidateQueries({
@@ -112,7 +113,7 @@ export function useUpdateSPGUtilsMutation() {
             ]);
             return { previousData };
         },
-        onError: (error, variables, context) => {
+        onError: (_error, _variables, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(
                     queryKeys.spg.all,
@@ -120,7 +121,7 @@ export function useUpdateSPGUtilsMutation() {
                 );
             }
         },
-        onSettled: (data, error, variables, context) => {
+        onSettled: (_data, _error, variables, _context) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.spg.all });
             queryClient.invalidateQueries({ queryKey: queryKeys.spg.list() });
             queryClient.invalidateQueries({

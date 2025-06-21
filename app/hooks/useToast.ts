@@ -1,6 +1,6 @@
 /// hooks/useToast.ts
-import { create } from "zustand";
 import { toast } from "sonner";
+import { create } from "zustand";
 
 interface ToastOptions {
     message: string;

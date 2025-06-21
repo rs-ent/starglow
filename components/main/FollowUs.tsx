@@ -1,9 +1,11 @@
 /// components/main/FollowUs.tsx
 
 import {memo} from "react";
-import LinkButton from "../atoms/LinkButton";
+
 import {getResponsiveClass} from "@/lib/utils/responsiveClass";
 import {cn} from "@/lib/utils/tailwind";
+
+import LinkButton from "../atoms/LinkButton";
 
 interface FollowUsProps {
     frameSize?: number;

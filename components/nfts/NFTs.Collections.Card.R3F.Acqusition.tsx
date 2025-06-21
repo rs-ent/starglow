@@ -1,23 +1,17 @@
 /// components/nfts/NFTs.Collections.Card.R3F.Acqusition.tsx
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFrame, useLoader, useThree } from "@react-three/fiber";
-import { TextureLoader, Mesh, DoubleSide, Vector3, LinearFilter } from "three";
-import {
-    RoundedBox,
-    Text,
-    GradientTexture,
-    OrbitControls,
-    Sparkles,
-} from "@react-three/drei";
-import { Collection } from "@/app/actions/factoryContracts";
-import { METADATA_TYPE } from "@/app/actions/metadata";
-import { Environment } from "@react-three/drei";
-import React from "react";
-import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
-import { formatDate } from "@/lib/utils/format";
+import React, { useEffect, useMemo, useRef } from "react";
+
+import { RoundedBox, Text, OrbitControls, Sparkles } from "@react-three/drei";
+import { useFrame, useLoader } from "@react-three/fiber";
 import { useSession } from "next-auth/react";
-import { SPG } from "@/app/story/spg/actions";
+import { TextureLoader, DoubleSide, LinearFilter } from "three";
+
+import { formatDate } from "@/lib/utils/format";
+import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
+
+import type { SPG } from "@/app/story/spg/actions";
+import type { Mesh } from "three";
 interface NFTsCollectionsCardR3FAcqusitionProps {
     spg: SPG;
 }
@@ -86,7 +80,7 @@ export default function NFTsCollectionsCardR3FAcqusition({
             logoTexture.offset.set(0, (1 - crop) / 2);
         }
         logoTexture.needsUpdate = true;
-    }, [texture]);
+    }, [texture, logoTexture]);
 
     // 부드러운 회전과 애니메이션
     useFrame((state) => {

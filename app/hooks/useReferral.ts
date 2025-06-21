@@ -3,7 +3,8 @@
 "use client";
 
 import { useReferralLogs } from "@/app/queries/referralQueries";
-import { GetReferralLogsInput } from "../actions/referral";
+
+import type { GetReferralLogsInput } from "../actions/referral";
 
 export interface UseReferralGetInput {
     GetReferralLogsInput: GetReferralLogsInput;

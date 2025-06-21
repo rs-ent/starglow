@@ -1,15 +1,19 @@
 /// components\organisms\NavBar.tsx
 "use client";
 
-import LinkButton from "../atoms/LinkButton";
-import AuthButton from "../atoms/AuthButton";
-import { User } from "next-auth";
-import VerticalButton from "../atoms/VerticalButton";
-import { memo, useCallback, useMemo, useState } from "react";
-import RewardPanel from "../atoms/RewardPanel";
-import { cn } from "@/lib/utils/tailwind";
-import { Player } from "@prisma/client";
+import { memo, useCallback, useMemo } from "react";
+
 import { usePathname } from "next/navigation";
+
+import { cn } from "@/lib/utils/tailwind";
+
+import AuthButton from "../atoms/AuthButton";
+import LinkButton from "../atoms/LinkButton";
+import RewardPanel from "../atoms/RewardPanel";
+import VerticalButton from "../atoms/VerticalButton";
+
+import type { Player } from "@prisma/client";
+import type { User } from "next-auth";
 
 // 타입 정의
 type MenuItem = {
@@ -58,17 +62,11 @@ const Logo = memo(function Logo() {
 // DesktopMenu 컴포넌트
 const DesktopMenu = memo(function DesktopMenu({
     menuItems,
-    user,
     player,
-    pathname,
-    onShowUserNavigation,
     isActivePath,
 }: {
     menuItems: MenuItem[];
-    user: User | null;
     player: Player | null;
-    pathname: string;
-    onShowUserNavigation: () => void;
     isActivePath: (href: string) => boolean;
 }) {
     return (
@@ -108,14 +106,10 @@ const DesktopMenu = memo(function DesktopMenu({
 const MobileMenu = memo(function MobileMenu({
     menuItems,
     player,
-    pathname,
-    onShowUserNavigation,
     isActivePath,
 }: {
     menuItems: MenuItem[];
     player: Player | null;
-    pathname: string;
-    onShowUserNavigation: () => void;
     isActivePath: (href: string) => boolean;
 }) {
     return (
@@ -194,21 +188,10 @@ const MobileMenu = memo(function MobileMenu({
 // 메인 NavigationBar 컴포넌트
 function NavigationBar({ user, player }: NavigationBarProps) {
     const pathname = usePathname();
-    const [showUserNavigation, setShowUserNavigation] =
-        useState<boolean>(false);
 
     const menuItems = useMemo(() => {
         return user?.id ? [...defaultMenuItems, myPageItem] : defaultMenuItems;
     }, [user?.id]);
-
-    // 이벤트 핸들러
-    const handleShowUserNavigation = useCallback(() => {
-        setShowUserNavigation(true);
-    }, []);
-
-    const handleCloseUserNavigation = useCallback(() => {
-        setShowUserNavigation(false);
-    }, []);
 
     const isActivePath = useCallback(
         (href: string) => pathname === href,
@@ -233,10 +216,7 @@ function NavigationBar({ user, player }: NavigationBarProps) {
                 <Logo />
                 <DesktopMenu
                     menuItems={menuItems}
-                    user={user}
                     player={player}
-                    pathname={pathname}
-                    onShowUserNavigation={handleShowUserNavigation}
                     isActivePath={isActivePath}
                 />
             </nav>
@@ -244,8 +224,6 @@ function NavigationBar({ user, player }: NavigationBarProps) {
             <MobileMenu
                 menuItems={menuItems}
                 player={player}
-                pathname={pathname}
-                onShowUserNavigation={handleShowUserNavigation}
                 isActivePath={isActivePath}
             />
         </>

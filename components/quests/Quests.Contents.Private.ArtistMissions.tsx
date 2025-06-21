@@ -2,15 +2,22 @@
 
 "use client";
 
-import { memo, useEffect, useMemo, useState, useCallback } from "react";
-import { useQuestGet } from "@/app/hooks/useQuest";
-import { Artist, Player, QuestLog, ReferralLog } from "@prisma/client";
+import { memo, useCallback, useMemo } from "react";
+
 import Image from "next/image";
+
+import { useQuestGet } from "@/app/hooks/useQuest";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+
 import QuestsMissions from "./Quests.Missions";
 import InviteFriends from "../atoms/InviteFriends";
-import { TokenGatingData, TokenGatingResult } from "@/app/story/nft/actions";
+
+import type {
+    TokenGatingData,
+    TokenGatingResult,
+} from "@/app/story/nft/actions";
+import type { Artist, Player, QuestLog, ReferralLog } from "@prisma/client";
 
 interface QuestsArtistMissionsProps {
     artist: Artist;
@@ -44,7 +51,6 @@ function QuestsArtistMissions({
         },
     });
 
-    // 배경 스타일 메모이제이션
     const backgroundStyle = useMemo(
         () => ({
             background: `linear-gradient(to bottom right, ${bgColorFrom}, ${bgColorTo})`,
@@ -52,7 +58,6 @@ function QuestsArtistMissions({
         [bgColorFrom, bgColorTo]
     );
 
-    // getResponsiveClass 최적화
     const responsiveClass30 = useMemo(() => getResponsiveClass(30), []);
     const responsiveClass25 = useMemo(() => getResponsiveClass(25), []);
 
@@ -63,8 +68,7 @@ function QuestsArtistMissions({
         );
     }, [tokenGating]);
 
-    // 클레임된 퀘스트 로그 및 준비 상태 메모이제이션
-    const { claimedQuestLogs, isReady } = useMemo(() => {
+    const { claimedQuestLogs } = useMemo(() => {
         const logs =
             questLogs?.filter(
                 (questLog) =>
@@ -72,40 +76,11 @@ function QuestsArtistMissions({
                     quests?.items.find((quest) => quest.id === questLog.questId)
             ) || [];
 
-        const ready =
-            quests &&
-            quests.items?.length > 0 &&
-            tokenGating !== undefined &&
-            !isLoading;
-
         return {
             claimedQuestLogs: logs,
-            isReady: ready,
         };
-    }, [questLogs, quests, tokenGating, isLoading]);
+    }, [questLogs, quests]);
 
-    // 애니메이션 변수
-    const containerVariants = {
-        hidden: { opacity: 0, y: 100 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: {
-                duration: 0.6,
-                ease: "easeOut",
-            },
-        },
-        exit: {
-            opacity: 0,
-            y: -100,
-            transition: {
-                duration: 0.4,
-                ease: "easeIn",
-            },
-        },
-    };
-
-    // 상태별 렌더 함수 분리
     const renderLoading = useCallback(
         () => (
             <div className="w-full py-8 flex justify-center">
@@ -233,10 +208,12 @@ function QuestsArtistMissions({
             bgColorToInviteFriends,
             responsiveClass30.frameClass,
             responsiveClass25.textClass,
+            artist.logoUrl,
+            artist.name,
+            player,
         ]
     );
 
-    // 메인 컨텐츠 렌더 함수
     const renderContent = useCallback(() => {
         if (isLoading) {
             return renderLoading();
@@ -249,7 +226,6 @@ function QuestsArtistMissions({
         }
         return renderQuestsList();
     }, [
-        isReady,
         isLoading,
         error,
         quests?.items,

@@ -2,28 +2,26 @@
 
 "use client";
 
-import { Artist, User } from "@prisma/client";
-import AdminArtistsManageMessages from "./Admin.Artists.Manage.Messages";
-import AdminArtistsManageFeeds from "./Admin.Artists.Manage.Feeds";
-import { useSession } from "next-auth/react";
-import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { cn } from "@/lib/utils/tailwind";
-import Image from "next/image";
 import {
     Building2,
     ExternalLink,
-    FileText,
-    Music,
     Video,
     Image as ImageIcon,
     Link,
-    Calendar,
-    Sparkles,
     MessageCircle,
     Grid3X3,
 } from "lucide-react";
+import Image from "next/image";
+import { useSession } from "next-auth/react";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArtistBG } from "@/lib/utils/get/artist-colors";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+
+import AdminArtistsManageFeeds from "./Admin.Artists.Manage.Feeds";
+import AdminArtistsManageMessages from "./Admin.Artists.Manage.Messages";
+
+import type { Artist, User } from "@prisma/client";
 
 interface AdminArtistsManageDashboardProps {
     artist: Artist;
@@ -48,15 +46,6 @@ export default function AdminArtistsManageDashboard({
             </div>
         );
     }
-
-    // 반응형 클래스 가져오기
-    const heroTitle = getResponsiveClass(60);
-    const sectionTitle = getResponsiveClass(35);
-    const cardTitle = getResponsiveClass(25);
-    const bodyText = getResponsiveClass(15);
-    const smallText = getResponsiveClass(10);
-    const iconSize = getResponsiveClass(20);
-    const padding = getResponsiveClass(30);
 
     return (
         <div className="relative min-h-screen w-full bg-[#f5f5f7]">

@@ -2,34 +2,39 @@
 
 "use server";
 
+import type {
+    Address,
+    Hash} from "viem";
+
 import {
     createPublicClient,
     createWalletClient,
     http,
-    getContract,
-    Address,
-    Hash,
+    getContract
 } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+
 import { prisma } from "@/lib/prisma/client";
+
+const abi = factoryJson.abi;
+const bytecode = factoryJson.bytecode as `0x${string}`;
+
+import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
+import factoryJson from "@/web3/artifacts/contracts/Factory.sol/CollectionFactory.json";
+
 import {
     deployContract,
     estimateGasOptions,
     getChain,
     getEscrowWalletWithPrivateKey,
 } from "./blockchain";
-import {
+
+import type {
     Artist,
     CollectionContract,
     FactoryContract,
     Metadata,
 } from "@prisma/client";
-import { privateKeyToAccount } from "viem/accounts";
-
-import factoryJson from "@/web3/artifacts/contracts/Factory.sol/CollectionFactory.json";
-const abi = factoryJson.abi;
-const bytecode = factoryJson.bytecode as `0x${string}`;
-
-import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
 const collectionAbi = collectionJson.abi;
 const collectionBytecode = collectionJson.bytecode as `0x${string}`;
 

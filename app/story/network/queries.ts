@@ -1,13 +1,16 @@
 /// app/story/network/queries.ts
 
 import { useQuery } from "@tanstack/react-query";
+
 import {
     getStoryNetwork,
-    getStoryNetworkInput,
-    getStoryNetworks,
-    getStoryNetworksInput,
+    getStoryNetworks
 } from "./actions";
 import { queryKeys } from "../queryKeys";
+
+import type {
+    getStoryNetworkInput,
+    getStoryNetworksInput} from "./actions";
 
 export function useGetStoryNetworkQuery(input?: getStoryNetworkInput) {
     return useQuery({

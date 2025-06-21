@@ -2,11 +2,13 @@
 
 "use client";
 
-import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
+
+import Script from "next/script";
+
+import { useUserSet } from "@/app/hooks/useUser";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/tailwind";
-import { useUserSet } from "@/app/hooks/useUser";
 
 interface TelegramLoginButtonProps {
     size?: "small" | "medium" | "large";
@@ -56,7 +58,7 @@ export default function TelegramLoginButton({
         return () => {
             delete (window as any).onTelegramAuth;
         };
-    }, [onAuth]);
+    }, [onAuth, size]);
 
     const handleContinueWithTelegram = async () => {
         await setUserWithTelegram({
@@ -87,8 +89,8 @@ export default function TelegramLoginButton({
                     )}
                 >
                     <img
-                        src={"/icons/telegram-white.svg"}
-                        alt={`Telegram refresh icon`}
+                        src="/icons/telegram-white.svg"
+                        alt="Telegram refresh icon"
                         style={{ width: "20px", height: "auto" }}
                     />
                     <span className="ml-2">Continue With Telegram</span>

@@ -2,20 +2,25 @@
 
 "use server";
 
-import { prisma } from "@/lib/prisma/client";
-import { lockTokens, unlockTokens } from "./collectionContracts";
 import {
+    User
+} from "@prisma/client";
+import { revalidatePath } from "next/cache";
+
+import { prisma } from "@/lib/prisma/client";
+
+import { lockTokens, unlockTokens } from "./collectionContracts";
+import { batchUpdatePlayerAsset } from "./playerAssets";
+
+import type {
     Prisma,
     Asset,
     StakeReward,
     NFT,
     StakeRewardLog,
     CollectionContract,
-    User,
-    Player,
-} from "@prisma/client";
-import { batchUpdatePlayerAsset } from "./playerAssets";
-import { revalidatePath } from "next/cache";
+    Player} from "@prisma/client";
+
 
 export interface StakeInput {
     userId: string;

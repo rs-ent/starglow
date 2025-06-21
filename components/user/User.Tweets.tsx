@@ -2,15 +2,18 @@
 
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
+
 import { useTweets } from "@/app/actions/x/hooks";
-import { User } from "next-auth";
-import { Player } from "@prisma/client";
-import PartialLoading from "../atoms/PartialLoading";
+import { cn } from "@/lib/utils/tailwind";
+
+import UserTweetsDashboard from "./User.Tweets.Dashboard";
 import UserTweetsRegister from "./User.Tweets.Register";
 import UserTweetsTutorialModal from "./User.Tweets.Tutorial.Modal";
-import { cn } from "@/lib/utils/tailwind";
-import { useState, useEffect } from "react";
-import UserTweetsDashboard from "./User.Tweets.Dashboard";
+import PartialLoading from "../atoms/PartialLoading";
+
+import type { Player } from "@prisma/client";
+import type { User } from "next-auth";
 
 interface UserTweetsProps {
     user: User | null;
@@ -38,14 +41,10 @@ export default function UserTweets({ user, player }: UserTweetsProps) {
         }
     }, [isAuthorByPlayerIdLoading]);
 
-    const handleTutorialComplete = () => {
+    const handleTutorialComplete = useCallback(() => {
         localStorage.setItem("tweets-tutorial-seen", "true");
         setShowTutorial(false);
-    };
-
-    const handleXDisconnect = () => {
-        refetchAuthorByPlayerId();
-    };
+    }, []);
 
     if (isAuthorByPlayerIdLoading) {
         return (
@@ -69,15 +68,11 @@ export default function UserTweets({ user, player }: UserTweetsProps) {
             user &&
             player ? (
                 <UserTweetsDashboard
-                    user={user}
                     player={player}
-                    tweetAuthor={authorByPlayerId}
                     setShowTutorial={setShowTutorial}
-                    onXDisconnect={handleXDisconnect}
                 />
             ) : (
                 <UserTweetsRegister
-                    user={user}
                     player={player}
                     tweetAuthor={authorByPlayerId}
                     onXAuthSuccess={refetchAuthorByPlayerId}

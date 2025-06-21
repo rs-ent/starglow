@@ -2,15 +2,18 @@
 
 "use client";
 
-import { ArrowBigLeft } from "lucide-react";
-import { cn } from "@/lib/utils/tailwind";
 import { AnimatePresence, motion } from "framer-motion";
-import { Artist, Player, QuestLog, PollLog } from "@prisma/client";
-import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
-import type { VerifiedSPG } from "@/app/story/interaction/actions";
+import { ArrowBigLeft } from "lucide-react";
+
+import { ArtistBG } from "@/lib/utils/get/artist-colors";
+import { cn } from "@/lib/utils/tailwind";
+
 import UserMyStarModalContents from "./User.MyStar.Modal.Contents";
-import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import Portal from "../atoms/Portal";
+
+import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+import type { VerifiedSPG } from "@/app/story/interaction/actions";
+import type { Artist, Player, QuestLog, PollLog } from "@prisma/client";
 
 interface UserMyStarModalProps {
     player: Player | null;

@@ -1,12 +1,24 @@
 /// components/admin/story/Admin.Story.Management.SPG.tsx
 
 import { useEffect, useState } from "react";
-import { useSPG } from "@/app/story/spg/hooks";
-import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
-import FileUploader from "@/components/atoms/FileUploader";
-import { TbTopologyStar3 } from "react-icons/tb";
-import { SiEthereum } from "react-icons/si";
-import { fetchURI } from "@/app/story/metadata/actions";
+
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     FaEdit,
     FaCalendarAlt,
@@ -24,24 +36,14 @@ import {
     FaTimes,
     FaPlus,
 } from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
+import { SiEthereum } from "react-icons/si";
+import { TbTopologyStar3 } from "react-icons/tb";
+
 import { useToast } from "@/app/hooks/useToast";
-import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-} from "@dnd-kit/core";
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    useSortable,
-    rectSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
+import { fetchURI } from "@/app/story/metadata/actions";
+import { useSPG } from "@/app/story/spg/hooks";
+import FileUploader from "@/components/atoms/FileUploader";
 
 // SPG 컬렉션 필수 필드 타입
 interface SPGForm {
@@ -231,17 +233,14 @@ export default function AdminStoryManagementSPG({
         escrowWallets,
         isLoadingEscrowWallets,
         isErrorEscrowWallets,
-        refetchEscrowWallets,
 
         registeredEscrowWallets,
         isLoadingRegisteredEscrowWallets,
         isErrorRegisteredEscrowWallets,
         refetchRegisteredEscrowWallets,
 
-        addEscrowWalletToSPG,
         addEscrowWalletToSPGAsync,
         isPendingAddEscrowWalletToSPG,
-        isErrorAddEscrowWalletToSPG,
     } = useEscrowWallets({
         getRegisteredEscrowWalletsInput: {
             spgAddress: form.address,
@@ -303,7 +302,9 @@ export default function AdminStoryManagementSPG({
 
             toast.success("Escrow wallet이 성공적으로 등록되었습니다.");
             setSelectedWallet("");
-            refetchRegisteredEscrowWallets();
+            refetchRegisteredEscrowWallets().catch((err) => {
+                console.error(err);
+            });
         } catch (error: any) {
             toast.error(
                 error?.message || "Escrow wallet 등록 중 오류가 발생했습니다."

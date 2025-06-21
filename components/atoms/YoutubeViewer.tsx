@@ -1,8 +1,10 @@
 /// components/atoms/YoutubeViewer.tsx
 
-import { H3, Paragraph } from "./Typography";
-import { cn } from "@/lib/utils/tailwind";
 import { useRef } from "react";
+
+import { cn } from "@/lib/utils/tailwind";
+
+import { H3, Paragraph } from "./Typography";
 
 export interface YoutubeViewerProps {
     videoId: string | undefined;

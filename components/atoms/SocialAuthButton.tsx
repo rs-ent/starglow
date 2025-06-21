@@ -1,14 +1,18 @@
 /// components\atoms\SocialAuthButton.tsx
 
 "use client";
-import Button from "./Button";
-import { useLoading } from "@/app/hooks/useLoading";
-import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { Provider } from "@/app/types/auth";
-import FormSignInEmail from "./Form.SignIn.Email";
-import { cn } from "@/lib/utils/tailwind";
+
+import { signIn } from "next-auth/react";
+
+import { useLoading } from "@/app/hooks/useLoading";
 import { getProviderIdentity } from "@/lib/utils/get/provider-identity";
+import { cn } from "@/lib/utils/tailwind";
+
+import Button from "./Button";
+import FormSignInEmail from "./Form.SignIn.Email";
+
+import type { Provider } from "@/app/types/auth";
 interface SocialAuthButtonProps {
     provider: Provider;
     callbackUrl?: string;

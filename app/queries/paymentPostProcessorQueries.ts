@@ -1,8 +1,10 @@
 // app/queries/paymentPostProcessorQueries.ts
 
 import { useQuery } from "@tanstack/react-query";
-import { paymentPostProcessorKeys } from "@/app/queryKeys";
+
 import { getPayment } from "@/app/actions/payment";
+import { paymentPostProcessorKeys } from "@/app/queryKeys";
+
 import type {
     TransferNFTResponse,
     TransferNFTSuccess,

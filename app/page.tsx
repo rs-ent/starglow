@@ -1,7 +1,8 @@
 /// app/page.tsx
 
-import Main from "@/components/main/Main";
 import { Suspense } from "react";
+
+import Main from "@/components/main/Main";
 export default async function Home() {
     return (
         <div>

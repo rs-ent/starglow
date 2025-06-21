@@ -2,15 +2,19 @@
 
 "use server";
 
+import { NFTEvent } from "@prisma/client";
+import { ethers, providers } from "ethers";
+import { User } from "next-auth";
+
 import { prisma } from "@/lib/prisma/client";
-import { NFT, NFTEvent } from "@prisma/client";
-import {
+
+import { getTokenOwners } from "./collectionContracts";
+
+import type {
     NFTFilters,
     NFTPaginationParams,
 } from "@/components/admin/onchain/OnChain.types";
-import { ethers, providers } from "ethers";
-import { User } from "next-auth";
-import { getTokenOwners } from "./collectionContracts";
+import type { NFT} from "@prisma/client";
 
 export async function fetchNFTs(
     filters: NFTFilters,

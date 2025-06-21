@@ -1,9 +1,11 @@
 /// hooks/useTelegramIntegration.tsx
 
-import { create } from "zustand";
 import { useEffect } from "react";
-import { useToast } from "./useToast";
+
+import { create } from "zustand";
+
 import { useLoading } from "./useLoading";
+import { useToast } from "./useToast";
 
 type Player = Awaited<ReturnType<typeof fetchPlayer>>;
 async function fetchPlayer() {

@@ -1,7 +1,10 @@
-import EventsDetail from "@/components/events/EventsDetail";
-import {getEventById} from "@/app/actions/events";
-import {notFound} from "next/navigation";
 import {Suspense} from "react";
+
+import {notFound} from "next/navigation";
+
+import {getEventById} from "@/app/actions/events";
+import EventsDetail from "@/components/events/EventsDetail";
+
 
 interface EventPageProps {
     params: {

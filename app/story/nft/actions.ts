@@ -2,32 +2,32 @@
 
 "use server";
 
-import { PublicClient, http, Hex, decodeEventLog, Abi } from "viem";
-import { estimateAndOptimizeGas } from "../network/actions";
+import { createHash } from "crypto";
+
+import { User, Wallet } from "@prisma/client";
+import { http, decodeEventLog } from "viem";
+
 import { prisma } from "@/lib/prisma/client";
 import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
-import { fetchEscrowWalletPrivateKey } from "../escrowWallet/actions";
+
 import {
     fetchPublicClient,
     fetchStoryClient,
     fetchWalletClient,
 } from "../client";
-import {
-    createTokenURIsMetadata,
-    IPAssetMetadata,
-    ERC721Metadata,
-    createMetadata,
-} from "../metadata/actions";
-import {
+import { fetchEscrowWalletPrivateKey } from "../escrowWallet/actions";
+import { createTokenURIsMetadata, createMetadata } from "../metadata/actions";
+import { estimateAndOptimizeGas } from "../network/actions";
+
+import type { IPAssetMetadata, ERC721Metadata } from "../metadata/actions";
+import type {
     BlockchainNetwork,
     Prisma,
     Story_nft,
     Story_spg,
-    User,
-    Wallet,
+    Artist,
 } from "@prisma/client";
-import { createHash } from "crypto";
-import { Artist } from "@prisma/client";
+import type { PublicClient, Hex, Abi } from "viem";
 
 // 재시도 유틸리티 함수 (가스비 예측 및 최적화 포함)
 async function retryTransaction<T>(
@@ -66,9 +66,6 @@ async function retryTransaction<T>(
                 error instanceof Error ? error.message : String(error);
             if (errorMessage.includes("replacement transaction underpriced")) {
                 delay = Math.max(delay, 8000); // 최소 8초 대기
-                console.log(
-                    "Detected underpriced transaction, increasing delay..."
-                );
             } else if (errorMessage.includes("nonce too low")) {
                 delay = Math.max(delay, 3000); // nonce 문제 시 3초 대기
             } else if (errorMessage.includes("insufficient funds")) {
@@ -76,9 +73,6 @@ async function retryTransaction<T>(
             }
 
             if (i < maxRetries - 1) {
-                console.log(
-                    `Retrying in ${delay}ms with optimized gas settings...`
-                );
                 await new Promise((resolve) => setTimeout(resolve, delay));
                 delay *= 1.5; // 더 보수적인 백오프
             }
@@ -129,8 +123,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
             walletAddress: input.walletAddress,
         });
 
-        console.log("Creating tokenURI metadata...");
-
         // 1. 먼저 tokenURI 메타데이터 생성
         const tokenURIObjects = await createTokenURIsMetadata({
             userId: input.userId,
@@ -143,8 +135,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
 
         // IPFS URL들 추출
         const tokenURIs = tokenURIObjects.map((obj) => obj.url);
-
-        console.log("Minting NFTs with tokenURIs...");
 
         // 민트 수수료 계산
         let totalMintFee = BigInt(0);
@@ -201,8 +191,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
             input.quantity
         );
 
-        console.log("Mint transaction hash:", hash);
-
         const receipt = await publicClient.waitForTransactionReceipt({
             hash,
             confirmations: 1,
@@ -217,7 +205,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
         }
 
         // Debug: Log all events in the receipt to understand what's being emitted
-        console.log("Transaction receipt logs:");
         receipt.logs.forEach((log, index) => {
             console.log(`Log ${index}:`, {
                 address: log.address,
@@ -254,16 +241,11 @@ export async function mint(input: mintInput): Promise<mintResult> {
             }
         });
 
-        console.log(
-            `Found ${mintedEvents.length} Minted events for quantity ${input.quantity}`
-        );
-
         let startTokenId: bigint;
         let tokenIds: bigint[];
 
         if (mintedEvents.length === 0) {
             // Try to fall back to Transfer events if no Minted events found
-            console.log("No Minted events found, trying Transfer events...");
 
             const transferEvents = receipt.logs.filter((log) => {
                 try {
@@ -284,8 +266,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
                 }
             });
 
-            console.log(`Found ${transferEvents.length} Transfer events`);
-
             if (transferEvents.length === 0) {
                 // 이벤트를 찾지 못한 경우, 컨트랙트 상태를 직접 읽어서 확인
                 console.log(
@@ -300,8 +280,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
                         functionName: "totalSupply",
                     })) as bigint;
 
-                    console.log(`Current total supply: ${totalSupply}`);
-
                     // 사용자의 NFT 잔액 조회
                     const userBalance = (await publicClient.readContract({
                         address: input.contractAddress as Hex,
@@ -309,8 +287,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
                         functionName: "balanceOf",
                         args: [input.walletAddress],
                     })) as bigint;
-
-                    console.log(`User balance: ${userBalance}`);
 
                     if (userBalance >= BigInt(input.quantity)) {
                         // 사용자가 소유한 최근 토큰들 조회
@@ -377,9 +353,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
                                 a < b ? -1 : a > b ? 1 : 0
                             );
                             startTokenId = tokenIds[0];
-                            console.log(
-                                `Found token IDs by reading contract state: ${tokenIds}`
-                            );
                         } else {
                             throw new Error(
                                 `Expected ${input.quantity} tokens but found ${tokenIds.length}`
@@ -436,10 +409,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
                 // Sort to find the starting token ID
                 tokenIds.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
                 startTokenId = tokenIds[0];
-
-                console.log(
-                    `Found individual Minted events for each NFT - startTokenId: ${startTokenId}, tokenIds: ${tokenIds}`
-                );
             } else {
                 // Fallback: assume sequential token IDs from first Minted event
                 const firstEvent = decodeEventLog({
@@ -455,10 +424,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
                 for (let i = 0; i < input.quantity; i++) {
                     tokenIds.push(startTokenId + BigInt(i));
                 }
-
-                console.log(
-                    `Using sequential tokenIds from first Minted event - startTokenId: ${startTokenId}, quantity: ${input.quantity}`
-                );
             }
         }
 

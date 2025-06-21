@@ -3,11 +3,6 @@
 "use client";
 
 import {
-    useArtistFeedsQuery,
-    useArtistFeedReactionsQuery,
-    useArtistFeedsInfiniteQuery,
-} from "@/app/queries/artistFeedsQueries";
-import {
     useCreateArtistFeed,
     useUpdateArtistFeed,
     useDeleteArtistFeed,
@@ -15,6 +10,12 @@ import {
     useUpdateArtistFeedReaction,
     useDeleteArtistFeedReaction,
 } from "@/app/mutations/artistFeedsMutations";
+import {
+    useArtistFeedsQuery,
+    useArtistFeedReactionsQuery,
+    useArtistFeedsInfiniteQuery,
+} from "@/app/queries/artistFeedsQueries";
+
 import type {
     GetArtistFeedsInput,
     GetArtistFeedReactionsInput,

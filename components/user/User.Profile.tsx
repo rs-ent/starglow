@@ -1,10 +1,13 @@
 /// components/user/User.Profile.tsx
 
 import React from "react";
-import { User } from "next-auth";
+
 import ProfileImage from "@/components/atoms/ProfileImage";
 import ProfileName from "@/components/atoms/ProfileName";
-import { Player } from "@prisma/client";
+
+import type { Player } from "@prisma/client";
+import type { User } from "next-auth";
+
 
 interface UserProfileProps {
     user: User;

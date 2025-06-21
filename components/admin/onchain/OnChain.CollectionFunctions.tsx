@@ -4,7 +4,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+
 import {
     Loader2,
     Check,
@@ -17,19 +17,7 @@ import {
     ExternalLink,
     Settings,
 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useToast } from "@/app/hooks/useToast";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import {
     useEscrowWalletManager,
     useBlockchainNetworksManager,
@@ -39,10 +27,19 @@ import {
     useCollectionGet,
     useCollectionSet,
 } from "@/app/hooks/useCollectionContracts";
-import { Switch } from "@/components/ui/switch";
-import { CollectionContract } from "@prisma/client";
+import { useToast } from "@/app/hooks/useToast";
 import { useUpdateCollectionSettingsMutation } from "@/app/mutations/collectionContractsMutations";
 import DateTimePicker from "@/components/atoms/DateTimePicker";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
@@ -51,7 +48,14 @@ import {
     DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import OnChainCollectionPageImages from "./OnChain.CollectionPageImages";
+
+import type { CollectionContract } from "@prisma/client";
 
 interface CollectionFunctionsProps {
     collection: CollectionContract;

@@ -3,14 +3,15 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import {
     deployFactory,
     updateFactory,
     createCollection,
     deleteCollection,
 } from "../actions/factoryContracts";
-import { factoryKeys, collectionKeys } from "../queryKeys";
 import { useToast } from "../hooks/useToast";
+import { factoryKeys, collectionKeys } from "../queryKeys";
 
 export function useDeployFactoryMutation() {
     const queryClient = useQueryClient();

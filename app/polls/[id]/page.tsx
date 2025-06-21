@@ -1,19 +1,22 @@
 /// app\polls\[id]\page.tsx
 
+import { Suspense } from "react";
+
+import { notFound } from "next/navigation";
+
 import {
     getPoll,
     getPlayerPollLogs,
     tokenGatingPoll,
 } from "@/app/actions/polls";
-import { PollLog } from "@prisma/client";
-import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import { auth } from "@/app/auth/authSettings";
-import { ArtistBG } from "@/lib/utils/get/artist-colors";
-import { Metadata } from "next";
-import PollComponent from "@/components/polls/Poll";
-import { TokenGatingData } from "@/app/story/nft/actions";
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
+import PollComponent from "@/components/polls/Poll";
+import { ArtistBG } from "@/lib/utils/get/artist-colors";
+
+import type { TokenGatingData } from "@/app/story/nft/actions";
+import type { PollLog } from "@prisma/client";
+import type { Metadata } from "next";
 
 function PollsLoading() {
     return (

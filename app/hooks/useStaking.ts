@@ -3,12 +3,6 @@
 "use client";
 
 import {
-    useStakeRewards,
-    useUserStakeRewardLogs,
-    useUserStakingTokens,
-} from "@/app/queries/stakingQueries";
-
-import {
     useStakeMutation,
     useUnstakeMutation,
     useCreateStakeRewardMutation,
@@ -17,6 +11,12 @@ import {
     useFindRewardableStakeTokensMutation,
     useClaimStakeRewardMutation,
 } from "@/app/mutations/stakingMutations";
+import {
+    useStakeRewards,
+    useUserStakeRewardLogs,
+    useUserStakingTokens,
+} from "@/app/queries/stakingQueries";
+
 
 import type {
     GetUserStakingTokensInput,

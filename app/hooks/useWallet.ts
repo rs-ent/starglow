@@ -2,9 +2,11 @@
 
 "use client";
 
-import { useWalletsByUserIdQuery } from "../queries/walletQueries";
-import type { Wallet } from "@prisma/client";
 import { useState, useEffect } from "react";
+
+import { useWalletsByUserIdQuery } from "../queries/walletQueries";
+
+import type { Wallet } from "@prisma/client";
 
 interface UseWalletReturn {
     wallets: Wallet[] | undefined;

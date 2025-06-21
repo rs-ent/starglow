@@ -3,10 +3,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { useRouter, useSearchParams } from "next/navigation";
-import { useToast } from "@/app/hooks/useToast";
+
 import { useRequireAuth } from "@/app/auth/authUtils.Client";
 import { usePlayerSet } from "@/app/hooks/usePlayer";
+import { useToast } from "@/app/hooks/useToast";
 
 export default function InvitePage() {
     const router = useRouter();
@@ -32,7 +34,9 @@ export default function InvitePage() {
     useEffect(() => {
         // 인증 로딩이 끝났을 때 처리
         if (!isAuthLoading) {
-            handleInvite();
+            handleInvite().catch((error) => {
+                console.error("Failed to handle invite:", error);
+            });
         }
     }, [isAuthLoading, authenticated]);
 

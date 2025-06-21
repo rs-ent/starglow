@@ -1,13 +1,17 @@
 /// components/atoms/FileUploader.IPFS.tsx
 
 import { useState } from "react";
-import { useMetadata } from "@/app/story/metadata/hooks";
-import { uploadMediaOutput } from "@/app/story/metadata/actions";
-import { ipfsType } from "@/app/story/metadata/actions";
-import FileUploader, { FileData } from "./FileUploader";
+
+import Image from "next/image";
 import { SiIpfs } from "react-icons/si";
 import { TbHexagon } from "react-icons/tb";
-import Image from "next/image";
+
+import { useMetadata } from "@/app/story/metadata/hooks";
+
+import FileUploader from "./FileUploader";
+
+import type { FileData } from "./FileUploader";
+import type { uploadMediaOutput, ipfsType } from "@/app/story/metadata/actions";
 
 interface FileUploaderIPFSProps {
     userId: string;
@@ -63,7 +67,7 @@ export default function FileUploaderIPFS({
                 </div>
                 <div className="flex flex-row gap-2 flex-wrap">
                     {previews.map((fileData, idx) => {
-                        const ext = fileData.file.name
+                        const _ext = fileData.file.name
                             .split(".")
                             .pop()
                             ?.toLowerCase();
@@ -122,7 +126,7 @@ export default function FileUploaderIPFS({
                 <div className="mt-4">
                     <FileUploader
                         purpose={type}
-                        bucket={"ipfs-preview"}
+                        bucket="ipfs-preview"
                         onFiles={handleUpload}
                         accept={{
                             "image/*": [

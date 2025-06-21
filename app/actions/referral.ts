@@ -2,8 +2,11 @@
 
 "use server";
 
+import { Quest } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma/client";
-import { Player, Quest, QuestLog, ReferralLog } from "@prisma/client";
+
+import type { Player, QuestLog, ReferralLog } from "@prisma/client";
 
 export interface GetReferralLogsInput {
     playerId: string;

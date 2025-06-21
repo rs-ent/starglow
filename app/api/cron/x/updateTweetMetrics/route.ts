@@ -1,6 +1,7 @@
 /// app/api/cron/x/updateMetrics/route.ts
 
 import { NextResponse } from "next/server";
+
 import { updateTweetMetrics } from "./updateTweetMetrics";
 
 export async function GET(request: Request) {

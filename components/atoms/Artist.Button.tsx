@@ -2,13 +2,16 @@
 
 "use client";
 
-import { Artist } from "@prisma/client";
+import React from "react";
+
 import { AnimatePresence, motion } from "framer-motion";
+import Image from "next/image";
+
+import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import Image from "next/image";
-import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
-import React from "react";
+
+import type { Artist } from "@prisma/client";
 
 interface ArtistButtonProps {
     artist: Artist;

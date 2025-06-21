@@ -3,15 +3,18 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import {
     setPlayer,
-    SetPlayerInput,
     invitePlayer,
-    InvitePlayerParams,
-    updatePlayerSettings,
-    UpdatePlayerSettingsInput,
+    updatePlayerSettings
 } from "@/app/actions/player";
 import { playerKeys } from "@/app/queryKeys";
+
+import type {
+    SetPlayerInput,
+    InvitePlayerParams,
+    UpdatePlayerSettingsInput} from "@/app/actions/player";
 
 export function useSetPlayerMutation(input?: SetPlayerInput) {
     const queryClient = useQueryClient();

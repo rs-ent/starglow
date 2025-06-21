@@ -1,5 +1,5 @@
-import { formatEther } from "viem";
 import hre from "hardhat";
+import { formatEther } from "viem";
 
 async function main() {
     try {

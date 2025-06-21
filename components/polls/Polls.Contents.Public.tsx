@@ -2,12 +2,17 @@
 
 "use client";
 
-import { usePollsGet } from "@/app/hooks/usePolls";
-import { cn } from "@/lib/utils/tailwind";
-import { Player, PollLog } from "@prisma/client";
-import PartialLoading from "@/components/atoms/PartialLoading";
-import PollsList from "./Polls.List";
 import { memo, useMemo } from "react";
+
+
+import { usePollsGet } from "@/app/hooks/usePolls";
+import PartialLoading from "@/components/atoms/PartialLoading";
+import { cn } from "@/lib/utils/tailwind";
+
+import PollsList from "./Polls.List";
+
+import type { Player, PollLog } from "@prisma/client";
+
 
 interface PollsContentsPublicProps {
     player: Player | null;
@@ -47,7 +52,7 @@ function PollsContentsPublic({
                         Error: {error.message}
                     </div>
                 ) : (
-                    <div key={"public-polls"}>
+                    <div key="public-polls">
                         {polls && polls.length > 0 ? (
                             <PollsList
                                 polls={polls}

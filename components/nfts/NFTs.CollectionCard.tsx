@@ -2,20 +2,17 @@
 
 "use client";
 
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    CardFooter,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useMemo } from "react";
+
+import { CircleDollarSign, Users, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { CircleDollarSign, Users, CheckCircle2 } from "lucide-react";
-import { SPG } from "@/app/story/spg/actions";
-import { useMemo } from "react";
+
+import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
+import type { SPG } from "@/app/story/spg/actions";
 
 interface CollectionCardProps {
     spg: SPG;
@@ -42,12 +39,11 @@ export default function CollectionCard({
 
     // 배경색과 전경색이 없을 경우를 위한 기본값
     const backgroundColor = spg.backgroundColor || "bg-card/50";
-    const foregroundColor = spg.foregroundColor || "text-foreground";
 
     return (
         <Link href={isLinked ? `/collections/${spg.address}` : ""}>
             <Card
-                className={`group overflow-hidden hover:shadow-xl transition-all duration-300 hover:bg-card border border-border/50`}
+                className="group overflow-hidden hover:shadow-xl transition-all duration-300 hover:bg-card border border-border/50"
                 style={{
                     background: `linear-gradient(to bottom, ${backgroundColor}, rgba(0, 0, 0, 0.5))`,
                     color: spg.foregroundColor || undefined,

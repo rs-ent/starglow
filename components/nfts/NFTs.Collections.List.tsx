@@ -1,22 +1,29 @@
 /// components/nfts/NFTs.Collections.List.tsx
 
-import { Canvas } from "@react-three/fiber";
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import { useGesture, WebKitGestureEvent } from "@use-gesture/react";
-import NFTsCollectionsCard3DR3F from "./NFTs.Collections.Card.R3F";
-import { useThree, useFrame } from "@react-three/fiber";
-import { cn } from "@/lib/utils/tailwind";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import React from "react";
-import { Mesh, Vector3 } from "three";
+import React, {
+    useState,
+    useRef,
+    useMemo,
+    useCallback,
+    useEffect,
+} from "react";
+
 import { Environment } from "@react-three/drei";
-import {
-    useCachedTexture,
-    prefetchTextures,
-} from "@/lib/utils/useCachedTexture";
-import { SPG } from "@/app/story/spg/actions";
+import { useThree, useFrame, Canvas } from "@react-three/fiber";
+import { useGesture } from "@use-gesture/react";
+import { Vector3 } from "three";
+
 import { fetchURI } from "@/app/story/metadata/actions";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+import { prefetchTextures } from "@/lib/utils/useCachedTexture";
+
+import NFTsCollectionsCard3DR3F from "./NFTs.Collections.Card.R3F";
 import PartialLoading from "../atoms/PartialLoading";
+
+import type { SPG } from "@/app/story/spg/actions";
+import type { WebKitGestureEvent } from "@use-gesture/react";
+import type { Mesh } from "three";
 
 interface NFTsCollectionsListProps {
     spgs: SPG[];
@@ -44,7 +51,7 @@ const Arrow = React.memo(function Arrow({
 
     const position = useMemo(() => {
         return new Vector3(0, 9 + positionY, 5);
-    }, [positionY, confirmedAlpha]);
+    }, [positionY]);
 
     return (
         <mesh ref={arrowRef} position={position} rotation={[Math.PI, 0, 0]}>
@@ -80,7 +87,6 @@ export default function NFTsCollectionsList({
     const containerRef = useRef<HTMLDivElement>(null);
     const [isPinching, setIsPinching] = useState(false);
     const [confirmedAlpha, setConfirmedAlpha] = useState(1);
-    const [buyNowCollection, setBuyNowCollection] = useState<SPG | null>(null);
     const [isPreloaded, setIsPreloaded] = useState(false);
 
     // 3D 카드 이미지 프리로딩
@@ -107,7 +113,7 @@ export default function NFTsCollectionsList({
             await prefetchTextures(urls);
             if (!cancelled) setIsPreloaded(true);
         }
-        preload();
+        void preload();
         return () => {
             cancelled = true;
         };
@@ -122,7 +128,6 @@ export default function NFTsCollectionsList({
             const {
                 movement: [mx],
                 last,
-                event,
             } = state;
             const offset = mx / 120;
             if (!last) {
@@ -207,31 +212,33 @@ export default function NFTsCollectionsList({
         });
         return null;
     });
-    const handleClickCollection = (
-        collectionId: string,
-        buyNowClicked: boolean
-    ) => {
-        const index = spgs.findIndex((c) => c.id === collectionId);
-        if (buyNowClicked && index !== -1) {
-            const cameraZ = 5;
-            setTargetCameraZ(cameraZ);
-            onBuyNowClick(spgs[index]);
-        }
-        if (selected === index) {
-            if (!buyNowClicked && confirmedAlpha > 1) {
+
+    const handleClickCollection = useCallback(
+        (collectionId: string, buyNowClicked: boolean) => {
+            const index = spgs.findIndex((c) => c.id === collectionId);
+            if (buyNowClicked && index !== -1) {
+                const cameraZ = 5;
+                setTargetCameraZ(cameraZ);
+                onBuyNowClick(spgs[index]);
+            }
+            if (selected === index) {
+                if (!buyNowClicked && confirmedAlpha > 1) {
+                    setConfirmedAlpha(1);
+                    setTargetCameraZ(cameraZByWidth);
+                } else {
+                    const cameraZ = cameraZByWidth - 9;
+                    setTargetCameraZ(cameraZ);
+                    setConfirmedAlpha(2.5);
+                }
+            } else {
+                setSelected(index);
                 setConfirmedAlpha(1);
                 setTargetCameraZ(cameraZByWidth);
-            } else {
-                const cameraZ = cameraZByWidth - 9;
-                setTargetCameraZ(cameraZ);
-                setConfirmedAlpha(2.5);
             }
-        } else {
-            setSelected(index);
-            setConfirmedAlpha(1);
-            setTargetCameraZ(cameraZByWidth);
-        }
-    };
+        },
+        [spgs, selected, confirmedAlpha, onBuyNowClick, cameraZByWidth]
+    );
+
     const renderCollection = useCallback(
         (spg: SPG, i: number) => {
             const effectiveSelected = selected - dragOffset;
@@ -252,7 +259,15 @@ export default function NFTsCollectionsList({
                 />
             );
         },
-        [selected, dragOffset, angleStep, radius, positionY, confirmedAlpha]
+        [
+            selected,
+            dragOffset,
+            angleStep,
+            radius,
+            positionY,
+            confirmedAlpha,
+            handleClickCollection,
+        ]
     );
     useEffect(() => {
         const handleResize = () => {
@@ -277,7 +292,7 @@ export default function NFTsCollectionsList({
         handleResize();
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
-    }, [window.innerWidth, window.innerHeight]);
+    }, []);
 
     // 프리로딩 완료 후에만 렌더링
     if (!isPreloaded) {

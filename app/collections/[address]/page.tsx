@@ -1,10 +1,11 @@
 /// app\collections\[address]\page.tsx
 
-import { notFound } from "next/navigation";
-import NFTContents from "@/components/nfts/NFT.Contents";
-import { SPG } from "@/app/story/spg/actions";
-import { prisma } from "@/lib/prisma/client";
 import { Suspense } from "react";
+
+import { notFound } from "next/navigation";
+
+import NFTContents from "@/components/nfts/NFT.Contents";
+import { prisma } from "@/lib/prisma/client";
 
 interface CollectionPageProps {
     params: {

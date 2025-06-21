@@ -3,18 +3,22 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+
 import { tweetKeys } from "@/app/queryKeys";
+
 import {
     getLatestSyncData,
     getTweets,
     getTweetAuthors,
     getTweetMetricsHistory,
-    GetTweetMetricsHistoryInput,
     getAuthorMetricsHistory,
-    GetAuthorMetricsHistoryInput,
-    getAuthorByPlayerId,
-    GetAuthorByPlayerIdInput,
+    getAuthorByPlayerId
 } from "./actions";
+
+import type {
+    GetTweetMetricsHistoryInput,
+    GetAuthorMetricsHistoryInput,
+    GetAuthorByPlayerIdInput} from "./actions";
 
 export function useLatestSyncDataQuery() {
     return useQuery({

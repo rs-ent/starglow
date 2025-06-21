@@ -1,6 +1,8 @@
 /// components/atoms/Portal.tsx
 
-import {memo, ReactNode, useEffect, useId, useState} from "react";
+import type { ReactNode} from "react";
+import {memo, useEffect, useId, useState} from "react";
+
 import {createPortal} from "react-dom";
 
 interface PortalProps {

@@ -1,13 +1,16 @@
 /// components/admin/story/Admin.Story.Metadata.SPG.tsx
 
-import type { ERC7572Metadata } from "@/app/story/metadata/actions";
 import { useState } from "react";
-import { useMetadata } from "@/app/story/metadata/hooks";
+
 import { useSession } from "next-auth/react";
-import { TbTopologyStar3 } from "react-icons/tb";
 import { SiEthereum } from "react-icons/si";
-import FileUploaderIPFS from "@/components/atoms/FileUploader.IPFS";
+import { TbTopologyStar3 } from "react-icons/tb";
+
 import { useToast } from "@/app/hooks/useToast";
+import { useMetadata } from "@/app/story/metadata/hooks";
+import FileUploaderIPFS from "@/components/atoms/FileUploader.IPFS";
+
+import type { ERC7572Metadata } from "@/app/story/metadata/actions";
 
 interface AdminStoryMetadataSPGProps {
     onBack: () => void;
@@ -34,10 +37,6 @@ export default function AdminStoryMetadataSPG({
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [successMsg, setSuccessMsg] = useState("");
-    const [editId, setEditId] = useState<string | null>(null); // 수정용 scaffold
-    const [metadataType, setMetadataType] = useState<
-        "spg-nft-collection-metadata" | "erc721-metadata"
-    >("spg-nft-collection-metadata");
 
     const {
         metadataList,
@@ -50,7 +49,7 @@ export default function AdminStoryMetadataSPG({
         isPendingDeleteMetadata,
     } = useMetadata({
         getMetadataListInput: {
-            type: metadataType,
+            type: "spg-nft-collection-metadata",
         },
     });
 
@@ -96,7 +95,9 @@ export default function AdminStoryMetadataSPG({
             });
             setErc7572Form(erc7572InitialForm);
             setSuccessMsg("메타데이터가 성공적으로 등록되었습니다!");
-            refetchMetadataList();
+            refetchMetadataList().catch((err) => {
+                console.error(err);
+            });
         } catch (err: any) {
             setError(err?.message || "등록 중 오류가 발생했습니다.");
         } finally {
@@ -111,14 +112,18 @@ export default function AdminStoryMetadataSPG({
         try {
             await deleteMetadataAsync({ id });
             setSuccessMsg("삭제되었습니다.");
-            refetchMetadataList();
+            refetchMetadataList().catch((err) => {
+                console.error(err);
+            });
         } catch (err: any) {
             setError(err?.message || "삭제 중 오류가 발생했습니다.");
         }
     };
 
     const handleCopy = (cid: string) => {
-        navigator.clipboard.writeText(cid);
+        navigator.clipboard.writeText(cid).catch((err) => {
+            console.error(err);
+        });
         toast.success("CID가 복사되었습니다.");
     };
 

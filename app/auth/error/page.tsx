@@ -1,8 +1,9 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { Suspense, useMemo } from "react";
+
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 const ERROR_MESSAGES: Record<string, string> = {
     Configuration: "There was a problem with the server configuration.",

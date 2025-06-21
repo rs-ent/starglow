@@ -3,8 +3,9 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "../queryKeys";
+
 import { createWallet } from "../actions/defaultWallets";
+import { queryKeys } from "../queryKeys";
 
 export function useCreateWallet() {
     const queryClient = useQueryClient();

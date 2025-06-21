@@ -1,8 +1,10 @@
 /// components/organisms/Footer.tsx
 
 import {memo} from "react";
-import FollowUs from "./FollowUs";
+
 import {cn} from "@/lib/utils/tailwind";
+
+import FollowUs from "./FollowUs";
 
 interface FooterProps {
     followUsVisible?: boolean;

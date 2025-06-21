@@ -2,8 +2,9 @@
 
 "use client";
 
-import { LoaderCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { LoaderCircle } from "lucide-react";
+
 import { useLoading } from "@/app/hooks/useLoading";
 
 export default function Loading() {

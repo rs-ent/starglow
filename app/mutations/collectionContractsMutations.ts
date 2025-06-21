@@ -2,6 +2,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import {
     setURI,
     mintTokens,
@@ -17,9 +18,12 @@ import {
     updateCollectionSettings,
     addPageImages,
 } from "@/app/actions/collectionContracts";
-import { NFT } from "@prisma/client";
-import { collectionKeys } from "../queryKeys";
 import { useToast } from "@/app/hooks/useToast";
+
+import { collectionKeys } from "../queryKeys";
+
+import type { NFT } from "@prisma/client";
+
 
 export const useDeployCollectionMutation = () => {
     const queryClient = useQueryClient();

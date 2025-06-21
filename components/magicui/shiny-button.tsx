@@ -1,8 +1,12 @@
 "use client";
 
-import { cn } from "@/lib/utils/tailwind";
-import { motion, MotionProps, type AnimationProps } from "motion/react";
 import React from "react";
+
+import { motion, type AnimationProps } from "motion/react";
+
+import { cn } from "@/lib/utils/tailwind";
+import type { MotionProps} from "motion/react";
+
 
 const animationProps = {
     initial: { "--x": "100%", scale: 0.8 },

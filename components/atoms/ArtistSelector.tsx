@@ -2,20 +2,21 @@
 
 "use client";
 
-import { Artist } from "@prisma/client";
+import { memo, useCallback, useMemo } from "react";
+
 import Image from "next/image";
+
+import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { ArtistBG } from "@/lib/utils/get/artist-colors";
+
+import type { Artist } from "@prisma/client";
 
 interface ArtistSelectorProps {
     artist: Artist;
     className?: string;
     frameSize?: number;
     textSize?: number;
-    gapSize?: number;
-    paddingSize?: number;
     isSelected?: boolean;
     onSelect?: (artist: Artist) => void;
 }
@@ -26,12 +27,9 @@ const ArtistSelector = memo(function ArtistSelector({
     className = "",
     frameSize = 55,
     textSize = 15,
-    gapSize = 10,
-    paddingSize = 10,
     isSelected = false,
     onSelect,
 }: ArtistSelectorProps) {
-
     // 선택 상태 계산 최적화
     const selected = useMemo(() => isSelected, [isSelected]);
 
@@ -49,7 +47,7 @@ const ArtistSelector = memo(function ArtistSelector({
     // 클릭 핸들러 최적화
     const handleClick = useCallback(() => {
         onSelect?.(artist);
-    }, [artist, onSelect, isSelected]);
+    }, [artist, onSelect]);
 
     // 그림자 스타일 최적화
     const shadowStyle = useMemo(

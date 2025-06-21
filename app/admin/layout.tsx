@@ -1,5 +1,5 @@
-import AdminNav from "@/components/admin/Admin.Nav";
 import { requireAdmin } from "@/app/auth/authUtils";
+import AdminNav from "@/components/admin/Admin.Nav";
 
 export const dynamic = "force-dynamic";
 

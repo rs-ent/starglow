@@ -1,7 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
 
 interface DoormanProps {
     text?: string;

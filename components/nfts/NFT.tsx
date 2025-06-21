@@ -2,17 +2,19 @@
 
 "use client";
 
-import { SPG } from "@/app/story/spg/actions";
-import { cn } from "@/lib/utils/tailwind";
 import { useEffect, useState } from "react";
+
+import { cn } from "@/lib/utils/tailwind";
+
 import NFTContents from "./NFT.Contents";
+
+import type { SPG } from "@/app/story/spg/actions";
 
 interface NFTProps {
     spg: SPG;
-    searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-export default function NFT({ spg, searchParams }: NFTProps) {
+export default function NFT({ spg }: NFTProps) {
     const [isFadingIn, setIsFadingIn] = useState(false);
     const [faded, setFaded] = useState(false);
 

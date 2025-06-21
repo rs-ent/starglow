@@ -1,11 +1,15 @@
 /// components/user/User.MyStar.Modal.Contents.tsx
 
-import { Artist, Player, QuestLog, PollLog } from "@prisma/client";
-import type { VerifiedSPG } from "@/app/story/interaction/actions";
-import UserMyStarModalContentsCollections from "./User.MyStar.Modal.Contents.Collections";
-import { cn } from "@/lib/utils/tailwind";
 import React from "react";
-import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+
+
+import { cn } from "@/lib/utils/tailwind";
+
+import UserMyStarModalContentsCollections from "./User.MyStar.Modal.Contents.Collections";
+
+import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+import type { VerifiedSPG } from "@/app/story/interaction/actions";
+import type { Artist, Player, QuestLog, PollLog } from "@prisma/client";
 
 interface UserMyStarModalContentsProps {
     artist: Artist;

@@ -3,19 +3,21 @@
 "use client";
 
 import { memo, useCallback, useState } from "react";
-import { cn } from "@/lib/utils/tailwind";
-import { Player } from "@prisma/client";
+
+import { AnimatePresence, motion } from "framer-motion";
+
+import { useQuestGet } from "@/app/hooks/useQuest";
+import { useReferralGet } from "@/app/hooks/useReferral";
 import PublicPrivateTab from "@/components/atoms/PublicPrivateTab";
+import { cn } from "@/lib/utils/tailwind";
+
 import QuestsPrivate from "./Quests.Contents.Private";
 import QuestsPublic from "./Quests.Contents.Public";
-import { useReferralGet } from "@/app/hooks/useReferral";
-import { useQuestGet } from "@/app/hooks/useQuest";
-import { User } from "next-auth";
-import { AnimatePresence, motion } from "framer-motion";
-import { VerifiedSPG } from "@/app/story/interaction/actions";
+
+import type { VerifiedSPG } from "@/app/story/interaction/actions";
+import type { Player } from "@prisma/client";
 
 interface QuestsContentsProps {
-    user: User | null;
     player: Player | null;
     verifiedSPGs?: VerifiedSPG[];
 }
@@ -26,7 +28,7 @@ const contentVariants = {
     exit: { opacity: 0, transition: { duration: 0.3 } },
 };
 
-function QuestsContents({ user, player, verifiedSPGs }: QuestsContentsProps) {
+function QuestsContents({ player, verifiedSPGs }: QuestsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
 
     // 탭 전환 핸들러 메모이제이션
@@ -89,7 +91,6 @@ function QuestsContents({ user, player, verifiedSPGs }: QuestsContentsProps) {
                         />
                     ) : (
                         <QuestsPrivate
-                            user={user}
                             player={player}
                             questLogs={playerQuestLogs || []}
                             privateTabClicked={!isPublic}

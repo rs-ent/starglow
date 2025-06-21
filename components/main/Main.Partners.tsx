@@ -1,8 +1,9 @@
 /// components/main/Main.Partners.tsx
 
+import {memo} from "react";
+
 import {getResponsiveClass} from "@/lib/utils/responsiveClass";
 import {cn} from "@/lib/utils/tailwind";
-import {memo} from "react";
 
 // 파트너 정보 타입 정의
 interface Partner {

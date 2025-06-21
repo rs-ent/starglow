@@ -2,15 +2,17 @@
 
 "use client";
 
-import React, { useState } from "react";
-import { cn } from "@/lib/utils/tailwind";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { User } from "next-auth";
-import { Player } from "@prisma/client";
-import { useMemo } from "react";
+import React, { useState, useMemo } from "react";
+
 import { getProviderIdentity } from "@/lib/utils/get/provider-identity";
-import { ProviderType } from "@/app/types/auth";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+
 import UserSettingsProfileModal from "../user/User.Settings.Profile.Modal";
+
+import type { ProviderType } from "@/app/types/auth";
+import type { Player } from "@prisma/client";
+import type { User } from "next-auth";
 
 interface ProfileNameProps {
     user: User;
@@ -30,7 +32,7 @@ export default React.memo(function ProfileName({
         const { icon, color } = getProviderIdentity(provider);
         const nickname = player?.nickname || user?.name || user?.email || "";
         return { provider, icon, color, nickname };
-    }, []);
+    }, [player?.nickname, user]);
 
     const { textClass, frameClass, iconClass } = useMemo(() => {
         return {

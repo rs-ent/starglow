@@ -2,8 +2,10 @@
 
 "use client";
 
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
-import { collectionKeys } from "../queryKeys";
+import { NFT } from "@prisma/client";
+import { useQuery } from "@tanstack/react-query";
+
+
 import {
     getCollection,
     getTokenOwners,
@@ -19,6 +21,8 @@ import {
     getCollectionParticipants,
     getUserVerifiedCollections,
 } from "../actions/collectionContracts";
+import { collectionKeys } from "../queryKeys";
+
 import type {
     GetCollectionInput,
     GetCollectionResult,
@@ -38,7 +42,8 @@ import type {
     GetCollectionParticipantsInput,
     GetUserVerifiedCollectionsInput,
 } from "../actions/collectionContracts";
-import { NFT } from "@prisma/client";
+import type { UseQueryOptions } from "@tanstack/react-query";
+
 
 export const useCollection = (input: GetCollectionInput) => {
     return useQuery({

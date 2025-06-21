@@ -3,7 +3,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { questKeys } from "../queryKeys";
+
 import {
     getQuests,
     getQuest,
@@ -13,6 +13,8 @@ import {
     getPlayerQuestLogs,
     tokenGatingQuest,
 } from "../actions/quests";
+import { questKeys } from "../queryKeys";
+
 import type {
     GetQuestsInput,
     PaginationInput,
@@ -23,8 +25,8 @@ import type {
     GetPlayerQuestLogsInput,
     TokenGatingQuestInput,
 } from "../actions/quests";
-import { Quest, QuestLog } from "@prisma/client";
-import { TokenGatingData } from "../story/nft/actions";
+import type { TokenGatingData } from "../story/nft/actions";
+import type { Quest, QuestLog } from "@prisma/client";
 
 export function useQuestsQuery({
     input,

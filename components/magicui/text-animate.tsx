@@ -1,8 +1,14 @@
 "use client";
 
+import type { ElementType} from "react";
+import { memo } from "react";
+
+import { AnimatePresence, motion } from "motion/react";
+
 import { cn } from "@/lib/utils/tailwind";
-import { AnimatePresence, motion, MotionProps, Variants } from "motion/react";
-import { ElementType, memo } from "react";
+
+
+import type { MotionProps, Variants } from "motion/react";
 
 type AnimationType = "text" | "word" | "character" | "line";
 type AnimationVariant =

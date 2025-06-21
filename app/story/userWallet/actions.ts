@@ -2,16 +2,20 @@
 
 "use server";
 
-import { prisma } from "@/lib/prisma/client";
 import {
-    Prisma,
-    Wallet,
     BlockchainNetwork,
     WalletStatus,
 } from "@prisma/client";
-import { Hex, verifyMessage } from "viem";
 import { ethers } from "ethers";
+import { verifyMessage } from "viem";
+
+import { prisma } from "@/lib/prisma/client";
 import { decryptPrivateKey, encryptPrivateKey } from "@/lib/utils/encryption";
+
+import type {
+    Prisma,
+    Wallet} from "@prisma/client";
+import type { Hex} from "viem";
 
 export async function createWallet(userId: string) {
     try {

@@ -1,8 +1,11 @@
 /// app/queries/rewardsLogsQueries.ts
 
-import { GetRewardsLogsInput, getRewardsLogs } from "../actions/rewardsLogs";
 import { useQuery } from "@tanstack/react-query";
+
+import { getRewardsLogs } from "../actions/rewardsLogs";
 import { rewardLogsKeys } from "../queryKeys";
+
+import type { GetRewardsLogsInput} from "../actions/rewardsLogs";
 
 export const getRewardsLogsQuery = (input?: GetRewardsLogsInput) => {
     return useQuery({

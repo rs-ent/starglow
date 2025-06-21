@@ -2,11 +2,12 @@
 
 "use client";
 
+import React, { useRef, useCallback, useState, useEffect } from "react";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { useMemo, useRef, useCallback, useState, useEffect } from "react";
-import React from "react";
-import { SPG } from "@/app/story/spg/actions";
+
+import type { SPG } from "@/app/story/spg/actions";
 interface NFTContentsReportProps {
     spg: SPG;
 }
@@ -25,15 +26,15 @@ export default React.memo(function NFTContentsReport({
     }, []);
 
     // 전체화면 요청 함수
-    const handleFullScreen = useCallback(() => {
+    const handleFullScreen = useCallback(async () => {
         if (iframeRef.current) {
             // 표준 FullScreen API
             if (iframeRef.current.requestFullscreen) {
-                iframeRef.current.requestFullscreen();
+                await iframeRef.current.requestFullscreen();
             }
             // Safari 등 벤더 프리픽스 대응
             else if ((iframeRef.current as any).webkitRequestFullscreen) {
-                (iframeRef.current as any).webkitRequestFullscreen();
+                await (iframeRef.current as any).webkitRequestFullscreen();
             }
         }
     }, []);

@@ -2,28 +2,8 @@
 
 "use client";
 
-import { useQuestGet, useQuestSet } from "@/app/hooks/useQuest";
-import { useArtistsGet } from "@/app/hooks/useArtists";
-import { Button } from "@/components/ui/button";
-import { formatDate } from "@/lib/utils/format";
-import { Quest, Artist, Asset } from "@prisma/client";
 import { useState, useMemo, useEffect } from "react";
-import { useToast } from "@/app/hooks/useToast";
-import AdminQuestCreate from "./Admin.Quest.Create";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-} from "@/components/ui/command";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils/tailwind";
+
 import {
     DndContext,
     closestCenter,
@@ -39,8 +19,31 @@ import {
     useSortable,
     verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { GripVertical } from "lucide-react";
+import { Check, ChevronsUpDown, GripVertical } from "lucide-react";
+
+import { useArtistsGet } from "@/app/hooks/useArtists";
+import { useQuestGet, useQuestSet } from "@/app/hooks/useQuest";
+import { useToast } from "@/app/hooks/useToast";
+import { Button } from "@/components/ui/button";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+} from "@/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
+import { formatDate } from "@/lib/utils/format";
+import { cn } from "@/lib/utils/tailwind";
+
+import AdminQuestCreate from "./Admin.Quest.Create";
+
+import type { Quest, Artist, Asset } from "@prisma/client";
 
 type QuestWithRelations = Quest & {
     artist?: Artist | null;
@@ -54,11 +57,7 @@ export default function AdminQuestList() {
         error: Error | null;
     };
 
-    const {
-        artists,
-        isLoading: isLoadingArtists,
-        error: errorArtists,
-    } = useArtistsGet({});
+    const { artists } = useArtistsGet({});
 
     const { deleteQuest, updateQuestOrder, updateQuestActive } = useQuestSet();
 
@@ -110,7 +109,7 @@ export default function AdminQuestList() {
     useEffect(() => {
         if (!quests) return;
         filteringQuests();
-    }, [questFilter, quests]);
+    }, [questFilter, quests, filteringQuests]);
 
     const handleEdit = (quest: Quest) => {
         setSelectedQuest(quest);
@@ -380,7 +379,9 @@ export default function AdminQuestList() {
                         variant={showOrderChange ? "default" : "outline"}
                         onClick={() => {
                             if (showOrderChange) {
-                                handleOrderChange();
+                                handleOrderChange().catch((err) => {
+                                    console.error(err);
+                                });
                             } else {
                                 setShowOrderChange(true);
                             }

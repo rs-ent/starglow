@@ -1,8 +1,9 @@
 // app/hooks/useCollectionV2.ts
 
-import { useUserVerifiedCollections } from "../queries/collectionContractsQueries";
-import type { GetUserVerifiedCollectionsInput } from "../actions/collectionContracts";
 import { useAddPageImagesMutation } from "../mutations/collectionContractsMutations";
+import { useUserVerifiedCollections } from "../queries/collectionContractsQueries";
+
+import type { GetUserVerifiedCollectionsInput } from "../actions/collectionContracts";
 
 interface UseCollectionGetProps {
     getUserVerifiedCollectionsInput?: GetUserVerifiedCollectionsInput;

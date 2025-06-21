@@ -3,58 +3,37 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useNFT } from "@/app/story/nft/hooks";
-import { useSPG } from "@/app/story/spg/hooks";
+
+import { useSession } from "next-auth/react";
+import { FaRocket, FaCube, FaImages } from "react-icons/fa";
+import { SiEthereum } from "react-icons/si";
+import { TbTopologyStar3 } from "react-icons/tb";
+
+import { useToast } from "@/app/hooks/useToast";
+import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
 import { useMetadata } from "@/app/story/metadata/hooks";
 import { useStoryNetwork } from "@/app/story/network/hooks";
-import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
-import { useToast } from "@/app/hooks/useToast";
-import { useSession } from "next-auth/react";
-import { TbTopologyStar3 } from "react-icons/tb";
-import { SiEthereum } from "react-icons/si";
-import { FaRocket, FaCube, FaImages } from "react-icons/fa";
-import { Story_spg, ipfs } from "@prisma/client";
+import { useNFT } from "@/app/story/nft/hooks";
+import { useSPG } from "@/app/story/spg/hooks";
+
 import type {
     ERC721Metadata,
     IPAssetMetadata,
 } from "@/app/story/metadata/actions";
+import type { Story_spg, ipfs } from "@prisma/client";
 
 export default function AdminStoryMint({ onBack }: { onBack?: () => void }) {
     const toast = useToast();
     const { data: session } = useSession();
     const userId = session?.user?.id || "";
 
-    // Hooks
-    const {
-        mint,
-        mintAsync,
-        isPending: isMintPending,
-        isSuccess: isMintSuccess,
-        isError: isMintError,
-        error: mintError,
+    const { mintAsync, mintAndRegisterAsIPAssetAsync } = useNFT();
 
-        registerAsIPAsset,
-        registerAsIPAssetAsync,
-        isRegisterAsIPAssetPending,
-        isRegisterAsIPAssetSuccess,
-        isRegisterAsIPAssetError,
-        registerAsIPAssetError,
-
-        mintAndRegisterAsIPAsset,
-        mintAndRegisterAsIPAssetAsync,
-        isMintAndRegisterAsIPAssetPending,
-        isMintAndRegisterAsIPAssetSuccess,
-        isMintAndRegisterAsIPAssetError,
-        mintAndRegisterAsIPAssetError,
-    } = useNFT();
-
-    const { getSPGsData, getSPGsIsLoading, getSPGsIsError, getSPGsRefetch } =
-        useSPG({});
+    const { getSPGsData, getSPGsIsLoading, getSPGsIsError } = useSPG({});
 
     const {
         metadataList: nftMetadataList,
         isLoadingMetadataList: isLoadingNFTMetadata,
-        refetchMetadataList: refetchNFTMetadata,
     } = useMetadata({
         getMetadataListInput: {
             type: "erc721-metadata",
@@ -115,13 +94,14 @@ export default function AdminStoryMint({ onBack }: { onBack?: () => void }) {
             }
         };
 
-        loadMetadata();
+        loadMetadata().catch((err) => {
+            console.error(err);
+        });
     }, [nftMetadataList, cachedMetadata, isLoadingNFTMetadata]);
 
     const {
         metadataList: ipAssetMetadataList,
         isLoadingMetadataList: isLoadingIPAssetMetadata,
-        refetchMetadataList: refetchIPAssetMetadata,
     } = useMetadata({
         getMetadataListInput: {
             type: "ip-asset-metadata",
@@ -780,7 +760,7 @@ export default function AdminStoryMint({ onBack }: { onBack?: () => void }) {
                         </button>
                         <button
                             onClick={() => setStep(5)}
-                            className={`px-6 py-3 rounded-xl font-bold transition-all bg-gradient-to-r from-green-500 to-blue-500 text-white hover:scale-105`}
+                            className="px-6 py-3 rounded-xl font-bold transition-all bg-gradient-to-r from-green-500 to-blue-500 text-white hover:scale-105"
                         >
                             다음 →
                         </button>

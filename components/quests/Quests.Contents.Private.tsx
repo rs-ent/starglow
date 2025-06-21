@@ -3,19 +3,21 @@
 "use client";
 
 import { memo, useCallback, useMemo, useState } from "react";
-import { Artist, Player, QuestLog, ReferralLog } from "@prisma/client";
+
+import { AnimatePresence, motion } from "framer-motion";
+
+import { ArtistBG } from "@/lib/utils/get/artist-colors";
+import { cn } from "@/lib/utils/tailwind";
+
+import QuestsArtistMissions from "./Quests.Contents.Private.ArtistMissions";
 import ArtistMessage from "../artists/ArtistMessage";
 import ArtistSlideSelector from "../artists/ArtistSlideSelector";
-import QuestsArtistMissions from "./Quests.Contents.Private.ArtistMissions";
-import { cn } from "@/lib/utils/tailwind";
-import { User } from "next-auth";
-import { ArtistBG } from "@/lib/utils/get/artist-colors";
-import { AnimatePresence, motion } from "framer-motion";
-import { VerifiedSPG } from "@/app/story/interaction/actions";
-import { TokenGatingResult } from "@/app/story/nft/actions";
+
+import type { VerifiedSPG } from "@/app/story/interaction/actions";
+import type { TokenGatingResult } from "@/app/story/nft/actions";
+import type { Artist, Player, QuestLog, ReferralLog } from "@prisma/client";
 
 interface QuestsPrivateProps {
-    user: User | null;
     player: Player | null;
     questLogs: QuestLog[];
     privateTabClicked: boolean;
@@ -24,7 +26,6 @@ interface QuestsPrivateProps {
 }
 
 function QuestsPrivate({
-    user,
     player,
     questLogs,
     referralLogs,
@@ -95,8 +96,6 @@ function QuestsPrivate({
                     })),
                 };
             });
-
-        console.log("Token Gating Result", result);
 
         return result;
     }, [verifiedSPGs, selectedArtist]);

@@ -3,12 +3,15 @@
 "use client";
 
 import { useCallback, useState } from "react";
+
 import { useDropzone } from "react-dropzone";
+
 import { useFiles } from "@/app/hooks/useFiles";
-import { StoredFile } from "@/app/actions/files";
 import { useToast } from "@/app/hooks/useToast";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+
+import type { StoredFile } from "@/app/actions/files";
 
 interface FileUploaderProps {
     purpose?: string;
@@ -141,7 +144,7 @@ export default function FileUploader({
                 onFiles(fileDataArr);
             }
         },
-        [uploadFiles, purpose, bucket, onComplete, onFiles, maxSize]
+        [uploadFiles, purpose, bucket, onComplete, onFiles, maxSize, toast]
     );
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({

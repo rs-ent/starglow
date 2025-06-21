@@ -2,12 +2,11 @@
 
 "use client";
 
-import { Player, PlayerAsset, Asset } from "@prisma/client";
-import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
-import { cn } from "@/lib/utils/tailwind";
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
+import { cn } from "@/lib/utils/tailwind";
 import PartialLoading from "../atoms/PartialLoading";
+import type { Player, PlayerAsset, Asset } from "@prisma/client";
 
 interface UserRewardsProps {
     player: Player | null;
@@ -34,7 +33,7 @@ export default function UserRewards({
     player,
     playerAssets,
 }: UserRewardsProps) {
-    const { playerAssetList, slots } = useMemo(() => {
+    const { playerAssetList } = useMemo(() => {
         const playerAssetList = (playerAssets ??
             []) as Array<PlayerAssetWithAsset>;
         const length = playerAssetList.length;
@@ -47,20 +46,17 @@ export default function UserRewards({
     }, [playerAssets]);
 
     return (
-        <>
-            <div
-                className={cn(
-                    "flex flex-col items-center justify-center w-screen max-w-[1000px] mx-auto",
-                    "py-4 px-6 sm:py-6 sm:px-8 md:py-8 md:px-12 lg:py-10 lg:px-12",
-                    "gap-[15px]"
-                )}
-            >
-                <UserRewardModalCardV2
-                    playerId={player?.id}
-                    reward={playerAssetList[0]}
-                    closeModal={() => {}}
-                />
-            </div>
-        </>
+        <div
+            className={cn(
+                "flex flex-col items-center justify-center w-screen max-w-[1000px] mx-auto",
+                "py-4 px-6 sm:py-6 sm:px-8 md:py-8 md:px-12 lg:py-10 lg:px-12",
+                "gap-[15px]"
+            )}
+        >
+            <UserRewardModalCardV2
+                playerId={player?.id}
+                reward={playerAssetList[0]}
+            />
+        </div>
     );
 }

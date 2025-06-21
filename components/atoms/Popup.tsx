@@ -1,10 +1,13 @@
 /// components/atoms/Popup.tsx
 
 import { useEffect } from "react";
+
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import { cn } from "@/lib/utils/tailwind";
 import Image from "next/image";
+
+import { cn } from "@/lib/utils/tailwind";
+
 import Portal from "./Portal";
 
 interface PopupProps {

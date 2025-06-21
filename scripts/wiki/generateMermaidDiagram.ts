@@ -1,4 +1,4 @@
-import { ComponentInfo, TemplateAnalysis } from "./types";
+import type { ComponentInfo, TemplateAnalysis } from "./types";
 
 /**
  * 템플릿 분석 결과를 기반으로 Mermaid 다이어그램 생성
@@ -26,9 +26,9 @@ export function generateMermaidDiagram(analysis: TemplateAnalysis): string {
     };
 
     // 노드 정의
-    let nodes: string[] = [];
-    let connections: string[] = [];
-    let styleDefinitions: string[] = [];
+    const nodes: string[] = [];
+    const connections: string[] = [];
+    const styleDefinitions: string[] = [];
 
     // 템플릿 노드 추가
     nodes.push(`    T["${name}.tsx (Template)"]`);

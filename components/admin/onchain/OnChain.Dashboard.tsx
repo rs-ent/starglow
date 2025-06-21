@@ -4,14 +4,19 @@
 "use client";
 
 import { useState } from "react";
-import OnChainNetwork from "./OnChain.Network";
-import OnChainFactory, { FactoryContract } from "./OnChain.Factory";
-import OnChainEscrowWallet from "./OnChain.EscrowWallet";
-import OnChainCollection from "./OnChain.Collection";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { Network, Factory, Wallet, Layers, Image } from "lucide-react";
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import OnChainCollection from "./OnChain.Collection";
+import OnChainEscrowWallet from "./OnChain.EscrowWallet";
+import OnChainFactory from "./OnChain.Factory";
+import OnChainNetwork from "./OnChain.Network";
 import OnChainNFTManager from "./OnChain.NFT";
-import { CollectionContract } from "@prisma/client";
+
+import type { FactoryContract } from "./OnChain.Factory";
+import type { CollectionContract } from "@prisma/client";
 
 export default function OnChainDashboard() {
     const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(

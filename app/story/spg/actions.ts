@@ -2,18 +2,22 @@
 
 "use server";
 
-import {
+import { decodeEventLog } from "viem";
+
+import { prisma } from "@/lib/prisma/client";
+import SPGNFTFactory from "@/web3/artifacts/contracts/SPGNFTFactory.sol/SPGNFTFactory.json";
+
+import { fetchPublicClient, fetchWalletClient } from "../client";
+import { fetchURI } from "../metadata/actions";
+
+import type {
     Story_spg,
     ipfs,
     Artist,
     Prisma,
     Story_spgContract,
 } from "@prisma/client";
-import { prisma } from "@/lib/prisma/client";
-import SPGNFTFactory from "@/web3/artifacts/contracts/SPGNFTFactory.sol/SPGNFTFactory.json";
-import { Hex, decodeEventLog } from "viem";
-import { fetchURI } from "../metadata/actions";
-import { fetchPublicClient, fetchWalletClient } from "../client";
+import type { Hex } from "viem";
 
 export interface deploySPGNFTFactoryInput {
     userId: string;
@@ -38,8 +42,6 @@ export async function deploySPGNFTFactory(
             throw new Error("Wallet account not found");
         }
 
-        console.log("Deploying SPGNFTFactory contract with viem...");
-
         // Deploy contract
         const hash = await walletClient.deployContract({
             abi: SPGNFTFactory.abi,
@@ -49,8 +51,6 @@ export async function deploySPGNFTFactory(
             chain: walletClient.chain,
         });
 
-        console.log("Transaction hash:", hash);
-
         const receipt = await publicClient.waitForTransactionReceipt({
             hash,
             confirmations: 1,
@@ -59,8 +59,6 @@ export async function deploySPGNFTFactory(
         if (!receipt.contractAddress) {
             throw new Error("Contract address not found");
         }
-
-        console.log("Factory deployed at:", receipt.contractAddress);
 
         const spgContract = await prisma.story_spgContract.create({
             data: {
@@ -128,8 +126,6 @@ export async function createSPG(
             throw new Error("Wallet account not found");
         }
 
-        console.log("Deploying SPG collection via factory...");
-
         const { request } = await publicClient.simulateContract({
             address: input.contractAddress as Hex,
             abi: SPGNFTFactory.abi,
@@ -148,7 +144,6 @@ export async function createSPG(
         });
 
         const hash = await walletClient.writeContract(request);
-        console.log("Transaction hash:", hash);
 
         const receipt = await publicClient.waitForTransactionReceipt({
             hash,
@@ -301,7 +296,7 @@ export async function getSPGs(input?: getSPGsInput): Promise<SPG[]> {
             });
         }
 
-        let where: Prisma.Story_spgWhereInput = {};
+        const where: Prisma.Story_spgWhereInput = {};
 
         if (input.walletAddress) {
             where.ownerAddress = input.walletAddress;

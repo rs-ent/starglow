@@ -3,10 +3,12 @@
 "use client";
 
 import {memo, useMemo} from "react";
-import LinkButton from "../atoms/LinkButton";
-import Icon from "../atoms/Icon";
-import {ArrowDown} from "lucide-react";
+
 import {motion} from "framer-motion";
+import {ArrowDown} from "lucide-react";
+
+import Icon from "../atoms/Icon";
+import LinkButton from "../atoms/LinkButton";
 
 // 메모이제이션된 애니메이션 요소들
 const AnimatedTitle = memo(() => (

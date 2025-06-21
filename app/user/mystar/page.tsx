@@ -1,9 +1,10 @@
 /// app\user\mystar\page.tsx
 
 import { Suspense } from "react";
+
 import { requireAuthUserAndPlayer } from "@/app/auth/authUtils";
-import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 import { getUserVerifiedSPGs } from "@/app/story/interaction/actions";
+import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 import UserMyStar from "@/components/user/User.MyStar";
 
 // 로딩 상태 컴포넌트
@@ -18,13 +19,7 @@ async function UserContent() {
         userId: user.id,
     });
 
-    return (
-        <UserMyStar
-            user={user}
-            player={player}
-            userVerifiedSPGs={userVerifiedSPGs}
-        />
-    );
+    return <UserMyStar player={player} userVerifiedSPGs={userVerifiedSPGs} />;
 }
 
 export default function UserEntryPage() {

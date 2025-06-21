@@ -3,11 +3,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/app/queryKeys";
+
 import { getExchangeRateInfo, convertAmount } from "@/app/actions/exchangeRate";
+import { queryKeys } from "@/app/queryKeys";
+
 import type { ExchangeRateInfo } from "@/app/actions/exchangeRate";
-import * as PortOne from "@portone/browser-sdk/v2";
-import { prismaTransaction } from "@/lib/types/payment";
+import type { prismaTransaction } from "@/lib/types/payment";
+import type * as PortOne from "@portone/browser-sdk/v2";
 
 export function useExchangeRateQuery(
     fromCurrency: PortOne.Entity.Currency,

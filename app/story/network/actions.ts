@@ -3,8 +3,10 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import { Prisma, BlockchainNetwork } from "@prisma/client";
-import { Chain } from "viem";
+
+import type { Prisma, BlockchainNetwork } from "@prisma/client";
+import type { Chain } from "viem";
+
 
 export interface createStoryNetworkInput {
     name: string;

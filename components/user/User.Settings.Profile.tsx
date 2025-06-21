@@ -2,14 +2,17 @@
 
 "use client";
 
-import { cn } from "@/lib/utils/tailwind";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { useToast } from "@/app/hooks/useToast";
-import { usePlayerSet } from "@/app/hooks/usePlayer";
 import { useState } from "react";
+
+
+import { usePlayerSet } from "@/app/hooks/usePlayer";
+import { useToast } from "@/app/hooks/useToast";
 import FileUploader from "@/components/atoms/FileUploader";
-import { Player } from "@prisma/client";
-import { User } from "next-auth";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+
+import type { Player } from "@prisma/client";
+import type { User } from "next-auth";
 
 interface UserSettingsProfileProps {
     player: Player;

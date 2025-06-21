@@ -1,11 +1,8 @@
 /// components/admin/story/Admin.Story.Metadata.NFT.tsx
 
-import type { ERC721Metadata } from "@/app/story/metadata/actions";
 import { useState } from "react";
-import { useMetadata } from "@/app/story/metadata/hooks";
+
 import { useSession } from "next-auth/react";
-import FileUploaderIPFS from "@/components/atoms/FileUploader.IPFS";
-import { useToast } from "@/app/hooks/useToast";
 import {
     FaImage,
     FaVideo,
@@ -16,12 +13,14 @@ import {
     FaTrash,
     FaCopy,
 } from "react-icons/fa";
-import { TbTopologyStar3 } from "react-icons/tb";
 import { SiEthereum } from "react-icons/si";
+import { TbTopologyStar3 } from "react-icons/tb";
 
-const formatDateForMetadata = (date: Date) => {
-    return date.toISOString().split("T")[0];
-};
+import { useToast } from "@/app/hooks/useToast";
+import { useMetadata } from "@/app/story/metadata/hooks";
+import FileUploaderIPFS from "@/components/atoms/FileUploader.IPFS";
+
+import type { ERC721Metadata } from "@/app/story/metadata/actions";
 
 const nftInitialForm: ERC721Metadata = {
     name: "",
@@ -150,7 +149,9 @@ export default function AdminStoryMetadataNFT({
             });
             setForm(nftInitialForm);
             setSuccessMsg("NFT 메타데이터가 성공적으로 등록되었습니다!");
-            refetchMetadataList();
+            refetchMetadataList().catch((err) => {
+                console.error(err);
+            });
             toast.success("메타데이터 등록 완료!");
         } catch (err: any) {
             setError(err?.message || "등록 중 오류가 발생했습니다.");
@@ -168,7 +169,9 @@ export default function AdminStoryMetadataNFT({
         try {
             await deleteMetadataAsync({ id });
             setSuccessMsg("삭제되었습니다.");
-            refetchMetadataList();
+            refetchMetadataList().catch((err) => {
+                console.error(err);
+            });
             toast.success("삭제 완료");
         } catch (err: any) {
             setError(err?.message || "삭제 중 오류가 발생했습니다.");
@@ -183,6 +186,7 @@ export default function AdminStoryMetadataNFT({
             const data = await response.json();
             setExpandedMetadata(JSON.stringify(data, null, 2));
         } catch (error) {
+            console.error(error);
             toast.error("메타데이터를 불러올 수 없습니다.");
         }
     };
@@ -568,9 +572,11 @@ export default function AdminStoryMetadataNFT({
                                             <button
                                                 className="p-2 rounded-lg hover:bg-orange-900/30 text-orange-400 hover:text-orange-300 transition opacity-0 group-hover:opacity-100"
                                                 onClick={() => {
-                                                    navigator.clipboard.writeText(
-                                                        item.cid
-                                                    );
+                                                    navigator.clipboard
+                                                        .writeText(item.cid)
+                                                        .catch((err) => {
+                                                            console.error(err);
+                                                        });
                                                     toast.success("CID 복사됨");
                                                 }}
                                                 title="CID 복사"

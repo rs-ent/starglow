@@ -1,23 +1,22 @@
 /// components/artists/Artist.Feed.Card.tsx
 
-import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
-import { Artist } from "@prisma/client";
-import Image from "next/image";
+import React, { useState, useRef, useEffect } from "react";
+
 import { Heart, MessageCircle, Play } from "lucide-react";
+import Image from "next/image";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { useState, useRef, useEffect } from "react";
-import React from "react";
+
+import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 
 interface ArtistFeedCardProps {
     feed: ArtistFeedWithReactions;
-    artist: Artist;
     onClick: () => void;
 }
 
 export default React.memo(function ArtistFeedCard({
     feed,
-    artist,
     onClick,
 }: ArtistFeedCardProps) {
     const firstMedia = feed.imageUrls?.[0] || feed.videoUrls?.[0];

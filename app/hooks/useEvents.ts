@@ -1,14 +1,19 @@
 /// app\hooks\useEvents.ts
 
 import { useState } from "react";
-import { EventCategory, EventStatus, Events } from "@prisma/client";
-import { useEventsQuery, useEventQuery } from "@/app/queries/eventsQueries";
+
+import { Events } from "@prisma/client";
+
 import {
     useCreateEvent,
     useUpdateEvent,
     useDeleteEvent,
 } from "@/app/mutations/eventsMutations";
+import { useEventsQuery, useEventQuery } from "@/app/queries/eventsQueries";
+
 import { useToast } from "./useToast";
+
+import type { EventCategory, EventStatus} from "@prisma/client";
 
 export function useEvents({
     category,

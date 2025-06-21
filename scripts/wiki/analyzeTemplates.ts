@@ -1,4 +1,5 @@
 import path from "path";
+
 import { analyzeAllTemplates } from "./analyzeTemplate";
 
 // 프로젝트 루트 디렉토리

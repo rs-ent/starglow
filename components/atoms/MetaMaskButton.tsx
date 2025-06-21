@@ -2,10 +2,12 @@
 
 "use client";
 
-import { useMetaMask } from "@/app/hooks/useMetaMask";
 import { useState, useEffect } from "react";
-import Image from "next/image";
+
 import { Loader2 } from "lucide-react";
+import Image from "next/image";
+
+import { useMetaMask } from "@/app/hooks/useMetaMask";
 
 interface MetaMaskButtonProps {
     className?: string;

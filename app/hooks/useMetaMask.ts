@@ -3,6 +3,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+
+import { formatEther } from "viem";
 import {
     useAccount,
     useConnect,
@@ -12,9 +14,8 @@ import {
     useConfig,
     useChainId,
 } from "wagmi";
-import { injected } from "wagmi/connectors";
-import { formatEther } from "viem";
 import { mainnet, sepolia } from "wagmi/chains";
+import { injected } from "wagmi/connectors";
 
 // 애플리케이션에서 지원하는 체인 목록
 const SUPPORTED_CHAINS = [mainnet, sepolia];

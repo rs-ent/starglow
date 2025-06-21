@@ -3,8 +3,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+
 import { getWalletsByUserId } from "../actions/wallet";
 import { walletKeys } from "../queryKeys";
+
 import type { WalletResponse } from "../actions/wallet";
 
 export function useWalletsByUserIdQuery(userId: string) {

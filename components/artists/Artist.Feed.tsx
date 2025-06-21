@@ -3,14 +3,16 @@
 "use client";
 
 import { useMemo } from "react";
+
 import { useArtistFeedsGet } from "@/app/hooks/useArtistFeeds";
-import { Artist } from "@prisma/client";
-import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
-import { useState } from "react";
-import ArtistFeedCard from "./Artist.Feed.Card";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+
+import ArtistFeedCard from "./Artist.Feed.Card";
 import PartialLoading from "../atoms/PartialLoading";
+
+import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+import type { Artist } from "@prisma/client";
 
 interface ArtistFeedProps {
     artist: Artist | null;
@@ -81,7 +83,6 @@ export default function ArtistFeed({ artist, onSelectFeed }: ArtistFeedProps) {
                             <ArtistFeedCard
                                 key={feed.id}
                                 feed={feed}
-                                artist={artist}
                                 onClick={() => {
                                     onSelectFeed?.(feeds, index);
                                 }}

@@ -1,11 +1,7 @@
 /// components/user/User.Tweets.Register.tsx
 
-import { useTweets } from "@/app/actions/x/hooks";
-import { User } from "next-auth";
-import { Player, TweetAuthor } from "@prisma/client";
-import { useToast } from "@/app/hooks/useToast";
-import TwitterIntegration from "../atoms/TwitterIntegration";
 import { useEffect, useMemo, useState } from "react";
+
 import { motion, AnimatePresence } from "framer-motion";
 import {
     UserPlus,
@@ -17,12 +13,18 @@ import {
     AlertCircle,
     RefreshCcw,
 } from "lucide-react";
+
+import { useTweets } from "@/app/actions/x/hooks";
+import { useToast } from "@/app/hooks/useToast";
+import { Confetti } from "@/components/magicui/confetti";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { Confetti } from "@/components/magicui/confetti";
+
+import TwitterIntegration from "../atoms/TwitterIntegration";
+
+import type { Player, TweetAuthor } from "@prisma/client";
 
 interface UserTweetsRegisterProps {
-    user: User | null;
     player: Player | null;
     tweetAuthor?: TweetAuthor | null;
     onXAuthSuccess?: () => void;
@@ -40,7 +42,6 @@ https://starglow.io
 const steps = ["login", "validate", "post", "confirm", "complete"];
 
 export default function UserTweetsRegister({
-    user,
     player,
     tweetAuthor,
     onXAuthSuccess,
@@ -56,23 +57,14 @@ export default function UserTweetsRegister({
 
     const toast = useToast();
     const {
-        validateRegisterXAuthor,
         validateRegisterXAuthorAsync,
         isValidateRegisterXAuthorPending,
-        isValidateRegisterXAuthorError,
-        validateRegisterXAuthorError,
 
-        checkIsActiveXAuthor,
         checkIsActiveXAuthorAsync,
         isCheckIsActiveXAuthorPending,
-        isCheckIsActiveXAuthorError,
-        checkIsActiveXAuthorError,
 
-        confirmRegisterXAuthor,
         confirmRegisterXAuthorAsync,
         isConfirmRegisterXAuthorPending,
-        isConfirmRegisterXAuthorError,
-        confirmRegisterXAuthorError,
     } = useTweets();
 
     const { currentStepIndex, progressPercentage } = useMemo(() => {
@@ -89,18 +81,12 @@ export default function UserTweetsRegister({
         }
 
         if (!tweetAuthor) {
-            console.log("!tweetAuthor", !tweetAuthor);
             setStep("login");
         } else {
             setTweetAuthorId(tweetAuthor.authorId);
             if (tweetAuthor.registered) {
-                console.log("tweetAuthor.registered", tweetAuthor.registered);
                 setStep("complete");
             } else if (tweetAuthor.validated && !tweetAuthor.registered) {
-                console.log(
-                    "tweetAuthor.validated && !tweetAuthor.registered",
-                    tweetAuthor.validated && !tweetAuthor.registered
-                );
                 setStep("confirm");
             }
         }
@@ -131,7 +117,6 @@ export default function UserTweetsRegister({
             toast.success("Successfully validated your X Account!");
             setValidateFailed(false);
             setStep("post");
-            console.log("validateResult.isValid", validateResult.isValid);
         } else {
             toast.error(
                 validateResult.message ||
@@ -515,8 +500,8 @@ export default function UserTweetsRegister({
                                         "text-gray-300 whitespace-pre-line text-left cursor-pointer",
                                         getResponsiveClass(10).textClass
                                     )}
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(
+                                    onClick={async () => {
+                                        await navigator.clipboard.writeText(
                                             tweetText
                                         );
                                         toast.success("Copied to clipboard");

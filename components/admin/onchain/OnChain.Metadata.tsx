@@ -3,31 +3,9 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-    FormDescription,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, UseFormReturn } from "react-hook-form";
-import { z } from "zod";
-import { useToast } from "@/app/hooks/useToast";
-import FileUploader from "@/components/atoms/FileUploader";
-import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 import {
     Plus,
     Trash2,
@@ -43,16 +21,22 @@ import {
     Percent,
     Image,
 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+import { useMetadata } from "@/app/hooks/useMetadata";
+import { useToast } from "@/app/hooks/useToast";
+import FileUploader from "@/components/atoms/FileUploader";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import { METADATA_TYPE } from "@/app/actions/metadata";
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
@@ -62,6 +46,21 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+    FormDescription,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -69,15 +68,20 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { format } from "date-fns";
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/tailwind";
-import { Metadata } from "@prisma/client";
-import { useMetadata } from "@/app/hooks/useMetadata";
+
+import type { METADATA_TYPE } from "@/app/actions/metadata";
+import type { Metadata } from "@prisma/client";
+import type { UseFormReturn } from "react-hook-form";
 
 // MetadataPreviewDialog component for previewing metadata
 function MetadataPreviewDialog({

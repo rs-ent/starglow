@@ -2,16 +2,17 @@
 
 "use client";
 
-import { useArtistSet } from "@/app/hooks/useArtists";
-import { Artist } from "@prisma/client";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { useState, useCallback, useEffect } from "react";
-import { Label } from "@/components/ui/label";
+
+import { useArtistSet } from "@/app/hooks/useArtists";
 import FileUploader from "@/components/atoms/FileUploader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/tailwind";
-import { useSPG } from "@/app/story/spg/hooks";
+
+import type { Artist } from "@prisma/client";
 
 interface AdminArtistsCreateProps {
     mode: "create" | "update";
@@ -34,10 +35,6 @@ export default function AdminArtistsCreate({
         isUpdating,
         updateArtistError,
     } = useArtistSet();
-
-    const { getSPGsData, getSPGIsLoading } = useSPG({
-        getSPGsInput: {},
-    });
 
     const [name, setName] = useState(initialData?.name ?? "");
     const [description, setDescription] = useState(
@@ -152,7 +149,7 @@ export default function AdminArtistsCreate({
             if (typeof additionalInfo === "string" && additionalInfo.trim()) {
                 parsedAdditionalInfo = JSON.parse(additionalInfo);
             }
-        } catch (e) {
+        } catch (_e) {
             alert("Additional Info는 올바른 JSON이어야 합니다.");
             return;
         }

@@ -1,6 +1,6 @@
 /// lib/utils/get/provider-brands.ts
 
-import { Provider, ProviderType } from "@/app/types/auth";
+import type { ProviderType } from "@/app/types/auth";
 
 const providerIcons: Record<ProviderType, string> = {
     google: "/icons/providers/google.svg",

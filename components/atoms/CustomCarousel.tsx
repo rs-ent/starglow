@@ -2,18 +2,18 @@
 
 "use client";
 
-import {
+import type { ReactNode } from "react";
+import React, {
     useState,
     useRef,
     useCallback,
-    ReactNode,
     Children,
     useMemo,
     useEffect,
     memo,
 } from "react";
+
 import { cn } from "@/lib/utils/tailwind";
-import React from "react";
 
 type CarouselDirection = "horizontal" | "vertical";
 
@@ -41,6 +41,7 @@ const CarouselItem = memo(
         </div>
     )
 );
+CarouselItem.displayName = "CarouselItem";
 
 export default React.memo(function CustomCarousel({
     children,
@@ -102,7 +103,7 @@ export default React.memo(function CustomCarousel({
             setDragStart(pos);
             setDragCurrent(pos);
         },
-        [totalItems, isHorizontal]
+        [totalItems]
     );
 
     // 드래그 중
@@ -114,7 +115,7 @@ export default React.memo(function CustomCarousel({
 
             setDragCurrent(pos);
         },
-        [isDragging, dragStart]
+        [isDragging]
     );
 
     // 드래그 끝
@@ -150,19 +151,22 @@ export default React.memo(function CustomCarousel({
                 handleDragMove(pos);
             },
             onTouchEnd: (e: React.TouchEvent) => {
+                e.preventDefault();
                 handleDragEnd();
             },
             onMouseDown: (e: React.MouseEvent) => {
-                e.preventDefault(); // 텍스트 선택 방지
+                e.preventDefault();
                 const pos = isHorizontal ? e.clientX : e.clientY;
                 handleDragStart(pos);
             },
             onMouseMove: (e: React.MouseEvent) => {
+                e.preventDefault();
                 if (!isDragging) return;
                 const pos = isHorizontal ? e.clientX : e.clientY;
                 handleDragMove(pos);
             },
             onMouseUp: (e: React.MouseEvent) => {
+                e.preventDefault();
                 handleDragEnd();
             },
             onMouseLeave: () => {

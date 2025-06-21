@@ -12,7 +12,8 @@ import {
     useCirculationQuery,
     useTokenGatingQuery,
 } from "./queries";
-import {
+
+import type {
     getNFTsInput,
     getOwnersInput,
     getCirculationInput,

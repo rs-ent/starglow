@@ -3,6 +3,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import {
     createAsset,
     deleteAsset,
@@ -14,6 +15,9 @@ import {
     airdropAsset,
     setDefaultAsset,
 } from "@/app/actions/assets";
+
+import { assetKeys } from "../queryKeys";
+
 import type {
     CreateAssetInput,
     DeleteAssetInput,
@@ -25,7 +29,6 @@ import type {
     DeployAssetsContractInput,
     SetDefaultAssetInput,
 } from "@/app/actions/assets";
-import { assetKeys } from "../queryKeys";
 
 export function useCreateAsset() {
     const queryClient = useQueryClient();

@@ -3,15 +3,22 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Artist, Player, Poll, PollLog } from "@prisma/client";
-import { TokenGatingResult, TokenGatingData } from "@/app/story/nft/actions";
-import PollsListCard from "@/components/polls/Polls.List.Card";
+
+import { motion } from "framer-motion";
 import Slider from "react-slick";
+
+
+import type { TokenGatingResult, TokenGatingData } from "@/app/story/nft/actions";
+
+import PollsListCard from "@/components/polls/Polls.List.Card";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import PartialLoading from "../atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
-import { motion } from "framer-motion";
+
+import PartialLoading from "../atoms/PartialLoading";
+
+import type { Artist, Player, Poll, PollLog } from "@prisma/client";
+
 
 interface PollsListProps {
     polls: Poll[];
@@ -89,7 +96,7 @@ function PollsList({
 
     // 중앙 인덱스 계산 메모이제이션
     const centerIndex = useMemo(() => {
-        let idx = (currentSlide + Math.floor(slidesToShow / 2)) % polls.length;
+        const idx = (currentSlide + Math.floor(slidesToShow / 2)) % polls.length;
         return idx;
     }, [currentSlide, slidesToShow, polls.length]);
 

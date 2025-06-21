@@ -2,9 +2,11 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect } from "react";
+
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Loader2, Shield } from "lucide-react";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
@@ -41,7 +43,7 @@ export default React.memo(function WarningPopup({
         if (forceClose) {
             onClose?.();
         }
-    }, [forceClose]);
+    }, [forceClose, onClose]);
 
     useEffect(() => {
         if (open && critical) {

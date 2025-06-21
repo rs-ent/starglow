@@ -2,14 +2,15 @@
 
 "use client";
 
-import { useGetDefaultUserWalletQuery, useGetWalletsQuery } from "./queries";
 import {
     useConnectWalletMutation,
     useVerifyWalletSignatureMutation,
     useUpdateWalletMutation,
     useDeleteWalletMutation,
 } from "./mutations";
-import { getDefaultUserWalletInput, getWalletsInput } from "./actions";
+import { useGetDefaultUserWalletQuery, useGetWalletsQuery } from "./queries";
+
+import type { getDefaultUserWalletInput, getWalletsInput } from "./actions";
 
 export interface useUserWalletInput {
     getDefaultUserWalletInput?: getDefaultUserWalletInput;

@@ -2,19 +2,21 @@
 
 "use client";
 
-import { cn } from "@/lib/utils/tailwind";
-import { Player } from "@prisma/client";
-import { usePollsGet } from "@/app/hooks/usePolls";
 import { memo, useCallback, useState } from "react";
-import PublicPrivateTab from "../atoms/PublicPrivateTab";
-import PollsContentsPublic from "./Polls.Contents.Public";
-import PollsContentsPrivate from "./Polls.Contents.Private";
-import { User } from "next-auth";
+
 import { AnimatePresence, motion } from "framer-motion";
-import { VerifiedSPG } from "@/app/story/interaction/actions";
+
+import { usePollsGet } from "@/app/hooks/usePolls";
+import { cn } from "@/lib/utils/tailwind";
+
+import PollsContentsPrivate from "./Polls.Contents.Private";
+import PollsContentsPublic from "./Polls.Contents.Public";
+import PublicPrivateTab from "../atoms/PublicPrivateTab";
+
+import type { VerifiedSPG } from "@/app/story/interaction/actions";
+import type { Player } from "@prisma/client";
 
 interface PollsContentsProps {
-    user: User | null;
     player: Player | null;
     verifiedSPGs?: VerifiedSPG[];
 }
@@ -25,10 +27,10 @@ const contentVariants = {
     exit: { opacity: 0, transition: { duration: 0.3 } },
 };
 
-function PollsContents({ user, player, verifiedSPGs }: PollsContentsProps) {
+function PollsContents({ player, verifiedSPGs }: PollsContentsProps) {
     const [isPublic, setIsPublic] = useState(true);
 
-    const { playerPollLogs, isLoading: isLogsLoading } = usePollsGet({
+    const { playerPollLogs } = usePollsGet({
         getPlayerPollLogsInput: player?.id
             ? {
                   playerId: player.id,
@@ -80,7 +82,6 @@ function PollsContents({ user, player, verifiedSPGs }: PollsContentsProps) {
                         />
                     ) : (
                         <PollsContentsPrivate
-                            user={user}
                             player={player}
                             pollLogs={playerPollLogs}
                             privateTabClicked={!isPublic}

@@ -1,15 +1,19 @@
 "use client";
 
 import { Suspense, useEffect, useState, useCallback } from "react";
-import { getProviders } from "next-auth/react";
-import SocialAuthButton from "@/components/atoms/SocialAuthButton";
-import { Provider, ProviderType, WALLET_PROVIDERS } from "@/app/types/auth";
+
 import { useSearchParams } from "next/navigation";
+import { getProviders } from "next-auth/react";
+
 import { useToast } from "@/app/hooks/useToast";
-import PartialLoading from "@/components/atoms/PartialLoading";
-import TelegramLoginButton from "@/components/atoms/TelegramLoginButton";
 import { useUserSet } from "@/app/hooks/useUser";
+import { ProviderType, WALLET_PROVIDERS } from "@/app/types/auth";
+import PartialLoading from "@/components/atoms/PartialLoading";
+import SocialAuthButton from "@/components/atoms/SocialAuthButton";
+import TelegramLoginButton from "@/components/atoms/TelegramLoginButton";
 import WalletAuthButton from "@/components/atoms/WalletAuthButton";
+
+import type { Provider} from "@/app/types/auth";
 
 function SignInButtons() {
     const toast = useToast();

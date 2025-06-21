@@ -1,9 +1,11 @@
 // components/atoms/TwitterIntegration.tsx
 
 import { useState, useEffect, useCallback } from "react";
+
 import { startXAuth, exchangeXToken } from "@/app/actions/x/actions";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+
 import PartialLoading from "./PartialLoading";
 
 interface TwitterIntegrationProps {
@@ -66,9 +68,11 @@ export default function TwitterIntegration({
             url.searchParams.delete("x_auth_error");
             window.history.replaceState({}, document.title, url.toString());
         } else if (code && state) {
-            handleMobileAuthCallback(code, state);
+            handleMobileAuthCallback(code, state).catch((error) => {
+                console.error("Mobile auth callback error:", error);
+            });
         }
-    }, []);
+    }, [handleMobileAuthCallback, onError]);
 
     const handleXConnect = async () => {
         setIsLoading(true);

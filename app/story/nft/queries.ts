@@ -1,17 +1,20 @@
 /// app/story/nft/queries.ts
 
 import { useQuery } from "@tanstack/react-query";
+
 import { queryKeys } from "../queryKeys";
 import {
     getNFTs,
-    getNFTsInput,
     getOwners,
-    getOwnersInput,
     getCirculation,
-    getCirculationInput,
-    tokenGating,
-    TokenGatingInput,
+    tokenGating
 } from "./actions";
+
+import type {
+    getNFTsInput,
+    getOwnersInput,
+    getCirculationInput,
+    TokenGatingInput} from "./actions";
 
 export function useNFTsQuery(input?: getNFTsInput) {
     return useQuery({

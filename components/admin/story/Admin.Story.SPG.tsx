@@ -1,18 +1,22 @@
 /// components/admin/story/Admin.Story.SPG.tsx
 
-import { useSPG } from "@/app/story/spg/hooks";
-import { useStoryNetwork } from "@/app/story/network/hooks";
-import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
-import { useMetadata } from "@/app/story/metadata/hooks";
+import { useEffect, useState } from "react";
+
+import { TBAContractType } from "@prisma/client";
+import { useSession } from "next-auth/react";
+import { FaShieldAlt, FaCube } from "react-icons/fa";
+import { SiEthereum } from "react-icons/si";
+import { TbTopologyStar3 } from "react-icons/tb";
+
 import { useArtistsGet } from "@/app/hooks/useArtists";
 import { useToast } from "@/app/hooks/useToast";
+import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
+import { useMetadata } from "@/app/story/metadata/hooks";
+import { useStoryNetwork } from "@/app/story/network/hooks";
+import { useSPG } from "@/app/story/spg/hooks";
 import { useTBA } from "@/app/story/tba/hooks";
-import { useEffect, useState } from "react";
-import { TbTopologyStar3 } from "react-icons/tb";
-import { SiEthereum } from "react-icons/si";
-import { FaShieldAlt, FaCube } from "react-icons/fa";
-import { useSession } from "next-auth/react";
-import { BlockchainNetwork, ipfs, TBAContractType } from "@prisma/client";
+
+import type { ipfs } from "@prisma/client";
 
 export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
     const toast = useToast();
@@ -80,8 +84,6 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
     const {
         getSPGContractsData,
         getSPGContractsIsLoading,
-        getSPGContractsIsError,
-        getSPGContractsError,
         getSPGContractsRefetch,
 
         getSPGsData,
@@ -90,25 +92,14 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
         getSPGsError,
         getSPGsRefetch,
 
-        deploySPGNFTFactoryMutation,
         deploySPGNFTFactoryMutationAsync,
         deploySPGNFTFactoryMutationIsPending,
-        deploySPGNFTFactoryMutationIsError,
 
-        createSPGMutation,
         createSPGMutationAsync,
         createSPGMutationIsPending,
-        createSPGMutationIsError,
 
-        updateSPGMutation,
-        updateSPGMutationAsync,
-        updateSPGMutationIsPending,
-        updateSPGMutationIsError,
-
-        deleteSPGMutation,
         deleteSPGMutationAsync,
         deleteSPGMutationIsPending,
-        deleteSPGMutationIsError,
     } = useSPG({
         getSPGContractsInput: form.networkId
             ? {
@@ -120,12 +111,7 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
         },
     });
 
-    const {
-        metadataList,
-        isLoadingMetadataList,
-        isErrorMetadataList,
-        refetchMetadataList,
-    } = useMetadata({
+    const { metadataList, isLoadingMetadataList } = useMetadata({
         getMetadataListInput: {
             type: "spg-nft-collection-metadata",
         },
@@ -224,9 +210,11 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                     );
                 }
             };
-            fetchAllBalances();
+            fetchAllBalances().catch((err) => {
+                console.error(err);
+            });
         }
-    }, [step, form.networkId, escrowWallets]);
+    }, [step, form.networkId, escrowWallets, fetchEscrowWalletsBalanceAsync]);
 
     // TBA 주소 자동 설정
     useEffect(() => {
@@ -288,8 +276,12 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
             toast.error("배포 실패");
         } finally {
             setIsSubmitting(false);
-            getSPGContractsRefetch();
-            getSPGsRefetch();
+            getSPGContractsRefetch().catch((err) => {
+                console.error(err);
+            });
+            getSPGsRefetch().catch((err) => {
+                console.error(err);
+            });
         }
     };
 
@@ -445,9 +437,17 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                                                 <td className="px-4 py-2 font-mono max-w-[180px] truncate text-center">
                                                     <button
                                                         onClick={() => {
-                                                            navigator.clipboard.writeText(
-                                                                spg.address
-                                                            );
+                                                            navigator.clipboard
+                                                                .writeText(
+                                                                    spg.address
+                                                                )
+                                                                .catch(
+                                                                    (err) => {
+                                                                        console.error(
+                                                                            err
+                                                                        );
+                                                                    }
+                                                                );
                                                             toast.success(
                                                                 "주소가 복사되었습니다"
                                                             );
@@ -821,7 +821,11 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                                             toast.success(
                                                 "새 컨트랙트가 배포되었습니다!"
                                             );
-                                            getSPGContractsRefetch();
+                                            getSPGContractsRefetch().catch(
+                                                (err) => {
+                                                    console.error(err);
+                                                }
+                                            );
                                         } catch (err: any) {
                                             toast.error(
                                                 err?.message ||

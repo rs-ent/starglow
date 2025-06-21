@@ -3,11 +3,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Poll } from "@prisma/client";
-import { getYoutubeVideoId, getYoutubeThumbnailUrl } from "@/lib/utils/youtube";
+
 import Image from "next/image";
+
 import { cn } from "@/lib/utils/tailwind";
+import { getYoutubeVideoId, getYoutubeThumbnailUrl } from "@/lib/utils/youtube";
+
 import YoutubeViewer from "./YoutubeViewer";
+
+import type { Poll } from "@prisma/client";
 
 interface PollThumbnailProps {
     poll: Poll;
@@ -32,7 +36,7 @@ export default function PollThumbnail({
 
     useEffect(() => {
         let mounted = true;
-        async function fetchThumbnail() {
+        const fetchThumbnail = async () => {
             if (!isVisible) return;
 
             if (poll.imgUrl) {
@@ -40,7 +44,6 @@ export default function PollThumbnail({
                 if (showAvailableVideo && poll.youtubeUrl) {
                     const videoId = getYoutubeVideoId(poll.youtubeUrl);
                     if (videoId) {
-                        console.log("videoId", videoId);
                         setVideoId(videoId);
                     }
                 }
@@ -48,7 +51,6 @@ export default function PollThumbnail({
                 const videoId = getYoutubeVideoId(poll.youtubeUrl);
                 if (videoId) {
                     setVideoId(videoId);
-                    console.log("videoId", videoId);
                     const url = await getYoutubeThumbnailUrl(videoId);
                     if (mounted) setSrc(url || fallbackSrc);
                 } else {
@@ -57,12 +59,21 @@ export default function PollThumbnail({
             } else {
                 setSrc(fallbackSrc);
             }
-        }
-        fetchThumbnail();
+        };
+
+        fetchThumbnail().catch((error) => {
+            console.error("Failed to fetch thumbnail:", error);
+        });
         return () => {
             mounted = false;
         };
-    }, [poll.imgUrl, poll.youtubeUrl, fallbackSrc, isVisible]);
+    }, [
+        poll.imgUrl,
+        poll.youtubeUrl,
+        fallbackSrc,
+        isVisible,
+        showAvailableVideo,
+    ]);
 
     return (
         <div ref={ref} className={cn("relative w-full h-full", className)}>
@@ -88,6 +99,7 @@ function useIntersectionObserver() {
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        const element = ref.current;
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
@@ -101,13 +113,13 @@ function useIntersectionObserver() {
             }
         );
 
-        if (ref.current) {
-            observer.observe(ref.current);
+        if (element) {
+            observer.observe(element);
         }
 
         return () => {
-            if (ref.current) {
-                observer.unobserve(ref.current);
+            if (element) {
+                observer.unobserve(element);
             }
         };
     }, []);

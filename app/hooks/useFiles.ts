@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { GetFilesMetadataByUrlsParams, StoredFile } from "@/app/actions/files";
-import {
-    useFilesByPurposeAndBucket,
-    useFileById,
-    useFilesMetadataByUrls,
-} from "@/app/queries/filesQueries";
+
 import {
     useUploadFile,
     useUploadFiles,
@@ -14,7 +9,15 @@ import {
     useUpdateFileOrder,
     useUpdateFilesOrder,
 } from "@/app/mutations/filesMutations";
+import {
+    useFilesByPurposeAndBucket,
+    useFileById,
+    useFilesMetadataByUrls,
+} from "@/app/queries/filesQueries";
+
 import { useToast } from "./useToast";
+
+import type { GetFilesMetadataByUrlsParams, StoredFile } from "@/app/actions/files";
 
 export function useFiles() {
     const [isUploading, setIsUploading] = useState(false);

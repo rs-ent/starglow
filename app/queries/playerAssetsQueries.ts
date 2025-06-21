@@ -3,13 +3,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { playerAssetsKeys } from "../queryKeys";
+
 import {
     getPlayerAssets,
-    GetPlayerAssetsInput,
-    GetPlayerAssetInput,
     getPlayerAsset,
 } from "../actions/playerAssets";
+import { playerAssetsKeys } from "../queryKeys";
+
+import type {
+    GetPlayerAssetsInput,
+    GetPlayerAssetInput} from "../actions/playerAssets";
 
 export function useGetPlayerAssets({
     getPlayerAssetsInput,

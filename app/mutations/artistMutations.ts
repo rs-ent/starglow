@@ -3,7 +3,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { artistKeys } from "../queryKeys";
+
 import {
     createArtist,
     deleteArtist,
@@ -13,6 +13,7 @@ import {
     deleteArtistMessage,
     tokenGating,
 } from "../actions/artists";
+import { artistKeys } from "../queryKeys";
 
 export function useCreateArtist() {
     const queryClient = useQueryClient();

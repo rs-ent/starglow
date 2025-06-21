@@ -1,20 +1,16 @@
 /// components/admin/story/Admin.Story.Metadata.tsx
 
-import type {
-    ERC7572Metadata,
-    IPAssetMetadata,
-    ERC721Metadata,
-    ipfsType,
-} from "@/app/story/metadata/actions";
 import { useState } from "react";
-import { useMetadata } from "@/app/story/metadata/hooks";
-import { ipfs } from "@prisma/client";
-import AdminStoryMetadataSPG from "./Admin.Story.Metadata.SPG";
+
+import { FaDatabase, FaCube, FaImages } from "react-icons/fa";
+import { SiEthereum } from "react-icons/si";
+import { TbTopologyStar3 } from "react-icons/tb";
+
 import AdminStoryMetadataIPAsset from "./Admin.Story.Metadata.IPAsset";
 import AdminStoryMetadataNFT from "./Admin.Story.Metadata.NFT";
-import { FaDatabase, FaCube, FaImages } from "react-icons/fa";
-import { TbTopologyStar3 } from "react-icons/tb";
-import { SiEthereum } from "react-icons/si";
+import AdminStoryMetadataSPG from "./Admin.Story.Metadata.SPG";
+
+import type { ipfsType } from "@/app/story/metadata/actions";
 
 interface AdminStoryMetadataProps {
     onBack?: () => void;

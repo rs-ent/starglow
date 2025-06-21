@@ -3,7 +3,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { stakingKeys, collectionKeys, playerAssetsKeys } from "@/app/queryKeys";
+
 import {
     stake,
     unstake,
@@ -13,6 +13,7 @@ import {
     findRewardableStakeTokens,
     claimStakeReward,
 } from "@/app/actions/staking";
+import { stakingKeys, collectionKeys, playerAssetsKeys } from "@/app/queryKeys";
 
 export function useStakeMutation() {
     const queryClient = useQueryClient();

@@ -1,25 +1,24 @@
 /// components/user/User.Reward.Modal.Card.V2.tsx
 
 import { useState, useEffect } from "react";
-import { PlayerAssetWithAsset } from "./User.Rewards";
+import { useRewardsLogsGet } from "@/app/hooks/useRewardsLogs";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { XIcon } from "lucide-react";
+
 import Funds from "../atoms/Funds";
-import { Button } from "../ui/button";
-import { useRewardsLogsGet } from "@/app/hooks/useRewardsLogs";
 import PartialLoading from "../atoms/PartialLoading";
+import { Button } from "../ui/button";
+
+import type { PlayerAssetWithAsset } from "./User.Rewards";
 
 interface UserRewardModalCardV2Props {
     playerId?: string;
     reward: PlayerAssetWithAsset;
-    closeModal: () => void;
 }
 
 export default function UserRewardModalCardV2({
     playerId,
     reward,
-    closeModal,
 }: UserRewardModalCardV2Props) {
     const [showPointsMissing, setShowPointsMissing] = useState(false);
 
@@ -36,10 +35,16 @@ export default function UserRewardModalCardV2({
     });
 
     useEffect(() => {
-        if (playerId && reward.asset.id) {
-            refetchRewardsLogs();
-        }
-    }, [playerId, reward.asset.id]);
+        const fetchRewardsLogs = async () => {
+            if (playerId && reward.asset.id) {
+                await refetchRewardsLogs();
+            }
+        };
+
+        fetchRewardsLogs().catch((error) => {
+            console.error("Failed to fetch rewards logs:", error);
+        });
+    }, [playerId, reward.asset.id, refetchRewardsLogs]);
 
     return (
         <div
@@ -70,8 +75,7 @@ export default function UserRewardModalCardV2({
                                     "font-bold"
                                 )}
                             >
-                                For the Starglowers who collected 'Points'
-                                through telegram mini app:
+                                {`For the Starglowers who collected 'Points' through telegram mini app:`}
                             </p>
                             <p className={getResponsiveClass(25).textClass}>
                                 <strong>Points</strong> are officially all

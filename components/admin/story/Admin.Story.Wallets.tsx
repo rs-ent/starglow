@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
+import { useSession } from "next-auth/react";
 import {
     FaWallet,
     FaEye,
@@ -10,13 +12,13 @@ import {
     FaPlus,
     FaBackspace,
 } from "react-icons/fa";
-import { TbTopologyStar3 } from "react-icons/tb";
 import { SiEthereum } from "react-icons/si";
+import { TbTopologyStar3 } from "react-icons/tb";
+import { privateKeyToAccount } from "viem/accounts";
+
+import { useToast } from "@/app/hooks/useToast";
 import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
 import { useStoryNetwork } from "@/app/story/network/hooks";
-import { useSession } from "next-auth/react";
-import { useToast } from "@/app/hooks/useToast";
-import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
     const { data: session } = useSession();
@@ -34,30 +36,20 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
         isPendingFetchEscrowWalletPrivateKey,
 
         registerEscrowWalletAsync,
+        isPendingRegisterEscrowWallet,
 
         fetchEscrowWalletsBalanceAsync,
         isPendingFetchEscrowWalletsBalance,
-
-        addEscrowWalletToSPGAsync,
-        isPendingAddEscrowWalletToSPG,
-        isErrorAddEscrowWalletToSPG,
     } = useEscrowWallets({
         getEscrowWalletsInput: {
             isActive: true,
         },
     });
 
-    const {
-        storyNetworks,
-        isLoadingStoryNetworks,
-        isErrorStoryNetworks,
-        refetchStoryNetworks,
-    } = useStoryNetwork();
+    const { storyNetworks } = useStoryNetwork();
 
-    const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
     const [privateKey, setPrivateKey] = useState<string | null>(null);
     const [showKey, setShowKey] = useState(false);
-    const [isRegistering, setIsRegistering] = useState(false);
     const [walletBalances, setWalletBalances] = useState<
         Record<string, string>
     >({});
@@ -95,9 +87,11 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
                     );
                 }
             };
-            fetchAllBalances();
+            fetchAllBalances().catch((err) => {
+                console.error(err);
+            });
         }
-    }, [selectedNetworkId, escrowWallets]);
+    }, [selectedNetworkId, escrowWallets, fetchEscrowWalletsBalanceAsync]);
 
     useEffect(() => {
         if (storyNetworks && Array.isArray(storyNetworks)) {
@@ -108,7 +102,9 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
     // 활성/비활성 토글
     const handleToggleActive = async (address: string, isActive: boolean) => {
         await setActiveEscrowWalletAsync({ address, isActive: !isActive });
-        refetchEscrowWallets();
+        refetchEscrowWallets().catch((err) => {
+            console.error(err);
+        });
     };
 
     // 프라이빗키 복호화
@@ -190,7 +186,9 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
             });
             if (typeof result === "object" && result && "address" in result) {
                 toast.success("에스크로 지갑이 등록되었습니다.");
-                refetchEscrowWallets();
+                refetchEscrowWallets().catch((err) => {
+                    console.error(err);
+                });
                 handleAddWalletModalClose();
             } else if (
                 typeof result === "string" &&
@@ -203,6 +201,7 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
                 toast.error("지갑 등록에 실패했습니다.");
             }
         } catch (err) {
+            console.error(err);
             toast.error("지갑 등록 중 오류가 발생했습니다.");
         } finally {
             setIsAddWalletLoading(false);
@@ -234,9 +233,10 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
                 <button
                     className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg shadow-lg hover:scale-105 transition-all duration-200"
                     onClick={handleRegisterWallet}
-                    disabled={isRegistering}
+                    disabled={isPendingRegisterEscrowWallet}
                 >
-                    <FaPlus /> {isRegistering ? "Registering..." : "Add Wallet"}
+                    <FaPlus />
+                    {isPendingRegisterEscrowWallet ? "추가중..." : "지갑 추가"}
                 </button>
             </div>
 

@@ -1,8 +1,10 @@
 /// app\mutations\eventsMutations.ts
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { createEvent, updateEvent, deleteEvent } from "@/app/actions/events";
-import { Events } from "@prisma/client";
+
+import type { Events } from "@prisma/client";
 
 type EventResponse = {
     success: boolean;

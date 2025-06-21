@@ -2,13 +2,15 @@
 
 "use server";
 
-import { User } from "next-auth";
 import { prisma } from "@/lib/prisma/client";
+
 import {
     getWalletAddressVerifiedSPGs,
     getUserVerifiedSPGs,
-    VerifiedSPG,
 } from "../story/interaction/actions";
+
+import type { VerifiedSPG } from "../story/interaction/actions";
+import type { User } from "next-auth";
 
 export interface CreateDiscordCodeInput {
     user: User;
@@ -18,7 +20,7 @@ export async function createDiscordCode({
     input,
 }: {
     input: CreateDiscordCodeInput;
-}) {
+}): Promise<{ id: string; code: string; expiresAt: Date; userId: string }> {
     const { user } = input;
 
     // user.id가 없으면 에러 발생
@@ -63,7 +65,17 @@ export interface VerifyInput {
     target: string;
 }
 
-export async function verify({ input }: { input: VerifyInput }) {
+export async function verify({ input }: { input: VerifyInput }): Promise<{
+    success: boolean;
+    message?: string;
+    collections?: Array<{
+        name: string;
+        symbol: string;
+        verifiedTokens: number[];
+        artist: string | null;
+        network: string | null;
+    }>;
+}> {
     const { type, target, discordId } = input;
 
     try {
@@ -184,7 +196,17 @@ export async function verifyHolderByDiscordId({
     input,
 }: {
     input: VerifyHolderByDiscordIdInput;
-}) {
+}): Promise<{
+    success: boolean;
+    message: string;
+    collections: Array<{
+        name: string;
+        symbol: string;
+        verifiedTokens: number[];
+        artist: string | null;
+        network: string | null;
+    }>;
+}> {
     const { discordId } = input;
 
     try {
@@ -236,6 +258,7 @@ export async function verifyHolderByDiscordId({
 
         return {
             success: true,
+            message: "Verification successful",
             collections,
         };
     } catch (error) {

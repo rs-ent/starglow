@@ -2,12 +2,14 @@
 
 "use client";
 
-import { GetUserByEmailInput, GetUsersInput } from "@/app/actions/user";
 import {
     useGetUserByEmail,
     useSetUserWithTelegram,
 } from "@/app/mutations/userMutations";
+
 import { useUserQuery, useUsersQuery } from "../queries/userQueries";
+
+import type { GetUserByEmailInput, GetUsersInput } from "@/app/actions/user";
 
 export function useUserGet({
     getUserByEmailInput,

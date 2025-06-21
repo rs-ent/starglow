@@ -2,22 +2,26 @@
 
 "use server";
 
-import { prisma } from "@/lib/prisma/client";
-import { BlockchainNetwork, EscrowWallet } from "@prisma/client";
-import { encryptPrivateKey, decryptPrivateKey } from "@/lib/utils/encryption";
-import { Prisma } from "@prisma/client";
+import { BlockchainNetwork  } from "@prisma/client";
 import {
-    StoryClient,
     StoryConfig,
     SupportedChainIds,
 } from "@story-protocol/core-sdk";
-import { http, formatUnits, Hex, Address } from "viem";
-import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
+import { http, formatUnits } from "viem";
+
 import {
     fetchPublicClient,
     fetchWalletClient,
     fetchStoryClient,
 } from "@/app/story/client";
+import { prisma } from "@/lib/prisma/client";
+import { encryptPrivateKey, decryptPrivateKey } from "@/lib/utils/encryption";
+import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
+
+import type { EscrowWallet , Prisma } from "@prisma/client";
+import type {
+    StoryClient} from "@story-protocol/core-sdk";
+import type { Hex, Address } from "viem";
 
 export interface registerEscrowWalletInput {
     address: string;

@@ -2,12 +2,15 @@
 
 "use client";
 
-import { Skeleton } from "../ui/skeleton";
 import Image from "next/image";
-import { METADATA_TYPE } from "@/app/actions/metadata";
+import { useRouter } from "next/navigation";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { useRouter } from "next/navigation";
+
+import { Skeleton } from "../ui/skeleton";
+
+import type { METADATA_TYPE } from "@/app/actions/metadata";
 
 export default function ImageMetadata({
     imageUrl,

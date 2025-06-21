@@ -1,19 +1,7 @@
 "use client";
 
 import { Fragment, useState, useCallback } from "react";
-import { useFactoryGet } from "@/app/hooks/useFactoryContracts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+
 import { format } from "date-fns";
 import {
     ExternalLink,
@@ -24,11 +12,27 @@ import {
     Clock,
     Image,
 } from "lucide-react";
-import PartialLoading from "@/components/atoms/PartialLoading";
-import CollectionFunctions from "./OnChain.CollectionFunctions";
-import { CollectionContract } from "@prisma/client";
-import { cn } from "@/lib/utils/tailwind";
+
 import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
+import { useFactoryGet } from "@/app/hooks/useFactoryContracts";
+import PartialLoading from "@/components/atoms/PartialLoading";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils/tailwind";
+
+import CollectionFunctions from "./OnChain.CollectionFunctions";
+
+import type { CollectionContract } from "@prisma/client";
 
 interface OnChainCollectionProps {
     networkId: string;

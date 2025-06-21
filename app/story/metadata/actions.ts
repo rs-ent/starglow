@@ -2,14 +2,18 @@
 
 "use server";
 
-import * as Proof from "@web3-storage/w3up-client/proof";
-import { fetchWeb3StorageClient } from "../client";
-import { prisma } from "@/lib/prisma/client";
-import { ipfs, Prisma } from "@prisma/client";
 import fs from "fs";
 import path from "path";
+
+import * as Proof from "@web3-storage/w3up-client/proof";
 import { filesFromPaths } from "files-from-path";
 import { nanoid } from "nanoid";
+
+import { prisma } from "@/lib/prisma/client";
+
+import { fetchWeb3StorageClient } from "../client";
+
+import type { ipfs, Prisma } from "@prisma/client";
 
 const SPACE_PROOF = process.env.WEB3STORAGE_SPACE_PROOF;
 

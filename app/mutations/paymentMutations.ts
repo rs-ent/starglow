@@ -3,20 +3,23 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/app/queryKeys";
+
 import {
     createPayment,
     verifyPayment,
     cancelPayment,
     refundPayment,
-    updatePaymentUserId,
+    updatePaymentUserId
+} from "@/app/actions/payment";
+import { queryKeys } from "@/app/queryKeys";
+
+import type {
     CreatePaymentInput,
     VerifyPaymentInput,
     CreatePaymentResponse,
     VerifyPaymentResponse,
-    CancelPaymentInput,
-} from "@/app/actions/payment";
-import { Payment } from "@prisma/client";
+    CancelPaymentInput} from "@/app/actions/payment";
+import type { Payment } from "@prisma/client";
 
 export function useCreatePaymentMutation() {
     const queryClient = useQueryClient();

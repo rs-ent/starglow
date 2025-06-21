@@ -3,13 +3,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "../queryKeys";
+
 import {
     getUserByEmail,
-    GetUserByEmailInput,
-    getUsers,
-    GetUsersInput,
+    getUsers
 } from "../actions/user";
+import { queryKeys } from "../queryKeys";
+
+import type {
+    GetUserByEmailInput,
+    GetUsersInput} from "../actions/user";
 
 export function useUsersQuery({
     getUsersInput,

@@ -1,24 +1,18 @@
 "use client";
 
-import {
-    EventCategory,
-    EventStatus,
-    Events as EventModel,
-} from "@prisma/client";
-import Image from "next/image";
-import { useEvents } from "@/app/hooks/useEvents";
 import { useState } from "react";
-import { H2 } from "../atoms/Typography";
-import { cn } from "@/lib/utils/tailwind";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import Icon from "../atoms/Icon";
-import Link from "next/link";
-import PartialLoading from "../atoms/PartialLoading";
 
-type Event = Pick<
-    EventModel,
-    "id" | "category" | "status" | "title" | "location" | "bannerImg"
->;
+import { EventCategory, EventStatus } from "@prisma/client";
+import Image from "next/image";
+import Link from "next/link";
+
+import { useEvents } from "@/app/hooks/useEvents";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+
+import Icon from "../atoms/Icon";
+import PartialLoading from "../atoms/PartialLoading";
+import { H2 } from "../atoms/Typography";
 
 export default function Events() {
     const [page, setPage] = useState(1);

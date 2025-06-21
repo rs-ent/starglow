@@ -1,11 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
-import { metadataKeys } from "../queryKeys";
 import { Metadata } from "@prisma/client";
+import { useQuery } from "@tanstack/react-query";
+
 import {
     getCollectionMetadata,
     getLinkableCollectionMetadata,
     getMetadataByCollectionAddress,
 } from "../actions/metadata";
+import { metadataKeys } from "../queryKeys";
 
 export function useCollectionMetadata(metadataId: string) {
     return useQuery({

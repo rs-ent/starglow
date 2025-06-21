@@ -3,13 +3,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+
 import {
     getFilesByPurposeAndBucket,
     getFileById,
-    getFilesMetadataByUrls,
-    GetFilesMetadataByUrlsParams,
+    getFilesMetadataByUrls
 } from "@/app/actions/files";
 import { queryKeys } from "@/app/queryKeys";
+
+import type {
+    GetFilesMetadataByUrlsParams} from "@/app/actions/files";
 
 export function useFilesByPurposeAndBucket(
     purpose: string,

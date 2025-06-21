@@ -1,25 +1,32 @@
 /// app/story/client.ts
 
+
 import {
-    StoryClient,
-    StoryConfig,
-    SupportedChainIds,
+    StoryClient
 } from "@story-protocol/core-sdk";
-import { prisma } from "@/lib/prisma/client";
-import { BlockchainNetwork, EscrowWallet } from "@prisma/client";
-import { privateKeyToAccount, Account } from "viem/accounts";
-import { fetchEscrowWalletPrivateKey } from "./escrowWallet/actions";
 import * as Client from "@web3-storage/w3up-client";
-import { StoreMemory } from "@web3-storage/w3up-client/stores/memory";
 import { Signer } from "@web3-storage/w3up-client/principal/ed25519";
+import { StoreMemory } from "@web3-storage/w3up-client/stores/memory";
 import {
-    Chain,
     createPublicClient,
     createWalletClient,
-    http,
-    PublicClient,
-    WalletClient,
+    http
 } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+
+import { prisma } from "@/lib/prisma/client";
+
+import { fetchEscrowWalletPrivateKey } from "./escrowWallet/actions";
+
+import type { BlockchainNetwork, EscrowWallet } from "@prisma/client";
+import type {
+    StoryConfig,
+    SupportedChainIds} from "@story-protocol/core-sdk";
+import type {
+    Chain,
+    PublicClient,
+    WalletClient} from "viem";
+import type { Account } from "viem/accounts";
 
 const ADMIN_KEY = process.env.WEB3STORAGE_ADMIN_KEY;
 

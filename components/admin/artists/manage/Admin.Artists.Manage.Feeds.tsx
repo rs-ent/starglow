@@ -2,11 +2,10 @@
 
 "use client";
 
-import { Artist } from "@prisma/client";
-import { useArtistFeedsGet } from "@/app/hooks/useArtistFeeds";
-import { useArtistFeedsSet } from "@/app/hooks/useArtistFeeds";
 import { useState } from "react";
-import { cn } from "@/lib/utils/tailwind";
+
+import { formatDistanceToNow } from "date-fns";
+import { ko } from "date-fns/locale";
 import {
     Plus,
     Image as ImageIcon,
@@ -23,14 +22,12 @@ import {
     AlertCircle,
 } from "lucide-react";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
+
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+    useArtistFeedsGet,
+    useArtistFeedsSet,
+} from "@/app/hooks/useArtistFeeds";
+import { useToast } from "@/app/hooks/useToast";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -41,6 +38,14 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -48,11 +53,12 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
-import { formatDistanceToNow } from "date-fns";
-import { ko } from "date-fns/locale";
+import { cn } from "@/lib/utils/tailwind";
+
 import CreateArtistFeed from "./Admin.Artists.Manage.CreateArtistFeed";
-import { useToast } from "@/app/hooks/useToast";
-import { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+
+import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
+import type { Artist } from "@prisma/client";
 
 interface AdminArtistsManageFeedsProps {
     artist: Artist;
@@ -105,6 +111,10 @@ export default function AdminArtistsManageFeeds({
     }
 
     const feeds = artistFeeds?.feeds || [];
+
+    const handleRefresh = async () => {
+        await refetch();
+    };
 
     return (
         <div className="space-y-8">
@@ -180,9 +190,9 @@ export default function AdminArtistsManageFeeds({
                                 </DialogHeader>
                                 <CreateArtistFeed
                                     artistId={artist.id}
-                                    onSuccess={() => {
+                                    onSuccess={async () => {
                                         setShowEditDialog(false);
-                                        refetch();
+                                        await handleRefresh();
                                     }}
                                     onCancel={() => {
                                         setShowEditDialog(false);

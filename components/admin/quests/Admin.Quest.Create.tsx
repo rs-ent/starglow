@@ -2,29 +2,20 @@
 
 "use client";
 
-import { useQuestSet } from "@/app/hooks/useQuest";
-import { useArtistsGet } from "@/app/hooks/useArtists";
 import { useState, useEffect, useMemo } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+
+import { QuestType } from "@prisma/client";
+
+import { useArtistsGet } from "@/app/hooks/useArtists";
 import { useAssetsGet } from "@/app/hooks/useAssets";
-import {
-    Select,
-    SelectTrigger,
-    SelectValue,
-    SelectContent,
-    SelectItem,
-} from "@/components/ui/select";
+import { useQuestSet } from "@/app/hooks/useQuest";
+import { useToast } from "@/app/hooks/useToast";
+import { useSPG } from "@/app/story/spg/hooks";
+import DateTimePicker from "@/components/atoms/DateTimePicker";
+import FileUploader from "@/components/atoms/FileUploader";
+import YoutubeViewer from "@/components/atoms/YoutubeViewer";
 import CollectionCard from "@/components/nfts/NFTs.CollectionCard";
-import {
-    Quest,
-    Artist,
-    Asset,
-    CollectionContract,
-    QuestType,
-} from "@prisma/client";
+import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
@@ -32,16 +23,22 @@ import {
     DialogTitle,
     DialogClose,
 } from "@/components/ui/dialog";
-import { useToast } from "@/app/hooks/useToast";
-import FileUploader from "@/components/atoms/FileUploader";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectTrigger,
+    SelectValue,
+    SelectContent,
+    SelectItem,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { getYoutubeVideoId } from "@/lib/utils/youtube";
-import YoutubeViewer from "@/components/atoms/YoutubeViewer";
-import DateTimePicker from "@/components/atoms/DateTimePicker";
-import { useSPG } from "@/app/story/spg/hooks";
-import { SPG } from "@/app/story/spg/actions";
+
+import type { SPG } from "@/app/story/spg/actions";
+import type { Quest, Artist, Asset } from "@prisma/client";
 
 type QuestCreateInput = Omit<Quest, "id" | "createdAt" | "updatedAt">;
-type QuestUpdateInput = Partial<QuestCreateInput> & { id: string };
 interface QuestFormData
     extends Omit<
         QuestCreateInput,
@@ -1252,10 +1249,7 @@ function URLQuestForm({
 
 function ReferralQuestForm({
     formData,
-    artists,
     assets,
-    getSPGsData,
-    getSPGIsLoading,
     isLoadingAssets,
     onChange,
     onSubmit,
@@ -1263,11 +1257,10 @@ function ReferralQuestForm({
     isCreating,
     createError,
     mode,
-    registeredTypes,
 }: QuestFormProps) {
     useEffect(() => {
         onChange("isReferral", true);
-    }, []);
+    }, [onChange]);
 
     return (
         <form

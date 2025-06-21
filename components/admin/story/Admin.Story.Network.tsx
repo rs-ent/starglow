@@ -3,6 +3,7 @@
 "use client";
 
 import { useState } from "react";
+
 import {
     FaPlus,
     FaEdit,
@@ -10,10 +11,12 @@ import {
     FaNetworkWired,
     FaBackspace,
 } from "react-icons/fa";
-import { TbTopologyStar3 } from "react-icons/tb";
 import { SiEthereum } from "react-icons/si";
+import { TbTopologyStar3 } from "react-icons/tb";
+
 import { useStoryNetwork } from "@/app/story/network/hooks";
-import { BlockchainNetwork } from "@prisma/client";
+
+import type { BlockchainNetwork } from "@prisma/client";
 
 export default function AdminStoryNetwork({ onBack }: { onBack?: () => void }) {
     const {
@@ -105,7 +108,9 @@ export default function AdminStoryNetwork({ onBack }: { onBack?: () => void }) {
                 });
             }
             closeForm();
-            refetchStoryNetworks();
+            refetchStoryNetworks().catch((err) => {
+                console.error(err);
+            });
         } catch (err: any) {
             setError(err?.message || "오류가 발생했습니다.");
         } finally {
@@ -123,7 +128,9 @@ export default function AdminStoryNetwork({ onBack }: { onBack?: () => void }) {
         setError("");
         try {
             await deleteStoryNetworkAsync({ id: network.id });
-            refetchStoryNetworks();
+            refetchStoryNetworks().catch((err) => {
+                console.error(err);
+            });
         } catch (err: any) {
             setError(err?.message || "삭제 중 오류가 발생했습니다.");
         } finally {

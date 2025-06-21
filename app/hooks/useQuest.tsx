@@ -12,6 +12,15 @@ import {
     useUpdateQuestOrderMutation,
 } from "@/app/mutations/questsMutations";
 import {
+    useClaimableQuestLogsQuery,
+    useClaimedQuestLogsQuery,
+    usePlayerQuestLogsQuery,
+    useQuestLogsQuery,
+    useQuestsQuery,
+    useTokenGatingQuestQuery,
+} from "@/app/queries/questsQueries";
+
+import type {
     GetClaimableQuestLogsInput,
     GetClaimedQuestLogsInput,
     GetPlayerQuestLogsInput,
@@ -20,14 +29,6 @@ import {
     TokenGatingQuestInput,
     PaginationInput,
 } from "../actions/quests";
-import {
-    useClaimableQuestLogsQuery,
-    useClaimedQuestLogsQuery,
-    usePlayerQuestLogsQuery,
-    useQuestLogsQuery,
-    useQuestsQuery,
-    useTokenGatingQuestQuery,
-} from "@/app/queries/questsQueries";
 
 export function useQuestGet({
     getQuestsInput,

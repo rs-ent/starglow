@@ -1,8 +1,9 @@
 /// app\invite\page.tsx
 
 import { Suspense } from "react";
-import InvitePage from "@/components/invite/InvitePage";
+
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
+import InvitePage from "@/components/invite/InvitePage";
 
 export default function InviteAuthPage() {
     return (

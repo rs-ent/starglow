@@ -2,9 +2,10 @@
 
 "use client";
 
-import { cn } from "@/lib/utils/tailwind";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { memo } from "react";
+
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
 
 interface PartialLoadingProps {
     text: string;
@@ -25,7 +26,12 @@ function PartialLoading({
             aria-live="polite"
             data-testid="partial-loading"
         >
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <div
+                className={cn(
+                    "animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4",
+                    getResponsiveClass(loadingSize).frameClass
+                )}
+            />
             <p
                 className={cn(
                     "mt-1 text-muted-foreground animate-pulse text-center",

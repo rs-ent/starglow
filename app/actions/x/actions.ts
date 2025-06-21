@@ -2,15 +2,18 @@
 
 "use server";
 
+import crypto from "crypto";
+
 import { prisma } from "@/lib/prisma/client";
-import {
+
+import type {
     TweetAuthor,
     Tweet,
     TweetMetrics,
     TweetAuthorMetrics,
     TweetMedia,
 } from "@prisma/client";
-import crypto from "crypto";
+
 
 const BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN;
 const CLIENT_ID = process.env.TWITTER_CLIENT_ID;

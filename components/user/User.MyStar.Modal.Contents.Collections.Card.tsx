@@ -1,17 +1,19 @@
 /// components/user/User.MyStar.Modal.Contents.Collections.Card.tsx
 
-import { VerifiedSPG } from "@/app/story/interaction/actions";
+import React, { useCallback, useMemo, useState } from "react";
+
+import { CopyIcon } from "lucide-react";
+
+import { useToast } from "@/app/hooks/useToast";
+import { formatDate } from "@/lib/utils/format";
+import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
-import { formatDate } from "@/lib/utils/format";
-import { Artist } from "@prisma/client";
+
 import ImageMetadata from "../atoms/ImageMetadata";
-import type { METADATA_TYPE } from "@/app/actions/metadata";
-import { useMemo, useState } from "react";
-import { CopyIcon } from "lucide-react";
-import { useToast } from "@/app/hooks/useToast";
-import React from "react";
+
+import type { VerifiedSPG } from "@/app/story/interaction/actions";
+import type { Artist } from "@prisma/client";
 
 interface UserMyStarModalContentsCollectionsCardProps {
     artist: Artist;
@@ -128,7 +130,12 @@ function Status({
         });
 
         return result;
-    }, [verifiedSPG]);
+    }, [verifiedSPG, glowStart, glowEnd]);
+
+    const handleCopy = useCallback(async (value: string) => {
+        await navigator.clipboard.writeText(value);
+        toast.success("Copied to clipboard");
+    }, [toast]);
 
     return (
         <div
@@ -146,7 +153,7 @@ function Status({
                         getResponsiveClass(20).textClass
                     )}
                 >
-                    {data.map((item, index) => (
+                    {data.map((item) => (
                         <div key={item.title}>
                             <div
                                 className={cn(
@@ -168,11 +175,13 @@ function Status({
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            navigator.clipboard.writeText(
-                                                item.value
-                                            );
-                                            toast.success(
-                                                "Copied to clipboard"
+                                            handleCopy(item.value).catch(
+                                                (error) => {
+                                                    console.error(
+                                                        "Failed to copy:",
+                                                        error
+                                                    );
+                                                }
                                             );
                                         }}
                                     >

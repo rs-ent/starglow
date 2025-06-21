@@ -3,16 +3,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+
+import { Loader2, MoreVertical, Layers } from "lucide-react";
+import { useSession } from "next-auth/react";
+
+import { useCollectionSet } from "@/app/hooks/useCollectionContracts";
+import { useNFTs, useGetOwnerByTokenIds } from "@/app/hooks/useNFTs";
+import { useToast } from "@/app/hooks/useToast";
+import { useTokensLockStatus } from "@/app/queries/collectionContractsQueries";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
     Pagination,
     PaginationContent,
@@ -23,6 +30,13 @@ import {
     PaginationEllipsis,
 } from "@/components/ui/pagination";
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
     Table,
     TableBody,
     TableCell,
@@ -30,20 +44,13 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Loader2, MoreVertical, Layers } from "lucide-react";
-import { CollectionContract, NFT } from "@prisma/client";
-import { useNFTs, useGetOwnerByTokenIds } from "@/app/hooks/useNFTs";
-import { NFTFilters, NFTPaginationParams } from "./OnChain.types";
-import { useToast } from "@/app/hooks/useToast";
-import { useTokensLockStatus } from "@/app/queries/collectionContractsQueries";
-import { useCollectionSet } from "@/app/hooks/useCollectionContracts";
-import { useSession } from "next-auth/react";
+
+import type { NFTFilters, NFTPaginationParams } from "./OnChain.types";
+import type { CollectionContract, NFT } from "@prisma/client";
+
+
+
+
 
 export function NFTList({ collection }: { collection: CollectionContract }) {
     const toast = useToast();
@@ -216,7 +223,7 @@ export function NFTList({ collection }: { collection: CollectionContract }) {
             1,
             currentPage - Math.floor(maxVisiblePages / 2)
         );
-        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
         if (endPage - startPage + 1 < maxVisiblePages) {
             startPage = Math.max(1, endPage - maxVisiblePages + 1);

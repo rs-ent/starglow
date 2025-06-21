@@ -1,9 +1,11 @@
 "use client";
 
 import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from "react";
+
+import {motion} from "framer-motion";
+
 import {getResponsiveClass} from "@/lib/utils/responsiveClass";
 import {cn} from "@/lib/utils/tailwind";
-import {motion} from "framer-motion";
 
 interface ArtistMessageMessageProps {
     message: string;

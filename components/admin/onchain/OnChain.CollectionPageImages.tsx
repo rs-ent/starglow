@@ -3,18 +3,13 @@
 "use client";
 
 import { useState } from "react";
-import { CollectionContract } from "@prisma/client";
-import Image from "next/image";
-import FileUploader from "@/components/atoms/FileUploader";
-import { useToast } from "@/app/hooks/useToast";
-import { useCollectionSet } from "@/app/hooks/useCollectionV2";
+
 import {
     DndContext,
     closestCenter,
     PointerSensor,
     useSensor,
-    useSensors,
-    DragEndEvent,
+    useSensors
 } from "@dnd-kit/core";
 import {
     arrayMove,
@@ -24,7 +19,16 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
+import Image from "next/image";
+
+import { useCollectionSet } from "@/app/hooks/useCollectionV2";
+import { useToast } from "@/app/hooks/useToast";
+import FileUploader from "@/components/atoms/FileUploader";
 import { Dialog } from "@/components/ui/dialog";
+
+import type {
+    DragEndEvent} from "@dnd-kit/core";
+import type { CollectionContract } from "@prisma/client";
 
 interface OnChainCollectionPageImagesProps {
     collection: CollectionContract;

@@ -1,10 +1,6 @@
 /// app/story/escrowWallet/hooks.ts
 
 import {
-    useGetEscrowWalletsQuery,
-    useGetRegisteredEscrowWalletsQuery,
-} from "./queries";
-import {
     useRegisterEscrowWalletMutation,
     useFetchEscrowWalletPrivateKeyMutation,
     useSetActiveEscrowWalletMutation,
@@ -12,6 +8,11 @@ import {
     useAddEscrowWalletToSPGMutation,
 } from "./mutations";
 import {
+    useGetEscrowWalletsQuery,
+    useGetRegisteredEscrowWalletsQuery,
+} from "./queries";
+
+import type {
     getEscrowWalletsInput,
     getRegisteredEscrowWalletsInput,
 } from "./actions";

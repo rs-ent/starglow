@@ -1,13 +1,16 @@
 /// app/story/tba/queries.ts
 
 import { useQuery } from "@tanstack/react-query";
+
 import { queryKeys } from "../queryKeys";
 import {
     getTBAContracts,
-    getTBAContractsInput,
-    getTBAAddresses,
-    getTBAAddressesInput,
+    getTBAAddresses
 } from "./actions";
+
+import type {
+    getTBAContractsInput,
+    getTBAAddressesInput} from "./actions";
 
 export function useGetTBAContractsQuery(input?: getTBAContractsInput) {
     return useQuery({

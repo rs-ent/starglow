@@ -3,13 +3,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+
 import {
     getFactories,
-    getCollections,
-    GetFactoryInput,
-    GetCollectionInput,
+    getCollections
 } from "../actions/factoryContracts";
 import { factoryKeys } from "../queryKeys";
+
+import type {
+    GetFactoryInput,
+    GetCollectionInput} from "../actions/factoryContracts";
 
 export function useFactories(input: GetFactoryInput) {
     const queryKey = input.networkId

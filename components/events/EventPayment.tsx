@@ -1,8 +1,7 @@
 "use client";
 
-import { Events } from "@prisma/client";
-import { useEffect, useState } from "react";
-import { H3 } from "../atoms/Typography";
+import { useState } from "react";
+
 import {
     Ticket,
     Calendar,
@@ -10,8 +9,12 @@ import {
     AlertCircle,
     CheckCircle2,
 } from "lucide-react";
+
+import { H3 } from "../atoms/Typography";
 import PaymentModule from "../payment/PaymentModule";
-import { Currency } from "@/lib/types/payment";
+
+import type { Currency } from "@/lib/types/payment";
+import type { Events } from "@prisma/client";
 
 type EventPaymentProps = {
     event: Pick<
@@ -40,7 +43,6 @@ export default function EventPayment({ event, onPurchase }: EventPaymentProps) {
         setDisplayPrice(displayPrice);
     };
 
-    // Check if tickets are available for sale
     const now = new Date();
     const saleStarted =
         !event.saleStartDate || new Date(event.saleStartDate) <= now;
@@ -175,6 +177,7 @@ export default function EventPayment({ event, onPurchase }: EventPaymentProps) {
                         productInitialPriceForDisplay={event.price ?? 0}
                         onDisplayPriceChange={handleDisplayPriceChange}
                         onCurrencyChange={setCurrency}
+                        onPaymentSuccess={() => onPurchase?.(quantity)}
                     />
                 </>
             ) : (

@@ -1,8 +1,19 @@
 // components/admin/assets/Assets.List.tsx
 "use client";
 
+import { useMemo } from "react";
+
+
 import { useAssetsGet, useAssetsSet } from "@/app/hooks/useAssets";
-import { Asset } from "@prisma/client";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
 import {
     Table,
     TableBody,
@@ -11,17 +22,11 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+
 import AssetsCreate from "./Assets.Create";
-import { useMemo } from "react";
+
+import type { Asset } from "@prisma/client";
+
 
 interface AssetsListProps {
     contractAddress: string;

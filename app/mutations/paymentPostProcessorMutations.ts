@@ -1,17 +1,19 @@
 /// app\mutations\paymentPostProcessorMutations.ts
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { paymentPostProcessor } from "@/app/actions/paymentPostProcessor";
-import { paymentPostProcessorKeys } from "@/app/queryKeys";
-import { Payment } from "@prisma/client";
+
 import {
     transferNFTToUser,
     escrowTransferNFT,
 } from "@/app/actions/nftTransfer";
+import { paymentPostProcessor } from "@/app/actions/paymentPostProcessor";
+import { paymentPostProcessorKeys } from "@/app/queryKeys";
+
 import type {
     TransferNFTInput,
     EscrowTransferNFTInput,
 } from "@/app/actions/nftTransfer";
+import type { Payment } from "@prisma/client";
 
 // 기본 결제 후처리 뮤테이션
 export const usePaymentPostProcessMutation = () => {

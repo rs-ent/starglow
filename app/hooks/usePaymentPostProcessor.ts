@@ -1,6 +1,8 @@
 /// app/hooks/usePaymentPostProcessor.ts
 
 import { useCallback } from "react";
+
+import { useToast } from "@/app/hooks/useToast";
 import { usePaymentPostProcessMutation } from "@/app/mutations/paymentPostProcessorMutations";
 import {
     usePaymentPostProcessStatus,
@@ -9,9 +11,9 @@ import {
     useNFTEscrowTransferStatus,
     useEventProcessStatus,
 } from "@/app/queries/paymentPostProcessorQueries";
-import { useToast } from "@/app/hooks/useToast";
-import { Payment } from "@prisma/client";
-import { JsonValue } from "@prisma/client/runtime/library";
+
+import type { Payment } from "@prisma/client";
+import type { JsonValue } from "@prisma/client/runtime/library";
 
 interface UsePaymentPostProcessorOptions {
     onSuccess?: (data: any) => void;

@@ -2,25 +2,30 @@
 
 "use server";
 
+import { revalidatePath } from "next/cache";
 import {
     createPublicClient,
     createWalletClient,
     http,
-    getContract,
-    Address,
-    Hash,
-    AbiFunction,
+    getContract
 } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+
 import { prisma } from "@/lib/prisma/client";
+import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
+
 import {
     estimateGasOptions,
     getChain,
     getEscrowWalletWithPrivateKey,
     getEscrowWalletWithPrivateKeyByAddress,
-    EstimateGasOptions,
     getWalletBalance,
-} from "./blockchain";
-import {
+ deployContract, estimateGasForTransactions } from "./blockchain";
+import { createNFTMetadata, getMetadataByCollectionAddress } from "./metadata";
+
+import type {
+    EstimateGasOptions} from "./blockchain";
+import type {
     Prisma,
     BlockchainNetwork,
     CollectionContract,
@@ -30,14 +35,9 @@ import {
     Artist,
     Metadata,
 } from "@prisma/client";
-import { privateKeyToAccount } from "viem/accounts";
-import { createNFTMetadata, getMetadataByCollectionAddress } from "./metadata";
-import { deployContract, estimateGasForTransactions } from "./blockchain";
-
-import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
-import { revalidatePath } from "next/cache";
+import type { Address, Hash, AbiFunction ,
+    Abi} from "viem";
 const abi = collectionJson.abi;
-import { Abi } from "viem";
 
 export interface GetCollectionInput {
     collectionAddress: string;
@@ -1370,7 +1370,7 @@ export async function transferTokens(
     const MAX_CONCURRENT_BATCHES = 3;
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 2000;
-    let retryCount = 0;
+    const retryCount = 0;
     const results: {
         success: boolean;
         transactionHash?: Hash;

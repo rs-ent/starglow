@@ -2,12 +2,15 @@
 
 "use client";
 
-import * as PortOne from "@portone/browser-sdk/v2";
 import { useCallback } from "react";
+
 import { useQuery } from "@tanstack/react-query";
+
 import { getExchangeRateInfo, convertAmount } from "@/app/actions/exchangeRate";
 import { queryKeys } from "@/app/queryKeys";
+
 import type { ExchangeRateInfo } from "@/app/actions/exchangeRate";
+import type * as PortOne from "@portone/browser-sdk/v2";
 
 export function useExchangeRate() {
     // 환율 정보 직접 조회

@@ -2,11 +2,15 @@
 
 "use server";
 
-import { Payment } from "@prisma/client";
-import { ProductTable } from "@/lib/types/payment";
+
 import { revalidatePath } from "next/cache";
-import { transferNFTToUser } from "../story/transfer/actions";
+
 import { prisma } from "@/lib/prisma/client";
+
+import { transferNFTToUser } from "../story/transfer/actions";
+
+import type { ProductTable } from "@/lib/types/payment";
+import type { Payment } from "@prisma/client";
 
 export interface PaymentPostProcessorSuccess {
     success: true;

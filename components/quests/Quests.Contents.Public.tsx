@@ -2,13 +2,16 @@
 
 "use client";
 
-import { Player, QuestLog, ReferralLog } from "@prisma/client";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import QuestsMissions from "./Quests.Missions";
+import { memo, useCallback, useMemo, useState } from "react";
+
 import { useQuestGet } from "@/app/hooks/useQuest";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+
+import QuestsMissions from "./Quests.Missions";
 import InviteFriends from "../atoms/InviteFriends";
+
+import type { Player, QuestLog, ReferralLog } from "@prisma/client";
 
 interface QuestsPublicProps {
     player: Player | null;
@@ -32,7 +35,6 @@ function QuestsPublic({ player, questLogs, referralLogs }: QuestsPublicProps) {
 
     const [selectedType, setSelectedType] = useState<string>("All");
 
-    // 퀘스트 타입 목록 메모이제이션
     const types = useMemo(() => {
         if (!quests?.items || quests.items.length === 0) {
             return ["All"];
@@ -54,7 +56,6 @@ function QuestsPublic({ player, questLogs, referralLogs }: QuestsPublicProps) {
             : quests.items.filter((quest) => quest.type === selectedType);
     }, [quests?.items, selectedType]);
 
-    // 타입 클릭 핸들러 메모이제이션
     const handleTypeClick = useCallback((type: string) => {
         setSelectedType(type);
     }, []);
@@ -107,7 +108,6 @@ function QuestsPublic({ player, questLogs, referralLogs }: QuestsPublicProps) {
     );
 }
 
-// 타입 버튼 컴포넌트 - 메모이제이션 적용
 const TypeButton = memo(
     ({
         type,
@@ -118,7 +118,6 @@ const TypeButton = memo(
         isSelected: boolean;
         onClick: (type: string) => void;
     }) => {
-        // 클릭 핸들러 메모이제이션
         const handleClick = useCallback(() => {
             onClick(type);
         }, [onClick, type]);
@@ -139,7 +138,6 @@ const TypeButton = memo(
     }
 );
 
-// 컴포넌트 이름 설정
 TypeButton.displayName = "TypeButton";
 
 export default memo(QuestsPublic);

@@ -2,15 +2,25 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
+
+
+import { Check, ChevronsUpDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+import { useArtistsGet } from "@/app/hooks/useArtists";
 import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
+import { useToast } from "@/app/hooks/useToast";
 import { usePollsResultsQuery } from "@/app/queries/pollsQueries";
-import { Artist, Poll } from "@prisma/client";
 import PollThumbnail from "@/components/atoms/Polls.Thumbnail";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import PollCreateModal from "./Admin.Polls.CreateModal";
-import { formatDate } from "@/lib/utils/format";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+} from "@/components/ui/command";
 import {
     Pagination,
     PaginationContent,
@@ -20,23 +30,20 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
-import { cn } from "@/lib/utils/tailwind";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-} from "@/components/ui/command";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { useArtistsGet } from "@/app/hooks/useArtists";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/app/hooks/useToast";
+import { formatDate } from "@/lib/utils/format";
+import { cn } from "@/lib/utils/tailwind";
+
+import PollCreateModal from "./Admin.Polls.CreateModal";
+
+
+
+import type { Artist, Poll } from "@prisma/client";
 
 interface PollListProps {
     viewType: "table" | "card";

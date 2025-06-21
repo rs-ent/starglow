@@ -3,13 +3,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { assetKeys } from "@/app/queryKeys";
+
 import {
     getAsset,
     getAssets,
     getAssetsContract,
     getAssetsContracts,
 } from "@/app/actions/assets";
+import { assetKeys } from "@/app/queryKeys";
+
 import type {
     GetAssetInput,
     GetAssetsInput,

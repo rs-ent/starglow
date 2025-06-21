@@ -1,19 +1,23 @@
 /// components/atoms/Quests.Button.tsx
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Player, Quest, QuestLog, ReferralLog } from "@prisma/client";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
-import { cn } from "@/lib/utils/tailwind";
+
+import { AnimatePresence, motion } from "framer-motion";
+
 import { useAssetsGet } from "@/app/hooks/useAssets";
 import { useQuestSet } from "@/app/hooks/useQuest";
 import { useToast } from "@/app/hooks/useToast";
-import { formatWaitTime } from "@/lib/utils/format";
 import Countdown from "@/components/atoms/Countdown";
-import { AnimatePresence, motion } from "framer-motion";
+import { formatWaitTime } from "@/lib/utils/format";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
+
+import Doorman from "../atoms/Doorman";
 import InviteFriendsModal from "../atoms/InviteFriends.Modal";
 import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
-import { TokenGatingData } from "@/app/story/nft/actions";
-import Doorman from "../atoms/Doorman";
+
+import type { TokenGatingData } from "@/app/story/nft/actions";
+import type { Player, Quest, QuestLog, ReferralLog } from "@prisma/client";
 
 // 디바운스 지연 시간 (밀리초)
 const DEBOUNCE_DELAY = 500;
@@ -228,6 +232,7 @@ function QuestsButton({
         completeQuest,
         toast,
         preventRapidClicks,
+        questLog?.repeatCount,
     ]);
 
     // 퀘스트 보상 청구 핸들러
@@ -461,10 +466,8 @@ function QuestsButton({
             <PopupInteractFeedback
                 open={showInteractFeedback}
                 onClose={() => setShowInteractFeedback(false)}
-                title={"Reward Claimed!"}
-                description={
-                    "You've claimed the quest reward. Thank you for your participation!"
-                }
+                title="Reward Claimed!"
+                description="You've claimed the quest reward. Thank you for your participation!"
                 type="success"
                 autoCloseMs={4000}
                 showReward={true}
@@ -494,7 +497,7 @@ function QuestsButton({
                         <div
                             onClick={
                                 !buttonState.disabled
-                                    ? handleCompleteQuest
+                                    ? () => void handleCompleteQuest()
                                     : undefined
                             }
                             className={cn(
@@ -676,8 +679,6 @@ function QuestsButton({
 
                                 {/* 퀘스트 상태에 따른 버튼 또는 아이콘 */}
                                 {status === "completed" ? (
-                                    // 반복 퀘스트인 경우 최대 반복 횟수에 도달했는지 확인
-                                    // 일반 퀘스트이거나 최대 반복 횟수에 도달한 경우에만 Claim 버튼 표시
                                     !quest.repeatable ||
                                     !quest.repeatableCount ||
                                     (questLog &&
@@ -685,8 +686,8 @@ function QuestsButton({
                                             quest.repeatableCount) ? (
                                         <button
                                             onClick={(e) => {
-                                                e.stopPropagation(); // 이벤트 버블링 방지
-                                                handleClaimQuestReward(e);
+                                                e.stopPropagation();
+                                                void handleClaimQuestReward(e);
                                             }}
                                             disabled={buttonState.disabled}
                                             className={cn(

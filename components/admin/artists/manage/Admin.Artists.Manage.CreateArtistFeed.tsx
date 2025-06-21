@@ -3,26 +3,7 @@
 "use client";
 
 import { useState } from "react";
-import { useArtistFeedsSet } from "@/app/hooks/useArtistFeeds";
-import { useToast } from "@/app/hooks/useToast";
-import FileUploader from "@/components/atoms/FileUploader";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils/tailwind";
-import {
-    Image as ImageIcon,
-    Video,
-    X,
-    Plus,
-    Sparkles,
-    Upload,
-    GripVertical,
-    Play,
-    Heart,
-    MessageCircle,
-} from "lucide-react";
-import Image from "next/image";
-import { ArtistFeed } from "@prisma/client";
+
 import {
     DndContext,
     closestCenter,
@@ -30,7 +11,6 @@ import {
     PointerSensor,
     useSensor,
     useSensors,
-    DragEndEvent,
 } from "@dnd-kit/core";
 import {
     arrayMove,
@@ -38,9 +18,30 @@ import {
     sortableKeyboardCoordinates,
     verticalListSortingStrategy,
     rectSortingStrategy,
+    useSortable,
 } from "@dnd-kit/sortable";
-import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import {
+    Image as ImageIcon,
+    Video,
+    X,
+    Sparkles,
+    GripVertical,
+    Play,
+    Heart,
+    MessageCircle,
+} from "lucide-react";
+import Image from "next/image";
+
+import { useArtistFeedsSet } from "@/app/hooks/useArtistFeeds";
+import { useToast } from "@/app/hooks/useToast";
+import FileUploader from "@/components/atoms/FileUploader";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils/tailwind";
+
+import type { DragEndEvent } from "@dnd-kit/core";
+import type { ArtistFeed } from "@prisma/client";
 
 // Sortable Item Component
 function SortableImageItem({
@@ -283,7 +284,7 @@ export default function CreateArtistFeed({
                 toast.success("게시물이 성공적으로 수정되었습니다");
             }
             onSuccess?.();
-        } catch (error) {
+        } catch (_error) {
             toast.error("게시물 작성에 실패했습니다");
         }
     };

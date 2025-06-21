@@ -2,46 +2,31 @@
 
 "use client";
 
-import { Artist, Player, PollLog } from "@prisma/client";
-import ArtistSlideSelector from "../artists/ArtistSlideSelector";
-import PollsContentsPrivateArtistList from "./Polls.Contents.Private.ArtistList";
 import { memo, useCallback, useMemo, useState } from "react";
-import { User } from "next-auth";
-import { ArtistBG } from "@/lib/utils/get/artist-colors";
+
 import { AnimatePresence, motion } from "framer-motion";
-import { VerifiedSPG } from "@/app/story/interaction/actions";
-import { TokenGatingResult } from "@/app/story/nft/actions";
+
+import { ArtistBG } from "@/lib/utils/get/artist-colors";
+
+import PollsContentsPrivateArtistList from "./Polls.Contents.Private.ArtistList";
+import ArtistSlideSelector from "../artists/ArtistSlideSelector";
+
+import type { VerifiedSPG } from "@/app/story/interaction/actions";
+import type { TokenGatingResult } from "@/app/story/nft/actions";
+import type { Artist, Player, PollLog } from "@prisma/client";
 
 interface PollsContentsPrivateProps {
-    user: User | null;
     player: Player | null;
     privateTabClicked: boolean;
     pollLogs?: PollLog[];
     verifiedSPGs?: VerifiedSPG[];
 }
 
-// 애니메이션 변수를 컴포넌트 외부로 이동하여 리렌더링 방지
-const animations = {
-    backgroundVariants: {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { duration: 1.5 },
-        },
-        exit: {
-            opacity: 0,
-            transition: { duration: 1.5 },
-        },
-    },
-};
-
-// 기본 배경 스타일을 컴포넌트 외부로 이동
 const defaultBackgroundStyle = {
     background: `linear-gradient(to bottom right, rgba(109,40,217,0.4), rgba(109,40,217,0.15))`,
 };
 
 function PollsContentsPrivate({
-    user,
     player,
     pollLogs,
     verifiedSPGs,
@@ -52,14 +37,10 @@ function PollsContentsPrivate({
         "default" | "artist"
     >("default");
 
-    // 아티스트 선택 핸들러 메모이제이션
     const handleArtistSelect = useCallback(
         (artist: Artist | null) => {
-            // 이전 아티스트 저장
             setPreviousArtist(selectedArtist);
             setSelectedArtist(artist);
-
-            // 배경 상태 업데이트
             setActiveBackground(artist ? "artist" : "default");
         },
         [selectedArtist]
@@ -88,7 +69,6 @@ function PollsContentsPrivate({
         return result;
     }, [verifiedSPGs, selectedArtist]);
 
-    // 선택된 아티스트 배경 스타일 메모이제이션
     const selectedBackgroundStyle = useMemo(() => {
         if (!selectedArtist) return defaultBackgroundStyle;
 
@@ -101,7 +81,6 @@ function PollsContentsPrivate({
         };
     }, [selectedArtist]);
 
-    // 이전 아티스트 배경 스타일 메모이제이션
     const previousBackgroundStyle = useMemo(() => {
         if (!previousArtist) return defaultBackgroundStyle;
 
@@ -114,7 +93,6 @@ function PollsContentsPrivate({
         };
     }, [previousArtist]);
 
-    // 아티스트 컨텐츠 렌더링 최적화
     const renderArtistContent = useCallback(() => {
         if (!selectedArtist) return null;
 
@@ -149,9 +127,7 @@ function PollsContentsPrivate({
                 />
             </div>
 
-            {/* 배경 그라데이션 - AnimatePresence로 부드러운 전환 구현 */}
             <div className="fixed inset-0 w-screen h-screen -z-20">
-                {/* 기본 배경 */}
                 <AnimatePresence initial={false}>
                     {activeBackground === "default" && (
                         <motion.div
@@ -166,7 +142,6 @@ function PollsContentsPrivate({
                     )}
                 </AnimatePresence>
 
-                {/* 아티스트 배경 */}
                 <AnimatePresence initial={false}>
                     {activeBackground === "artist" && selectedArtist && (
                         <motion.div
@@ -181,7 +156,6 @@ function PollsContentsPrivate({
                     )}
                 </AnimatePresence>
 
-                {/* 이전 아티스트 배경 (전환 중에만 표시) */}
                 <AnimatePresence initial={false}>
                     {previousArtist && selectedArtist !== previousArtist && (
                         <motion.div
@@ -202,5 +176,4 @@ function PollsContentsPrivate({
     );
 }
 
-// 메모이제이션을 통한 불필요한 리렌더링 방지
 export default memo(PollsContentsPrivate);

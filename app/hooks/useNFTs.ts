@@ -1,22 +1,27 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-    NFTWithRelations,
-    NFTFilters,
-    NFTPaginationParams,
-} from "@/components/admin/onchain/OnChain.types";
+
 import {
     fetchNFTs,
     fetchNFTDetails,
     updateNFTStatus,
     transferNFTOwnership,
-    getNFTsByWallets,
-    NFTsByWalletsParams,
+    getNFTsByWallets
 } from "@/app/actions/nfts";
-import { queryKeys } from "../queryKeys";
+import {
+    NFTWithRelations
+} from "@/components/admin/onchain/OnChain.types";
+
 import {
     getOwnerByTokenIdsQuery,
     verifyNFTOwnershipQuery,
 } from "../queries/nftQueries";
+import { queryKeys } from "../queryKeys";
+
+import type {
+    NFTsByWalletsParams} from "@/app/actions/nfts";
+import type {
+    NFTFilters,
+    NFTPaginationParams} from "@/components/admin/onchain/OnChain.types";
 
 // 개별 훅으로 분리하여 재사용성 향상
 export function useNFTs(filters: NFTFilters, pagination: NFTPaginationParams) {

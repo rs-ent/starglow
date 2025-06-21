@@ -3,9 +3,10 @@
 "use client";
 
 import { useState } from "react";
-import { useWallet } from "../queries/defaultWalletsQueries";
-import { useCreateWallet } from "../mutations/defaultWalletsMutation";
+
 import { useToast } from "./useToast";
+import { useCreateWallet } from "../mutations/defaultWalletsMutation";
+import { useWallet } from "../queries/defaultWalletsQueries";
 
 export function useDefaultWallets() {
     const [isCreating, setIsCreating] = useState(false);

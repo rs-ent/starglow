@@ -4,10 +4,13 @@
 "use client";
 
 import { useState } from "react";
-import FactoryList from "./OnChain.FactoryList";
-import FactoryDeploy from "./OnChain.FactoryDeploy";
-import { DeployFactoryResult } from "@/app/actions/factoryContracts";
+
 import { Card } from "@/components/ui/card";
+
+import FactoryDeploy from "./OnChain.FactoryDeploy";
+import FactoryList from "./OnChain.FactoryList";
+
+import type { DeployFactoryResult } from "@/app/actions/factoryContracts";
 
 export interface CreateCollectionResult {
     success: boolean;

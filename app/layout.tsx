@@ -2,12 +2,16 @@
 
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+
 import { WebVitals } from "@/lib/tools/web-vitals";
+
 import type { Metadata } from "next";
 import "./globals.css";
 
 import Toast from "@/components/atoms/Toast";
+
 import Providers from "./Providers";
+
 import Loading from "@/components/atoms/Loading";
 import Navigation from "@/components/navigation/Navigation";
 

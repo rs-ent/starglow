@@ -3,12 +3,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
+
+
+import { AnimatePresence, motion } from "framer-motion";
+
 import { useToast } from "@/app/hooks/useToast";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+
 import QRCodeModal from "./QRCode";
-import { Player } from "@prisma/client";
-import { AnimatePresence, motion } from "framer-motion";
+
+import type { Player } from "@prisma/client";
 
 interface InviteFriendsModalProps {
     player: Player | null;

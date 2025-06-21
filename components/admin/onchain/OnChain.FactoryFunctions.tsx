@@ -4,10 +4,14 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Check, Plus, Loader2, Key } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+import { Check, Plus, Loader2, Key , Factory } from "lucide-react";
+
+import { useEscrowWalletManager } from "@/app/hooks/useBlockchain";
+import { useFactoryGet, useFactorySet } from "@/app/hooks/useFactoryContracts";
 import { useToast } from "@/app/hooks/useToast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Dialog,
@@ -17,6 +21,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
     Select,
     SelectContent,
@@ -24,12 +29,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+
 import CreateCollection from "./OnChain.CreateCollection";
-import { CreateCollectionResult } from "./OnChain.Factory";
-import { Factory } from "lucide-react";
-import { useFactoryGet, useFactorySet } from "@/app/hooks/useFactoryContracts";
-import { useEscrowWalletManager } from "@/app/hooks/useBlockchain";
+
+import type { CreateCollectionResult } from "./OnChain.Factory";
+
+
 interface FactoryFunctionsProps {
     factory: {
         address: string;

@@ -2,10 +2,12 @@
 
 "use client";
 
-import { useTweets } from "@/app/actions/x/hooks";
 import { useState, useMemo, useCallback } from "react";
-import { cn } from "@/lib/utils/tailwind";
+
+import { useTweets } from "@/app/actions/x/hooks";
 import { formatNumber } from "@/lib/utils/format";
+import { cn } from "@/lib/utils/tailwind";
+
 import AdminXChartModal from "./Admin.X.ChartModal";
 
 type SortOption = "name" | "tweets" | "recent";
@@ -17,11 +19,6 @@ export default function AdminXTweets() {
     const [selectedTweetId, setSelectedTweetId] = useState<string | null>(null);
 
     const {
-        latestSyncData,
-        isLatestSyncDataLoading,
-        latestSyncDataError,
-        refetchLatestSyncData,
-
         tweetAuthors,
         isTweetAuthorsLoading,
         tweetAuthorsError,
@@ -180,13 +177,11 @@ export default function AdminXTweets() {
         if (type === "author") {
             setSelectedAuthorId(targetId);
             await refetchAuthorMetricsHistory();
-            console.log("Author Metrics", authorMetricsHistory);
             setShowMetricsModal(true);
             setMetricsModalType("author");
         } else if (type === "tweet") {
             setSelectedTweetId(targetId);
             await refetchTweetMetricsHistory();
-            console.log("Tweet Metrics", tweetMetricsHistory);
             setShowMetricsModal(true);
             setMetricsModalType("tweet");
         }
@@ -271,7 +266,7 @@ export default function AdminXTweets() {
                     {/* Authors 목록 */}
                     <div className="flex-1 overflow-y-auto">
                         {filteredAndSortedAuthors.length > 0 ? (
-                            filteredAndSortedAuthors.map((author, index) => {
+                            filteredAndSortedAuthors.map((author) => {
                                 const latestMetrics = author.metrics?.[0];
 
                                 return (
@@ -719,9 +714,4 @@ export default function AdminXTweets() {
             />
         </>
     );
-}
-
-// 유틸리티 함수들
-function escapeRegExp(string: string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

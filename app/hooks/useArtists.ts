@@ -3,13 +3,6 @@
 "use client";
 
 import {
-    useArtists,
-    useArtist,
-    useArtistMessages,
-    useTokenGatingQuery,
-} from "@/app/queries/artistQueries";
-
-import {
     useCreateArtist,
     useUpdateArtist,
     useDeleteArtist,
@@ -18,6 +11,13 @@ import {
     useTokenGating,
     useDeleteArtistMessage,
 } from "@/app/mutations/artistMutations";
+import {
+    useArtists,
+    useArtist,
+    useArtistMessages,
+    useTokenGatingQuery,
+} from "@/app/queries/artistQueries";
+
 
 import type {
     GetArtistsInput,

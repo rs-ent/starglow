@@ -2,15 +2,22 @@
 
 "use client";
 
-import { Artist, ArtistMessage as ArtistMessageType } from "@prisma/client";
-import ArtistMessageMessage from "@/components/artists/ArtistMessage.Message";
-import { useArtistsGet } from "@/app/hooks/useArtists";
 import { useEffect, useMemo, useState } from "react";
-import PartialLoading from "@/components/atoms/PartialLoading";
-import ImageViewer from "../atoms/ImageViewer";
-import { cn } from "@/lib/utils/tailwind";
+
 import { AnimatePresence, motion } from "framer-motion";
+
+import { useArtistsGet } from "@/app/hooks/useArtists";
+import ArtistMessageMessage from "@/components/artists/ArtistMessage.Message";
+import PartialLoading from "@/components/atoms/PartialLoading";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
+import { cn } from "@/lib/utils/tailwind";
+
+import ImageViewer from "../atoms/ImageViewer";
+
+import type {
+    Artist,
+    ArtistMessage as ArtistMessageType,
+} from "@prisma/client";
 
 interface ArtistMessageProps {
     artistId: string;
@@ -36,7 +43,6 @@ export default function ArtistMessage({
     artist,
 }: ArtistMessageProps) {
     const [message, setMessage] = useState<ArtistMessageType | null>(null);
-    const [isReady, setIsReady] = useState(false);
 
     // 메모이제이션된 쿼리 입력값
     const queryInput = useMemo(
@@ -57,15 +63,6 @@ export default function ArtistMessage({
             setMessage(artistMessages[0]);
         }
     }, [artistMessages]);
-
-    // 준비 상태 설정 로직 최적화
-    useEffect(() => {
-        if (message && !isLoading) {
-            setIsReady(true);
-        } else {
-            setIsReady(false);
-        }
-    }, [message, isLoading]);
 
     // 컨테이너 클래스 메모이제이션
     const containerClasses = useMemo(
@@ -94,7 +91,6 @@ export default function ArtistMessage({
                         <ImageViewer
                             img={message.bannerUrl}
                             title={message.message}
-                            framePadding={1}
                             showTitle={false}
                             shadowColor={
                                 artist ? ArtistBG(artist, 0, 100) : undefined
@@ -105,7 +101,7 @@ export default function ArtistMessage({
                 <ArtistMessageMessage message={message.message} />
             </div>
         );
-    }, [message, containerClasses]);
+    }, [message, containerClasses, artist]);
 
     // 로딩 상태 메모이제이션
     const loadingElement = useMemo(

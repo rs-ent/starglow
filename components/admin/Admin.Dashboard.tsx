@@ -1,7 +1,5 @@
 /// components\admin\Admin.Dashboard.tsx
 
-import AuthButton from "../atoms/AuthButton";
-
 export default function AdminDashboard() {
     return (
         <div className="bg-card flex flex-col items-center justify-center h-screen">

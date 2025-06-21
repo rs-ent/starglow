@@ -2,18 +2,6 @@
 
 "use client";
 
-import type {
-    GetAssetInput,
-    GetAssetsInput,
-    GetAssetsContractInput,
-    GetAssetsContractsInput,
-} from "@/app/actions/assets";
-import {
-    useAsset,
-    useAssets,
-    useAssetsContract,
-    useAssetsContracts,
-} from "../queries/assetsQueries";
 import {
     useActivateAsset,
     useCreateAsset,
@@ -25,6 +13,19 @@ import {
     useDeployAssetsContract,
     useSetDefaultAsset,
 } from "../mutations/assetsMutations";
+import {
+    useAsset,
+    useAssets,
+    useAssetsContract,
+    useAssetsContracts,
+} from "../queries/assetsQueries";
+
+import type {
+    GetAssetInput,
+    GetAssetsInput,
+    GetAssetsContractInput,
+    GetAssetsContractsInput,
+} from "@/app/actions/assets";
 
 export interface UseAssetsGetInput {
     getAssetInput?: GetAssetInput;

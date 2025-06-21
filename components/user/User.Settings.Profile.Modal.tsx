@@ -1,10 +1,13 @@
 /// components\user\User.Settings.Profile.Modal.tsx
 
 import { XIcon } from "lucide-react";
-import { User } from "next-auth";
-import { Player } from "@prisma/client";
+
+
 import UserSettingsProfile from "./User.Settings.Profile";
 import Portal from "../atoms/Portal";
+
+import type { Player } from "@prisma/client";
+import type { User } from "next-auth";
 
 interface UserSettingsProfileModalProps {
     player: Player;

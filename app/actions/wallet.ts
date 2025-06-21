@@ -2,8 +2,11 @@
 
 "use server";
 
+import { WalletStatus } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma/client";
-import { WalletStatus, Wallet } from "@prisma/client";
+
+import type { Wallet } from "@prisma/client";
 
 export interface WalletResponse {
     success: boolean;

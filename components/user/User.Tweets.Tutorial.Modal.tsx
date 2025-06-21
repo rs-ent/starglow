@@ -1,11 +1,10 @@
 import { useState } from "react";
+
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, TrendingUp, Award, ArrowRight } from "lucide-react";
+import { Zap, TrendingUp, Award, ArrowRight } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { Confetti } from "@/components/magicui/confetti";
-import { NumberTicker } from "@/components/magicui/number-ticker";
 
 interface UserTweetsTutorialModalProps {
     isOpen: boolean;
@@ -19,7 +18,6 @@ export default function UserTweetsTutorialModal({
     onComplete,
 }: UserTweetsTutorialModalProps) {
     const [currentStep, setCurrentStep] = useState(0);
-    const [showConfetti, setShowConfetti] = useState(false);
 
     const steps = [
         {
@@ -119,8 +117,7 @@ export default function UserTweetsTutorialModal({
                                         getResponsiveClass(10).textClass
                                     )}
                                 >
-                                    Include Starglow artists' Twitter handles
-                                    for extra rewards
+                                    {`Include Starglow artists' Twitter handles for extra rewards`}
                                 </p>
                             </div>
                         </div>
@@ -326,11 +323,8 @@ export default function UserTweetsTutorialModal({
                             getResponsiveClass(15).textClass
                         )}
                         onClick={() => {
-                            setShowConfetti(true);
-                            setTimeout(() => {
-                                onComplete?.();
-                                onClose();
-                            }, 1000);
+                            onComplete?.();
+                            onClose();
                         }}
                     >
                         Start Earning Now! 💎
@@ -481,8 +475,6 @@ export default function UserTweetsTutorialModal({
                     </div>
                 </DialogContent>
             </Dialog>
-
-            {showConfetti && <Confetti />}
         </>
     );
 }

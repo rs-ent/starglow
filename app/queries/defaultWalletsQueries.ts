@@ -1,9 +1,11 @@
 /// app/queries/defaultWalletsQueries.ts
 
 import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "../queryKeys";
+
 import { prisma } from "@/lib/prisma/client";
+
 import { auth } from "../auth/authSettings";
+import { queryKeys } from "../queryKeys";
 
 export async function getUserWallet(): Promise<string | null> {
     const session = await auth();

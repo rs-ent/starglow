@@ -1,15 +1,19 @@
 /// components/user/User.Rewards.Modal.Card.tsx
 
 import { memo, useCallback, useState } from "react";
-import { PlayerAssetWithAsset } from "./User.Rewards";
+
+import { formatDistanceToNow } from "date-fns";
+import { XIcon } from "lucide-react";
+
+import { useRewardsLogsGet } from "@/app/hooks/useRewardsLogs";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { XIcon } from "lucide-react";
+
 import Funds from "../atoms/Funds";
-import { Button } from "../ui/button";
-import { useRewardsLogsGet } from "@/app/hooks/useRewardsLogs";
 import PartialLoading from "../atoms/PartialLoading";
-import { formatDistanceToNow } from "date-fns";
+import { Button } from "../ui/button";
+
+import type { PlayerAssetWithAsset } from "./User.Rewards";
 
 interface UserRewardsModalCardProps {
     playerId?: string;
@@ -17,10 +21,6 @@ interface UserRewardsModalCardProps {
     closeModal: () => void;
 }
 
-/**
- * 사용자 보상 상세 정보를 표시하는 카드 컴포넌트
- * 보상 정보와 히스토리를 보여줌
- */
 function UserRewardsModalCard({
     playerId,
     reward,
@@ -28,7 +28,6 @@ function UserRewardsModalCard({
 }: UserRewardsModalCardProps) {
     const [showPointsMissing, setShowPointsMissing] = useState(false);
 
-    // 보상 로그 데이터 가져오기
     const { rewardsLogs, isRewardsLogsLoading, rewardsLogsError } =
         useRewardsLogsGet({
             getRewardsLogsInput: {
@@ -37,12 +36,10 @@ function UserRewardsModalCard({
             },
         });
 
-    // 포인트 미싱 팝업 토글 핸들러
     const togglePointsMissing = useCallback(() => {
         setShowPointsMissing((prev) => !prev);
     }, []);
 
-    // 날짜 포맷팅 함수
     const formatDate = useCallback((date: Date) => {
         const formattedDate = date.toLocaleDateString();
         const formattedTime = date.toLocaleTimeString([], {
@@ -52,7 +49,6 @@ function UserRewardsModalCard({
         return `${formattedDate} ${formattedTime}`;
     }, []);
 
-    // 상대적 시간 표시 함수
     const getRelativeTime = useCallback((date: Date) => {
         return formatDistanceToNow(date, { addSuffix: true });
     }, []);
@@ -110,8 +106,7 @@ function UserRewardsModalCard({
                                     "font-bold"
                                 )}
                             >
-                                For the Starglowers who collected 'Points'
-                                through telegram mini app:
+                                {`For the Starglowers who collected 'Points' through telegram mini app:`}
                             </p>
                             <p className={getResponsiveClass(25).textClass}>
                                 <strong>Points</strong> are officially all

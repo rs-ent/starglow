@@ -1,6 +1,7 @@
-import { PrismaClient, Events, Story_spg } from "@prisma/client";
-import * as PortOne from "@portone/browser-sdk/v2";
 import { prisma } from "@/lib/prisma/client";
+
+import type * as PortOne from "@portone/browser-sdk/v2";
+import type { Events, Story_spg } from "@prisma/client";
 
 export type PayMethod = PortOne.Entity.PayMethod;
 export type EasyPayProvider = PortOne.Entity.EasyPayProvider;

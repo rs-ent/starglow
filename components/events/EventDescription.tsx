@@ -1,9 +1,7 @@
 "use client";
 
-import Image from "next/image";
-import { Events } from "@prisma/client";
-import { H2, H3 } from "../atoms/Typography";
 import { useState } from "react";
+
 import {
     Calendar,
     MapPin,
@@ -13,6 +11,13 @@ import {
     Link as LinkIcon,
     Globe,
 } from "lucide-react";
+import Image from "next/image";
+
+import { H2, H3 } from "../atoms/Typography";
+
+import type { Events } from "@prisma/client";
+
+
 
 type EventDescriptionProps = {
     event: Pick<

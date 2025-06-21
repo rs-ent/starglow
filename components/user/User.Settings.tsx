@@ -2,12 +2,15 @@
 
 "use client";
 
-import { Player } from "@prisma/client";
-import { User } from "next-auth";
+import { signOut } from "next-auth/react";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+
 import UserSettingsProfile from "./User.Settings.Profile";
-import { signOut } from "next-auth/react";
+
+import type { Player } from "@prisma/client";
+import type { User } from "next-auth";
 
 interface UserSettingsProps {
     user: User;
@@ -26,8 +29,8 @@ export default function UserSettings({ user, player }: UserSettingsProps) {
                         "transition-all duration-300",
                         getResponsiveClass(15).textClass
                     )}
-                    onClick={() => {
-                        signOut({ callbackUrl: "/?signedOut=true" });
+                    onClick={async () => {
+                        await signOut({ callbackUrl: "/?signedOut=true" });
                     }}
                 >
                     Sign out

@@ -3,8 +3,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
+
 import * as PortOne from "@portone/browser-sdk/v2";
-import { Payment, PaymentStatus } from "@prisma/client";
+import { PaymentStatus } from "@prisma/client";
+
+import {
+    VerifyPaymentResponse,
+    CreatePaymentResponse,
+} from "@/app/actions/payment";
 import {
     useCreatePaymentMutation,
     useVerifyPaymentMutation,
@@ -24,13 +30,12 @@ import {
     Currency,
     ProductTable,
 } from "@/lib/types/payment";
-import {
+
+import type {
     CreatePaymentInput,
     VerifyPaymentInput,
-    CancelPaymentInput,
-    VerifyPaymentResponse,
-    CreatePaymentResponse,
-} from "@/app/actions/payment";
+    CancelPaymentInput} from "@/app/actions/payment";
+import type { Payment} from "@prisma/client";
 
 type PaymentHookReturn = {
     currentPaymentId: string | null;

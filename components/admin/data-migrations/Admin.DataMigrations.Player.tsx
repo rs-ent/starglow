@@ -3,13 +3,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useToast } from "@/app/hooks/useToast";
-import { cn } from "@/lib/utils/tailwind";
-import { useUserGet, useUserSet } from "@/app/hooks/useUser";
+
 import { usePlayerSet } from "@/app/hooks/usePlayer";
 import { usePlayerAssetSet } from "@/app/hooks/usePlayerAssets";
+import { useToast } from "@/app/hooks/useToast";
+import { useUserGet, useUserSet } from "@/app/hooks/useUser";
 import FileUploader from "@/components/atoms/FileUploader";
-import { User, Player } from "@prisma/client";
+import { cn } from "@/lib/utils/tailwind";
+
+import type { User, Player } from "@prisma/client";
 
 export default function AdminDataMigrationsPlayer() {
     const [csvData, setCsvData] = useState<any[]>([]);

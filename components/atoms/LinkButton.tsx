@@ -1,7 +1,8 @@
 /// components\atoms\LinkButton.tsx
 
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 

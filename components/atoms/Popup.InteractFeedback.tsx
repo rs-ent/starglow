@@ -3,19 +3,23 @@
 "use client"; // 클라이언트 컴포넌트로 표시
 
 import React, { useEffect, useState } from "react";
+
+import { Canvas } from "@react-three/fiber";
+import confetti from "canvas-confetti";
 import { AnimatePresence, motion } from "framer-motion";
-import Portal from "./Portal";
+import { XIcon } from "lucide-react";
 import dynamic from "next/dynamic";
+
+import { NumberTicker } from "@/components/magicui/number-ticker";
 import { TextAnimate } from "@/components/magicui/text-animate";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { Asset } from "@prisma/client";
-import { NumberTicker } from "@/components/magicui/number-ticker";
-import { Canvas } from "@react-three/fiber";
+
+import Portal from "./Portal";
 import NFTsCollectionsCardR3FAcqusition from "../nfts/NFTs.Collections.Card.R3F.Acqusition";
-import { SPG } from "@/app/story/spg/actions";
-import { XIcon } from "lucide-react";
-import confetti from "canvas-confetti";
+
+import type { SPG } from "@/app/story/spg/actions";
+import type { Asset } from "@prisma/client";
 
 // 브라우저 전용 모듈을 동적으로 임포트
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
@@ -49,6 +53,30 @@ export default function InteractFeedback({
 }: InteractFeedbackProps) {
     const [successLottie, setSuccessLottie] = useState<any>(null);
 
+    const handleConfetti = () => {
+        const defaults = {
+            particleCount: type === "purchaseNFT" ? 300 : 100,
+            spread: type === "purchaseNFT" ? 360 : 120,
+            ticks: autoCloseMs ? autoCloseMs : 800,
+            decay: 0.96,
+            startVelocity: 20,
+            scalar: 1,
+            zIndex: type === "purchaseNFT" ? 20 : 1000,
+        };
+
+        const shoot = () => {
+            try {
+                confetti({
+                    ...defaults,
+                });
+            } catch (error) {
+                console.error("Failed to shoot confetti:", error);
+            }
+        };
+
+        shoot();
+    };
+
     // 자동 닫힘
     useEffect(() => {
         if (open) {
@@ -63,35 +91,24 @@ export default function InteractFeedback({
         if (showConfetti && open) {
             handleConfetti();
         }
-    }, [showConfetti, open]);
+    }, [showConfetti, open, handleConfetti]);
 
     useEffect(() => {
+        const fetchSuccessLottie = async () => {
+            try {
+                const res = await fetch("/lottie/success.json");
+                const data = await res.json();
+                setSuccessLottie(data);
+            } catch (error) {
+                console.error("Failed to fetch success lottie:", error);
+            }
+        };
         if (type === "success") {
-            fetch("/lottie/success.json")
-                .then((res) => res.json())
-                .then(setSuccessLottie);
+            fetchSuccessLottie().catch((error) => {
+                console.error("Failed to fetch success lottie:", error);
+            });
         }
     }, [type]);
-
-    const handleConfetti = () => {
-        const defaults = {
-            particleCount: type === "purchaseNFT" ? 300 : 100,
-            spread: type === "purchaseNFT" ? 360 : 120,
-            ticks: autoCloseMs ? autoCloseMs : 800,
-            decay: 0.96,
-            startVelocity: 20,
-            scalar: 1,
-            zIndex: type === "purchaseNFT" ? 20 : 1000,
-        };
-
-        const shoot = () => {
-            confetti({
-                ...defaults,
-            });
-        };
-
-        shoot();
-    };
 
     return (
         <Portal>
@@ -151,7 +168,7 @@ export default function InteractFeedback({
                             <div className="absolute top-0 right-0 p-2">
                                 <button
                                     onClick={(e) => {
-                                        console.log("close");
+                                        e.stopPropagation();
                                         onClose();
                                     }}
                                 >

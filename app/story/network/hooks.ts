@@ -1,12 +1,13 @@
 /// app/story/network/hooks.ts
 
-import { useGetStoryNetworkQuery, useGetStoryNetworksQuery } from "./queries";
 import {
     useCreateStoryNetworkMutation,
     useUpdateStoryNetworkMutation,
     useDeleteStoryNetworkMutation,
 } from "./mutations";
-import { getStoryNetworkInput, getStoryNetworksInput } from "./actions";
+import { useGetStoryNetworkQuery, useGetStoryNetworksQuery } from "./queries";
+
+import type { getStoryNetworkInput, getStoryNetworksInput } from "./actions";
 
 interface useStoryNetworkInput {
     getStoryNetworkInput?: getStoryNetworkInput;

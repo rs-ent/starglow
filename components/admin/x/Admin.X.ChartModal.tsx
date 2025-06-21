@@ -3,6 +3,7 @@
 "use client";
 
 import { useState } from "react";
+
 import {
     LineChart,
     Line,
@@ -10,12 +11,13 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    Legend,
     ResponsiveContainer,
 } from "recharts";
+
 import { formatNumber } from "@/lib/utils/format";
-import { TweetMetrics, TweetAuthorMetrics } from "@prisma/client";
 import { cn } from "@/lib/utils/tailwind";
+
+import type { TweetMetrics, TweetAuthorMetrics } from "@prisma/client";
 
 interface AdminXChartModalProps {
     isOpen: boolean;
@@ -83,9 +85,6 @@ export default function AdminXChartModal({
                 tweets: metric.tweetCount,
                 listed: metric.listedCount,
             }));
-            console.log("Original metrics:", authorMetrics);
-            console.log("Filtered data:", filteredData);
-            console.log("Final chart data:", chartData);
             return chartData;
         } else if (type === "tweet" && tweetMetrics.length > 0) {
             const filteredData = filterDataByTimeRange(tweetMetrics);
@@ -97,9 +96,6 @@ export default function AdminXChartModal({
                 likes: metric.likeCount,
                 quotes: metric.quoteCount,
             }));
-            console.log("Original metrics:", tweetMetrics);
-            console.log("Filtered data:", filteredData);
-            console.log("Final chart data:", chartData);
             return chartData;
         }
         return [];
@@ -217,7 +213,6 @@ export default function AdminXChartModal({
             }
 
             const dataMax = Math.max(...allValues);
-            const dataMin = Math.min(...allValues);
 
             // 최소값은 항상 0으로 설정
             const adjustedMin = 0;

@@ -3,7 +3,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { playerAssetsKeys, questKeys } from "../queryKeys";
+
 import {
     createQuest,
     deleteQuest,
@@ -13,7 +13,9 @@ import {
     updateQuestOrder,
     updateQuestActive,
 } from "../actions/quests";
-import { Quest } from "@prisma/client";
+import { playerAssetsKeys, questKeys } from "../queryKeys";
+
+import type { Quest } from "@prisma/client";
 
 /**
  * 퀘스트 생성 뮤테이션 훅

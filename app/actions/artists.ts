@@ -3,16 +3,11 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import {
-    Prisma,
-    Artist,
-    ArtistMessage,
-    User,
-    CollectionContract,
-    Story_spg,
-} from "@prisma/client";
-import { advancedTokenGate, AdvancedTokenGateResult } from "./blockchain";
+
 import { getOwners } from "../story/nft/actions";
+
+import type { AdvancedTokenGateResult } from "./blockchain";
+import type { Artist, ArtistMessage, Prisma } from "@prisma/client";
 
 export interface CreateArtistInput {
     name: string;
@@ -27,7 +22,7 @@ export interface CreateArtistInput {
     videos?: string[];
     music?: string[];
     events?: string[];
-    additionalInfo?: any;
+    additionalInfo?: Prisma.InputJsonValue;
     backgroundColors?: string[];
     foregroundColors?: string[];
     collectionContractIds?: string[];
@@ -66,7 +61,6 @@ export async function getArtist(
             return null;
         }
 
-        const where: Prisma.ArtistWhereInput = {};
         if (input.id) {
             return await prisma.artist.findUnique({
                 where: { id: input.id },
@@ -160,7 +154,7 @@ export interface UpdateArtistInput {
     videos?: string[];
     music?: string[];
     events?: string[];
-    additionalInfo?: any;
+    additionalInfo?: Prisma.InputJsonValue;
     backgroundColors?: string[];
     foregroundColors?: string[];
     collectionContractIds?: string[];
