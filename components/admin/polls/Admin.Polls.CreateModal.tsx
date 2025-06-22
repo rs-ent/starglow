@@ -58,7 +58,7 @@ import type {
     PollOption,
     UpdatePollInput,
 } from "@/app/actions/polls";
-import type { Poll} from "@prisma/client";
+import type { Poll } from "@prisma/client";
 
 function Section({
     title,
@@ -319,7 +319,6 @@ export default function AdminPollsCreateModal({
             startLoading();
 
             if (!isFormValid()) {
-                console.log("Invalid form");
                 return;
             }
 

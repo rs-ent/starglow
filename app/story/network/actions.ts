@@ -7,7 +7,6 @@ import { prisma } from "@/lib/prisma/client";
 import type { Prisma, BlockchainNetwork } from "@prisma/client";
 import type { Chain } from "viem";
 
-
 export interface createStoryNetworkInput {
     name: string;
     chainId: number;
@@ -168,20 +167,17 @@ export async function updateStoryNetwork(
                 input.defaultNetwork !== existingNetwork.defaultNetwork
             ) {
                 if (input.defaultNetwork) {
-                    // 현재 네트워크를 default로 설정하는 경우
                     await tx.blockchainNetwork.updateMany({
                         where: {
                             defaultNetwork: true,
-                            id: { not: input.id }, // 현재 네트워크 제외
+                            id: { not: id },
                         },
                         data: { defaultNetwork: false },
                     });
                 } else {
-                    // 현재 네트워크의 default를 해제하는 경우
-                    // 다른 네트워크 중 하나를 default로 설정해야 함
                     const otherNetwork = await tx.blockchainNetwork.findFirst({
                         where: {
-                            id: { not: input.id },
+                            id: { not: id },
                             isActive: true,
                         },
                     });
@@ -196,7 +192,7 @@ export async function updateStoryNetwork(
             }
 
             const updatedNetwork = await tx.blockchainNetwork.update({
-                where: { id: input.id },
+                where: { id },
                 data: {
                     ...rest,
                 },
@@ -316,34 +312,16 @@ export async function estimateAndOptimizeGas(
                 maxPriorityFeePerGas = (priorityFee * multiplier) / 1000n;
                 maxFeePerGas = baseFee * 2n + maxPriorityFeePerGas; // base fee의 2배 + priority fee
 
-                console.log(`Gas estimation (attempt ${attempt + 1}):`);
-                console.log(`- NFT quantity: ${nftQuantity}`);
-                console.log(`- Estimated gas limit: ${estimatedGas}`);
-                console.log(`- Min required gas: ${minRequiredGas}`);
-                console.log(`- Base gas used: ${baseGas}`);
-                console.log(`- Base fee: ${baseFee} wei`);
-                console.log(`- Max priority fee: ${maxPriorityFeePerGas} wei`);
-                console.log(`- Max fee per gas: ${maxFeePerGas} wei`);
                 const costInWei = baseGas * maxFeePerGas;
                 const costInEth = Number(costInWei) / Number(10n ** 18n);
-                console.log(
-                    `- Total estimated cost: ${costInEth.toFixed(6)} ETH`
-                );
             }
         } catch (eip1559Error) {
-            // EIP-1559 미지원 네트워크, legacy 가스 가격 사용
+            console.warn(
+                "EIP-1559 Not Supported. Using legacy gas price:",
+                eip1559Error
+            );
             const multiplier = 1000n + BigInt(attempt * 150); // 115%, 130%, 145%...
             maxFeePerGas = (gasPrice * multiplier) / 1000n;
-
-            console.log(`Legacy gas estimation (attempt ${attempt + 1}):`);
-            console.log(`- NFT quantity: ${nftQuantity}`);
-            console.log(`- Estimated gas limit: ${estimatedGas}`);
-            console.log(`- Min required gas: ${minRequiredGas}`);
-            console.log(`- Base gas used: ${baseGas}`);
-            console.log(`- Gas price: ${maxFeePerGas} wei`);
-            const costInWei = baseGas * maxFeePerGas;
-            const costInEth = Number(costInWei) / Number(10n ** 18n);
-            console.log(`- Total estimated cost: ${costInEth.toFixed(6)} ETH`);
         }
 
         // 4. 가스 한도에 안전 마진 추가 (30% - NFT 여러 개일 때 더 많은 마진 필요)
@@ -364,11 +342,6 @@ export async function estimateAndOptimizeGas(
         const baseGasLimit = baseGasPerNFT * BigInt(nftQuantity);
         const baseGasPrice = 20000000000n; // 20 gwei
         const multiplier = 1000n + BigInt(attempt * 200); // 120%, 140%, 160%...
-
-        console.log(
-            `Using fallback gas estimation for ${nftQuantity} NFTs:`,
-            baseGasLimit
-        );
 
         return {
             gas: baseGasLimit,

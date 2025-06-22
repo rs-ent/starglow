@@ -83,16 +83,12 @@ function formatKSTDate(dateStr?: string) {
 
 function toDatetimeLocalValue(dt?: string) {
     if (!dt) return "";
-    // dt는 ISO string일 수 있음
     const date = new Date(dt);
-    // 브라우저 input value는 local time 기준이어야 함
-    // padStart로 항상 2자리 보장
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, "0");
     const dd = String(date.getDate()).padStart(2, "0");
     const hh = String(date.getHours()).padStart(2, "0");
     const min = String(date.getMinutes()).padStart(2, "0");
-    console.log(yyyy, mm, dd, hh, min);
     return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
 }
 
@@ -194,10 +190,8 @@ export default function AdminStoryManagementSPG({
         getSPGsIsLoading,
         getSPGsIsError,
         getSPGsError,
-        updateSPGUtilsMutation,
         updateSPGUtilsMutationAsync,
         updateSPGUtilsMutationIsPending,
-        updateSPGUtilsMutationIsError,
     } = useSPG({
         getSPGsInput: {},
     });

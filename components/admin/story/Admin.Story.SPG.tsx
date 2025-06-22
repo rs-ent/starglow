@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { TBAContractType } from "@prisma/client";
+import { type Artist, TBAContractType } from "@prisma/client";
 import { useSession } from "next-auth/react";
 import { FaShieldAlt, FaCube } from "react-icons/fa";
 import { SiEthereum } from "react-icons/si";
@@ -46,12 +46,7 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
         artistId: "",
     });
 
-    const {
-        storyNetworks,
-        isLoadingStoryNetworks,
-        isErrorStoryNetworks,
-        refetchStoryNetworks,
-    } = useStoryNetwork({
+    const { storyNetworks, isLoadingStoryNetworks } = useStoryNetwork({
         getStoryNetworksInput: {
             isActive: true,
         },
@@ -60,8 +55,6 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
     const {
         escrowWallets,
         isLoadingEscrowWallets,
-        isErrorEscrowWallets,
-        refetchEscrowWallets,
 
         fetchEscrowWalletsBalanceAsync,
         isPendingFetchEscrowWalletsBalance,
@@ -157,7 +150,6 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
             if (!uncachedMetadata.length) return;
 
             try {
-                // Promise.all을 사용하여 병렬로 모든 요청 처리
                 const results = await Promise.all(
                     uncachedMetadata.map(async (meta) => {
                         const data = await fetchMetadata(meta.url!);
@@ -183,7 +175,9 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
             }
         };
 
-        loadMetadata();
+        loadMetadata().catch((err) => {
+            console.error(err);
+        });
     }, [metadataList, cachedMetadata, isLoadingMetadataList]);
 
     useEffect(() => {
@@ -1225,7 +1219,7 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                                 아티스트 불러오는 중...
                             </div>
                         ) : (
-                            artists?.map((artist) => (
+                            artists?.map((artist: Artist) => (
                                 <button
                                     key={artist.id}
                                     onClick={() =>
@@ -1437,7 +1431,8 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                                 <p className="text-white">
                                     {
                                         artists?.find(
-                                            (a) => a.id === form.artistId
+                                            (a: Artist) =>
+                                                a.id === form.artistId
                                         )?.name
                                     }
                                 </p>

@@ -2,7 +2,7 @@
 
 "use client"; // 클라이언트 컴포넌트로 표시
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { Canvas } from "@react-three/fiber";
 import confetti from "canvas-confetti";
@@ -53,7 +53,7 @@ export default function InteractFeedback({
 }: InteractFeedbackProps) {
     const [successLottie, setSuccessLottie] = useState<any>(null);
 
-    const handleConfetti = () => {
+    const handleConfetti = useCallback(() => {
         const defaults = {
             particleCount: type === "purchaseNFT" ? 300 : 100,
             spread: type === "purchaseNFT" ? 360 : 120,
@@ -68,6 +68,8 @@ export default function InteractFeedback({
             try {
                 confetti({
                     ...defaults,
+                })?.catch((error) => {
+                    console.error("Failed to shoot confetti:", error);
                 });
             } catch (error) {
                 console.error("Failed to shoot confetti:", error);
@@ -75,7 +77,7 @@ export default function InteractFeedback({
         };
 
         shoot();
-    };
+    }, [autoCloseMs, type]);
 
     // 자동 닫힘
     useEffect(() => {

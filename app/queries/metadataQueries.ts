@@ -1,4 +1,5 @@
-import { Metadata } from "@prisma/client";
+/// app/queries/metadataQueries.ts
+
 import { useQuery } from "@tanstack/react-query";
 
 import {

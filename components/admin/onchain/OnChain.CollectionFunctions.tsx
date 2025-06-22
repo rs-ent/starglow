@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import {
     Loader2,
@@ -40,14 +40,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -115,30 +108,16 @@ export default function CollectionFunctions({
     const [showPageImages, setShowPageImages] = useState(false);
 
     // 컬렉션 데이터 및 작업
-    const {
-        tokens,
-        status,
-        isLoading: isLoadingCollection,
-    } = useCollectionGet({
+    const { status } = useCollectionGet({
         collectionAddress: collection.address,
         walletId: selectedWalletId,
     });
 
-    const {
-        mint,
-        burn,
-        pause,
-        unpause,
-        isProcessing,
-        isMinting,
-        isBurning,
-        isPausing,
-        isUnpausing,
-        refresh,
-    } = useCollectionSet({
-        collectionAddress: collection.address,
-        walletId: selectedWalletId,
-    });
+    const { mint, pause, unpause, isMinting, isPausing, isUnpausing, refresh } =
+        useCollectionSet({
+            collectionAddress: collection.address,
+            walletId: selectedWalletId,
+        });
 
     // 지갑 및 네트워크 관리
     const {
@@ -156,23 +135,8 @@ export default function CollectionFunctions({
     const updateSettingsMutation = useUpdateCollectionSettingsMutation();
     const isUpdatingSettings = updateSettingsMutation.isPending;
 
-    // 가스 추정 업데이트 (민팅 관련 입력 변경시)
-    useEffect(() => {
-        if (selectedWalletId && mintAddress && parseInt(mintQuantity) > 0) {
-            handleEstimateGas();
-        }
-    }, [selectedWalletId, mintAddress, mintQuantity]);
-
-    // 가스 추정 결과를 사용하여 가스 설정 필드 업데이트
-    useEffect(() => {
-        if (gasEstimateData && !customGasSettings && privateKey) {
-            setGasLimit(gasEstimateData.gasLimit || "");
-            setGasPrice(gasEstimateData.maxFeePerGas || "");
-        }
-    }, [gasEstimateData, customGasSettings, privateKey]);
-
     // 가스 추정 함수
-    const handleEstimateGas = async () => {
+    const handleEstimateGas = useCallback(async () => {
         if (!selectedWalletId || !mintAddress || parseInt(mintQuantity) <= 0) {
             return;
         }
@@ -191,7 +155,7 @@ export default function CollectionFunctions({
             console.error("Error estimating gas:", error);
             toast.error("Failed to estimate gas");
         }
-    };
+    }, [estimate, selectedWalletId, mintAddress, mintQuantity]);
 
     // 지갑 선택 핸들러
     const handleWalletSelect = async (walletId: string) => {
@@ -418,13 +382,30 @@ export default function CollectionFunctions({
     };
 
     const copyToClipboard = (text: string, label: string) => {
-        navigator.clipboard.writeText(text);
+        navigator.clipboard.writeText(text).catch((err) => {
+            console.error(err);
+        });
         toast.success(`${label} copied to clipboard`);
     };
 
     const openExternalLink = (url: string) => {
         window.open(url, "_blank", "noopener,noreferrer");
     };
+
+    useEffect(() => {
+        if (gasEstimateData && !customGasSettings && privateKey) {
+            setGasLimit(gasEstimateData.gasLimit || "");
+            setGasPrice(gasEstimateData.maxFeePerGas || "");
+        }
+    }, [gasEstimateData, customGasSettings, privateKey]);
+
+    useEffect(() => {
+        if (selectedWalletId && mintAddress && parseInt(mintQuantity) > 0) {
+            handleEstimateGas().catch((error) => {
+                console.error(error);
+            });
+        }
+    }, [selectedWalletId, mintAddress, mintQuantity, handleEstimateGas]);
 
     // 설정 카드 컴포넌트
     const settingsCard = (
@@ -474,7 +455,6 @@ export default function CollectionFunctions({
                                 setPreSaleStart(date.toISOString())
                             }
                             disabled={isUpdatingSettings}
-                            minDate={new Date()}
                         />
                         <DateTimePicker
                             label="End Date"
@@ -485,11 +465,6 @@ export default function CollectionFunctions({
                                 setPreSaleEnd(date.toISOString())
                             }
                             disabled={isUpdatingSettings}
-                            minDate={
-                                preSaleStart
-                                    ? new Date(preSaleStart)
-                                    : new Date()
-                            }
                         />
                     </div>
                 </div>
@@ -505,18 +480,12 @@ export default function CollectionFunctions({
                                 setSaleStart(date.toISOString())
                             }
                             disabled={isUpdatingSettings}
-                            minDate={
-                                preSaleEnd ? new Date(preSaleEnd) : new Date()
-                            }
                         />
                         <DateTimePicker
                             label="End Date"
                             value={saleEnd ? new Date(saleEnd) : new Date()}
                             onChange={(date) => setSaleEnd(date.toISOString())}
                             disabled={isUpdatingSettings}
-                            minDate={
-                                saleStart ? new Date(saleStart) : new Date()
-                            }
                         />
                     </div>
                 </div>
@@ -532,16 +501,12 @@ export default function CollectionFunctions({
                                 setGlowStart(date.toISOString())
                             }
                             disabled={isUpdatingSettings}
-                            minDate={saleEnd ? new Date(saleEnd) : new Date()}
                         />
                         <DateTimePicker
                             label="End Date"
                             value={glowEnd ? new Date(glowEnd) : new Date()}
                             onChange={(date) => setGlowEnd(date.toISOString())}
                             disabled={isUpdatingSettings}
-                            minDate={
-                                glowStart ? new Date(glowStart) : new Date()
-                            }
                         />
                     </div>
                 </div>

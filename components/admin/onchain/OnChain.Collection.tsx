@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useCallback } from "react";
+import { Fragment, useState } from "react";
 
 import { format } from "date-fns";
 import {
@@ -10,7 +10,7 @@ import {
     ChevronUp,
     AlertTriangle,
     Clock,
-    Image,
+    Image as ImageIcon,
 } from "lucide-react";
 
 import { useBlockchainNetworksManager } from "@/app/hooks/useBlockchain";
@@ -303,7 +303,7 @@ export default function OnChainCollection({
                                                                     )
                                                                 }
                                                             >
-                                                                <Image className="h-4 w-4" />
+                                                                <ImageIcon className="h-4 w-4" />
                                                                 NFT 목록
                                                             </Button>
                                                         </div>

@@ -31,7 +31,7 @@ export function useWagmiConnection() {
 
     const { data: session } = useSession();
     const { address, isConnected } = useAccount();
-    const { connect, connectors } = useConnect();
+    const { connect } = useConnect();
     const { disconnect } = useDisconnect();
     const chainId = useChainId();
     const { switchChain } = useSwitchChain();
@@ -76,7 +76,7 @@ export function useWagmiConnection() {
                 throw error;
             }
         },
-        [connect, connectors, setSelectedConnector, setCallbackUrl]
+        [connect, setSelectedConnector, setCallbackUrl]
     );
 
     useEffect(() => {
@@ -86,7 +86,7 @@ export function useWagmiConnection() {
                 if (session?.user) {
                     user = session.user;
                 } else {
-                    const { user: newUser, player } = await setUserWithWallet({
+                    const { user: newUser } = await setUserWithWallet({
                         walletAddress: address,
                         provider: selectedConnector.id,
                     });
@@ -106,8 +106,18 @@ export function useWagmiConnection() {
             }
         };
 
-        setUser();
-    }, [isConnected, address, chainId, selectedConnector, callbackUrl]);
+        setUser().catch((error) => {
+            console.error(error);
+        });
+    }, [
+        isConnected,
+        address,
+        chainId,
+        selectedConnector,
+        callbackUrl,
+        connectWalletAsync,
+        session?.user,
+    ]);
 
     const handleSwitchChain = useCallback(
         async (targetChainId: number) => {

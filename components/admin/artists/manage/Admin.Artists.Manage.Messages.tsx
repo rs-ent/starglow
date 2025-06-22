@@ -40,8 +40,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { cn } from "@/lib/utils/tailwind";
 
 import CreateArtistMessage from "./Admin.Artists.Manage.CreateArtistMessage";
@@ -55,7 +54,6 @@ interface AdminArtistsManageMessagesProps {
 export default function AdminArtistsManageMessages({
     artist,
 }: AdminArtistsManageMessagesProps) {
-    const toast = useToast();
     const { artistMessages, isLoading, error, refetchArtistMessages } =
         useArtistsGet({
             getArtistMessagesInput: {
@@ -63,23 +61,9 @@ export default function AdminArtistsManageMessages({
             },
         });
 
-    const {
-        deleteArtistMessage,
-        isDeletingArtistMessage,
-        deleteArtistMessageError,
-    } = useArtistSet();
-
     const [filterStatus, setFilterStatus] = useState<
         "all" | "active" | "inactive" | "expired" | "upcoming"
     >("all");
-
-    // 반응형 클래스
-    const heroText = getResponsiveClass(35);
-    const titleText = getResponsiveClass(25);
-    const bodyText = getResponsiveClass(15);
-    const smallText = getResponsiveClass(10);
-    const iconSize = getResponsiveClass(20);
-    const buttonPadding = getResponsiveClass(15);
 
     const [showEditDialog, setShowEditDialog] = useState(false);
 
@@ -321,12 +305,11 @@ export default function AdminArtistsManageMessages({
             {/* 메시지 그리드 */}
             {filteredMessages.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredMessages.map((message, index) => (
+                    {filteredMessages.map((message) => (
                         <MessageCard
                             key={message.id}
                             message={message}
                             artist={artist}
-                            index={index}
                             refetch={refetchArtistMessages}
                         />
                     ))}
@@ -374,12 +357,10 @@ export default function AdminArtistsManageMessages({
 function MessageCard({
     message,
     artist,
-    index,
     refetch,
 }: {
     message: ArtistMessage;
     artist: Artist;
-    index: number;
     refetch: () => void;
 }) {
     const toast = useToast();
@@ -403,6 +384,7 @@ function MessageCard({
                 toast.error("메시지 삭제에 실패했습니다");
             }
         } catch (error) {
+            console.error(error);
             toast.error("메시지 삭제 중 오류가 발생했습니다");
         } finally {
             setIsDeleting(false);

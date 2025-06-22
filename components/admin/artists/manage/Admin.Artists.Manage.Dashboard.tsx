@@ -16,7 +16,6 @@ import { useSession } from "next-auth/react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 
 import AdminArtistsManageFeeds from "./Admin.Artists.Manage.Feeds";
 import AdminArtistsManageMessages from "./Admin.Artists.Manage.Messages";

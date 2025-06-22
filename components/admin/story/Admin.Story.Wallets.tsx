@@ -154,7 +154,9 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
     };
 
     const copyToClipboard = (text: string, type?: string) => {
-        navigator.clipboard.writeText(text);
+        navigator.clipboard.writeText(text).catch((err) => {
+            console.error(err);
+        });
         toast.success(`${type ? `${type} ` : ""}복사되었습니다.`);
     };
 
@@ -173,6 +175,7 @@ export default function AdminStoryWallets({ onBack }: { onBack?: () => void }) {
             try {
                 account = privateKeyToAccount(pk as `0x${string}`);
             } catch (e) {
+                console.error(e);
                 toast.error("유효하지 않은 프라이빗키입니다.");
                 setIsAddWalletLoading(false);
                 return;

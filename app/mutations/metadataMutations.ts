@@ -23,7 +23,11 @@ export function useCreateCollectionMetadata() {
             collectionKey: string;
         }) => createCollectionMetadata(metadata, collectionKey),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: metadataKeys.lists() });
+            queryClient
+                .invalidateQueries({ queryKey: metadataKeys.lists() })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -36,9 +40,13 @@ export function useCreateNFTMetadata() {
         mutationFn: (collection: CollectionContract) =>
             createNFTMetadata(collection),
         onSuccess: (_, collection) => {
-            queryClient.invalidateQueries({
-                queryKey: metadataKeys.nfts(collection.address),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: metadataKeys.nfts(collection.address),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -57,15 +65,29 @@ export function useLinkCollectionMetadata() {
         }) => linkCollectionMetadata(metadataId, collectionAddress),
         onSuccess: (_, variables) => {
             // 관련된 모든 쿼리 무효화
-            queryClient.invalidateQueries({
-                queryKey: metadataKeys.detail(variables.metadataId),
-            });
-            queryClient.invalidateQueries({
-                queryKey: metadataKeys.lists(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: metadataKeys.collection(variables.collectionAddress),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: metadataKeys.detail(variables.metadataId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: metadataKeys.lists(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: metadataKeys.collection(
+                        variables.collectionAddress
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -82,16 +104,24 @@ export function useRecoverNFTMetadata() {
             tokenId: number;
         }) => recoverNFTMetadata({ collectionAddress, tokenId }),
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: metadataKeys.recovery.nft(
-                    variables.collectionAddress,
-                    variables.tokenId
-                ),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: metadataKeys.recovery.nft(
+                        variables.collectionAddress,
+                        variables.tokenId
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
 
-            queryClient.invalidateQueries({
-                queryKey: metadataKeys.nfts(variables.collectionAddress),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: metadataKeys.nfts(variables.collectionAddress),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

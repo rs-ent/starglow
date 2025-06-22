@@ -20,12 +20,16 @@ export function useStakeMutation() {
 
     return useMutation({
         mutationFn: stake,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: collectionKeys.tokens.staked(
-                    variables.collectionAddress
-                ),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: collectionKeys.tokens.staked(
+                        variables.collectionAddress
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -35,12 +39,16 @@ export function useUnstakeMutation() {
 
     return useMutation({
         mutationFn: unstake,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: collectionKeys.tokens.staked(
-                    variables.collectionAddress
-                ),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: collectionKeys.tokens.staked(
+                        variables.collectionAddress
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -50,13 +58,21 @@ export function useCreateStakeRewardMutation() {
 
     return useMutation({
         mutationFn: createStakeReward,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: stakingKeys.all,
-            });
-            queryClient.invalidateQueries({
-                queryKey: stakingKeys.stakeRewards(),
-            });
+        onSuccess: (_data, _variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: stakingKeys.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: stakingKeys.stakeRewards(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -66,13 +82,21 @@ export function useUpdateStakeRewardMutation() {
 
     return useMutation({
         mutationFn: updateStakeReward,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: stakingKeys.all,
-            });
-            queryClient.invalidateQueries({
-                queryKey: stakingKeys.stakeRewards(),
-            });
+        onSuccess: (_data, _variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: stakingKeys.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: stakingKeys.stakeRewards(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -82,13 +106,21 @@ export function useDeleteStakeRewardMutation() {
 
     return useMutation({
         mutationFn: deleteStakeReward,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: stakingKeys.all,
-            });
-            queryClient.invalidateQueries({
-                queryKey: stakingKeys.stakeRewards(),
-            });
+        onSuccess: (_data, _variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: stakingKeys.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: stakingKeys.stakeRewards(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -98,10 +130,14 @@ export function useFindRewardableStakeTokensMutation() {
 
     return useMutation({
         mutationFn: findRewardableStakeTokens,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: stakingKeys.userStakeRewardLogs(),
-            });
+        onSuccess: (_data, _variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: stakingKeys.userStakeRewardLogs(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -111,22 +147,38 @@ export function useClaimStakeRewardMutation() {
 
     return useMutation({
         mutationFn: claimStakeReward,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: stakingKeys.userStakeRewardLogs(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: stakingKeys.stakeRewards(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: playerAssetsKeys.all,
-            });
-            queryClient.invalidateQueries({
-                queryKey: playerAssetsKeys.balances(
-                    variables.player.id,
-                    variables.stakeRewardLogs.map((log) => log.assetId)
-                ),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: stakingKeys.userStakeRewardLogs(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: stakingKeys.stakeRewards(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: playerAssetsKeys.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: playerAssetsKeys.balances(
+                        variables.player.id,
+                        variables.stakeRewardLogs.map((log) => log.assetId)
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

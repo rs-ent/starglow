@@ -206,12 +206,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
 
         // Debug: Log all events in the receipt to understand what's being emitted
         receipt.logs.forEach((log, index) => {
-            console.log(`Log ${index}:`, {
-                address: log.address,
-                topics: log.topics,
-                data: log.data,
-            });
-
             // Try to decode each log with different event signatures
             try {
                 const decoded = decodeEventLog({
@@ -219,10 +213,10 @@ export async function mint(input: mintInput): Promise<mintResult> {
                     data: log.data,
                     topics: log.topics,
                 });
-                console.log(`Decoded event ${index}:`, decoded);
             } catch (error) {
-                console.log(
-                    `Failed to decode log ${index} with SPGNFTCollection ABI`
+                console.error(
+                    `Failed to decode log ${index} with SPGNFTCollection ABI`,
+                    error
                 );
             }
         });
@@ -267,11 +261,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
             });
 
             if (transferEvents.length === 0) {
-                // 이벤트를 찾지 못한 경우, 컨트랙트 상태를 직접 읽어서 확인
-                console.log(
-                    "No events found, reading contract state directly..."
-                );
-
                 try {
                     // 현재 총 공급량 조회
                     const totalSupply = (await publicClient.readContract({
@@ -310,10 +299,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
                                     })) as bigint;
                                 tokenIds.push(tokenId);
                             } catch (indexError) {
-                                // tokenOfOwnerByIndex가 없는 경우, 전체 토큰을 역순으로 확인
-                                console.log(
-                                    "tokenOfOwnerByIndex not available, scanning all tokens..."
-                                );
                                 tokenIds = [];
 
                                 // 최근 생성된 토큰부터 역순으로 확인
@@ -388,10 +373,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
 
                 startTokenId = transferTokenIds[0];
                 tokenIds = transferTokenIds;
-
-                console.log(
-                    `Using Transfer events - startTokenId: ${startTokenId}, tokenIds: ${tokenIds}`
-                );
             }
         } else {
             // Check if we have individual Minted events for each NFT
@@ -479,18 +460,11 @@ export async function registerAsIPAsset(
     input: RegisterIPAssetInput
 ): Promise<RegisterIPAssetResult> {
     try {
-        console.log(
-            "[registerAsIPAsset] input:",
-            JSON.stringify(input, (key, value) =>
-                typeof value === "bigint" ? value.toString() : value
-            )
-        );
         const network = await prisma.blockchainNetwork.findUnique({
             where: {
                 id: input.networkId,
             },
         });
-        console.log("[registerAsIPAsset] network:", network);
 
         if (!network) {
             console.error(
@@ -504,7 +478,6 @@ export async function registerAsIPAsset(
             userId: input.userId,
             address: input.walletAddress,
         });
-        console.log("[registerAsIPAsset] privateKey fetched:", !!privateKey);
 
         if (!privateKey) {
             console.error(
@@ -519,9 +492,6 @@ export async function registerAsIPAsset(
             networkId: input.networkId,
             walletAddress: input.walletAddress,
         });
-        console.log("[registerAsIPAsset] Story client fetched:", !!client);
-
-        console.log("[registerAsIPAsset] Registering NFT as IP Asset...");
 
         // 해시 생성 (Story Protocol 공식 문서 방식 사용)
         // Story Protocol 표준: SHA256 해시를 사용하고 0x prefix 추가
@@ -530,16 +500,8 @@ export async function registerAsIPAsset(
 
         if (input.ipMetadataHash) {
             ipMetadataHash = input.ipMetadataHash as Hex;
-            console.log(
-                "[registerAsIPAsset] ipMetadataHash provided:",
-                ipMetadataHash
-            );
         } else if (input.ipMetadataURI) {
             try {
-                console.log(
-                    "[registerAsIPAsset] Fetching ipMetadataURI:",
-                    input.ipMetadataURI
-                );
                 const response = await fetch(input.ipMetadataURI);
                 if (response.ok) {
                     const metadata = await response.json();
@@ -547,49 +509,26 @@ export async function registerAsIPAsset(
                         .update(JSON.stringify(metadata))
                         .digest("hex");
                     ipMetadataHash = `0x${hash}` as Hex;
-                    console.log(
-                        "[registerAsIPAsset] ipMetadataHash (fetched):",
-                        ipMetadataHash
-                    );
                 } else {
                     ipMetadataHash = `0x${createHash("sha256")
                         .update("")
                         .digest("hex")}` as Hex;
-                    console.warn(
-                        "[registerAsIPAsset] ipMetadataURI fetch failed, using empty hash"
-                    );
                 }
             } catch (err) {
                 ipMetadataHash = `0x${createHash("sha256")
                     .update("")
                     .digest("hex")}` as Hex;
-                console.error(
-                    "[registerAsIPAsset] Error fetching ipMetadataURI, using empty hash:",
-                    err
-                );
             }
         } else {
             ipMetadataHash = `0x${createHash("sha256")
                 .update("")
                 .digest("hex")}` as Hex;
-            console.log(
-                "[registerAsIPAsset] No ipMetadataHash or URI, using empty hash:",
-                ipMetadataHash
-            );
         }
 
         if (input.nftMetadataHash) {
             nftMetadataHash = input.nftMetadataHash as Hex;
-            console.log(
-                "[registerAsIPAsset] nftMetadataHash provided:",
-                nftMetadataHash
-            );
         } else if (input.nftMetadataURI) {
             try {
-                console.log(
-                    "[registerAsIPAsset] Fetching nftMetadataURI:",
-                    input.nftMetadataURI
-                );
                 const response = await fetch(input.nftMetadataURI);
                 if (response.ok) {
                     const metadata = await response.json();
@@ -597,35 +536,20 @@ export async function registerAsIPAsset(
                         .update(JSON.stringify(metadata))
                         .digest("hex");
                     nftMetadataHash = `0x${hash}` as Hex;
-                    console.log(
-                        "[registerAsIPAsset] nftMetadataHash (fetched):",
-                        nftMetadataHash
-                    );
                 } else {
                     nftMetadataHash = `0x${createHash("sha256")
                         .update("")
                         .digest("hex")}` as Hex;
-                    console.warn(
-                        "[registerAsIPAsset] nftMetadataURI fetch failed, using empty hash"
-                    );
                 }
             } catch (err) {
                 nftMetadataHash = `0x${createHash("sha256")
                     .update("")
                     .digest("hex")}` as Hex;
-                console.error(
-                    "[registerAsIPAsset] Error fetching nftMetadataURI, using empty hash:",
-                    err
-                );
             }
         } else {
             nftMetadataHash = `0x${createHash("sha256")
                 .update("")
                 .digest("hex")}` as Hex;
-            console.log(
-                "[registerAsIPAsset] No nftMetadataHash or URI, using empty hash:",
-                nftMetadataHash
-            );
         }
 
         // Story SDK의 txOptions 타입에 맞게 설정
@@ -636,17 +560,6 @@ export async function registerAsIPAsset(
         // IP Asset 등록 (재시도 로직 제거)
         let response: any;
         try {
-            console.log(`[registerAsIPAsset] Calling client.ipAsset.register`, {
-                nftContract: input.nftContract,
-                tokenId: input.tokenId,
-                ipMetadata: {
-                    ipMetadataURI: input.ipMetadataURI || undefined,
-                    ipMetadataHash: ipMetadataHash,
-                    nftMetadataURI: input.nftMetadataURI || undefined,
-                    nftMetadataHash: nftMetadataHash,
-                },
-                txOptions,
-            });
             response = await client.ipAsset.register({
                 nftContract: input.nftContract as Hex,
                 tokenId: input.tokenId,
@@ -658,7 +571,6 @@ export async function registerAsIPAsset(
                 },
                 txOptions,
             });
-            console.log(`[registerAsIPAsset] Response`, response);
         } catch (error) {
             console.error(
                 `[registerAsIPAsset] IP Asset registration failed:`,
@@ -709,11 +621,6 @@ export async function registerAsIPAsset(
             throw new Error("NFT is already registered as IP Asset");
         }
 
-        console.log(
-            `[registerAsIPAsset] IP Asset registered: ${response.ipId}`
-        );
-        console.log(`[registerAsIPAsset] Transaction hash: ${response.txHash}`);
-
         // DB에 IP Asset 정보 저장
         const ipAsset = await prisma.story_ipAsset.create({
             data: {
@@ -729,7 +636,6 @@ export async function registerAsIPAsset(
                 networkId: input.networkId,
             },
         });
-        console.log("[registerAsIPAsset] Saved ipAsset to DB:", ipAsset);
 
         // NFT 테이블에 ipAssetId 업데이트 (Story_ipAsset의 id 사용)
         const updateResult = await prisma.story_nft.update({
@@ -743,10 +649,6 @@ export async function registerAsIPAsset(
                 ipId: response.ipId,
             },
         });
-        console.log(
-            "[registerAsIPAsset] Updated story_nft with ipAssetId:",
-            updateResult
-        );
 
         return {
             ipId: response.ipId,
@@ -823,8 +725,6 @@ export async function mintAndRegisterAsIPAsset(
     input: MintAndRegisterAsIPAssetInput
 ): Promise<MintAndRegisterAsIPAssetResult> {
     try {
-        console.log("Step 1: Minting NFTs...");
-
         // Story Protocol 표준에 맞게 메타데이터 보완
         const enrichedIPMetadata: IPAssetMetadata = {
             ...input.ipAssetMetadata,
@@ -850,16 +750,12 @@ export async function mintAndRegisterAsIPAsset(
             reuseMetadata: input.reuseMetadata,
         });
 
-        console.log("Step 2: Creating IP Asset metadata...");
-
         // 2. IP Asset 메타데이터 생성
         const ipMetadata = await createMetadata({
             userId: input.userId,
             metadata: enrichedIPMetadata,
             type: "ip-asset-metadata",
         });
-
-        console.log("Step 3: Registering NFTs as IP Assets...");
 
         // 3. 각 NFT를 IP Asset으로 등록
         const ipAssets = await Promise.all(
@@ -885,10 +781,6 @@ export async function mintAndRegisterAsIPAsset(
                     nftMetadataHash: nftMetadataHash,
                 });
             })
-        );
-
-        console.log(
-            `Successfully minted ${mintResult.quantity} NFTs and registered them as IP Assets`
         );
 
         return {
@@ -1013,6 +905,7 @@ async function getOwnersByTokenIds(
                             owner: owner as string,
                         });
                     } catch (error) {
+                        console.error("Error getting owner:", error);
                         results.push({
                             tokenId,
                             owner: "",

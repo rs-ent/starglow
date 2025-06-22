@@ -22,15 +22,23 @@ export function useDeployFactoryMutation() {
         onSuccess: (data, variables) => {
             if (data.success) {
                 // Factory 목록 무효화
-                queryClient.invalidateQueries({
-                    queryKey: factoryKeys.byNetwork(variables.networkId),
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: factoryKeys.byNetwork(variables.networkId),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
                 // 배포 완료 상태 무효화
-                queryClient.invalidateQueries({
-                    queryKey: factoryKeys.deployment.completed(
-                        variables.networkId
-                    ),
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: factoryKeys.deployment.completed(
+                            variables.networkId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
 
                 toast.success("Factory 컨트랙트 배포 성공");
             } else {
@@ -52,22 +60,34 @@ export function useUpdateFactoryMutation() {
         onSuccess: (data, variables) => {
             if (data.success) {
                 // Factory 목록 무효화
-                queryClient.invalidateQueries({
-                    queryKey: factoryKeys.all,
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: factoryKeys.all,
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
                 // Factory 상태 관련 쿼리도 무효화
                 if (data.data?.isActive) {
-                    queryClient.invalidateQueries({
-                        queryKey: factoryKeys.status.active(
-                            data.data.networkId
-                        ),
-                    });
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: factoryKeys.status.active(
+                                data.data.networkId
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        });
                 } else {
-                    queryClient.invalidateQueries({
-                        queryKey: factoryKeys.status.inactive(
-                            data.data?.networkId || ""
-                        ),
-                    });
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: factoryKeys.status.inactive(
+                                data.data?.networkId || ""
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        });
                 }
 
                 toast.success("Factory 상태 업데이트 성공");
@@ -90,13 +110,23 @@ export function useCreateCollectionMutation() {
         onSuccess: (data, variables) => {
             if (data.success) {
                 // Factory의 컬렉션 목록 무효화
-                queryClient.invalidateQueries({
-                    queryKey: factoryKeys.collections.all(variables.factoryId),
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: factoryKeys.collections.all(
+                            variables.factoryId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
                 // 전체 컬렉션 목록도 무효화
-                queryClient.invalidateQueries({
-                    queryKey: collectionKeys.all,
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: collectionKeys.all,
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
 
                 toast.success(`${variables.params.name} 컬렉션 생성 성공`);
             } else {
@@ -118,20 +148,34 @@ export function useDeleteCollectionMutation() {
         onSuccess: (data, variables) => {
             if (data.success) {
                 // Factory의 컬렉션 목록 무효화
-                queryClient.invalidateQueries({
-                    queryKey: factoryKeys.collections.all(variables.factoryId),
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: factoryKeys.collections.all(
+                            variables.factoryId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
                 // 삭제된 컬렉션의 특정 쿼리 무효화
-                queryClient.invalidateQueries({
-                    queryKey: factoryKeys.collections.byAddress(
-                        variables.factoryId,
-                        variables.collectionAddress
-                    ),
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: factoryKeys.collections.byAddress(
+                            variables.factoryId,
+                            variables.collectionAddress
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
                 // 전체 컬렉션 목록도 무효화
-                queryClient.invalidateQueries({
-                    queryKey: collectionKeys.all,
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: collectionKeys.all,
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
 
                 toast.success("컬렉션 삭제 성공");
             } else {

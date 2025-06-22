@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 
 import {
     DndContext,
@@ -93,7 +93,7 @@ export default function AdminQuestList() {
         artistId: "",
     });
 
-    function filteringQuests() {
+    const filteringQuests = useCallback(() => {
         const filtered = quests.items.filter((quest) => {
             if (questFilter.type === "world") {
                 return !quest.artistId;
@@ -104,7 +104,7 @@ export default function AdminQuestList() {
         });
 
         setFilteredQuests(filtered);
-    }
+    }, [quests, questFilter]);
 
     useEffect(() => {
         if (!quests) return;

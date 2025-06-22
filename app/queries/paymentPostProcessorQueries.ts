@@ -5,10 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getPayment } from "@/app/actions/payment";
 import { paymentPostProcessorKeys } from "@/app/queryKeys";
 
-import type {
-    TransferNFTResponse,
-    TransferNFTSuccess,
-} from "@/app/actions/nftTransfer";
+import type { TransferNFTSuccess } from "@/app/actions/nftTransfer";
 
 // 결제 후처리 상태 조회
 export const usePaymentPostProcessStatus = (paymentId: string) => {

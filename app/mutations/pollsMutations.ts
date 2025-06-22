@@ -2,7 +2,7 @@
 
 "use client";
 
-import {useMutation, useQueryClient} from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
     createPoll,
@@ -12,7 +12,7 @@ import {
     updatePoll,
     updateUserSelection,
 } from "../actions/polls";
-import {playerAssetsKeys, pollKeys} from "../queryKeys";
+import { playerAssetsKeys, pollKeys } from "../queryKeys";
 
 export function useCreatePollMutation() {
     const queryClient = useQueryClient();
@@ -20,13 +20,25 @@ export function useCreatePollMutation() {
     return useMutation({
         mutationFn: createPoll,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: pollKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.list(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.lists(),
-            });
+            queryClient
+                .invalidateQueries({ queryKey: pollKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.list(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.lists(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
         onError: (error) => {
             console.error("Error creating poll:", error);
@@ -40,16 +52,32 @@ export function useUpdatePollMutation() {
     return useMutation({
         mutationFn: updatePoll,
         onSuccess: (updatePoll) => {
-            queryClient.invalidateQueries({ queryKey: pollKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.detail(updatePoll.id),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.list(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.lists(),
-            });
+            queryClient
+                .invalidateQueries({ queryKey: pollKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.detail(updatePoll.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.list(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.lists(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
         onError: (error) => {
             console.error("Error updating poll:", error);
@@ -64,15 +92,27 @@ export function useDeletePollMutation() {
         mutationFn: deletePoll,
         onSuccess: (deletedPoll) => {
             queryClient.invalidateQueries({ queryKey: pollKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.detail(deletedPoll.id),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.list(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.lists(),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.detail(deletedPoll.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.list(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.lists(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
         onError: (error) => {
             console.error("Error deleting poll:", error);
@@ -89,29 +129,51 @@ export function useParticipatePollMutation() {
             if (!data.success) {
                 throw new Error(data.error || "Error participating in poll");
             }
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.logs(variables.poll.id as any),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.log(data.data?.id || ""),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.logByUser(
-                    variables.poll.id,
-                    variables.player.id
-                ),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.result(variables.poll.id),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.playerLogs(variables.player.id),
-            });
-            queryClient.invalidateQueries({
-                queryKey: playerAssetsKeys.balances(
-                    variables.player.id,
-                ),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.logs(variables.poll.id as any),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.log(data.data?.id || ""),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.logByUser(
+                        variables.poll.id,
+                        variables.player.id
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.result(variables.poll.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.playerLogs(variables.player.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: playerAssetsKeys.balances(variables.player.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
         onError: (error) => {
             console.error("Error creating poll log:", error);
@@ -125,19 +187,31 @@ export function useUpdateUserSelectionMutation() {
 
     return useMutation({
         mutationFn: updateUserSelection,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.logs((data.data?.id as any) || ""),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.log(data.data?.id || ""),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.logByUser(
-                    data.data?.pollId || "",
-                    data.data?.playerId || ""
-                ),
-            });
+        onSuccess: (data, _variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.logs((data.data?.id as any) || ""),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.log(data.data?.id || ""),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.logByUser(
+                        data.data?.pollId || "",
+                        data.data?.playerId || ""
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -147,19 +221,35 @@ export function useUpdateActivePollMutation() {
 
     return useMutation({
         mutationFn: updateActivePoll,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.all,
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.detail(variables.pollId),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.list(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: pollKeys.lists(),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.detail(variables.pollId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.list(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.lists(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

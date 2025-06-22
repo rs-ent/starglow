@@ -5,10 +5,10 @@
 
 import { useState } from "react";
 
-import { Check, Plus, Loader2, Key , Factory } from "lucide-react";
+import { Check, Plus, Loader2, Key, Factory } from "lucide-react";
 
 import { useEscrowWalletManager } from "@/app/hooks/useBlockchain";
-import { useFactoryGet, useFactorySet } from "@/app/hooks/useFactoryContracts";
+import { useFactorySet } from "@/app/hooks/useFactoryContracts";
 import { useToast } from "@/app/hooks/useToast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -34,20 +34,17 @@ import CreateCollection from "./OnChain.CreateCollection";
 
 import type { CreateCollectionResult } from "./OnChain.Factory";
 
-
 interface FactoryFunctionsProps {
     factory: {
         address: string;
         networkId: string;
         id: string;
     };
-    onClose: () => void;
     onCollectionCreated?: (collection: any) => void;
 }
 
 export default function FactoryFunctions({
     factory,
-    onClose,
     onCollectionCreated,
 }: FactoryFunctionsProps) {
     const [showCreateCollection, setShowCreateCollection] = useState(false);
@@ -61,25 +58,20 @@ export default function FactoryFunctions({
     );
     const [selectedWalletId, setSelectedWalletId] = useState<string>("");
 
-    // 에스크로 지갑 관리자 가져오기
     const { wallets } = useEscrowWalletManager();
 
-    // useFactorySet hook 사용하여 Factory의 작업 수행
-    const {
-        updateFactory,
-        deleteCollection,
-        refresh,
-        isProcessing,
-        isDeletingCollection,
-    } = useFactorySet({
-        networkId: factory.networkId,
-    });
+    const { deleteCollection, refresh, isProcessing, isDeletingCollection } =
+        useFactorySet({
+            networkId: factory.networkId,
+        });
 
     // 컬렉션 생성 완료 시 처리
     const handleCollectionCreated = (result: CreateCollectionResult) => {
         setLastCreatedCollection(result);
         setShowCreateCollection(false);
-        refresh(); // 컬렉션 목록 새로고침
+        refresh().catch((err) => {
+            console.error(err);
+        });
 
         if (onCollectionCreated) {
             onCollectionCreated({
@@ -116,7 +108,9 @@ export default function FactoryFunctions({
                 toast.success("Collection deleted successfully");
                 setCollectionToDelete(null);
                 setSelectedWalletId("");
-                refresh(); // 컬렉션 목록 새로고침
+                refresh().catch((err) => {
+                    console.error(err);
+                });
             } else {
                 toast.error(`Failed to delete collection: ${result.error}`);
             }
@@ -127,12 +121,6 @@ export default function FactoryFunctions({
                 }`
             );
         }
-    };
-
-    // 컬렉션 목록 새로고침
-    const handleRefresh = () => {
-        refresh();
-        toast.success("Collections list refreshed");
     };
 
     return (
@@ -169,9 +157,7 @@ export default function FactoryFunctions({
                             <AlertDescription>
                                 <div className="space-y-4">
                                     <p className="text-sm">
-                                        새로운 컬렉션 "
-                                        {lastCreatedCollection.name}"이
-                                        생성되었습니다.
+                                        {`새로운 컬렉션 "${lastCreatedCollection.name}"이 생성되었습니다.`}
                                     </p>
                                     <div className="grid gap-4 text-sm">
                                         <div className="space-y-1.5">

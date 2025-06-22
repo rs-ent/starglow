@@ -7,55 +7,72 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     setPlayer,
     invitePlayer,
-    updatePlayerSettings
+    updatePlayerSettings,
 } from "@/app/actions/player";
 import { playerKeys } from "@/app/queryKeys";
 
-import type {
-    SetPlayerInput,
-    InvitePlayerParams,
-    UpdatePlayerSettingsInput} from "@/app/actions/player";
-
-export function useSetPlayerMutation(input?: SetPlayerInput) {
+export function useSetPlayerMutation() {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: setPlayer,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: playerKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: playerKeys.byId(data?.player?.id || ""),
-            });
+        onSuccess: (data, _variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: playerKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: playerKeys.byId(data?.player?.id || ""),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
 
-export function useInvitePlayerMutation(input?: InvitePlayerParams) {
+export function useInvitePlayerMutation() {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: invitePlayer,
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: playerKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: playerKeys.byId(variables?.referredUser.id || ""),
-            });
+            queryClient
+                .invalidateQueries({ queryKey: playerKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: playerKeys.byId(variables?.referredUser.id || ""),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
 
-export function useUpdatePlayerSettingsMutation(
-    input?: UpdatePlayerSettingsInput
-) {
+export function useUpdatePlayerSettingsMutation() {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: updatePlayerSettings,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: playerKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: playerKeys.byId(variables?.playerId || ""),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: playerKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: playerKeys.byId(variables?.playerId || ""),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

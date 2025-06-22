@@ -9,7 +9,6 @@ import {
     deleteFile,
     updateFileOrder,
     updateFilesOrder,
-    StoredFile,
 } from "@/app/actions/files";
 import { queryKeys } from "@/app/queryKeys";
 
@@ -28,19 +27,31 @@ export function useUploadFile() {
         }) => {
             return uploadFile(file, purpose, bucket);
         },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byPurposeAndBucket(
-                    variables.purpose,
-                    variables.bucket
-                ),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byPurpose(variables.purpose),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byBucket(variables.bucket),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.files.byPurposeAndBucket(
+                        variables.purpose,
+                        variables.bucket
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.files.byPurpose(variables.purpose),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.files.byBucket(variables.bucket),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -62,19 +73,31 @@ export function useUploadFiles() {
                 files.map((file) => uploadFile(file, purpose, bucket))
             );
         },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byPurposeAndBucket(
-                    variables.purpose,
-                    variables.bucket
-                ),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byPurpose(variables.purpose),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byBucket(variables.bucket),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.files.byPurposeAndBucket(
+                        variables.purpose,
+                        variables.bucket
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.files.byPurpose(variables.purpose),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.files.byBucket(variables.bucket),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -87,9 +110,13 @@ export function useDeleteFile() {
             return deleteFile(id);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.files.all,
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.files.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -111,13 +138,17 @@ export function useUpdateFileOrder() {
         }) => {
             return updateFileOrder(id, newOrder, purpose, bucket);
         },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byPurposeAndBucket(
-                    variables.purpose,
-                    variables.bucket
-                ),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.files.byPurposeAndBucket(
+                        variables.purpose,
+                        variables.bucket
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -137,14 +168,18 @@ export function useUpdateFilesOrder() {
         }) => {
             return updateFilesOrder(files, purpose, bucket);
         },
-        onSuccess: (data, variables) => {
+        onSuccess: (_data, variables) => {
             // Invalidate related queries
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.files.byPurposeAndBucket(
-                    variables.purpose,
-                    variables.bucket
-                ),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.files.byPurposeAndBucket(
+                        variables.purpose,
+                        variables.bucket
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

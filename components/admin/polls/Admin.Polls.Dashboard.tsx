@@ -4,20 +4,15 @@
 
 import { useState } from "react";
 
-import { usePollsGet } from "@/app/hooks/usePolls";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 
 import PollCreateModal from "./Admin.Polls.CreateModal";
 import AdminPollsList from "./Admin.Polls.List";
 
 export default function AdminPollsDashboard() {
-    const { pollsList, isLoading, error } = usePollsGet({});
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [viewType, setViewType] = useState<"table" | "card">("table");
-
-    if (isLoading) return <div>로딩 중...</div>;
-    if (error) return <div>오류 발생: {error.message}</div>;
 
     return (
         <>

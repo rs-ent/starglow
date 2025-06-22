@@ -68,7 +68,8 @@ export default function CreateArtistMessage({
             });
             toast.success("메시지가 성공적으로 등록되었습니다.");
             onSuccess?.();
-        } catch (_error) {
+        } catch (error) {
+            console.error(error);
             toast.error(
                 "메시지 등록에 실패했습니다. 잠시 후 다시 시도해주세요."
             );

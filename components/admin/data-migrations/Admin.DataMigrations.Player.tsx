@@ -5,7 +5,6 @@
 import { useState, useEffect } from "react";
 
 import { usePlayerSet } from "@/app/hooks/usePlayer";
-import { usePlayerAssetSet } from "@/app/hooks/usePlayerAssets";
 import { useToast } from "@/app/hooks/useToast";
 import { useUserGet, useUserSet } from "@/app/hooks/useUser";
 import FileUploader from "@/components/atoms/FileUploader";
@@ -17,7 +16,7 @@ export default function AdminDataMigrationsPlayer() {
     const [csvData, setCsvData] = useState<any[]>([]);
     const [headers, setHeaders] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(50);
+    const [itemsPerPage, _setItemsPerPage] = useState(50);
     const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
     const [isMigratingAll, setIsMigratingAll] = useState(false);
@@ -29,15 +28,14 @@ export default function AdminDataMigrationsPlayer() {
     const [isCreatingReferralLogs, setIsCreatingReferralLogs] = useState(false);
     const [referralLogProgress, setReferralLogProgress] = useState(0);
 
-    const { users, isUsersLoading, usersError } = useUserGet({
+    const { users } = useUserGet({
         getUsersInput: {
             providers: ["telegram"],
         },
     });
 
     const { setUserWithTelegram } = useUserSet();
-    const { invitePlayer } = usePlayerSet({});
-    const { updatePlayerAsset } = usePlayerAssetSet({});
+    const { invitePlayer } = usePlayerSet();
     const toast = useToast();
 
     useEffect(() => {
@@ -93,7 +91,6 @@ export default function AdminDataMigrationsPlayer() {
 
     const handleRowClick = (rowIndex: number) => {
         setSelectedRow(rowIndex === selectedRow ? null : rowIndex);
-        console.log("Player data:", paginatedData[rowIndex]);
     };
 
     const handleMigratePlayer = async (playerData: any, index?: number) => {
@@ -180,7 +177,7 @@ export default function AdminDataMigrationsPlayer() {
         return results;
     };
 
-    const handleCreateReferralLog = async (playerData: any, index?: number) => {
+    const handleCreateReferralLog = async (playerData: any) => {
         if (!users) {
             return { success: false, error: "Users not found" };
         }
@@ -238,8 +235,8 @@ export default function AdminDataMigrationsPlayer() {
                 const batch = csvData.slice(i, i + batchSize);
 
                 const batchResults = await Promise.all(
-                    batch.map((playerData, idx) =>
-                        handleCreateReferralLog(playerData, i + idx)
+                    batch.map((playerData) =>
+                        handleCreateReferralLog(playerData)
                     )
                 );
 
@@ -283,9 +280,6 @@ export default function AdminDataMigrationsPlayer() {
     pollLogId?: string;
 }
     */
-
-    /// 1000Points = 1SGP
-    const handleUpdatePlayerAsset = async (index?: number) => {};
 
     const totalPages = Math.ceil(csvData.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;

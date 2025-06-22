@@ -284,7 +284,8 @@ export default function CreateArtistFeed({
                 toast.success("게시물이 성공적으로 수정되었습니다");
             }
             onSuccess?.();
-        } catch (_error) {
+        } catch (error) {
+            console.error(error);
             toast.error("게시물 작성에 실패했습니다");
         }
     };

@@ -10,15 +10,19 @@ export function useVerifyNFTOwnershipMutation() {
 
     return useMutation({
         mutationFn: verifyOwnership,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.nft.ownership(
-                    variables.contractAddress,
-                    variables.tokenIds,
-                    variables.ownerAddress,
-                    variables.networkId
-                ),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.nft.ownership(
+                        variables.contractAddress,
+                        variables.tokenIds,
+                        variables.ownerAddress,
+                        variables.networkId
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -28,14 +32,18 @@ export function useGetOwnerByTokenIdsMutation() {
 
     return useMutation({
         mutationFn: getOwnerByTokenIds,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.nft.owner(
-                    variables.contractAddress,
-                    variables.tokenIds,
-                    variables.networkId
-                ),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.nft.owner(
+                        variables.contractAddress,
+                        variables.tokenIds,
+                        variables.networkId
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

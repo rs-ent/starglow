@@ -20,7 +20,7 @@ export function useCreateStoryNetworkMutation() {
             const previousData = queryClient.getQueryData(
                 queryKeys.storyNetwork.list()
             );
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 queryKeys.storyNetwork.list(),
                 (old: any) => [...(old ?? []), variables]
             );
@@ -61,7 +61,7 @@ export function useUpdateStoryNetworkMutation() {
             const previousData = queryClient.getQueryData(
                 queryKeys.storyNetwork.network(variables.id)
             );
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 queryKeys.storyNetwork.network(variables.id),
                 variables
             );
@@ -100,7 +100,7 @@ export function useDeleteStoryNetworkMutation() {
             const previousData = queryClient.getQueryData(
                 queryKeys.storyNetwork.network(variables.id)
             );
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 queryKeys.storyNetwork.network(variables.id),
                 undefined
             );
@@ -115,15 +115,27 @@ export function useDeleteStoryNetworkMutation() {
             }
         },
         onSettled: (_data, _error, variables, _context) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.storyNetwork.list(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.storyNetwork.network(variables.id),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.storyNetwork.all,
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.storyNetwork.list(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.storyNetwork.network(variables.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.storyNetwork.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

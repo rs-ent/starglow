@@ -31,8 +31,6 @@ export default function AssetsDashboard() {
         getAssetsContractsInput: {},
     });
 
-    console.log("assetsContracts", assetsContracts);
-
     // 컨트랙트가 선택되지 않은 경우
     if (!selectedContractAddress) {
         return (

@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -31,16 +31,7 @@ export default function InvitePage() {
         authenticated,
     } = useRequireAuth(currentUrl);
 
-    useEffect(() => {
-        // 인증 로딩이 끝났을 때 처리
-        if (!isAuthLoading) {
-            handleInvite().catch((error) => {
-                console.error("Failed to handle invite:", error);
-            });
-        }
-    }, [isAuthLoading, authenticated]);
-
-    const handleInvite = async () => {
+    const handleInvite = useCallback(async () => {
         // 이미 처리 중이면 중복 실행 방지
         if (isProcessing) return;
 
@@ -109,7 +100,26 @@ export default function InvitePage() {
         } finally {
             setIsProcessing(false);
         }
-    };
+    }, [
+        isProcessing,
+        ref,
+        method,
+        router,
+        authenticated,
+        user,
+        currentUrl,
+        invitePlayer,
+        toast,
+        tgId,
+    ]);
+
+    useEffect(() => {
+        if (!isAuthLoading) {
+            handleInvite().catch((error) => {
+                console.error("Failed to handle invite:", error);
+            });
+        }
+    }, [isAuthLoading, handleInvite]);
 
     // 로딩 중이거나 처리 중일 때 로딩 UI 표시
     if (isAuthLoading || isProcessing) {

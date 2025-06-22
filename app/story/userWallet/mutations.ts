@@ -16,13 +16,21 @@ export function useConnectWalletMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: connectWallet,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.userWallet.list(variables.userId),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.userWallet.default(variables.userId),
-            });
+        onSuccess: (_, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.userWallet.list(variables.userId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.userWallet.default(variables.userId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -37,13 +45,21 @@ export function useUpdateWalletMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: updateWallet,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.userWallet.list(variables.userId),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.userWallet.default(variables.userId),
-            });
+        onSuccess: (_, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.userWallet.list(variables.userId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.userWallet.default(variables.userId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -52,10 +68,14 @@ export function useDeleteWalletMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: deleteWallet,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.userWallet.list(variables.userId),
-            });
+        onSuccess: (_, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.userWallet.list(variables.userId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

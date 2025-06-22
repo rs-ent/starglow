@@ -2,20 +2,15 @@
 
 "use server";
 
-import {
-    BlockchainNetwork,
-    WalletStatus,
-} from "@prisma/client";
+import { WalletStatus } from "@prisma/client";
 import { ethers } from "ethers";
 import { verifyMessage } from "viem";
 
 import { prisma } from "@/lib/prisma/client";
 import { decryptPrivateKey, encryptPrivateKey } from "@/lib/utils/encryption";
 
-import type {
-    Prisma,
-    Wallet} from "@prisma/client";
-import type { Hex} from "viem";
+import type { Prisma, Wallet } from "@prisma/client";
+import type { Hex } from "viem";
 
 export async function createWallet(userId: string) {
     try {
@@ -216,6 +211,9 @@ export async function updateWallet(
     try {
         const result = await prisma.$transaction(async (tx) => {
             const { userId, walletAddress, ...rest } = input;
+            if (!userId || !walletAddress) {
+                return "Invalid input";
+            }
 
             if (rest.default) {
                 const wallet = await tx.wallet.findUnique({

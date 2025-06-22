@@ -115,7 +115,7 @@ export async function createMetadata(
     });
 
     if (existingMetadata) {
-        console.log(`Reusing existing metadata with CID: ${cid}`);
+        console.warn(`Reusing existing metadata with CID: ${cid}`);
         return existingMetadata;
     }
 
@@ -294,7 +294,7 @@ export async function uploadMedia(input: UploadMediaInput) {
     });
 
     if (existingMedia) {
-        console.log(`Reusing existing media with CID: ${cid}`);
+        console.warn(`Reusing existing media with CID: ${cid}`);
         return { cid, url: existingMedia.url, type: existingMedia.type };
     }
 
@@ -422,7 +422,7 @@ export async function createBaseURI(input: createBaseURIInput) {
             },
         });
     } else {
-        console.log(`Reusing existing directory with CID: ${cid}`);
+        console.warn(`Reusing existing directory with CID: ${cid}`);
     }
 
     return { baseURI, cid, url };

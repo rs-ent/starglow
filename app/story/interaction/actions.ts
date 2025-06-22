@@ -23,7 +23,7 @@ export async function getUserVerifiedSPGs(
     input?: GetUserVerifiedSPGsInput
 ): Promise<VerifiedSPG[]> {
     if (!input || !input.userId) {
-        console.log(
+        console.warn(
             "[getUserVerifiedSPGs] No input or userId",
             input,
             input?.userId
@@ -81,7 +81,7 @@ export async function getWalletAddressVerifiedSPGs(
     address: string
 ): Promise<VerifiedSPG[]> {
     if (!address) {
-        console.log("[getWalletAddressVerifiedSPGs] No address", address);
+        console.warn("[getWalletAddressVerifiedSPGs] No address", address);
         return [];
     }
 

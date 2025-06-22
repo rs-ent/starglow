@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 
-import { Network, Factory, Wallet, Layers, Image } from "lucide-react";
+import { Network, Factory, Wallet, Layers } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 

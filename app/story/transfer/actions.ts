@@ -2,7 +2,6 @@
 
 "use server";
 
-
 import { prisma } from "@/lib/prisma/client";
 import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
 
@@ -36,9 +35,6 @@ async function getOwnedTokenIds(
         .filter((token) => token.owner.toLowerCase() === owner.toLowerCase())
         .map((token) => token.tokenId)
         .slice(0, quantity);
-
-    console.log("Token IDs: ", tokenIds);
-    console.log("Owned Token IDs: ", ownedTokenIds);
 
     if (ownedTokenIds.length < quantity) {
         throw new Error(
@@ -317,13 +313,6 @@ export async function transferNFTToUser(
                 },
                 postProcessResultAt: new Date(),
             },
-        });
-
-        console.log("NFT transfer successful", {
-            txHash: txHash,
-            receiver: payment.receiverWalletAddress,
-            networkName: spg.network.name,
-            quantity: payment.quantity,
         });
 
         return {

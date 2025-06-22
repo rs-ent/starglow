@@ -2,9 +2,7 @@
 
 "use client";
 
-import { NFT } from "@prisma/client";
 import { useQuery } from "@tanstack/react-query";
-
 
 import {
     getCollection,
@@ -15,7 +13,6 @@ import {
     getEscrowWallet,
     getCollectionsByNetwork,
     getCollectionSettings,
-    updateCollectionSettings,
     getTokensLockStatus,
     getCollectionStock,
     getCollectionParticipants,
@@ -25,25 +22,18 @@ import { collectionKeys } from "../queryKeys";
 
 import type {
     GetCollectionInput,
-    GetCollectionResult,
     getTokenOwnersInput,
-    getTokenOwnersResult,
     GetTokensInput,
     GetNonceInput,
     GetCollectionStatusInput,
     GetEscrowWalletInput,
     GetCollectionsByNetworkInput,
     GetCollectionSettingsInput,
-    GetCollectionSettingsResult,
-    UpdateCollectionSettingsInput,
-    UpdateCollectionSettingsResult,
     GetTokensLockStatusInput,
     GetCollectionStockInput,
     GetCollectionParticipantsInput,
     GetUserVerifiedCollectionsInput,
 } from "../actions/collectionContracts";
-import type { UseQueryOptions } from "@tanstack/react-query";
-
 
 export const useCollection = (input: GetCollectionInput) => {
     return useQuery({
@@ -200,8 +190,7 @@ export const useCollectionParticipants = (
 };
 
 export const useUserVerifiedCollections = (
-    input?: GetUserVerifiedCollectionsInput,
-    options?: UseQueryOptions<any, Error>
+    input?: GetUserVerifiedCollectionsInput
 ) => {
     return useQuery({
         queryKey: collectionKeys.userVerified(input?.userId),

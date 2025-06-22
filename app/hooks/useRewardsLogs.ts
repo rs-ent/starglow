@@ -1,6 +1,6 @@
 /// app/hooks/useRewardsLogs.ts
 
-import { getRewardsLogsQuery } from "../queries/rewardsLogsQueries";
+import { useGetRewardsLogsQuery } from "../queries/rewardsLogsQueries";
 
 import type { GetRewardsLogsInput } from "../actions/rewardsLogs";
 
@@ -14,7 +14,7 @@ export function useRewardsLogsGet({
         isLoading: isRewardsLogsLoading,
         error: rewardsLogsError,
         refetch: refetchRewardsLogs,
-    } = getRewardsLogsQuery(getRewardsLogsInput);
+    } = useGetRewardsLogsQuery(getRewardsLogsInput);
 
     const isLoading = isRewardsLogsLoading;
     const error = rewardsLogsError;
@@ -31,6 +31,6 @@ export function useRewardsLogsGet({
         error,
         refetch,
 
-        getRewardsLogsQuery,
+        useGetRewardsLogsQuery,
     };
 }

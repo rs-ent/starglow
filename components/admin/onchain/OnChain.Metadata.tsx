@@ -19,7 +19,6 @@ import {
     Hash,
     TrendingUp,
     Percent,
-    Image,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -657,7 +656,7 @@ function MetadataCreationForm({
                 <Form {...form}>
                     <form
                         onSubmit={form.handleSubmit(onSubmit, (errors) => {
-                            console.log("Form validation failed", errors);
+                            console.error(errors);
                             toast.error(
                                 `메타데이터 생성 전에 폼 오류를 수정해주세요`
                             );
@@ -944,27 +943,21 @@ export function OnChainMetadata({
     });
 
     const onSubmit = async (data: MetadataFormValues) => {
-        console.log("Form submission started", { data });
         try {
             setIsUploading(true);
 
             const { collectionName, collectionKey, ...metadataFields } = data;
-            console.log("Collection name:", collectionName);
-            console.log("Collection key:", collectionKey);
 
             if (metadataFields.background_color) {
                 metadataFields.background_color =
                     metadataFields.background_color.replace("#", "");
             }
 
-            console.log("Submitting metadata:", metadataFields);
-
-            const response = await createCollection({
+            void (await createCollection({
                 metadata: metadataFields as METADATA_TYPE,
                 collectionKey,
-            });
+            }));
 
-            console.log("Metadata creation successful:", response);
             toast.success("Metadata created successfully");
             form.reset();
         } catch (error) {
@@ -983,7 +976,6 @@ export function OnChainMetadata({
             const result = results[0];
             if (result.url) {
                 form.setValue("image", result.url);
-                console.log("Image uploaded successfully", result.url);
                 toast.success("Image uploaded successfully");
             } else {
                 throw new Error("Failed to upload image - No CID returned");

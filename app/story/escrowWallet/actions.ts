@@ -2,25 +2,15 @@
 
 "use server";
 
-import { BlockchainNetwork  } from "@prisma/client";
-import {
-    StoryConfig,
-    SupportedChainIds,
-} from "@story-protocol/core-sdk";
-import { http, formatUnits } from "viem";
+import { formatUnits } from "viem";
 
-import {
-    fetchPublicClient,
-    fetchWalletClient,
-    fetchStoryClient,
-} from "@/app/story/client";
+import { fetchPublicClient, fetchWalletClient } from "@/app/story/client";
 import { prisma } from "@/lib/prisma/client";
 import { encryptPrivateKey, decryptPrivateKey } from "@/lib/utils/encryption";
 import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
 
-import type { EscrowWallet , Prisma } from "@prisma/client";
-import type {
-    StoryClient} from "@story-protocol/core-sdk";
+import type { EscrowWallet, Prisma } from "@prisma/client";
+import type { StoryClient } from "@story-protocol/core-sdk";
 import type { Hex, Address } from "viem";
 
 export interface registerEscrowWalletInput {
@@ -140,7 +130,7 @@ interface fetchEscrowWalletBalanceInput {
     address: string;
 }
 
-async function fetchEscrowWalletBalance(
+export async function fetchEscrowWalletBalance(
     input: fetchEscrowWalletBalanceInput
 ): Promise<string> {
     try {
@@ -293,8 +283,6 @@ export async function getRegisteredEscrowWallets(
                 }
             })
         );
-
-        console.log("Verified wallets:", verifiedWallets);
 
         return verifiedWallets.filter(
             (address): address is string => address !== null

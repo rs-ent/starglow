@@ -48,10 +48,6 @@ import {
 import type { NFTFilters, NFTPaginationParams } from "./OnChain.types";
 import type { CollectionContract, NFT } from "@prisma/client";
 
-
-
-
-
 export function NFTList({ collection }: { collection: CollectionContract }) {
     const toast = useToast();
     const { data: session } = useSession();
@@ -72,7 +68,9 @@ export function NFTList({ collection }: { collection: CollectionContract }) {
     const { data: nfts, isLoading } = useNFTs(filters, pagination);
 
     const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
+        navigator.clipboard.writeText(text).catch((err) => {
+            console.error(err);
+        });
         toast.success(`Copied to clipboard: ${text}`);
     };
 
@@ -138,6 +136,7 @@ export function NFTList({ collection }: { collection: CollectionContract }) {
             }
             await refresh();
         } catch (e) {
+            console.error(e);
             toast.error("Failed to change lock status");
         }
     };

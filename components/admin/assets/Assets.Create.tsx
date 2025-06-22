@@ -1,7 +1,6 @@
 // components/admin/assets/Assets.Create.tsx
 "use client";
 
-
 import { useState } from "react";
 
 import { Plus } from "lucide-react";
@@ -51,11 +50,7 @@ export default function AssetsCreate({ contractAddress }: AssetsCreateProps) {
     const { createAsset, isCreateAssetPending } = useAssetsSet();
     const toast = useToast();
 
-    const {
-        wallets,
-        isLoading: isLoadingWallets,
-        error: walletsError,
-    } = useEscrowWalletManager();
+    const { wallets, isLoading: isLoadingWallets } = useEscrowWalletManager();
 
     const form = useForm<CreateAssetInput>({
         defaultValues: {

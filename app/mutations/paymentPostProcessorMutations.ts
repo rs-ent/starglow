@@ -21,29 +21,48 @@ export const usePaymentPostProcessMutation = () => {
 
     return useMutation({
         mutationFn: paymentPostProcessor,
-        onSuccess: (result, payment) => {
-            // 성공 시 관련된 모든 쿼리 무효화
-            queryClient.invalidateQueries({
-                queryKey: paymentPostProcessorKeys.status(payment.id),
-            });
-            queryClient.invalidateQueries({
-                queryKey: paymentPostProcessorKeys.result(payment.id),
-            });
+        onSuccess: (_result, payment) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: paymentPostProcessorKeys.status(payment.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: paymentPostProcessorKeys.result(payment.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
 
             // payment 관련 쿼리도 무효화
-            queryClient.invalidateQueries({
-                queryKey: ["payments", payment.id],
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: ["payments", payment.id],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
 
             // 결과에 따라 추가 무효화
             if (payment.productTable === "nfts") {
-                queryClient.invalidateQueries({
-                    queryKey: ["nft"],
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: ["nft"],
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             } else if (payment.productTable === "events") {
-                queryClient.invalidateQueries({
-                    queryKey: ["events"],
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: ["events"],
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             }
         },
     });
@@ -57,24 +76,34 @@ export const useNFTTransferMutation = () => {
         mutationFn: (input: TransferNFTInput) => transferNFTToUser(input),
         onSuccess: (result, input) => {
             if (result.success) {
-                // NFT 전송 성공 시 관련 쿼리 무효화
-                queryClient.invalidateQueries({
-                    queryKey: paymentPostProcessorKeys.nft.transfer(
-                        input.paymentId
-                    ),
-                });
-                queryClient.invalidateQueries({
-                    queryKey: ["nft"],
-                });
-                queryClient.invalidateQueries({
-                    queryKey: ["payments", input.paymentId],
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: paymentPostProcessorKeys.nft.transfer(
+                            input.paymentId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: ["nft"],
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: ["payments", input.paymentId],
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             }
         },
     });
 };
 
-// NFT 에스크로 전송 뮤테이션
 export const useNFTEscrowTransferMutation = () => {
     const queryClient = useQueryClient();
 
@@ -82,18 +111,29 @@ export const useNFTEscrowTransferMutation = () => {
         mutationFn: (input: EscrowTransferNFTInput) => escrowTransferNFT(input),
         onSuccess: (result, input) => {
             if (result.success) {
-                // 에스크로 전송 성공 시 관련 쿼리 무효화
-                queryClient.invalidateQueries({
-                    queryKey: paymentPostProcessorKeys.nft.escrowTransfer(
-                        input.paymentId
-                    ),
-                });
-                queryClient.invalidateQueries({
-                    queryKey: ["nft"],
-                });
-                queryClient.invalidateQueries({
-                    queryKey: ["payments", input.paymentId],
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: paymentPostProcessorKeys.nft.escrowTransfer(
+                            input.paymentId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: ["nft"],
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: ["payments", input.paymentId],
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             }
         },
     });
@@ -126,13 +166,20 @@ export const usePaymentStatusUpdateMutation = () => {
             return response.json();
         },
         onSuccess: (_, { paymentId }) => {
-            // 상태 업데이트 성공 시 관련 쿼리 무효화
-            queryClient.invalidateQueries({
-                queryKey: ["payments", paymentId],
-            });
-            queryClient.invalidateQueries({
-                queryKey: paymentPostProcessorKeys.status(paymentId),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: ["payments", paymentId],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: paymentPostProcessorKeys.status(paymentId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 };

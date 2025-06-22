@@ -46,13 +46,13 @@ export function useUpdateMetadataMutation() {
                     variables.id || variables.cid || variables.url || ""
                 )
             );
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 queryKeys.metadata.ipfs(
                     variables.id || variables.cid || variables.url || ""
                 ),
                 variables
             );
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 queryKeys.metadata.list({
                     type: variables.type,
                 }),
@@ -61,7 +61,7 @@ export function useUpdateMetadataMutation() {
             );
             return { previousData };
         },
-        onError: (error, variables, context) => {
+        onError: (_error, variables, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(
                     queryKeys.metadata.ipfs(
@@ -77,17 +77,25 @@ export function useUpdateMetadataMutation() {
                 );
             }
         },
-        onSettled: (data, error, variables, context) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.ipfs(
-                    variables.id || variables.cid || variables.url || ""
-                ),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.list({
-                    type: variables.type,
-                }),
-            });
+        onSettled: (_data, _error, variables, _context) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.ipfs(
+                        variables.id || variables.cid || variables.url || ""
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.list({
+                        type: variables.type,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -103,13 +111,13 @@ export function useDeleteMetadataMutation() {
             const previousData = queryClient.getQueryData(
                 queryKeys.metadata.ipfs(variables.id)
             );
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 queryKeys.metadata.ipfs(variables.id),
                 null
             );
             return { previousData };
         },
-        onError: (error, variables, context) => {
+        onError: (_error, variables, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(
                     queryKeys.metadata.ipfs(variables.id),
@@ -117,15 +125,23 @@ export function useDeleteMetadataMutation() {
                 );
             }
         },
-        onSettled: (data, error, variables, context) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.ipfs(variables.id),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.list({
-                    type: data?.type || "default",
-                }),
-            });
+        onSettled: (data, _error, variables, _context) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.ipfs(variables.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.list({
+                        type: data?.type || "default",
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -135,17 +151,29 @@ export function useUploadMediaMutation() {
     return useMutation({
         mutationFn: uploadMedia,
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.list({
-                    type: variables.type,
-                }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.ipfs(data.cid),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.ipfs(data.url),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.list({
+                        type: variables.type,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.ipfs(data.cid),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.ipfs(data.url),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -155,17 +183,29 @@ export function useCreateBaseURIMutation() {
     return useMutation({
         mutationFn: createBaseURI,
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.list({
-                    type: "base-uri-directory",
-                }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.ipfs(data.cid),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.ipfs(data.url),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.list({
+                        type: "base-uri-directory",
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.ipfs(data.cid),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.ipfs(data.url),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

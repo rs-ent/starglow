@@ -37,6 +37,7 @@ import { getYoutubeVideoId } from "@/lib/utils/youtube";
 
 import type { SPG } from "@/app/story/spg/actions";
 import type { Quest, Artist, Asset } from "@prisma/client";
+import PartialLoading from "@/components/atoms/PartialLoading";
 
 type QuestCreateInput = Omit<Quest, "id" | "createdAt" | "updatedAt">;
 interface QuestFormData
@@ -642,31 +643,35 @@ function URLQuestForm({
                                 />
                                 {/* 컬렉션 선택 UI */}
                                 <div className="flex gap-4 overflow-auto">
-                                    {getSPGsData?.map((spg) => (
-                                        <div
-                                            key={spg.address}
-                                            onClick={() =>
-                                                onChange(
-                                                    "needTokenAddress",
+                                    {getSPGIsLoading ? (
+                                        <PartialLoading text="Loading SPGs..." />
+                                    ) : (
+                                        getSPGsData?.map((spg) => (
+                                            <div
+                                                key={spg.address}
+                                                onClick={() =>
+                                                    onChange(
+                                                        "needTokenAddress",
+                                                        spg.address
+                                                    )
+                                                }
+                                                className={`cursor-pointer w-[300px] h-[150px] ${
+                                                    formData.needTokenAddress ===
                                                     spg.address
-                                                )
-                                            }
-                                            className={`cursor-pointer w-[300px] h-[150px] ${
-                                                formData.needTokenAddress ===
-                                                spg.address
-                                                    ? "ring-2 ring-primary"
-                                                    : ""
-                                            }`}
-                                        >
-                                            <CollectionCard
-                                                spg={spg}
-                                                showPrice={false}
-                                                showSharePercentage={false}
-                                                showCirculation={false}
-                                                isLinked={false}
-                                            />
-                                        </div>
-                                    ))}
+                                                        ? "ring-2 ring-primary"
+                                                        : ""
+                                                }`}
+                                            >
+                                                <CollectionCard
+                                                    spg={spg}
+                                                    showPrice={false}
+                                                    showSharePercentage={false}
+                                                    showCirculation={false}
+                                                    isLinked={false}
+                                                />
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
                         </div>

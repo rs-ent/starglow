@@ -9,7 +9,7 @@ import {
     closestCenter,
     PointerSensor,
     useSensor,
-    useSensors
+    useSensors,
 } from "@dnd-kit/core";
 import {
     arrayMove,
@@ -26,8 +26,7 @@ import { useToast } from "@/app/hooks/useToast";
 import FileUploader from "@/components/atoms/FileUploader";
 import { Dialog } from "@/components/ui/dialog";
 
-import type {
-    DragEndEvent} from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
 import type { CollectionContract } from "@prisma/client";
 
 interface OnChainCollectionPageImagesProps {
@@ -52,7 +51,7 @@ function SortableImage({
     attributes,
 }: SortableImageProps) {
     return (
-        <div className="flex items-center gap-2">
+        <div key={id} className="flex items-center gap-2">
             {/* Drag Handle */}
             <span
                 {...listeners}
@@ -121,8 +120,6 @@ export default function OnChainCollectionPageImages({
     const [previewImage, setPreviewImage] = useState<string | null>(null);
 
     const sensors = useSensors(useSensor(PointerSensor));
-
-    console.log("collection.pageImages", collection.pageImages);
 
     // 업로드 완료 시 이미지 추가
     const handleUploadComplete = (files: { id: string; url: string }[]) => {

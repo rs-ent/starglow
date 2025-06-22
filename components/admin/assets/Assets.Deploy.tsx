@@ -3,7 +3,7 @@
 
 import React from "react";
 
-import { Loader2, ExternalLink } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { useAssetsSet } from "@/app/hooks/useAssets";
@@ -15,14 +15,7 @@ import { useToast } from "@/app/hooks/useToast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-    CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
@@ -46,9 +39,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-
-
-
 
 interface DeployAssetsContractForm {
     walletId: string;

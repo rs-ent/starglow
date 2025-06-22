@@ -2,8 +2,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
-
+import { useCallback, useEffect, useState } from "react";
 
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -24,7 +23,6 @@ import {
 import {
     Pagination,
     PaginationContent,
-    PaginationEllipsis,
     PaginationItem,
     PaginationLink,
     PaginationNext,
@@ -40,8 +38,6 @@ import { formatDate } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/tailwind";
 
 import PollCreateModal from "./Admin.Polls.CreateModal";
-
-
 
 import type { Artist, Poll } from "@prisma/client";
 
@@ -73,17 +69,9 @@ export default function AdminPollsList({ viewType }: PollListProps) {
         pagination,
     });
 
-    const {
-        updateActivePoll,
-        isLoading: isUpdatingActivePoll,
-        error: updateActivePollError,
-    } = usePollsSet();
+    const { updateActivePoll } = usePollsSet();
 
-    const {
-        artists,
-        isLoading: isLoadingArtists,
-        error: errorArtists,
-    } = useArtistsGet({});
+    const { artists } = useArtistsGet({});
 
     const { deletePoll } = usePollsSet();
 
@@ -97,13 +85,7 @@ export default function AdminPollsList({ viewType }: PollListProps) {
 
     const resultsData = pollsResults?.results;
 
-    useEffect(() => {
-        if (!polls) return;
-        filteringPolls();
-    }, [pollFilter, polls]);
-
     const handleEditPoll = (poll: Poll) => {
-        console.log("Poll", poll);
         setEditPoll(poll);
         setOpen(true);
     };
@@ -122,10 +104,7 @@ export default function AdminPollsList({ viewType }: PollListProps) {
         }
     };
 
-    if (isLoading) return <div>로딩 중</div>;
-    if (error) return <div>오류 발생: {error.message}</div>;
-
-    function filteringPolls() {
+    const filteringPolls = useCallback(() => {
         const filtered = polls?.filter((poll) => {
             if (pollFilter.type === "world") {
                 return !poll.artistId;
@@ -136,7 +115,15 @@ export default function AdminPollsList({ viewType }: PollListProps) {
         });
 
         setFilteredPolls(filtered ?? []);
-    }
+    }, [pollFilter, polls]);
+
+    useEffect(() => {
+        if (!polls) return;
+        filteringPolls();
+    }, [polls, filteringPolls]);
+
+    if (isLoading) return <div>로딩 중</div>;
+    if (error) return <div>오류 발생: {error.message}</div>;
 
     const handleActiveChange = async (poll: Poll, checked: boolean) => {
         if (!poll) return;

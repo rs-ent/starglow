@@ -13,14 +13,23 @@ export function useDeployTBARegistryMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: deployTBARegistry,
-        onSuccess: (data, variables, context) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.tba.all });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.tba.contracts(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.tba.addresses(data.networkId),
-            });
+        onSuccess: (data) => {
+            queryClient
+                .invalidateQueries({ queryKey: queryKeys.tba.all })
+                .catch(console.error);
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.tba.contracts(),
+                })
+                .catch(console.error);
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.tba.addresses(data.networkId),
+                })
+                .catch(console.error);
+        },
+        onError: (error) => {
+            console.error(error);
         },
     });
 }
@@ -29,14 +38,23 @@ export function useDeployTBAImplementationMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: deployTBAImplementation,
-        onSuccess: (data, variables, context) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.tba.all });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.tba.contracts(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.tba.addresses(data.networkId),
-            });
+        onSuccess: (data) => {
+            queryClient
+                .invalidateQueries({ queryKey: queryKeys.tba.all })
+                .catch(console.error);
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.tba.contracts(),
+                })
+                .catch(console.error);
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.tba.addresses(data.networkId),
+                })
+                .catch(console.error);
+        },
+        onError: (error) => {
+            console.error(error);
         },
     });
 }
@@ -45,14 +63,23 @@ export function useSetTBAAddressMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: setTBAAddress,
-        onSuccess: (data, variables, context) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.tba.all });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.tba.contracts(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.tba.addresses(data.networkId),
-            });
+        onSuccess: (data) => {
+            queryClient
+                .invalidateQueries({ queryKey: queryKeys.tba.all })
+                .catch(console.error);
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.tba.contracts(),
+                })
+                .catch(console.error);
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.tba.addresses(data.networkId),
+                })
+                .catch(console.error);
+        },
+        onError: (error) => {
+            console.error(error);
         },
     });
 }

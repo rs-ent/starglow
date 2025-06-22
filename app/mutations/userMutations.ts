@@ -13,10 +13,14 @@ export const useGetUserByEmail = () => {
 
     return useMutation({
         mutationFn: getUserByEmail,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.user.byEmail(variables?.email || ""),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.user.byEmail(variables?.email || ""),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 };
@@ -26,12 +30,16 @@ export const useSetUserWithTelegram = () => {
 
     return useMutation({
         mutationFn: setUserWithTelegram,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.user.byTelegramId(
-                    variables?.user?.id.toString() || ""
-                ),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.user.byTelegramId(
+                        variables?.user?.id.toString() || ""
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 };

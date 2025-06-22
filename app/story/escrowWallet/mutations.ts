@@ -22,13 +22,13 @@ export function useRegisterEscrowWalletMutation() {
             const previousData = queryClient.getQueryData(
                 queryKeys.escrowWallet.list()
             );
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 queryKeys.escrowWallet.list(),
                 (old: any) => [...(old ?? []), variables]
             );
             return { previousData };
         },
-        onError: (error, variables, context) => {
+        onError: (_error, _variables, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(
                     queryKeys.escrowWallet.list(),
@@ -36,17 +36,29 @@ export function useRegisterEscrowWalletMutation() {
                 );
             }
         },
-        onSettled: (data, error, variables, context) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.escrowWallet.list(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.escrowWallet.all,
-            });
-            if (typeof data === "object" && data && "address" in data) {
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.escrowWallet.wallet(data.address),
+        onSettled: (data, _error, _variables, _context) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.escrowWallet.list(),
+                })
+                .catch((error) => {
+                    console.error(error);
                 });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.escrowWallet.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            if (typeof data === "object" && data && "address" in data) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: queryKeys.escrowWallet.wallet(data.address),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             }
         },
     });
@@ -63,13 +75,13 @@ export function useFetchEscrowWalletPrivateKeyMutation() {
             const previousData = queryClient.getQueryData(
                 queryKeys.escrowWallet.wallet(variables.address)
             );
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 queryKeys.escrowWallet.wallet(variables.address),
                 variables
             );
             return { previousData };
         },
-        onError: (error, variables, context) => {
+        onError: (_error, variables, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(
                     queryKeys.escrowWallet.wallet(variables.address),
@@ -77,10 +89,14 @@ export function useFetchEscrowWalletPrivateKeyMutation() {
                 );
             }
         },
-        onSettled: (data, error, variables, context) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.escrowWallet.wallet(variables.address),
-            });
+        onSettled: (_data, _error, variables, _context) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.escrowWallet.wallet(variables.address),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -96,13 +112,13 @@ export function useSetActiveEscrowWalletMutation() {
             const previousData = queryClient.getQueryData(
                 queryKeys.escrowWallet.wallet(variables.address)
             );
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 queryKeys.escrowWallet.wallet(variables.address),
                 variables
             );
             return { previousData };
         },
-        onError: (error, variables, context) => {
+        onError: (_error, variables, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(
                     queryKeys.escrowWallet.wallet(variables.address),
@@ -110,13 +126,21 @@ export function useSetActiveEscrowWalletMutation() {
                 );
             }
         },
-        onSettled: (data, error, variables, context) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.escrowWallet.wallet(variables.address),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.escrowWallet.all,
-            });
+        onSettled: (_data, _error, variables, _context) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.escrowWallet.wallet(variables.address),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.escrowWallet.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -125,14 +149,24 @@ export function useFetchEscrowWalletsBalanceMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: fetchEscrowWalletsBalance,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.escrowWallet.balances(variables.addresses),
-            });
-            variables.addresses.forEach((address) => {
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.escrowWallet.balance(address),
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.escrowWallet.balances(
+                        variables.addresses
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
                 });
+            variables.addresses.forEach((address) => {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: queryKeys.escrowWallet.balance(address),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             });
         },
     });
@@ -142,10 +176,14 @@ export function useAddEscrowWalletToSPGMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: addEscrowWalletToSPG,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.spg.list(),
-            });
+        onSuccess: (_data, _variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.spg.list(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

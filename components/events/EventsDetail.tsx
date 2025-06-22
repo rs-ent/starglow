@@ -32,7 +32,7 @@ export default function EventsDetail({
                 }
             }, 1500);
         },
-        [eventId, onPurchase]
+        [onPurchase]
     );
 
     if (isLoading) {

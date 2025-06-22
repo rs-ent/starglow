@@ -149,7 +149,8 @@ export default function AdminArtistsCreate({
             if (typeof additionalInfo === "string" && additionalInfo.trim()) {
                 parsedAdditionalInfo = JSON.parse(additionalInfo);
             }
-        } catch (_e) {
+        } catch (error) {
+            console.error(error);
             alert("Additional Info는 올바른 JSON이어야 합니다.");
             return;
         }

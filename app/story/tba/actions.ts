@@ -2,20 +2,13 @@
 
 "use server";
 
-import {
-    TBAContract as PrismaTBAContract,
-    TBAContractType,
-} from "@prisma/client";
-import { decodeEventLog } from "viem";
-
-
+import { TBAContractType } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 import StarglowTBA from "@/web3/artifacts/contracts/StarglowTBA.sol/StarglowTBA.json";
 
 import { fetchPublicClient, fetchWalletClient } from "../client";
 
-import type { Hex} from "viem";
-
+import type { Hex } from "viem";
 
 export interface deployTBAImplementationInput {
     userId: string;
@@ -53,16 +46,12 @@ export async function deployTBAImplementation(
             throw new Error("Wallet account not found");
         }
 
-        console.log("Deploying StarglowTBA implementation...");
-
         const hash = await walletClient.deployContract({
             abi: StarglowTBA.abi,
             bytecode: StarglowTBA.bytecode as Hex,
             account: walletClient.account,
             chain: walletClient.chain,
         });
-
-        console.log("Transaction hash:", hash);
 
         const receipt = await publicClient.waitForTransactionReceipt({
             hash,
@@ -72,8 +61,6 @@ export async function deployTBAImplementation(
         if (!receipt.contractAddress) {
             throw new Error("Contract address not found");
         }
-
-        console.log("TBA Implementation deployed at:", receipt.contractAddress);
 
         const tbaContract = await prisma.tBAContract.create({
             data: {
@@ -131,16 +118,12 @@ export async function deployTBARegistry(
             throw new Error("Wallet account not found");
         }
 
-        console.log("Deploying ERC6551 Registry...");
-
         const hash = await walletClient.deployContract({
             abi: StarglowTBA.abi,
             bytecode: StarglowTBA.bytecode as Hex,
             account: walletClient.account,
             chain: walletClient.chain,
         });
-
-        console.log("Transaction hash:", hash);
 
         const receipt = await publicClient.waitForTransactionReceipt({
             hash,
@@ -150,8 +133,6 @@ export async function deployTBARegistry(
         if (!receipt.contractAddress) {
             throw new Error("Contract address not found");
         }
-
-        console.log("TBA Registry deployed at:", receipt.contractAddress);
 
         const tbaContract = await prisma.tBAContract.create({
             data: {

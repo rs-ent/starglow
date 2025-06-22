@@ -17,12 +17,20 @@ export function useDeploySPGNFTFactoryMutation() {
     return useMutation({
         mutationFn: deploySPGNFTFactory,
         onSuccess: (data, _variables, _context) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.spg.contracts(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.spg.contract(data.address),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.spg.contracts(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.spg.contract(data.address),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -33,13 +41,25 @@ export function useCreateSPGMutation() {
     return useMutation({
         mutationFn: createSPG,
         onSuccess: (data, _variables, _context) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.spg.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.spg.list() });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.spg.collection({
-                    address: data.address,
-                }),
-            });
+            queryClient
+                .invalidateQueries({ queryKey: queryKeys.spg.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({ queryKey: queryKeys.spg.list() })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.spg.collection({
+                        address: data.address,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -71,13 +91,25 @@ export function useUpdateSPGMutation() {
             }
         },
         onSettled: (_data, _error, variables, _context) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.spg.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.spg.list() });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.spg.collection({
-                    address: variables.address,
-                }),
-            });
+            queryClient
+                .invalidateQueries({ queryKey: queryKeys.spg.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({ queryKey: queryKeys.spg.list() })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.spg.collection({
+                        address: variables.address,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -87,13 +119,25 @@ export function useDeleteSPGMutation() {
     return useMutation({
         mutationFn: deleteSPG,
         onSuccess: (_data, variables, _context) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.spg.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.spg.list() });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.spg.collection({
-                    address: variables.address,
-                }),
-            });
+            queryClient
+                .invalidateQueries({ queryKey: queryKeys.spg.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({ queryKey: queryKeys.spg.list() })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.spg.collection({
+                        address: variables.address,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -107,7 +151,7 @@ export function useUpdateSPGUtilsMutation() {
                 queryKey: queryKeys.spg.all,
             });
             const previousData = queryClient.getQueryData(queryKeys.spg.all);
-            queryClient.setQueryData(queryKeys.spg.all, (old: any) => [
+            await queryClient.setQueryData(queryKeys.spg.all, (old: any) => [
                 ...(old ?? []),
                 variables,
             ]);
@@ -122,13 +166,25 @@ export function useUpdateSPGUtilsMutation() {
             }
         },
         onSettled: (_data, _error, variables, _context) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.spg.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.spg.list() });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.spg.collection({
-                    address: variables.address,
-                }),
-            });
+            queryClient
+                .invalidateQueries({ queryKey: queryKeys.spg.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({ queryKey: queryKeys.spg.list() })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.spg.collection({
+                        address: variables.address,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
