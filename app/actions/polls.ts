@@ -2,9 +2,7 @@
 
 "use server";
 
-import {
-    PollStatus
-} from "@prisma/client";
+import { PollStatus } from "@prisma/client";
 
 import { tokenGating } from "@/app/story/nft/actions";
 import { prisma } from "@/lib/prisma/client";
@@ -19,7 +17,8 @@ import type {
     Prisma,
     Player,
     Asset,
-    Artist} from "@prisma/client";
+    Artist,
+} from "@prisma/client";
 
 export type PaginationInput = {
     currentPage: number;
@@ -339,6 +338,10 @@ export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
             options,
             ...rest
         } = data;
+
+        console.info("Participation Reward Asset", participationRewardAsset);
+        console.info("Betting Asset", bettingAsset);
+        console.info("Artist", artist);
 
         const poll = await prisma.poll.update({
             where: { id },

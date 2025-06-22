@@ -2,19 +2,15 @@
 
 "use server";
 
-import { NFTEvent } from "@prisma/client";
-import { ethers, providers } from "ethers";
-import { User } from "next-auth";
+import { ethers } from "ethers";
 
 import { prisma } from "@/lib/prisma/client";
-
-import { getTokenOwners } from "./collectionContracts";
 
 import type {
     NFTFilters,
     NFTPaginationParams,
 } from "@/components/admin/onchain/OnChain.types";
-import type { NFT} from "@prisma/client";
+import type { NFT } from "@prisma/client";
 
 export async function fetchNFTs(
     filters: NFTFilters,
@@ -279,15 +275,15 @@ export async function getOwnerByTokenIds({
         }
 
         // 2. Provider 설정
-        const provider = new providers.JsonRpcProvider(network.rpcUrl);
+        const provider = new ethers.JsonRpcProvider(network.rpcUrl);
 
         // 3. Multicall 인터페이스 설정
-        const multicallInterface = new ethers.utils.Interface([
+        const multicallInterface = new ethers.Interface([
             "function aggregate(tuple(address target, bytes callData)[] calls) view returns (uint256 blockNumber, bytes[] returnData)",
         ]);
 
         // 4. NFT 컨트랙트 인터페이스
-        const nftInterface = new ethers.utils.Interface([
+        const nftInterface = new ethers.Interface([
             "function ownerOf(uint256) view returns (address)",
         ]);
 

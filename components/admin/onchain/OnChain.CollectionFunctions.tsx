@@ -116,15 +116,10 @@ export default function CollectionFunctions({
     const { mint, pause, unpause, isMinting, isPausing, isUnpausing, refresh } =
         useCollectionSet({
             collectionAddress: collection.address,
-            walletId: selectedWalletId,
         });
 
     // 지갑 및 네트워크 관리
-    const {
-        wallets,
-        isLoading: isLoadingWallets,
-        getWalletWithPrivateKey,
-    } = useEscrowWalletManager();
+    const { wallets, getWalletWithPrivateKey } = useEscrowWalletManager();
     const { networks } = useBlockchainNetworksManager();
 
     // 가스 추정
@@ -155,7 +150,14 @@ export default function CollectionFunctions({
             console.error("Error estimating gas:", error);
             toast.error("Failed to estimate gas");
         }
-    }, [estimate, selectedWalletId, mintAddress, mintQuantity]);
+    }, [
+        estimate,
+        selectedWalletId,
+        mintAddress,
+        mintQuantity,
+        collection.address,
+        toast,
+    ]);
 
     // 지갑 선택 핸들러
     const handleWalletSelect = async (walletId: string) => {

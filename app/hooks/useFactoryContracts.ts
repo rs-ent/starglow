@@ -74,10 +74,9 @@ export function useFactoryGet({
 // SET 훅 (수정 기능)
 export interface UseFactorySetProps {
     networkId: string;
-    walletId?: string;
 }
 
-export function useFactorySet({ networkId, walletId }: UseFactorySetProps) {
+export function useFactorySet({ networkId }: UseFactorySetProps) {
     const queryClient = useQueryClient();
 
     // Mutations
@@ -122,14 +121,22 @@ export function useFactorySet({ networkId, walletId }: UseFactorySetProps) {
         // 캐시 갱신
         refresh: async () => {
             if (networkId) {
-                await queryClient.invalidateQueries({
-                    queryKey: factoryKeys.byNetwork(networkId),
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: factoryKeys.byNetwork(networkId),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             } else {
                 // networkId가 없으면 모든 팩토리 쿼리 무효화
-                await queryClient.invalidateQueries({
-                    queryKey: factoryKeys.all,
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: factoryKeys.all,
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             }
         },
     };

@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import {
-    useUploadFile,
     useUploadFiles,
     useDeleteFile,
     useUpdateFileOrder,
@@ -17,11 +16,24 @@ import {
 
 import { useToast } from "./useToast";
 
-import type { GetFilesMetadataByUrlsParams, StoredFile } from "@/app/actions/files";
+import type {
+    GetFilesMetadataByUrlsParams,
+    StoredFile,
+} from "@/app/actions/files";
 
-export function useFiles() {
+export interface UseFilesInput {
+    getFilesInput?: {
+        purpose: string;
+        bucket: string;
+    };
+    getFileInput?: {
+        fileId: string;
+    };
+}
+
+export function useFiles(input?: UseFilesInput) {
     const [isUploading, setIsUploading] = useState(false);
-    const [isUploadingToIPFS, setIsUploadingToIPFS] = useState(false);
+    const [isUploadingToIPFS, _setIsUploadingToIPFS] = useState(false);
     const toast = useToast();
 
     const uploadFilesMutation = useUploadFiles();
@@ -29,18 +41,14 @@ export function useFiles() {
     const updateFileOrderMutation = useUpdateFileOrder();
     const updateFilesOrderMutation = useUpdateFilesOrder();
 
-    const getFiles = (purpose: string, bucket: string = "default") => {
-        const { data: files = [], isLoading } = useFilesByPurposeAndBucket(
-            purpose,
-            bucket
-        );
-        return { files, isLoading };
-    };
+    const { data: files = [], isLoading } = useFilesByPurposeAndBucket(
+        input?.getFilesInput?.purpose,
+        input?.getFilesInput?.bucket
+    );
 
-    const getFilesById = (id: string) => {
-        const { data: file, isLoading } = useFileById(id);
-        return { file, isLoading };
-    };
+    const { data: file, isLoading: isFileLoading } = useFileById(
+        input?.getFileInput?.fileId
+    );
 
     const uploadFiles = async (
         files: File[],
@@ -124,8 +132,10 @@ export function useFiles() {
     return {
         isUploading,
         isUploadingToIPFS,
-        getFiles,
-        getFilesById,
+        files,
+        isLoading,
+        file,
+        isFileLoading,
         uploadFiles,
         deleteFiles,
         updateFileOrder,

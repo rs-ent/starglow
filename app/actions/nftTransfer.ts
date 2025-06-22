@@ -2,40 +2,8 @@
 
 "use server";
 
-import {
-    BlockchainNetwork,
-    CollectionContract,
-    EscrowWallet,
-} from "@prisma/client";
-import { ethers, BytesLike } from "ethers";
-import {
-    createPublicClient,
-    createWalletClient,
-    http,
-    Chain,
-    defineChain,
-    Address,
-    getContract,
-} from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-
 import { prisma } from "@/lib/prisma/client";
-import { decryptPrivateKey } from "@/lib/utils/encryption";
-import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
-
-import { getChain, getWalletBalance } from "./blockchain";
-import { getEscrowWallet, getTokensByOwner , getTokenOwners, transferTokens } from "./collectionContracts";
-const abi = collectionJson.abi;
-
-// 로깅 유틸리티 직접 정의
-const logger = {
-    info: (message: string, data?: any) => {
-        console.log(`[INFO] ${message}`, data);
-    },
-    error: (message: string, error?: any) => {
-        console.error(`[ERROR] ${message}`, error);
-    },
-};
+import { getTokenOwners, transferTokens } from "./collectionContracts";
 
 export interface TransferNFTInput {
     paymentId: string;
@@ -83,11 +51,6 @@ export type TransferNFTResponse = TransferNFTSuccess | TransferNFTError;
 export async function transferNFTToUser(
     input: TransferNFTInput
 ): Promise<TransferNFTResponse> {
-    const scope = createLogScope("transferNFTToUser", {
-        paymentId: input.paymentId,
-        userId: input.userId,
-    });
-
     try {
         // 1. 결제 정보 조회
         const payment = await prisma.payment.findUnique({
@@ -95,7 +58,6 @@ export async function transferNFTToUser(
         });
 
         if (!payment) {
-            scope.log("Payment not found");
             return {
                 success: false,
                 error: {
@@ -107,7 +69,6 @@ export async function transferNFTToUser(
 
         // 2. 권한 검증
         if (payment.userId !== input.userId) {
-            scope.log("Unauthorized transfer attempt");
             return {
                 success: false,
                 error: {
@@ -119,7 +80,6 @@ export async function transferNFTToUser(
 
         // 3. 수신 지갑 주소 확인
         if (!payment.receiverWalletAddress) {
-            scope.log("Receiver wallet address not found");
             return {
                 success: false,
                 error: {
@@ -136,7 +96,6 @@ export async function transferNFTToUser(
         });
 
         if (!collection) {
-            scope.log("Collection not found");
             return {
                 success: false,
                 error: {
@@ -168,8 +127,6 @@ export async function transferNFTToUser(
             collectionAddress: collection.address,
         });
 
-        console.log("tokenOwners", tokenOwners);
-        
         const ownerTokenIds: number[] = [];
         tokenOwners.owners.forEach((owner, idx) => {
             if (owner.toLowerCase() === escrowWallet.address.toLowerCase()) {
@@ -178,11 +135,6 @@ export async function transferNFTToUser(
         });
 
         if (ownerTokenIds.length < payment.quantity) {
-            scope.log("Not enough available NFTs for transfer on-chain", {
-                required: payment.quantity,
-                available: ownerTokenIds.length,
-                error: "Not enough available NFTs for transfer on-chain",
-            });
             return {
                 success: false,
                 error: {
@@ -193,14 +145,7 @@ export async function transferNFTToUser(
             };
         }
 
-        scope.log("ownerTokenIds", { ownerTokenIds });
-        scope.log("payment.quantity", { payment });
-        scope.log("Enough to proceed", {
-            ownerTokenIds: ownerTokenIds.length,
-            paymentQuantity: payment.quantity,
-        });
         const tokenIds = ownerTokenIds.slice(0, payment.quantity);
-        scope.log("Proceeding with tokenIds", { tokenIds });
 
         // 6. transferTokens 호출
         const result = await transferTokens({
@@ -291,17 +236,8 @@ export async function transferNFTToUser(
                     data: transferEvents,
                 });
             } catch (error) {
-                scope.error("Failed to create transfer events", { error });
+                console.error(error);
             }
-        });
-
-        scope.log("NFT transfer successful", {
-            txHash: result.transactionHash,
-            receiver: payment.receiverWalletAddress,
-            escrowWallet: escrowWallet.address,
-            networkName: collection.network.name,
-            transferredTokenIds: tokenIds,
-            quantity: payment.quantity,
         });
 
         return {
@@ -313,7 +249,7 @@ export async function transferNFTToUser(
             },
         };
     } catch (error) {
-        scope.error("Unexpected error during NFT transfer", { error });
+        console.error(error);
         return {
             success: false,
             error: {
@@ -340,13 +276,6 @@ export interface EscrowTransferNFTInput {
 export async function escrowTransferNFT(
     input: EscrowTransferNFTInput
 ): Promise<TransferNFTResponse> {
-    const scope = createLogScope("escrowTransferNFT", {
-        paymentId: input.paymentId,
-        userId: input.userId,
-        fromAddress: input.fromAddress,
-        toAddress: input.toAddress,
-    });
-
     try {
         // 1. 결제 정보 조회
         const payment = await prisma.payment.findUnique({
@@ -355,7 +284,6 @@ export async function escrowTransferNFT(
         });
 
         if (!payment) {
-            scope.log("Payment not found");
             return {
                 success: false,
                 error: {
@@ -367,7 +295,6 @@ export async function escrowTransferNFT(
 
         // 2. 권한 검증
         if (payment.userId !== input.userId) {
-            scope.log("Unauthorized transfer attempt");
             return {
                 success: false,
                 error: {
@@ -383,7 +310,6 @@ export async function escrowTransferNFT(
         });
 
         if (!fromWallet) {
-            scope.log("Sender wallet address not found");
             return {
                 success: false,
                 error: {
@@ -400,7 +326,6 @@ export async function escrowTransferNFT(
         });
 
         if (!collection) {
-            scope.log("Collection not found");
             return {
                 success: false,
                 error: {
@@ -426,7 +351,6 @@ export async function escrowTransferNFT(
         });
 
         if (!nfts || nfts.length < payment.quantity) {
-            scope.log("Not enough available NFTs for transfer");
             return {
                 success: false,
                 error: {
@@ -512,7 +436,7 @@ export async function escrowTransferNFT(
             },
         };
     } catch (error) {
-        scope.error("Unexpected error during NFT escrow transfer", { error });
+        console.error(error);
         return {
             success: false,
             error: {
@@ -523,23 +447,4 @@ export async function escrowTransferNFT(
             },
         };
     }
-}
-
-// 로깅 유틸리티
-function createLogScope(name: string, initialData?: any) {
-    const startTime = Date.now();
-    const id = Math.random().toString(36).substring(2, 8);
-
-    return {
-        log: (message: string, data?: any) => {
-            logger.info(`[${name}] ${message}`, {
-                ...initialData,
-                ...data,
-                id,
-            });
-        },
-        error: (message: string, error?: any) => {
-            logger.error(`[${name}] ${message}`, { error, ...initialData, id });
-        },
-    };
 }

@@ -22,7 +22,6 @@ export async function POST(request: Request) {
             );
         }
 
-        console.log("PortOne webhook body", body);
         await prisma.webhookEvent.create({
             data: {
                 description: "PortOne webhook received",

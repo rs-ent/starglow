@@ -1,10 +1,8 @@
 /// app/api/cron/x/fetchTaggedTweets.ts
 
-import { TweetResponse, TweetSyncData } from "@prisma/client";
-
 import { prisma } from "@/lib/prisma/client";
 
-import type { Tweet} from "@prisma/client";
+import type { Tweet } from "@prisma/client";
 
 type TweetCreateData = Omit<Tweet, "id">;
 
@@ -92,7 +90,6 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
         throw new Error("TWITTER_BEARER_TOKEN is not set");
     }
 
-    let syncDataId: number;
     let requestCount = 0;
     let rateLimitRemaining: string | null = null;
     const apiLogs: ApiRequestLog[] = [];
@@ -102,12 +99,6 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
             where: { syncStatus: "success" },
             orderBy: { lastSyncAt: "desc" },
         });
-
-        console.log(
-            `Starting sync. Last successful sync: ${
-                lastSuccessSync?.lastSyncAt || "never"
-            }`
-        );
 
         let nextToken: string | undefined;
 
@@ -178,12 +169,6 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
 
             const queryParams = new URLSearchParams(requestParams);
             const requestStartTime = Date.now();
-
-            console.log(`API Request ${requestCount}:`, {
-                since_id: requestParams.since_id || "none",
-                start_time: requestParams.start_time || "none",
-                pagination_token: requestParams.pagination_token || "none",
-            });
 
             const response = await fetch(
                 `https://api.twitter.com/2/tweets/search/recent?${queryParams}`,
@@ -273,22 +258,13 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                 processingTime,
             });
 
-            console.log(`API Response ${requestCount}:`, {
-                result_count: data.meta.result_count,
-                newest_id: data.meta.newest_id,
-                next_token: data.meta.next_token ? "present" : "none",
-            });
-
             if (!data.data || data.data.length === 0) {
-                console.log("No more tweets found");
                 break;
             }
 
             allTweets = [...allTweets, ...data.data];
             nextToken = data.meta.next_token;
         } while (nextToken);
-
-        console.log(`Total tweets collected: ${allTweets.length}`);
 
         const result = await prisma.$transaction(async (tx) => {
             const syncData = await tx.tweetSyncData.create({
@@ -302,8 +278,6 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                     executionTimeMs: Date.now() - startTime,
                 },
             });
-
-            syncDataId = syncData.id;
 
             const responseData = apiLogs.map((log) => ({
                 tweetSyncDataId: syncData.id,
@@ -403,7 +377,6 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                     data: newTweetsData,
                     skipDuplicates: true,
                 });
-                console.log(`Saved ${newTweetsData.length} new tweets`);
             }
 
             const tweetMetricsPromises = allTweets.map((tweet) => {
@@ -482,8 +455,6 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
             };
         });
 
-        console.log(`Sync completed successfully. ID: ${result.syncDataId}`);
-
         return {
             ...result,
             timestamp: new Date().toISOString(),
@@ -530,8 +501,6 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                     })),
                 });
             }
-
-            syncDataId = errorSyncData.id;
         } catch (logError) {
             console.error("Failed to log error:", logError);
         }
@@ -556,9 +525,6 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                 await prisma.tweetSyncData.deleteMany({
                     where: { id: { in: oldIds } },
                 });
-                console.log(
-                    `🧹 Deleted old tweetSyncData & tweetResponse (${oldIds.length} sets)`
-                );
             }
         } catch (cleanupError) {
             console.error("Cleanup failed:", cleanupError);

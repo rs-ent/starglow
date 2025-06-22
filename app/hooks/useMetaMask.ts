@@ -11,8 +11,6 @@ import {
     useDisconnect,
     useBalance,
     useSwitchChain,
-    useConfig,
-    useChainId,
 } from "wagmi";
 import { mainnet, sepolia } from "wagmi/chains";
 import { injected } from "wagmi/connectors";
@@ -58,10 +56,6 @@ export function useMetaMask(): UseMetaMaskReturn {
     const [isMetaMaskInstalled, setIsMetaMaskInstalled] =
         useState<boolean>(false);
 
-    // wagmi 설정 및 현재 체인 ID
-    const config = useConfig();
-    const currentChainId = useChainId();
-
     // 지갑 계정 정보
     const { address, isConnected, chainId } = useAccount();
 
@@ -93,11 +87,9 @@ export function useMetaMask(): UseMetaMaskReturn {
     // 초기화 시 MetaMask 설치 여부 확인
     useEffect(() => {
         const checkMetaMaskInstalled = () => {
-            // @ts-ignore - ethereum 전역 객체는 타입스크립트에 정의되어 있지 않음
             const isInstalled =
                 typeof window !== "undefined" &&
                 window.ethereum &&
-                // @ts-ignore
                 window.ethereum.isMetaMask;
             setIsMetaMaskInstalled(!!isInstalled);
         };

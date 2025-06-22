@@ -3,7 +3,6 @@
 import crypto from "crypto";
 
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { Player } from "@prisma/client";
 import NextAuth from "next-auth";
 import Coinbase from "next-auth/providers/coinbase";
 import Discord from "next-auth/providers/discord";
@@ -21,9 +20,6 @@ import { fetchAuthorMetricsFromX } from "../actions/x/actions";
 import { createWallet } from "../story/userWallet/actions";
 
 import type { NextAuthConfig } from "next-auth";
-
-
-
 
 const isProd = process.env.NODE_ENV === "production";
 const isVercelPreview = process.env.VERCEL_ENV === "preview";

@@ -24,6 +24,7 @@ export async function getAuthUserId() {
         const session = await auth();
         return session?.user?.id || null;
     } catch (error) {
+        console.error("Failed to get auth user id:", error);
         return null;
     }
 }

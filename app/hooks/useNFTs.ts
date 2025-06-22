@@ -5,11 +5,8 @@ import {
     fetchNFTDetails,
     updateNFTStatus,
     transferNFTOwnership,
-    getNFTsByWallets
+    getNFTsByWallets,
 } from "@/app/actions/nfts";
-import {
-    NFTWithRelations
-} from "@/components/admin/onchain/OnChain.types";
 
 import {
     getOwnerByTokenIdsQuery,
@@ -17,11 +14,11 @@ import {
 } from "../queries/nftQueries";
 import { queryKeys } from "../queryKeys";
 
-import type {
-    NFTsByWalletsParams} from "@/app/actions/nfts";
+import type { NFTsByWalletsParams } from "@/app/actions/nfts";
 import type {
     NFTFilters,
-    NFTPaginationParams} from "@/components/admin/onchain/OnChain.types";
+    NFTPaginationParams,
+} from "@/components/admin/onchain/OnChain.types";
 
 // 개별 훅으로 분리하여 재사용성 향상
 export function useNFTs(filters: NFTFilters, pagination: NFTPaginationParams) {
@@ -46,10 +43,18 @@ export function useUpdateNFTStatus() {
         mutationFn: updateNFTStatus,
         onSuccess: (updatedNFT) => {
             // 관련된 모든 쿼리 무효화
-            queryClient.invalidateQueries({ queryKey: ["nfts"] });
-            queryClient.invalidateQueries({
-                queryKey: ["nft", updatedNFT.id],
-            });
+            queryClient
+                .invalidateQueries({ queryKey: ["nfts"] })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: ["nft", updatedNFT.id],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -61,10 +66,18 @@ export function useTransferNFTOwnership() {
         mutationFn: transferNFTOwnership,
         onSuccess: (updatedNFT) => {
             // 관련된 모든 쿼리 무효화
-            queryClient.invalidateQueries({ queryKey: ["nfts"] });
-            queryClient.invalidateQueries({
-                queryKey: ["nft", updatedNFT.id],
-            });
+            queryClient
+                .invalidateQueries({ queryKey: ["nfts"] })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: ["nft", updatedNFT.id],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

@@ -19,14 +19,26 @@ export function useCreateArtist() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: createArtist,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: artistKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.list(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.detail({ id: data.id }),
-            });
+        onSuccess: (data, _variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: artistKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.list(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.detail({ id: data.id }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -35,18 +47,31 @@ export function useUpdateArtist() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: updateArtist,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: artistKeys.all });
-            queryClient.invalidateQueries({ queryKey: artistKeys.list() });
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.detail({ id: variables.id }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.detail({ name: variables.name }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.messages({ artistId: variables.id }),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: artistKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({ queryKey: artistKeys.list() })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.detail({ name: variables.name }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.messages({ artistId: variables.id }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -55,14 +80,26 @@ export function useDeleteArtist() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: deleteArtist,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: artistKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.list(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.detail({ id: variables.id }),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: artistKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.list(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.detail({ id: variables.id }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -71,14 +108,28 @@ export function useCreateArtistMessage() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: createArtistMessage,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: artistKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.messages({ artistId: variables.artistId }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.detail({ id: variables.artistId }),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: artistKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.messages({
+                        artistId: variables.artistId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.detail({ id: variables.artistId }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -87,18 +138,30 @@ export function useUpdateArtistMessage() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: updateArtistMessage,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: artistKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.detail({ id: variables.artistId }),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: artistKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.detail({ id: variables.artistId }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
 
             if (variables.artistId) {
-                queryClient.invalidateQueries({
-                    queryKey: artistKeys.messages({
-                        artistId: variables.artistId,
-                    }),
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: artistKeys.messages({
+                            artistId: variables.artistId,
+                        }),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             }
         },
     });
@@ -108,16 +171,28 @@ export function useDeleteArtistMessage() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: deleteArtistMessage,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: artistKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.messages({
-                    artistId: variables.artistId,
-                }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.detail({ id: variables.artistId }),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: artistKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.messages({
+                        artistId: variables.artistId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.detail({ id: variables.artistId }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -126,10 +201,14 @@ export function useTokenGating() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: tokenGating,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: artistKeys.tokenGating(variables),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.tokenGating(variables),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

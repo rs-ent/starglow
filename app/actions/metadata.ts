@@ -94,7 +94,9 @@ export type METADATA_TYPE = {
      * 추가적인 메타데이터를 위한 객체
      * 마켓플레이스에 따라 다르게 해석될 수 있음
      */
-    properties?: {};
+    properties?: {
+        [key: string]: any;
+    };
 };
 
 /**
@@ -116,16 +118,12 @@ const TOKEN = process.env.BLOB_METADATA_READ_WRITE_TOKEN;
 
 export async function getLinkableCollectionMetadata(): Promise<Metadata[]> {
     try {
-        console.log("=== Get Linkable Collection Metadata ===");
-        console.log("Getting linkable metadata with type: collection");
         const linkableMetadata = await prisma.metadata.findMany({
             where: {
                 collectionAddress: null,
                 type: MetadataType.collection,
             },
         });
-        console.log("=== Linkable Collection Metadata Found ===");
-        console.log(`Found ${linkableMetadata.length} linkable metadata`);
         return linkableMetadata;
     } catch (error) {
         console.error(error);
@@ -137,16 +135,12 @@ export async function getCollectionMetadata(
     metadataId: string
 ): Promise<Metadata> {
     try {
-        console.log("=== Get Collection Metadata ===");
-        console.log(`Getting metadata with id: ${metadataId}`);
         const createdMetadata = await prisma.metadata.findUnique({
             where: {
                 id: metadataId,
                 type: MetadataType.collection,
             },
         });
-        console.log("=== Collection Metadata Found ===");
-        console.log(`Found Metadata: ${createdMetadata}`);
         if (!createdMetadata) {
             throw new Error("Metadata not found");
         }
@@ -162,7 +156,6 @@ export async function createCollectionMetadata(
     collectionKey: string
 ): Promise<Metadata> {
     try {
-        console.log("=== Create Collection Metadata ===");
         const json = JSON.stringify(metadata);
         const blob = new Blob([json], { type: "application/json" });
         const fileName = "contract.json";
@@ -172,8 +165,6 @@ export async function createCollectionMetadata(
             addRandomSuffix: false,
         });
 
-        console.log("=== Collection Metadata Created ===");
-        console.log(`Created Metadata: ${url}`);
         const createdMetadata = await prisma.metadata.create({
             data: {
                 collectionKey,
@@ -182,15 +173,9 @@ export async function createCollectionMetadata(
                 type: MetadataType.collection,
             },
         });
-        console.log("=== Collection Metadata Created ===");
-        console.log(`Created Metadata: ${createdMetadata}`);
         if (!createdMetadata) {
             throw new Error("Metadata not created");
         }
-        console.log("=== Collection Metadata Created ===");
-        console.log(
-            `Successfully created collection metadata: ${createdMetadata.id}`
-        );
         return createdMetadata;
     } catch (error) {
         console.error(error);
@@ -203,7 +188,6 @@ export async function linkCollectionMetadata(
     collectionAddress: string
 ): Promise<Metadata> {
     try {
-        console.log("=== Link Collection Metadata ===");
         const updatedMetadata = await prisma.metadata.update({
             where: {
                 id: metadataId,
@@ -213,15 +197,9 @@ export async function linkCollectionMetadata(
                 collectionAddress: collectionAddress,
             },
         });
-        console.log("=== Collection Metadata Linked ===");
-        console.log(`Updated Metadata: ${updatedMetadata}`);
         if (!updatedMetadata) {
             throw new Error("Metadata not updated");
         }
-        console.log("=== Collection Metadata Linked ===");
-        console.log(
-            `Successfully linked collection metadata: ${collectionAddress} Collection linked to ${updatedMetadata.id}`
-        );
         return updatedMetadata;
     } catch (error) {
         console.error(error);
@@ -235,10 +213,6 @@ export async function createNFTMetadata(
     tokenStartId: number = 0
 ) {
     try {
-        console.log(
-            `Starting NFT metadata creation for collection: ${collection.address}`
-        );
-
         const collectionMetadata = await prisma.metadata.findUnique({
             where: {
                 collectionAddress: collection.address,
@@ -256,10 +230,6 @@ export async function createNFTMetadata(
             ? tokenStartId + specificCount
             : collection.maxSupply;
 
-        console.log(
-            `Creating metadata for tokens ${tokenStartId} to ${endPoint - 1}`
-        );
-
         const batchSize = 20;
         const nftMetadataList = [];
         const failedUploads: number[] = [];
@@ -270,8 +240,6 @@ export async function createNFTMetadata(
                 { length: end - start },
                 (_, i) => start + i
             );
-
-            console.log(`Processing batch: ${start} to ${end - 1}`);
 
             const batchResults = await Promise.allSettled(
                 batch.map(async (tokenId) => {
@@ -323,12 +291,6 @@ export async function createNFTMetadata(
 
             nftMetadataList.push(...successfulUploads);
 
-            console.log(
-                `Batch complete. Success: ${
-                    successfulUploads.length
-                }, Failed: ${batchResults.length - successfulUploads.length}`
-            );
-
             if (end < endPoint) {
                 await new Promise((resolve) => setTimeout(resolve, 1000));
             }
@@ -348,8 +310,6 @@ export async function createNFTMetadata(
             failed: failedUploads.length,
             failedTokenIds: failedUploads,
         };
-
-        console.log("NFT metadata creation complete:", result);
 
         return result;
     } catch (error) {

@@ -4,7 +4,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { createWallet } from "../actions/defaultWallets";
+import { createWallet } from "../story/userWallet/actions";
 import { queryKeys } from "../queryKeys";
 
 export function useCreateWallet() {
@@ -15,20 +15,36 @@ export function useCreateWallet() {
             return createWallet(userId);
         },
         onSuccess: (data) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.defaultWallets.polygon,
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.defaultWallets.all,
-            });
-            if (data.address) {
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.defaultWallets.byId(data.address),
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.defaultWallets.polygon,
+                })
+                .catch((error) => {
+                    console.error(error);
                 });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.defaultWallets.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            if (data.address) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: queryKeys.defaultWallets.byId(data.address),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             }
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.defaultWallets.byNetwork("polygon"),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.defaultWallets.byNetwork("polygon"),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

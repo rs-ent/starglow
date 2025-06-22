@@ -34,13 +34,25 @@ export function useCreateQuestMutation() {
             return { previousQuests };
         },
         onSuccess: (data, _variables, _context) => {
-            queryClient.invalidateQueries({ queryKey: questKeys.all });
-            queryClient.invalidateQueries({ queryKey: questKeys.list() });
+            queryClient
+                .invalidateQueries({ queryKey: questKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({ queryKey: questKeys.list() })
+                .catch((error) => {
+                    console.error(error);
+                });
 
             if (data?.id) {
-                queryClient.invalidateQueries({
-                    queryKey: questKeys.detail({ id: data.id }),
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: questKeys.detail({ id: data.id }),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             }
         },
         onError: (error, _variables, context) => {

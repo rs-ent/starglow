@@ -17,8 +17,12 @@ export function useCreateEvent() {
 
     return useMutation<EventResponse, Error, FormData>({
         mutationFn: createEvent,
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ["events"] });
+        onSuccess: () => {
+            queryClient
+                .invalidateQueries({ queryKey: ["events"] })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -33,10 +37,18 @@ export function useUpdateEvent() {
     >({
         mutationFn: ({ id, formData }) => updateEvent(id, formData),
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: ["events"] });
-            queryClient.invalidateQueries({
-                queryKey: ["events", variables.id],
-            });
+            queryClient
+                .invalidateQueries({ queryKey: ["events"] })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: ["events", variables.id],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -47,7 +59,11 @@ export function useDeleteEvent() {
     return useMutation<EventResponse, Error, string>({
         mutationFn: deleteEvent,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["events"] });
+            queryClient
+                .invalidateQueries({ queryKey: ["events"] })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

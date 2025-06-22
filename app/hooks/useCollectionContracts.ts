@@ -21,11 +21,9 @@ import {
 } from "../mutations/collectionContractsMutations";
 import {
     useTokens,
-    useTokenOwners,
     useCollectionStatus,
     useEscrowWallets,
     useNonce,
-    useCollectionsByNetwork,
     useCollectionSettings,
     useCollection,
     useTokensLockStatus,
@@ -167,12 +165,10 @@ export function useCollectionGet({
 
 export interface UseCollectionSetProps {
     collectionAddress?: string;
-    walletId?: string;
 }
 
 export function useCollectionSet({
     collectionAddress = "",
-    walletId,
 }: UseCollectionSetProps = {}) {
     const queryClient = useQueryClient();
 

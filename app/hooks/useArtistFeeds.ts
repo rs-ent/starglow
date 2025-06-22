@@ -19,13 +19,6 @@ import {
 import type {
     GetArtistFeedsInput,
     GetArtistFeedReactionsInput,
-    CreateArtistFeedInput,
-    UpdateArtistFeedInput,
-    DeleteArtistFeedInput,
-    CreateArtistFeedReactionInput,
-    UpdateArtistFeedReactionInput,
-    DeleteArtistFeedReactionInput,
-    ArtistFeedWithReactions,
 } from "@/app/actions/artistFeeds";
 
 export function useArtistFeedsGet({

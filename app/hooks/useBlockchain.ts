@@ -15,7 +15,6 @@ import {
 } from "../mutations/blockchainMutations";
 import {
     useBlockchainNetworks,
-    useBlockchainNetwork,
     useEscrowWallets,
     useActiveEscrowWallet,
 } from "../queries/blockchainQueries";

@@ -14,8 +14,6 @@ import type {
     TweetMedia,
 } from "@prisma/client";
 
-
-const BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN;
 const CLIENT_ID = process.env.TWITTER_CLIENT_ID;
 const CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;
 
@@ -591,7 +589,6 @@ export async function startXAuth(
         authUrl.searchParams.set("client_id", CLIENT_ID);
 
         const redirectUri = `${process.env.NEXTAUTH_URL}/api/integration/x/callback`;
-        console.log("Redirect URI:", redirectUri);
 
         authUrl.searchParams.set("redirect_uri", redirectUri);
 
@@ -603,8 +600,6 @@ export async function startXAuth(
         authUrl.searchParams.set("state", state);
         authUrl.searchParams.set("code_challenge", codeChallenge);
         authUrl.searchParams.set("code_challenge_method", "S256");
-
-        console.log("Auth URL:", authUrl.toString());
 
         return {
             authUrl: authUrl.toString(),
@@ -716,8 +711,6 @@ export async function exchangeXToken(
                 where: { tweetAuthorId: userData.data.id },
             });
 
-            console.log("alreadyConnectedPlayer", alreadyConnectedPlayer);
-
             if (
                 alreadyConnectedPlayer &&
                 alreadyConnectedPlayer?.id !== player.id
@@ -777,11 +770,8 @@ export async function exchangeXToken(
                 },
             });
 
-            console.log("existingAccount", existingAccount);
-
             if (!existingAccount) {
-                // Account 생성
-                const newAccount = await tx.account.create({
+                await tx.account.create({
                     data: {
                         userId: player.userId,
                         type: "oauth",
@@ -796,7 +786,6 @@ export async function exchangeXToken(
                         scope: tokens.scope || null,
                     },
                 });
-                console.log("newAccount", newAccount);
             } else {
                 // 같은 유저의 기존 연동 정보 업데이트
                 await tx.account.update({

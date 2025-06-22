@@ -19,22 +19,38 @@ export function useCreateArtistFeed() {
     return useMutation({
         mutationFn: createArtistFeed,
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.list({
-                    artistId: variables.input.artistId,
-                }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.byId(data?.id ?? ""),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.reactions({
-                    artistFeedId: data?.id,
-                }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.all,
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.list({
+                        artistId: variables.input.artistId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.byId(data?.id ?? ""),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.reactions({
+                        artistFeedId: data?.id,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -44,22 +60,38 @@ export function useUpdateArtistFeed() {
     return useMutation({
         mutationFn: updateArtistFeed,
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.list({
-                    artistId: variables.input.artistId,
-                }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.byId(data?.id ?? ""),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.reactions({
-                    artistFeedId: data?.id,
-                }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.all,
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.list({
+                        artistId: variables.input.artistId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.byId(data?.id ?? ""),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.reactions({
+                        artistFeedId: data?.id,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -68,23 +100,39 @@ export function useDeleteArtistFeed() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: deleteArtistFeed,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.list({
-                    artistId: variables.input.artistId,
-                }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.all,
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.byId(variables.input.id),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.reactions({
-                    artistFeedId: variables.input.id,
-                }),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.list({
+                        artistId: variables.input.artistId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.byId(variables.input.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.reactions({
+                        artistFeedId: variables.input.id,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -93,24 +141,40 @@ export function useCreateArtistFeedReaction() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: createArtistFeedReaction,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.reactions({
-                    artistFeedId: variables.input.artistFeedId,
-                }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.all,
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.byId(variables.input.artistFeedId),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.reactions({
-                    artistFeedId: variables.input.artistFeedId,
-                    playerId: variables.input.playerId,
-                }),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.reactions({
+                        artistFeedId: variables.input.artistFeedId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.byId(variables.input.artistFeedId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.reactions({
+                        artistFeedId: variables.input.artistFeedId,
+                        playerId: variables.input.playerId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -119,24 +183,40 @@ export function useUpdateArtistFeedReaction() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: updateArtistFeedReaction,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.reactions({
-                    artistFeedId: variables.input.artistFeedId,
-                }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.all,
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.byId(variables.input.artistFeedId),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.reactions({
-                    artistFeedId: variables.input.artistFeedId,
-                    playerId: variables.input.playerId,
-                }),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.reactions({
+                        artistFeedId: variables.input.artistFeedId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.byId(variables.input.artistFeedId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.reactions({
+                        artistFeedId: variables.input.artistFeedId,
+                        playerId: variables.input.playerId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -145,23 +225,39 @@ export function useDeleteArtistFeedReaction() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: deleteArtistFeedReaction,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.reactions({
-                    artistFeedId: variables.input.id,
-                }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.all,
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.byId(variables.input.id),
-            });
-            queryClient.invalidateQueries({
-                queryKey: artistFeedKeys.reactions({
-                    artistFeedId: variables.input.id,
-                }),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.reactions({
+                        artistFeedId: variables.input.id,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.byId(variables.input.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistFeedKeys.reactions({
+                        artistFeedId: variables.input.id,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

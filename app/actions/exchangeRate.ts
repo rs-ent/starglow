@@ -1,18 +1,12 @@
 "use server";
 
-import { cache } from "react";
-
 import { prisma } from "@/lib/prisma/client";
 
 import type * as PortOne from "@portone/browser-sdk/v2";
 import type { PrismaClient } from "@prisma/client";
 
-
 const EXCHANGE_RATE_UPDATE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 const EXCHANGE_RATE_FALLBACK = 1300;
-
-const DEFAULT_FROM_CURRENCY = "CURRENCY_USD" as const;
-const DEFAULT_TO_CURRENCY = "CURRENCY_KRW" as const;
 
 export interface ExchangeRateInfo {
     fromCurrency: PortOne.Entity.Currency;

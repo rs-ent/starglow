@@ -2,7 +2,6 @@
 
 "use server";
 
-
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma/client";
@@ -67,9 +66,6 @@ async function retry<T>(
     let lastError;
     let delay = initialDelay;
     for (let i = 0; i < maxRetries; i++) {
-        if (i > 0) {
-            console.log(`Retry ${i + 1} of ${maxRetries}...`);
-        }
         try {
             return await fn();
         } catch (err) {

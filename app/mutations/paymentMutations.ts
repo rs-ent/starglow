@@ -73,14 +73,24 @@ export function useCreatePaymentMutation() {
             ) {
                 const existingPaymentId = data.error.details.paymentId;
 
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.payment.byId(existingPaymentId),
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: queryKeys.payment.byId(existingPaymentId),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
 
                 if (variables.userId) {
-                    queryClient.invalidateQueries({
-                        queryKey: queryKeys.payment.byUserId(variables.userId),
-                    });
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: queryKeys.payment.byUserId(
+                                variables.userId
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        });
                 }
             } else {
                 console.error("Cannot update cache - invalid payment data");
@@ -110,6 +120,7 @@ export function useVerifyPaymentMutation() {
                     .catch((error) => {
                         console.error(error);
                     });
+
                 queryClient
                     .invalidateQueries({
                         queryKey: queryKeys.payment.byStatus(data.data.status),

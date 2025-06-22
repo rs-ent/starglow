@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 
-import { Events } from "@prisma/client";
-
 import {
     useCreateEvent,
     useUpdateEvent,
@@ -13,7 +11,7 @@ import { useEventsQuery, useEventQuery } from "@/app/queries/eventsQueries";
 
 import { useToast } from "./useToast";
 
-import type { EventCategory, EventStatus} from "@prisma/client";
+import type { EventCategory, EventStatus } from "@prisma/client";
 
 export function useEvents({
     category,

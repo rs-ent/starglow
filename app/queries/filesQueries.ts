@@ -7,27 +7,29 @@ import { useQuery } from "@tanstack/react-query";
 import {
     getFilesByPurposeAndBucket,
     getFileById,
-    getFilesMetadataByUrls
+    getFilesMetadataByUrls,
 } from "@/app/actions/files";
 import { queryKeys } from "@/app/queryKeys";
 
-import type {
-    GetFilesMetadataByUrlsParams} from "@/app/actions/files";
+import type { GetFilesMetadataByUrlsParams } from "@/app/actions/files";
 
-export function useFilesByPurposeAndBucket(
-    purpose: string,
-    bucket: string = "default"
-) {
+export function useFilesByPurposeAndBucket(purpose?: string, bucket?: string) {
     return useQuery({
-        queryKey: queryKeys.files.byPurposeAndBucket(purpose, bucket),
-        queryFn: () => getFilesByPurposeAndBucket(purpose, bucket),
+        queryKey: queryKeys.files.byPurposeAndBucket(
+            purpose || "",
+            bucket || "default"
+        ),
+        queryFn: () =>
+            getFilesByPurposeAndBucket(purpose || "", bucket || "default"),
+        enabled: !!purpose || !!bucket,
     });
 }
 
-export function useFileById(id: string) {
+export function useFileById(id?: string) {
     return useQuery({
-        queryKey: queryKeys.files.byId(id),
+        queryKey: queryKeys.files.byId(id || ""),
         queryFn: () => getFileById(id),
+        enabled: !!id,
     });
 }
 

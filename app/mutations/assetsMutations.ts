@@ -36,7 +36,11 @@ export function useCreateAsset() {
     return useMutation({
         mutationFn: (input: CreateAssetInput) => createAsset(input),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: assetKeys.all });
+            queryClient
+                .invalidateQueries({ queryKey: assetKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -45,11 +49,19 @@ export function useDeleteAsset() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (input: DeleteAssetInput) => deleteAsset(input),
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: assetKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: assetKeys.byId(variables.id),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: assetKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: assetKeys.byId(variables.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -59,11 +71,19 @@ export function useActivateAsset() {
 
     return useMutation({
         mutationFn: (input: ActivateAssetInput) => activateAsset(input),
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: assetKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: assetKeys.byId(variables.id),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: assetKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: assetKeys.byId(variables.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -73,11 +93,19 @@ export function useDeactivateAsset() {
 
     return useMutation({
         mutationFn: (input: DeactivateAssetInput) => deactivateAsset(input),
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: assetKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: assetKeys.byId(variables.id),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: assetKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: assetKeys.byId(variables.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -87,10 +115,18 @@ export function useSetDefaultAsset() {
     return useMutation({
         mutationFn: (input: SetDefaultAssetInput) => setDefaultAsset(input),
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: assetKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: assetKeys.byId(variables.assetId),
-            });
+            queryClient
+                .invalidateQueries({ queryKey: assetKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: assetKeys.byId(variables.assetId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -99,11 +135,19 @@ export function useAddAssetFunction() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (input: AddAssetFunctionInput) => addAssetFunction(input),
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: assetKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: assetKeys.byId(variables.assetId),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: assetKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: assetKeys.byId(variables.assetId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -113,11 +157,19 @@ export function useExecuteAssetFunction() {
     return useMutation({
         mutationFn: (input: ExecuteAssetFunctionInput) =>
             executeAssetFunction(input),
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: assetKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: assetKeys.byId(variables.assetId),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: assetKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: assetKeys.byId(variables.assetId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -126,11 +178,19 @@ export function useAirdropAsset() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (input: AirdropAssetInput) => airdropAsset(input),
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: assetKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: assetKeys.byId(variables.assetId),
-            });
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: assetKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: assetKeys.byId(variables.assetId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -140,11 +200,19 @@ export function useDeployAssetsContract() {
     return useMutation({
         mutationFn: (input: DeployAssetsContractInput) =>
             deployAssetsContract(input),
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: assetKeys.all });
-            queryClient.invalidateQueries({
-                queryKey: assetKeys.contract(data.data?.address || ""),
-            });
+        onSuccess: (data, _variables) => {
+            queryClient
+                .invalidateQueries({ queryKey: assetKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: assetKeys.contract(data.data?.address || ""),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

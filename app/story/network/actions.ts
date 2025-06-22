@@ -311,9 +311,6 @@ export async function estimateAndOptimizeGas(
 
                 maxPriorityFeePerGas = (priorityFee * multiplier) / 1000n;
                 maxFeePerGas = baseFee * 2n + maxPriorityFeePerGas; // base fee의 2배 + priority fee
-
-                const costInWei = baseGas * maxFeePerGas;
-                const costInEth = Number(costInWei) / Number(10n ** 18n);
             }
         } catch (eip1559Error) {
             console.warn(

@@ -11,14 +11,15 @@ import {
     generateWallet,
     getWalletBalance,
     getEscrowWalletWithPrivateKey,
-    estimateGasForTransactions
+    estimateGasForTransactions,
 } from "../actions/blockchain";
 import { QUERY_KEYS } from "../queryKeys";
 
 import type {
     addBlockchainNetworkParams,
     saveEscrowWalletParams,
-    EstimateGasForTransactionsInput} from "../actions/blockchain";
+    EstimateGasForTransactionsInput,
+} from "../actions/blockchain";
 
 /**
  * 블록체인 네트워크 추가 뮤테이션 훅
@@ -36,9 +37,13 @@ export function useAddBlockchainNetwork() {
         },
         onSuccess: () => {
             // Invalidate network list queries
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.BLOCKCHAIN_NETWORKS],
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: [QUERY_KEYS.BLOCKCHAIN_NETWORKS],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -62,12 +67,20 @@ export function useUpdateBlockchainNetwork() {
         },
         onSuccess: (data) => {
             // Invalidate specific network and network list queries
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.BLOCKCHAIN_NETWORKS, data.id],
-            });
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.BLOCKCHAIN_NETWORKS],
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: [QUERY_KEYS.BLOCKCHAIN_NETWORKS, data.id],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: [QUERY_KEYS.BLOCKCHAIN_NETWORKS],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -88,12 +101,20 @@ export function useSaveEscrowWallet() {
         },
         onSuccess: () => {
             // Invalidate escrow wallet list and active wallet queries
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.ESCROW_WALLETS],
-            });
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.ACTIVE_ESCROW_WALLET],
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: [QUERY_KEYS.ESCROW_WALLETS],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: [QUERY_KEYS.ACTIVE_ESCROW_WALLET],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -119,12 +140,20 @@ export function useUpdateEscrowWalletStatus() {
         },
         onSuccess: () => {
             // Invalidate escrow wallet list and active wallet queries
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.ESCROW_WALLETS],
-            });
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.ACTIVE_ESCROW_WALLET],
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: [QUERY_KEYS.ESCROW_WALLETS],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: [QUERY_KEYS.ACTIVE_ESCROW_WALLET],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -153,12 +182,20 @@ export function useUpdateEscrowWalletBalance() {
         },
         onSuccess: () => {
             // Invalidate escrow wallet list and active wallet queries
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.ESCROW_WALLETS],
-            });
-            queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.ACTIVE_ESCROW_WALLET],
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: [QUERY_KEYS.ESCROW_WALLETS],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: [QUERY_KEYS.ACTIVE_ESCROW_WALLET],
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

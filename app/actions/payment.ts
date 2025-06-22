@@ -2,64 +2,26 @@
 
 "use server";
 
-import * as PortOne from "@portone/browser-sdk/v2";
-import { PaymentStatus, PrismaClient, Wallet , Events, PaymentPromotionDiscountType } from "@prisma/client";
+import { PaymentStatus, PaymentPromotionDiscountType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma/client";
-import {
-    PRODUCT_MAP,
-} from "@/lib/types/payment";
-import { encrypt, decrypt } from "@/lib/utils/encryption";
+import { PRODUCT_MAP } from "@/lib/types/payment";
 
-import {
-    getExchangeRateInfo,
-    convertAmount
-} from "./exchangeRate";
+import { getExchangeRateInfo, convertAmount } from "./exchangeRate";
 
-import type {
-    ExchangeRateInfo} from "./exchangeRate";
+import type { ExchangeRateInfo } from "./exchangeRate";
 import type {
     PayMethod,
     EasyPayProvider,
     CardProvider,
     ProductTable,
     Currency,
-    prismaTransaction} from "@/lib/types/payment";
-import type { Payment} from "@prisma/client";
-
-const PAYMENT_SECRET =
-    process.env.PAYMENT_SECRET || "&^%$#-super-secret-v0-!##@!#";
+    prismaTransaction,
+} from "@/lib/types/payment";
+import type { Payment } from "@prisma/client";
 
 // 로깅 유틸리티 함수 추가
 const isDev = process.env.NODE_ENV === "development";
-
-function logDebug(message: string, data?: any, meta?: { [key: string]: any }) {
-    if (isDev) {
-        const timestamp = new Date().toISOString();
-        const metaInfo = meta
-            ? ` [${Object.entries(meta)
-                  .map(([k, v]) => `${k}=${v}`)
-                  .join(", ")}]`
-            : "";
-        console.log(
-            `[PAYMENT DEBUG ${timestamp}${metaInfo}] ${message}`,
-            data || ""
-        );
-    }
-}
-
-function logInfo(message: string, data?: any, meta?: { [key: string]: any }) {
-    const timestamp = new Date().toISOString();
-    const metaInfo = meta
-        ? ` [${Object.entries(meta)
-              .map(([k, v]) => `${k}=${v}`)
-              .join(", ")}]`
-        : "";
-    console.log(
-        `[PAYMENT INFO ${timestamp}${metaInfo}] ${message}`,
-        data || ""
-    );
-}
 
 function logWarning(
     message: string,
@@ -119,7 +81,7 @@ function logError(message: string, error?: any, meta?: { [key: string]: any }) {
                             `[PAYMENT ERROR DETAILS ${timestamp}] Response Body:`,
                             json
                         );
-                    } catch (e) {
+                    } catch {
                         console.error(
                             `[PAYMENT ERROR DETAILS ${timestamp}] Response Text:`,
                             text
@@ -139,49 +101,6 @@ function logError(message: string, error?: any, meta?: { [key: string]: any }) {
             );
         }
     }
-}
-
-// 로깅 헬퍼 - 함수 진입/종료 측정
-function createLogScope(name: string, initialData?: any) {
-    if (!isDev)
-        return {
-            log: () => {},
-            end: () => {},
-            error: () => {},
-        };
-
-    const startTime = Date.now();
-    const id = Math.random().toString(36).substring(2, 8);
-
-    logDebug(`> ${name} started`, initialData, { id, function: name });
-
-    return {
-        log: (message: string, data?: any) => {
-            logDebug(`| ${name} - ${message}`, data, {
-                id,
-                function: name,
-                elapsed: `${Date.now() - startTime}ms`,
-            });
-        },
-        end: (result?: any) => {
-            const endTime = Date.now();
-            const duration = endTime - startTime;
-            logDebug(`< ${name} completed in ${duration}ms`, result, {
-                id,
-                function: name,
-            });
-            return duration;
-        },
-        error: (error: any, message?: string) => {
-            const endTime = Date.now();
-            const duration = endTime - startTime;
-            logError(message || `${name} failed after ${duration}ms`, error, {
-                id,
-                function: name,
-            });
-            return duration;
-        },
-    };
 }
 
 function getStoreIdAndChannelKey(
@@ -251,10 +170,10 @@ async function getProduct<T extends ProductTable>({
 
     // 타입 안전성을 위해 클라이언트를 명시적으로 캐스팅
     const client = (tx || prisma) as typeof prisma;
-    const product = await PRODUCT_MAP.product[productTable]({
+    const product = (await PRODUCT_MAP.product[productTable]({
         productId,
         tx: client,
-    });
+    })) as Record<string, any>;
 
     const productPrice = product[PRODUCT_MAP.amountField[productTable]] as
         | number
@@ -354,13 +273,6 @@ export type PaymentErrorCode =
     | "INVALID_PAYMENT_STATE"
     | "PAYMENT_NOT_COMPLETED";
 
-// 중간 트랜잭션 결과를 위한 인터페이스
-interface VerificationInProgress {
-    continueVerification: true;
-    payment: Payment;
-    tx: prismaTransaction;
-}
-
 // 중복 결제 체크를 위한 함수 수정
 async function checkRecentPayment({
     input,
@@ -369,23 +281,11 @@ async function checkRecentPayment({
     input: CreatePaymentInput;
     cooldownSeconds?: number;
 }): Promise<{ isDuplicate: boolean; existingPaymentId?: string }> {
-    const scope = createLogScope("checkRecentPayment", {
-        userId: input.userId || "anonymous",
-        productTable: input.productTable,
-        productId: input.productId,
-        quantity: input.quantity,
-        payMethod: input.payMethod,
-        currency: input.currency,
-        easyPayProvider: input.easyPayProvider,
-        cardProvider: input.cardProvider,
-    });
-
     try {
         // 쿨다운 시간 내 동일 상품에 대한 결제 시도 확인
         const cooldownTime = new Date();
         cooldownTime.setSeconds(cooldownTime.getSeconds() - cooldownSeconds);
 
-        scope.log(`Checking for recent payment within cooldown period`);
         const recentPayment = await prisma.payment.findFirst({
             where: {
                 userId: input.userId,
@@ -411,20 +311,11 @@ async function checkRecentPayment({
         });
 
         if (recentPayment) {
-            scope.log(`Recent payment found`, {
-                paymentId: recentPayment.id,
-                status: recentPayment.status,
-                createdAt: recentPayment.createdAt,
-            });
-            scope.end({ isDuplicate: true, paymentId: recentPayment.id });
             return { isDuplicate: true, existingPaymentId: recentPayment.id };
         }
-
-        scope.log(`No recent payment found`);
-        scope.end({ isDuplicate: false });
         return { isDuplicate: false };
     } catch (error) {
-        scope.error(error, `Failed to check recent payment`);
+        console.error(error);
         return { isDuplicate: false };
     }
 }
@@ -469,14 +360,6 @@ export type CreatePaymentResponse = CreatePaymentSuccess | CreatePaymentError;
 export async function createPayment(
     input: CreatePaymentInput
 ): Promise<CreatePaymentResponse> {
-    const scope = createLogScope("createPayment", {
-        userId: input.userId || "anonymous",
-        productTable: input.productTable,
-        productId: input.productId,
-        payMethod: input.payMethod,
-        redirectUrl: input.redirectUrl,
-    });
-
     try {
         // 입력값 검증
         if (
@@ -485,8 +368,6 @@ export async function createPayment(
             !input.currency ||
             !input.payMethod
         ) {
-            scope.log(`Invalid input - missing required fields`);
-            scope.end({ success: false });
             return {
                 success: false,
                 error: {
@@ -503,7 +384,6 @@ export async function createPayment(
         });
 
         if (recentCheck.isDuplicate) {
-            scope.log(`Duplicate payment request detected`);
             return {
                 success: false,
                 error: {
@@ -520,18 +400,8 @@ export async function createPayment(
             };
         }
 
-        scope.log(`Starting transaction`);
-        const txStart = Date.now();
         const transaction = await prisma.$transaction(async (tx) => {
-            const txScope = createLogScope("createPaymentTransaction", {
-                productId: input.productId,
-            });
-
             try {
-                // StoreId 및 채널키 생성
-                txScope.log(
-                    `Getting store ID and channel key for payment method: ${input.payMethod}`
-                );
                 const { storeId, channelKey } = getStoreIdAndChannelKey(
                     input.payMethod,
                     input.easyPayProvider,
@@ -539,11 +409,6 @@ export async function createPayment(
                 );
 
                 if (!storeId || !channelKey) {
-                    txScope.log(`Invalid payment method configuration`);
-                    txScope.end({
-                        success: false,
-                        code: "INVALID_PAYMENT_METHOD",
-                    });
                     return {
                         success: false,
                         error: {
@@ -552,13 +417,6 @@ export async function createPayment(
                         },
                     };
                 }
-
-                txScope.log(`Payment method config retrieved`, {
-                    storeId,
-                    channelKey,
-                });
-
-                txScope.log(`Retrieving product information`);
                 const { productPrice, defaultCurrency, productName } =
                     await getProduct({
                         productTable: input.productTable,
@@ -566,18 +424,12 @@ export async function createPayment(
                         tx: tx as any,
                     });
 
-                console.log("Product Price", productPrice);
-                console.log("Default Currency", defaultCurrency);
-                console.log("Product Name", productName);
-
                 if (
                     productPrice === null ||
                     productPrice === undefined ||
                     !defaultCurrency ||
                     !productName
                 ) {
-                    txScope.log(`Product not found or invalid`);
-                    txScope.end({ success: false, code: "INVALID_PRODUCT" });
                     return {
                         success: false,
                         error: {
@@ -587,25 +439,12 @@ export async function createPayment(
                     };
                 }
 
-                txScope.log(`Product info retrieved`, {
-                    productPrice,
-                    defaultCurrency,
-                    productName,
-                });
-
-                txScope.log(`Getting exchange rate information`);
                 const exchangeRateInfo = await getExchangeRateInfo({
                     fromCurrency: defaultCurrency,
                     toCurrency: input.currency,
                     tx: tx as any,
                 });
 
-                txScope.log(`Exchange rate info retrieved`, {
-                    rate: exchangeRateInfo.rate,
-                    provider: exchangeRateInfo.provider,
-                });
-
-                txScope.log(`Calculating total price`);
                 const { convertedPrice, totalAmount, promotionActivated } =
                     await getTotalPrice({
                         productPrice,
@@ -617,14 +456,6 @@ export async function createPayment(
                         tx: tx as any, // Prisma v6 트랜잭션 타입 호환성을 위한 캐스팅
                     });
 
-                txScope.log(`Price calculation completed`, {
-                    originalPrice: productPrice,
-                    convertedPrice,
-                    totalAmount,
-                    promotionActivated,
-                });
-
-                txScope.log(`Creating payment record in database`);
                 const paymentData = {
                     userId: input.userId ?? undefined,
 
@@ -665,22 +496,11 @@ export async function createPayment(
                 const payment = await tx.payment.create({
                     data: paymentData,
                 });
-
-                txScope.log(`Payment record created successfully`, {
-                    paymentId: payment.id,
-                    amount: payment.amount,
-                    currency: payment.currency,
-                    status: payment.status,
-                    receiverWalletAddress: payment.receiverWalletAddress,
-                });
-
-                txScope.end({ success: true, paymentId: payment.id });
                 return {
                     success: true,
                     data: payment,
                 };
-            } catch (error) {
-                txScope.error(error, "Payment creation failed in transaction");
+            } catch {
                 return {
                     success: false,
                     error: {
@@ -690,25 +510,8 @@ export async function createPayment(
                 };
             }
         });
-
-        scope.log(`Transaction completed in ${Date.now() - txStart}ms`);
-
-        // Add detailed debugging for the transaction response
-        console.log(
-            "[SERVER] Payment creation transaction result:",
-            JSON.stringify({
-                success: transaction.success,
-                paymentId: transaction.success
-                    ? transaction?.data?.id
-                    : undefined,
-                error: transaction.success ? undefined : transaction.error,
-            })
-        );
-
-        scope.end(transaction);
         return transaction as CreatePaymentResponse;
     } catch (error) {
-        scope.error(error, "Payment creation failed");
         return {
             success: false,
             error: {
@@ -762,16 +565,6 @@ async function updatePaymentStatus({
     tx?: prismaTransaction;
     pgResponse?: any;
 }): Promise<VerifyPaymentResponse> {
-    const scope = createLogScope("updatePaymentStatus", {
-        paymentId: payment.id,
-        currentStatus: payment.status,
-        newStatus: status,
-        reason: statusReason,
-        errorCode,
-        cancelAmount,
-        percentage: percentage ? Number(percentage) : undefined,
-    });
-
     const importedPrismaClient = tx ?? prisma;
 
     try {
@@ -782,7 +575,6 @@ async function updatePaymentStatus({
             status === PaymentStatus.FAILED ||
             status === PaymentStatus.REFUNDED
         ) {
-            scope.log(`Handling cancellation/failure status: ${status}`);
             try {
                 // 취소 로직이 있는 경우 처리
                 if (
@@ -794,10 +586,6 @@ async function updatePaymentStatus({
                     // tx가 제공되면 트랜잭션 내에서 실행 중이므로 외부 API 호출을 피함
                     // 이 경우 상태만 업데이트하고 실제 취소는 별도 처리
                     if (tx) {
-                        scope.log(
-                            `In transaction - updating status only without API call`
-                        );
-
                         const updateData: any = {
                             status,
                             statusReason,
@@ -825,7 +613,6 @@ async function updatePaymentStatus({
                                 pgResponse.transactionType ?? undefined;
                             updateData.txId = pgResponse.txId ?? undefined;
                             updateData.pgResponse = pgResponse;
-                            scope.log(`Adding PG response data to update`);
                         }
 
                         const updatedPayment =
@@ -833,21 +620,13 @@ async function updatePaymentStatus({
                                 where: { id: payment.id },
                                 data: updateData,
                             });
-                        scope.log(`Status updated to ${status} in DB`);
 
                         if (status === PaymentStatus.REFUNDED) {
-                            scope.log(
-                                `Refund status - returning success response`
-                            );
-                            scope.end({ success: true });
                             return {
                                 success: true,
                                 data: updatedPayment,
                             };
                         } else {
-                            scope.log(
-                                `Non-refund status - returning failure response`
-                            );
                             const responseCode =
                                 errorCode ??
                                 (status === PaymentStatus.EXPIRED
@@ -855,7 +634,6 @@ async function updatePaymentStatus({
                                     : status === PaymentStatus.CANCELLED
                                     ? "PAYMENT_CANCELLED"
                                     : "PAYMENT_FAILED");
-                            scope.end({ success: false, code: responseCode });
                             return {
                                 success: false,
                                 error: {
@@ -866,8 +644,6 @@ async function updatePaymentStatus({
                         }
                     }
 
-                    // 트랜잭션 외부에서는 API 호출 포함 처리
-                    scope.log(`Outside transaction - calling cancel API`);
                     const { cancelledAmount, cancelResponseData } =
                         await portOneCancelPayment({
                             payment,
@@ -879,9 +655,6 @@ async function updatePaymentStatus({
                                     ? floatPercent(1.0)
                                     : percentage,
                         });
-                    scope.log(`API call completed`, { cancelledAmount });
-
-                    scope.log(`Updating payment record in DB`);
                     const updatedPayment = await prisma.payment.update({
                         where: { id: payment.id },
                         data: {
@@ -909,17 +682,13 @@ async function updatePaymentStatus({
                             pgResponse: cancelResponseData,
                         },
                     });
-                    scope.log(`Payment record updated`);
 
                     if (status === PaymentStatus.REFUNDED) {
-                        scope.log(`Refund completed successfully`);
-                        scope.end({ success: true });
                         return {
                             success: true,
                             data: updatedPayment,
                         };
                     } else {
-                        scope.log(`Cancellation/failure status processed`);
                         const responseCode =
                             errorCode ??
                             (status === PaymentStatus.EXPIRED
@@ -927,7 +696,6 @@ async function updatePaymentStatus({
                                 : status === PaymentStatus.CANCELLED
                                 ? "PAYMENT_CANCELLED"
                                 : "PAYMENT_FAILED");
-                        scope.end({ success: false, code: responseCode });
                         return {
                             success: false,
                             error: {
@@ -938,10 +706,6 @@ async function updatePaymentStatus({
                     }
                 }
             } catch (error) {
-                const duration = scope.error(
-                    error,
-                    `Failed to update payment status to ${status}`
-                );
                 return {
                     success: false,
                     error: {
@@ -954,7 +718,6 @@ async function updatePaymentStatus({
                         details: isDev
                             ? {
                                   error,
-                                  processingTime: duration,
                                   paymentId: payment.id,
                                   status: status,
                               }
@@ -966,9 +729,7 @@ async function updatePaymentStatus({
 
         // PAID 상태 처리
         if (status === PaymentStatus.PAID) {
-            scope.log(`Processing PAID status update`);
             try {
-                scope.log(`Updating payment record to PAID in DB`);
                 const updateData: any = {
                     status: PaymentStatus.PAID,
                     statusReason,
@@ -986,7 +747,6 @@ async function updatePaymentStatus({
                         pgResponse.transactionType ?? undefined;
                     updateData.txId = pgResponse.txId ?? undefined;
                     updateData.pgResponse = pgResponse;
-                    scope.log(`Adding PG response data to update`);
                 }
 
                 const updatedPayment =
@@ -994,18 +754,12 @@ async function updatePaymentStatus({
                         where: { id: payment.id },
                         data: updateData,
                     });
-                scope.log(`Payment record updated to PAID`);
 
-                scope.end({ success: true });
                 return {
                     success: true,
                     data: updatedPayment,
                 };
             } catch (error) {
-                const duration = scope.error(
-                    error,
-                    `Failed to update payment status to PAID`
-                );
                 return {
                     success: false,
                     error: {
@@ -1018,7 +772,6 @@ async function updatePaymentStatus({
                         details: isDev
                             ? {
                                   error,
-                                  processingTime: duration,
                                   paymentId: payment.id,
                               }
                             : undefined,
@@ -1028,8 +781,6 @@ async function updatePaymentStatus({
         }
 
         // 기타 상태
-        scope.log(`Unhandled payment status: ${status}`);
-        scope.end({ success: false, code: "INVALID_PAYMENT_STATE" });
         return {
             success: false,
             error: {
@@ -1038,7 +789,6 @@ async function updatePaymentStatus({
             },
         };
     } catch (error) {
-        scope.error(error, `Unexpected error in updatePaymentStatus`);
         return {
             success: false,
             error: {
@@ -1056,9 +806,6 @@ async function updatePaymentStatus({
 export async function verifyPayment(
     input: VerifyPaymentInput
 ): Promise<VerifyPaymentResponse> {
-    const startTime = Date.now();
-    logDebug(`Payment verification started for ID: ${input.paymentId}`, input);
-
     try {
         // 입력값 검증
         if (!input.paymentId || !input.userId) {
@@ -1072,8 +819,6 @@ export async function verifyPayment(
             };
         }
 
-        // 미리 필요한 데이터를 병렬로 로드
-        logDebug(`Fetching payment data for ID: ${input.paymentId}`);
         const payment = await getPayment({
             paymentId: input.paymentId,
         });
@@ -1092,31 +837,14 @@ export async function verifyPayment(
         // payment가 null이 아님이 확인되었으므로 이후 로직에서 안전하게 사용 가능
         let currentPayment = payment; // 변경 가능한 payment 참조 생성
 
-        // 병렬로 검증 진행
-        logDebug(`Starting parallel validations for payment: ${payment.id}`);
-        const validationStart = Date.now();
         const [isUserAuthorized, isValidStatus] = await Promise.all([
             // 사용자 권한 검증
             payment.userId === input.userId,
             // 결제 상태 검증
             payment.status === PaymentStatus.PENDING,
         ]);
-        logDebug(
-            `Parallel validations completed in ${
-                Date.now() - validationStart
-            }ms`,
-            {
-                isUserAuthorized,
-                isValidStatus,
-            }
-        );
 
         if (!isUserAuthorized) {
-            logWarning(`Unauthorized payment access`, {
-                paymentId: payment.id,
-                paymentUserId: payment.userId,
-                requestUserId: input.userId,
-            });
             return await updatePaymentStatus({
                 payment,
                 status: PaymentStatus.FAILED,
@@ -1126,10 +854,6 @@ export async function verifyPayment(
         }
 
         if (!isValidStatus) {
-            logWarning(`Invalid payment state`, {
-                paymentId: payment.id,
-                currentStatus: payment.status,
-            });
             return await updatePaymentStatus({
                 payment,
                 status: PaymentStatus.FAILED,
@@ -1139,11 +863,6 @@ export async function verifyPayment(
         }
 
         try {
-            logDebug(`Starting transaction for payment: ${payment.id}`);
-            const txStart = Date.now();
-
-            // 트랜잭션 내에서 product 검증 및 금액 검증
-            // 결과 타입을 명확하게 정의해 타입 안전성 강화
             interface ValidationSuccess {
                 isValid: true;
             }
@@ -1161,19 +880,8 @@ export async function verifyPayment(
                 await prisma.$transaction<ValidationResult>(
                     async (tx) => {
                         try {
-                            logDebug(`Getting product information`, {
-                                productTable: currentPayment.productTable,
-                                productId: currentPayment.productId,
-                            });
-
                             if (currentPayment.needWallet) {
                                 if (!input.receiverWalletAddress) {
-                                    logWarning(
-                                        `Receiver wallet address is missing`,
-                                        {
-                                            paymentId: currentPayment.id,
-                                        }
-                                    );
                                     return {
                                         isValid: false,
                                         code: "INVALID_INPUT",
@@ -1222,66 +930,31 @@ export async function verifyPayment(
                                 };
                             }
 
-                            logDebug(`Product info retrieved`, {
-                                productName,
-                                productPrice,
-                                defaultCurrency,
-                            });
-
                             const exchangeRateInfo = {
                                 rate: currentPayment.exchangeRate,
                                 provider: currentPayment.exchangeRateProvider,
                                 createdAt: currentPayment.exchangeRateTimestamp,
                             } as ExchangeRateInfo;
 
-                            logDebug(`Calculating total price`, {
-                                productPrice,
-                                fromCurrency: defaultCurrency,
-                                toCurrency: currentPayment.currency,
-                                quantity: currentPayment.quantity,
-                                exchangeRate: currentPayment.exchangeRate,
-                            });
-
-                            const {
-                                convertedPrice,
-                                totalAmount,
-                                promotionActivated,
-                            } = await getTotalPrice({
-                                productPrice,
-                                fromCurrency: defaultCurrency,
-                                toCurrency: currentPayment.currency as Currency,
-                                quantity: currentPayment.quantity,
-                                promotionCode:
-                                    currentPayment.promotionCode ?? undefined,
-                                exchangeRateInfo,
-                                tx: tx as any,
-                            });
-
-                            logDebug(`Price calculation result`, {
-                                convertedPrice,
-                                totalAmount,
-                                promotionActivated,
-                                expectedConvertedPrice:
-                                    currentPayment.convertedPrice,
-                                expectedTotalAmount: currentPayment.amount,
-                            });
+                            const { convertedPrice, totalAmount } =
+                                await getTotalPrice({
+                                    productPrice,
+                                    fromCurrency: defaultCurrency,
+                                    toCurrency:
+                                        currentPayment.currency as Currency,
+                                    quantity: currentPayment.quantity,
+                                    promotionCode:
+                                        currentPayment.promotionCode ??
+                                        undefined,
+                                    exchangeRateInfo,
+                                    tx: tx as any,
+                                });
 
                             if (
                                 convertedPrice !==
                                     currentPayment.convertedPrice ||
                                 totalAmount !== currentPayment.amount
                             ) {
-                                logWarning(`Payment amount mismatch`, {
-                                    expected: {
-                                        convertedPrice:
-                                            currentPayment.convertedPrice,
-                                        totalAmount: currentPayment.amount,
-                                    },
-                                    calculated: {
-                                        convertedPrice,
-                                        totalAmount,
-                                    },
-                                });
                                 return {
                                     isValid: false,
                                     code: "INVALID_AMOUNT",
@@ -1290,8 +963,6 @@ export async function verifyPayment(
                                 };
                             }
 
-                            // 검증 성공
-                            logDebug(`Validation successful`);
                             return { isValid: true };
                         } catch (error) {
                             logError(`Transaction validation failed`, error);
@@ -1308,8 +979,6 @@ export async function verifyPayment(
                         maxWait: 15000, // 최대 대기 시간
                     }
                 );
-
-            logDebug(`Transaction completed in ${Date.now() - txStart}ms`);
 
             // 트랜잭션 검증 결과 확인
             if (!validationResult.isValid) {
@@ -1358,12 +1027,9 @@ async function verifyPaymentWithPortOne(
     paymentId: string
 ): Promise<VerifyPaymentResponse> {
     try {
-        logDebug(`Initiating PortOne API call for payment: ${payment.id}`);
-        const apiCallStart = Date.now();
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
             controller.abort();
-            logWarning(`PortOne API call timed out after 5000ms`);
         }, 5000); // 5초 타임아웃
 
         try {
@@ -1392,14 +1058,6 @@ async function verifyPaymentWithPortOne(
                                     "실패"
                                 )))
                     ) {
-                        logWarning(`Payment was already cancelled or failed`, {
-                            paymentId: payment.id,
-                            responseCode: pgResponse.code,
-                            responseMessage:
-                                pgResponse.message ||
-                                pgResponse.result?.AuthResultMsg,
-                        });
-
                         return await updatePaymentStatus({
                             payment,
                             status: PaymentStatus.CANCELLED,
@@ -1411,14 +1069,7 @@ async function verifyPaymentWithPortOne(
                         });
                     }
                 } catch (parseError) {
-                    // 파싱 오류 무시하고 계속 진행 (PG 응답 형식이 예상과 다를 수 있음)
-                    logWarning(
-                        `Failed to parse PG response, continuing with verification`,
-                        {
-                            paymentId: payment.id,
-                            error: parseError,
-                        }
-                    );
+                    console.error(parseError);
                 }
             }
 
@@ -1450,12 +1101,6 @@ async function verifyPaymentWithPortOne(
                 );
             }
 
-            logDebug(
-                `PortOne API response received in ${
-                    Date.now() - apiCallStart
-                }ms: ${paymentResponse.status}`
-            );
-
             if (!paymentResponse.ok) {
                 logWarning(`Failed to fetch payment details from PortOne API`, {
                     status: paymentResponse.status,
@@ -1464,10 +1109,6 @@ async function verifyPaymentWithPortOne(
 
                 // API가 4XX 오류를 반환했는데 결제가 없는 경우 (404)
                 if (paymentResponse.status === 404) {
-                    logWarning(`Payment not found in PortOne`, {
-                        paymentId: payment.id,
-                    });
-
                     // 클라이언트에서 취소된 경우일 수 있음, 취소 처리
                     return await updatePaymentStatus({
                         payment,
@@ -1487,10 +1128,6 @@ async function verifyPaymentWithPortOne(
 
             const paymentResponseData = await paymentResponse.json();
 
-            if (isDev) {
-                logDebug(`PortOne API response data`, paymentResponseData);
-            }
-
             // PortOne API 응답의 status 필드에 따른 처리
             // 참고: https://developers.portone.io/api/rest-v2/type-def#paymentstatus
             switch (paymentResponseData.status) {
@@ -1506,12 +1143,6 @@ async function verifyPaymentWithPortOne(
                     };
 
                 case "PAID":
-                    // 결제 완료 - 검증 성공
-                    logInfo(`Payment successfully verified`, {
-                        paymentId: payment.id,
-                        paidAt: paymentResponseData.paidAt,
-                    });
-
                     // 금액 검증 추가 (10원 이내 오차 허용)
                     const portOneAmount =
                         paymentResponseData.amount?.total ||
@@ -1534,9 +1165,6 @@ async function verifyPaymentWithPortOne(
                         return result;
                     }
 
-                    // PG 응답 저장
-                    logDebug(`PG response received`, paymentResponseData);
-
                     return await updatePaymentStatus({
                         payment,
                         status: PaymentStatus.PAID,
@@ -1545,10 +1173,6 @@ async function verifyPaymentWithPortOne(
                     });
 
                 case "READY":
-                    // 결제 준비 상태 - 아직 결제 진행 중
-                    logWarning(`Payment is still in READY state`, {
-                        paymentId: payment.id,
-                    });
                     return {
                         success: false,
                         error: {
@@ -1558,13 +1182,6 @@ async function verifyPaymentWithPortOne(
                     };
 
                 case "FAILED":
-                    // 결제 실패
-                    logWarning(`Payment failed according to PortOne`, {
-                        paymentId: payment.id,
-                        reason:
-                            paymentResponseData.failureReason ||
-                            "Unknown failure reason",
-                    });
                     return await updatePaymentStatus({
                         payment,
                         status: PaymentStatus.FAILED,
@@ -1576,10 +1193,6 @@ async function verifyPaymentWithPortOne(
                     });
 
                 case "PAY_PENDING":
-                    // 결제 완료 대기 중
-                    logWarning(`Payment is in PAY_PENDING state`, {
-                        paymentId: payment.id,
-                    });
                     return {
                         success: false,
                         error: {
@@ -1590,11 +1203,6 @@ async function verifyPaymentWithPortOne(
 
                 case "CANCELLED":
                 case "PARTIAL_CANCELLED":
-                    // 취소됨 또는 부분 취소됨
-                    logWarning(`Payment was cancelled in PortOne`, {
-                        paymentId: payment.id,
-                        status: paymentResponseData.status,
-                    });
                     return await updatePaymentStatus({
                         payment,
                         status: PaymentStatus.CANCELLED,
@@ -1604,12 +1212,6 @@ async function verifyPaymentWithPortOne(
                     });
 
                 default:
-                    // 기타 상태
-                    logWarning(`Payment has unexpected status from PortOne`, {
-                        status: paymentResponseData.status,
-                        paymentId: payment.id,
-                    });
-
                     return await updatePaymentStatus({
                         payment,
                         status: PaymentStatus.FAILED,
@@ -1622,8 +1224,6 @@ async function verifyPaymentWithPortOne(
             clearTimeout(timeoutId);
         }
     } catch (error) {
-        logError("External payment verification API call failed", error);
-        // 외부 API 호출 실패 시에도 결제 실패로 처리
         return await updatePaymentStatus({
             payment,
             status: PaymentStatus.FAILED,
@@ -1636,7 +1236,7 @@ async function verifyPaymentWithPortOne(
 }
 
 // fetchWithRetry 함수 최적화 및 개선
-async function fetchWithRetry<T>(
+async function fetchWithRetry(
     url: string,
     options: RequestInit,
     maxRetries = 2,
@@ -1647,18 +1247,7 @@ async function fetchWithRetry<T>(
 
     while (retries <= maxRetries) {
         try {
-            logDebug(
-                `API request attempt ${retries + 1}/${maxRetries + 1}: ${
-                    options.method || "GET"
-                } ${url}`
-            );
-            const startTime = Date.now();
             const response = await fetch(url, options);
-            const duration = Date.now() - startTime;
-
-            logDebug(
-                `API response received in ${duration}ms: ${response.status}`
-            );
 
             // 성공 또는 마지막 재시도면 바로 반환
             if (response.ok || retries >= maxRetries) {
@@ -1667,41 +1256,18 @@ async function fetchWithRetry<T>(
 
             // 4xx 오류는 재시도해도 해결되지 않으므로 바로 반환
             if (response.status >= 400 && response.status < 500) {
-                logWarning(
-                    `API client error (${response.status}), not retrying`,
-                    {
-                        url,
-                        status: response.status,
-                        statusText: response.statusText,
-                    }
-                );
                 return response;
             }
-
-            logWarning(
-                `API request failed (${response.status}), will retry (${
-                    retries + 1
-                }/${maxRetries})`,
-                {
-                    url,
-                    status: response.status,
-                    statusText: response.statusText,
-                }
-            );
         } catch (err) {
             lastError = err;
-            logError(
-                `API request error on attempt ${retries + 1}/${maxRetries + 1}`,
-                err
-            );
             if (retries >= maxRetries) {
+                console.error(err);
                 throw err;
             }
         }
 
         // 지수 백오프로 대기 시간 증가
         const waitTime = retryDelay * Math.pow(2, retries);
-        logDebug(`Waiting ${waitTime}ms before retry...`);
         retries++;
         await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
@@ -1724,12 +1290,6 @@ async function portOneCancelPayment({
     cancelledAmount: number;
     cancelResponseData: any;
 }> {
-    logDebug(`Initiating payment cancel for ID: ${payment.id}`, {
-        statusReason,
-        cancelAmount,
-        percentage: percentage ? Number(percentage) : undefined,
-    });
-
     try {
         const cancelledAmount =
             cancelAmount && cancelAmount > 0
@@ -1738,28 +1298,12 @@ async function portOneCancelPayment({
                 ? payment.amount * percentage
                 : payment.amount;
 
-        logDebug(`Calculated cancelled amount: ${cancelledAmount}`, {
-            originalAmount: payment.amount,
-            cancellationMethod: cancelAmount
-                ? "specificAmount"
-                : percentage
-                ? "percentage"
-                : "fullAmount",
-        });
-
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
             controller.abort();
-            logWarning(
-                `Cancel API call timed out after 5000ms for payment: ${payment.id}`
-            );
         }, 5000); // 5초 타임아웃
 
         try {
-            logDebug(
-                `Sending cancel request to PortOne API for payment: ${payment.id}`
-            );
-            const apiStartTime = Date.now();
             const cancelResponse = await fetchWithRetry(
                 `https://api.portone.io/payments/${encodeURIComponent(
                     payment.id
@@ -1779,32 +1323,13 @@ async function portOneCancelPayment({
                 }
             );
 
-            logDebug(
-                `Cancel API response received in ${
-                    Date.now() - apiStartTime
-                }ms: ${cancelResponse.status}`
-            );
-
             if (!cancelResponse.ok) {
-                logWarning(`Failed to cancel payment via PortOne API`, {
-                    status: cancelResponse.status,
-                    statusText: cancelResponse.statusText,
-                });
                 throw new Error(
                     `Failed to cancel payment: ${cancelResponse.status} ${cancelResponse.statusText}`
                 );
             }
 
             const cancelResponseData = await cancelResponse.json();
-
-            if (isDev) {
-                logDebug(`Cancel API response data`, cancelResponseData);
-            }
-
-            logInfo(`Payment cancelled successfully`, {
-                paymentId: payment.id,
-                cancelledAmount,
-            });
 
             return {
                 cancelledAmount,
@@ -1814,7 +1339,6 @@ async function portOneCancelPayment({
             clearTimeout(timeoutId);
         }
     } catch (error) {
-        logError("Failed to cancel payment", error);
         throw error;
     }
 }
@@ -1861,29 +1385,16 @@ export async function getPayment({
 }: {
     paymentId: string;
 }): Promise<Payment | null> {
-    const scope = createLogScope("getPayment", { paymentId });
-
     try {
-        scope.log(`Querying database for payment ID: ${paymentId}`);
         const result = await prisma.payment.findUnique({
             where: {
                 id: paymentId,
             },
         });
 
-        if (result) {
-            scope.log(
-                `Payment found`,
-                isDev ? result : { id: result.id, status: result.status }
-            );
-        } else {
-            scope.log(`Payment not found`);
-        }
-
-        scope.end();
         return result;
     } catch (error) {
-        scope.error(error, `Failed to retrieve payment`);
+        console.error(error);
         return null;
     }
 }
@@ -1893,27 +1404,16 @@ export async function getPaymentsByUserId({
 }: {
     userId: string;
 }): Promise<Payment[]> {
-    const scope = createLogScope("getPaymentsByUserId", { userId });
-
     try {
-        scope.log(`Querying database for payments by user ID: ${userId}`);
         const results = await prisma.payment.findMany({
             where: {
                 userId,
             },
         });
 
-        scope.log(
-            `Found ${results.length} payments for user`,
-            isDev
-                ? results.map((p) => ({ id: p.id, status: p.status }))
-                : undefined
-        );
-
-        scope.end();
         return results;
     } catch (error) {
-        scope.error(error, `Failed to retrieve payments for user`);
+        console.error(error);
         return [];
     }
 }
@@ -1922,11 +1422,7 @@ export async function updatePaymentUserId(
     paymentId: string,
     userId: string
 ): Promise<Payment | null> {
-    const scope = createLogScope("updatePaymentUserId", { paymentId, userId });
-
     try {
-        // First check if the payment exists
-        scope.log(`Checking if payment exists`);
         const payment = await prisma.payment.findUnique({
             where: {
                 id: paymentId,
@@ -1934,22 +1430,10 @@ export async function updatePaymentUserId(
         });
 
         if (!payment) {
-            scope.log(`Payment not found`);
-            scope.end(null);
             return null;
         }
 
-        scope.log(`Payment found, current state`, {
-            currentUserId: payment.userId,
-            status: payment.status,
-        });
-
         if (!payment.userId || payment.status === PaymentStatus.PENDING) {
-            scope.log(
-                `Updating payment user ID from ${
-                    payment.userId || "null"
-                } to ${userId}`
-            );
             const updatedPayment = await prisma.payment.update({
                 where: {
                     id: paymentId,
@@ -1958,16 +1442,12 @@ export async function updatePaymentUserId(
                     userId,
                 },
             });
-            scope.log(`User ID successfully updated`);
-            scope.end(updatedPayment);
             return updatedPayment;
         }
 
-        scope.log(`No update needed, returning existing payment`);
-        scope.end(payment);
         return payment;
     } catch (error) {
-        scope.error(error, `Failed to update payment user ID`);
+        console.error(error);
         return null;
     }
 }
@@ -2086,7 +1566,7 @@ export async function handlePortOneWebhook(body: PortOneWebhookBody) {
                 });
                 break;
             default:
-                console.log(`Unhandled webhook type: ${body.type}`);
+                console.error(`Unhandled webhook type: ${body.type}`);
         }
 
         // 웹훅 이벤트 처리 완료 시간 업데이트

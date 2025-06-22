@@ -24,7 +24,6 @@ import { collectionKeys } from "../queryKeys";
 
 import type { NFT } from "@prisma/client";
 
-
 export const useDeployCollectionMutation = () => {
     const queryClient = useQueryClient();
     const toast = useToast();
@@ -105,7 +104,7 @@ export const useMintTokensMutation = () => {
 
             return { previousTokens };
         },
-        onSuccess: async (data, variables, context) => {
+        onSuccess: async (data, variables, _context) => {
             if (data.success) {
                 await Promise.all([
                     queryClient.invalidateQueries({
@@ -134,7 +133,6 @@ export const useMintTokensMutation = () => {
 
 export const useLockTokensMutation = () => {
     const queryClient = useQueryClient();
-    const toast = useToast();
 
     return useMutation({
         mutationFn: lockTokens,
@@ -149,7 +147,7 @@ export const useLockTokensMutation = () => {
                 collectionKeys.tokens.locked(variables.collectionAddress)
             );
 
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 collectionKeys.tokens.locked(variables.collectionAddress),
                 (old: any) => ({
                     ...old,
@@ -159,7 +157,7 @@ export const useLockTokensMutation = () => {
 
             return { previousLockedTokens };
         },
-        onSuccess: async (data, variables, context) => {
+        onSuccess: async (data, variables, _context) => {
             if (data.success) {
                 await Promise.all([
                     queryClient.invalidateQueries({
@@ -184,7 +182,6 @@ export const useLockTokensMutation = () => {
 
 export const useUnlockTokensMutation = () => {
     const queryClient = useQueryClient();
-    const toast = useToast();
 
     return useMutation({
         mutationFn: unlockTokens,
@@ -199,7 +196,7 @@ export const useUnlockTokensMutation = () => {
                 collectionKeys.tokens.locked(variables.collectionAddress)
             );
 
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 collectionKeys.tokens.locked(variables.collectionAddress),
                 (old: any) => ({
                     ...old,
@@ -214,17 +211,25 @@ export const useUnlockTokensMutation = () => {
         onSuccess: async (data, variables, context) => {
             if (data.success) {
                 await Promise.all([
-                    queryClient.invalidateQueries({
-                        queryKey: collectionKeys.tokens.locked(
-                            variables.collectionAddress
-                        ),
-                    }),
-                    queryClient.invalidateQueries({
-                        queryKey: collectionKeys.tokens.filtered(
-                            variables.collectionAddress,
-                            { tokenIds: variables.tokenIds }
-                        ),
-                    }),
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: collectionKeys.tokens.locked(
+                                variables.collectionAddress
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        }),
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: collectionKeys.tokens.filtered(
+                                variables.collectionAddress,
+                                { tokenIds: variables.tokenIds }
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        }),
                 ]);
             } else {
                 if (context?.previousLockedTokens) {
@@ -256,19 +261,26 @@ export const useBurnTokensMutation = () => {
     return useMutation({
         mutationFn: burnTokens,
         onMutate: async (variables) => {
-            // 관련 쿼리들 취소
             await Promise.all([
-                queryClient.cancelQueries({
-                    queryKey: collectionKeys.tokens.all(
-                        variables.collectionAddress
-                    ),
-                }),
-                queryClient.cancelQueries({
-                    queryKey: collectionKeys.tokens.byOwner(
-                        variables.collectionAddress,
-                        variables.walletId
-                    ),
-                }),
+                queryClient
+                    .cancelQueries({
+                        queryKey: collectionKeys.tokens.all(
+                            variables.collectionAddress
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    }),
+                queryClient
+                    .cancelQueries({
+                        queryKey: collectionKeys.tokens.byOwner(
+                            variables.collectionAddress,
+                            variables.walletId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    }),
             ]);
 
             // 이전 상태 저장
@@ -280,7 +292,7 @@ export const useBurnTokensMutation = () => {
             );
 
             // 낙관적 업데이트: 소각될 토큰들을 목록에서 제거
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 collectionKeys.tokens.byOwner(
                     variables.collectionAddress,
                     variables.walletId
@@ -298,23 +310,35 @@ export const useBurnTokensMutation = () => {
         onSuccess: async (data, variables, context) => {
             if (data.success) {
                 await Promise.all([
-                    queryClient.invalidateQueries({
-                        queryKey: collectionKeys.tokens.all(
-                            variables.collectionAddress
-                        ),
-                    }),
-                    queryClient.invalidateQueries({
-                        queryKey: collectionKeys.tokens.byOwner(
-                            variables.collectionAddress,
-                            variables.walletId
-                        ),
-                    }),
-                    queryClient.invalidateQueries({
-                        queryKey: collectionKeys.tokens.byIds(
-                            variables.collectionAddress,
-                            variables.tokenIds
-                        ),
-                    }),
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: collectionKeys.tokens.all(
+                                variables.collectionAddress
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        }),
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: collectionKeys.tokens.byOwner(
+                                variables.collectionAddress,
+                                variables.walletId
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        }),
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: collectionKeys.tokens.byIds(
+                                variables.collectionAddress,
+                                variables.tokenIds
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        }),
                 ]);
 
                 toast.success(
@@ -323,7 +347,7 @@ export const useBurnTokensMutation = () => {
             } else {
                 // 실패 시 이전 상태로 복원
                 if (context?.previousTokens) {
-                    queryClient.setQueryData(
+                    await queryClient.setQueryData(
                         collectionKeys.tokens.byOwner(
                             variables.collectionAddress,
                             variables.walletId
@@ -358,13 +382,15 @@ export const usePauseCollectionMutation = () => {
         mutationFn: pauseCollection,
         onSuccess: async (data, variables) => {
             if (data.success) {
-                await queryClient.invalidateQueries({
-                    queryKey: collectionKeys.status.paused(
-                        variables.collectionAddress
-                    ),
-                });
-
-                toast.success(`컬렉션 일시 중지 성공`);
+                queryClient
+                    .invalidateQueries({
+                        queryKey: collectionKeys.status.paused(
+                            variables.collectionAddress
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             } else {
                 toast.error(`컬렉션 일시 중지 실패: ${data.error}`);
             }
@@ -380,13 +406,15 @@ export const useUnpauseCollectionMutation = () => {
         mutationFn: unpauseCollection,
         onSuccess: async (data, variables) => {
             if (data.success) {
-                await queryClient.invalidateQueries({
-                    queryKey: collectionKeys.status.paused(
-                        variables.collectionAddress
-                    ),
-                });
-
-                toast.success(`컬렉션 일시 중지 해제 성공`);
+                queryClient
+                    .invalidateQueries({
+                        queryKey: collectionKeys.status.paused(
+                            variables.collectionAddress
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             } else {
                 toast.error(`컬렉션 일시 중지 해제 실패: ${data.error}`);
             }
@@ -429,7 +457,7 @@ export const useTransferTokensMutation = () => {
                 )
             );
 
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 collectionKeys.tokens.byOwner(
                     variables.collectionAddress,
                     variables.fromAddress
@@ -447,24 +475,36 @@ export const useTransferTokensMutation = () => {
         onSuccess: async (data, variables, context) => {
             if (data.success) {
                 await Promise.all([
-                    queryClient.invalidateQueries({
-                        queryKey: collectionKeys.tokens.byOwner(
-                            variables.collectionAddress,
-                            variables.fromAddress
-                        ),
-                    }),
-                    queryClient.invalidateQueries({
-                        queryKey: collectionKeys.tokens.byOwner(
-                            variables.collectionAddress,
-                            variables.toAddress
-                        ),
-                    }),
-                    queryClient.invalidateQueries({
-                        queryKey: collectionKeys.tokens.byIds(
-                            variables.collectionAddress,
-                            variables.tokenIds
-                        ),
-                    }),
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: collectionKeys.tokens.byOwner(
+                                variables.collectionAddress,
+                                variables.fromAddress
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        }),
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: collectionKeys.tokens.byOwner(
+                                variables.collectionAddress,
+                                variables.toAddress
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        }),
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: collectionKeys.tokens.byIds(
+                                variables.collectionAddress,
+                                variables.tokenIds
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        }),
                 ]);
 
                 toast.success(
@@ -472,7 +512,7 @@ export const useTransferTokensMutation = () => {
                 );
             } else {
                 if (context?.previousFromTokens) {
-                    queryClient.setQueryData(
+                    await queryClient.setQueryData(
                         collectionKeys.tokens.byOwner(
                             variables.collectionAddress,
                             variables.fromAddress
@@ -515,7 +555,7 @@ export const useAddEscrowWalletMutation = () => {
             );
 
             // 낙관적 업데이트: 새 에스크로 지갑 추가
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 collectionKeys.escrowWallets.all(variables.collectionAddress),
                 (old: any) => ({
                     ...old,
@@ -530,15 +570,15 @@ export const useAddEscrowWalletMutation = () => {
         },
         onSuccess: async (data, variables, context) => {
             if (data.success) {
-                await queryClient.invalidateQueries({
-                    queryKey: collectionKeys.escrowWallets.all(
-                        variables.collectionAddress
-                    ),
-                });
-
-                toast.success(
-                    `에스크로 지갑이 추가되었습니다: ${variables.escrowWalletAddress}`
-                );
+                queryClient
+                    .invalidateQueries({
+                        queryKey: collectionKeys.escrowWallets.all(
+                            variables.collectionAddress
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             } else {
                 // 실패 시 이전 상태로 복원
                 if (context?.previousEscrowWallets) {
@@ -584,8 +624,7 @@ export const useRemoveEscrowWalletMutation = () => {
                 collectionKeys.escrowWallets.all(variables.collectionAddress)
             );
 
-            // 낙관적 업데이트: 에스크로 지갑 제거
-            queryClient.setQueryData(
+            await queryClient.setQueryData(
                 collectionKeys.escrowWallets.all(variables.collectionAddress),
                 (old: any) => ({
                     ...old,
@@ -600,19 +639,18 @@ export const useRemoveEscrowWalletMutation = () => {
         },
         onSuccess: async (data, variables, context) => {
             if (data.success) {
-                await queryClient.invalidateQueries({
-                    queryKey: collectionKeys.escrowWallets.all(
-                        variables.collectionAddress
-                    ),
-                });
-
-                toast.success(
-                    `에스크로 지갑이 제거되었습니다: ${variables.escrowWalletAddress}`
-                );
+                queryClient
+                    .invalidateQueries({
+                        queryKey: collectionKeys.escrowWallets.all(
+                            variables.collectionAddress
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             } else {
-                // 실패 시 이전 상태로 복원
                 if (context?.previousEscrowWallets) {
-                    queryClient.setQueryData(
+                    await queryClient.setQueryData(
                         collectionKeys.escrowWallets.all(
                             variables.collectionAddress
                         ),
@@ -645,23 +683,30 @@ export const useUpdateCollectionSettingsMutation = () => {
         mutationFn: updateCollectionSettings,
         onSuccess: async (data, variables) => {
             if (data.success) {
-                await queryClient.invalidateQueries({
-                    queryKey: collectionKeys.settings.byAddress(
-                        variables.collectionAddress
-                    ),
-                });
-                await queryClient.invalidateQueries({
-                    queryKey: collectionKeys.detail(
-                        variables.collectionAddress
-                    ),
-                });
-
-                toast.success("컬렉션 설정이 업데이트되었습니다.");
+                queryClient
+                    .invalidateQueries({
+                        queryKey: collectionKeys.settings.byAddress(
+                            variables.collectionAddress
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: collectionKeys.detail(
+                            variables.collectionAddress
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             } else {
                 toast.error("컬렉션 설정 업데이트 실패: ${data.error}");
             }
         },
-        onError: (error, variables) => {
+        onError: (error, _variables) => {
+            console.error(error);
             toast.error("컬렉션 설정 업데이트 실패: ${error}");
         },
     });
@@ -674,11 +719,15 @@ export const useAddPageImagesMutation = () => {
         mutationFn: addPageImages,
         onSuccess: async (data, variables) => {
             if (data.success) {
-                await queryClient.invalidateQueries({
-                    queryKey: collectionKeys.detail(
-                        variables.collectionAddress
-                    ),
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: collectionKeys.detail(
+                            variables.collectionAddress
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
             }
         },
     });

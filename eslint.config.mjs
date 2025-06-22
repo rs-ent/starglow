@@ -56,7 +56,7 @@ const eslintConfig = [
             "react-hooks/exhaustive-deps": "warn",
 
             // 개발 편의성
-            "no-console": ["warn", { allow: ["warn", "error"] }],
+            "no-console": ["warn", { allow: ["warn", "error", "info"] }],
             "@typescript-eslint/no-explicit-any": "off",
         },
     },

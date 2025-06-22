@@ -9,10 +9,14 @@ export function useCreateDiscordCodeMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: createDiscordCode,
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: discordKeys.discordCode(data.code),
-            });
+        onSuccess: (data, _variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: discordKeys.discordCode(data.code),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }

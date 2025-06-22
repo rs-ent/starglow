@@ -7,7 +7,7 @@ import {
     createPublicClient,
     createWalletClient,
     http,
-    getContract
+    getContract,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -20,11 +20,11 @@ import {
     getEscrowWalletWithPrivateKey,
     getEscrowWalletWithPrivateKeyByAddress,
     getWalletBalance,
- deployContract, estimateGasForTransactions } from "./blockchain";
+    deployContract,
+} from "./blockchain";
 import { createNFTMetadata, getMetadataByCollectionAddress } from "./metadata";
 
-import type {
-    EstimateGasOptions} from "./blockchain";
+import type { EstimateGasOptions } from "./blockchain";
 import type {
     Prisma,
     BlockchainNetwork,
@@ -35,8 +35,7 @@ import type {
     Artist,
     Metadata,
 } from "@prisma/client";
-import type { Address, Hash, AbiFunction ,
-    Abi} from "viem";
+import type { Address, Hash, AbiFunction, Abi } from "viem";
 const abi = collectionJson.abi;
 
 export interface GetCollectionInput {
@@ -135,16 +134,6 @@ export async function deployCollection(
             address: contractAddress as Address,
             abi,
             client: walletClient,
-        });
-
-        console.log("Initializing collection with params:", {
-            name: input.name,
-            symbol: input.symbol,
-            owner: escrowWallet.data.address,
-            maxSupply: input.maxSupply,
-            mintPrice: input.mintPrice,
-            baseURI: input.baseURI,
-            contractURI: input.contractURI,
         });
 
         const initTx = await collectionContract.write.initialize([
@@ -310,7 +299,7 @@ export async function getTokenOwners(
                                 success: false,
                             }));
                         }
-                        console.log(
+                        console.warn(
                             `Retrying batch (attempt ${retryCount}/${MAX_RETRIES})`
                         );
                         await new Promise((resolve) =>
@@ -1003,13 +992,10 @@ export async function lockTokens(
             };
         }
 
-        console.log("collection.creatorAddress", collection.creatorAddress);
-
         const escrowWallet = await getEscrowWalletWithPrivateKeyByAddress(
             collection.creatorAddress as Address
         );
 
-        console.log("escrowWallet", escrowWallet);
         if (!escrowWallet.success || !escrowWallet.data) {
             return {
                 success: false,
@@ -1370,17 +1356,12 @@ export async function transferTokens(
     const MAX_CONCURRENT_BATCHES = 3;
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 2000;
-    const retryCount = 0;
     const results: {
         success: boolean;
         transactionHash?: Hash;
         error?: string;
     }[] = [];
     const errors: string[] = [];
-
-    console.log(
-        `Starting bulk transfer of ${input.tokenIds.length} tokens with batch size ${BATCH_SIZE}`
-    );
 
     async function executeWithRetry<T>(
         operation: () => Promise<T>
@@ -1398,7 +1379,7 @@ export async function transferTokens(
                         error.message.includes("connection"))
                 ) {
                     currentRetry++;
-                    console.log(
+                    console.warn(
                         `Retrying operation (${currentRetry}/${MAX_RETRIES})...`
                     );
                     await new Promise((resolve) =>
@@ -1484,8 +1465,6 @@ export async function transferTokens(
             batches.push(input.tokenIds.slice(i, i + BATCH_SIZE));
         }
 
-        console.log(`Split into ${batches.length} batches`);
-
         class Semaphore {
             private counter: number;
             private waiting: Array<() => void> = [];
@@ -1522,7 +1501,6 @@ export async function transferTokens(
             tokenIdsBatch: number[]
         ) => {
             await semaphore.acquire();
-            console.log(`Processing batch ${batchIndex + 1}/${batches.length}`);
 
             try {
                 const tokens = await prisma.nFT.findMany({
@@ -1577,7 +1555,7 @@ export async function transferTokens(
                     );
 
                     const invalidTokens = tokenOwners.owners.filter(
-                        (owner, idx) =>
+                        (owner) =>
                             owner.toLowerCase() !==
                             input.fromAddress.toLowerCase()
                     );
@@ -1638,22 +1616,12 @@ export async function transferTokens(
                     )
                 );
 
-                console.log(
-                    `Batch ${batchIndex + 1} transaction submitted: ${hash}`
-                );
-
                 const receipt = await executeWithRetry(() =>
                     publicClient.waitForTransactionReceipt({
                         hash,
                         timeout: 600_000,
                         confirmations: 2,
                     })
-                );
-
-                console.log(
-                    `Batch ${batchIndex + 1} transaction confirmed: ${
-                        receipt.transactionHash
-                    }`
                 );
 
                 await prisma.$transaction(async (tx) => {
@@ -2819,9 +2787,6 @@ export async function getTokensLockStatus(
 
     const { collectionAddress, tokenIds } = input;
 
-    console.log("Collection Address", collectionAddress);
-    console.log("Token IDs", tokenIds);
-
     const collection = await prisma.collectionContract.findUnique({
         where: { address: collectionAddress },
         include: { network: true },
@@ -2847,8 +2812,6 @@ export async function getTokensLockStatus(
         })),
         multicallAddress: collection.network.multicallAddress as Address,
     });
-
-    console.log("Token Lock Status", results);
 
     return tokenIds.map((tokenId, idx) => ({
         tokenId,
@@ -3111,15 +3074,12 @@ export async function getTokensByOwner(
                                     if (foundTokens >= maxTokensToFind) break;
                                 }
                             } catch (individualError) {
-                                // 개별 토큰 조회 실패는 스킵
+                                console.warn(individualError);
                                 continue;
                             }
                         }
                         break;
                     }
-                    console.log(
-                        `Retrying batch ${start}-${end} (attempt ${retryCount}/${MAX_RETRIES})`
-                    );
                     await new Promise((resolve) =>
                         setTimeout(resolve, RETRY_DELAY)
                     );

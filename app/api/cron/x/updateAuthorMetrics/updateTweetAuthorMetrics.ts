@@ -32,6 +32,17 @@ interface AuthorMetricsUpdateResult {
     processingTimeMs: number;
 }
 
+interface AuthorForMetricsUpdate {
+    authorId: string;
+    metrics: {
+        followersCount: number;
+        followingCount: number;
+        tweetCount: number;
+        listedCount: number;
+        verified: boolean;
+    }[];
+}
+
 export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> {
     const startTime = Date.now();
     const BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN;
@@ -46,7 +57,7 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
 
     try {
         // 1. 업데이트할 작성자 선택 (우선순위 기반)
-        const authorsToUpdate = await prisma.tweetAuthor.findMany({
+        const authorsToUpdate = (await prisma.tweetAuthor.findMany({
             where: {
                 OR: [
                     // 최근 24시간 내 트윗이 있는 작성자
@@ -96,11 +107,7 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
                 },
             ],
             take: 200,
-        });
-
-        console.log(
-            `Found ${authorsToUpdate.length} authors to update metrics`
-        );
+        })) as unknown as AuthorForMetricsUpdate[];
 
         // 2. 100명씩 배치 처리 (GET /2/users는 최대 100개 ID 지원)
         const batchSize = 100;
@@ -109,10 +116,6 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
         for (let i = 0; i < authorsToUpdate.length; i += batchSize) {
             batches.push(authorsToUpdate.slice(i, i + batchSize));
         }
-
-        console.log(
-            `Processing ${batches.length} batches of ${batchSize} authors each`
-        );
 
         // 3. Rate Limit 고려한 배치 처리 (24시간 기준 500회 제한)
         const maxRequestsPerRun = Math.min(8, Math.floor(500 / 48));
@@ -155,9 +158,6 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
                 const data: XApiUsersResponse = await response.json();
 
                 if (!data.data || data.data.length === 0) {
-                    console.log(
-                        `No user data returned for batch ${requestCount}`
-                    );
                     continue;
                 }
 
@@ -245,9 +245,6 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
                 });
 
                 totalMetricsUpdated += metricsToSave.length;
-                console.log(
-                    `Updated ${authorUpdates.length} authors, saved ${metricsToSave.length} new metrics in batch ${requestCount}`
-                );
 
                 // Rate Limit 체크
                 if (rateLimitRemaining && parseInt(rateLimitRemaining) < 50) {
@@ -267,10 +264,6 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
                 continue;
             }
         }
-
-        console.log(
-            `Author metrics update completed: ${totalMetricsUpdated} metrics updated using ${requestCount} API requests`
-        );
 
         return {
             totalProcessed: authorsToUpdate.length,

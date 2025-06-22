@@ -14,10 +14,7 @@ export function useDefaultWallets() {
 
     const createDefaultWallet = useCreateWallet();
 
-    const getWallet = () => {
-        const { data: wallet, isLoading } = useWallet();
-        return { wallet, isLoading };
-    };
+    const { data: wallet, isLoading } = useWallet();
 
     const createWallet = async (userId: string) => {
         setIsCreating(true);
@@ -45,7 +42,8 @@ export function useDefaultWallets() {
 
     return {
         isCreating,
-        getWallet,
+        wallet,
+        isLoading,
         createWallet,
     };
 }

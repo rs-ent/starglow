@@ -28,6 +28,16 @@ interface MetricsUpdateResult {
     processingTimeMs: number;
 }
 
+interface TweetForMetricsUpdate {
+    tweetId: string;
+    metricsHistory: {
+        replyCount: number;
+        retweetCount: number;
+        likeCount: number;
+        quoteCount: number;
+    }[];
+}
+
 export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
     const startTime = Date.now();
     const BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN;
@@ -41,7 +51,7 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
     let totalMetricsUpdated = 0;
 
     try {
-        const tweetsToUpdate = await prisma.tweet.findMany({
+        const tweetsToUpdate = (await prisma.tweet.findMany({
             where: {
                 OR: [
                     {
@@ -77,9 +87,7 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
             },
             orderBy: [{ createdAt: "desc" }],
             take: 1500,
-        });
-
-        console.log(`Found ${tweetsToUpdate.length} tweets to update metrics`);
+        })) as unknown as TweetForMetricsUpdate[];
 
         // 2. 100개씩 배치 처리
         const batchSize = 100;
@@ -88,10 +96,6 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
         for (let i = 0; i < tweetsToUpdate.length; i += batchSize) {
             batches.push(tweetsToUpdate.slice(i, i + batchSize));
         }
-
-        console.log(
-            `Processing ${batches.length} batches of ${batchSize} tweets each`
-        );
 
         // 3. Rate Limit 고려한 배치 처리
         for (const batch of batches) {
@@ -132,9 +136,6 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
                 const data: XApiMetricsResponse = await response.json();
 
                 if (!data.data || data.data.length === 0) {
-                    console.log(
-                        `No metrics data returned for batch ${requestCount}`
-                    );
                     continue;
                 }
 
@@ -187,9 +188,6 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
                     });
 
                     totalMetricsUpdated += metricsToSave.length;
-                    console.log(
-                        `Saved ${metricsToSave.length} updated metrics in batch ${requestCount}`
-                    );
                 }
 
                 // Rate Limit 체크
@@ -207,10 +205,6 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
                 continue;
             }
         }
-
-        console.log(
-            `Metrics update completed: ${totalMetricsUpdated} metrics updated using ${requestCount} API requests`
-        );
 
         return {
             totalProcessed: tweetsToUpdate.length,

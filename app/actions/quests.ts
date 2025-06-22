@@ -2,11 +2,7 @@
 
 "use server";
 
-import {
-    QuestType,
-    ReferralLog,
-    User,
-} from "@prisma/client";
+import { QuestType } from "@prisma/client";
 
 import { tokenGating } from "@/app/story/nft/actions";
 import { prisma } from "@/lib/prisma/client";
@@ -21,7 +17,8 @@ import type {
     Player,
     Prisma,
     Quest,
-    QuestLog} from "@prisma/client";
+    QuestLog,
+} from "@prisma/client";
 
 export type PaginationInput = {
     currentPage: number;
@@ -330,6 +327,9 @@ export async function updateQuest(
 
         const { id, rewardAssetId, artistId, rewardAsset, artist, ...rest } =
             input;
+
+        console.info("Artist", artist);
+        console.info("Reward Asset", rewardAsset);
 
         const quest = await prisma.quest.update({
             where: { id },

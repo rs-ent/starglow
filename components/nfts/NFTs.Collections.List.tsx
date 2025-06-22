@@ -296,7 +296,12 @@ export default function NFTsCollectionsList({
 
     // 프리로딩 완료 후에만 렌더링
     if (!isPreloaded) {
-        return <PartialLoading text="Loading NFTs..." />;
+        return (
+            <div className="relative flex flex-col w-full h-screen overflow-hidden items-center justify-center">
+                <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
+                <PartialLoading text="Preparing Special Gifts... 🎁" />
+            </div>
+        );
     }
 
     return (

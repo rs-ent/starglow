@@ -2,7 +2,7 @@
 
 "use server";
 
-import type { AssetsContract, Asset, AssetType , Prisma } from "@prisma/client";
+import type { AssetsContract, Asset, AssetType, Prisma } from "@prisma/client";
 
 import { revalidatePath } from "next/cache";
 import {
@@ -24,14 +24,10 @@ import {
 const abi = assetsJson.abi;
 const bytecode = assetsJson.bytecode as `0x${string}`;
 
-import {
-    updatePlayerAssetsOnAssetChange,
-} from "./playerAssets";
+import { updatePlayerAssetsOnAssetChange } from "./playerAssets";
 
-import type {
-    PlayerAssetResult} from "./playerAssets";
-import type {
-    Address} from "viem";
+import type { PlayerAssetResult } from "./playerAssets";
+import type { Address } from "viem";
 
 export interface DeployAssetsContractInput {
     walletId: string;
@@ -63,7 +59,7 @@ export async function deployAssetsContract(
             };
         }
 
-        const { hash, contractAddress } = await deployContract({
+        const { contractAddress } = await deployContract({
             walletId: input.walletId,
             network,
             abi,

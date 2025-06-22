@@ -34,6 +34,7 @@ import type {
 } from "./actions/staking";
 import type { GetUsersInput } from "./actions/user";
 import type { CollectionParticipantType } from "@prisma/client";
+import type * as PortOne from "@portone/browser-sdk/v2";
 
 export const queryKeys = {
     user: {
@@ -71,8 +72,15 @@ export const queryKeys = {
             ["files", "metadata", "urls", urls] as const,
     },
     exchangeRate: {
-        info: ["exchangeRate", "info"] as const,
-        convert: (amount: number, fromCurrency: string, toCurrency: string) =>
+        info: (
+            fromCurrency: PortOne.Entity.Currency,
+            toCurrency: PortOne.Entity.Currency
+        ) => ["exchangeRate", "info", fromCurrency, toCurrency] as const,
+        convert: (
+            amount: number,
+            fromCurrency: PortOne.Entity.Currency,
+            toCurrency: PortOne.Entity.Currency
+        ) =>
             [
                 "exchangeRate",
                 "convert",

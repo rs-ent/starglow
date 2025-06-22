@@ -57,7 +57,7 @@ export function useUpdateFactoryMutation() {
 
     return useMutation({
         mutationFn: updateFactory,
-        onSuccess: (data, variables) => {
+        onSuccess: (data, _variables) => {
             if (data.success) {
                 // Factory 목록 무효화
                 queryClient

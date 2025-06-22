@@ -8,7 +8,6 @@ import { v4 as uuidv4 } from "uuid";
 
 import { prisma } from "@/lib/prisma/client";
 
-
 import { requireAuth } from "../auth/authUtils";
 
 export interface StoredFile {
@@ -247,7 +246,7 @@ export async function getFilesByPurposeAndBucket(
     }));
 }
 
-export async function getFileById(id: string): Promise<StoredFile | null> {
+export async function getFileById(id?: string): Promise<StoredFile | null> {
     await requireAuth();
 
     const file = await prisma.storedFiles.findUnique({

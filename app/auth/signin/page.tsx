@@ -7,13 +7,13 @@ import { getProviders } from "next-auth/react";
 
 import { useToast } from "@/app/hooks/useToast";
 import { useUserSet } from "@/app/hooks/useUser";
-import { ProviderType, WALLET_PROVIDERS } from "@/app/types/auth";
+import { WALLET_PROVIDERS } from "@/app/types/auth";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import SocialAuthButton from "@/components/atoms/SocialAuthButton";
 import TelegramLoginButton from "@/components/atoms/TelegramLoginButton";
 import WalletAuthButton from "@/components/atoms/WalletAuthButton";
 
-import type { Provider} from "@/app/types/auth";
+import type { Provider } from "@/app/types/auth";
 
 function SignInButtons() {
     const toast = useToast();
@@ -24,7 +24,7 @@ function SignInButtons() {
     const callbackUrl = params.get("callbackUrl") || "/";
     const error = params.get("error");
 
-    const { setUserWithTelegram, isSetUserWithTelegramPending } = useUserSet();
+    const { setUserWithTelegram } = useUserSet();
 
     useEffect(() => {
         if (error) {
@@ -36,7 +36,7 @@ function SignInButtons() {
                 toast.error("An error occurred while signing in");
             }
         }
-    }, [error]);
+    }, [error, toast]);
 
     const fetchProviders = useCallback(async () => {
         try {
@@ -49,7 +49,9 @@ function SignInButtons() {
     }, []);
 
     useEffect(() => {
-        fetchProviders();
+        fetchProviders().catch((error) => {
+            console.error("Failed to fetch providers:", error);
+        });
     }, [fetchProviders]);
 
     async function handleTelegramAuth(user: any) {

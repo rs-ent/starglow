@@ -91,7 +91,11 @@ export function useDeletePollMutation() {
     return useMutation({
         mutationFn: deletePoll,
         onSuccess: (deletedPoll) => {
-            queryClient.invalidateQueries({ queryKey: pollKeys.all });
+            queryClient
+                .invalidateQueries({ queryKey: pollKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
             queryClient
                 .invalidateQueries({
                     queryKey: pollKeys.detail(deletedPoll.id),

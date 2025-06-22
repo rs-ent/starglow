@@ -3,11 +3,6 @@
 "use client";
 
 import {
-    InvitePlayerParams,
-    SetPlayerInput,
-    UpdatePlayerSettingsInput,
-} from "@/app/actions/player";
-import {
     useSetPlayerMutation,
     useInvitePlayerMutation,
     useUpdatePlayerSettingsMutation,
@@ -19,7 +14,8 @@ import {
 
 import type {
     GetPlayerInput,
-    GetDBUserFromPlayerInput} from "@/app/actions/player";
+    GetDBUserFromPlayerInput,
+} from "@/app/actions/player";
 
 export function usePlayerGet({
     getPlayerInput,

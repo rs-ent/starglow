@@ -4,13 +4,8 @@
 
 import { useState, useCallback } from "react";
 
-import * as PortOne from "@portone/browser-sdk/v2";
 import { PaymentStatus } from "@prisma/client";
 
-import {
-    VerifyPaymentResponse,
-    CreatePaymentResponse,
-} from "@/app/actions/payment";
 import {
     useCreatePaymentMutation,
     useVerifyPaymentMutation,
@@ -23,19 +18,13 @@ import {
     usePaymentsByUserIdQuery,
     usePaymentsByStatusQuery,
 } from "@/app/queries/paymentQueries";
-import {
-    PayMethod,
-    EasyPayProvider,
-    CardProvider,
-    Currency,
-    ProductTable,
-} from "@/lib/types/payment";
 
 import type {
     CreatePaymentInput,
     VerifyPaymentInput,
-    CancelPaymentInput} from "@/app/actions/payment";
-import type { Payment} from "@prisma/client";
+    CancelPaymentInput,
+} from "@/app/actions/payment";
+import type { Payment } from "@prisma/client";
 
 type PaymentHookReturn = {
     currentPaymentId: string | null;
@@ -109,42 +98,10 @@ export function usePayment(): PaymentHookReturn {
     const resetAndInitiatePayment = useCallback(
         (input: CreatePaymentInput) => {
             setCurrentPaymentId(null);
-            console.log(
-                "Payment creation started with input:",
-                JSON.stringify({
-                    productTable: input.productTable,
-                    productId: input.productId,
-                    userId: input.userId,
-                    payMethod: input.payMethod,
-                })
-            );
-
-            // Add a timestamp to track when the payment was started
-            const startTime = Date.now();
 
             createPaymentMutation.mutate(input, {
                 onSuccess: (response) => {
-                    console.log(
-                        `Payment creation completed in ${
-                            Date.now() - startTime
-                        }ms`
-                    );
-                    console.log(
-                        "Payment creation response:",
-                        JSON.stringify({
-                            success: response.success,
-                            paymentId: response.success
-                                ? response.data.id
-                                : undefined,
-                            error: response.success
-                                ? undefined
-                                : response.error,
-                        })
-                    );
-
                     if (response.success && response.data && response.data.id) {
-                        // Success case - new payment created
-                        console.log("Setting payment ID to:", response.data.id);
                         setCurrentPaymentId(response.data.id);
                     } else if (
                         !response.success &&
@@ -154,10 +111,7 @@ export function usePayment(): PaymentHookReturn {
                         // Duplicate payment case - reuse the existing payment ID
                         const existingPaymentId =
                             response.error.details.paymentId;
-                        console.log(
-                            "Reusing existing payment ID for duplicate payment:",
-                            existingPaymentId
-                        );
+
                         setCurrentPaymentId(existingPaymentId);
                     } else {
                         console.error(

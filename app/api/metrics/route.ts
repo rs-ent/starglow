@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 
-import type { NextRequest} from "next/server";
-
-export async function POST(req: NextRequest) {
+export async function POST() {
     try {
-        const data = await req.json();
-        // 서버 콘솔에 웹 바이탈 데이터 출력
-        console.log("[Web Vitals]", data);
         return NextResponse.json({ success: true });
     } catch (error) {
+        console.error("Metrics error:", error);
         return NextResponse.json(
             { success: false, error: "Invalid JSON" },
             { status: 400 }

@@ -2,15 +2,13 @@
 
 "use server";
 
-import type {
-    Address,
-    Hash} from "viem";
+import type { Address, Hash } from "viem";
 
 import {
     createPublicClient,
     createWalletClient,
     http,
-    getContract
+    getContract,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -283,8 +281,6 @@ export async function createCollection(
             client: walletClient,
         });
 
-        console.log("Input params:", input.params);
-
         const gasOptions = await estimateGasOptions({
             publicClient,
             walletClient,
@@ -305,12 +301,6 @@ export async function createCollection(
             ],
         });
 
-        console.log("Estimated gas options:", {
-            maxFeePerGas: gasOptions.maxFeePerGas.toString(),
-            maxPriorityFeePerGas: gasOptions.maxPriorityFeePerGas.toString(),
-            gasLimit: gasOptions.gasLimit.toString(),
-        });
-
         const hash = await factoryContract.write.createCollection(
             [
                 input.params.name,
@@ -327,10 +317,7 @@ export async function createCollection(
             }
         );
 
-        console.log("Hash:", hash);
-
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        console.log("Receipt:", receipt);
 
         if (!receipt.to) {
             return {
@@ -350,8 +337,6 @@ export async function createCollection(
                 error: "Collection address not found in transaction logs",
             };
         }
-
-        console.log("Collection address:", collectionAddress);
 
         const collection = await prisma.collectionContract.create({
             data: {

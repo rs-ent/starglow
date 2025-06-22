@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useSession, signIn, getSession } from "next-auth/react";
+import { useSession, getSession } from "next-auth/react";
 
 import type { User } from "next-auth";
 

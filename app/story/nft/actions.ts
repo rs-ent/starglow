@@ -3,9 +3,7 @@
 "use server";
 
 import { createHash } from "crypto";
-
-import { User, Wallet } from "@prisma/client";
-import { http, decodeEventLog } from "viem";
+import { decodeEventLog } from "viem";
 
 import { prisma } from "@/lib/prisma/client";
 import SPGNFTCollection from "@/web3/artifacts/contracts/SPGNFTCollection.sol/SPGNFTCollection.json";
@@ -204,23 +202,6 @@ export async function mint(input: mintInput): Promise<mintResult> {
             );
         }
 
-        // Debug: Log all events in the receipt to understand what's being emitted
-        receipt.logs.forEach((log, index) => {
-            // Try to decode each log with different event signatures
-            try {
-                const decoded = decodeEventLog({
-                    abi: SPGNFTCollection.abi,
-                    data: log.data,
-                    topics: log.topics,
-                });
-            } catch (error) {
-                console.error(
-                    `Failed to decode log ${index} with SPGNFTCollection ABI`,
-                    error
-                );
-            }
-        });
-
         // Minted 이벤트에서 tokenId 추출
         const mintedEvents = receipt.logs.filter((log) => {
             try {
@@ -299,9 +280,12 @@ export async function mint(input: mintInput): Promise<mintResult> {
                                     })) as bigint;
                                 tokenIds.push(tokenId);
                             } catch (indexError) {
+                                console.warn(
+                                    "[mint] Error reading tokenOfOwnerByIndex:",
+                                    indexError
+                                );
                                 tokenIds = [];
 
-                                // 최근 생성된 토큰부터 역순으로 확인
                                 for (
                                     let tokenId = totalSupply - 1n;
                                     tokenId >= 0n &&
@@ -322,10 +306,13 @@ export async function mint(input: mintInput): Promise<mintResult> {
                                             owner.toLowerCase() ===
                                             input.walletAddress.toLowerCase()
                                         ) {
-                                            tokenIds.unshift(tokenId); // 앞에 추가하여 오름차순 유지
+                                            tokenIds.unshift(tokenId);
                                         }
                                     } catch (ownerError) {
-                                        // 토큰이 존재하지 않으면 계속
+                                        console.warn(
+                                            "[mint] Error reading owner of tokenId:",
+                                            ownerError
+                                        );
                                         continue;
                                     }
                                 }
@@ -408,22 +395,34 @@ export async function mint(input: mintInput): Promise<mintResult> {
             }
         }
 
-        // 3. DB에 NFT 정보 저장
-        const nfts = await Promise.all(
+        await Promise.all(
             tokenIds.map((tokenId, index) =>
-                prisma.story_nft.create({
-                    data: {
-                        tokenId: tokenId.toString(),
-                        contractAddress: input.contractAddress,
-                        ownerAddress: input.walletAddress,
-                        networkId: input.networkId,
-                        mintTxHash: hash,
-                        tokenURI: tokenURIObjects[index].url,
-                        tokenURICid: tokenURIObjects[index].cid,
-                    },
-                })
+                prisma.story_nft
+                    .create({
+                        data: {
+                            tokenId: tokenId.toString(),
+                            contractAddress: input.contractAddress,
+                            ownerAddress: input.walletAddress,
+                            networkId: input.networkId,
+                            mintTxHash: hash,
+                            tokenURI: tokenURIObjects[index].url,
+                            tokenURICid: tokenURIObjects[index].cid,
+                        },
+                    })
+                    .catch((error) => {
+                        console.error(
+                            "[mint] Error creating NFT:",
+                            error,
+                            tokenId,
+                            index
+                        );
+                        throw error;
+                    })
             )
-        );
+        ).catch((error) => {
+            console.error("[mint] Error creating NFTs:", error);
+            throw error;
+        });
 
         return {
             startTokenId,
@@ -515,6 +514,10 @@ export async function registerAsIPAsset(
                         .digest("hex")}` as Hex;
                 }
             } catch (err) {
+                console.error(
+                    "[registerAsIPAsset] Failed to fetch ipMetadataURI:",
+                    err
+                );
                 ipMetadataHash = `0x${createHash("sha256")
                     .update("")
                     .digest("hex")}` as Hex;
@@ -542,6 +545,10 @@ export async function registerAsIPAsset(
                         .digest("hex")}` as Hex;
                 }
             } catch (err) {
+                console.error(
+                    "[registerAsIPAsset] Failed to fetch nftMetadataURI:",
+                    err
+                );
                 nftMetadataHash = `0x${createHash("sha256")
                     .update("")
                     .digest("hex")}` as Hex;
@@ -621,34 +628,28 @@ export async function registerAsIPAsset(
             throw new Error("NFT is already registered as IP Asset");
         }
 
-        // DB에 IP Asset 정보 저장
-        const ipAsset = await prisma.story_ipAsset.create({
-            data: {
-                ipId: response.ipId,
-                chainId: network.chainId.toString(),
-                tokenContract: input.nftContract,
-                tokenId: input.tokenId.toString(),
-                ipMetadataURI: input.ipMetadataURI,
-                ipMetadataHash: ipMetadataHash,
-                nftMetadataURI: input.nftMetadataURI,
-                nftMetadataHash: nftMetadataHash,
-                registrationTxHash: response.txHash,
-                networkId: input.networkId,
-            },
-        });
-
-        // NFT 테이블에 ipAssetId 업데이트 (Story_ipAsset의 id 사용)
-        const updateResult = await prisma.story_nft.update({
-            where: {
-                contractAddress_tokenId: {
-                    contractAddress: input.nftContract,
+        await prisma.story_ipAsset
+            .create({
+                data: {
+                    ipId: response.ipId,
+                    chainId: network.chainId.toString(),
+                    tokenContract: input.nftContract,
                     tokenId: input.tokenId.toString(),
+                    ipMetadataURI: input.ipMetadataURI,
+                    ipMetadataHash: ipMetadataHash,
+                    nftMetadataURI: input.nftMetadataURI,
+                    nftMetadataHash: nftMetadataHash,
+                    registrationTxHash: response.txHash,
+                    networkId: input.networkId,
                 },
-            },
-            data: {
-                ipId: response.ipId,
-            },
-        });
+            })
+            .catch((error) => {
+                console.error(
+                    "[registerAsIPAsset] Error creating IP Asset:",
+                    error
+                );
+                throw error;
+            });
 
         return {
             ipId: response.ipId,

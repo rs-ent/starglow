@@ -17,10 +17,6 @@ import {
 import type {
     GetPlayerAssetInput,
     GetPlayerAssetsInput,
-    UpdatePlayerAssetInput,
-    BatchUpdatePlayerAssetInput,
-    DeletePlayerAssetInput,
-    ValidatePlayerAssetInput,
 } from "../actions/playerAssets";
 
 export function usePlayerAssetsGet({
@@ -69,17 +65,7 @@ export function usePlayerAssetsGet({
     };
 }
 
-export function usePlayerAssetSet({
-    updatePlayerAssetInput,
-    batchUpdatePlayerAssetInput,
-    deletePlayerAssetInput,
-    validatePlayerAssetInput,
-}: {
-    updatePlayerAssetInput?: UpdatePlayerAssetInput;
-    batchUpdatePlayerAssetInput?: BatchUpdatePlayerAssetInput;
-    deletePlayerAssetInput?: DeletePlayerAssetInput;
-    validatePlayerAssetInput?: ValidatePlayerAssetInput;
-}) {
+export function usePlayerAssetSet() {
     const {
         mutateAsync: updatePlayerAsset,
         isPending: isUpdatePlayerAssetPending,

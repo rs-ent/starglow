@@ -16,17 +16,29 @@ export function useCreateMetadataMutation() {
     return useMutation({
         mutationFn: createMetadata,
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.list({
-                    type: variables.type,
-                }),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.ipfs(data.cid),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.metadata.ipfs(data.url),
-            });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.list({
+                        type: variables.type,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.ipfs(data.cid),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.metadata.ipfs(data.url),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -182,7 +194,7 @@ export function useCreateBaseURIMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: createBaseURI,
-        onSuccess: (data, variables) => {
+        onSuccess: (data, _variables) => {
             queryClient
                 .invalidateQueries({
                     queryKey: queryKeys.metadata.list({

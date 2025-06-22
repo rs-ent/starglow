@@ -13,13 +13,9 @@ export async function GET(request: Request) {
     const startTime = Date.now();
 
     try {
-        console.log("🚀 Starting combined metrics update...");
-
         const [tweetMetricsResult] = await Promise.all([updateTweetMetrics()]);
 
         const totalExecutionTime = Date.now() - startTime;
-
-        console.log("✅ Combined metrics update completed successfully");
 
         return NextResponse.json({
             ok: true,

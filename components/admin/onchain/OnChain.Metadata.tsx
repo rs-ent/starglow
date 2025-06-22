@@ -958,7 +958,9 @@ export function OnChainMetadata({
                 collectionKey,
             }));
 
-            toast.success("Metadata created successfully");
+            toast.success(
+                `Metadata created successfully: ${collectionName} - ${collectionKey}`
+            );
             form.reset();
         } catch (error) {
             console.error("Error creating metadata:", error);
