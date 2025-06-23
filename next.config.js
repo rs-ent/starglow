@@ -35,19 +35,6 @@ const nextConfig = {
         "https://admin.starglow.io",
     ],
 
-    experimental: {
-        // 서버 액션 최적화
-        serverActions: {
-            bodySizeLimit: "50mb",
-        },
-
-        // PPR 설정 - Web3 앱 특성 고려
-        ppr: true,
-
-        // Web3 최적화를 위한 추가 설정
-        optimizePackageImports: ["@wagmi/core", "@tanstack/react-query"],
-    },
-
     // web3 관련 폴더들을 빌드에서 제외
     webpack: (config, { isServer }) => {
         // web3 관련 모듈들을 externals로 설정
