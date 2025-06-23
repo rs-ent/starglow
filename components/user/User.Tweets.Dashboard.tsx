@@ -77,15 +77,15 @@ export default function UserTweetsDashboard({
         ).length;
 
         const totalEngagement = author.tweets.reduce((sum, tweet) => {
-            const metrics = tweet.metricsHistory[0];
+            const metrics = tweet.metricsHistory?.[0];
+            if (!metrics) return sum;
+
             return (
                 sum +
-                (metrics
-                    ? metrics.likeCount +
-                      metrics.retweetCount +
-                      metrics.replyCount +
-                      metrics.quoteCount
-                    : 0)
+                (metrics.likeCount || 0) +
+                (metrics.retweetCount || 0) +
+                (metrics.replyCount || 0) +
+                (metrics.quoteCount || 0)
             );
         }, 0);
 
@@ -130,13 +130,15 @@ export default function UserTweetsDashboard({
                         new Date(a.createdAt).getTime()
                     );
                 case "popular":
-                    const aMetrics = a.metricsHistory[0];
-                    const bMetrics = b.metricsHistory[0];
+                    const aMetrics = a.metricsHistory?.[0];
+                    const bMetrics = b.metricsHistory?.[0];
                     const aEngagement = aMetrics
-                        ? aMetrics.likeCount + aMetrics.retweetCount
+                        ? (aMetrics.likeCount || 0) +
+                          (aMetrics.retweetCount || 0)
                         : 0;
                     const bEngagement = bMetrics
-                        ? bMetrics.likeCount + bMetrics.retweetCount
+                        ? (bMetrics.likeCount || 0) +
+                          (bMetrics.retweetCount || 0)
                         : 0;
                     return bEngagement - aEngagement;
                 case "rewarded":
@@ -451,7 +453,9 @@ export default function UserTweetsDashboard({
                         className="space-y-4"
                     >
                         {filteredTweets.map((tweet, index) => {
-                            const metrics = tweet.metricsHistory[0];
+                            const metrics = tweet.metricsHistory?.[0];
+                            const hasMedia =
+                                tweet.media && tweet.media.length > 0;
                             const tweetRewards =
                                 author?.rewardsLogs.filter((log) =>
                                     log.tweetIds.includes(tweet.tweetId)
@@ -499,15 +503,37 @@ export default function UserTweetsDashboard({
                                                 </p>
                                             </div>
                                         </div>
-                                        {totalRewards > 0 && (
-                                            <div className="flex items-center gap-1 bg-purple-500/20 px-3 py-1 rounded-full">
-                                                <Gift className="w-4 h-4 text-purple-300" />
-                                                <span className="text-sm font-medium text-purple-300">
-                                                    {formatNumber(totalRewards)}{" "}
-                                                    GLOW
+                                        <div className="flex items-center gap-2">
+                                            {hasMedia && (
+                                                <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded flex items-center space-x-1">
+                                                    <svg
+                                                        className="w-3 h-3"
+                                                        fill="currentColor"
+                                                        viewBox="0 0 20 20"
+                                                    >
+                                                        <path
+                                                            fillRule="evenodd"
+                                                            d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
+                                                            clipRule="evenodd"
+                                                        />
+                                                    </svg>
+                                                    <span>
+                                                        {tweet.media.length}
+                                                    </span>
                                                 </span>
-                                            </div>
-                                        )}
+                                            )}
+                                            {totalRewards > 0 && (
+                                                <div className="flex items-center gap-1 bg-purple-500/20 px-3 py-1 rounded-full">
+                                                    <Gift className="w-4 h-4 text-purple-300" />
+                                                    <span className="text-sm font-medium text-purple-300">
+                                                        {formatNumber(
+                                                            totalRewards
+                                                        )}{" "}
+                                                        GLOW
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Tweet Content */}
@@ -515,8 +541,38 @@ export default function UserTweetsDashboard({
                                         {tweet.text}
                                     </p>
 
+                                    {/* Rewards History if exists */}
+                                    {totalRewards > 0 && (
+                                        <div className="mb-4 bg-purple-500/10 rounded-lg p-3 border border-purple-500/20">
+                                            <p className="text-xs font-medium text-purple-300 mb-2">
+                                                Rewards History
+                                            </p>
+                                            <div className="space-y-1">
+                                                {tweetRewards.map((reward) => (
+                                                    <div
+                                                        key={reward.id}
+                                                        className="flex items-center justify-between text-xs"
+                                                    >
+                                                        <span className="text-gray-300">
+                                                            +
+                                                            {formatNumber(
+                                                                reward.amount
+                                                            )}{" "}
+                                                            GLOW
+                                                        </span>
+                                                        <span className="text-gray-500">
+                                                            {new Date(
+                                                                reward.createdAt
+                                                            ).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Tweet Metrics */}
-                                    {metrics && (
+                                    {metrics ? (
                                         <div className="flex items-center gap-4 text-xs text-gray-400">
                                             <div className="flex items-center gap-1">
                                                 <svg
@@ -534,7 +590,7 @@ export default function UserTweetsDashboard({
                                                 </svg>
                                                 <span>
                                                     {formatNumber(
-                                                        metrics.likeCount
+                                                        metrics.likeCount || 0
                                                     )}
                                                 </span>
                                             </div>
@@ -554,7 +610,8 @@ export default function UserTweetsDashboard({
                                                 </svg>
                                                 <span>
                                                     {formatNumber(
-                                                        metrics.retweetCount
+                                                        metrics.retweetCount ||
+                                                            0
                                                     )}
                                                 </span>
                                             </div>
@@ -574,10 +631,34 @@ export default function UserTweetsDashboard({
                                                 </svg>
                                                 <span>
                                                     {formatNumber(
-                                                        metrics.replyCount
+                                                        metrics.replyCount || 0
                                                     )}
                                                 </span>
                                             </div>
+                                            <div className="flex items-center gap-1">
+                                                <svg
+                                                    className="w-4 h-4"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+                                                    />
+                                                </svg>
+                                                <span>
+                                                    {formatNumber(
+                                                        metrics.quoteCount || 0
+                                                    )}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-xs text-gray-500 italic">
+                                            No metrics available yet
                                         </div>
                                     )}
                                 </motion.div>
