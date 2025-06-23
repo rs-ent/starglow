@@ -12,7 +12,6 @@ import { SessionProvider } from "next-auth/react";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { sepolia, storyAeneid, berachainBepolia } from "wagmi/chains";
 
-
 export const defaultConnectors = [
     metaMask({
         dappMetadata: {
@@ -94,7 +93,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 enableAnalytics: false,
             }}
         >
-            <WagmiProvider config={wagmiConfig as any}>
+            <WagmiProvider config={wagmiConfig}>
                 <QueryClientProvider client={queryClient}>
                     <SessionProvider>{children}</SessionProvider>
                     {process.env.NODE_ENV === "development" && (

@@ -41,8 +41,18 @@ const nextConfig = {
             bodySizeLimit: "50mb",
         },
 
-        // 점진적 CSR 활성화
-        ppr: true,
+        // PPR 설정 - Web3 앱 특성 고려
+        ppr: {
+            // 점진적 적용으로 안정성 확보
+            incremental: true,
+            // 개발 환경에서는 비활성화하여 디버깅 용이성 확보
+            ...(process.env.NODE_ENV === "development" && {
+                incremental: false,
+            }),
+        },
+
+        // Web3 최적화를 위한 추가 설정
+        optimizePackageImports: ["@wagmi/core", "@tanstack/react-query"],
     },
 
     // web3 관련 폴더들을 빌드에서 제외

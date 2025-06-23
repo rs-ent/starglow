@@ -8,7 +8,7 @@ import "./globals.css";
 
 import Toast from "@/components/atoms/Toast";
 
-import Providers from "./Providers.loader";
+import Providers from "./Providers";
 
 import Loading from "@/components/atoms/Loading";
 import Navigation from "@/components/navigation/Navigation";
