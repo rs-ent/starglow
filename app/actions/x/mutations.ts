@@ -2,13 +2,14 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { tweetKeys } from "@/app/queryKeys";
+import { tweetKeys, playerAssetsKeys } from "@/app/queryKeys";
 
 import {
     validateRegisterXAuthor,
     checkIsActiveXAuthor,
     confirmRegisterXAuthor,
     disconnectXAccount,
+    giveGlowingReward,
 } from "./actions";
 
 export function useValidateRegisterXAuthorMutation() {
@@ -80,6 +81,31 @@ export function useDisconnectXAccountMutation() {
                     queryKey: tweetKeys.authorByPlayerId(
                         variables?.playerId || ""
                     ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+        },
+    });
+}
+
+export function useGiveGlowingRewardMutation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: giveGlowingReward,
+        onSuccess: (_data, variables) => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: tweetKeys.authorByPlayerId(
+                        variables?.playerId || ""
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: playerAssetsKeys.balances(variables.playerId),
                 })
                 .catch((error) => {
                     console.error(error);

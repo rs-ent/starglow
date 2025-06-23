@@ -7,6 +7,7 @@ import {
     useCheckIsActiveXAuthorMutation,
     useConfirmRegisterXAuthorMutation,
     useDisconnectXAccountMutation,
+    useGiveGlowingRewardMutation,
 } from "./mutations";
 import {
     useLatestSyncDataQuery,
@@ -104,6 +105,14 @@ export function useTweets(input?: useTweetsInput) {
         error: disconnectXAccountError,
     } = useDisconnectXAccountMutation();
 
+    const {
+        mutate: giveGlowingReward,
+        mutateAsync: giveGlowingRewardAsync,
+        isPending: isGiveGlowingRewardPending,
+        isError: isGiveGlowingRewardError,
+        error: giveGlowingRewardError,
+    } = useGiveGlowingRewardMutation();
+
     return {
         latestSyncData,
         isLatestSyncDataLoading,
@@ -158,5 +167,11 @@ export function useTweets(input?: useTweetsInput) {
         isDisconnectXAccountPending,
         isDisconnectXAccountError,
         disconnectXAccountError,
+
+        giveGlowingReward,
+        giveGlowingRewardAsync,
+        isGiveGlowingRewardPending,
+        isGiveGlowingRewardError,
+        giveGlowingRewardError,
     };
 }

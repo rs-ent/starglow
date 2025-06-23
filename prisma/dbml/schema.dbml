@@ -335,6 +335,9 @@ Table RewardsLog {
   pollLog PollLog
   quest Quest
   questLog QuestLog
+  tweetAuthorId String
+  tweetAuthor TweetAuthor
+  tweetIds String[] [not null]
 }
 
 Table Events {
@@ -1052,6 +1055,7 @@ Table TweetAuthor {
   isBlacklisted Boolean [not null, default: false]
   blacklistedAt DateTime
   blacklistData TweetAuthorBlacklist
+  rewardsLogs RewardsLog [not null]
 }
 
 Table TweetAuthorMetrics {
@@ -1318,6 +1322,8 @@ Ref: RewardsLog.pollLogId > PollLog.id
 Ref: RewardsLog.questId > Quest.id
 
 Ref: RewardsLog.questLogId > QuestLog.id
+
+Ref: RewardsLog.tweetAuthorId > TweetAuthor.id
 
 Ref: LoginAttemptLog.userId > User.id [delete: Cascade]
 

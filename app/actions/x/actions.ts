@@ -12,7 +12,10 @@ import type {
     TweetMetrics,
     TweetAuthorMetrics,
     TweetMedia,
+    RewardsLog,
+    Player,
 } from "@prisma/client";
+import { updatePlayerAsset } from "../playerAssets";
 
 const CLIENT_ID = process.env.TWITTER_CLIENT_ID;
 const CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;
@@ -108,13 +111,16 @@ export type TweetWithMetrics = Tweet & {
 };
 
 export type Author = TweetAuthor & {
+    player: Player | null;
     tweets: TweetWithMetrics[];
     metrics: TweetAuthorMetrics[];
+    rewardsLogs: RewardsLog[];
 };
 
 export async function getTweetAuthors(): Promise<Author[]> {
     return (await prisma.tweetAuthor.findMany({
         include: {
+            player: true,
             tweets: {
                 include: {
                     metricsHistory: {
@@ -130,6 +136,11 @@ export async function getTweetAuthors(): Promise<Author[]> {
             metrics: {
                 orderBy: { recordedAt: "desc" },
                 take: 1,
+            },
+            rewardsLogs: {
+                orderBy: {
+                    createdAt: "desc",
+                },
             },
         },
     })) as Author[];
@@ -308,7 +319,13 @@ export async function getAuthorByPlayerId(
                 id: input.playerId,
             },
             include: {
-                tweetAuthor: true,
+                tweetAuthor: {
+                    include: {
+                        rewardsLogs: true,
+                        tweets: true,
+                        metrics: true,
+                    },
+                },
             },
         });
 
@@ -901,5 +918,60 @@ export async function disconnectXAccount(
             success: false,
             message: "Failed to disconnect X account",
         };
+    }
+}
+
+export interface GetGlowingRewardsLogsInput {
+    tweetAuthorId: string;
+}
+
+export async function getGlowingRewardsLogs(
+    input?: GetGlowingRewardsLogsInput
+) {
+    if (!input || !input.tweetAuthorId) {
+        return [];
+    }
+
+    return await prisma.rewardsLog.findMany({
+        where: {
+            tweetAuthorId: input.tweetAuthorId,
+            reason: "GLOWING Rewards",
+        },
+        orderBy: {
+            createdAt: "desc",
+        },
+    });
+}
+
+export interface GiveGlowingRewardInput {
+    playerId: string;
+    assetId: string;
+    amount: number;
+    tweetAuthorId: string;
+    tweetIds: string[];
+    reason?: string;
+}
+
+export async function giveGlowingReward(input: GiveGlowingRewardInput) {
+    try {
+        const updateResult = await updatePlayerAsset({
+            transaction: {
+                playerId: input.playerId,
+                assetId: input.assetId,
+                amount: input.amount,
+                operation: "ADD",
+                reason: input.reason || "GLOWING Rewards",
+                tweetAuthorId: input.tweetAuthorId,
+                tweetIds: input.tweetIds,
+            },
+        });
+        if (!updateResult.success) {
+            return {
+                success: false,
+                error: `Failed to give participation reward: ${updateResult.error}`,
+            };
+        }
+    } catch (error) {
+        console.error("Error giving reward:", error);
     }
 }

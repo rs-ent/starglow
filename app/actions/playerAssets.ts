@@ -33,6 +33,8 @@ export interface PlayerAssetTransactionInput {
     questLogId?: string;
     pollId?: string;
     pollLogId?: string;
+    tweetAuthorId?: string;
+    tweetIds?: string[];
 }
 
 export interface GetPlayerAssetsFilter {
@@ -233,6 +235,8 @@ export async function updatePlayerAsset(
                 questLogId: input.transaction.questLogId,
                 pollId: input.transaction.pollId,
                 pollLogId: input.transaction.pollLogId,
+                tweetAuthorId: input.transaction.tweetAuthorId,
+                tweetIds: input.transaction.tweetIds,
                 reason: input.transaction.reason,
             },
         });

@@ -62,7 +62,6 @@ export default function UserTweets({ user, player }: UserTweetsProps) {
                 "gap-[15px]"
             )}
         >
-            <h2 className="text-2xl font-bold">TWEETS</h2>
             {authorByPlayerId &&
             authorByPlayerId.registered &&
             user &&

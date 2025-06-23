@@ -380,9 +380,17 @@ model RewardsLog {
   pollLog       PollLog?  @relation(fields: [pollLogId], references: [id])
   quest         Quest?    @relation(fields: [questId], references: [id])
   questLog      QuestLog? @relation(fields: [questLogId], references: [id])
+  tweetAuthorId String?
+  tweetAuthor   TweetAuthor? @relation(fields: [tweetAuthorId], references: [id])
+  tweetIds      String[]
 
+  @@index([playerId, pollId])
+  @@index([playerId, questId])
   @@index([playerId, assetId])
   @@index([questId, pollId])
+  @@index([tweetAuthorId])
+  @@index([tweetAuthorId, reason])
+  @@index([tweetIds])
 }
 
 model Events {
@@ -1179,6 +1187,8 @@ model TweetAuthor {
   isBlacklisted Boolean @default(false)
   blacklistedAt DateTime?
   blacklistData TweetAuthorBlacklist?
+
+  rewardsLogs RewardsLog[]
 
   @@index([authorId])
   @@index([isBlacklisted])

@@ -13,7 +13,6 @@ import type {
     Asset,
 } from "@prisma/client";
 
-
 export type RewardLog = RewardsLog & {
     quest?: Quest | null;
     poll?: Poll | null;
@@ -22,10 +21,13 @@ export type RewardLog = RewardsLog & {
 };
 
 export interface GetRewardsLogsInput {
-    playerId: string;
+    playerId?: string;
     assetId?: string;
     questId?: string;
     pollId?: string;
+    reason?: string;
+    tweetAuthorId?: string;
+    tweetIds?: string[];
 }
 
 export async function getRewardsLogs({
@@ -54,13 +56,24 @@ export async function getRewardsLogs({
             where.pollId = input.pollId;
         }
 
+        if (input.reason) {
+            where.reason = input.reason;
+        }
+
+        if (input.tweetAuthorId) {
+            where.tweetAuthorId = input.tweetAuthorId;
+        }
+
+        if (input.tweetIds) {
+            where.tweetIds = {
+                hasSome: input.tweetIds,
+            };
+        }
+
         const result = await prisma.rewardsLog.findMany({
             where,
             include: {
                 asset: true,
-                quest: true,
-                poll: true,
-                pollLog: true,
             },
             orderBy: {
                 createdAt: "desc",

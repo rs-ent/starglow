@@ -1,7 +1,7 @@
 // app/api/integration/x/callback/route.ts
 import { NextResponse } from "next/server";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
 
     if (error) {
         if (isMobile) {
-            // 모바일: 에러와 함께 TWEETS 페이지로 redirect
+            // 모바일: 에러와 함께 GLOWs 페이지로 redirect
             const redirectUrl =
                 request.nextUrl.origin +
-                "/user/tweets?x_auth_error=" +
+                "/user/glows?x_auth_error=" +
                 encodeURIComponent(error);
             return NextResponse.redirect(redirectUrl);
         } else {
@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
                         }, '*');
                         window.close();
                     } else {
-                        // fallback for mobile - redirect to TWEETS 페이지
-                        window.location.href = '${request.nextUrl.origin}/user/tweets?x_auth_error=' + encodeURIComponent('${error}');
+                        // fallback for mobile - redirect to GLOWs 페이지
+                        window.location.href = '${request.nextUrl.origin}/user/glows?x_auth_error=' + encodeURIComponent('${error}');
                     }
                 </script>
             `,
@@ -50,10 +50,10 @@ export async function GET(request: NextRequest) {
         const errorMsg = "Missing authorization parameters";
 
         if (isMobile) {
-            // 모바일: 에러와 함께 TWEETS 페이지로 redirect
+            // 모바일: 에러와 함께 GLOWs 페이지로 redirect
             const redirectUrl =
                 request.nextUrl.origin +
-                "/user/tweets?x_auth_error=" +
+                "/user/glows?x_auth_error=" +
                 encodeURIComponent(errorMsg);
             return NextResponse.redirect(redirectUrl);
         } else {
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
                         }, '*');
                         window.close();
                     } else {
-                        window.location.href = '${request.nextUrl.origin}/user/tweets?x_auth_error=' + encodeURIComponent('${errorMsg}');
+                        window.location.href = '${request.nextUrl.origin}/user/glows?x_auth_error=' + encodeURIComponent('${errorMsg}');
                     }
                 </script>
             `,
@@ -78,10 +78,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (isMobile) {
-        // 모바일: 성공 파라미터와 함께 TWEETS 페이지로 redirect
+        // 모바일: 성공 파라미터와 함께 GLOWs 페이지로 redirect
         const redirectUrl =
             request.nextUrl.origin +
-            "/user/tweets?x_auth_code=" +
+            "/user/glows?x_auth_code=" +
             encodeURIComponent(code) +
             "&x_auth_state=" +
             encodeURIComponent(state);
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
                     }, '*');
                     window.close();
                 } else {
-                    window.location.href = '${request.nextUrl.origin}/user/tweets?x_auth_code=' + encodeURIComponent('${code}') + '&x_auth_state=' + encodeURIComponent('${state}');
+                    window.location.href = '${request.nextUrl.origin}/user/glows?x_auth_code=' + encodeURIComponent('${code}') + '&x_auth_state=' + encodeURIComponent('${state}');
                 }
             </script>
         `,

@@ -22,9 +22,9 @@ const menuItems = [
         href: "/user/rewards",
     },
     {
-        label: "Tweets",
+        label: "GLOWs",
         icon: "/ui/user/user-tweets.svg",
-        href: "/user/tweets",
+        href: "/user/glows",
     },
     {
         label: "Discord",
