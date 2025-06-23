@@ -42,14 +42,7 @@ const nextConfig = {
         },
 
         // PPR 설정 - Web3 앱 특성 고려
-        ppr: {
-            // 점진적 적용으로 안정성 확보
-            incremental: true,
-            // 개발 환경에서는 비활성화하여 디버깅 용이성 확보
-            ...(process.env.NODE_ENV === "development" && {
-                incremental: false,
-            }),
-        },
+        ppr: true,
 
         // Web3 최적화를 위한 추가 설정
         optimizePackageImports: ["@wagmi/core", "@tanstack/react-query"],

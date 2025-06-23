@@ -1,125 +1,106 @@
 /// components/atoms/WalletAuthButton.tsx
 
-import { useMemo, useState, useEffect } from "react";
+"use client";
 
-import { useConnect } from "wagmi";
+import { useCallback } from "react";
+import { useConnectors } from "wagmi";
 
+import { useLoading } from "@/app/hooks/useLoading";
 import { useWagmiConnection } from "@/app/story/userWallet/wagmi-hooks";
-import { WALLET_PROVIDERS, getInstallUrl } from "@/app/types/auth";
 import { cn } from "@/lib/utils/tailwind";
 
 import Button from "./Button";
 
-import type { WalletProvider, WalletProviderType } from "@/app/types/auth";
-
 interface WalletAuthButtonProps {
-    provider: WalletProvider;
-    className?: string;
+    provider: {
+        id: string;
+        name: string;
+        color?: string;
+        icon?: string;
+    };
     callbackUrl?: string;
+    className?: string;
 }
 
 export default function WalletAuthButton({
     provider,
+    callbackUrl = "/",
     className,
-    callbackUrl,
 }: WalletAuthButtonProps) {
-    const { connect, isPendingConnectWallet } = useWagmiConnection();
-    const { connectors } = useConnect();
-    const [isInstalled, setIsInstalled] = useState<boolean | null>(null);
+    const { startLoading, endLoading } = useLoading();
+    const { connect, isConnected } = useWagmiConnection();
+    const connectors = useConnectors();
 
-    const walletInfo = useMemo(() => {
-        const connectorId = provider.id.toLowerCase();
-        let walletType: WalletProviderType;
-        if (connectorId.includes("metamask")) {
-            walletType = "metamask";
-        } else if (connectorId.includes("walletconnect")) {
-            walletType = "walletconnect";
-        } else {
-            walletType = "metamask";
+    const handleConnect = useCallback(async () => {
+        // 이미 연결되어 있으면 리다이렉트
+        if (isConnected) {
+            window.location.href = callbackUrl;
+            return;
         }
 
-        return WALLET_PROVIDERS[walletType];
-    }, [provider.id]);
-
-    useEffect(() => {
-        const checkInstallation = async () => {
-            try {
-                const installed = await walletInfo.detectFunction();
-                setIsInstalled(installed);
-            } catch (error) {
-                console.error("Error checking wallet installation:", error);
-                setIsInstalled(false);
+        // provider.id에 해당하는 커넥터 찾기
+        const connector = connectors.find((c) => {
+            // MetaMask 처리
+            if (provider.id === "metamask") {
+                return c.id === "metaMask" || c.name === "MetaMask";
             }
-        };
-
-        checkInstallation().catch((error) => {
-            console.error("Error checking wallet installation:", error);
-            setIsInstalled(false);
-        });
-    }, [walletInfo]);
-
-    const handleClick = () => {
-        if (isInstalled) {
-            const connector = connectors.find((connector) => {
-                const connectorId = connector.id.toLowerCase();
-                const providerId = provider.id.toLowerCase();
-
+            // WalletConnect 처리
+            if (provider.id === "walletconnect") {
+                return c.id === "walletConnect" || c.name === "WalletConnect";
+            }
+            // Coinbase Wallet 처리
+            if (provider.id === "coinbase") {
                 return (
-                    connectorId.includes(providerId) ||
-                    (providerId === "metamask" &&
-                        connectorId.includes("metamask")) ||
-                    (providerId === "walletconnect" &&
-                        connectorId.includes("walletconnect"))
+                    c.id === "coinbaseWallet" || c.name === "Coinbase Wallet"
                 );
-            });
-
-            if (!connector) {
-                console.error(`Connector for ${provider.id} not found`);
-                if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                    window.location.href =
-                        "https://metamask.app.link/dapp/" +
-                        window.location.origin;
-                    return;
-                }
-                const installUrl = getInstallUrl(provider);
-                window.open(installUrl, "_blank");
-                return;
             }
+            // 기타 지갑
+            return c.id.toLowerCase() === provider.id.toLowerCase();
+        });
 
-            connect(connector, callbackUrl).catch((error) => {
-                console.error("Failed to connect wallet:", error);
-            });
-        } else {
-            const installUrl = getInstallUrl(walletInfo);
-            window.open(installUrl, "_blank");
+        if (!connector) {
+            console.error(`Connector not found for provider: ${provider.id}`);
+            return;
         }
-    };
 
-    const buttonText = useMemo(() => {
-        if (isPendingConnectWallet) return "Connecting...";
-        if (isInstalled === null) return "Checking...";
-        if (isInstalled) return `Sign in with ${walletInfo.name}`;
-        return `Install ${walletInfo.name}`;
-    }, [isPendingConnectWallet, isInstalled, walletInfo.name]);
+        try {
+            startLoading();
+            await connect(connector, callbackUrl);
+        } catch (error) {
+            console.error("Failed to connect wallet:", error);
+        } finally {
+            endLoading();
+        }
+    }, [
+        connectors,
+        provider.id,
+        connect,
+        callbackUrl,
+        isConnected,
+        startLoading,
+        endLoading,
+    ]);
 
     return (
         <Button
             variant="outline"
-            onClick={handleClick}
+            onClick={handleConnect}
             className={cn(
                 "w-full items-center justify-center",
-                walletInfo.color,
+                provider.color,
                 className
             )}
         >
-            {walletInfo.icon && (
+            {provider.icon && (
                 <img
-                    src={walletInfo.icon}
-                    alt={`${walletInfo.name} icon`}
-                    style={{ width: "20px", height: "auto" }}
+                    src={provider.icon}
+                    alt={`${provider.name} icon`}
+                    className="w-5 h-5"
                 />
             )}
-            <span className="ml-2">{buttonText}</span>
+            <span className="ml-2">
+                {isConnected ? "Continue with" : "Connect"} {provider.name}
+            </span>
         </Button>
     );
 }

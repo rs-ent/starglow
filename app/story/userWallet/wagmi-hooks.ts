@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { WalletStatus } from "@prisma/client";
 import { useSession } from "next-auth/react";
@@ -12,9 +12,12 @@ import {
     useDisconnect,
     useChainId,
     useSwitchChain,
+    useConnections,
 } from "wagmi";
+import { BaseError } from "wagmi";
 
 import { setUserWithWallet } from "@/app/actions/user";
+import { useToast } from "@/app/hooks/useToast";
 
 import { useUserWallet } from "./hooks";
 import { useStoryNetwork } from "../network/hooks";
@@ -23,6 +26,7 @@ import type { BlockchainNetwork } from "@prisma/client";
 import type { Connector } from "wagmi";
 
 export function useWagmiConnection() {
+    const toast = useToast();
     const { storyNetworks } = useStoryNetwork({
         getStoryNetworksInput: {
             isActive: true,
@@ -30,15 +34,28 @@ export function useWagmiConnection() {
     });
 
     const { data: session } = useSession();
-    const { address, isConnected } = useAccount();
-    const { connect } = useConnect();
+    const { address, isConnected, chain } = useAccount();
+    const { connect, connectors } = useConnect({
+        mutation: {
+            onError: (error) => {
+                handleWagmiError(error);
+            },
+        },
+    });
     const { disconnect } = useDisconnect();
     const chainId = useChainId();
-    const { switchChain } = useSwitchChain();
+    const { switchChain, chains } = useSwitchChain({
+        mutation: {
+            onError: (error) => {
+                handleWagmiError(error);
+            },
+        },
+    });
+    const connections = useConnections();
 
-    const [selectedConnector, setSelectedConnector] =
-        useState<Connector | null>(null);
-    const [callbackUrl, setCallbackUrl] = useState<string | null>(null);
+    // 연결 처리 중복 방지를 위한 ref
+    const isProcessingConnection = useRef(false);
+    const callbackUrlRef = useRef<string | null>(null);
 
     const {
         connectWalletAsync,
@@ -59,83 +76,155 @@ export function useWagmiConnection() {
         isErrorUpdateWallet,
     } = useUserWallet();
 
+    // 현재 네트워크 정보
     const currentNetwork = storyNetworks
         ? (storyNetworks as BlockchainNetwork[]).find(
               (network: BlockchainNetwork) => network.chainId === chainId
           )
         : null;
 
+    // Wagmi 에러 처리
+    const handleWagmiError = useCallback(
+        (error: Error) => {
+            if (error instanceof BaseError) {
+                const errorMessage = error.shortMessage || error.message;
+
+                // 사용자 친화적인 에러 메시지
+                if (error.name === "UserRejectedRequestError") {
+                    toast.info("Connection request was cancelled");
+                } else if (error.name === "ChainMismatchError") {
+                    toast.error("Please switch to the correct network");
+                } else if (error.name === "ConnectorNotFoundError") {
+                    toast.error("No wallet found. Please install a wallet");
+                } else {
+                    toast.error(errorMessage);
+                }
+
+                console.error("Wagmi error:", {
+                    name: error.name,
+                    message: error.message,
+                    details: error.details,
+                });
+            } else {
+                toast.error("An unexpected error occurred");
+                console.error("Unknown error:", error);
+            }
+        },
+        [toast]
+    );
+
+    // 지갑 연결
     const handleConnect = useCallback(
         async (selectedConnector: Connector, callbackUrl?: string) => {
             try {
-                setSelectedConnector(selectedConnector);
-                setCallbackUrl(callbackUrl || null);
-                connect({ connector: selectedConnector });
+                if (isProcessingConnection.current) {
+                    return;
+                }
+
+                isProcessingConnection.current = true;
+                callbackUrlRef.current = callbackUrl || null;
+
+                await connect({ connector: selectedConnector });
             } catch (error) {
                 console.error("Failed to connect wallet:", error);
-                throw error;
+                handleWagmiError(error as Error);
+            } finally {
+                isProcessingConnection.current = false;
             }
         },
-        [connect, setSelectedConnector, setCallbackUrl]
+        [connect, handleWagmiError]
     );
 
+    // 연결 성공 시 처리
     useEffect(() => {
-        const setUser = async () => {
-            if (isConnected && address && selectedConnector) {
-                let user = null;
-                if (session?.user) {
-                    user = session.user;
-                } else {
+        const processConnection = async () => {
+            if (!isConnected || !address || isProcessingConnection.current) {
+                return;
+            }
+
+            // 현재 연결된 커넥터 찾기
+            const currentConnection = connections.find((conn) =>
+                conn.accounts.includes(address)
+            );
+
+            if (!currentConnection) return;
+
+            try {
+                isProcessingConnection.current = true;
+
+                let user = session?.user;
+                if (!user) {
                     const { user: newUser } = await setUserWithWallet({
                         walletAddress: address,
-                        provider: selectedConnector.id,
+                        provider: currentConnection.connector.id,
                     });
                     user = newUser;
                 }
 
-                await connectWalletAsync({
-                    address,
-                    network: chainId.toString(),
-                    provider: selectedConnector.id,
-                    userId: user.id,
-                });
+                if (user) {
+                    await connectWalletAsync({
+                        address,
+                        network: chainId.toString(),
+                        provider: currentConnection.connector.id,
+                        userId: user.id,
+                    });
 
-                if (callbackUrl) {
-                    window.location.href = callbackUrl;
+                    toast.success("Wallet connected successfully");
+
+                    // 콜백 URL로 리다이렉트
+                    if (callbackUrlRef.current) {
+                        window.location.href = callbackUrlRef.current;
+                        callbackUrlRef.current = null;
+                    }
                 }
+            } catch (error) {
+                console.error("Failed to process wallet connection:", error);
+                toast.error("Failed to save wallet connection");
+            } finally {
+                isProcessingConnection.current = false;
             }
         };
 
-        setUser().catch((error) => {
-            console.error(error);
-        });
+        processConnection().catch(console.error);
     }, [
         isConnected,
         address,
         chainId,
-        selectedConnector,
-        callbackUrl,
+        connections,
         connectWalletAsync,
         session?.user,
+        toast,
     ]);
 
+    // 체인 전환
     const handleSwitchChain = useCallback(
         async (targetChainId: number) => {
             try {
-                switchChain({ chainId: targetChainId as any });
+                const targetChain = chains.find((c) => c.id === targetChainId);
+                if (!targetChain) {
+                    toast.error("Unsupported network");
+                    return;
+                }
+
+                await switchChain({ chainId: targetChainId });
+                toast.success(`Switched to ${targetChain.name}`);
             } catch (error) {
                 console.error("Failed to switch chain:", error);
-                throw error;
+                handleWagmiError(error as Error);
             }
         },
-        [switchChain]
+        [switchChain, chains, toast, handleWagmiError]
     );
 
+    // 지갑 연결 해제
     const handleDisconnect = useCallback(async () => {
         try {
             const prevAddress = address;
-            disconnect();
 
+            // 먼저 지갑 연결 해제
+            await disconnect();
+
+            // DB 업데이트
             if (prevAddress && session?.user?.id) {
                 await updateWalletAsync({
                     userId: session.user.id,
@@ -143,32 +232,53 @@ export function useWagmiConnection() {
                     status: WalletStatus.INACTIVE,
                 });
             }
+
+            toast.success("Wallet disconnected");
         } catch (error) {
             console.error("Failed to disconnect wallet:", error);
-            throw error;
+            toast.error("Failed to disconnect wallet");
         }
-    }, [disconnect, address, updateWalletAsync, session]);
+    }, [disconnect, address, updateWalletAsync, session, toast]);
+
+    // 지원되는 커넥터 필터링
+    const availableConnectors = connectors.filter(
+        (connector) => connector.ready !== false
+    );
 
     return {
+        // 연결 상태
         isConnected,
         address,
         chainId,
+        chain,
+
+        // 네트워크 정보
         networks: storyNetworks,
         currentNetwork,
+        chains,
 
+        // 커넥터
+        connectors: availableConnectors,
+        connections,
+
+        // 액션
         connect: handleConnect,
         disconnect: handleDisconnect,
         switchChain: handleSwitchChain,
 
+        // 상태 플래그
         isPendingConnectWallet,
         isSuccessConnectWallet,
         isErrorConnectWallet,
+
+        // 서명 검증
         verifyWalletSignature,
         verifyWalletSignatureAsync,
         isPendingVerifyWalletSignature,
         isSuccessVerifyWalletSignature,
         isErrorVerifyWalletSignature,
 
+        // 지갑 업데이트
         updateWallet,
         isPendingUpdateWallet,
         isSuccessUpdateWallet,
