@@ -103,7 +103,7 @@
     "lucide-react": "^0.486.0",
     "motion": "^12.15.0",
     "multiformats": "^13.3.6",
-    "next": "^15.4.0-canary.91",
+    "next": "^15.4.0-canary.92",
     "next-auth": "^5.0.0-beta.28",
     "node-gyp": "^11.1.0",
     "opensea-js": "^7.1.18",
