@@ -33,6 +33,10 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(hostnameRedirect.destination, 301);
     }
 
+    if (request.nextUrl.pathname === "/user") {
+        return NextResponse.redirect(new URL("/user/mystar", request.url));
+    }
+
     const response = NextResponse.next();
     response.headers.set("Cache-Control", "no-store, must-revalidate");
 
@@ -47,5 +51,6 @@ export const config = {
     matcher: [
         "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
         "/api/actions/:path*",
+        "/user",
     ],
 };
