@@ -19,6 +19,7 @@ import Button from "../atoms/Button";
 import WarningPopup from "../atoms/WarningPopup";
 
 import type { PaymentPostProcessorDetails } from "@/app/hooks/usePaymentPostProcessor";
+import type { ExchangeRateInfo } from "@/app/actions/exchangeRate";
 import type {
     PayMethod,
     ProductTable,
@@ -77,6 +78,7 @@ export default function PaymentModule({
     const [message, setMessage] = useState(
         "If you leave this page before the payment is completed, the process will be lost."
     );
+    const [isHandlingResult, setIsHandlingResult] = useState(false);
 
     const paymentResult = useMemo(
         () => ({
@@ -95,6 +97,10 @@ export default function PaymentModule({
     const { initiatePayment, isCreatingPayment, currentPaymentId } =
         usePayment();
 
+    const [exchangeRateInfo, setExchangeRateInfo] =
+        useState<ExchangeRateInfo | null>(null);
+    const [isExchangeRateLoading, setIsExchangeRateLoading] = useState(false);
+
     const {
         processPayment: postProcess,
         isLoading: isPostProcessing,
@@ -112,12 +118,27 @@ export default function PaymentModule({
         },
     });
 
-    const exchangeRate = getExchangeRate(
-        productInitialCurrencyForDisplay,
-        productInitialCurrencyForDisplay === "CURRENCY_KRW"
-            ? "CURRENCY_USD"
-            : "CURRENCY_KRW"
-    );
+    useEffect(() => {
+        const fetchExchangeRate = async () => {
+            setIsExchangeRateLoading(true);
+            try {
+                const rateInfo = await getExchangeRate(
+                    productInitialCurrencyForDisplay,
+                    productInitialCurrencyForDisplay === "CURRENCY_KRW"
+                        ? "CURRENCY_USD"
+                        : "CURRENCY_KRW"
+                );
+                setExchangeRateInfo(rateInfo);
+            } catch (error) {
+                console.error("Failed to fetch exchange rate:", error);
+                setExchangeRateInfo(null);
+            } finally {
+                setIsExchangeRateLoading(false);
+            }
+        };
+
+        void fetchExchangeRate();
+    }, [getExchangeRate, productInitialCurrencyForDisplay]);
 
     const authUserId = useAuthUserId();
     const [payMethod, setPayMethod] = useState<PayMethod>("CARD");
@@ -136,14 +157,14 @@ export default function PaymentModule({
             onDisplayPriceChange &&
             productInitialPriceForDisplay &&
             productInitialCurrencyForDisplay &&
-            !exchangeRate.isLoading &&
-            exchangeRate.data
+            !isExchangeRateLoading &&
+            exchangeRateInfo
         ) {
             if (productInitialCurrencyForDisplay === currency) {
                 onDisplayPriceChange(productInitialPriceForDisplay);
             } else {
                 onDisplayPriceChange(
-                    productInitialPriceForDisplay * exchangeRate.data.rate
+                    productInitialPriceForDisplay * exchangeRateInfo.rate
                 );
             }
         }
@@ -171,9 +192,10 @@ export default function PaymentModule({
     };
 
     useEffect(() => {
-        if (!paymentResult.paymentId) return;
+        if (!paymentResult.paymentId || isHandlingResult) return;
 
         const handlePaymentResult = async () => {
+            setIsHandlingResult(true);
             startLoading();
             try {
                 const payment = await getPayment({
@@ -247,6 +269,7 @@ export default function PaymentModule({
         onPaymentError,
         onPaymentCancel,
         onPaymentRefund,
+        isHandlingResult,
     ]);
 
     useEffect(() => {

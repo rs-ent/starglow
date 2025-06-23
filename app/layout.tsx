@@ -10,7 +10,7 @@ import "./globals.css";
 
 import Toast from "@/components/atoms/Toast";
 
-import Providers from "./Providers";
+import Providers from "./Providers.loader";
 
 import Loading from "@/components/atoms/Loading";
 import Navigation from "@/components/navigation/Navigation";

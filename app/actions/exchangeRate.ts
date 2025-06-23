@@ -6,7 +6,7 @@ import type * as PortOne from "@portone/browser-sdk/v2";
 import type { PrismaClient } from "@prisma/client";
 
 const EXCHANGE_RATE_UPDATE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
-const EXCHANGE_RATE_FALLBACK = 1300;
+const USD_TO_KRW_FALLBACK_RATE = 1300;
 
 export interface ExchangeRateInfo {
     fromCurrency: PortOne.Entity.Currency;
@@ -74,6 +74,12 @@ export async function getExchangeRateInfo({
         const data = await response.json();
         const newRate = data.rates[toCurrencyStr];
 
+        if (typeof newRate !== "number") {
+            throw new Error(
+                `Invalid exchange rate received for ${fromCurrencyStr} to ${toCurrencyStr}`
+            );
+        }
+
         const savedRate = await client.exchangeRate.create({
             data: {
                 fromCurrency: fromCurrencyStr,
@@ -124,10 +130,15 @@ export async function getExchangeRateInfo({
             };
         }
 
+        let rate = USD_TO_KRW_FALLBACK_RATE;
+        if (fromCurrency === "CURRENCY_KRW" && toCurrency === "CURRENCY_USD") {
+            rate = 1 / USD_TO_KRW_FALLBACK_RATE;
+        }
+
         return {
             fromCurrency,
             toCurrency,
-            rate: EXCHANGE_RATE_FALLBACK,
+            rate,
             provider: "fallback",
             createdAt: new Date(),
         };
