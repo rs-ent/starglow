@@ -78,9 +78,9 @@ export default function MainPartners() {
                     "w-full max-w-[900px]",
                     "mt-[30px]",
                     "grid",
-                    "grid-cols-4",
+                    "grid-cols-3 md:grid-cols-4",
                     "gap-[8px] sm:gap-[10px] md:gap-[12px] lg:gap-[14px] xl:gap-[16px]",
-                    "px-[60px] sm:px-[80px] md:px-[26px] lg:px-[28px] xl:px-[30px]"
+                    "px-[30px] sm:px-[50px] md:px-[26px] lg:px-[28px] xl:px-[30px]"
                 )}
             >
                 {partners.map((partner) => (
