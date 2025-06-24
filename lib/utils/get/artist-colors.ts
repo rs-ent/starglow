@@ -113,7 +113,9 @@ function makeSimilarColor(colors: string[], importance: number) {
     const targetColor = colors[colors.length - 1];
     const [h, s, l] = hexToHSL(targetColor);
 
-    const diff = importance - colors.length - 1;
+    // difference from the last defined color index
+    // e.g. if there are 3 colors (length = 3) and importance is 3, diff should be 1
+    const diff = importance - (colors.length - 1);
 
     // 더 자연스러운 색상 변화를 위한 값 조정
     const hueShift = diff * 10; // 10도씩 변화
