@@ -294,16 +294,6 @@ export default function NFTsCollectionsList({
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    // 프리로딩 완료 후에만 렌더링
-    if (!isPreloaded) {
-        return (
-            <div className="relative flex flex-col w-full h-screen overflow-hidden items-center justify-center">
-                <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
-                <PartialLoading text="Preparing Special Gifts... 🎁" />
-            </div>
-        );
-    }
-
     return (
         <div
             {...bind()}
@@ -319,94 +309,102 @@ export default function NFTsCollectionsList({
             >
                 NFTs
             </h2>
-            <Canvas camera={{ position: [0, 0, targetCameraZ], fov: 40 }}>
-                <Environment preset="city" />
-                <CameraLerp targetCameraZ={targetCameraZ} />
-                <ambientLight intensity={0.1} color="#ffffab" />
-                <directionalLight
-                    position={[-4, 4.4, 12]}
-                    intensity={1.2}
-                    color="#ffffff"
-                />
-                <directionalLight
-                    position={[4, -4.4, 12]}
-                    intensity={0.3}
-                    color="#ffffff"
-                />
-                <pointLight
-                    position={[-1.5, 20, 10]}
-                    intensity={35}
-                    color="#aa00ff"
-                    distance={50}
-                    decay={2}
-                />
 
-                <spotLight
-                    position={[-5, -15, 10]}
-                    intensity={1}
-                    color="#aa00ff"
-                    decay={0.1}
-                />
+            {isPreloaded ? (
+                <Canvas camera={{ position: [0, 0, targetCameraZ], fov: 40 }}>
+                    <Environment preset="city" />
+                    <CameraLerp targetCameraZ={targetCameraZ} />
+                    <ambientLight intensity={0.1} color="#ffffab" />
+                    <directionalLight
+                        position={[-4, 4.4, 12]}
+                        intensity={1.2}
+                        color="#ffffff"
+                    />
+                    <directionalLight
+                        position={[4, -4.4, 12]}
+                        intensity={0.3}
+                        color="#ffffff"
+                    />
+                    <pointLight
+                        position={[-1.5, 20, 10]}
+                        intensity={35}
+                        color="#aa00ff"
+                        distance={50}
+                        decay={2}
+                    />
 
-                <spotLight
-                    position={[0, -15, 10]}
-                    intensity={1}
-                    color="#00ffbb"
-                    decay={0.1}
-                />
-                <spotLight
-                    position={[5, -15, 10]}
-                    intensity={1}
-                    color="#ff00aa"
-                    decay={0.1}
-                />
+                    <spotLight
+                        position={[-5, -15, 10]}
+                        intensity={1}
+                        color="#aa00ff"
+                        decay={0.1}
+                    />
 
-                <spotLight
-                    position={[20, 0, 10]}
-                    intensity={1}
-                    color="#ff00aa"
-                    decay={0.1}
-                />
+                    <spotLight
+                        position={[0, -15, 10]}
+                        intensity={1}
+                        color="#00ffbb"
+                        decay={0.1}
+                    />
+                    <spotLight
+                        position={[5, -15, 10]}
+                        intensity={1}
+                        color="#ff00aa"
+                        decay={0.1}
+                    />
 
-                <spotLight
-                    position={[20, 10, 10]}
-                    intensity={1}
-                    color="#00ffbb"
-                    castShadow={true}
-                    decay={0.1}
-                />
+                    <spotLight
+                        position={[20, 0, 10]}
+                        intensity={1}
+                        color="#ff00aa"
+                        decay={0.1}
+                    />
 
-                <spotLight
-                    position={[20, -10, 10]}
-                    intensity={1}
-                    color="#aa00ff"
-                    decay={0.1}
-                />
+                    <spotLight
+                        position={[20, 10, 10]}
+                        intensity={1}
+                        color="#00ffbb"
+                        castShadow={true}
+                        decay={0.1}
+                    />
 
-                <spotLight
-                    position={[-20, 0, 10]}
-                    intensity={1}
-                    color="#aa00ff"
-                    decay={0.1}
-                />
+                    <spotLight
+                        position={[20, -10, 10]}
+                        intensity={1}
+                        color="#aa00ff"
+                        decay={0.1}
+                    />
 
-                <spotLight
-                    position={[-20, 10, 10]}
-                    intensity={1}
-                    color="#aa00ff"
-                    decay={0.1}
-                />
+                    <spotLight
+                        position={[-20, 0, 10]}
+                        intensity={1}
+                        color="#aa00ff"
+                        decay={0.1}
+                    />
 
-                <spotLight
-                    position={[-20, -10, 10]}
-                    intensity={1}
-                    color="#ff00bb"
-                    decay={0.1}
-                />
-                <Arrow positionY={positionY} confirmedAlpha={confirmedAlpha} />
+                    <spotLight
+                        position={[-20, 10, 10]}
+                        intensity={1}
+                        color="#aa00ff"
+                        decay={0.1}
+                    />
 
-                {spgs.map(renderCollection)}
-            </Canvas>
+                    <spotLight
+                        position={[-20, -10, 10]}
+                        intensity={1}
+                        color="#ff00bb"
+                        decay={0.1}
+                    />
+                    <Arrow
+                        positionY={positionY}
+                        confirmedAlpha={confirmedAlpha}
+                    />
+
+                    {spgs.map(renderCollection)}
+                </Canvas>
+            ) : (
+                <PartialLoading text="Preparing Special Gifts... 🎁" />
+            )}
         </div>
     );
 }

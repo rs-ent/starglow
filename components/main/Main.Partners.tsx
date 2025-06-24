@@ -1,9 +1,9 @@
 /// components/main/Main.Partners.tsx
 
-import {memo} from "react";
+import { memo } from "react";
 
-import {getResponsiveClass} from "@/lib/utils/responsiveClass";
-import {cn} from "@/lib/utils/tailwind";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
 
 // 파트너 정보 타입 정의
 interface Partner {
@@ -15,6 +15,7 @@ interface Partner {
 const partners: Partner[] = [
     { name: "nh", image: "/logo/partners/nh.png" },
     { name: "kodit", image: "/logo/partners/kodit.png" },
+    { name: "bandolabs", image: "/logo/partners/bandolabs.png" },
     { name: "yarche", image: "/logo/partners/yarche.png" },
     { name: "unicorn", image: "/logo/partners/unicorn.png" },
     { name: "yellowpunch", image: "/logo/partners/yellowpunch.png" },
@@ -46,7 +47,7 @@ const PartnerLogo = memo(({ partner }: { partner: Partner }) => (
             className={cn(
                 "absolute inset-0 w-full h-full",
                 "object-contain",
-                "p-[15px] sm:p-[12px] md:p-[14px] lg:p-[16px] xl:p-[18px]",
+                "p-[15px] sm:p-[12px] md:p-[14px] lg:p-[16px] xl:p-[18px]"
             )}
             style={{
                 filter: "brightness(0) invert(1)",
@@ -58,7 +59,7 @@ const PartnerLogo = memo(({ partner }: { partner: Partner }) => (
         />
     </div>
 ));
-PartnerLogo.displayName = 'PartnerLogo';
+PartnerLogo.displayName = "PartnerLogo";
 
 // 메인 컴포넌트
 export default function MainPartners() {
@@ -77,7 +78,7 @@ export default function MainPartners() {
                     "w-full max-w-[900px]",
                     "mt-[30px]",
                     "grid",
-                    "grid-cols-3 md:grid-cols-5",
+                    "grid-cols-4",
                     "gap-[8px] sm:gap-[10px] md:gap-[12px] lg:gap-[14px] xl:gap-[16px]",
                     "px-[60px] sm:px-[80px] md:px-[26px] lg:px-[28px] xl:px-[30px]"
                 )}

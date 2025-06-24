@@ -2,14 +2,14 @@
 
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowBigLeft } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowBigLeft, Sparkles, TrendingUp, Award } from "lucide-react";
 
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { cn } from "@/lib/utils/tailwind";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 
 import UserMyStarModalContents from "./User.MyStar.Modal.Contents";
-import Portal from "../atoms/Portal";
 
 import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import type { VerifiedSPG } from "@/app/story/interaction/actions";
@@ -21,7 +21,6 @@ interface UserMyStarModalProps {
     pollLogs: PollLog[];
     artist: Artist | null;
     verifiedSPGs: VerifiedSPG[];
-    open: boolean;
     onClose: () => void;
     onSelectFeed?: (
         initialFeeds: ArtistFeedWithReactions[],
@@ -32,7 +31,6 @@ interface UserMyStarModalProps {
 export default function UserMyStarModal({
     artist,
     verifiedSPGs,
-    open,
     onClose,
     player,
     questLogs,
@@ -41,265 +39,173 @@ export default function UserMyStarModal({
 }: UserMyStarModalProps) {
     if (!artist) return null;
 
+    // 통계 계산
+    const stats = {
+        totalNFTs: verifiedSPGs.reduce(
+            (sum, spg) => sum + spg.verifiedTokens.length,
+            0
+        ),
+        collections: verifiedSPGs.length,
+        questsAvailable: questLogs.filter((log) => !log.isClaimed).length,
+        pollsAvailable: pollLogs.length,
+    };
+
     return (
-        <Portal>
-            <AnimatePresence mode="wait">
-                {open && (
+        <div className={cn("w-full h-full relative overflow-y-auto")}>
+            {/* 헤더 */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className={cn(
+                    "relative z-10 flex items-center justify-between",
+                    "p-6 border-b border-white/10"
+                )}
+            >
+                <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={onClose}
+                    className={cn(
+                        "p-2 rounded-lg bg-white/10 backdrop-blur-sm",
+                        "hover:bg-white/20 transition-all"
+                    )}
+                >
+                    <ArrowBigLeft className="w-6 h-6 text-white" />
+                </motion.button>
+
+                <div className="flex items-center gap-3">
                     <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{
+                            delay: 0.2,
+                            type: "spring",
+                            stiffness: 200,
+                        }}
                         className={cn(
-                            "fixed inset-0 z-50 w-screen h-screen",
-                            "flex items-center justify-center"
+                            "rounded-full p-2",
+                            getResponsiveClass(50).frameClass
                         )}
                         style={{
-                            zIndex: 1000,
+                            background: `linear-gradient(135deg, ${ArtistBG(
+                                artist,
+                                0,
+                                100
+                            )}, ${ArtistBG(artist, 1, 100)})`,
                         }}
                     >
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="fixed inset-0 bg-black/80 -z-50 backdrop-blur-md"
-                            style={{ willChange: "opacity" }}
-                        />
-
-                        <motion.div
-                            initial={{
-                                opacity: 0,
-                                transform: "scale(0) rotate(0deg)",
-                            }}
-                            animate={{
-                                opacity: 0.4,
-                                transform: "scale(1.3) rotate(180deg)",
-                            }}
-                            exit={{
-                                opacity: 0,
-                                transform: "scale(0) rotate(0deg)",
-                            }}
-                            transition={{
-                                duration: 1.5,
-                                ease: [0.21, 1.11, 0.81, 0.99],
-                            }}
-                            className="fixed inset-0 -z-40 pointer-events-none"
-                            style={{
-                                background: `conic-gradient(from 0deg at 50% 50%, 
-                                transparent 0deg, 
-                                ${ArtistBG(artist, 0, 30)} 30deg, 
-                                transparent 60deg,
-                                transparent 120deg,
-                                ${ArtistBG(artist, 1, 30)} 150deg,
-                                transparent 180deg,
-                                transparent 240deg,
-                                ${ArtistBG(artist, 2, 30)} 270deg,
-                                transparent 300deg,
-                                transparent 360deg)`,
-                                willChange: "transform, opacity",
-                            }}
-                        />
-
-                        <motion.div
-                            initial={{
-                                transform: "scale(0.5)",
-                                opacity: 0,
-                            }}
-                            animate={{
-                                transform: "scale(3)",
-                                opacity: [0, 0.8, 0],
-                            }}
-                            transition={{
-                                duration: 1.2,
-                                times: [0, 0.5, 1],
-                                ease: [0.16, 1, 0.3, 1],
-                            }}
-                            className="fixed inset-0 -z-30 pointer-events-none"
-                            style={{
-                                background: `radial-gradient(circle at 50% 50%, 
-                                transparent 40%, 
-                                ${ArtistBG(artist, 0, 60)} 48%, 
-                                transparent 52%)`,
-                                willChange: "transform, opacity",
-                            }}
-                        />
-
-                        <div className="fixed inset-0 z-50 pointer-events-none">
-                            {Array.from({ length: 36 }).map((_, i) => {
-                                const angle = Math.random() * 360;
-                                const startRadius = Math.random() * 40;
-                                const endRadius = 80 + Math.random() * 180;
-                                const delay = 0.1 + Math.random() * 0.5;
-
-                                return (
-                                    <motion.div
-                                        key={`particle-${i}`}
-                                        initial={{
-                                            opacity: 0,
-                                            transform: `translate(-50%, -50%) scale(0)`,
-                                        }}
-                                        animate={{
-                                            opacity: [0, 1, 0],
-                                            transform: [
-                                                `translate(calc(-50% + ${
-                                                    Math.cos(
-                                                        (angle * Math.PI) / 180
-                                                    ) * startRadius
-                                                }px), calc(-50% + ${
-                                                    Math.sin(
-                                                        (angle * Math.PI) / 180
-                                                    ) * startRadius
-                                                }px)) scale(0)`,
-                                                `translate(calc(-50% + ${
-                                                    Math.cos(
-                                                        (angle * Math.PI) / 180
-                                                    ) * endRadius
-                                                }px), calc(-50% + ${
-                                                    Math.sin(
-                                                        (angle * Math.PI) / 180
-                                                    ) * endRadius
-                                                }px)) scale(1)`,
-                                                `translate(calc(-50% + ${
-                                                    Math.cos(
-                                                        (angle * Math.PI) / 180
-                                                    ) *
-                                                    (endRadius + 30)
-                                                }px), calc(-50% + ${
-                                                    Math.sin(
-                                                        (angle * Math.PI) / 180
-                                                    ) *
-                                                    (endRadius + 30)
-                                                }px)) scale(0)`,
-                                            ],
-                                        }}
-                                        transition={{
-                                            duration: 1,
-                                            delay,
-                                            ease: [0.08, 0.82, 0.17, 1],
-                                        }}
-                                        className="absolute left-1/2 top-1/2 w-3 h-3 rounded-full"
-                                        style={{
-                                            background: ArtistBG(
-                                                artist,
-                                                i,
-                                                100
-                                            ),
-                                            boxShadow: `0 0 10px ${ArtistBG(
-                                                artist,
-                                                i,
-                                                60
-                                            )}`,
-                                            willChange: "transform, opacity",
-                                        }}
-                                    />
-                                );
-                            })}
-                        </div>
-
-                        <motion.div
-                            initial={{
-                                opacity: 0,
-                                transform: "scale(0.8)",
-                            }}
-                            animate={{
-                                opacity: 0.5,
-                                transform: "scale(1)",
-                            }}
-                            exit={{
-                                opacity: 0,
-                                transform: "scale(0.8)",
-                            }}
-                            transition={{
-                                duration: 0.6,
-                                ease: [0.43, 0.13, 0.23, 0.96],
-                            }}
-                            className="fixed inset-0 -z-25 pointer-events-none"
-                            style={{
-                                background: `radial-gradient(circle at 50% 50%, 
-                                ${ArtistBG(artist, 0, 30)}, 
-                                ${ArtistBG(artist, 1, 15)} 50%, 
-                                transparent 80%)`,
-                                filter: "blur(40px)",
-                                willChange: "transform, opacity",
-                            }}
-                        />
-
-                        <div className="fixed top-1 left-1 z-10">
-                            <ArrowBigLeft
-                                className="w-8 h-8 text-white"
-                                onClick={onClose}
-                            />
-                        </div>
-
-                        <div className={cn("w-full h-full relative")}>
-                            <motion.div
-                                initial={{
-                                    opacity: 0,
-                                    transform:
-                                        "perspective(1200px) rotateX(-20deg) scale(0.9)",
-                                }}
-                                animate={{
-                                    opacity: 1,
-                                    transform:
-                                        "perspective(1200px) rotateX(0deg) scale(1)",
-                                }}
-                                exit={{
-                                    opacity: 0,
-                                    transform:
-                                        "perspective(1200px) rotateX(-20deg) scale(0.9)",
-                                }}
-                                transition={{
-                                    duration: 0.7,
-                                    delay: 0.4,
-                                    ease: [0.22, 1, 0.36, 1],
-                                }}
-                                className="h-full"
-                                style={{
-                                    willChange: "transform, opacity",
-                                }}
-                            >
-                                <div
-                                    className={cn(
-                                        "relative w-full h-full overflow-hidden",
-                                        "bg-gradient-to-r animate-gradient-shift"
-                                    )}
-                                    style={{
-                                        backgroundImage: `linear-gradient(135deg, 
-                                        ${ArtistBG(artist, 1, 95)}, 
-                                        ${ArtistBG(artist, 0, 95)}, 
-                                        ${ArtistBG(artist, 2, 95)}, 
-                                        ${ArtistBG(artist, 0, 95)})`,
-                                        backgroundSize: "100% 100%",
-                                    }}
-                                >
-                                    <div
-                                        className={cn(
-                                            "w-full h-full overflow-y-auto overflow-x-hidden",
-                                            "backdrop-blur-xl"
-                                        )}
-                                        style={{
-                                            boxShadow: `
-                                            0 0 40px ${ArtistBG(artist, 0, 20)},
-                                            inset 0 0 30px ${ArtistBG(
-                                                artist,
-                                                2,
-                                                10
-                                            )}
-                                        `,
-                                        }}
-                                    >
-                                        <UserMyStarModalContents
-                                            artist={artist}
-                                            verifiedSPGs={verifiedSPGs}
-                                            player={player}
-                                            questLogs={questLogs}
-                                            pollLogs={pollLogs}
-                                            onSelectFeed={onSelectFeed}
-                                        />
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </div>
+                        <Sparkles className="w-6 h-6 text-white" />
                     </motion.div>
+                    <div>
+                        <motion.h1
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className={cn(
+                                "font-bold text-white",
+                                getResponsiveClass(25).textClass
+                            )}
+                        >
+                            {artist.name}
+                        </motion.h1>
+                    </div>
+                </div>
+            </motion.div>
+
+            {/* Web3 통계 카드들 */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className={cn(
+                    "grid grid-cols-1 md:grid-cols-4 gap-4",
+                    "p-6 border-b border-white/10"
                 )}
-            </AnimatePresence>
-        </Portal>
+            >
+                {[
+                    {
+                        label: "NFTs",
+                        value: stats.totalNFTs,
+                        icon: Award,
+                        color: "purple",
+                    },
+                    {
+                        label: "Collections",
+                        value: stats.collections,
+                        icon: Sparkles,
+                        color: "pink",
+                    },
+                    {
+                        label: "Quests",
+                        value: stats.questsAvailable,
+                        icon: TrendingUp,
+                        color: "blue",
+                    },
+                    {
+                        label: "Polls",
+                        value: stats.pollsAvailable,
+                        icon: Award,
+                        color: "green",
+                    },
+                ].map((stat, index) => (
+                    <motion.div
+                        key={stat.label}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.6 + index * 0.1 }}
+                        className={cn(
+                            "bg-gradient-to-br from-white/10 to-white/5",
+                            "backdrop-blur-sm border border-white/10",
+                            "rounded-xl p-4 text-center"
+                        )}
+                    >
+                        <stat.icon
+                            className={cn(
+                                "w-6 h-6 mx-auto mb-2",
+                                stat.color === "purple" && "text-purple-400",
+                                stat.color === "pink" && "text-pink-400",
+                                stat.color === "blue" && "text-blue-400",
+                                stat.color === "green" && "text-green-400"
+                            )}
+                        />
+                        <p
+                            className={cn(
+                                "font-bold text-white",
+                                getResponsiveClass(20).textClass
+                            )}
+                        >
+                            {stat.value}
+                        </p>
+                        <p className="text-xs text-white/70">{stat.label}</p>
+                    </motion.div>
+                ))}
+            </motion.div>
+
+            {/* 메인 콘텐츠 */}
+            <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+                className="flex-1 overflow-y-auto"
+            >
+                <div
+                    className={cn(
+                        "bg-gradient-to-br from-white/5 to-transparent",
+                        "backdrop-blur-sm border-t border-white/10",
+                        "min-h-full"
+                    )}
+                >
+                    <UserMyStarModalContents
+                        artist={artist}
+                        verifiedSPGs={verifiedSPGs}
+                        player={player}
+                        questLogs={questLogs}
+                        pollLogs={pollLogs}
+                        onSelectFeed={onSelectFeed}
+                    />
+                </div>
+            </motion.div>
+        </div>
     );
 }

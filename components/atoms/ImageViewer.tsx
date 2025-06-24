@@ -9,7 +9,6 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { cn } from "@/lib/utils/tailwind";
 
 import PartialLoading from "./PartialLoading";
-import Image from "next/image";
 
 export interface ImageViewerProps {
     img: string;
@@ -75,13 +74,13 @@ export default function ImageViewer({
                                     height: "100%",
                                 }}
                             >
-                                <Image
+                                <img
                                     src={img}
                                     alt={title || ""}
                                     style={{
                                         width: "100%",
-                                        height: "100%",
-                                        objectFit: "cover",
+                                        height: "auto",
+                                        objectFit: "contain",
                                         userSelect: "none",
                                         pointerEvents: "all",
                                         boxShadow: `0 0 12px 2px ${shadowColor}`,

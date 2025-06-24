@@ -13,6 +13,7 @@ import PartialLoading from "../atoms/PartialLoading";
 
 import type { Player } from "@prisma/client";
 import type { User } from "next-auth";
+import Image from "next/image";
 
 interface QuestsProps {
     user: User | null;
@@ -26,21 +27,13 @@ function Quests({ user, player }: QuestsProps) {
         },
     });
 
-    if (isLoadingVerifiedSPGs) {
-        return (
-            <div className="w-full h-full flex justify-center items-center">
-                <PartialLoading text="Loading..." />
-            </div>
-        );
-    }
-
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
             <div className="fixed inset-0 -z-20">
                 <div className="absolute inset-0 bg-gradient-to-b from-[#09011b] to-[#311473]" />
 
                 <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                    <img
+                    <Image
                         src="/elements/donut.svg"
                         alt="Donut"
                         width={600}
@@ -51,9 +44,11 @@ function Quests({ user, player }: QuestsProps) {
                     />
                 </div>
 
-                <img
+                <Image
                     src="/elements/bg-quest-blur.svg"
                     alt="Background"
+                    width={1920}
+                    height={1080}
                     className="opacity-90 w-full h-full object-cover scale-125 lg:scale-100 bg-blend-overlay transition-all duration-1000"
                     loading="eager"
                     fetchPriority="high"
@@ -77,10 +72,14 @@ function Quests({ user, player }: QuestsProps) {
                         "mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]"
                     )}
                 >
-                    <QuestsContents
-                        player={player}
-                        verifiedSPGs={verifiedSPGs}
-                    />
+                    {isLoadingVerifiedSPGs ? (
+                        <PartialLoading text="Loading..." />
+                    ) : (
+                        <QuestsContents
+                            player={player}
+                            verifiedSPGs={verifiedSPGs}
+                        />
+                    )}
                 </div>
             </div>
         </div>

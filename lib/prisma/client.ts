@@ -12,7 +12,6 @@ import { withAccelerate } from "@prisma/extension-accelerate";
  */
 
 declare global {
-    // eslint-disable-next-line no-var
     var prisma: ReturnType<typeof getPrismaClient> | undefined;
 }
 
