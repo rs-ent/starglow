@@ -14,6 +14,8 @@ import { SessionProvider } from "next-auth/react";
 import { WagmiProvider, createConfig, http, createStorage } from "wagmi";
 import { sepolia, storyAeneid } from "wagmi/chains";
 
+import { ModalProvider } from "@/app/hooks/useModalStack";
+
 // 체인 배열 정의
 export const chains = [sepolia, storyAeneid] as const;
 
@@ -122,10 +124,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <WagmiProvider config={wagmiConfig} reconnectOnMount>
             <QueryClientProvider client={queryClient}>
                 <SessionProvider refetchInterval={0}>
-                    {children}
-                    {process.env.NODE_ENV === "development" && (
-                        <ReactQueryDevtools initialIsOpen={false} />
-                    )}
+                    <ModalProvider>
+                        {children}
+                        {process.env.NODE_ENV === "development" && (
+                            <ReactQueryDevtools initialIsOpen={false} />
+                        )}
+                    </ModalProvider>
                 </SessionProvider>
             </QueryClientProvider>
         </WagmiProvider>

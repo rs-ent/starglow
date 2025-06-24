@@ -4,9 +4,8 @@
 
 import { XIcon } from "lucide-react";
 
-
 import UserSettingsProfile from "./User.Settings.Profile";
-import Portal from "../atoms/Portal";
+import EnhancedPortal from "../atoms/Portal.Enhanced";
 
 import type { Player } from "@prisma/client";
 import type { User } from "next-auth";
@@ -27,7 +26,7 @@ export default function UserSettingsProfileModal({
     onClose,
 }: UserSettingsProfileModalProps) {
     return (
-        <Portal>
+        <EnhancedPortal layer="modal">
             <div
                 className="fixed inset-0 bg-[rgba(0,0,0,0.3)] flex items-center justify-center z-50 p-2"
                 onClick={onClose}
@@ -48,6 +47,6 @@ export default function UserSettingsProfileModal({
                     />
                 </div>
             </div>
-        </Portal>
+        </EnhancedPortal>
     );
 }

@@ -30,7 +30,6 @@ interface QuestsArtistMissionsProps {
     showInviteFriends?: boolean;
     bgColorFromInviteFriends?: string;
     bgColorToInviteFriends?: string;
-    onInteractFeedbackStateChange?: (isOpen: boolean) => void;
 }
 
 function QuestsArtistMissions({
@@ -44,7 +43,6 @@ function QuestsArtistMissions({
     showInviteFriends = true,
     bgColorFromInviteFriends = "#A5D7FB",
     bgColorToInviteFriends = "#8E76FA",
-    onInteractFeedbackStateChange,
 }: QuestsArtistMissionsProps) {
     const { quests, isLoading, error } = useQuestGet({
         getQuestsInput: {
@@ -179,9 +177,6 @@ function QuestsArtistMissions({
                                 permission={permission}
                                 tokenGating={tokenGating}
                                 referralLogs={referralLogs || []}
-                                onInteractFeedbackStateChange={
-                                    onInteractFeedbackStateChange
-                                }
                             />
                         </div>
                     )}
@@ -216,7 +211,6 @@ function QuestsArtistMissions({
             artist.logoUrl,
             artist.name,
             player,
-            onInteractFeedbackStateChange,
         ]
     );
 

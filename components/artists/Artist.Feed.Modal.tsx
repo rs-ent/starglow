@@ -11,7 +11,7 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
 import ArtistFeedModalCard from "./Artist.Feed.Modal.Card";
-import Portal from "../atoms/Portal";
+import EnhancedPortal from "../atoms/Portal.Enhanced";
 
 import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import type { Artist } from "@prisma/client";
@@ -92,7 +92,7 @@ export default React.memo(function ArtistFeedModal({
     if (!isOpen) return null;
 
     return (
-        <Portal>
+        <EnhancedPortal layer="modal">
             <div
                 className="fixed w-full h-full inset-0 overscroll-none"
                 onClick={onClose}
@@ -193,6 +193,6 @@ export default React.memo(function ArtistFeedModal({
                     </div>
                 </div>
             </div>
-        </Portal>
+        </EnhancedPortal>
     );
 });

@@ -2,15 +2,16 @@
 
 "use client";
 
-import { useCallback, useState } from "react";
+import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowBigLeft } from "lucide-react";
 
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import { cn } from "@/lib/utils/tailwind";
+import { useModalStack } from "@/app/hooks/useModalStack";
 
 import UserMyStarModalContents from "./User.MyStar.Modal.Contents";
-import Portal from "../atoms/Portal";
+import EnhancedPortal from "../atoms/Portal.Enhanced";
 
 import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import type { VerifiedSPG } from "@/app/story/interaction/actions";
@@ -28,8 +29,9 @@ interface UserMyStarModalProps {
         initialFeeds: ArtistFeedWithReactions[],
         selectedFeedIndex: number
     ) => void;
-    disableInteraction?: boolean;
 }
+
+const modalId = "user-mystar-modal";
 
 export default function UserMyStarModal({
     artist,
@@ -40,18 +42,21 @@ export default function UserMyStarModal({
     questLogs,
     pollLogs,
     onSelectFeed,
-    disableInteraction = false,
 }: UserMyStarModalProps) {
-    const [isInteractFeedbackOpen, setIsInteractFeedbackOpen] = useState(false);
+    const { pushModal, popModal } = useModalStack();
 
-    const handleInteractFeedbackStateChange = useCallback((isOpen: boolean) => {
-        setIsInteractFeedbackOpen(isOpen);
-    }, []);
+    useEffect(() => {
+        if (open) {
+            pushModal(modalId);
+        } else {
+            popModal(modalId);
+        }
+    }, [open, pushModal, popModal]);
 
     if (!artist) return null;
 
     return (
-        <Portal>
+        <EnhancedPortal layer="modal">
             <AnimatePresence mode="wait">
                 {open && (
                     <motion.div
@@ -61,10 +66,6 @@ export default function UserMyStarModal({
                         )}
                         style={{
                             zIndex: 1000,
-                            pointerEvents:
-                                disableInteraction || isInteractFeedbackOpen
-                                    ? "none"
-                                    : "auto",
                         }}
                     >
                         <motion.div
@@ -305,9 +306,6 @@ export default function UserMyStarModal({
                                             questLogs={questLogs}
                                             pollLogs={pollLogs}
                                             onSelectFeed={onSelectFeed}
-                                            onInteractFeedbackStateChange={
-                                                handleInteractFeedbackStateChange
-                                            }
                                         />
                                     </div>
                                 </div>
@@ -316,6 +314,6 @@ export default function UserMyStarModal({
                     </motion.div>
                 )}
             </AnimatePresence>
-        </Portal>
+        </EnhancedPortal>
     );
 }

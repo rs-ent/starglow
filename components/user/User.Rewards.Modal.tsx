@@ -2,21 +2,21 @@
 
 "use client";
 
-import {memo, useCallback, useEffect, useRef, useState} from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import Slider from "react-slick";
 
-import {getResponsiveClass} from "@/lib/utils/responsiveClass";
-import {cn} from "@/lib/utils/tailwind";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
 
-import type {PlayerAssetWithAsset} from "./User.Rewards";
+import type { PlayerAssetWithAsset } from "./User.Rewards";
 
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import UserRewardsModalCard from "./User.Rewards.Modal.Card";
 
-import Portal from "@/components/atoms/Portal";
-import {useKeyPressMap} from "@/app/hooks/useKeyPress";
+import EnhancedPortal from "@/components/atoms/Portal.Enhanced";
+import { useKeyPressMap } from "@/app/hooks/useKeyPress";
 
 interface UserRewardsModalProps {
     playerId: string;
@@ -42,9 +42,10 @@ function UserRewardsModal({
     const hasMultipleRewards = rewards && rewards.length > 1;
 
     // 초기 슬라이드 인덱스 계산
-    const initialSlide = rewards && selectedReward
-        ? rewards.findIndex((r) => r.id === selectedReward.id)
-        : 0;
+    const initialSlide =
+        rewards && selectedReward
+            ? rewards.findIndex((r) => r.id === selectedReward.id)
+            : 0;
 
     // 슬라이더 설정
     const sliderSettings = {
@@ -82,13 +83,13 @@ function UserRewardsModal({
     // 키보드 이벤트 처리 - useKeyPressMap 사용
     useKeyPressMap(
         {
-            "Escape": closeModal,
-            "ArrowRight": handleNextSlide,
-            "ArrowLeft": handlePrevSlide,
+            Escape: closeModal,
+            ArrowRight: handleNextSlide,
+            ArrowLeft: handlePrevSlide,
         },
         {
             enabled: showModal,
-            preventDefault: true
+            preventDefault: true,
         }
     );
 
@@ -97,10 +98,10 @@ function UserRewardsModal({
         if (showModal) {
             // 모달이 DOM에 마운트된 후 애니메이션 시작
             requestAnimationFrame(() => setIsVisible(true));
-            
+
             // 스크롤 방지
             document.body.style.overflow = "hidden";
-            
+
             return () => {
                 document.body.style.overflow = "";
             };
@@ -108,17 +109,20 @@ function UserRewardsModal({
     }, [showModal]);
 
     // 배경 클릭 시 모달 닫기
-    const handleBackdropClick = useCallback((e: React.MouseEvent) => {
-        if (e.target === e.currentTarget) {
-            closeModal();
-        }
-    }, [closeModal]);
+    const handleBackdropClick = useCallback(
+        (e: React.MouseEvent) => {
+            if (e.target === e.currentTarget) {
+                closeModal();
+            }
+        },
+        [closeModal]
+    );
 
     // 모달이 표시되지 않을 때는 렌더링하지 않음
     if (!showModal) return null;
 
     return (
-        <Portal>
+        <EnhancedPortal layer="modal">
             <div
                 className={cn(
                     "fixed inset-0 w-full h-full bg-black/50 backdrop-blur-xs",
@@ -157,7 +161,7 @@ function UserRewardsModal({
                         />
                     </button>
                 </div>
-                
+
                 {/* 왼쪽 화살표 */}
                 <div className="absolute top-1/2 left-4 -translate-y-1/2 z-20">
                     <button
@@ -183,7 +187,7 @@ function UserRewardsModal({
                         />
                     </button>
                 </div>
-                
+
                 {/* 슬라이더 컨테이너 */}
                 <div className="w-full h-full max-w-[1200px] mx-auto px-4 flex items-center justify-center">
                     <Slider
@@ -206,7 +210,7 @@ function UserRewardsModal({
                     </Slider>
                 </div>
             </div>
-        </Portal>
+        </EnhancedPortal>
     );
 }
 

@@ -14,8 +14,9 @@ import { NumberTicker } from "@/components/magicui/number-ticker";
 import { TextAnimate } from "@/components/magicui/text-animate";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+import { useModalStack } from "@/app/hooks/useModalStack";
 
-import Portal from "./Portal";
+import EnhancedPortal from "@/components/atoms/Portal.Enhanced";
 import NFTsCollectionsCardR3FAcqusition from "../nfts/NFTs.Collections.Card.R3F.Acqusition";
 
 import type { SPG } from "@/app/story/spg/actions";
@@ -51,6 +52,9 @@ export default function InteractFeedback({
     rewardAmount,
     spg,
 }: InteractFeedbackProps) {
+    const { pushModal, popModal, setInteracting } = useModalStack();
+    const popupId = "interact-feedback-popup";
+
     const [successLottie, setSuccessLottie] = useState<any>(null);
 
     const handleConfetti = useCallback(() => {
@@ -78,6 +82,17 @@ export default function InteractFeedback({
 
         shoot();
     }, [autoCloseMs, type]);
+
+    // 모달 스택 관리
+    useEffect(() => {
+        if (open) {
+            pushModal(popupId);
+            setInteracting(popupId, true);
+        } else {
+            popModal(popupId);
+            setInteracting(popupId, false);
+        }
+    }, [open, pushModal, popModal, setInteracting, popupId]);
 
     // 자동 닫힘
     useEffect(() => {
@@ -113,7 +128,7 @@ export default function InteractFeedback({
     }, [type]);
 
     return (
-        <Portal>
+        <EnhancedPortal layer="popup">
             <AnimatePresence>
                 {open && (
                     <motion.div
@@ -122,7 +137,7 @@ export default function InteractFeedback({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.7 }}
-                        style={{ pointerEvents: "auto", zIndex: 2000 }}
+                        style={{ zIndex: 2000 }}
                     >
                         {/* 배경 블러/그라데이션 */}
                         <motion.div
@@ -132,7 +147,6 @@ export default function InteractFeedback({
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.7 }}
                             onClick={onClose}
-                            style={{ pointerEvents: "auto" }}
                         />
                         {/* 카드 */}
                         <motion.div
@@ -165,7 +179,6 @@ export default function InteractFeedback({
                             style={{
                                 background:
                                     "linear-gradient(135deg, rgba(30,30,40,0.95) 60%, rgba(60,60,80,0.85) 100%)",
-                                pointerEvents: "auto",
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
@@ -290,6 +303,6 @@ export default function InteractFeedback({
                     </motion.div>
                 )}
             </AnimatePresence>
-        </Portal>
+        </EnhancedPortal>
     );
 }

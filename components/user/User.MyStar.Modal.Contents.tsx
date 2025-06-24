@@ -22,7 +22,6 @@ interface UserMyStarModalContentsProps {
         initialFeeds: ArtistFeedWithReactions[],
         selectedFeedIndex: number
     ) => void;
-    onInteractFeedbackStateChange?: (isOpen: boolean) => void;
 }
 
 export default React.memo(function UserMyStarModalContents({
@@ -32,7 +31,6 @@ export default React.memo(function UserMyStarModalContents({
     questLogs,
     pollLogs,
     onSelectFeed,
-    onInteractFeedbackStateChange,
 }: UserMyStarModalContentsProps) {
     return (
         <div className={cn("max-w-[1000px] mx-auto")}>
@@ -43,7 +41,6 @@ export default React.memo(function UserMyStarModalContents({
                 questLogs={questLogs}
                 pollLogs={pollLogs}
                 onSelectFeed={onSelectFeed}
-                onInteractFeedbackStateChange={onInteractFeedbackStateChange}
             />
         </div>
     );

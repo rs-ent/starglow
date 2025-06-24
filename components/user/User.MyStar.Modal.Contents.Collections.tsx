@@ -34,7 +34,6 @@ interface UserMyStarModalContentsCollectionsProps {
         initialFeeds: ArtistFeedWithReactions[],
         selectedFeedIndex: number
     ) => void;
-    onInteractFeedbackStateChange?: (isOpen: boolean) => void;
 }
 
 export default React.memo(function UserMyStarModalContentsCollections({
@@ -44,7 +43,6 @@ export default React.memo(function UserMyStarModalContentsCollections({
     questLogs,
     pollLogs,
     onSelectFeed,
-    onInteractFeedbackStateChange,
 }: UserMyStarModalContentsCollectionsProps) {
     const sliderRef = useRef<Slider | null>(null);
 
@@ -187,9 +185,6 @@ export default React.memo(function UserMyStarModalContentsCollections({
                         bgColorFrom={ArtistBG(artist, 2, 100)}
                         bgColorTo={ArtistBG(artist, 3, 100)}
                         showInviteFriends={false}
-                        onInteractFeedbackStateChange={
-                            onInteractFeedbackStateChange
-                        }
                     />
                 </div>
             </div>

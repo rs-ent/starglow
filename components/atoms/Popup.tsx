@@ -8,7 +8,7 @@ import Image from "next/image";
 
 import { cn } from "@/lib/utils/tailwind";
 
-import Portal from "./Portal";
+import EnhancedPortal from "./Portal.Enhanced";
 
 interface PopupProps {
     children: React.ReactNode;
@@ -48,7 +48,7 @@ export default function Popup({
     }, [onClose]);
 
     return (
-        <Portal>
+        <EnhancedPortal layer="popup">
             <AnimatePresence>
                 {open && (
                     <motion.div
@@ -112,6 +112,6 @@ export default function Popup({
                     </motion.div>
                 )}
             </AnimatePresence>
-        </Portal>
+        </EnhancedPortal>
     );
 }

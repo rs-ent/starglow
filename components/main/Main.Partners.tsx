@@ -1,6 +1,7 @@
 /// components/main/Main.Partners.tsx
 
 import { memo } from "react";
+import Image from "next/image";
 
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -41,11 +42,11 @@ const PartnerLogo = memo(({ partner }: { partner: Partner }) => (
             "w-full"
         )}
     >
-        <img
+        <Image
             src={partner.image}
             alt={partner.name}
+            fill
             className={cn(
-                "absolute inset-0 w-full h-full",
                 "object-contain",
                 "p-[15px] sm:p-[12px] md:p-[14px] lg:p-[16px] xl:p-[18px]"
             )}
@@ -54,8 +55,7 @@ const PartnerLogo = memo(({ partner }: { partner: Partner }) => (
                 opacity: 0.92,
             }}
             loading="lazy"
-            decoding="async"
-            fetchPriority="low"
+            sizes="(max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
         />
     </div>
 ));

@@ -38,7 +38,6 @@ interface QuestsButtonProps {
     permission?: boolean;
     index: number;
     referralLogs: ReferralLog[];
-    onInteractFeedbackStateChange?: (isOpen: boolean) => void;
 }
 
 function QuestsButton({
@@ -57,7 +56,6 @@ function QuestsButton({
     permission = false,
     index,
     referralLogs,
-    onInteractFeedbackStateChange,
 }: QuestsButtonProps) {
     const toast = useToast();
 
@@ -431,13 +429,6 @@ function QuestsButton({
     useEffect(() => {
         setIsReady(!isLoadingAsset);
     }, [isLoadingAsset]);
-
-    // InteractFeedback 상태 변경 알림
-    useEffect(() => {
-        if (onInteractFeedbackStateChange) {
-            onInteractFeedbackStateChange(showInteractFeedback);
-        }
-    }, [showInteractFeedback, onInteractFeedbackStateChange]);
 
     // 반응형 클래스 계산
     const frameClass = getResponsiveClass(frameSize).frameClass;
