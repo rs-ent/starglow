@@ -13,6 +13,7 @@ import UserSettingsProfileModal from "../user/User.Settings.Profile.Modal";
 import type { ProviderType } from "@/app/types/auth";
 import type { Player } from "@prisma/client";
 import type { User } from "next-auth";
+import Image from "next/image";
 
 interface ProfileNameProps {
     user: User;
@@ -70,17 +71,25 @@ export default React.memo(function ProfileName({
                                     frameClass
                                 )}
                             >
-                                <img
+                                <Image
                                     src={icon}
                                     alt={`${provider} icon`}
                                     className={iconClass}
+                                    width={size}
+                                    height={size}
+                                    priority={false}
+                                    unoptimized={false}
                                 />
                             </div>
                         ) : (
-                            <img
+                            <Image
                                 src={icon}
                                 alt={`${provider} icon`}
                                 className={iconClass}
+                                width={size}
+                                height={size}
+                                priority={false}
+                                unoptimized={false}
                             />
                         )}
                     </>

@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils/tailwind";
 
 import type { StoredFile } from "@/app/actions/files";
 
+import Image from "next/image";
+
 interface FileUploaderProps {
     purpose?: string;
     bucket: string;
@@ -192,10 +194,14 @@ export default function FileUploader({
                                         getResponsiveClass(15).textClass
                                     )}
                                 >
-                                    <img
+                                    <Image
                                         src="/ui/folder-add.svg"
                                         alt="Choose Image"
                                         className="w-4 h-4"
+                                        width={16}
+                                        height={16}
+                                        priority={false}
+                                        unoptimized={false}
                                     />
                                     Choose Image
                                 </button>
@@ -220,10 +226,14 @@ export default function FileUploader({
                                         getResponsiveClass(15).textClass
                                     )}
                                 >
-                                    <img
+                                    <Image
                                         src="/ui/folder-add.svg"
                                         alt="Choose Image"
                                         className="w-3 h-3"
+                                        width={12}
+                                        height={12}
+                                        priority={false}
+                                        unoptimized={false}
                                     />
                                     Upload Image
                                 </button>

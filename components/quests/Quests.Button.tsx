@@ -18,6 +18,7 @@ import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
 
 import type { TokenGatingData } from "@/app/story/nft/actions";
 import type { Player, Quest, QuestLog, ReferralLog } from "@prisma/client";
+import Image from "next/image";
 
 // 디바운스 지연 시간 (밀리초)
 const DEBOUNCE_DELAY = 500;
@@ -524,13 +525,14 @@ function QuestsButton({
                                 )}
                             >
                                 {/* 퀘스트 아이콘 - 최적화된 이미지 로딩 */}
-                                <img
+                                <Image
                                     src={quest.icon || "/icons/quests/link.svg"}
                                     alt={quest.title}
+                                    width={frameSize * 2}
+                                    height={frameSize * 2}
                                     className={cn(frameClass)}
-                                    loading="lazy"
-                                    width={frameSize}
-                                    height={frameSize}
+                                    priority={false}
+                                    unoptimized={false}
                                 />
 
                                 <div className="flex flex-col items-start gap-[3px] pr-[10px]">
@@ -540,19 +542,18 @@ function QuestsButton({
                                         {quest.title}
                                     </div>
                                     <div className="flex flex-row justify-center items-center gap-1 opacity-70">
-                                        <div className={cn(textClass)}>
-                                            <img
-                                                src={
-                                                    asset?.iconUrl ||
-                                                    "/ui/assets.svg"
-                                                }
-                                                alt={asset?.name || ""}
-                                                className={cn(assetFrameClass)}
-                                                loading="lazy"
-                                                width={assetSize}
-                                                height={assetSize}
-                                            />
-                                        </div>
+                                        <Image
+                                            src={
+                                                asset?.iconUrl ||
+                                                "/ui/assets.svg"
+                                            }
+                                            alt={asset?.name || ""}
+                                            width={assetSize}
+                                            height={assetSize}
+                                            className={cn(assetFrameClass)}
+                                            priority={false}
+                                            unoptimized={false}
+                                        />
                                         <div
                                             className={cn(
                                                 assetTextClass,
@@ -709,32 +710,35 @@ function QuestsButton({
                                         </button>
                                     ) : (
                                         // 반복 퀘스트이고 최대 반복 횟수에 도달하지 않았으면 화살표 아이콘 표시
-                                        <img
+                                        <Image
                                             src="/ui/arrow-right.svg"
                                             alt="arrow-right"
-                                            className={cn(arrowClass)}
-                                            loading="lazy"
                                             width={arrowSize}
                                             height={arrowSize}
+                                            className={cn(arrowClass)}
+                                            priority={false}
+                                            unoptimized={false}
                                         />
                                     )
                                 ) : status === "claimed" ? (
-                                    <img
+                                    <Image
                                         src="/ui/checked.svg"
                                         alt="checked"
-                                        className={cn(arrowClass)}
-                                        loading="lazy"
                                         width={arrowSize}
                                         height={arrowSize}
+                                        className={cn(arrowClass)}
+                                        priority={false}
+                                        unoptimized={false}
                                     />
                                 ) : (
-                                    <img
+                                    <Image
                                         src="/ui/arrow-right.svg"
                                         alt="arrow-right"
-                                        className={cn(arrowClass)}
-                                        loading="lazy"
                                         width={arrowSize}
                                         height={arrowSize}
+                                        className={cn(arrowClass)}
+                                        priority={false}
+                                        unoptimized={false}
                                     />
                                 )}
                             </div>

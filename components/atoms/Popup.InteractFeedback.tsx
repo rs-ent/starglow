@@ -21,6 +21,7 @@ import NFTsCollectionsCardR3FAcqusition from "../nfts/NFTs.Collections.Card.R3F.
 
 import type { SPG } from "@/app/story/spg/actions";
 import type { Asset } from "@prisma/client";
+import Image from "next/image";
 
 // 브라우저 전용 모듈을 동적으로 임포트
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
@@ -65,7 +66,7 @@ export default function InteractFeedback({
             decay: 0.96,
             startVelocity: 20,
             scalar: 1,
-            zIndex: type === "purchaseNFT" ? 20 : 1000,
+            zIndex: 1500,
         };
 
         const shoot = () => {
@@ -260,14 +261,18 @@ export default function InteractFeedback({
                                         </span>
                                         <div className="flex items-center gap-[5px]">
                                             {reward?.iconUrl && (
-                                                <img
+                                                <Image
                                                     src={reward.iconUrl}
                                                     alt={reward.symbol}
+                                                    width={100}
+                                                    height={100}
                                                     className={cn(
-                                                        "w-8 h-8 rounded-full border border-white/30 bg-white/10",
+                                                        "rounded-full border border-white/30 bg-white/10",
                                                         getResponsiveClass(10)
                                                             .frameClass
                                                     )}
+                                                    priority={false}
+                                                    unoptimized={false}
                                                 />
                                             )}
                                             <NumberTicker

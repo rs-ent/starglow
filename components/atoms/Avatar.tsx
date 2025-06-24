@@ -1,5 +1,7 @@
 /// components\atoms\Avatar.tsx
 
+import Image from "next/image";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
@@ -18,10 +20,14 @@ export default function Avatar({
     const frameSize = responsiveClass.frameClass;
     return (
         <div className={cn("relative w-[40px] h-[40px]", frameSize)}>
-            <img
+            <Image
                 src={src}
                 alt={alt}
+                width={size * 5}
+                height={size * 5}
                 className={cn("rounded-full object-cover", frameSize)}
+                priority={true}
+                unoptimized={false}
             />
         </div>
     );

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-
+import Image from "next/image";
 import InviteFriendsModal from "./InviteFriends.Modal";
 import { H3 } from "./Typography";
 
@@ -46,7 +46,7 @@ export default function InviteFriends({
                 <H3 size={25} className="text-start p-4">
                     Invite Friends!
                 </H3>
-                <img
+                <Image
                     src="/ui/letter.svg"
                     alt="Invite Friends Letter"
                     className="absolute -top-5 right-2"
@@ -56,6 +56,10 @@ export default function InviteFriends({
                         minWidth: "100px",
                         height: "auto",
                     }}
+                    width={120}
+                    height={120}
+                    priority={false}
+                    unoptimized={false}
                 />
             </div>
         </div>

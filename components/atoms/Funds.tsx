@@ -1,12 +1,12 @@
 /// components/atoms/Funds.tsx
 
-import {memo, useMemo} from "react";
+import { memo, useMemo } from "react";
 
 import Image from "next/image";
 import CountUp from "react-countup";
 
-import {getResponsiveClass} from "@/lib/utils/responsiveClass";
-import {cn} from "@/lib/utils/tailwind";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
 
 interface FundsProps {
     funds: number;
@@ -26,7 +26,7 @@ interface FundsProps {
 /**
  * 자금 금액과 아이콘을 표시하는 컴포넌트
  * 반응형 크기 조정과 애니메이션 숫자 표시 지원
- * 
+ *
  * @param funds - 표시할 금액
  * @param fundsLabel - 금액 라벨 (alt 텍스트에 사용)
  * @param fundsIcon - 아이콘 이미지 경로
@@ -70,18 +70,7 @@ function Funds({
     const renderIcon = useMemo(() => {
         if (!fundsIcon) return null;
 
-        return fundsIcon.endsWith(".svg") ? (
-            <img
-                src={fundsIcon}
-                alt={`${fundsLabel} logo`}
-                className={cn(frameClass)}
-                style={{
-                    width: `${frameSize}px`,
-                    height: "auto",
-                }}
-                loading="lazy"
-            />
-        ) : (
+        return (
             <Image
                 src={fundsIcon}
                 alt={`${fundsLabel} logo`}
@@ -90,6 +79,7 @@ function Funds({
                 className={cn(frameClass)}
                 style={{ objectFit: "contain" }}
                 priority={false}
+                unoptimized={false}
             />
         );
     }, [fundsIcon, fundsLabel, frameClass, frameSize]);
@@ -108,13 +98,17 @@ function Funds({
                 "flex items-center justify-center bg-muted rounded-full transition-all shadow-lg",
                 paddingClass,
                 className,
-                onClick ? "cursor-pointer hover:brightness-110 active:scale-95" : ""
+                onClick
+                    ? "cursor-pointer hover:brightness-110 active:scale-95"
+                    : ""
             )}
             onClick={onClick}
             role={onClick ? "button" : undefined}
             aria-label={onClick ? `${fundsLabel}: ${funds}` : undefined}
             tabIndex={onClick ? 0 : undefined}
-            onKeyDown={onClick ? (e) => e.key === "Enter" && onClick() : undefined}
+            onKeyDown={
+                onClick ? (e) => e.key === "Enter" && onClick() : undefined
+            }
         >
             <div className={cn("flex items-center justify-between", gapClass)}>
                 {renderIcon && (
@@ -133,7 +127,9 @@ function Funds({
                         duration={duration}
                         separator=","
                         preserveValue={preserveValue}
-                        formattingFn={formattedValue ? () => formattedValue : undefined}
+                        formattingFn={
+                            formattedValue ? () => formattedValue : undefined
+                        }
                         decimals={Number.isInteger(funds) ? 0 : 2}
                         decimal="."
                     />

@@ -4,7 +4,6 @@
 
 import { memo } from "react";
 
-
 import Image from "next/image";
 
 import { Button as ShadcnButton } from "@/components/ui/button";
@@ -12,7 +11,6 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
 import type { LucideIcon } from "lucide-react";
-
 
 interface ButtonProps {
     children: React.ReactNode;
@@ -72,17 +70,6 @@ function Button({
         )
             return null;
 
-        if (img.endsWith(".svg")) {
-            return (
-                <img
-                    src={img}
-                    alt="Button Image"
-                    className={cn(frameClass, imgSpinning && "animate-spin")}
-                    style={{ width: `${frameSize}px`, height: "auto" }}
-                />
-            );
-        }
-
         return (
             <Image
                 src={img}
@@ -140,9 +127,13 @@ function Button({
             </ShadcnButton>
 
             {beautify && (
-                <img
+                <Image
                     src="/elements/el02.svg"
                     alt="Beautify Indicator"
+                    width={frameSize}
+                    height={frameSize}
+                    priority={false}
+                    unoptimized={false}
                     className="absolute -top-[18px] animate-fadeIn pointer-events-none opacity-80 transition-all duration-500 ease-in-out"
                 />
             )}

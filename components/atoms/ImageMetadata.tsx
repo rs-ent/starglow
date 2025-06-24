@@ -112,10 +112,14 @@ function DonotHaveToken() {
                 "flex flex-col gap-2 overflow-x-hidden overflow-y-auto"
             )}
         >
-            <img
+            <Image
                 src="/icons/lock.svg"
                 className={cn(getResponsiveClass(35).frameClass)}
                 alt="Lock icon"
+                width={35 * 2}
+                height={35 * 2}
+                priority={false}
+                unoptimized={false}
             />
             <h4
                 className={cn(

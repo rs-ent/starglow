@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
@@ -33,13 +35,17 @@ export default function Doorman({
                     row ? "flex-row" : "flex-col"
                 )}
             >
-                <img
+                <Image
                     src="/icons/lock.svg"
                     alt="lock"
                     className={cn(
                         getResponsiveClass(iconSize).frameClass,
                         "aspect-square"
                     )}
+                    width={iconSize * 2}
+                    height={iconSize * 2}
+                    priority={false}
+                    unoptimized={false}
                 />
                 <p
                     className={cn(

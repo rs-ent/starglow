@@ -4,7 +4,7 @@
 
 import { useMemo, useState } from "react";
 
-
+import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { useToast } from "@/app/hooks/useToast";
@@ -110,7 +110,7 @@ export default function InviteFriendsModal({
                         }}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <img
+                        <Image
                             src="/ui/letter.svg"
                             alt="Invite Friends Letter"
                             className="absolute -top-5 left-2 fade-in-translate-full duration-500"
@@ -121,6 +121,10 @@ export default function InviteFriendsModal({
                                 height: "auto",
                                 transform: "scaleX(-1)",
                             }}
+                            width={120}
+                            height={120}
+                            priority={false}
+                            unoptimized={false}
                         />
                         <div className="w-full mb-4 text-center">
                             <h2
@@ -148,12 +152,16 @@ export default function InviteFriendsModal({
                                     className="flex flex-col items-center justify-center gap-1"
                                     onClick={item.onClick}
                                 >
-                                    <img
+                                    <Image
                                         src={item.icon}
                                         alt={item.title}
                                         className={cn(
                                             getResponsiveClass(40).frameClass
                                         )}
+                                        width={40}
+                                        height={40}
+                                        priority={false}
+                                        unoptimized={false}
                                     />
                                     <p
                                         className={cn(

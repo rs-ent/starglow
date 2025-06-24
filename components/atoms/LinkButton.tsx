@@ -61,58 +61,32 @@ export default function LinkButton({
                 onClick?.(e);
             }}
         >
-            {img &&
-                imgLeft &&
-                (img.endsWith(".svg") ? (
-                    <img
-                        src={img}
-                        alt="Button Image"
-                        className={cn(
-                            frameClass,
-                            imgSpinning && "animate-spin"
-                        )}
-                        style={{ width: `${frameSize}px`, height: "auto" }}
-                    />
-                ) : (
-                    <Image
-                        src={img}
-                        alt="Button Image"
-                        width={frameSize}
-                        height={frameSize}
-                        className={cn(
-                            frameClass,
-                            imgSpinning && "animate-spin"
-                        )}
-                        style={{ objectFit: "contain" }}
-                    />
-                ))}
+            {img && imgLeft && (
+                <Image
+                    src={img}
+                    alt="Button Image"
+                    width={frameSize}
+                    height={frameSize}
+                    className={cn(frameClass, imgSpinning && "animate-spin")}
+                    style={{ objectFit: "contain" }}
+                    priority={false}
+                    unoptimized={false}
+                />
+            )}
 
             {children}
-            {img &&
-                !imgLeft &&
-                (img.endsWith(".svg") ? (
-                    <img
-                        src={img}
-                        alt="Button Image"
-                        className={cn(
-                            frameClass,
-                            imgSpinning && "animate-spin"
-                        )}
-                        style={{ width: `${frameSize}px`, height: "auto" }}
-                    />
-                ) : (
-                    <Image
-                        src={img}
-                        alt="Button Image"
-                        width={frameSize}
-                        height={frameSize}
-                        className={cn(
-                            frameClass,
-                            imgSpinning && "animate-spin"
-                        )}
-                        style={{ objectFit: "contain" }}
-                    />
-                ))}
+            {img && !imgLeft && (
+                <Image
+                    src={img}
+                    alt="Button Image"
+                    width={frameSize}
+                    height={frameSize}
+                    className={cn(frameClass, imgSpinning && "animate-spin")}
+                    style={{ objectFit: "contain" }}
+                    priority={false}
+                    unoptimized={false}
+                />
+            )}
         </Link>
     );
 }

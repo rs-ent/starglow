@@ -23,6 +23,7 @@ import type { TokenGatingResult } from "@/app/story/nft/actions";
 import type { Artist, Player, QuestLog, PollLog } from "@prisma/client";
 
 import React, { useMemo, useRef } from "react";
+import Image from "next/image";
 
 interface UserMyStarModalContentsCollectionsProps {
     player: Player | null;
@@ -224,14 +225,18 @@ function Arrow(props: any) {
             style={style}
             onClick={onClick}
         >
-            <img
+            <Image
                 src="/ui/arrow-right.svg"
                 alt={`Arrow ${role}`}
+                width={size}
+                height={size}
                 className={cn("w-full h-full")}
                 style={{
                     transform: `rotate(${role === "next" ? 0 : 180}deg)`,
                     color: color,
                 }}
+                priority={false}
+                unoptimized={false}
             />
         </div>
     );

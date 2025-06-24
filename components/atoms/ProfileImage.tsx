@@ -4,7 +4,6 @@
 
 import React, { useMemo, useState } from "react";
 
-
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
@@ -12,7 +11,7 @@ import UserSettingsProfileModal from "../user/User.Settings.Profile.Modal";
 
 import type { Player } from "@prisma/client";
 import type { User } from "next-auth";
-
+import Image from "next/image";
 
 interface ProfileImageProps {
     user: User;
@@ -74,20 +73,25 @@ export default React.memo(function ProfileImage({
                         "transition-opacity duration-300 ease-in-out"
                     )}
                 >
-                    <img
+                    <Image
                         src="/ui/camera.svg"
                         alt="Camera"
                         className={cameraSize}
+                        width={size}
+                        height={size}
+                        priority={false}
+                        unoptimized={false}
                     />
                 </div>
                 {image ? (
-                    <img
+                    <Image
                         src={image}
                         alt="Profile"
                         width={size * 2}
                         height={size * 2}
                         className="w-full h-full object-cover -z-10"
-                        loading="lazy"
+                        priority={false}
+                        unoptimized={image.startsWith("http")}
                     />
                 ) : (
                     <DefaultProfileImageSvg opacity={0.8} scale={1.15} />

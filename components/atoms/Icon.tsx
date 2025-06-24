@@ -1,5 +1,7 @@
 /// components\atoms\Icon.tsx
 
+import Image from "next/image";
+
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
@@ -35,13 +37,15 @@ export default function Icon({
         }
 
         return (
-            <img
+            <Image
                 src={svg}
-                width={size}
-                height={size}
+                width={size * 2}
+                height={size * 2}
                 alt="icon"
                 className={cn("text-foreground", frameClass, className)}
                 onClick={onClick}
+                priority={false}
+                unoptimized={false}
             />
         );
     }
