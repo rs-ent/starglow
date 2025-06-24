@@ -1,5 +1,7 @@
 /// components/user/User.Tweets.Register.tsx
 
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
 
 import { motion, AnimatePresence } from "framer-motion";

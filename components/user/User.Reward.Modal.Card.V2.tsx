@@ -1,5 +1,7 @@
 /// components/user/User.Reward.Modal.Card.V2.tsx
 
+"use client";
+
 import { useState, useEffect } from "react";
 import { useRewardsLogsGet } from "@/app/hooks/useRewardsLogs";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";

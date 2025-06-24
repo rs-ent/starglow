@@ -1,5 +1,7 @@
 /// components\user\User.Settings.Profile.Modal.tsx
 
+"use client";
+
 import { XIcon } from "lucide-react";
 
 

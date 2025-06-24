@@ -25,6 +25,7 @@ interface QuestsMissionsProps {
     permission: boolean;
     tokenGating?: TokenGatingResult | null;
     referralLogs: ReferralLog[];
+    onInteractFeedbackStateChange?: (isOpen: boolean) => void;
 }
 
 function QuestsMissions({
@@ -36,6 +37,7 @@ function QuestsMissions({
     permission = false,
     tokenGating,
     referralLogs,
+    onInteractFeedbackStateChange,
 }: QuestsMissionsProps) {
     const questLogMap = useMemo(() => {
         const map = new Map<string, QuestLog>();
@@ -84,6 +86,9 @@ function QuestsMissions({
                                 permission={permission}
                                 index={index}
                                 referralLogs={referralLogs}
+                                onInteractFeedbackStateChange={
+                                    onInteractFeedbackStateChange
+                                }
                             />
                         </div>
                     );

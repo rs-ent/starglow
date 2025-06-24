@@ -117,12 +117,12 @@ export default function InteractFeedback({
             <AnimatePresence>
                 {open && (
                     <motion.div
-                        className="fixed inset-0 z-[1000] flex items-center justify-center"
+                        className="fixed inset-0 flex items-center justify-center"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.7 }}
-                        style={{ pointerEvents: "auto" }}
+                        style={{ pointerEvents: "auto", zIndex: 2000 }}
                     >
                         {/* 배경 블러/그라데이션 */}
                         <motion.div
@@ -132,6 +132,7 @@ export default function InteractFeedback({
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.7 }}
                             onClick={onClose}
+                            style={{ pointerEvents: "auto" }}
                         />
                         {/* 카드 */}
                         <motion.div
@@ -164,6 +165,7 @@ export default function InteractFeedback({
                             style={{
                                 background:
                                     "linear-gradient(135deg, rgba(30,30,40,0.95) 60%, rgba(60,60,80,0.85) 100%)",
+                                pointerEvents: "auto",
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >

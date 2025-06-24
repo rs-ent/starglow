@@ -1,5 +1,7 @@
 /// components/user/User.Rewards.Modal.Card.tsx
 
+"use client";
+
 import { memo, useCallback, useState } from "react";
 
 import { formatDistanceToNow } from "date-fns";

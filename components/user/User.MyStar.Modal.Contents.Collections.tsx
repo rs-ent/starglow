@@ -1,5 +1,7 @@
 /// components/user/User.MyStar.Modal.Contents.Collections.tsx
 
+"use client";
+
 import Slider from "react-slick";
 
 import "slick-carousel/slick/slick.css";
@@ -20,11 +22,7 @@ import type { VerifiedSPG } from "@/app/story/interaction/actions";
 import type { TokenGatingResult } from "@/app/story/nft/actions";
 import type { Artist, Player, QuestLog, PollLog } from "@prisma/client";
 
-
 import React, { useMemo, useRef } from "react";
-
-
-
 
 interface UserMyStarModalContentsCollectionsProps {
     player: Player | null;
@@ -36,6 +34,7 @@ interface UserMyStarModalContentsCollectionsProps {
         initialFeeds: ArtistFeedWithReactions[],
         selectedFeedIndex: number
     ) => void;
+    onInteractFeedbackStateChange?: (isOpen: boolean) => void;
 }
 
 export default React.memo(function UserMyStarModalContentsCollections({
@@ -45,6 +44,7 @@ export default React.memo(function UserMyStarModalContentsCollections({
     questLogs,
     pollLogs,
     onSelectFeed,
+    onInteractFeedbackStateChange,
 }: UserMyStarModalContentsCollectionsProps) {
     const sliderRef = useRef<Slider | null>(null);
 
@@ -154,7 +154,6 @@ export default React.memo(function UserMyStarModalContentsCollections({
                     artist={artist}
                     frameSize={55}
                     textSize={30}
-                    gapSize={40}
                     isSelected={true}
                     className={cn("mb-[20px]")}
                 />
@@ -188,6 +187,9 @@ export default React.memo(function UserMyStarModalContentsCollections({
                         bgColorFrom={ArtistBG(artist, 2, 100)}
                         bgColorTo={ArtistBG(artist, 3, 100)}
                         showInviteFriends={false}
+                        onInteractFeedbackStateChange={
+                            onInteractFeedbackStateChange
+                        }
                     />
                 </div>
             </div>

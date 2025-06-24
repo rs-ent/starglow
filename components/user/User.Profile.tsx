@@ -1,5 +1,7 @@
 /// components/user/User.Profile.tsx
 
+"use client";
+
 import React from "react";
 
 import ProfileImage from "@/components/atoms/ProfileImage";

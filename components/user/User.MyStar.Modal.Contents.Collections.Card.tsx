@@ -1,5 +1,7 @@
 /// components/user/User.MyStar.Modal.Contents.Collections.Card.tsx
 
+"use client";
+
 import React, { useCallback, useMemo, useState } from "react";
 
 import { CopyIcon } from "lucide-react";
@@ -132,10 +134,13 @@ function Status({
         return result;
     }, [verifiedSPG, glowStart, glowEnd]);
 
-    const handleCopy = useCallback(async (value: string) => {
-        await navigator.clipboard.writeText(value);
-        toast.success("Copied to clipboard");
-    }, [toast]);
+    const handleCopy = useCallback(
+        async (value: string) => {
+            await navigator.clipboard.writeText(value);
+            toast.success("Copied to clipboard");
+        },
+        [toast]
+    );
 
     return (
         <div

@@ -90,70 +90,71 @@ export default React.memo(function UserMyStar({
         string,
         { polls: Poll[]; quests: Quest[] }
     > = useMemo(() => {
-        const now = Date.now();
+        const now = new Date().getTime();
         const result = new Map<string, { polls: Poll[]; quests: Quest[] }>();
 
         artists.forEach((artist) => {
             result.set(artist.id, { polls: [], quests: [] });
         });
 
-        const userPollIds = new Set(
-            playerPollLogs?.map((log) => log.pollId) ?? []
-        );
+        result.forEach((value, key) => {
+            if (key) {
+                value.polls =
+                    pollsList?.items.filter((poll) => {
+                        const isArtistMatch = poll.artistId === key;
+                        if (!isArtistMatch) return false;
 
-        const userQuestLogsMap = new Map(
-            playerQuestLogs?.map((log) => [log.questId, log]) ?? []
-        );
+                        const isEligible = poll.isActive;
+                        if (!isEligible) return false;
 
-        pollsList?.items.forEach((poll) => {
-            if (!poll.isActive || !poll.artistId) return;
+                        const isNotExpired =
+                            (!poll.endDate ||
+                                (poll.endDate &&
+                                    new Date(poll.endDate).getTime() > now)) &&
+                            (!poll.startDate ||
+                                (poll.startDate &&
+                                    new Date(poll.startDate).getTime() < now));
+                        if (!isNotExpired) return false;
 
-            const artistActivity = result.get(poll.artistId);
-            if (!artistActivity) return;
+                        const log = (playerPollLogs ?? []).find(
+                            (playerPollLog) => playerPollLog.pollId === poll.id
+                        );
+                        if (log) return false;
 
-            const isNotExpired =
-                (!poll.endDate || poll.endDate.getTime() > now) &&
-                (!poll.startDate || poll.startDate.getTime() < now);
+                        return true;
+                    }) ?? [];
+                value.quests =
+                    quests?.items.filter((quest) => {
+                        const isArtistMatch = quest.artistId === key;
+                        if (!isArtistMatch) return false;
 
-            if (isNotExpired && !userPollIds.has(poll.id)) {
-                artistActivity.polls.push(poll);
-            }
-        });
+                        const isEligible = quest.isActive;
+                        if (!isEligible) return false;
 
-        quests?.items.forEach((quest) => {
-            if (!quest.isActive || !quest.artistId) return;
+                        const isNotExpired =
+                            (!quest.endDate ||
+                                (quest.endDate &&
+                                    new Date(quest.endDate).getTime() > now)) &&
+                            (!quest.startDate ||
+                                (quest.startDate &&
+                                    new Date(quest.startDate).getTime() < now));
 
-            const artistActivity = result.get(quest.artistId);
-            if (!artistActivity) return;
+                        if (!quest.permanent && !isNotExpired) return false;
 
-            const isNotExpired =
-                quest.permanent ||
-                ((!quest.endDate || quest.endDate.getTime() > now) &&
-                    (!quest.startDate || quest.startDate.getTime() < now));
+                        const log = (playerQuestLogs ?? []).find(
+                            (playerQuestLog) =>
+                                playerQuestLog.questId === quest.id
+                        );
 
-            const userQuestLog = userQuestLogsMap.get(quest.id);
-            const isClaimed = userQuestLog?.isClaimed;
-
-            if (isNotExpired && !isClaimed) {
-                artistActivity.quests.push(quest);
+                        const isClaimed = log && log.isClaimed;
+                        if (isClaimed) return false;
+                        return true;
+                    }) ?? [];
             }
         });
 
         return result;
-    }, [
-        artists,
-        pollsList?.items,
-        quests?.items,
-        playerPollLogs,
-        playerQuestLogs,
-    ]);
-
-    const selectedArtistSPGs = useMemo(() => {
-        if (!selectedArtist) return [];
-        return userVerifiedSPGs.filter(
-            (spg) => spg.artistId === selectedArtist.id
-        );
-    }, [userVerifiedSPGs, selectedArtist?.id]);
+    }, [artists, pollsList, quests, playerPollLogs, playerQuestLogs]);
 
     const handleSelectArtist = useCallback((artist: Artist) => {
         setSelectedArtist(artist);
@@ -180,25 +181,9 @@ export default React.memo(function UserMyStar({
         setSelectedArtist(null);
     }, []);
 
-    const handleBuyClick = useCallback(() => {
+    const handleBuyClick = () => {
         router.push("/nfts");
-    }, [router]);
-
-    if (modalState === "artist" && selectedArtist) {
-        return (
-            <div className="w-full h-full">
-                <UserMyStarModal
-                    player={player}
-                    questLogs={playerQuestLogs ?? []}
-                    pollLogs={playerPollLogs ?? []}
-                    artist={selectedArtist}
-                    verifiedSPGs={selectedArtistSPGs}
-                    onClose={handleCloseArtistModal}
-                    onSelectFeed={handleSelectFeed}
-                />
-            </div>
-        );
-    }
+    };
 
     if (modalState === "feed" && selectedArtist) {
         return (
@@ -208,6 +193,23 @@ export default React.memo(function UserMyStar({
                 initialFeedIndex={selectedFeedIndex}
                 isOpen={true}
                 onClose={handleCloseFeedModal}
+            />
+        );
+    }
+
+    if (modalState === "artist" && selectedArtist) {
+        return (
+            <UserMyStarModal
+                player={player}
+                questLogs={playerQuestLogs ?? []}
+                pollLogs={playerPollLogs ?? []}
+                artist={selectedArtist}
+                verifiedSPGs={userVerifiedSPGs.filter(
+                    (spg) => spg.artistId === selectedArtist.id
+                )}
+                open={true}
+                onClose={handleCloseArtistModal}
+                onSelectFeed={handleSelectFeed}
             />
         );
     }

@@ -1,5 +1,6 @@
 /// components/user/User.Rewards.Modal.tsx
 
+"use client";
 
 import {memo, useCallback, useEffect, useRef, useState} from "react";
 
