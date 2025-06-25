@@ -109,6 +109,11 @@ export async function createPoll(input: CreatePollInput): Promise<Poll> {
     }
 }
 
+export type PollsWithArtist = Poll & {
+    artist: Artist | null;
+    participationRewardAsset: Asset | null;
+};
+
 export interface GetPollsInput {
     id?: string;
     category?: PollCategory;
@@ -136,7 +141,7 @@ export async function getPolls({
     input?: GetPollsInput;
     pagination?: PaginationInput;
 }): Promise<{
-    items: Poll[];
+    items: PollsWithArtist[];
     totalItems: number;
     totalPages: number;
 }> {
@@ -217,12 +222,16 @@ export async function getPolls({
                 },
                 skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
                 take: pagination.itemsPerPage,
+                include: {
+                    artist: true,
+                    participationRewardAsset: true,
+                },
             }),
             prisma.poll.count({ where }),
         ]);
         const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
         return {
-            items,
+            items: items as PollsWithArtist[],
             totalItems,
             totalPages,
         };

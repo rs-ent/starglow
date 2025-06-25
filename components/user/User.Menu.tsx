@@ -12,11 +12,6 @@ import { cn } from "@/lib/utils/tailwind";
 
 const menuItems = [
     {
-        label: "My Star",
-        icon: "/ui/user/user-mystar.svg",
-        href: "/user/mystar",
-    },
-    {
         label: "Rewards",
         icon: "/ui/user/user-rewards.svg",
         href: "/user/rewards",

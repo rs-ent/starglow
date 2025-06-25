@@ -32,6 +32,7 @@ export default function AdminNav() {
             icon: PartyPopperIcon,
         },
         { href: "/admin/x", label: "X", icon: PartyPopperIcon },
+        { href: "/admin/boards", label: "Boards", icon: PartyPopperIcon },
         { href: "/admin/settings", label: "Settings", icon: CogIcon },
     ];
 

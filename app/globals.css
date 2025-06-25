@@ -326,6 +326,10 @@ html {
     box-shadow: 0 0 12px 1px rgba(255, 255, 255, 0.1);
   }
 
+  .text-glow-gold-soft {
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+  }
+
   .purple-glow-strong {
     box-shadow: 0 0 10px 2px rgba(139, 92, 246, 0.85);
   }

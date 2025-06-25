@@ -13,7 +13,6 @@ import {
 import {
     usePollsQuery,
     usePollQuery,
-    useTokenGatingQuery,
     usePollResultQuery,
     usePollsResultsQuery,
     useUserSelectionQuery,
@@ -25,7 +24,6 @@ import type {
     GetPollsInput,
     GetPollResultInput,
     GetPollsResultsInput,
-    TokenGatingInput,
     GetUserSelectionInput,
     PaginationInput,
     GetPollLogsInput,
@@ -34,7 +32,6 @@ import type {
 
 export function usePollsGet({
     getPollsInput,
-    tokenGatingInput,
     pollResultInput,
     pollsResultsInput,
     userSelectionInput,
@@ -43,7 +40,6 @@ export function usePollsGet({
     pagination,
 }: {
     getPollsInput?: GetPollsInput;
-    tokenGatingInput?: TokenGatingInput;
     pollResultInput?: GetPollResultInput;
     pollsResultsInput?: GetPollsResultsInput;
     userSelectionInput?: GetUserSelectionInput;
@@ -62,12 +58,6 @@ export function usePollsGet({
         isLoading: isLoadingPoll,
         error: pollError,
     } = usePollQuery(getPollsInput?.id || "");
-
-    const {
-        data: tokenGating,
-        isLoading: isLoadingTokenGating,
-        error: tokenGatingError,
-    } = useTokenGatingQuery(tokenGatingInput);
 
     const {
         data: pollResult,
@@ -102,7 +92,6 @@ export function usePollsGet({
     const isLoading =
         isLoadingPolls ||
         isLoadingPoll ||
-        isLoadingTokenGating ||
         isLoadingPollResult ||
         isLoadingPollsResults ||
         isLoadingUserSelection ||
@@ -111,7 +100,6 @@ export function usePollsGet({
     const error =
         pollsError ||
         pollError ||
-        tokenGatingError ||
         pollResultError ||
         pollsResultsError ||
         userSelectionError ||
@@ -123,7 +111,6 @@ export function usePollsGet({
         isLoading,
         error,
         poll,
-        tokenGating,
         pollResult,
         pollsResults,
         userSelection,
@@ -132,7 +119,6 @@ export function usePollsGet({
 
         isLoadingPolls,
         isLoadingPoll,
-        isLoadingTokenGating,
         isLoadingPollResult,
         isLoadingPollsResults,
         isLoadingUserSelection,
@@ -141,7 +127,6 @@ export function usePollsGet({
 
         pollsError,
         pollError,
-        tokenGatingError,
         pollResultError,
         pollsResultsError,
         userSelectionError,

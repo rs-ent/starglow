@@ -3,37 +3,17 @@
 "use client";
 
 import { memo } from "react";
-
-import { useStoryInteractions } from "@/app/story/interaction/hooks";
 import PollsContents from "@/components/polls/Polls.Contents";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
-import PartialLoading from "../atoms/PartialLoading";
-
 import type { Player } from "@prisma/client";
-import type { User } from "next-auth";
 
 interface PollsProps {
-    user: User | null;
     player: Player | null;
 }
 
-function Polls({ user, player }: PollsProps) {
-    const { verifiedSPGs, isLoadingVerifiedSPGs } = useStoryInteractions({
-        getUserVerifiedSPGsInput: {
-            userId: user?.id || "",
-        },
-    });
-
-    if (isLoadingVerifiedSPGs) {
-        return (
-            <div className="w-full h-full flex justify-center items-center">
-                <PartialLoading text="Loading..." />
-            </div>
-        );
-    }
-
+function Polls({ player }: PollsProps) {
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
             <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
@@ -55,10 +35,7 @@ function Polls({ user, player }: PollsProps) {
                         "mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]"
                     )}
                 >
-                    <PollsContents
-                        player={player}
-                        verifiedSPGs={verifiedSPGs}
-                    />
+                    <PollsContents player={player} />
                 </div>
             </div>
         </div>

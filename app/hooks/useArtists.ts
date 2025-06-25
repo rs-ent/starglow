@@ -16,14 +16,15 @@ import {
     useArtist,
     useArtistMessages,
     useTokenGatingQuery,
+    usePlayers,
 } from "@/app/queries/artistQueries";
-
 
 import type {
     GetArtistsInput,
     GetArtistInput,
     GetArtistMessagesInput,
     TokenGatingInput,
+    GetPlayersInput,
 } from "@/app/actions/artists";
 
 export function useArtistsGet({
@@ -31,11 +32,13 @@ export function useArtistsGet({
     getArtistInput,
     getArtistMessagesInput,
     getTokenGatingInput,
+    getPlayersInput,
 }: {
     getArtistsInput?: GetArtistsInput;
     getArtistInput?: GetArtistInput;
     getArtistMessagesInput?: GetArtistMessagesInput;
     getTokenGatingInput?: TokenGatingInput;
+    getPlayersInput?: GetPlayersInput;
 }) {
     const {
         data: artists,
@@ -62,13 +65,25 @@ export function useArtistsGet({
         error: tokenGatingError,
     } = useTokenGatingQuery(getTokenGatingInput);
 
+    const {
+        data: players,
+        isLoading: isPlayersLoading,
+        error: playersError,
+        refetch: refetchPlayers,
+    } = usePlayers(getPlayersInput);
+
     const isLoading =
         isArtistsLoading ||
         isArtistLoading ||
         isArtistMessagesLoading ||
-        isTokenGatingLoading;
+        isTokenGatingLoading ||
+        isPlayersLoading;
     const error =
-        artistsError || artistError || artistMessagesError || tokenGatingError;
+        artistsError ||
+        artistError ||
+        artistMessagesError ||
+        tokenGatingError ||
+        playersError;
 
     return {
         artists,
@@ -87,6 +102,11 @@ export function useArtistsGet({
         tokenGatingResult,
         isTokenGatingLoading,
         tokenGatingError,
+
+        players,
+        isPlayersLoading,
+        playersError,
+        refetchPlayers,
 
         isLoading,
         error,

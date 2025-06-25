@@ -1,6 +1,5 @@
 /// components/atoms/VerticalButton.tsx
 
-
 import Image from "next/image";
 import Link from "next/link";
 
@@ -92,31 +91,19 @@ export default function VerticalButton({
                     </div>
                 )}
 
-                {img &&
-                    !Icon &&
-                    (img.endsWith(".svg") ? (
-                        <img
-                            src={img}
-                            alt="Button Image"
-                            className={cn(
-                                frameClass,
-                                imgSpinning && "animate-spin"
-                            )}
-                            style={{ width: `${frameSize}px`, height: "auto" }}
-                        />
-                    ) : (
-                        <Image
-                            src={img}
-                            alt="Button Image"
-                            width={frameSize}
-                            height={frameSize}
-                            className={cn(
-                                frameClass,
-                                imgSpinning && "animate-spin"
-                            )}
-                            style={{ objectFit: "contain" }}
-                        />
-                    ))}
+                {img && !Icon && (
+                    <Image
+                        src={img}
+                        alt="Button Image"
+                        width={frameSize}
+                        height={frameSize}
+                        className={cn(
+                            frameClass,
+                            imgSpinning && "animate-spin"
+                        )}
+                        style={{ objectFit: "contain" }}
+                    />
+                )}
 
                 {label && (
                     <Paragraph

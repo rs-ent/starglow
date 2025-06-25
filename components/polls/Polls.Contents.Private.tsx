@@ -12,7 +12,6 @@ import PollsContentsPrivateArtistList from "./Polls.Contents.Private.ArtistList"
 import ArtistSlideSelector from "../artists/ArtistSlideSelector";
 
 import type { VerifiedSPG } from "@/app/story/interaction/actions";
-import type { TokenGatingResult } from "@/app/story/nft/actions";
 import type { Artist, Player, PollLog } from "@prisma/client";
 
 interface PollsContentsPrivateProps {
@@ -45,29 +44,6 @@ function PollsContentsPrivate({
         },
         [selectedArtist]
     );
-
-    const tokenGatingResult: TokenGatingResult = useMemo(() => {
-        const result: TokenGatingResult = {
-            success: true,
-            data: {},
-        };
-
-        if (!verifiedSPGs || !selectedArtist) return result;
-
-        verifiedSPGs
-            .filter((spg) => spg.artistId === selectedArtist.id)
-            .forEach((spg) => {
-                result.data[spg.address] = {
-                    hasToken: spg.verifiedTokens.length > 0,
-                    detail: spg.verifiedTokens.map((token) => ({
-                        tokenId: token.toString(),
-                        owner: spg.ownerAddress,
-                    })),
-                };
-            });
-
-        return result;
-    }, [verifiedSPGs, selectedArtist]);
 
     const selectedBackgroundStyle = useMemo(() => {
         if (!selectedArtist) return defaultBackgroundStyle;
@@ -102,7 +78,6 @@ function PollsContentsPrivate({
                     <PollsContentsPrivateArtistList
                         artist={selectedArtist}
                         player={player}
-                        tokenGating={tokenGatingResult || null}
                         pollLogs={pollLogs}
                         bgColorFrom={ArtistBG(selectedArtist, 0, 60)}
                         bgColorTo={ArtistBG(selectedArtist, 1, 30)}
@@ -114,7 +89,7 @@ function PollsContentsPrivate({
                 </div>
             </div>
         );
-    }, [selectedArtist, player, tokenGatingResult, pollLogs]);
+    }, [selectedArtist, player, pollLogs]);
 
     return (
         <div className="w-full flex flex-col items-center justify-center">

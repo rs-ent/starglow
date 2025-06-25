@@ -2,24 +2,20 @@
 
 "use client";
 
-import { memo, useCallback, useState } from "react";
+import { memo } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
 
 import { useQuestGet } from "@/app/hooks/useQuest";
 import { useReferralGet } from "@/app/hooks/useReferral";
-import PublicPrivateTab from "@/components/atoms/PublicPrivateTab";
 import { cn } from "@/lib/utils/tailwind";
 
-import QuestsPrivate from "./Quests.Contents.Private";
-import QuestsPublic from "./Quests.Contents.Public";
+import QuestsTotal from "./Quests.Contents.Total";
 
-import type { VerifiedSPG } from "@/app/story/interaction/actions";
 import type { Player } from "@prisma/client";
 
 interface QuestsContentsProps {
     player: Player | null;
-    verifiedSPGs?: VerifiedSPG[];
 }
 
 const contentVariants = {
@@ -28,18 +24,7 @@ const contentVariants = {
     exit: { opacity: 0, transition: { duration: 0.3 } },
 };
 
-function QuestsContents({ player, verifiedSPGs }: QuestsContentsProps) {
-    const [isPublic, setIsPublic] = useState(true);
-
-    // 탭 전환 핸들러 메모이제이션
-    const handlePublicTab = useCallback(() => {
-        setIsPublic(true);
-    }, []);
-
-    const handlePrivateTab = useCallback(() => {
-        setIsPublic(false);
-    }, []);
-
+function QuestsContents({ player }: QuestsContentsProps) {
     const { playerQuestLogs } = useQuestGet({
         getPlayerQuestLogsInput: {
             playerId: player?.id ?? "",
@@ -60,44 +45,21 @@ function QuestsContents({ player, verifiedSPGs }: QuestsContentsProps) {
                 "transition-all duration-700"
             )}
         >
-            {/* 탭 컴포넌트 */}
-            <div className="w-full flex justify-center">
-                <PublicPrivateTab
-                    isPublic={isPublic}
-                    onPublic={handlePublicTab}
-                    onPrivate={handlePrivateTab}
-                    frameSize={20}
-                    textSize={30}
-                    gapSize={5}
-                    paddingSize={10}
-                />
-            </div>
-
             {/* 콘텐츠 영역 */}
             <AnimatePresence mode="wait" initial={false}>
                 <motion.div
-                    key={isPublic ? "public" : "private"}
+                    key={"total"}
                     initial="initial"
                     animate="animate"
                     exit="exit"
                     variants={contentVariants}
                     className="w-full flex justify-center items-center"
                 >
-                    {isPublic ? (
-                        <QuestsPublic
-                            player={player}
-                            questLogs={playerQuestLogs || []}
-                            referralLogs={referralLogs}
-                        />
-                    ) : (
-                        <QuestsPrivate
-                            player={player}
-                            questLogs={playerQuestLogs || []}
-                            privateTabClicked={!isPublic}
-                            referralLogs={referralLogs}
-                            verifiedSPGs={verifiedSPGs}
-                        />
-                    )}
+                    <QuestsTotal
+                        player={player}
+                        questLogs={playerQuestLogs || []}
+                        referralLogs={referralLogs}
+                    />
                 </motion.div>
             </AnimatePresence>
         </div>

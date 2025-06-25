@@ -4,7 +4,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 
-import { useArtistSet } from "@/app/hooks/useArtists";
+import { useArtistSet, useArtistsGet } from "@/app/hooks/useArtists";
 import FileUploader from "@/components/atoms/FileUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +12,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/tailwind";
 
-import type { Artist } from "@prisma/client";
+import type { Artist, Player } from "@prisma/client";
 
 interface AdminArtistsCreateProps {
     mode: "create" | "update";
-    initialData?: (Artist & { collectionContracts?: { id: string }[] }) | null;
+    initialData?:
+        | (Artist & {
+              collectionContracts?: { id: string }[];
+              players?: Player[];
+          })
+        | null;
     onSuccess?: () => void;
     onCancel?: () => void;
 }
@@ -35,6 +40,21 @@ export default function AdminArtistsCreate({
         isUpdating,
         updateArtistError,
     } = useArtistSet();
+
+    // 플레이어 관련 상태
+    const [playerSearch, setPlayerSearch] = useState("");
+    const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>(
+        initialData?.players?.map((p) => p.id) ?? []
+    );
+
+    // 플레이어 데이터 가져오기
+    const { players, isPlayersLoading } = useArtistsGet({
+        getPlayersInput: {
+            search: playerSearch || undefined,
+            excludeArtists: false,
+            limit: 20,
+        },
+    });
 
     const [name, setName] = useState(initialData?.name ?? "");
     const [description, setDescription] = useState(
@@ -92,6 +112,7 @@ export default function AdminArtistsCreate({
             );
             setBackgroundColors(initialData.backgroundColors ?? []);
             setForegroundColors(initialData.foregroundColors ?? []);
+            setSelectedPlayerIds(initialData.players?.map((p) => p.id) ?? []);
         }
     }, [initialData]);
 
@@ -137,6 +158,20 @@ export default function AdminArtistsCreate({
         setter(arr.filter((_, i) => i !== idx));
     };
 
+    // 플레이어 선택/해제 핸들러
+    const handlePlayerToggle = (playerId: string) => {
+        setSelectedPlayerIds((prev) =>
+            prev.includes(playerId)
+                ? prev.filter((id) => id !== playerId)
+                : [...prev, playerId]
+        );
+    };
+
+    // 선택된 플레이어들 가져오기
+    const selectedPlayers =
+        players?.filter((player) => selectedPlayerIds.includes(player.id)) ??
+        [];
+
     const isValid = name.trim().length > 0;
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -174,6 +209,7 @@ export default function AdminArtistsCreate({
                 backgroundColors: backgroundColors,
                 foregroundColors: foregroundColors,
                 collectionContractIds: selectedCollectionIds,
+                playerIds: selectedPlayerIds,
             });
         } else {
             await createArtist({
@@ -193,6 +229,7 @@ export default function AdminArtistsCreate({
                 backgroundColors: backgroundColors,
                 foregroundColors: foregroundColors,
                 collectionContractIds: selectedCollectionIds,
+                playerIds: selectedPlayerIds,
             });
         }
         if (onSuccess) onSuccess();
@@ -277,7 +314,136 @@ export default function AdminArtistsCreate({
                     </div>
                 </div>
 
-                {/* 2. 갤러리/미디어 */}
+                {/* 2. 플레이어 선택 */}
+                <div className="rounded-lg bg-card shadow p-6 mb-8">
+                    <h2 className="text-lg font-semibold mb-4 text-foreground">
+                        아티스트 플레이어 선택
+                    </h2>
+
+                    {/* 플레이어 검색 */}
+                    <div className="mb-4">
+                        <Input
+                            placeholder="플레이어 이름, 닉네임, 이메일로 검색..."
+                            value={playerSearch}
+                            onChange={(e) => setPlayerSearch(e.target.value)}
+                            className="bg-background text-foreground"
+                        />
+                    </div>
+
+                    {/* 선택된 플레이어들 */}
+                    {selectedPlayers.length > 0 && (
+                        <div className="mb-4">
+                            <Label className="text-foreground mb-2 block">
+                                선택된 플레이어들 ({selectedPlayers.length}명)
+                            </Label>
+                            <div className="flex flex-wrap gap-2">
+                                {selectedPlayers.map((player) => (
+                                    <div
+                                        key={player.id}
+                                        className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900 px-3 py-1 rounded-full text-sm"
+                                    >
+                                        {player.image && (
+                                            <img
+                                                src={player.image}
+                                                alt=""
+                                                className="w-5 h-5 rounded-full"
+                                            />
+                                        )}
+                                        <span className="text-blue-800 dark:text-blue-200">
+                                            {player.name ||
+                                                player.nickname ||
+                                                player.email ||
+                                                "Unknown"}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                handlePlayerToggle(player.id)
+                                            }
+                                            className="text-blue-600 hover:text-blue-800 ml-1"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 플레이어 목록 */}
+                    <div className="border rounded-lg max-h-64 overflow-y-auto">
+                        {isPlayersLoading ? (
+                            <div className="p-4 text-center text-muted-foreground">
+                                플레이어 목록을 불러오는 중...
+                            </div>
+                        ) : players && players.length > 0 ? (
+                            <div className="divide-y">
+                                {players.map((player) => (
+                                    <div
+                                        key={player.id}
+                                        className={cn(
+                                            "p-3 flex items-center justify-between hover:bg-muted/50 cursor-pointer",
+                                            selectedPlayerIds.includes(
+                                                player.id
+                                            ) &&
+                                                "bg-blue-50 dark:bg-blue-900/20"
+                                        )}
+                                        onClick={() =>
+                                            handlePlayerToggle(player.id)
+                                        }
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            {player.image && (
+                                                <img
+                                                    src={player.image}
+                                                    alt=""
+                                                    className="w-8 h-8 rounded-full"
+                                                />
+                                            )}
+                                            <div>
+                                                <div className="font-medium text-foreground">
+                                                    {player.name ||
+                                                        player.nickname ||
+                                                        "Unknown"}
+                                                </div>
+                                                <div className="text-sm text-muted-foreground">
+                                                    {player.email}
+                                                </div>
+                                                {player.isArtist && (
+                                                    <div className="text-xs text-orange-600 dark:text-orange-400">
+                                                        이미 아티스트로 등록됨
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedPlayerIds.includes(
+                                                    player.id
+                                                )}
+                                                onChange={() =>
+                                                    handlePlayerToggle(
+                                                        player.id
+                                                    )
+                                                }
+                                                className="rounded"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="p-4 text-center text-muted-foreground">
+                                {playerSearch
+                                    ? "검색 결과가 없습니다."
+                                    : "등록된 플레이어가 없습니다."}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 3. 갤러리/미디어 */}
                 <div className="rounded-lg bg-card shadow p-6 mb-8">
                     <h2 className="text-lg font-semibold mb-4 text-foreground">
                         갤러리 및 미디어

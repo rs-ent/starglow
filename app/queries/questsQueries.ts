@@ -24,6 +24,7 @@ import type {
     GetClaimedQuestLogsInput,
     GetPlayerQuestLogsInput,
     TokenGatingQuestInput,
+    QuestWithArtistAndRewardAsset,
 } from "../actions/quests";
 import type { TokenGatingData } from "../story/nft/actions";
 import type { Quest, QuestLog } from "@prisma/client";
@@ -36,7 +37,7 @@ export function useQuestsQuery({
     pagination?: PaginationInput;
 }) {
     return useQuery<{
-        items: Quest[];
+        items: QuestWithArtistAndRewardAsset[];
         totalItems: number;
         totalPages: number;
     }>({

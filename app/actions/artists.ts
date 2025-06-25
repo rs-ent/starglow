@@ -7,7 +7,15 @@ import { prisma } from "@/lib/prisma/client";
 import { getOwners } from "../story/nft/actions";
 
 import type { AdvancedTokenGateResult } from "./blockchain";
-import type { Artist, ArtistMessage, Prisma } from "@prisma/client";
+import type {
+    Artist,
+    ArtistMessage,
+    Poll,
+    Prisma,
+    Quest,
+    Story_spg,
+    Player,
+} from "@prisma/client";
 
 export interface CreateArtistInput {
     name: string;
@@ -26,11 +34,12 @@ export interface CreateArtistInput {
     backgroundColors?: string[];
     foregroundColors?: string[];
     collectionContractIds?: string[];
+    playerIds?: string[];
 }
 
 export async function createArtist(input: CreateArtistInput): Promise<Artist> {
     try {
-        const { collectionContractIds, ...rest } = input;
+        const { collectionContractIds, playerIds, ...rest } = input;
         const artist = await prisma.artist.create({
             data: rest,
         });
@@ -41,6 +50,18 @@ export async function createArtist(input: CreateArtistInput): Promise<Artist> {
                 data: { artistId: artist.id },
             });
         }
+
+        // 선택된 플레이어들을 아티스트로 설정
+        if (playerIds && playerIds.length > 0) {
+            await prisma.player.updateMany({
+                where: { id: { in: playerIds } },
+                data: {
+                    isArtist: true,
+                    artistId: artist.id,
+                },
+            });
+        }
+
         return artist;
     } catch (error) {
         console.error(error);
@@ -48,6 +69,13 @@ export async function createArtist(input: CreateArtistInput): Promise<Artist> {
     }
 }
 
+export type ArtistWithSPG = Artist & {
+    story_spg: Story_spg[];
+    messages: ArtistMessage[];
+    polls: Poll[];
+    quests: Quest[];
+    players: Player[];
+};
 export interface GetArtistInput {
     id?: string;
     name?: string;
@@ -55,33 +83,35 @@ export interface GetArtistInput {
 
 export async function getArtist(
     input?: GetArtistInput
-): Promise<Artist | null> {
+): Promise<ArtistWithSPG | null> {
     try {
         if (!input) {
             return null;
         }
 
         if (input.id) {
-            return await prisma.artist.findUnique({
+            return (await prisma.artist.findUnique({
                 where: { id: input.id },
                 include: {
-                    collectionContracts: true,
+                    story_spg: true,
                     messages: true,
                     quests: true,
                     polls: true,
+                    players: true,
                 },
-            });
+            })) as ArtistWithSPG;
         }
         if (input.name) {
-            return await prisma.artist.findFirst({
+            return (await prisma.artist.findFirst({
                 where: { name: input.name },
                 include: {
-                    collectionContracts: true,
+                    story_spg: true,
                     messages: true,
                     quests: true,
                     polls: true,
+                    players: true,
                 },
-            });
+            })) as ArtistWithSPG;
         }
 
         return null;
@@ -97,17 +127,23 @@ export interface GetArtistsInput {
     collectionContractId?: string;
 }
 
-export async function getArtists(input?: GetArtistsInput): Promise<Artist[]> {
+export async function getArtists(
+    input?: GetArtistsInput
+): Promise<ArtistWithSPG[]> {
     try {
         if (!input) {
-            return await prisma.artist.findMany({
+            return (await prisma.artist.findMany({
                 include: {
                     story_spg: true,
+                    messages: true,
+                    polls: true,
+                    quests: true,
+                    players: true,
                 },
                 orderBy: {
                     name: "asc",
                 },
-            });
+            })) as ArtistWithSPG[];
         }
 
         const where: Prisma.ArtistWhereInput = {};
@@ -128,12 +164,16 @@ export async function getArtists(input?: GetArtistsInput): Promise<Artist[]> {
             where,
             include: {
                 story_spg: true,
+                messages: true,
+                polls: true,
+                quests: true,
+                players: true,
             },
             orderBy: {
                 name: "asc",
             },
         });
-        return artists;
+        return artists as ArtistWithSPG[];
     } catch (error) {
         console.error(error);
         throw new Error("Failed to get artists");
@@ -158,11 +198,12 @@ export interface UpdateArtistInput {
     backgroundColors?: string[];
     foregroundColors?: string[];
     collectionContractIds?: string[];
+    playerIds?: string[];
 }
 
 export async function updateArtist(input: UpdateArtistInput): Promise<Artist> {
     try {
-        const { collectionContractIds, ...rest } = input;
+        const { collectionContractIds, playerIds, ...rest } = input;
         const artist = await prisma.artist.update({
             where: { id: rest.id },
             data: rest,
@@ -182,6 +223,26 @@ export async function updateArtist(input: UpdateArtistInput): Promise<Artist> {
             });
         }
 
+        // 3. 먼저 해당 아티스트와 연결된 모든 플레이어의 아티스트 연결을 해제
+        await prisma.player.updateMany({
+            where: { artistId: artist.id },
+            data: {
+                isArtist: false,
+                artistId: null,
+            },
+        });
+
+        // 4. 새로 선택된 플레이어들만 아티스트로 설정
+        if (playerIds && playerIds.length > 0) {
+            await prisma.player.updateMany({
+                where: { id: { in: playerIds } },
+                data: {
+                    isArtist: true,
+                    artistId: artist.id,
+                },
+            });
+        }
+
         return artist;
     } catch (error) {
         console.error(error);
@@ -195,6 +256,15 @@ export interface DeleteArtistInput {
 
 export async function deleteArtist(input: DeleteArtistInput): Promise<boolean> {
     try {
+        // 연결된 플레이어들의 아티스트 상태 해제
+        await prisma.player.updateMany({
+            where: { artistId: input.id },
+            data: {
+                isArtist: false,
+                artistId: null,
+            },
+        });
+
         await prisma.artistMessage.deleteMany({
             where: { artistId: input.id },
         });
@@ -445,5 +515,56 @@ export async function tokenGating(
                 ownerWallets: {},
             },
         };
+    }
+}
+
+// 플레이어 목록을 가져오는 새로운 함수 추가
+export interface GetPlayersInput {
+    excludeArtists?: boolean;
+    search?: string;
+    limit?: number;
+    offset?: number;
+}
+
+export async function getPlayers(input?: GetPlayersInput): Promise<Player[]> {
+    try {
+        const where: Prisma.PlayerWhereInput = {};
+
+        if (input?.excludeArtists) {
+            where.isArtist = false;
+        }
+
+        if (input?.search) {
+            where.OR = [
+                { name: { contains: input.search, mode: "insensitive" } },
+                { nickname: { contains: input.search, mode: "insensitive" } },
+                { email: { contains: input.search, mode: "insensitive" } },
+            ];
+        }
+
+        const players = await prisma.player.findMany({
+            where,
+            take: input?.limit || 50,
+            skip: input?.offset || 0,
+            orderBy: [
+                { name: "asc" },
+                { nickname: "asc" },
+                { createdAt: "desc" },
+            ],
+            include: {
+                user: {
+                    select: {
+                        name: true,
+                        email: true,
+                        image: true,
+                    },
+                },
+            },
+        });
+
+        return players;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to get players");
     }
 }

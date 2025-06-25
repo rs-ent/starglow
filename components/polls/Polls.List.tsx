@@ -7,8 +7,10 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import Slider from "react-slick";
 
-
-import type { TokenGatingResult, TokenGatingData } from "@/app/story/nft/actions";
+import type {
+    TokenGatingResult,
+    TokenGatingData,
+} from "@/app/story/nft/actions";
 
 import PollsListCard from "@/components/polls/Polls.List.Card";
 import "slick-carousel/slick/slick.css";
@@ -17,11 +19,11 @@ import { cn } from "@/lib/utils/tailwind";
 
 import PartialLoading from "../atoms/PartialLoading";
 
-import type { Artist, Player, Poll, PollLog } from "@prisma/client";
-
+import type { Artist, Player, PollLog } from "@prisma/client";
+import type { PollsWithArtist } from "@/app/actions/polls";
 
 interface PollsListProps {
-    polls: Poll[];
+    polls: PollsWithArtist[];
     player: Player | null;
     pollLogs?: PollLog[];
     artist?: Artist | null;
@@ -34,6 +36,7 @@ interface PollsListProps {
     bgColorTo?: string;
     bgColorAccentFrom?: string;
     bgColorAccentTo?: string;
+    needMarginBottom?: boolean;
 }
 
 function PollsList({
@@ -50,6 +53,7 @@ function PollsList({
     bgColorTo,
     bgColorAccentFrom,
     bgColorAccentTo,
+    needMarginBottom = true,
 }: PollsListProps) {
     const sliderRef = useRef<Slider>(null);
     const [currentSlide, setCurrentSlide] = useState(0);
@@ -59,7 +63,6 @@ function PollsList({
             : polls.length
     );
     const [isHovering, setIsHovering] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
     const [isAnimating, setIsAnimating] = useState(false);
 
     // 슬라이더 설정 메모이제이션
@@ -86,7 +89,7 @@ function PollsList({
                 {
                     breakpoint: 860,
                     settings: {
-                        centerMode: true,
+                        centerMode: false,
                     },
                 },
             ],
@@ -96,30 +99,27 @@ function PollsList({
 
     // 중앙 인덱스 계산 메모이제이션
     const centerIndex = useMemo(() => {
-        const idx = (currentSlide + Math.floor(slidesToShow / 2)) % polls.length;
+        const idx =
+            (currentSlide + Math.floor(slidesToShow / 2)) % polls.length;
         return idx;
     }, [currentSlide, slidesToShow, polls.length]);
 
-    // 반응형 슬라이더 설정
+    // 반응형 슬라이더 설정 (모바일 최적화)
     useEffect(() => {
-        const minSlidesToShow = Math.min(forceSlidesToShow, polls.length);
-
         const handleResize = () => {
             const width = window.innerWidth;
-            setIsMobile(width <= 860);
-
             if (width <= 640) {
                 // 모바일 (sm)
-                setSlidesToShow(Math.min(1, minSlidesToShow));
+                setSlidesToShow(1);
             } else if (width <= 860) {
                 // 태블릿 (md)
-                setSlidesToShow(Math.min(1, minSlidesToShow));
+                setSlidesToShow(Math.min(forceSlidesToShow, polls.length, 1));
             } else if (width <= 1024) {
                 // 작은 데스크탑 (lg)
-                setSlidesToShow(Math.min(2, minSlidesToShow));
+                setSlidesToShow(Math.min(forceSlidesToShow, polls.length, 2));
             } else {
                 // 큰 데스크탑 (xl)
-                setSlidesToShow(Math.min(3, minSlidesToShow));
+                setSlidesToShow(Math.min(forceSlidesToShow, polls.length, 3));
             }
         };
 
@@ -205,24 +205,10 @@ function PollsList({
 
     return (
         <div
-            className="mb-[100px] relative"
-            style={{
-                position: "relative",
-                WebkitMaskImage: `
-                    linear-gradient(to right, transparent 0%, black 10%, black 100%),
-                    linear-gradient(to left, transparent 0%, black 10%, black 100%)
-                `,
-                maskImage: `
-                    linear-gradient(to right, transparent 0%, black 10%, black 100%),
-                    linear-gradient(to left, transparent 0%, black 10%, black 100%)
-                `,
-                WebkitMaskRepeat: "no-repeat",
-                maskRepeat: "no-repeat",
-                WebkitMaskSize: "55% 100%, 55% 100%",
-                maskSize: "55% 100%, 55% 100%",
-                WebkitMaskPosition: "left, right",
-                maskPosition: "left, right",
-            }}
+            className={cn(
+                "relative",
+                needMarginBottom && "mb-[100px] md:mb-[50px]"
+            )}
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
         >
@@ -281,23 +267,21 @@ function PollsList({
             </Slider>
 
             {/* 인디케이터 (모바일에서만 표시) */}
-            {isMobile && (
-                <div className="flex justify-center mt-1 pb-[10px] gap-1">
-                    {polls.map((_, index) => (
-                        <button
-                            key={index}
-                            className={cn(
-                                "w-2 h-2 rounded-full transition-all",
-                                index === centerIndex
-                                    ? "bg-white scale-110"
-                                    : "bg-white/40 scale-90"
-                            )}
-                            onClick={() => sliderRef.current?.slickGoTo(index)}
-                            aria-label={`Go to poll ${index + 1}`}
-                        />
-                    ))}
-                </div>
-            )}
+            <div className="flex justify-center mt-1 pb-[10px] gap-1">
+                {polls.map((_, index) => (
+                    <button
+                        key={index}
+                        className={cn(
+                            "w-2 h-2 rounded-full transition-all",
+                            index === centerIndex
+                                ? "bg-white scale-110"
+                                : "bg-white/40 scale-90"
+                        )}
+                        onClick={() => sliderRef.current?.slickGoTo(index)}
+                        aria-label={`Go to poll ${index + 1}`}
+                    />
+                ))}
+            </div>
         </div>
     );
 }

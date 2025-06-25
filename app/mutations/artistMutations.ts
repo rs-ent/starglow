@@ -39,6 +39,13 @@ export function useCreateArtist() {
                 .catch((error) => {
                     console.error(error);
                 });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.players(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -72,6 +79,13 @@ export function useUpdateArtist() {
                 .catch((error) => {
                     console.error(error);
                 });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.players(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
         },
     });
 }
@@ -96,6 +110,13 @@ export function useDeleteArtist() {
             queryClient
                 .invalidateQueries({
                     queryKey: artistKeys.detail({ id: variables.id }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: artistKeys.players(),
                 })
                 .catch((error) => {
                     console.error(error);

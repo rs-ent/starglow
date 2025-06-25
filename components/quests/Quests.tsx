@@ -4,29 +4,18 @@
 
 import { memo } from "react";
 
-import { useStoryInteractions } from "@/app/story/interaction/hooks";
 import QuestsContents from "@/components/quests/Quests.Contents";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
-import PartialLoading from "../atoms/PartialLoading";
-
 import type { Player } from "@prisma/client";
-import type { User } from "next-auth";
 import Image from "next/image";
 
 interface QuestsProps {
-    user: User | null;
     player: Player | null;
 }
 
-function Quests({ user, player }: QuestsProps) {
-    const { verifiedSPGs, isLoadingVerifiedSPGs } = useStoryInteractions({
-        getUserVerifiedSPGsInput: {
-            userId: user?.id || "",
-        },
-    });
-
+function Quests({ player }: QuestsProps) {
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
             <div className="fixed inset-0 -z-20">
@@ -72,14 +61,7 @@ function Quests({ user, player }: QuestsProps) {
                         "mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]"
                     )}
                 >
-                    {isLoadingVerifiedSPGs ? (
-                        <PartialLoading text="Loading..." />
-                    ) : (
-                        <QuestsContents
-                            player={player}
-                            verifiedSPGs={verifiedSPGs}
-                        />
-                    )}
+                    <QuestsContents player={player} />
                 </div>
             </div>
         </div>

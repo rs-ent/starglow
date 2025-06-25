@@ -2,7 +2,6 @@
 
 import { Suspense } from "react";
 
-
 import { auth } from "@/app/auth/authSettings";
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 import Polls from "@/components/polls/Polls";
@@ -29,9 +28,7 @@ function PollsLoading() {
 async function PollsContent() {
     const session = await auth();
 
-    return (
-        <Polls user={session?.user ?? null} player={session?.player ?? null} />
-    );
+    return <Polls player={session?.player ?? null} />;
 }
 
 export default function PollsEntryPage() {

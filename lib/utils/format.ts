@@ -158,3 +158,52 @@ export function formatNumber(num: number): string {
     }
     return num.toString();
 }
+
+export function formatTimeAgo(
+    date: Date | string,
+    short: boolean = false
+): string {
+    const now = new Date();
+    const target = new Date(date);
+    const diffInSeconds = Math.floor((now.getTime() - target.getTime()) / 1000);
+
+    // 미래 날짜인 경우 처리
+    if (diffInSeconds < 0) {
+        return short ? "now" : "just now";
+    }
+
+    // 각 시간 단위별 초 단위
+    const intervals = [
+        { label: "year", short: "y", seconds: 31536000 }, // 365 * 24 * 60 * 60
+        { label: "month", short: "mo", seconds: 2592000 }, // 30 * 24 * 60 * 60
+        { label: "week", short: "w", seconds: 604800 }, // 7 * 24 * 60 * 60
+        { label: "day", short: "d", seconds: 86400 }, // 24 * 60 * 60
+        { label: "hour", short: "h", seconds: 3600 }, // 60 * 60
+        { label: "minute", short: "m", seconds: 60 },
+        { label: "second", short: "s", seconds: 1 },
+    ];
+
+    // 각 간격을 확인하여 적절한 단위 찾기
+    for (const interval of intervals) {
+        const count = Math.floor(diffInSeconds / interval.seconds);
+
+        if (count >= 1) {
+            if (short) {
+                return `${count}${interval.short}`;
+            } else {
+                // 단수/복수 처리
+                const pluralLabel =
+                    count === 1 ? interval.label : `${interval.label}s`;
+                return `${count} ${pluralLabel} ago`;
+            }
+        }
+    }
+
+    // 1초 미만인 경우
+    return short ? "now" : "just now";
+}
+
+// 별도의 짧은 형태 함수 (편의성을 위해)
+export function formatTimeAgoShort(date: Date | string): string {
+    return formatTimeAgo(date, true);
+}

@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
     }
 
     if (request.nextUrl.pathname === "/user") {
-        return NextResponse.redirect(new URL("/user/mystar", request.url));
+        return NextResponse.redirect(new URL("/user/rewards", request.url));
     }
 
     const response = NextResponse.next();

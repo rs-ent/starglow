@@ -2,7 +2,8 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Image from "next/image";
 
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
@@ -18,6 +19,11 @@ export interface ImageViewerProps {
     shadowColor?: string;
 }
 
+interface ImageDimensions {
+    width: number;
+    height: number;
+}
+
 export default function ImageViewer({
     img,
     title,
@@ -27,13 +33,41 @@ export default function ImageViewer({
 }: ImageViewerProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [isError, setIsError] = useState(false);
+    const [imageDimensions, setImageDimensions] =
+        useState<ImageDimensions | null>(null);
+
+    // 이미지 크기 미리 계산
+    useEffect(() => {
+        const calculateImageDimensions = () => {
+            const tempImg = new window.Image();
+            tempImg.crossOrigin = "anonymous";
+
+            tempImg.onload = () => {
+                setImageDimensions({
+                    width: tempImg.naturalWidth,
+                    height: tempImg.naturalHeight,
+                });
+                setIsLoading(false);
+            };
+
+            tempImg.onerror = () => {
+                setIsError(true);
+                setIsLoading(false);
+            };
+
+            tempImg.src = img;
+        };
+
+        calculateImageDimensions();
+    }, [img]);
 
     const handleImageLoad = () => {
-        setIsLoading(false);
+        // Next.js Image 컴포넌트의 onLoad 핸들러
     };
 
     const handleImageError = () => {
         setIsError(true);
+        setIsLoading(false);
     };
 
     return (
@@ -49,7 +83,7 @@ export default function ImageViewer({
                 >
                     <div
                         className={cn(
-                            "w-full h-full gradient-border rounded-3xl",
+                            "w-full h-full rounded-3xl",
                             "bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)]",
                             "backdrop-blur-xs morp-glass-4"
                         )}
@@ -60,12 +94,10 @@ export default function ImageViewer({
                     >
                         <TransformWrapper
                             initialScale={1}
-                            minScale={1}
-                            maxScale={5}
                             doubleClick={{ mode: "zoomIn" }}
-                            wheel={{ step: 0.2 }}
                             panning={{ velocityDisabled: true }}
                             limitToBounds={false}
+                            wheel={{ disabled: true }}
                         >
                             <TransformComponent
                                 wrapperClass="w-full h-full flex items-center justify-center"
@@ -74,22 +106,27 @@ export default function ImageViewer({
                                     height: "100%",
                                 }}
                             >
-                                <img
-                                    src={img}
-                                    alt={title || ""}
-                                    style={{
-                                        width: "100%",
-                                        height: "auto",
-                                        objectFit: "contain",
-                                        userSelect: "none",
-                                        pointerEvents: "all",
-                                        boxShadow: `0 0 12px 2px ${shadowColor}`,
-                                    }}
-                                    draggable={false}
-                                    onLoad={handleImageLoad}
-                                    onError={handleImageError}
-                                    crossOrigin="anonymous"
-                                />
+                                {imageDimensions && (
+                                    <Image
+                                        src={img}
+                                        alt={title || ""}
+                                        width={imageDimensions.width}
+                                        height={imageDimensions.height}
+                                        style={{
+                                            width: "100%",
+                                            height: "auto",
+                                            objectFit: "contain",
+                                            userSelect: "none",
+                                            pointerEvents: "all",
+                                            boxShadow: `0 0 24px 1px ${shadowColor}`,
+                                        }}
+                                        draggable={false}
+                                        onLoad={handleImageLoad}
+                                        onError={handleImageError}
+                                        quality={100}
+                                        unoptimized={false}
+                                    />
+                                )}
                             </TransformComponent>
                         </TransformWrapper>
                     </div>

@@ -128,6 +128,14 @@ Table Player {
   referredPlayerLogs ReferralLog [not null]
   referrerPlayerLogs ReferralLog [not null]
   rewardLogs RewardsLog [not null]
+  boardPosts BoardPost [not null]
+  boardComments BoardComment [not null]
+  boardReactions BoardReaction [not null]
+  boardPostRewards BoardPostReward [not null]
+  grantedBoardRewards BoardPostReward [not null]
+  isArtist Boolean [not null, default: false]
+  artistId String
+  artist Artist
 
   indexes {
     (userId, telegramId) [unique]
@@ -599,6 +607,10 @@ Table Asset {
   rewardsLogs RewardsLog [not null]
   stakeRewards StakeReward [not null]
   stakeRewardLogs StakeRewardLog [not null]
+  boardPostRewards BoardPostReward [not null]
+  boardPostCreationRewards Board [not null]
+  boardPopularPostRewards Board [not null]
+  boardQualityContentRewards Board [not null]
 }
 
 Table AssetTransaction {
@@ -853,6 +865,8 @@ Table Artist {
   polls Poll [not null]
   quests Quest [not null]
   story_spg Story_spg [not null]
+  boards Board [not null]
+  players Player [not null]
 }
 
 Table ArtistMember {
@@ -1164,6 +1178,136 @@ Table XAuthSession {
   createdAt DateTime [default: `now()`, not null]
 }
 
+Table Board {
+  id String [pk]
+  name String [not null]
+  description String
+  artistId String
+  isPublic Boolean [not null, default: true]
+  isActive Boolean [not null, default: true]
+  order Int [not null, default: 0]
+  iconUrl String
+  bannerUrl String
+  rules String
+  metadata Json
+  postCreationRewardEnabled Boolean [not null, default: false]
+  postCreationRewardAmount Int
+  postCreationRewardAssetId String
+  popularPostRewardEnabled Boolean [not null, default: false]
+  popularPostThreshold Int
+  popularPostRewardAmount Int
+  popularPostRewardAssetId String
+  qualityContentRewardEnabled Boolean [not null, default: false]
+  qualityContentRewardAmount Int
+  qualityContentRewardAssetId String
+  allowUserRewards Boolean [not null, default: false]
+  allowArtistRewards Boolean [not null, default: false]
+  allowTeamRewards Boolean [not null, default: false]
+  allowAdminRewards Boolean [not null, default: false]
+  dailyPostLimit Int
+  weeklyPostLimit Int
+  maxRewardPerPost Int
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  artist Artist
+  posts BoardPost [not null]
+  postCreationRewardAsset Asset
+  popularPostRewardAsset Asset
+  qualityContentRewardAsset Asset
+}
+
+Table BoardPost {
+  id String [pk]
+  boardId String [not null]
+  authorId String [not null]
+  authorType BoardAuthorType [not null, default: 'PLAYER']
+  title String [not null]
+  content String [not null]
+  imageUrls String[] [not null]
+  videoUrls String[] [not null]
+  attachmentUrls String[] [not null]
+  files Json[] [not null]
+  nftAddress String
+  nftTokenId String
+  tags String[] [not null]
+  isPinned Boolean [not null, default: false]
+  isHidden Boolean [not null, default: false]
+  viewCount Int [not null, default: 0]
+  likeCount Int [not null, default: 0]
+  dislikeCount Int [not null, default: 0]
+  recommendCount Int [not null, default: 0]
+  commentCount Int [not null, default: 0]
+  shareCount Int [not null, default: 0]
+  metadata Json
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  board Board [not null]
+  author Player [not null]
+  comments BoardComment [not null]
+  reactions BoardReaction [not null]
+  rewards BoardPostReward [not null]
+}
+
+Table BoardComment {
+  id String [pk]
+  postId String [not null]
+  authorId String [not null]
+  authorType BoardAuthorType [not null, default: 'PLAYER']
+  content String [not null]
+  parentId String
+  imageUrls String[] [not null]
+  files Json[] [not null]
+  isHidden Boolean [not null, default: false]
+  likeCount Int [not null, default: 0]
+  dislikeCount Int [not null, default: 0]
+  replyCount Int [not null, default: 0]
+  metadata Json
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  post BoardPost [not null]
+  author Player [not null]
+  parent BoardComment
+  replies BoardComment [not null]
+  reactions BoardReaction [not null]
+}
+
+Table BoardReaction {
+  id String [pk]
+  playerId String [not null]
+  postId String
+  commentId String
+  type BoardReactionType [not null]
+  createdAt DateTime [default: `now()`, not null]
+  player Player [not null]
+  post BoardPost
+  comment BoardComment
+
+  indexes {
+    (playerId, postId, type) [unique]
+    (playerId, commentId, type) [unique]
+  }
+}
+
+Table BoardPostReward {
+  id String [pk]
+  postId String [not null]
+  playerId String [not null]
+  grantedBy String
+  grantedByType BoardAuthorType
+  assetId String
+  amount Int [not null]
+  reason BoardRewardReason [not null]
+  txHash String
+  status BoardRewardStatus [not null, default: 'PENDING']
+  metadata Json
+  createdAt DateTime [default: `now()`, not null]
+  processedAt DateTime
+  post BoardPost [not null]
+  player Player [not null]
+  grantedByUser Player
+  asset Asset
+}
+
 Table StakeReward {
   stakerewardsId String [ref: > StakeReward.id]
   stakerewardsId String [ref: > StakeReward.id]
@@ -1267,6 +1411,41 @@ Enum MetadataType {
   nft
 }
 
+Enum BoardAuthorType {
+  PLAYER
+  ARTIST
+  TEAM
+  ADMIN
+}
+
+Enum BoardReactionType {
+  LIKE
+  DISLIKE
+  LOVE
+  LAUGH
+  ANGRY
+  SAD
+  RECOMMEND
+}
+
+Enum BoardRewardReason {
+  POST_CREATION
+  POPULAR_POST
+  QUALITY_CONTENT
+  COMMUNITY_CONTRIBUTION
+  ARTIST_REWARD
+  TEAM_REWARD
+  MILESTONE_ACHIEVEMENT
+}
+
+Enum BoardRewardStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
 Ref: Account.userId > User.id [delete: Cascade]
 
 Ref: DiscordCode.userId > User.id [delete: Cascade]
@@ -1280,6 +1459,8 @@ Ref: Player.referredBy - Player.id
 Ref: Player.tweetAuthorId - TweetAuthor.authorId
 
 Ref: Player.userId - User.id [delete: Cascade]
+
+Ref: Player.artistId > Artist.id
 
 Ref: ReferralLog.referredPlayerId > Player.id [delete: Cascade]
 
@@ -1414,3 +1595,35 @@ Ref: TweetMetrics.tweetId > Tweet.tweetId
 Ref: TweetMedia.tweetId > Tweet.tweetId
 
 Ref: TweetResponse.tweetSyncDataId > TweetSyncData.id [delete: Cascade]
+
+Ref: Board.artistId > Artist.id
+
+Ref: Board.postCreationRewardAssetId > Asset.id
+
+Ref: Board.popularPostRewardAssetId > Asset.id
+
+Ref: Board.qualityContentRewardAssetId > Asset.id
+
+Ref: BoardPost.boardId > Board.id [delete: Cascade]
+
+Ref: BoardPost.authorId > Player.id
+
+Ref: BoardComment.postId > BoardPost.id [delete: Cascade]
+
+Ref: BoardComment.authorId > Player.id
+
+Ref: BoardComment.parentId - BoardComment.id
+
+Ref: BoardReaction.playerId > Player.id
+
+Ref: BoardReaction.postId > BoardPost.id [delete: Cascade]
+
+Ref: BoardReaction.commentId > BoardComment.id [delete: Cascade]
+
+Ref: BoardPostReward.postId > BoardPost.id [delete: Cascade]
+
+Ref: BoardPostReward.playerId > Player.id
+
+Ref: BoardPostReward.grantedBy > Player.id
+
+Ref: BoardPostReward.assetId > Asset.id

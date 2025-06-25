@@ -131,33 +131,41 @@ model Wallet {
 }
 
 model Player {
-  id                  String               @id @default(cuid())
-  userId              String?              @unique
-  telegramId          String?              @unique
-  tweetAuthorId       String?              @unique
-  tweetVerified       Boolean              @default(false)
-  name                String?
-  nickname            String?
-  image               String?
-  email               String?
-  referralCount       Int                  @default(0)
-  referredBy          String?
-  referredMethod      String?
-  referredAt          DateTime             @default(now())
-  createdAt           DateTime             @default(now())
-  lastConnectedAt     DateTime             @updatedAt
-  referralCode        String               @unique
-  artistFeedReactions ArtistFeedReaction[]
-  referrer            Player?              @relation("Referrer", fields: [referredBy], references: [id])
-  referredPlayers     Player[]             @relation("Referrer")
-  tweetAuthor         TweetAuthor?         @relation("PlayerToTweetAuthor", fields: [tweetAuthorId], references: [authorId])
-  user                User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  playerAssets        PlayerAsset[]
-  pollLogs            PollLog[]
-  questLogs           QuestLog[]
-  referredPlayerLogs  ReferralLog[]        @relation("ReferredPlayer")
-  referrerPlayerLogs  ReferralLog[]        @relation("ReferrerPlayer")
-  rewardLogs          RewardsLog[]
+  id                     String               @id @default(cuid())
+  userId                 String?              @unique
+  telegramId             String?              @unique
+  tweetAuthorId          String?              @unique
+  tweetVerified          Boolean              @default(false)
+  name                   String?
+  nickname               String?
+  image                  String?
+  email                  String?
+  referralCount          Int                  @default(0)
+  referredBy             String?
+  referredMethod         String?
+  referredAt             DateTime             @default(now())
+  createdAt              DateTime             @default(now())
+  lastConnectedAt        DateTime             @updatedAt
+  referralCode           String               @unique
+  artistFeedReactions    ArtistFeedReaction[]
+  referrer               Player?              @relation("Referrer", fields: [referredBy], references: [id])
+  referredPlayers        Player[]             @relation("Referrer")
+  tweetAuthor            TweetAuthor?         @relation("PlayerToTweetAuthor", fields: [tweetAuthorId], references: [authorId])
+  user                   User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playerAssets           PlayerAsset[]
+  pollLogs               PollLog[]
+  questLogs              QuestLog[]
+  referredPlayerLogs     ReferralLog[]        @relation("ReferredPlayer")
+  referrerPlayerLogs     ReferralLog[]        @relation("ReferrerPlayer")
+  rewardLogs             RewardsLog[]
+  boardPosts             BoardPost[]          @relation("BoardPostAuthor")
+  boardComments          BoardComment[]       @relation("BoardCommentAuthor")
+  boardReactions         BoardReaction[]      @relation("BoardReactionPlayer")
+  boardPostRewards       BoardPostReward[]    @relation("BoardPostRewardPlayer")
+  grantedBoardRewards    BoardPostReward[]    @relation("BoardPostRewardGranter")
+  isArtist               Boolean              @default(false)
+  artistId               String?
+  artist                 Artist?              @relation("PlayerArtist", fields: [artistId], references: [id])
 
   @@unique([userId, telegramId])
   @@index([userId, telegramId])
@@ -165,6 +173,8 @@ model Player {
   @@index([referralCode])
   @@index([createdAt])
   @@index([lastConnectedAt])
+  @@index([isArtist])
+  @@index([artistId])
 }
 
 model PlayerOldData {
@@ -684,6 +694,10 @@ model Asset {
   rewardsLogs                   RewardsLog[]
   stakeRewards                  StakeReward[]      @relation("StakeReward")
   stakeRewardLogs               StakeRewardLog[]   @relation("StakeRewardLog")
+  boardPostRewards              BoardPostReward[]  @relation("BoardPostRewardAsset")
+  boardPostCreationRewards      Board[]            @relation("BoardPostCreationReward")
+  boardPopularPostRewards       Board[]            @relation("BoardPopularPostReward")
+  boardQualityContentRewards    Board[]            @relation("BoardQualityContentReward")
 
   @@index([isDefault])
   @@index([assetType, isActive])
@@ -966,6 +980,8 @@ model Artist {
   polls               Poll[]               @relation("ArtistPolls")
   quests              Quest[]              @relation("ArtistQuests")
   story_spg           Story_spg[]
+  boards              Board[]              @relation("ArtistBoards")
+  players             Player[]             @relation("PlayerArtist")
 
   @@index([name])
   @@index([code])
@@ -1327,6 +1343,167 @@ model XAuthSession {
   @@index([expiresAt])
 }
 
+// Board System Models
+model Board {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  artistId    String?
+  isPublic    Boolean     @default(true)
+  isActive    Boolean     @default(true)
+  order       Int         @default(0)
+  iconUrl     String?
+  bannerUrl   String?
+  rules       String?
+  metadata    Json?
+  
+  // Reward Configuration - 명시적 설정만 허용
+  postCreationRewardEnabled    Boolean @default(false)
+  postCreationRewardAmount     Int?
+  postCreationRewardAssetId    String?
+  
+  popularPostRewardEnabled     Boolean @default(false)
+  popularPostThreshold         Int?
+  popularPostRewardAmount      Int?
+  popularPostRewardAssetId     String?
+  
+  qualityContentRewardEnabled  Boolean @default(false)
+  qualityContentRewardAmount   Int?
+  qualityContentRewardAssetId  String?
+  
+  // Permission Settings - 명시적 설정만 허용
+  allowUserRewards             Boolean @default(false)
+  allowArtistRewards           Boolean @default(false)
+  allowTeamRewards             Boolean @default(false)
+  allowAdminRewards            Boolean @default(false)
+  
+  // Daily/Weekly Limits
+  dailyPostLimit               Int?
+  weeklyPostLimit              Int?
+  maxRewardPerPost             Int?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  artist      Artist?     @relation("ArtistBoards", fields: [artistId], references: [id])
+  posts       BoardPost[]
+  postCreationRewardAsset  Asset? @relation("BoardPostCreationReward", fields: [postCreationRewardAssetId], references: [id])
+  popularPostRewardAsset   Asset? @relation("BoardPopularPostReward", fields: [popularPostRewardAssetId], references: [id])
+  qualityContentRewardAsset Asset? @relation("BoardQualityContentReward", fields: [qualityContentRewardAssetId], references: [id])
+
+  @@index([artistId, isActive])
+  @@index([isPublic, isActive, order])
+}
+
+model BoardPost {
+  id             String            @id @default(cuid())
+  boardId        String
+  authorId       String
+  authorType     BoardAuthorType   @default(PLAYER)
+  title          String
+  content        String
+  imageUrls      String[]          @default([])
+  videoUrls      String[]          @default([])
+  attachmentUrls String[]          @default([])
+  // 파일 메타데이터 (FileData 형태의 JSON 배열)
+  files          Json[]            @default([])
+  nftAddress     String?
+  nftTokenId     String?
+  tags           String[]          @default([])
+  isPinned       Boolean           @default(false)
+  isHidden       Boolean           @default(false)
+  viewCount      Int               @default(0)
+  likeCount      Int               @default(0)
+  dislikeCount   Int               @default(0)
+  recommendCount Int               @default(0)
+  commentCount   Int               @default(0)
+  shareCount     Int               @default(0)
+  metadata       Json?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  board          Board             @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  author         Player            @relation("BoardPostAuthor", fields: [authorId], references: [id])
+  comments       BoardComment[]
+  reactions      BoardReaction[]
+  rewards        BoardPostReward[]
+
+  @@index([boardId, isPinned, createdAt])
+  @@index([authorId, createdAt])
+  @@index([authorType, createdAt])
+  @@index([recommendCount, createdAt])
+  @@index([boardId, isHidden, isPinned])
+}
+
+model BoardComment {
+  id            String            @id @default(cuid())
+  postId        String
+  authorId      String
+  authorType    BoardAuthorType   @default(PLAYER)
+  content       String
+  parentId      String?
+  imageUrls     String[]          @default([])
+  // 파일 메타데이터 (FileData 형태의 JSON 배열)
+  files         Json[]            @default([])
+  isHidden      Boolean           @default(false)
+  likeCount     Int               @default(0)
+  dislikeCount  Int               @default(0)
+  replyCount    Int               @default(0)
+  metadata      Json?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  post          BoardPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author        Player            @relation("BoardCommentAuthor", fields: [authorId], references: [id])
+  parent        BoardComment?     @relation("CommentReplies", fields: [parentId], references: [id])
+  replies       BoardComment[]    @relation("CommentReplies")
+  reactions     BoardReaction[]
+
+  @@index([postId, parentId, createdAt])
+  @@index([authorId, createdAt])
+  @@index([parentId])
+}
+
+model BoardReaction {
+  id        String             @id @default(cuid())
+  playerId  String
+  postId    String?
+  commentId String?
+  type      BoardReactionType
+  createdAt DateTime           @default(now())
+  player    Player             @relation("BoardReactionPlayer", fields: [playerId], references: [id])
+  post      BoardPost?         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment   BoardComment?      @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, postId, type])
+  @@unique([playerId, commentId, type])
+  @@index([postId, type])
+  @@index([commentId, type])
+  @@index([playerId])
+}
+
+model BoardPostReward {
+  id            String             @id @default(cuid())
+  postId        String
+  playerId      String
+  grantedBy     String?
+  grantedByType BoardAuthorType?
+  assetId       String?
+  amount        Int
+  reason        BoardRewardReason
+  txHash        String?
+  status        BoardRewardStatus  @default(PENDING)
+  metadata      Json?
+  createdAt     DateTime           @default(now())
+  processedAt   DateTime?
+  post          BoardPost          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  player        Player             @relation("BoardPostRewardPlayer", fields: [playerId], references: [id])
+  grantedByUser Player?            @relation("BoardPostRewardGranter", fields: [grantedBy], references: [id])
+  asset         Asset?             @relation("BoardPostRewardAsset", fields: [assetId], references: [id])
+
+  @@index([postId, status])
+  @@index([playerId, status])
+  @@index([grantedBy, createdAt])
+  @@index([reason, status])
+}
+
 enum PlayerAssetStatus {
   ACTIVE
   INACTIVE
@@ -1418,4 +1595,39 @@ enum WalletStatus {
 enum MetadataType {
   collection
   nft
+}
+
+enum BoardAuthorType {
+  PLAYER
+  ARTIST
+  TEAM
+  ADMIN
+}
+
+enum BoardReactionType {
+  LIKE
+  DISLIKE
+  LOVE
+  LAUGH
+  ANGRY
+  SAD
+  RECOMMEND
+}
+
+enum BoardRewardReason {
+  POST_CREATION
+  POPULAR_POST
+  QUALITY_CONTENT
+  COMMUNITY_CONTRIBUTION
+  ARTIST_REWARD
+  TEAM_REWARD
+  MILESTONE_ACHIEVEMENT
+}
+
+enum BoardRewardStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }

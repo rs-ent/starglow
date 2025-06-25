@@ -2,22 +2,19 @@
 
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useMemo } from "react";
 
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { cn } from "@/lib/utils/tailwind";
 
 import PollsList from "./Polls.List";
 import PartialLoading from "../atoms/PartialLoading";
-
-import type { TokenGatingResult } from "@/app/story/nft/actions";
 import type { Artist, Player, PollLog } from "@prisma/client";
 
 interface PollsContentsPrivateArtistListProps {
     artist: Artist;
     player: Player | null;
     pollLogs?: PollLog[];
-    tokenGating?: TokenGatingResult | null;
     className?: string;
     fgColorFrom?: string;
     fgColorTo?: string;
@@ -32,7 +29,6 @@ function PollsContentsPrivateArtistList({
     artist,
     player,
     pollLogs,
-    tokenGating,
     className,
     fgColorFrom,
     fgColorTo,
@@ -42,9 +38,6 @@ function PollsContentsPrivateArtistList({
     bgColorAccentTo,
     forceSlidesToShow,
 }: PollsContentsPrivateArtistListProps) {
-    const [isReady, setIsReady] = useState(false);
-    const [hasPolls, setHasPolls] = useState(false);
-
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
             artistId: artist.id,
@@ -61,33 +54,11 @@ function PollsContentsPrivateArtistList({
         );
     }, [pollLogs, pollsList?.items]);
 
-    // 컨텐츠 준비 상태 업데이트
-    useEffect(() => {
-        if (!isLoading) {
-            if (pollsList?.items && pollsList.items.length > 0) {
-                setHasPolls(true);
-                if (tokenGating) {
-                    setIsReady(true);
-                }
-            } else {
-                setHasPolls(false);
-                setIsReady(true);
-            }
-        }
-    }, [pollsList, tokenGating, isLoading]);
-
-    // 토큰 게이팅 결과가 변경될 때 준비 상태 업데이트
-    useEffect(() => {
-        if (tokenGating && hasPolls) {
-            setIsReady(true);
-        }
-    }, [tokenGating, hasPolls]);
-
     // 로딩 상태 렌더링
     const renderLoading = useCallback(
         () => (
             <div className="w-full py-8 flex justify-center">
-                <PartialLoading text="Loading..." />
+                <PartialLoading text="Loading!..." />
             </div>
         ),
         []
@@ -115,14 +86,13 @@ function PollsContentsPrivateArtistList({
 
     // 폴 목록 렌더링
     const renderPollsList = useCallback(() => {
-        if (!pollsList?.items || !isReady) return null;
+        if (!pollsList?.items) return null;
 
         return (
             <PollsList
                 polls={pollsList.items}
                 artist={artist}
                 player={player}
-                tokenGating={tokenGating}
                 pollLogs={filteredPollLogs}
                 fgColorFrom={fgColorFrom}
                 fgColorTo={fgColorTo}
@@ -131,14 +101,13 @@ function PollsContentsPrivateArtistList({
                 bgColorAccentFrom={bgColorAccentFrom}
                 bgColorAccentTo={bgColorAccentTo}
                 forceSlidesToShow={forceSlidesToShow}
+                needMarginBottom={false}
             />
         );
     }, [
         pollsList?.items,
-        isReady,
         artist,
         player,
-        tokenGating,
         filteredPollLogs,
         fgColorFrom,
         fgColorTo,
@@ -151,7 +120,7 @@ function PollsContentsPrivateArtistList({
 
     // 컨텐츠 렌더링 결정
     const renderContent = useCallback(() => {
-        if (!isReady || isLoading) {
+        if (isLoading) {
             return renderLoading();
         }
 
@@ -165,7 +134,6 @@ function PollsContentsPrivateArtistList({
 
         return renderPollsList();
     }, [
-        isReady,
         isLoading,
         error,
         pollsList?.items,
@@ -176,14 +144,7 @@ function PollsContentsPrivateArtistList({
     ]);
 
     return (
-        <div
-            className={cn(
-                "w-full",
-                "px-[10px] sm:px-[10px] md:px-[20px] lg:px-[20px]",
-                "mt-[10px] sm:mt-[15px] md:mt-[20px] lg:mt-[25px] xl:mt-[30px]",
-                className
-            )}
-        >
+        <div className={cn("w-full", className)}>
             <div key={`artist-polls-${artist.id}`} className="relative">
                 {renderContent()}
             </div>

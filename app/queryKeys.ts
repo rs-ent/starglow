@@ -4,6 +4,7 @@ import type {
     GetArtistMessagesInput,
     GetArtistsInput,
     TokenGatingInput as ArtistTokenGatingInput,
+    GetPlayersInput,
 } from "./actions/artists";
 import type { TokenGateInput } from "./actions/blockchain";
 import type { GetDBUserFromPlayerInput } from "./actions/player";
@@ -613,6 +614,8 @@ export const artistKeys = {
         [...artistKeys.all, "messages", input] as const,
     tokenGating: (input?: ArtistTokenGatingInput) =>
         [...artistKeys.all, "token-gating", input] as const,
+    players: (input?: GetPlayersInput) =>
+        [...artistKeys.all, "players", input] as const,
 };
 
 export const stakingKeys = {
@@ -681,3 +684,145 @@ export const discordKeys = {
     discordCode: (code: string) =>
         [...discordKeys.all, "discord-code", code] as const,
 };
+
+// Board query keys 기본 배열 정의
+const BOARD_BASE_KEY = ["boards"] as const;
+
+// Board query keys 타입 정의
+type BoardKeysType = {
+    all: readonly ["boards"];
+    lists: () => readonly ["boards", "list"];
+    list: (
+        input?: any,
+        pagination?: any
+    ) => readonly ["boards", "list", any, any];
+    detail: (boardId: string) => readonly ["boards", "detail", string];
+    byArtist: (artistId: string) => readonly ["boards", "artist", string];
+    posts: {
+        all: (
+            boardId?: string
+        ) =>
+            | readonly ["boards", "posts", string]
+            | readonly ["boards", "posts"];
+        list: (
+            input?: any,
+            pagination?: any
+        ) => readonly ["boards", "posts", "list", any, any];
+        infinite: (
+            input?: any
+        ) => readonly ["boards", "posts", "infinite", any];
+        detail: (
+            postId: string
+        ) => readonly ["boards", "posts", "detail", string];
+        byAuthor: (
+            authorId: string
+        ) => readonly ["boards", "posts", "author", string];
+        byBoard: (
+            boardId: string
+        ) => readonly ["boards", "posts", "board", string];
+    };
+    comments: {
+        all: (
+            postId?: string
+        ) =>
+            | readonly ["boards", "comments", string]
+            | readonly ["boards", "comments"];
+        byPost: (
+            postId: string
+        ) => readonly ["boards", "comments", "post", string];
+        byAuthor: (
+            authorId: string
+        ) => readonly ["boards", "comments", "author", string];
+    };
+    reactions: {
+        all: readonly ["boards", "reactions"];
+        byPost: (
+            postId: string
+        ) => readonly ["boards", "reactions", "post", string];
+        byComment: (
+            commentId: string
+        ) => readonly ["boards", "reactions", "comment", string];
+        byPlayer: (
+            playerId: string
+        ) => readonly ["boards", "reactions", "player", string];
+    };
+    rewards: {
+        all: readonly ["boards", "rewards"];
+        list: (input?: any) => readonly ["boards", "rewards", "list", any];
+        byPost: (
+            postId: string
+        ) => readonly ["boards", "rewards", "post", string];
+        byPlayer: (
+            playerId: string
+        ) => readonly ["boards", "rewards", "player", string];
+        byReason: (
+            reason: string
+        ) => readonly ["boards", "rewards", "reason", string];
+    };
+};
+
+// Board query keys
+export const boardKeys: BoardKeysType = {
+    all: BOARD_BASE_KEY,
+    lists: () => [...BOARD_BASE_KEY, "list"] as const,
+    list: (input?: any, pagination?: any) =>
+        [...BOARD_BASE_KEY, "list", input, pagination] as const,
+    detail: (boardId: string) =>
+        [...BOARD_BASE_KEY, "detail", boardId] as const,
+    byArtist: (artistId: string) =>
+        [...BOARD_BASE_KEY, "artist", artistId] as const,
+
+    // Board posts
+    posts: {
+        all: (boardId?: string) =>
+            boardId
+                ? ([...BOARD_BASE_KEY, "posts", boardId] as const)
+                : ([...BOARD_BASE_KEY, "posts"] as const),
+        list: (input?: any, pagination?: any) =>
+            [...BOARD_BASE_KEY, "posts", "list", input, pagination] as const,
+        infinite: (input?: any) =>
+            [...BOARD_BASE_KEY, "posts", "infinite", input] as const,
+        detail: (postId: string) =>
+            [...BOARD_BASE_KEY, "posts", "detail", postId] as const,
+        byAuthor: (authorId: string) =>
+            [...BOARD_BASE_KEY, "posts", "author", authorId] as const,
+        byBoard: (boardId: string) =>
+            [...BOARD_BASE_KEY, "posts", "board", boardId] as const,
+    },
+
+    // Board comments
+    comments: {
+        all: (postId?: string) =>
+            postId
+                ? ([...BOARD_BASE_KEY, "comments", postId] as const)
+                : ([...BOARD_BASE_KEY, "comments"] as const),
+        byPost: (postId: string) =>
+            [...BOARD_BASE_KEY, "comments", "post", postId] as const,
+        byAuthor: (authorId: string) =>
+            [...BOARD_BASE_KEY, "comments", "author", authorId] as const,
+    },
+
+    // Board reactions
+    reactions: {
+        all: [...BOARD_BASE_KEY, "reactions"] as const,
+        byPost: (postId: string) =>
+            [...BOARD_BASE_KEY, "reactions", "post", postId] as const,
+        byComment: (commentId: string) =>
+            [...BOARD_BASE_KEY, "reactions", "comment", commentId] as const,
+        byPlayer: (playerId: string) =>
+            [...BOARD_BASE_KEY, "reactions", "player", playerId] as const,
+    },
+
+    // Board post rewards
+    rewards: {
+        all: [...BOARD_BASE_KEY, "rewards"] as const,
+        list: (input?: any) =>
+            [...BOARD_BASE_KEY, "rewards", "list", input] as const,
+        byPost: (postId: string) =>
+            [...BOARD_BASE_KEY, "rewards", "post", postId] as const,
+        byPlayer: (playerId: string) =>
+            [...BOARD_BASE_KEY, "rewards", "player", playerId] as const,
+        byReason: (reason: string) =>
+            [...BOARD_BASE_KEY, "rewards", "reason", reason] as const,
+    },
+} as const;

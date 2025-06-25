@@ -12,7 +12,7 @@ import {
     getPollsResults,
     getUserSelection,
     getPollLogs,
-    getPlayerPollLogs
+    getPlayerPollLogs,
 } from "../actions/polls";
 import { pollKeys } from "../queryKeys";
 
@@ -27,7 +27,9 @@ import type {
     GetUserSelectionResponse,
     PaginationInput,
     GetPollLogsInput,
-    GetPlayerPollLogsInput} from "../actions/polls";
+    GetPlayerPollLogsInput,
+    PollsWithArtist,
+} from "../actions/polls";
 import type { TokenGatingData } from "../story/nft/actions";
 import type { Poll, PollLog } from "@prisma/client";
 
@@ -39,7 +41,7 @@ export function usePollsQuery({
     pagination?: PaginationInput;
 }) {
     return useQuery<{
-        items: Poll[];
+        items: PollsWithArtist[];
         totalItems: number;
         totalPages: number;
     }>({

@@ -93,6 +93,11 @@ export async function createQuest(input: CreateQuestInput) {
     return quest;
 }
 
+export type QuestWithArtistAndRewardAsset = Quest & {
+    artist: Artist;
+    rewardAsset: Asset;
+};
+
 export interface GetQuestsInput {
     startDate?: Date;
     startDateIndicator?: "before" | "after" | "on";
@@ -118,7 +123,7 @@ export async function getQuests({
     input?: GetQuestsInput;
     pagination?: PaginationInput;
 }): Promise<{
-    items: Quest[];
+    items: QuestWithArtistAndRewardAsset[];
     totalItems: number;
     totalPages: number;
 }> {
@@ -131,7 +136,7 @@ export async function getQuests({
         }
 
         if (!input) {
-            const items = await prisma.quest.findMany({
+            const items = (await prisma.quest.findMany({
                 orderBy: {
                     order: "asc",
                 },
@@ -141,7 +146,7 @@ export async function getQuests({
                 },
                 skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
                 take: pagination.itemsPerPage,
-            });
+            })) as QuestWithArtistAndRewardAsset[];
 
             return {
                 items,
@@ -191,7 +196,7 @@ export async function getQuests({
 
         // Promise.all로 병렬 처리하여 성능 향상
         const [items, totalItems] = await Promise.all([
-            prisma.quest.findMany({
+            (await prisma.quest.findMany({
                 where,
                 orderBy: {
                     order: "asc",
@@ -202,7 +207,7 @@ export async function getQuests({
                     artist: true,
                     rewardAsset: true,
                 },
-            }),
+            })) as QuestWithArtistAndRewardAsset[],
             prisma.quest.count({ where }),
         ]);
 

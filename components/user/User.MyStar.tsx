@@ -2,13 +2,17 @@
 
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { useQuestGet } from "@/app/hooks/useQuest";
+import {
+    useArtistActivities,
+    useArtistFromSPGs,
+} from "@/app/hooks/useArtistActivities";
 import ArtistFeedModal from "@/components/artists/Artist.Feed.Modal";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -18,7 +22,8 @@ import PartialLoading from "../atoms/PartialLoading";
 
 import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
 import type { VerifiedSPG } from "@/app/story/interaction/actions";
-import type { Artist, Player, Poll, Quest } from "@prisma/client";
+import type { ModalState } from "@/app/types/user-mystar";
+import type { Artist, Player } from "@prisma/client";
 
 interface UserMyStarProps {
     player: Player;
@@ -40,9 +45,7 @@ export default React.memo(function UserMyStar({
     player,
     userVerifiedSPGs,
 }: UserMyStarProps) {
-    const [modalState, setModalState] = useState<"none" | "artist" | "feed">(
-        "none"
-    );
+    const [modalState, setModalState] = useState<ModalState>("none");
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
     const [initialFeeds, setInitialFeeds] = useState<ArtistFeedWithReactions[]>(
         []
@@ -76,85 +79,15 @@ export default React.memo(function UserMyStar({
         },
     });
 
-    const artists = useMemo(() => {
-        const artistMap = new Map<string, Artist>();
-        userVerifiedSPGs.forEach((spg) => {
-            if (spg.artist && spg.verifiedTokens.length > 0) {
-                artistMap.set(spg.artist.id, spg.artist);
-            }
-        });
-        return Array.from(artistMap.values());
-    }, [userVerifiedSPGs]);
+    const artists = useArtistFromSPGs(userVerifiedSPGs);
 
-    const newArtistsActivities: Map<
-        string,
-        { polls: Poll[]; quests: Quest[] }
-    > = useMemo(() => {
-        const now = new Date().getTime();
-        const result = new Map<string, { polls: Poll[]; quests: Quest[] }>();
-
-        artists.forEach((artist) => {
-            result.set(artist.id, { polls: [], quests: [] });
-        });
-
-        result.forEach((value, key) => {
-            if (key) {
-                value.polls =
-                    pollsList?.items.filter((poll) => {
-                        const isArtistMatch = poll.artistId === key;
-                        if (!isArtistMatch) return false;
-
-                        const isEligible = poll.isActive;
-                        if (!isEligible) return false;
-
-                        const isNotExpired =
-                            (!poll.endDate ||
-                                (poll.endDate &&
-                                    new Date(poll.endDate).getTime() > now)) &&
-                            (!poll.startDate ||
-                                (poll.startDate &&
-                                    new Date(poll.startDate).getTime() < now));
-                        if (!isNotExpired) return false;
-
-                        const log = (playerPollLogs ?? []).find(
-                            (playerPollLog) => playerPollLog.pollId === poll.id
-                        );
-                        if (log) return false;
-
-                        return true;
-                    }) ?? [];
-                value.quests =
-                    quests?.items.filter((quest) => {
-                        const isArtistMatch = quest.artistId === key;
-                        if (!isArtistMatch) return false;
-
-                        const isEligible = quest.isActive;
-                        if (!isEligible) return false;
-
-                        const isNotExpired =
-                            (!quest.endDate ||
-                                (quest.endDate &&
-                                    new Date(quest.endDate).getTime() > now)) &&
-                            (!quest.startDate ||
-                                (quest.startDate &&
-                                    new Date(quest.startDate).getTime() < now));
-
-                        if (!quest.permanent && !isNotExpired) return false;
-
-                        const log = (playerQuestLogs ?? []).find(
-                            (playerQuestLog) =>
-                                playerQuestLog.questId === quest.id
-                        );
-
-                        const isClaimed = log && log.isClaimed;
-                        if (isClaimed) return false;
-                        return true;
-                    }) ?? [];
-            }
-        });
-
-        return result;
-    }, [artists, pollsList, quests, playerPollLogs, playerQuestLogs]);
+    const newArtistsActivities = useArtistActivities({
+        artists,
+        pollsList,
+        quests,
+        playerPollLogs,
+        playerQuestLogs,
+    });
 
     const handleSelectArtist = useCallback((artist: Artist) => {
         setSelectedArtist(artist);

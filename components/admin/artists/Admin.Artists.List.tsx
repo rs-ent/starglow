@@ -4,7 +4,6 @@
 
 import { useState } from "react";
 
-
 import Link from "next/link";
 
 import { useArtistsGet, useArtistSet } from "@/app/hooks/useArtists";
@@ -13,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import AdminArtistsCreate from "./Admin.Artists.Create";
 
 import type { Artist } from "@prisma/client";
-
 
 export default function AdminArtistsList() {
     const { artists, isLoading, error } = useArtistsGet({});
@@ -54,6 +52,7 @@ export default function AdminArtistsList() {
                             <th className="px-4 py-2 text-center">이름</th>
                             <th className="px-4 py-2 text-center">설명</th>
                             <th className="px-4 py-2 text-center">회사</th>
+                            <th className="px-4 py-2 text-center">플레이어</th>
                             <th className="px-4 py-2 text-center">컬렉션</th>
                             <th className="px-4 py-2 text-center">
                                 퀘스트 갯수
@@ -65,7 +64,7 @@ export default function AdminArtistsList() {
                     <tbody className="">
                         {isLoading && (
                             <tr>
-                                <td colSpan={7} className="text-center py-8">
+                                <td colSpan={9} className="text-center py-8">
                                     로딩 중...
                                 </td>
                             </tr>
@@ -73,7 +72,7 @@ export default function AdminArtistsList() {
                         {error && (
                             <tr>
                                 <td
-                                    colSpan={7}
+                                    colSpan={9}
                                     className="text-center text-red-500 py-8"
                                 >
                                     오류가 발생했습니다: {error.message}
@@ -82,7 +81,7 @@ export default function AdminArtistsList() {
                         )}
                         {artists && artists.length === 0 && (
                             <tr>
-                                <td colSpan={7} className="text-center py-8">
+                                <td colSpan={9} className="text-center py-8">
                                     등록된 아티스트가 없습니다.
                                 </td>
                             </tr>
@@ -114,6 +113,49 @@ export default function AdminArtistsList() {
                                     </td>
                                     <td className="px-4 py-2 text-sm text-center align-middle">
                                         {artist.company}
+                                    </td>
+                                    <td className="px-4 py-2 text-center align-middle">
+                                        {artist.players &&
+                                        artist.players.length > 0 ? (
+                                            <div className="flex flex-col gap-1">
+                                                <div className="text-sm font-medium">
+                                                    {artist.players.length}명
+                                                </div>
+                                                <div className="flex flex-wrap gap-1 justify-center">
+                                                    {artist.players
+                                                        .slice(0, 3)
+                                                        .map((player: any) => (
+                                                            <div
+                                                                key={player.id}
+                                                                className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full max-w-[80px] truncate"
+                                                                title={
+                                                                    player.name ||
+                                                                    player.nickname ||
+                                                                    player.email ||
+                                                                    "Unknown"
+                                                                }
+                                                            >
+                                                                {player.name ||
+                                                                    player.nickname ||
+                                                                    player.email ||
+                                                                    "Unknown"}
+                                                            </div>
+                                                        ))}
+                                                    {artist.players.length >
+                                                        3 && (
+                                                        <div className="text-xs text-muted-foreground">
+                                                            +
+                                                            {artist.players
+                                                                .length - 3}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm text-muted-foreground">
+                                                없음
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-4 py-2 text-center align-middle">
                                         {artist.collectionContracts

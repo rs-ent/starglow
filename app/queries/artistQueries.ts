@@ -9,6 +9,7 @@ import {
     getArtistMessages,
     getArtists,
     tokenGating,
+    getPlayers,
 } from "../actions/artists";
 import { artistKeys } from "../queryKeys";
 
@@ -17,6 +18,7 @@ import type {
     GetArtistMessagesInput,
     GetArtistsInput,
     TokenGatingInput,
+    GetPlayersInput,
 } from "../actions/artists";
 
 export function useArtists(input?: GetArtistsInput) {
@@ -54,5 +56,14 @@ export function useTokenGatingQuery(input?: TokenGatingInput) {
         queryFn: () => tokenGating(input),
         staleTime: 1000 * 60 * 10,
         gcTime: 1000 * 60 * 30,
+    });
+}
+
+export function usePlayers(input?: GetPlayersInput) {
+    return useQuery({
+        queryKey: artistKeys.players(input),
+        queryFn: () => getPlayers(input),
+        staleTime: 1000 * 60 * 60 * 24 * 30, // 30일 캐시
+        gcTime: 1000 * 60 * 60 * 24 * 30, // 30일 가비지 컬렉션
     });
 }
