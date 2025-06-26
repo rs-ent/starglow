@@ -26,6 +26,7 @@ import {
     Heart,
     Copy,
     RefreshCcw,
+    Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -35,6 +36,7 @@ import { useToast } from "@/app/hooks/useToast";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import RaffleScratchCard from "./Raffle.Reveal.Scratch";
+import EnhancedPortal from "@/components/atoms/Portal.Enhanced";
 
 import type { RaffleStatus } from "@/app/actions/raffles/utils";
 import { useAssetsGet } from "@/app/hooks/useAssets";
@@ -72,6 +74,53 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
         minutes: number;
         seconds: number;
     }>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+    // 반응형 스크래치 카드 크기 상태
+    const [scratchCardSize, setScratchCardSize] = useState(() => {
+        if (typeof window === "undefined") {
+            return { width: 350, height: 250 }; // SSR 기본값
+        }
+
+        const screenWidth = window.innerWidth;
+
+        if (screenWidth >= 1280) {
+            // xl 이상
+            return { width: 450, height: 320 };
+        } else if (screenWidth >= 1024) {
+            // lg
+            return { width: 400, height: 280 };
+        } else if (screenWidth >= 768) {
+            // md
+            return { width: 350, height: 250 };
+        } else {
+            // 모바일
+            return { width: 300, height: 200 };
+        }
+    });
+
+    // 화면 크기 변경 시 스크래치 카드 크기 업데이트
+    useEffect(() => {
+        const updateCardSize = () => {
+            const screenWidth = window.innerWidth;
+
+            if (screenWidth >= 1280) {
+                // xl 이상
+                setScratchCardSize({ width: 450, height: 320 });
+            } else if (screenWidth >= 1024) {
+                // lg
+                setScratchCardSize({ width: 400, height: 280 });
+            } else if (screenWidth >= 768) {
+                // md
+                setScratchCardSize({ width: 350, height: 250 });
+            } else {
+                // 모바일
+                setScratchCardSize({ width: 300, height: 200 });
+            }
+        };
+
+        window.addEventListener("resize", updateCardSize);
+        return () => window.removeEventListener("resize", updateCardSize);
+    }, []);
 
     const toast = useToast();
 
@@ -246,62 +295,86 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
                 raffle={raffle}
             />
 
-            {/* 스크래치 카드 모달 */}
-            <AnimatePresence>
-                {showScratchModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className={cn(
-                            "fixed inset-0 bg-black backdrop-blur-md z-50 flex items-center justify-center p-4",
-                            "transition-all duration-1000",
-                            scracthRevealed ? "bg-black/40" : "bg-black/95"
-                        )}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                        }}
-                    >
+            {/* 스크래치 카드 모달 - Portal로 렌더링하여 깜빡임 방지 */}
+            <EnhancedPortal layer="modal">
+                <AnimatePresence>
+                    {showScratchModal && (
                         <motion.div
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.8, opacity: 0 }}
-                            className="relative"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className={cn(
+                                "fixed inset-0 backdrop-blur-md flex items-center justify-center p-4",
+                                "transition-all duration-1000 z-[1000]",
+                                scracthRevealed ? "bg-black/40" : "bg-black/95"
+                            )}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }}
+                            style={{
+                                // 모바일에서 더 안정적인 렌더링을 위한 추가 스타일
+                                WebkitBackfaceVisibility: "hidden",
+                                backfaceVisibility: "hidden",
+                                transform: "translateZ(0)",
+                            }}
                         >
-                            <RaffleScratchCard
-                                prize={scratchResult?.prize || null}
-                                onReveal={() => {
-                                    setScratchRevealed(true);
-                                    setTimeout(() => {
-                                        if (scratchResult?.prize) {
-                                            toast.success(
-                                                `🎊 Congratulations! You won ${scratchResult.prize.title}!`
-                                            );
-                                        } else {
-                                            toast.info(
-                                                "Better luck next time! Keep trying!"
-                                            );
-                                        }
-                                    }, 500);
+                            <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.8, opacity: 0 }}
+                                className="relative"
+                                style={{
+                                    // Canvas 렌더링 최적화
+                                    WebkitBackfaceVisibility: "hidden",
+                                    backfaceVisibility: "hidden",
+                                    willChange: "transform",
                                 }}
-                                className="mx-auto"
-                            />
-
-                            {/* 닫기 버튼 */}
-                            <button
-                                onClick={() => {
-                                    setShowScratchModal(false);
-                                    setScratchRevealed(false);
-                                }}
-                                className="absolute -top-10 right-0 text-white/60 hover:text-white text-2xl"
                             >
-                                ✕
-                            </button>
+                                <RaffleScratchCard
+                                    prize={scratchResult?.prize || null}
+                                    onReveal={() => {
+                                        setScratchRevealed(true);
+                                        setTimeout(() => {
+                                            if (scratchResult?.prize) {
+                                                toast.success(
+                                                    `🎊 Congratulations! You won ${scratchResult.prize.title}!`
+                                                );
+                                            } else {
+                                                toast.info(
+                                                    "Better luck next time! Keep trying!"
+                                                );
+                                            }
+                                        }, 500);
+                                    }}
+                                    cardSize={scratchCardSize}
+                                    className="mx-auto"
+                                />
+
+                                {/* 닫기 버튼 - 터치 친화적으로 개선 */}
+                                <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => {
+                                        setShowScratchModal(false);
+                                        setScratchRevealed(false);
+                                    }}
+                                    className={cn(
+                                        "absolute -top-12 right-0 text-white/60 hover:text-white",
+                                        "w-10 h-10 flex items-center justify-center rounded-full",
+                                        "bg-black/20 backdrop-blur-sm transition-all",
+                                        "text-xl font-light",
+                                        // 모바일 터치 최적화
+                                        "touch-manipulation select-none"
+                                    )}
+                                >
+                                    ✕
+                                </motion.button>
+                            </motion.div>
                         </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    )}
+                </AnimatePresence>
+            </EnhancedPortal>
 
             <div className={cn("relative w-full min-h-screen overflow-hidden")}>
                 {/* Background Effects - Elegant Space Theme */}
@@ -758,7 +831,7 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
 
                 <h3
                     className={cn(
-                        "font-light text-[rgba(255,255,255,0.8)] mb-2 tracking-wide",
+                        "font-light text-[rgba(255,255,255,0.8)] mb-2 tracking-wide rainbow-text",
                         getResponsiveClass(20).textClass
                     )}
                 >
@@ -766,7 +839,7 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
                 </h3>
                 <h4
                     className={cn(
-                        "font-bold text-[rgba(255,255,255,0.95)] mb-2",
+                        "font-bold text-[rgba(255,255,255,0.95)] mb-2 rainbow-text",
                         getResponsiveClass(35).textClass
                     )}
                 >
@@ -814,6 +887,7 @@ const PrizeCard = memo(function PrizeCard({
             }}
             className={cn(
                 "relative overflow-hidden rounded-2xl group cursor-pointer",
+                "z-30",
                 "backdrop-blur-xl border transition-all duration-500 ease-out",
                 tierInfo
                     ? `bg-gradient-to-br ${tierInfo.bg} border-${tierInfo.border} shadow-lg shadow-${tierInfo.glow}`
@@ -1191,7 +1265,7 @@ const ParticipationCard = memo(function ParticipationCard({
                 getResponsiveClass(25).paddingClass
             )}
         >
-            <div className="text-center">
+            <div className="text-center py-[30px]">
                 {/* Header with actions */}
                 <div className="flex items-center justify-between mb-6">
                     <div
@@ -1398,42 +1472,52 @@ const ParticipationCard = memo(function ParticipationCard({
                         className={cn(
                             "w-full font-bold rounded-2xl transition-all duration-300",
                             "flex items-center justify-center gap-2",
-                            "shadow-lg",
+                            "shadow-lg font-main",
                             "transition-all duration-300",
                             canParticipate && !isParticipateInRafflePending
                                 ? "bg-gradient-to-r from-[rgba(71,234,120,0.7)] via-[rgba(190,77,52,0.7)] to-[rgba(110,28,172,0.7)] hover:from-[rgba(71,234,120,0.9)] hover:via-[rgba(190,77,52,0.9)] hover:to-[rgba(110,28,172,0.9)] text-[rgba(255,255,255,0.95)] hover:shadow-xl"
                                 : isUpcoming
                                 ? "bg-gradient-to-r from-[rgba(60,60,70,0.8)] to-[rgba(70,70,80,0.8)] text-[rgba(255,255,255,0.5)] cursor-not-allowed"
                                 : "bg-[rgba(60,60,70,0.8)] text-[rgba(255,255,255,0.4)] cursor-not-allowed",
-                            getResponsiveClass(20).paddingClass,
-                            getResponsiveClass(15).textClass
+                            getResponsiveClass(50).paddingClass,
+                            "px-[10px]",
+                            getResponsiveClass(35).textClass
                         )}
                     >
                         {isParticipateInRafflePending ? (
                             <>
-                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                <Loader2
+                                    className={cn(
+                                        getResponsiveClass(30).frameClass
+                                    )}
+                                />
                                 Participating...
                             </>
                         ) : canParticipate ? (
                             <>
-                                <Play className="w-5 h-5" />
-                                Enter Raffle
-                                {hasParticipated &&
-                                    raffle?.allowMultipleEntry && (
-                                        <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                                            {userParticipationCount}/
-                                            {raffle?.maxEntriesPerPlayer || "∞"}
-                                        </span>
+                                <Play
+                                    className={cn(
+                                        getResponsiveClass(30).frameClass
                                     )}
+                                />
+                                Enter Raffle
                             </>
                         ) : isUpcoming ? (
                             <>
-                                <Zap className="w-5 h-5" />
+                                <Zap
+                                    className={cn(
+                                        getResponsiveClass(30).frameClass
+                                    )}
+                                />
                                 Coming Soon
                             </>
                         ) : (
                             <>
-                                <Award className="w-5 h-5" />
+                                <Award
+                                    className={cn(
+                                        getResponsiveClass(30).frameClass
+                                    )}
+                                />
                                 Results Available
                             </>
                         )}
@@ -1454,7 +1538,11 @@ const ParticipationCard = memo(function ParticipationCard({
                                 getResponsiveClass(15).textClass
                             )}
                         >
-                            <Trophy className="w-5 h-5" />
+                            <Trophy
+                                className={cn(
+                                    getResponsiveClass(20).frameClass
+                                )}
+                            />
                             My Records
                         </motion.button>
                     )}

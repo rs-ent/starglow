@@ -2,7 +2,7 @@
 
 "use client";
 
-import { memo, useState, useCallback, useRef, useEffect } from "react";
+import { memo, useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Star, Sparkles, Gem, Crown, Zap } from "lucide-react";
 import Image from "next/image";
@@ -62,8 +62,22 @@ const CustomScratchCard = memo(function CustomScratchCard({
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        const ctx = canvas?.getContext("2d");
+        const ctx = canvas?.getContext("2d", {
+            // 모바일 성능 최적화 옵션
+            alpha: true,
+            desynchronized: true,
+            willReadFrequently: false,
+        });
+
         if (canvas && ctx) {
+            // 고해상도 디스플레이 대응
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+
             // 스크래치 레이어를 완전히 불투명하게 만들어 아래 내용을 완전히 가림
             ctx.fillStyle = scratchColor;
             ctx.fillRect(0, 0, width, height);
@@ -76,9 +90,10 @@ const CustomScratchCard = memo(function CustomScratchCard({
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, width, height);
 
-            // 스크래치 힌트 텍스트 추가
+            // 스크래치 힌트 텍스트 추가 (반응형 폰트 크기)
             ctx.fillStyle = "#4B5563";
-            ctx.font = "bold 14px Arial";
+            const fontSize = Math.max(12, Math.min(16, width * 0.05)); // 카드 크기에 따른 폰트 크기
+            ctx.font = `bold ${fontSize}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("🎁 Scratch to reveal! 🎁", width / 2, height / 2);
@@ -91,15 +106,20 @@ const CustomScratchCard = memo(function CustomScratchCard({
             const ctx = canvas?.getContext("2d");
             if (canvas && ctx && !isComplete) {
                 const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
+                const dpr = window.devicePixelRatio || 1;
+
+                // 고해상도 디스플레이를 고려한 좌표 계산
+                const scaleX = canvas.width / dpr / rect.width;
+                const scaleY = canvas.height / dpr / rect.height;
 
                 const x = (clientX - rect.left) * scaleX;
                 const y = (clientY - rect.top) * scaleY;
 
                 ctx.globalCompositeOperation = "destination-out";
                 ctx.beginPath();
-                ctx.arc(x, y, 20, 0, Math.PI * 2);
+                // 모바일에서 더 부드러운 스크래치를 위해 크기 조정
+                const brushSize = window.innerWidth < 768 ? 25 : 50;
+                ctx.arc(x, y, brushSize, 0, Math.PI * 2);
                 ctx.fill();
             }
         },
@@ -112,7 +132,16 @@ const CustomScratchCard = memo(function CustomScratchCard({
         const canvas = canvasRef.current;
         const ctx = canvas?.getContext("2d");
         if (canvas && ctx) {
-            const imageData = ctx.getImageData(0, 0, width, height);
+            const dpr = window.devicePixelRatio || 1;
+            const actualWidth = canvas.width / dpr;
+            const actualHeight = canvas.height / dpr;
+
+            const imageData = ctx.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
             const pixels = imageData.data;
             let transparentPixels = 0;
 
@@ -120,8 +149,8 @@ const CustomScratchCard = memo(function CustomScratchCard({
                 if (pixels[i] < 128) transparentPixels++;
             }
 
-            const scratchPercentage =
-                (transparentPixels / (width * height)) * 100;
+            const totalPixels = canvas.width * canvas.height;
+            const scratchPercentage = (transparentPixels / totalPixels) * 100;
 
             if (scratchPercentage > 50) {
                 setIsComplete(true);
@@ -136,7 +165,7 @@ const CustomScratchCard = memo(function CustomScratchCard({
                     if (alpha <= 0) {
                         // 완전히 투명해지면 캔버스 완전 제거
                         setCanvasOpacity(0);
-                        ctx.clearRect(0, 0, width, height);
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
                         if (onComplete) {
                             setTimeout(onComplete, 100);
                         }
@@ -238,7 +267,7 @@ const CustomScratchCard = memo(function CustomScratchCard({
                 const canvas = canvasRef.current;
                 const ctx = canvas?.getContext("2d");
                 if (canvas && ctx) {
-                    ctx.clearRect(0, 0, width, height);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
                 }
                 if (onComplete) {
                     setTimeout(onComplete, 100);
@@ -251,7 +280,7 @@ const CustomScratchCard = memo(function CustomScratchCard({
         };
 
         fadeOut();
-    }, [isComplete, width, height, onComplete]);
+    }, [isComplete, onComplete]);
 
     // 부모 컴포넌트에 autoReveal 함수 전달
     useEffect(() => {
@@ -270,15 +299,36 @@ const CustomScratchCard = memo(function CustomScratchCard({
                 ref={canvasRef}
                 width={width}
                 height={height}
-                className="absolute top-0 left-0 cursor-crosshair rounded-2xl transition-opacity duration-75"
+                className={cn(
+                    "absolute top-0 left-0 cursor-crosshair rounded-2xl transition-opacity duration-75",
+                    // 모바일 터치 최적화
+                    "touch-manipulation select-none"
+                )}
                 style={{
                     touchAction: "none",
                     userSelect: "none",
                     zIndex: 10, // 확실히 위에 오도록
                     opacity: canvasOpacity,
+                    // 모바일 렌더링 최적화
+                    WebkitBackfaceVisibility: "hidden",
+                    backfaceVisibility: "hidden",
+                    transform: "translateZ(0)",
+                    willChange: "opacity",
+                    // 고해상도 디스플레이 대응
+                    imageRendering: "pixelated",
                 }}
                 onMouseDown={handleMouseDown}
                 onTouchStart={handleTouchStart}
+            />
+
+            <div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer z-50"
+                style={{
+                    animation: "shimmer 2s infinite",
+                    background:
+                        "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+                    transform: "translateX(-100%) skewX(-12deg)",
+                }}
             />
         </div>
     );
@@ -353,6 +403,25 @@ export default memo(function RaffleScratchCard({
 
     const tierInfo = prize ? getTierInfo(prize.order) : null;
     const tier = prize ? Math.floor(prize.order / 10) : 0;
+
+    // 카드 크기에 따른 반응형 스케일 계산
+    const scale = useMemo(() => {
+        const baseWidth = 300; // 기본 카드 너비
+        return cardSize.width / baseWidth;
+    }, [cardSize.width]);
+
+    // 스케일에 따른 텍스트와 아이콘 크기 계산
+    const responsiveSize = useMemo(() => {
+        const baseScale = Math.min(Math.max(scale, 0.8), 1.5); // 0.8 ~ 1.5 사이로 제한
+
+        return {
+            titleText: Math.round(18 * baseScale),
+            subtitleText: Math.round(14 * baseScale),
+            hintText: Math.round(14 * baseScale),
+            iconSize: Math.round(40 * baseScale),
+            spacing: Math.round(16 * baseScale),
+        };
+    }, [scale]);
 
     const handleConfetti = useCallback(() => {
         const defaults = {
@@ -430,20 +499,27 @@ export default memo(function RaffleScratchCard({
                         <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-2xl">
                             {/* 결과는 항상 보이게 - 스크래치할 때마다 드러남 */}
                             <div className="text-center">
-                                <div className="text-4xl mb-4">😔</div>
+                                <div
+                                    style={{
+                                        fontSize: `${responsiveSize.iconSize}px`,
+                                        marginBottom: `${responsiveSize.spacing}px`,
+                                    }}
+                                >
+                                    😔
+                                </div>
                                 <h3
-                                    className={cn(
-                                        "font-bold text-gray-600 dark:text-gray-400 mb-2",
-                                        getResponsiveClass(20).textClass
-                                    )}
+                                    className="font-bold text-gray-600 dark:text-gray-400 mb-2"
+                                    style={{
+                                        fontSize: `${responsiveSize.titleText}px`,
+                                    }}
                                 >
                                     Better Luck Next Time
                                 </h3>
                                 <p
-                                    className={cn(
-                                        "text-gray-500 dark:text-gray-500",
-                                        getResponsiveClass(12).textClass
-                                    )}
+                                    className="text-gray-500 dark:text-gray-500"
+                                    style={{
+                                        fontSize: `${responsiveSize.subtitleText}px`,
+                                    }}
                                 >
                                     Try again!
                                 </p>
@@ -465,26 +541,6 @@ export default memo(function RaffleScratchCard({
                         </div>
                     </CustomScratchCard>
                 </motion.div>
-
-                {/* Skip 버튼 */}
-                {!isComplete && (
-                    <motion.button
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 }}
-                        onClick={handleSkipClick}
-                        className={cn(
-                            "mt-4 px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700",
-                            "hover:from-gray-500 hover:to-gray-600 text-white font-medium rounded-xl",
-                            "transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105",
-                            "flex items-center gap-2",
-                            getResponsiveClass(14).textClass
-                        )}
-                    >
-                        <Zap className="w-4 h-4" />
-                        Skip Scratch
-                    </motion.button>
-                )}
             </div>
         );
     }
@@ -695,7 +751,7 @@ export default memo(function RaffleScratchCard({
                             <h3
                                 className={cn(
                                     "font-bold text-white mb-2 text-center drop-shadow-lg",
-                                    getResponsiveClass(18).textClass
+                                    getResponsiveClass(30).textClass
                                 )}
                             >
                                 {prize.title}
@@ -707,7 +763,7 @@ export default memo(function RaffleScratchCard({
                                 <p
                                     className={cn(
                                         "text-white font-medium drop-shadow-lg",
-                                        getResponsiveClass(14).textClass
+                                        getResponsiveClass(20).textClass
                                     )}
                                 >
                                     Congratulations!

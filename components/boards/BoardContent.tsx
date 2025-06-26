@@ -61,6 +61,7 @@ import type { BoardPostWithDetails } from "@/app/actions/boards/actions";
 
 import PostComments from "./PostComments";
 import { ShinyButton } from "../magicui/shiny-button";
+import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
 
 interface BoardContentProps {
     artist: ArtistWithSPG;
@@ -432,7 +433,6 @@ export default React.memo(function BoardContent({
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: 0.2 }}
                             className={cn(
-                                "backdrop-blur-xl sticky top-0 z-10",
                                 "border-b border-white/10 md:border-b-0",
                                 "flex flex-col justify-between md:flex-row",
                                 "pb-[10px]",
@@ -855,51 +855,89 @@ export default React.memo(function BoardContent({
                                         (
                                             post: BoardPostWithDetails,
                                             index: number
-                                        ) => (
-                                            <motion.div
-                                                key={post.id}
-                                                initial={{ opacity: 0, y: 20 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{
-                                                    delay: 0.4 + index * 0.1,
-                                                }}
-                                                className={cn(
-                                                    "rounded-lg md:rounded-xl bg-gradient-to-br from-white/5 to-white/10 border border-white/10 hover:border-white/20 transition-colors group",
-                                                    "p-3 md:p-5"
-                                                )}
-                                            >
-                                                <div className="flex items-start gap-3 md:gap-4">
-                                                    <Image
-                                                        src={
-                                                            post.author
-                                                                ?.image || ""
-                                                        }
-                                                        alt={
-                                                            post.author?.name ||
-                                                            ""
-                                                        }
-                                                        width={32}
-                                                        height={32}
-                                                        priority={false}
-                                                        unoptimized={true}
-                                                        className="rounded-full flex-shrink-0 w-8 h-8 md:w-10 md:h-10"
-                                                    />
-                                                    <div className="flex-1 min-w-0">
-                                                        {/* Author info */}
-                                                        <div className="flex items-center justify-between mb-2 md:mb-3">
-                                                            <div className="flex items-center gap-1 md:gap-2 min-w-0 flex-1">
-                                                                {post.authorType ===
-                                                                    "ARTIST" ||
-                                                                    (post.author
-                                                                        ?.isArtist && (
+                                        ) => {
+                                            return (
+                                                <motion.div
+                                                    key={post.id}
+                                                    initial={{
+                                                        opacity: 0,
+                                                        y: 20,
+                                                    }}
+                                                    animate={{
+                                                        opacity: 1,
+                                                        y: 0,
+                                                    }}
+                                                    transition={{
+                                                        delay:
+                                                            0.4 + index * 0.1,
+                                                    }}
+                                                    className={cn(
+                                                        "rounded-lg md:rounded-xl bg-gradient-to-br from-white/5 to-white/10 border border-white/10 hover:border-white/20 transition-colors group",
+                                                        "p-3 md:p-5"
+                                                    )}
+                                                >
+                                                    <div className="flex items-start gap-3 md:gap-4">
+                                                        <Image
+                                                            src={
+                                                                post.author
+                                                                    ?.image ||
+                                                                ""
+                                                            }
+                                                            alt={
+                                                                post.author
+                                                                    ?.nickname ||
+                                                                post.author
+                                                                    ?.name ||
+                                                                ""
+                                                            }
+                                                            width={32}
+                                                            height={32}
+                                                            priority={false}
+                                                            unoptimized={true}
+                                                            className="rounded-full flex-shrink-0 w-8 h-8 md:w-10 md:h-10"
+                                                            style={{
+                                                                boxShadow:
+                                                                    post.author
+                                                                        ?.artistId ===
+                                                                    artist.id
+                                                                        ? `0 0 16px 0 rgba(255, 255, 255, 0.3)`
+                                                                        : "none",
+                                                            }}
+                                                        />
+                                                        <div className="flex-1 min-w-0">
+                                                            {/* Author info */}
+                                                            <div className="flex items-center justify-between mb-2 md:mb-3">
+                                                                <div className="flex items-center gap-1 md:gap-2 min-w-0 flex-1">
+                                                                    {post.author
+                                                                        ?.artistId ===
+                                                                        artist.id && (
                                                                         <span
                                                                             className={cn(
-                                                                                "flex flex-row items-center gap-1 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border border-yellow-400/30 text-yellow-200 rounded-full px-2 py-0.5 flex-shrink-0 font-medium",
+                                                                                "flex flex-row items-center gap-1 rounded-full px-2 py-0.5 flex-shrink-0 font-medium",
                                                                                 getResponsiveClass(
                                                                                     15
                                                                                 )
                                                                                     .textClass
                                                                             )}
+                                                                            style={{
+                                                                                background: `linear-gradient(to right, ${ArtistBG(
+                                                                                    artist,
+                                                                                    3,
+                                                                                    20
+                                                                                )}, ${ArtistBG(
+                                                                                    artist,
+                                                                                    2,
+                                                                                    20
+                                                                                )})`,
+
+                                                                                border: `1px solid ${ArtistFG(
+                                                                                    artist,
+                                                                                    0,
+                                                                                    40
+                                                                                )}`,
+
+                                                                                boxShadow: `0 0 12px 0 rgba(255, 255, 255, 0.2)`,
+                                                                            }}
                                                                         >
                                                                             <Image
                                                                                 src={
@@ -930,385 +968,394 @@ export default React.memo(function BoardContent({
                                                                                 ? artist.name
                                                                                 : "Artist"}
                                                                         </span>
-                                                                    ))}
-                                                                <span
-                                                                    className={cn(
-                                                                        "font-medium text-white/90 truncate",
-                                                                        post
+                                                                    )}
+                                                                    <span
+                                                                        className={cn(
+                                                                            "truncate",
+                                                                            post
+                                                                                .author
+                                                                                ?.artistId ===
+                                                                                artist.id
+                                                                                ? "rainbow-text font-bold"
+                                                                                : "text-white/90 ",
+                                                                            getResponsiveClass(
+                                                                                15
+                                                                            )
+                                                                                .textClass
+                                                                        )}
+                                                                    >
+                                                                        {post
                                                                             .author
-                                                                            ?.artistId ===
-                                                                            artist.id
-                                                                            ? "text-yellow-200 font-bold"
-                                                                            : "text-white/90",
-                                                                        getResponsiveClass(
-                                                                            15
-                                                                        )
-                                                                            .textClass
-                                                                    )}
-                                                                >
-                                                                    {post.author
-                                                                        ?.name ||
-                                                                        "Fan"}
-                                                                </span>
-                                                                <span
-                                                                    className={cn(
-                                                                        "text-white/50 flex-shrink-0",
-                                                                        getResponsiveClass(
-                                                                            10
-                                                                        )
-                                                                            .textClass
-                                                                    )}
-                                                                >
-                                                                    {formatTimeAgo(
-                                                                        post.createdAt,
-                                                                        true
-                                                                    )}
-                                                                </span>
-                                                            </div>
+                                                                            ?.nickname ||
+                                                                            post
+                                                                                .author
+                                                                                ?.name ||
+                                                                            "Fan"}
+                                                                    </span>
+                                                                    <span
+                                                                        className={cn(
+                                                                            "text-white/50 flex-shrink-0",
+                                                                            getResponsiveClass(
+                                                                                10
+                                                                            )
+                                                                                .textClass
+                                                                        )}
+                                                                    >
+                                                                        {formatTimeAgo(
+                                                                            post.createdAt,
+                                                                            true
+                                                                        )}
+                                                                    </span>
+                                                                </div>
 
-                                                            {/* 작성자만 삭제 가능 */}
-                                                            {player &&
-                                                                post.author
-                                                                    ?.id ===
-                                                                    player.id && (
-                                                                    <DropdownMenu>
-                                                                        <DropdownMenuTrigger
-                                                                            asChild
-                                                                        >
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                className="p-1 text-white/60 hover:text-white/80 hover:bg-white/10 flex-shrink-0"
+                                                                {/* 작성자만 삭제 가능 */}
+                                                                {player &&
+                                                                    post.author
+                                                                        ?.id ===
+                                                                        player.id && (
+                                                                        <DropdownMenu>
+                                                                            <DropdownMenuTrigger
+                                                                                asChild
                                                                             >
-                                                                                <MoreHorizontal className="w-4 h-4" />
-                                                                            </Button>
-                                                                        </DropdownMenuTrigger>
-                                                                        <DropdownMenuContent
-                                                                            align="end"
-                                                                            className="bg-gray-900 border-gray-700"
-                                                                        >
-                                                                            <AlertDialog>
-                                                                                <AlertDialogTrigger
-                                                                                    asChild
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="sm"
+                                                                                    className="p-1 text-white/60 hover:text-white/80 hover:bg-white/10 flex-shrink-0"
                                                                                 >
-                                                                                    <DropdownMenuItem
-                                                                                        onSelect={(
-                                                                                            e
-                                                                                        ) =>
-                                                                                            e.preventDefault()
-                                                                                        }
-                                                                                        className="text-red-400 hover:text-red-300 hover:bg-red-900/20 cursor-pointer"
+                                                                                    <MoreHorizontal className="w-4 h-4" />
+                                                                                </Button>
+                                                                            </DropdownMenuTrigger>
+                                                                            <DropdownMenuContent
+                                                                                align="end"
+                                                                                className="bg-gray-900 border-gray-700"
+                                                                            >
+                                                                                <AlertDialog>
+                                                                                    <AlertDialogTrigger
+                                                                                        asChild
                                                                                     >
-                                                                                        <Trash2 className="w-4 h-4 mr-2" />
-                                                                                        Delete
-                                                                                        Post
-                                                                                    </DropdownMenuItem>
-                                                                                </AlertDialogTrigger>
-                                                                                <AlertDialogContent className="bg-gray-900 border-gray-700">
-                                                                                    <AlertDialogHeader>
-                                                                                        <AlertDialogTitle className="text-white">
+                                                                                        <DropdownMenuItem
+                                                                                            onSelect={(
+                                                                                                e
+                                                                                            ) =>
+                                                                                                e.preventDefault()
+                                                                                            }
+                                                                                            className="text-red-400 hover:text-red-300 hover:bg-red-900/20 cursor-pointer"
+                                                                                        >
+                                                                                            <Trash2 className="w-4 h-4 mr-2" />
                                                                                             Delete
                                                                                             Post
-                                                                                        </AlertDialogTitle>
-                                                                                        <AlertDialogDescription className="text-white/70">
-                                                                                            Are
-                                                                                            you
-                                                                                            sure
-                                                                                            you
-                                                                                            want
-                                                                                            to
-                                                                                            delete
-                                                                                            this
-                                                                                            post?
-                                                                                            This
-                                                                                            action
-                                                                                            cannot
-                                                                                            be
-                                                                                            undone.
-                                                                                        </AlertDialogDescription>
-                                                                                    </AlertDialogHeader>
-                                                                                    <AlertDialogFooter>
-                                                                                        <AlertDialogCancel className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700">
-                                                                                            Cancel
-                                                                                        </AlertDialogCancel>
-                                                                                        <AlertDialogAction
-                                                                                            onClick={() =>
-                                                                                                handleDeletePost(
-                                                                                                    post.id
-                                                                                                )
-                                                                                            }
-                                                                                            disabled={
-                                                                                                deletingPostId ===
-                                                                                                    post.id ||
-                                                                                                isDeleteBoardPostPending
-                                                                                            }
-                                                                                            className="bg-red-600 hover:bg-red-700 text-white"
-                                                                                        >
-                                                                                            {deletingPostId ===
-                                                                                            post.id
-                                                                                                ? "Deleting..."
-                                                                                                : "Delete"}
-                                                                                        </AlertDialogAction>
-                                                                                    </AlertDialogFooter>
-                                                                                </AlertDialogContent>
-                                                                            </AlertDialog>
-                                                                        </DropdownMenuContent>
-                                                                    </DropdownMenu>
-                                                                )}
-                                                        </div>
-
-                                                        {/* 제목과 확장 버튼 */}
-                                                        <div
-                                                            className="flex items-center justify-between cursor-pointer hover:bg-white/5 rounded-lg transition-colors p-2 md:p-3 -m-2 md:-m-3 mb-2 md:mb-3"
-                                                            onClick={() =>
-                                                                togglePostContent(
-                                                                    post.id
-                                                                )
-                                                            }
-                                                        >
-                                                            <h3 className="font-medium text-white flex-1 text-sm md:text-lg">
-                                                                {post.title}
-                                                            </h3>
-                                                            <button className="ml-2 text-white/60 hover:text-white/80 transition-colors">
-                                                                {expandedPostContent.has(
-                                                                    post.id
-                                                                ) ? (
-                                                                    <ChevronUp className="w-4 h-4 md:w-5 md:h-5" />
-                                                                ) : (
-                                                                    <ChevronDown className="w-4 h-4 md:w-5 md:h-5" />
-                                                                )}
-                                                            </button>
-                                                        </div>
-
-                                                        {/* 확장 가능한 내용 */}
-                                                        <AnimatePresence>
-                                                            {expandedPostContent.has(
-                                                                post.id
-                                                            ) && (
-                                                                <motion.div
-                                                                    initial={{
-                                                                        opacity: 0,
-                                                                        height: 0,
-                                                                    }}
-                                                                    animate={{
-                                                                        opacity: 1,
-                                                                        height: "auto",
-                                                                    }}
-                                                                    exit={{
-                                                                        opacity: 0,
-                                                                        height: 0,
-                                                                    }}
-                                                                    transition={{
-                                                                        duration: 0.3,
-                                                                        ease: "easeInOut",
-                                                                    }}
-                                                                    className="overflow-hidden"
-                                                                >
-                                                                    <div className="space-y-3 md:space-y-4 mb-3 md:mb-4">
-                                                                        <p className="text-white/80 leading-relaxed text-sm md:text-base">
-                                                                            {
-                                                                                post.content
-                                                                            }
-                                                                        </p>
-
-                                                                        {/* 첨부된 파일들 표시 */}
-                                                                        {post.files &&
-                                                                            post
-                                                                                .files
-                                                                                .length >
-                                                                                0 && (
-                                                                                <div
-                                                                                    className={cn(
-                                                                                        "grid gap-2 md:gap-3",
-                                                                                        post
-                                                                                            .files
-                                                                                            .length ===
-                                                                                            1
-                                                                                            ? "grid-cols-1"
-                                                                                            : "grid-cols-2"
-                                                                                    )}
-                                                                                >
-                                                                                    {(
-                                                                                        post.files as any[]
-                                                                                    ).map(
-                                                                                        (
-                                                                                            file,
-                                                                                            index
-                                                                                        ) => (
-                                                                                            <div
-                                                                                                key={
-                                                                                                    file.id ||
-                                                                                                    index
+                                                                                        </DropdownMenuItem>
+                                                                                    </AlertDialogTrigger>
+                                                                                    <AlertDialogContent className="bg-gray-900 border-gray-700">
+                                                                                        <AlertDialogHeader>
+                                                                                            <AlertDialogTitle className="text-white">
+                                                                                                Delete
+                                                                                                Post
+                                                                                            </AlertDialogTitle>
+                                                                                            <AlertDialogDescription className="text-white/70">
+                                                                                                Are
+                                                                                                you
+                                                                                                sure
+                                                                                                you
+                                                                                                want
+                                                                                                to
+                                                                                                delete
+                                                                                                this
+                                                                                                post?
+                                                                                                This
+                                                                                                action
+                                                                                                cannot
+                                                                                                be
+                                                                                                undone.
+                                                                                            </AlertDialogDescription>
+                                                                                        </AlertDialogHeader>
+                                                                                        <AlertDialogFooter>
+                                                                                            <AlertDialogCancel className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700">
+                                                                                                Cancel
+                                                                                            </AlertDialogCancel>
+                                                                                            <AlertDialogAction
+                                                                                                onClick={() =>
+                                                                                                    handleDeletePost(
+                                                                                                        post.id
+                                                                                                    )
                                                                                                 }
-                                                                                                className="relative group rounded-lg overflow-hidden bg-black/10 border border-white/10"
+                                                                                                disabled={
+                                                                                                    deletingPostId ===
+                                                                                                        post.id ||
+                                                                                                    isDeleteBoardPostPending
+                                                                                                }
+                                                                                                className="bg-red-600 hover:bg-red-700 text-white"
                                                                                             >
-                                                                                                {file.mimeType?.startsWith(
-                                                                                                    "image/"
-                                                                                                ) ? (
-                                                                                                    <div className="aspect-video relative">
-                                                                                                        <Image
-                                                                                                            src={
-                                                                                                                file.url
-                                                                                                            }
-                                                                                                            alt="Post attachment"
-                                                                                                            fill
-                                                                                                            className="object-cover cursor-pointer"
-                                                                                                            sizes="(max-width: 768px) 50vw, 33vw"
-                                                                                                            onClick={() =>
-                                                                                                                window.open(
-                                                                                                                    file.url,
-                                                                                                                    "_blank"
-                                                                                                                )
-                                                                                                            }
-                                                                                                        />
-                                                                                                    </div>
-                                                                                                ) : file.mimeType?.startsWith(
-                                                                                                      "video/"
-                                                                                                  ) ? (
-                                                                                                    <div className="aspect-video relative">
-                                                                                                        <video
-                                                                                                            src={
-                                                                                                                file.url
-                                                                                                            }
-                                                                                                            controls
-                                                                                                            className="w-full h-full object-cover rounded"
-                                                                                                            preload="metadata"
-                                                                                                        />
-                                                                                                    </div>
-                                                                                                ) : (
-                                                                                                    <div className="aspect-video relative flex items-center justify-center">
-                                                                                                        <ImageIcon className="text-white/60 w-8 h-8 md:w-10 md:h-10" />
-                                                                                                        <div className="absolute bottom-1 left-1 right-1">
-                                                                                                            <p className="text-white/80 text-xs truncate">
-                                                                                                                {file.url
-                                                                                                                    .split(
-                                                                                                                        "/"
-                                                                                                                    )
-                                                                                                                    .pop()}
-                                                                                                            </p>
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                )}
-                                                                                            </div>
-                                                                                        )
-                                                                                    )}
-                                                                                </div>
-                                                                            )}
-                                                                    </div>
-                                                                </motion.div>
-                                                            )}
-                                                        </AnimatePresence>
+                                                                                                {deletingPostId ===
+                                                                                                post.id
+                                                                                                    ? "Deleting..."
+                                                                                                    : "Delete"}
+                                                                                            </AlertDialogAction>
+                                                                                        </AlertDialogFooter>
+                                                                                    </AlertDialogContent>
+                                                                                </AlertDialog>
+                                                                            </DropdownMenuContent>
+                                                                        </DropdownMenu>
+                                                                    )}
+                                                            </div>
 
-                                                        {/* 반응 버튼들 */}
-                                                        <div className="flex items-center text-white/60 gap-4 md:gap-6 text-sm md:text-base">
-                                                            <button
+                                                            {/* 제목과 확장 버튼 */}
+                                                            <div
+                                                                className="flex items-center justify-between cursor-pointer hover:bg-white/5 rounded-lg transition-colors p-2 md:p-3 -m-2 md:-m-3 mb-2 md:mb-3"
                                                                 onClick={() =>
-                                                                    handleReaction(
-                                                                        post.id,
-                                                                        "LIKE"
-                                                                    )
-                                                                }
-                                                                className="flex items-center gap-1 hover:text-white/80 transition-colors disabled:opacity-50"
-                                                                disabled={
-                                                                    !player
-                                                                }
-                                                            >
-                                                                <Heart
-                                                                    className={cn(
-                                                                        "w-4 h-4 md:w-5 md:h-5",
-                                                                        player &&
-                                                                            post.reactions?.find(
-                                                                                (
-                                                                                    reaction: any
-                                                                                ) =>
-                                                                                    reaction.playerId ===
-                                                                                        player.id &&
-                                                                                    reaction.type ===
-                                                                                        "LIKE"
-                                                                            )
-                                                                            ? "text-red-500 fill-red-500"
-                                                                            : "text-white/60"
-                                                                    )}
-                                                                />
-                                                                <span className="text-xs md:text-sm">
-                                                                    {
-                                                                        post.likeCount
-                                                                    }
-                                                                </span>
-                                                            </button>
-                                                            <button
-                                                                onClick={() =>
-                                                                    handleReaction(
-                                                                        post.id,
-                                                                        "RECOMMEND"
-                                                                    )
-                                                                }
-                                                                className="flex items-center gap-1 hover:text-white/80 transition-colors disabled:opacity-50"
-                                                                disabled={
-                                                                    !player
-                                                                }
-                                                            >
-                                                                <TrendingUp
-                                                                    className={cn(
-                                                                        "w-4 h-4 md:w-5 md:h-5",
-                                                                        player &&
-                                                                            post.reactions?.find(
-                                                                                (
-                                                                                    reaction: any
-                                                                                ) =>
-                                                                                    reaction.playerId ===
-                                                                                        player.id &&
-                                                                                    reaction.type ===
-                                                                                        "RECOMMEND"
-                                                                            )
-                                                                            ? "text-blue-500 fill-blue-500"
-                                                                            : "text-white/60"
-                                                                    )}
-                                                                />
-                                                                <span className="text-xs md:text-sm">
-                                                                    {
-                                                                        post.recommendCount
-                                                                    }
-                                                                </span>
-                                                                {activeBoard?.popularPostRewardEnabled &&
-                                                                    activeBoard.popularPostThreshold &&
-                                                                    post.recommendCount >=
-                                                                        activeBoard.popularPostThreshold && (
-                                                                        <span className="text-yellow-400 ml-1 text-xs">
-                                                                            🔥
-                                                                        </span>
-                                                                    )}
-                                                            </button>
-                                                            <button
-                                                                onClick={() =>
-                                                                    toggleComments(
+                                                                    togglePostContent(
                                                                         post.id
                                                                     )
                                                                 }
-                                                                className="flex items-center gap-1 hover:text-white/80 transition-colors"
                                                             >
-                                                                <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />
-                                                                <span className="text-xs md:text-sm">
-                                                                    {
-                                                                        post.commentCount
-                                                                    }
-                                                                </span>
-                                                            </button>
-                                                        </div>
+                                                                <h3 className="font-medium text-white flex-1 text-sm md:text-lg">
+                                                                    {post.title}
+                                                                </h3>
+                                                                <button className="ml-2 text-white/60 hover:text-white/80 transition-colors">
+                                                                    {expandedPostContent.has(
+                                                                        post.id
+                                                                    ) ? (
+                                                                        <ChevronUp className="w-4 h-4 md:w-5 md:h-5" />
+                                                                    ) : (
+                                                                        <ChevronDown className="w-4 h-4 md:w-5 md:h-5" />
+                                                                    )}
+                                                                </button>
+                                                            </div>
 
-                                                        {/* 댓글 섹션 */}
-                                                        {expandedPosts.has(
-                                                            post.id
-                                                        ) && (
-                                                            <PostComments
-                                                                postId={post.id}
-                                                                player={player}
-                                                            />
-                                                        )}
+                                                            {/* 확장 가능한 내용 */}
+                                                            <AnimatePresence>
+                                                                {expandedPostContent.has(
+                                                                    post.id
+                                                                ) && (
+                                                                    <motion.div
+                                                                        initial={{
+                                                                            opacity: 0,
+                                                                            height: 0,
+                                                                        }}
+                                                                        animate={{
+                                                                            opacity: 1,
+                                                                            height: "auto",
+                                                                        }}
+                                                                        exit={{
+                                                                            opacity: 0,
+                                                                            height: 0,
+                                                                        }}
+                                                                        transition={{
+                                                                            duration: 0.3,
+                                                                            ease: "easeInOut",
+                                                                        }}
+                                                                        className="overflow-hidden"
+                                                                    >
+                                                                        <div className="space-y-3 md:space-y-4 mb-3 md:mb-4">
+                                                                            <p className="text-white/80 leading-relaxed text-sm md:text-base">
+                                                                                {
+                                                                                    post.content
+                                                                                }
+                                                                            </p>
+
+                                                                            {/* 첨부된 파일들 표시 */}
+                                                                            {post.files &&
+                                                                                post
+                                                                                    .files
+                                                                                    .length >
+                                                                                    0 && (
+                                                                                    <div
+                                                                                        className={cn(
+                                                                                            "grid gap-2 md:gap-3",
+                                                                                            post
+                                                                                                .files
+                                                                                                .length ===
+                                                                                                1
+                                                                                                ? "grid-cols-1"
+                                                                                                : "grid-cols-2"
+                                                                                        )}
+                                                                                    >
+                                                                                        {(
+                                                                                            post.files as any[]
+                                                                                        ).map(
+                                                                                            (
+                                                                                                file,
+                                                                                                index
+                                                                                            ) => (
+                                                                                                <div
+                                                                                                    key={
+                                                                                                        file.id ||
+                                                                                                        index
+                                                                                                    }
+                                                                                                    className="relative group rounded-lg overflow-hidden bg-black/10 border border-white/10"
+                                                                                                >
+                                                                                                    {file.mimeType?.startsWith(
+                                                                                                        "image/"
+                                                                                                    ) ? (
+                                                                                                        <div className="aspect-video relative">
+                                                                                                            <Image
+                                                                                                                src={
+                                                                                                                    file.url
+                                                                                                                }
+                                                                                                                alt="Post attachment"
+                                                                                                                fill
+                                                                                                                className="object-cover cursor-pointer"
+                                                                                                                sizes="(max-width: 768px) 50vw, 33vw"
+                                                                                                                onClick={() =>
+                                                                                                                    window.open(
+                                                                                                                        file.url,
+                                                                                                                        "_blank"
+                                                                                                                    )
+                                                                                                                }
+                                                                                                            />
+                                                                                                        </div>
+                                                                                                    ) : file.mimeType?.startsWith(
+                                                                                                          "video/"
+                                                                                                      ) ? (
+                                                                                                        <div className="aspect-video relative">
+                                                                                                            <video
+                                                                                                                src={
+                                                                                                                    file.url
+                                                                                                                }
+                                                                                                                controls
+                                                                                                                className="w-full h-full object-cover rounded"
+                                                                                                                preload="metadata"
+                                                                                                            />
+                                                                                                        </div>
+                                                                                                    ) : (
+                                                                                                        <div className="aspect-video relative flex items-center justify-center">
+                                                                                                            <ImageIcon className="text-white/60 w-8 h-8 md:w-10 md:h-10" />
+                                                                                                            <div className="absolute bottom-1 left-1 right-1">
+                                                                                                                <p className="text-white/80 text-xs truncate">
+                                                                                                                    {file.url
+                                                                                                                        .split(
+                                                                                                                            "/"
+                                                                                                                        )
+                                                                                                                        .pop()}
+                                                                                                                </p>
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            )
+                                                                                        )}
+                                                                                    </div>
+                                                                                )}
+                                                                        </div>
+                                                                    </motion.div>
+                                                                )}
+                                                            </AnimatePresence>
+
+                                                            {/* 반응 버튼들 */}
+                                                            <div className="flex items-center text-white/60 gap-4 md:gap-6 text-sm md:text-base">
+                                                                <button
+                                                                    onClick={() =>
+                                                                        handleReaction(
+                                                                            post.id,
+                                                                            "LIKE"
+                                                                        )
+                                                                    }
+                                                                    className="flex items-center gap-1 hover:text-white/80 transition-colors disabled:opacity-50"
+                                                                    disabled={
+                                                                        !player
+                                                                    }
+                                                                >
+                                                                    <Heart
+                                                                        className={cn(
+                                                                            "w-4 h-4 md:w-5 md:h-5",
+                                                                            player &&
+                                                                                post.reactions?.find(
+                                                                                    (
+                                                                                        reaction: any
+                                                                                    ) =>
+                                                                                        reaction.playerId ===
+                                                                                            player.id &&
+                                                                                        reaction.type ===
+                                                                                            "LIKE"
+                                                                                )
+                                                                                ? "text-red-500 fill-red-500"
+                                                                                : "text-white/60"
+                                                                        )}
+                                                                    />
+                                                                    <span className="text-xs md:text-sm">
+                                                                        {
+                                                                            post.likeCount
+                                                                        }
+                                                                    </span>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        handleReaction(
+                                                                            post.id,
+                                                                            "RECOMMEND"
+                                                                        )
+                                                                    }
+                                                                    className="flex items-center gap-1 hover:text-white/80 transition-colors disabled:opacity-50"
+                                                                    disabled={
+                                                                        !player
+                                                                    }
+                                                                >
+                                                                    <TrendingUp
+                                                                        className={cn(
+                                                                            "w-4 h-4 md:w-5 md:h-5",
+                                                                            player &&
+                                                                                post.reactions?.find(
+                                                                                    (
+                                                                                        reaction: any
+                                                                                    ) =>
+                                                                                        reaction.playerId ===
+                                                                                            player.id &&
+                                                                                        reaction.type ===
+                                                                                            "RECOMMEND"
+                                                                                )
+                                                                                ? "text-blue-500 fill-blue-500"
+                                                                                : "text-white/60"
+                                                                        )}
+                                                                    />
+                                                                    <span className="text-xs md:text-sm">
+                                                                        {
+                                                                            post.recommendCount
+                                                                        }
+                                                                    </span>
+                                                                    {activeBoard?.popularPostRewardEnabled &&
+                                                                        activeBoard.popularPostThreshold &&
+                                                                        post.recommendCount >=
+                                                                            activeBoard.popularPostThreshold && (
+                                                                            <span className="text-yellow-400 ml-1 text-xs">
+                                                                                🔥
+                                                                            </span>
+                                                                        )}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        toggleComments(
+                                                                            post.id
+                                                                        )
+                                                                    }
+                                                                    className="flex items-center gap-1 hover:text-white/80 transition-colors"
+                                                                >
+                                                                    <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />
+                                                                    <span className="text-xs md:text-sm">
+                                                                        {
+                                                                            post.commentCount
+                                                                        }
+                                                                    </span>
+                                                                </button>
+                                                            </div>
+
+                                                            {/* 댓글 섹션 */}
+                                                            {expandedPosts.has(
+                                                                post.id
+                                                            ) && (
+                                                                <PostComments
+                                                                    postId={
+                                                                        post.id
+                                                                    }
+                                                                    player={
+                                                                        player
+                                                                    }
+                                                                />
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </motion.div>
-                                        )
+                                                </motion.div>
+                                            );
+                                        }
                                     )}
 
                                     {/* 무한 스크롤 로딩 영역 - 실제로 스크롤이 필요할 때만 표시 */}

@@ -33,8 +33,12 @@ export type BoardWithPosts = Board & {
     qualityContentRewardAsset?: any | null;
 };
 
+export type PlayerWithArtist = Player & {
+    artist: Artist;
+};
+
 export type BoardPostWithDetails = BoardPost & {
-    author: Player;
+    author: PlayerWithArtist;
     board: Board;
     comments: BoardComment[];
     reactions: BoardReaction[];
@@ -46,7 +50,7 @@ export type BoardPostWithDetails = BoardPost & {
 };
 
 export type BoardCommentWithDetails = BoardComment & {
-    author: Player;
+    author: PlayerWithArtist;
     post: BoardPost;
     parent?: BoardComment | null;
     replies: BoardComment[];
@@ -433,7 +437,11 @@ export async function getBoardPosts(
             prisma.boardPost.findMany({
                 where,
                 include: {
-                    author: true,
+                    author: {
+                        include: {
+                            artist: true,
+                        },
+                    },
                     board: true,
                     comments: {
                         take: 3,
@@ -491,7 +499,11 @@ export async function getBoardPost(
         const post = await prisma.boardPost.findUnique({
             where: { id: postId },
             include: {
-                author: true,
+                author: {
+                    include: {
+                        artist: true,
+                    },
+                },
                 board: true,
                 comments: {
                     include: {
@@ -640,11 +652,19 @@ export async function getBoardComments(
                 parentId: null,
             },
             include: {
-                author: true,
+                author: {
+                    include: {
+                        artist: true,
+                    },
+                },
                 post: true,
                 replies: {
                     include: {
-                        author: true,
+                        author: {
+                            include: {
+                                artist: true,
+                            },
+                        },
                         reactions: true,
                     },
                     orderBy: { createdAt: "asc" },
