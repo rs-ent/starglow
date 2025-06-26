@@ -163,6 +163,8 @@ model Player {
   boardReactions         BoardReaction[]      @relation("BoardReactionPlayer")
   boardPostRewards       BoardPostReward[]    @relation("BoardPostRewardPlayer")
   grantedBoardRewards    BoardPostReward[]    @relation("BoardPostRewardGranter")
+  raffleParticipants     RaffleParticipant[]
+  raffleWinners          RaffleWinner[]
   isArtist               Boolean              @default(false)
   artistId               String?
   artist                 Artist?              @relation("PlayerArtist", fields: [artistId], references: [id])
@@ -381,6 +383,8 @@ model RewardsLog {
   questLogId    String?
   pollId        String?
   pollLogId     String?
+  raffleId      String?
+  raffleParticipantId String?
   amount        Int
   reason        String?
   createdAt     DateTime  @default(now())
@@ -390,6 +394,8 @@ model RewardsLog {
   pollLog       PollLog?  @relation(fields: [pollLogId], references: [id])
   quest         Quest?    @relation(fields: [questId], references: [id])
   questLog      QuestLog? @relation(fields: [questLogId], references: [id])
+  raffle        Raffle?   @relation(fields: [raffleId], references: [id])
+  raffleParticipant RaffleParticipant? @relation(fields: [raffleParticipantId], references: [id])
   tweetAuthorId String?
   tweetAuthor   TweetAuthor? @relation(fields: [tweetAuthorId], references: [id])
   tweetIds      String[]
@@ -397,7 +403,9 @@ model RewardsLog {
   @@index([playerId, pollId])
   @@index([playerId, questId])
   @@index([playerId, assetId])
+  @@index([playerId, raffleId])
   @@index([questId, pollId])
+  @@index([raffleId])
   @@index([tweetAuthorId])
   @@index([tweetAuthorId, reason])
   @@index([tweetIds])
@@ -681,10 +689,12 @@ model Asset {
   assetId                       String?
   assetsContractAddress         String?
   networkId                     String?
+  artistId                      String?            // 아티스트 전용 Asset 지원
   createdAt                     DateTime           @default(now())
   updatedAt                     DateTime           @updatedAt
   assetsContract                AssetsContract?    @relation(fields: [assetsContractAddress], references: [address])
   network                       BlockchainNetwork? @relation(fields: [networkId], references: [id])
+  artist                        Artist?            @relation("ArtistAssets", fields: [artistId], references: [id])
   playerAssets                  PlayerAsset[]
   pollBettingAssets             Poll[]             @relation("PollBettingAsset")
   pollParticipationRewardAssets Poll[]             @relation("PollParticipationReward")
@@ -698,11 +708,14 @@ model Asset {
   boardPostCreationRewards      Board[]            @relation("BoardPostCreationReward")
   boardPopularPostRewards       Board[]            @relation("BoardPopularPostReward")
   boardQualityContentRewards    Board[]            @relation("BoardQualityContentReward")
+  rafflePrizes                  RafflePrize[]      @relation("RafflePrizeAsset")
+  raffleEntryFeeAssets          Raffle[]           @relation("RaffleEntryFeeAsset")
 
   @@index([isDefault])
   @@index([assetType, isActive])
   @@index([contractAddress])
   @@index([networkId])
+  @@index([artistId])
 }
 
 model AssetTransaction {
@@ -982,6 +995,8 @@ model Artist {
   story_spg           Story_spg[]
   boards              Board[]              @relation("ArtistBoards")
   players             Player[]             @relation("PlayerArtist")
+  raffles             Raffle[]             @relation("ArtistRaffles")
+  assets              Asset[]              @relation("ArtistAssets")
 
   @@index([name])
   @@index([code])
@@ -1126,6 +1141,7 @@ model Story_spg {
   artist                   Artist?            @relation(fields: [artistId], references: [id])
   contract                 Story_spgContract? @relation(fields: [contractAddress], references: [address])
   network                  BlockchainNetwork  @relation(fields: [networkId], references: [id])
+  rafflePrizes             RafflePrize[]      @relation("RafflePrizeSPG")
 
   @@index([networkId])
   @@index([ownerAddress])
@@ -1630,4 +1646,188 @@ enum BoardRewardStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+model Raffle {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  imgUrl      String?
+  
+  // 📅 날짜 기반 상태 관리 (status는 계산으로 처리)
+  startDate   DateTime @default(now())
+  endDate     DateTime
+  drawDate    DateTime? // null이면 즉시 공개
+  
+  // ⚡ 공개 방식
+  instantReveal Boolean @default(true) // 즉시 결과 확인 여부
+  
+  // 🎯 상품 소진 방식
+  isLimited Boolean @default(true) // true: 수량 소진형, false: 고정 확률형
+  
+  // 🎨 UI 표현 방식 (프론트엔드 전용)
+  displayType String @default("GACHA") // "SCRATCH_CARD", "SLOT_MACHINE", "ROULETTE", etc.
+  
+  // 👥 참가 조건
+  maxParticipants     Int?
+  entryFeeAssetId     String?
+  entryFeeAmount      Int     @default(0)
+  allowMultipleEntry  Boolean @default(false)
+  maxEntriesPerPlayer Int?
+  
+  // 🔧 설정
+  isPublic Boolean @default(true)
+  isActive Boolean @default(true)
+  artistId String?
+  
+  // 📊 통계 (자동 계산)
+  totalSlots        Int @default(0) // 모든 상품 수량의 합
+  totalParticipants Int @default(0)
+  
+  // Relations
+  artist       Artist? @relation("ArtistRaffles", fields: [artistId], references: [id])
+  entryFeeAsset Asset? @relation("RaffleEntryFeeAsset", fields: [entryFeeAssetId], references: [id])
+  prizes       RafflePrize[]
+  participants RaffleParticipant[]
+  winners      RaffleWinner[]
+  rewardLogs   RewardsLog[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startDate, endDate])
+  @@index([artistId])
+  @@index([isActive, isPublic])
+  @@index([displayType])
+}
+
+model RafflePrize {
+  id       String @id @default(cuid())
+  raffleId String
+  
+  // 🎁 상품 정보
+  title       String
+  description String?
+  imageUrl    String?
+  order       Int @default(0)
+  
+  // 📦 수량 = 확률 (핵심 개념!)
+  quantity Int // 이 상품의 총 개수 (확률 = quantity/totalSlots)
+  
+  // 🏆 상품 타입
+  prizeType RafflePrizeType // "ASSET", "NFT", "EMPTY" (꽝)
+  
+  // 💎 레어도 시스템
+  rarityTier  RarityTier? @default(COMMON) // COSMIC(1) > STELLAR(2) > ... > COMMON(9)
+  rarityOrder Int? @default(9) // 1(최고) ~ 9(최저), COSMIC=1, COMMON=9
+  
+  // Asset 상품
+  assetId     String?
+  assetAmount Int?
+  
+  // NFT 상품  
+  spgAddress  String?
+  nftQuantity Int?
+  
+  // 상태
+  isActive Boolean @default(true)
+  
+  // Relations
+  raffle      Raffle @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+  asset       Asset? @relation("RafflePrizeAsset", fields: [assetId], references: [id])
+  spg         Story_spg? @relation("RafflePrizeSPG", fields: [spgAddress], references: [address])
+  participants RaffleParticipant[] // 이 상품을 뽑은 참가자들
+  winners     RaffleWinner[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([raffleId, order])
+  @@index([raffleId, isActive])
+  @@index([prizeType])
+  @@index([quantity])
+}
+
+model RaffleParticipant {
+  id       String @id @default(cuid())
+  raffleId String
+  playerId String
+  
+  // 🎲 추첨 결과
+  prizeId       String? // 당첨된 상품 ID (null이면 미추첨)
+  drawnAt       DateTime? // 추첨 실행 시간
+  revealedAt    DateTime? // 사용자가 결과 확인한 시간
+  isRevealed    Boolean @default(false)
+  
+  // 🔢 추첨 정보 (검증용)
+  slotNumber    Int? // 뽑은 슬롯 번호
+  randomSeed    String? // 추첨 시드
+  
+  // Relations
+  raffle Raffle @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  prize  RafflePrize? @relation(fields: [prizeId], references: [id])
+  rewardLogs RewardsLog[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([raffleId])
+  @@index([playerId])
+  @@index([raffleId, playerId])
+  @@index([drawnAt])
+  @@index([revealedAt])
+}
+
+model RaffleWinner {
+  id      String @id @default(cuid())
+  raffleId String
+  prizeId  String
+  playerId String
+  
+  // 🎁 지급 상태
+  status          RafflePrizeStatus @default(PENDING)
+  distributedAt   DateTime?
+  transactionHash String?
+  failureReason   String?
+  
+  // Relations  
+  raffle Raffle @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+  prize  RafflePrize @relation(fields: [prizeId], references: [id])
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([raffleId])
+  @@index([playerId])
+  @@index([status])
+  @@index([distributedAt])
+}
+
+enum RafflePrizeType {
+  ASSET
+  NFT
+  EMPTY
+}
+
+enum RafflePrizeStatus {
+  PENDING
+  PROCESSING
+  DISTRIBUTED
+  CLAIMED
+  FAILED
+  EXPIRED
+}
+
+enum RarityTier {
+  COSMIC      // 우주급 (1) - 최고 레어도
+  STELLAR     // 별급 (2)
+  CELESTIAL   // 천상급 (3)
+  DIVINE      // 신성급 (4)
+  LEGENDARY   // 전설급 (5)
+  EPIC        // 서사급 (6)
+  RARE        // 희귀급 (7)
+  UNCOMMON    // 언커먼급 (8)
+  COMMON      // 일반급 (9) - 기본값
 }

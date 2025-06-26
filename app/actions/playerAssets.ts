@@ -152,6 +152,24 @@ export async function updatePlayerAsset(
         };
     }
 
+    // 🔒 입력값 검증 강화
+    if (input.transaction.amount < 0) {
+        return {
+            success: false,
+            data: null,
+            error: "Amount cannot be negative",
+        };
+    }
+
+    // 🔒 Integer overflow 방지 (JavaScript Number.MAX_SAFE_INTEGER)
+    if (input.transaction.amount > Number.MAX_SAFE_INTEGER) {
+        return {
+            success: false,
+            data: null,
+            error: "Amount exceeds maximum safe integer",
+        };
+    }
+
     const tx = (trx || prisma) as typeof prisma;
     const playerAsset = await tx.playerAsset.findUnique({
         where: {
@@ -187,6 +205,18 @@ export async function updatePlayerAsset(
     switch (input.transaction.operation) {
         case "ADD":
             newBalance = oldBalance + input.transaction.amount;
+
+            // 🔒 Addition overflow 검증
+            if (
+                newBalance > Number.MAX_SAFE_INTEGER ||
+                newBalance < oldBalance
+            ) {
+                return {
+                    success: false,
+                    data: null,
+                    error: "Balance overflow detected",
+                };
+            }
             break;
         case "SUBTRACT":
             newBalance = oldBalance - input.transaction.amount;
@@ -200,6 +230,15 @@ export async function updatePlayerAsset(
             break;
         case "SET":
             newBalance = input.transaction.amount;
+
+            // 🔒 SET 연산에서도 범위 검증
+            if (newBalance > Number.MAX_SAFE_INTEGER) {
+                return {
+                    success: false,
+                    data: null,
+                    error: "Balance exceeds maximum safe integer",
+                };
+            }
             break;
     }
 
@@ -268,25 +307,50 @@ export async function batchUpdatePlayerAsset(
         };
     }
 
-    const results: PlayerAsset[] = [];
-    const failed: PlayerAssetTransactionInput[] = [];
-    const promises = inputs.txs.map(async (input) => {
-        const result = await updatePlayerAsset({ transaction: input });
-        if (result.success && result.data) {
-            results.push(result.data);
-        } else {
-            failed.push(input);
-        }
-    });
-    await Promise.all(promises);
+    // 🔒 배치 처리를 트랜잭션으로 감싸서 원자성 보장
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            const results: PlayerAsset[] = [];
+            const failed: PlayerAssetTransactionInput[] = [];
 
-    return {
-        success: true,
-        data: {
-            results,
-            failed,
-        },
-    };
+            for (const input of inputs.txs) {
+                try {
+                    const result = await updatePlayerAsset(
+                        { transaction: input },
+                        tx
+                    );
+                    if (result.success && result.data) {
+                        results.push(result.data);
+                    } else {
+                        failed.push(input);
+                        // 🔒 배치 처리에서 하나라도 실패하면 전체 롤백
+                        throw new Error(`Asset update failed: ${result.error}`);
+                    }
+                } catch (error) {
+                    failed.push(input);
+                    throw error; // 트랜잭션 롤백을 위해 에러를 다시 던짐
+                }
+            }
+
+            return { results, failed };
+        });
+
+        return {
+            success: true,
+            data: result,
+        };
+    } catch (error) {
+        console.error("Batch update failed:", error);
+        return {
+            success: false,
+            data: {
+                results: [],
+                failed: inputs.txs, // 모든 트랜잭션이 실패로 처리
+            },
+            error:
+                error instanceof Error ? error.message : "Batch update failed",
+        };
+    }
 }
 
 export interface DeletePlayerAssetInput {

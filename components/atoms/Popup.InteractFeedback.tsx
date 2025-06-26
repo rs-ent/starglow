@@ -268,6 +268,7 @@ export default function InteractFeedback({
                                                     height={100}
                                                     className={cn(
                                                         "rounded-full border border-white/30 bg-white/10",
+                                                        "object-contain",
                                                         getResponsiveClass(10)
                                                             .frameClass
                                                     )}

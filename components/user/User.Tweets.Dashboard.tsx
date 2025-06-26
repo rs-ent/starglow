@@ -5,13 +5,12 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Sparkles,
     TrendingUp,
     Gift,
     RefreshCcw,
     Search,
     Zap,
-    BarChart3,
+    MessageCircleQuestionIcon,
 } from "lucide-react";
 
 import { useTweets } from "@/app/actions/x/hooks";
@@ -22,6 +21,7 @@ import { cn } from "@/lib/utils/tailwind";
 
 import type { Player } from "@prisma/client";
 import type { Author } from "@/app/actions/x/actions";
+import Image from "next/image";
 
 interface UserTweetsDashboardProps {
     player: Player;
@@ -201,10 +201,48 @@ export default function UserTweetsDashboard({
     return (
         <div
             className={cn(
-                "flex flex-col w-full max-w-[1200px] mx-auto mb-[100px]",
-                getResponsiveClass(20).paddingClass
+                "flex flex-col w-full max-w-[1200px] mx-auto mb-[100px]"
             )}
         >
+            <div className="w-full flex items-center justify-end mb-1">
+                <div className="flex items-center gap-1">
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                        className={cn(
+                            "p-2 bg-purple-500/20 rounded-[6px]",
+                            "hover:bg-purple-500/30 transition-all",
+                            "disabled:opacity-50"
+                        )}
+                    >
+                        <RefreshCcw
+                            className={cn(
+                                "w-5 h-5 text-white/70",
+                                isRefreshing && "animate-spin",
+                                getResponsiveClass(30).frameClass
+                            )}
+                        />
+                    </motion.button>
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowTutorial(true)}
+                        className={cn(
+                            "p-2 bg-blue-500/20 rounded-[6px]",
+                            "hover:bg-blue-500/30 transition-all"
+                        )}
+                    >
+                        <MessageCircleQuestionIcon
+                            className={cn(
+                                "w-5 h-5 text-white/70",
+                                getResponsiveClass(30).frameClass
+                            )}
+                        />
+                    </motion.button>
+                </div>
+            </div>
             {/* Header with Stats */}
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
@@ -212,63 +250,11 @@ export default function UserTweetsDashboard({
                 className={cn(
                     "bg-gradient-to-br from-purple-900/20 via-pink-900/20 to-blue-900/20",
                     "backdrop-blur-lg border border-purple-500/30",
-                    "rounded-2xl p-6 mb-6 shadow-2xl"
+                    "rounded-2xl p-3 mb-6 shadow-2xl"
                 )}
             >
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                        <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: "spring", stiffness: 200 }}
-                        >
-                            <Sparkles className="w-8 h-8 text-purple-400" />
-                        </motion.div>
-                        <h1
-                            className={cn(
-                                "font-bold text-transparent bg-clip-text",
-                                "bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400",
-                                getResponsiveClass(30).textClass
-                            )}
-                        >
-                            MY GLOWs
-                        </h1>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={handleRefresh}
-                            disabled={isRefreshing}
-                            className={cn(
-                                "p-2 bg-purple-500/20 rounded-lg",
-                                "hover:bg-purple-500/30 transition-all",
-                                "disabled:opacity-50"
-                            )}
-                        >
-                            <RefreshCcw
-                                className={cn(
-                                    "w-5 h-5 text-purple-400",
-                                    isRefreshing && "animate-spin"
-                                )}
-                            />
-                        </motion.button>
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setShowTutorial(true)}
-                            className={cn(
-                                "p-2 bg-blue-500/20 rounded-lg",
-                                "hover:bg-blue-500/30 transition-all"
-                            )}
-                        >
-                            <BarChart3 className="w-5 h-5 text-blue-400" />
-                        </motion.button>
-                    </div>
-                </div>
-
                 {/* Stats Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -278,24 +264,34 @@ export default function UserTweetsDashboard({
                             "border border-purple-500/20 rounded-xl p-4"
                         )}
                     >
-                        <div className="flex items-center gap-2 mb-1">
-                            <img
+                        <div className="flex items-center gap-1 mb-1">
+                            <Image
                                 src="/icons/providers/x.svg"
                                 alt="x"
-                                className="w-4 h-4 object-contain"
+                                width={16}
+                                height={16}
+                                className={cn(
+                                    "w-4 h-4 object-contain",
+                                    getResponsiveClass(20).frameClass
+                                )}
                             />
-                            <p className="text-xs text-purple-300">
+                            <p
+                                className={cn(
+                                    "text-xs text-white/80",
+                                    getResponsiveClass(15).textClass
+                                )}
+                            >
                                 Total GLOWs
                             </p>
                         </div>
-                        <p
+                        <h2
                             className={cn(
-                                "font-bold text-white",
-                                getResponsiveClass(25).textClass
+                                "font-bold text-white text-center",
+                                getResponsiveClass(30).textClass
                             )}
                         >
                             {formatNumber(stats.totalGlows)}
-                        </p>
+                        </h2>
                     </motion.div>
 
                     <motion.div
@@ -307,20 +303,40 @@ export default function UserTweetsDashboard({
                             "border border-green-500/20 rounded-xl p-4"
                         )}
                     >
-                        <div className="flex items-center gap-2 mb-1">
-                            <Gift className="w-4 h-4 text-green-300" />
-                            <p className="text-xs text-green-300">
+                        <div className="flex items-center gap-1 mb-1">
+                            <Gift
+                                className={cn(
+                                    "w-4 h-4 text-white/70",
+                                    getResponsiveClass(20).frameClass
+                                )}
+                            />
+                            <p
+                                className={cn(
+                                    "text-xs text-white/80",
+                                    getResponsiveClass(15).textClass
+                                )}
+                            >
                                 Total Rewards
                             </p>
                         </div>
-                        <p
-                            className={cn(
-                                "font-bold text-white",
-                                getResponsiveClass(25).textClass
-                            )}
-                        >
-                            {formatNumber(stats.totalRewards)} SGP
-                        </p>
+                        <div className="flex items-center justify-center gap-1">
+                            <h2
+                                className={cn(
+                                    "font-bold text-white text-center",
+                                    getResponsiveClass(30).textClass
+                                )}
+                            >
+                                {formatNumber(stats.totalRewards)}
+                            </h2>
+                            <p
+                                className={cn(
+                                    "text-xs text-white/80 text-center",
+                                    getResponsiveClass(10).textClass
+                                )}
+                            >
+                                SGP
+                            </p>
+                        </div>
                     </motion.div>
 
                     <motion.div
@@ -333,17 +349,29 @@ export default function UserTweetsDashboard({
                         )}
                     >
                         <div className="flex items-center gap-2 mb-1">
-                            <TrendingUp className="w-4 h-4 text-blue-300" />
-                            <p className="text-xs text-blue-300">Engagement</p>
+                            <TrendingUp
+                                className={cn(
+                                    "w-4 h-4 text-white/70",
+                                    getResponsiveClass(20).frameClass
+                                )}
+                            />
+                            <p
+                                className={cn(
+                                    "text-xs text-white/80",
+                                    getResponsiveClass(15).textClass
+                                )}
+                            >
+                                Engagement
+                            </p>
                         </div>
-                        <p
+                        <h2
                             className={cn(
-                                "font-bold text-white",
-                                getResponsiveClass(25).textClass
+                                "font-bold text-white text-center",
+                                getResponsiveClass(30).textClass
                             )}
                         >
                             {formatNumber(stats.totalEngagement)}
-                        </p>
+                        </h2>
                     </motion.div>
 
                     <motion.div
@@ -355,18 +383,25 @@ export default function UserTweetsDashboard({
                             "border border-yellow-500/20 rounded-xl p-4"
                         )}
                     >
-                        <div className="flex items-center gap-2 mb-1">
-                            <Zap className="w-4 h-4 text-yellow-300" />
-                            <p className="text-xs text-yellow-300">This Week</p>
+                        <div className="flex items-center gap-1 mb-1">
+                            <Zap
+                                className={cn(
+                                    "w-4 h-4 text-white/70",
+                                    getResponsiveClass(20).frameClass
+                                )}
+                            />
+                            <p className={cn("text-xs text-white/80")}>
+                                This Week
+                            </p>
                         </div>
-                        <p
+                        <h2
                             className={cn(
-                                "font-bold text-white",
-                                getResponsiveClass(25).textClass
+                                "font-bold text-white text-center",
+                                getResponsiveClass(30).textClass
                             )}
                         >
-                            {stats.glowsThisWeek} GLOWs
-                        </p>
+                            {stats.glowsThisWeek}
+                        </h2>
                     </motion.div>
                 </div>
             </motion.div>
@@ -382,10 +417,15 @@ export default function UserTweetsDashboard({
                     "rounded-xl p-4 mb-6 shadow-xl"
                 )}
             >
-                <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex flex-col md:flex-row gap-3">
                     {/* Search */}
                     <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Search
+                            className={cn(
+                                "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400",
+                                getResponsiveClass(20).frameClass
+                            )}
+                        />
                         <input
                             type="text"
                             placeholder="Search your GLOWs..."
@@ -393,9 +433,10 @@ export default function UserTweetsDashboard({
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className={cn(
                                 "w-full bg-gray-800/50 border border-gray-700",
-                                "rounded-lg px-10 py-2 text-white",
+                                "rounded-lg px-8 md:px-10 lg:px-12 py-2 text-white",
                                 "placeholder-gray-500 focus:outline-none",
-                                "focus:border-purple-500 transition-all"
+                                "focus:border-purple-500 transition-all",
+                                getResponsiveClass(20).textClass
                             )}
                         />
                     </div>
@@ -413,7 +454,8 @@ export default function UserTweetsDashboard({
                                         "px-4 py-2 rounded-lg font-medium transition-all",
                                         timeFilter === filter
                                             ? "bg-purple-500 text-white"
-                                            : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                                            : "bg-gray-800 text-gray-400 hover:bg-gray-700",
+                                        getResponsiveClass(20).textClass
                                     )}
                                 >
                                     {filter.charAt(0).toUpperCase() +
@@ -432,7 +474,8 @@ export default function UserTweetsDashboard({
                         className={cn(
                             "bg-gray-800 border border-gray-700 rounded-lg",
                             "px-4 py-2 text-white focus:outline-none",
-                            "focus:border-purple-500 transition-all"
+                            "focus:border-purple-500 transition-all",
+                            getResponsiveClass(20).textClass
                         )}
                     >
                         <option value="recent">Most Recent</option>

@@ -97,7 +97,7 @@ export default function InviteFriendsModal({
                         className={cn(
                             "absolute left-1/2 bottom-0 -translate-x-1/2",
                             "w-full max-w-[600px] rounded-t-3xl shadow-lg",
-                            "flex flex-col items-center py-6 px-4",
+                            "flex flex-col items-center pt-[20px] pb-[100px] px-4",
                             "bg-gradient-to-br from-[rgba(164,210,252,1)] to-[rgba(143,122,250.1)]"
                         )}
                         initial={{ y: "100%" }}

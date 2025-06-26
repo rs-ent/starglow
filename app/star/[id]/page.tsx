@@ -11,7 +11,7 @@ import { notFound } from "next/navigation";
 
 // SEO 메타데이터 정의
 export const metadata: Metadata = {
-    title: "⭐ Star",
+    title: "Star",
     description:
         "Explore the galaxy of K-pop artists and their NFT collections in the Web3 universe",
 };

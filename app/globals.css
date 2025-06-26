@@ -444,6 +444,19 @@ html {
   }
 }
 
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
+
 .spin-scale-3x {
   animation: spin-scale 1s cubic-bezier(0.7, 0, 0.3, 1) 1;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
 }

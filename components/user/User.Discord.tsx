@@ -59,7 +59,7 @@ export default function UserDiscord({ user }: UserDiscordProps) {
             className={cn(
                 "flex flex-col items-center justify-center",
                 "w-full max-w-[500px] mx-auto",
-                getResponsiveClass(20).paddingClass
+                "px-4 sm:px-3 md:px-4 lg:px-6"
             )}
         >
             {!discordCode ? (

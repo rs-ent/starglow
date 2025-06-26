@@ -990,7 +990,7 @@ function PollsListCard({
                         <div className="flex flex-col">
                             <h3
                                 className={cn(
-                                    "text-[rgba(255,255,255,0.9)] font-medium",
+                                    "text-[rgba(255,235,150,0.9)] font-medium",
                                     getResponsiveClass(20).textClass
                                 )}
                             >
@@ -1017,7 +1017,7 @@ function PollsListCard({
                                                 poll.participationRewardAsset
                                                     .name
                                             }
-                                            className="w-full h-full rounded-full object-cover"
+                                            className="w-full h-full rounded-full object-contain"
                                         />
                                     ) : (
                                         <img

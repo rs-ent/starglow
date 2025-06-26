@@ -550,7 +550,10 @@ function QuestsButton({
                                             alt={asset?.name || ""}
                                             width={assetSize}
                                             height={assetSize}
-                                            className={cn(assetFrameClass)}
+                                            className={cn(
+                                                "object-contain",
+                                                assetFrameClass
+                                            )}
                                             priority={false}
                                             unoptimized={false}
                                         />

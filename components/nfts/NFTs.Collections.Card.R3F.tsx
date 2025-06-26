@@ -496,7 +496,7 @@ const CardMesh = React.memo(function CardMesh({
                             outlineBlur={0.8}
                             outlineOpacity={0.3}
                         >
-                            BUY NOW
+                            SEE MORE
                         </Text>
                     </RoundedBox>
                 </animated.group>

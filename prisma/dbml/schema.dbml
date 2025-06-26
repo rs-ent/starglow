@@ -133,6 +133,8 @@ Table Player {
   boardReactions BoardReaction [not null]
   boardPostRewards BoardPostReward [not null]
   grantedBoardRewards BoardPostReward [not null]
+  raffleParticipants RaffleParticipant [not null]
+  raffleWinners RaffleWinner [not null]
   isArtist Boolean [not null, default: false]
   artistId String
   artist Artist
@@ -334,6 +336,8 @@ Table RewardsLog {
   questLogId String
   pollId String
   pollLogId String
+  raffleId String
+  raffleParticipantId String
   amount Int [not null]
   reason String
   createdAt DateTime [default: `now()`, not null]
@@ -343,6 +347,8 @@ Table RewardsLog {
   pollLog PollLog
   quest Quest
   questLog QuestLog
+  raffle Raffle
+  raffleParticipant RaffleParticipant
   tweetAuthorId String
   tweetAuthor TweetAuthor
   tweetIds String[] [not null]
@@ -594,10 +600,12 @@ Table Asset {
   assetId String
   assetsContractAddress String
   networkId String
+  artistId String
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   assetsContract AssetsContract
   network BlockchainNetwork
+  artist Artist
   playerAssets PlayerAsset [not null]
   pollBettingAssets Poll [not null]
   pollParticipationRewardAssets Poll [not null]
@@ -611,6 +619,8 @@ Table Asset {
   boardPostCreationRewards Board [not null]
   boardPopularPostRewards Board [not null]
   boardQualityContentRewards Board [not null]
+  rafflePrizes RafflePrize [not null]
+  raffleEntryFeeAssets Raffle [not null]
 }
 
 Table AssetTransaction {
@@ -867,6 +877,8 @@ Table Artist {
   story_spg Story_spg [not null]
   boards Board [not null]
   players Player [not null]
+  raffles Raffle [not null]
+  assets Asset [not null]
 }
 
 Table ArtistMember {
@@ -1006,6 +1018,7 @@ Table Story_spg {
   artist Artist
   contract Story_spgContract
   network BlockchainNetwork [not null]
+  rafflePrizes RafflePrize [not null]
 }
 
 Table Story_nft {
@@ -1308,6 +1321,96 @@ Table BoardPostReward {
   asset Asset
 }
 
+Table Raffle {
+  id String [pk]
+  title String [not null]
+  description String
+  imgUrl String
+  startDate DateTime [default: `now()`, not null]
+  endDate DateTime [not null]
+  drawDate DateTime
+  instantReveal Boolean [not null, default: true]
+  isLimited Boolean [not null, default: true]
+  displayType String [not null, default: 'GACHA']
+  maxParticipants Int
+  entryFeeAssetId String
+  entryFeeAmount Int [not null, default: 0]
+  allowMultipleEntry Boolean [not null, default: false]
+  maxEntriesPerPlayer Int
+  isPublic Boolean [not null, default: true]
+  isActive Boolean [not null, default: true]
+  artistId String
+  totalSlots Int [not null, default: 0]
+  totalParticipants Int [not null, default: 0]
+  artist Artist
+  entryFeeAsset Asset
+  prizes RafflePrize [not null]
+  participants RaffleParticipant [not null]
+  winners RaffleWinner [not null]
+  rewardLogs RewardsLog [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table RafflePrize {
+  id String [pk]
+  raffleId String [not null]
+  title String [not null]
+  description String
+  imageUrl String
+  order Int [not null, default: 0]
+  quantity Int [not null]
+  prizeType RafflePrizeType [not null]
+  rarityTier RarityTier [default: 'COMMON']
+  rarityOrder Int [default: 9]
+  assetId String
+  assetAmount Int
+  spgAddress String
+  nftQuantity Int
+  isActive Boolean [not null, default: true]
+  raffle Raffle [not null]
+  asset Asset
+  spg Story_spg
+  participants RaffleParticipant [not null]
+  winners RaffleWinner [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table RaffleParticipant {
+  id String [pk]
+  raffleId String [not null]
+  playerId String [not null]
+  prizeId String
+  drawnAt DateTime
+  revealedAt DateTime
+  isRevealed Boolean [not null, default: false]
+  slotNumber Int
+  randomSeed String
+  raffle Raffle [not null]
+  player Player [not null]
+  prize RafflePrize
+  rewardLogs RewardsLog [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table RaffleWinner {
+  id String [pk]
+  raffleId String [not null]
+  prizeId String [not null]
+  playerId String [not null]
+  status RafflePrizeStatus [not null, default: 'PENDING']
+  distributedAt DateTime
+  transactionHash String
+  failureReason String
+  raffle Raffle [not null]
+  prize RafflePrize [not null]
+  player Player [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
 Table StakeReward {
   stakerewardsId String [ref: > StakeReward.id]
   stakerewardsId String [ref: > StakeReward.id]
@@ -1446,6 +1549,33 @@ Enum BoardRewardStatus {
   CANCELLED
 }
 
+Enum RafflePrizeType {
+  ASSET
+  NFT
+  EMPTY
+}
+
+Enum RafflePrizeStatus {
+  PENDING
+  PROCESSING
+  DISTRIBUTED
+  CLAIMED
+  FAILED
+  EXPIRED
+}
+
+Enum RarityTier {
+  COSMIC
+  STELLAR
+  CELESTIAL
+  DIVINE
+  LEGENDARY
+  EPIC
+  RARE
+  UNCOMMON
+  COMMON
+}
+
 Ref: Account.userId > User.id [delete: Cascade]
 
 Ref: DiscordCode.userId > User.id [delete: Cascade]
@@ -1504,6 +1634,10 @@ Ref: RewardsLog.questId > Quest.id
 
 Ref: RewardsLog.questLogId > QuestLog.id
 
+Ref: RewardsLog.raffleId > Raffle.id
+
+Ref: RewardsLog.raffleParticipantId > RaffleParticipant.id
+
 Ref: RewardsLog.tweetAuthorId > TweetAuthor.id
 
 Ref: LoginAttemptLog.userId > User.id [delete: Cascade]
@@ -1523,6 +1657,8 @@ Ref: AssetsContract.networkId > BlockchainNetwork.id
 Ref: Asset.assetsContractAddress > AssetsContract.address
 
 Ref: Asset.networkId > BlockchainNetwork.id
+
+Ref: Asset.artistId > Artist.id
 
 Ref: FactoryContract.networkId > BlockchainNetwork.id
 
@@ -1627,3 +1763,25 @@ Ref: BoardPostReward.playerId > Player.id
 Ref: BoardPostReward.grantedBy > Player.id
 
 Ref: BoardPostReward.assetId > Asset.id
+
+Ref: Raffle.artistId > Artist.id
+
+Ref: Raffle.entryFeeAssetId > Asset.id
+
+Ref: RafflePrize.raffleId > Raffle.id [delete: Cascade]
+
+Ref: RafflePrize.assetId > Asset.id
+
+Ref: RafflePrize.spgAddress > Story_spg.address
+
+Ref: RaffleParticipant.raffleId > Raffle.id [delete: Cascade]
+
+Ref: RaffleParticipant.playerId > Player.id [delete: Cascade]
+
+Ref: RaffleParticipant.prizeId > RafflePrize.id
+
+Ref: RaffleWinner.raffleId > Raffle.id [delete: Cascade]
+
+Ref: RaffleWinner.prizeId > RafflePrize.id
+
+Ref: RaffleWinner.playerId > Player.id [delete: Cascade]

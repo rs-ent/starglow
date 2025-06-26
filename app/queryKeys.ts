@@ -679,6 +679,157 @@ export const tweetKeys = {
         [...tweetKeys.all, "confirm-register-x-author", input] as const,
 };
 
+// Raffle query keys 기본 배열 정의
+const RAFFLE_BASE_KEY = ["raffles"] as const;
+
+// Raffle query keys 타입 정의
+type RaffleKeysType = {
+    all: readonly ["raffles"];
+    lists: () => readonly ["raffles", "list"];
+    list: (input?: any) => readonly ["raffles", "list", any];
+    detail: (raffleId: string) => readonly ["raffles", "detail", string];
+    byArtist: (artistId: string) => readonly ["raffles", "artist", string];
+    byCategory: (category: string) => readonly ["raffles", "category", string];
+    byStatus: (status: string) => readonly ["raffles", "status", string];
+    byPlayer: (playerId: string) => readonly ["raffles", "player", string];
+    participants: {
+        all: (raffleId: string) => readonly ["raffles", "participants", string];
+        byRaffle: (
+            raffleId: string
+        ) => readonly ["raffles", "participants", "raffle", string];
+        byPlayer: (
+            playerId: string
+        ) => readonly ["raffles", "participants", "player", string];
+    };
+    winners: {
+        all: (raffleId: string) => readonly ["raffles", "winners", string];
+        byRaffle: (
+            raffleId: string
+        ) => readonly ["raffles", "winners", "raffle", string];
+        byPlayer: (
+            playerId: string
+        ) => readonly ["raffles", "winners", "player", string];
+    };
+    // 다중 참여 지원 키들
+    playerParticipations: (
+        raffleId: string,
+        playerId: string
+    ) => readonly ["raffles", "player-participations", string, string];
+    unrevealedCount: (
+        raffleId: string,
+        playerId: string
+    ) => readonly ["raffles", "unrevealed-count", string, string];
+    analytics: {
+        all: readonly ["raffles", "analytics"];
+        general: (
+            input?: any
+        ) => readonly ["raffles", "analytics", "general", any];
+        byArtist: (
+            artistId: string
+        ) => readonly ["raffles", "analytics", "artist", string];
+        byCategory: (
+            category: string
+        ) => readonly ["raffles", "analytics", "category", string];
+        probability: (
+            raffleId: string
+        ) => readonly ["raffles", "analytics", "probability", string];
+        verification: (
+            raffleId: string
+        ) => readonly ["raffles", "analytics", "verification", string];
+    };
+    advancedSettings: {
+        all: readonly ["raffles", "advanced"];
+        probability: (
+            raffleId: string
+        ) => readonly ["raffles", "advanced", "probability", string];
+        weighting: (
+            raffleId: string
+        ) => readonly ["raffles", "advanced", "weighting", string];
+        cooldowns: (
+            playerId: string
+        ) => readonly ["raffles", "advanced", "cooldowns", string];
+    };
+};
+
+// Raffle query keys
+export const raffleKeys: RaffleKeysType = {
+    all: RAFFLE_BASE_KEY,
+    lists: () => [...RAFFLE_BASE_KEY, "list"] as const,
+    list: (input?: any) => [...RAFFLE_BASE_KEY, "list", input] as const,
+    detail: (raffleId: string) =>
+        [...RAFFLE_BASE_KEY, "detail", raffleId] as const,
+    byArtist: (artistId: string) =>
+        [...RAFFLE_BASE_KEY, "artist", artistId] as const,
+    byCategory: (category: string) =>
+        [...RAFFLE_BASE_KEY, "category", category] as const,
+    byStatus: (status: string) =>
+        [...RAFFLE_BASE_KEY, "status", status] as const,
+    byPlayer: (playerId: string) =>
+        [...RAFFLE_BASE_KEY, "player", playerId] as const,
+
+    // Raffle participants
+    participants: {
+        all: (raffleId: string) =>
+            [...RAFFLE_BASE_KEY, "participants", raffleId] as const,
+        byRaffle: (raffleId: string) =>
+            [...RAFFLE_BASE_KEY, "participants", "raffle", raffleId] as const,
+        byPlayer: (playerId: string) =>
+            [...RAFFLE_BASE_KEY, "participants", "player", playerId] as const,
+    },
+
+    // Raffle winners
+    winners: {
+        all: (raffleId: string) =>
+            [...RAFFLE_BASE_KEY, "winners", raffleId] as const,
+        byRaffle: (raffleId: string) =>
+            [...RAFFLE_BASE_KEY, "winners", "raffle", raffleId] as const,
+        byPlayer: (playerId: string) =>
+            [...RAFFLE_BASE_KEY, "winners", "player", playerId] as const,
+    },
+
+    // 다중 참여 지원 키들
+    playerParticipations: (raffleId: string, playerId: string) =>
+        [
+            ...RAFFLE_BASE_KEY,
+            "player-participations",
+            raffleId,
+            playerId,
+        ] as const,
+    unrevealedCount: (raffleId: string, playerId: string) =>
+        [...RAFFLE_BASE_KEY, "unrevealed-count", raffleId, playerId] as const,
+
+    // Raffle analytics
+    analytics: {
+        all: [...RAFFLE_BASE_KEY, "analytics"] as const,
+        general: (input?: any) =>
+            [...RAFFLE_BASE_KEY, "analytics", "general", input] as const,
+        byArtist: (artistId: string) =>
+            [...RAFFLE_BASE_KEY, "analytics", "artist", artistId] as const,
+        byCategory: (category: string) =>
+            [...RAFFLE_BASE_KEY, "analytics", "category", category] as const,
+        probability: (raffleId: string) =>
+            [...RAFFLE_BASE_KEY, "analytics", "probability", raffleId] as const,
+        verification: (raffleId: string) =>
+            [
+                ...RAFFLE_BASE_KEY,
+                "analytics",
+                "verification",
+                raffleId,
+            ] as const,
+    },
+
+    // Raffle advanced settings
+    advancedSettings: {
+        all: [...RAFFLE_BASE_KEY, "advanced"] as const,
+        probability: (raffleId: string) =>
+            [...RAFFLE_BASE_KEY, "advanced", "probability", raffleId] as const,
+        weighting: (raffleId: string) =>
+            [...RAFFLE_BASE_KEY, "advanced", "weighting", raffleId] as const,
+        cooldowns: (playerId: string) =>
+            [...RAFFLE_BASE_KEY, "advanced", "cooldowns", playerId] as const,
+    },
+} as const;
+
 export const discordKeys = {
     all: ["discord"] as const,
     discordCode: (code: string) =>

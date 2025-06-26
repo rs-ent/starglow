@@ -152,11 +152,26 @@ export default function NFTsCollectionsList({
             delta: [number, number];
         }) => {
             event.preventDefault();
-            setTargetCameraZ((prev) =>
-                Math.min(Math.max(prev + dy * 0.05, 10), 100)
-            );
+
+            // 마우스휠로 카드 네비게이션
+            if (Math.abs(dy) > 0.5) {
+                // 최소 임계값으로 민감도 조절
+                let nextSelected = selected;
+
+                if (dy > 0) {
+                    // 마우스휠 아래로 굴리기 → 다음 카드
+                    nextSelected = (selected + 1) % len;
+                } else {
+                    // 마우스휠 위로 굴리기 → 이전 카드
+                    nextSelected = selected === 0 ? len - 1 : selected - 1;
+                }
+
+                setSelected(nextSelected);
+                setConfirmedAlpha(1);
+                setTargetCameraZ(cameraZByWidth);
+            }
         },
-        []
+        [selected, len, cameraZByWidth]
     );
     const handlePinch = useCallback(
         ({

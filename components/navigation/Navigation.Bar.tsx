@@ -25,9 +25,10 @@ type MenuItem = {
 // 기본 메뉴 항목 - 컴포넌트 외부로 이동하여 재생성 방지
 const defaultMenuItems: MenuItem[] = [
     { name: "Star", href: "/star", icon: "/ui/navigation/nav-star.svg" },
-    { name: "Quest", href: "/quests", icon: "/ui/navigation/nav-quest.svg" },
     { name: "NFT", href: "/nfts", icon: "/ui/navigation/nav-nft.svg" },
+    { name: "Quest", href: "/quests", icon: "/ui/navigation/nav-quest.svg" },
     { name: "Poll", href: "/polls", icon: "/ui/navigation/nav-poll.svg" },
+    { name: "Raffle", href: "/raffles", icon: "/ui/navigation/nav-raffle.svg" },
 ];
 
 const myPageItem: MenuItem = {

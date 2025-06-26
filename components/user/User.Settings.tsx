@@ -19,7 +19,12 @@ interface UserSettingsProps {
 
 export default function UserSettings({ user, player }: UserSettingsProps) {
     return (
-        <div className="space-y-6 w-screen max-w-[1000px] mx-auto">
+        <div
+            className={cn(
+                "space-y-6 w-screen max-w-[1000px] mx-auto",
+                "px-4 sm:px-3 md:px-4 lg:px-6"
+            )}
+        >
             <UserSettingsProfile player={player} user={user} />
             <section className={cn("flex items-center justify-end")}>
                 <button
@@ -27,7 +32,7 @@ export default function UserSettings({ user, player }: UserSettingsProps) {
                         "text-[rgba(255,50,50,1)] cursor-pointer",
                         "hover:text-[rgba(255,255,255,0.8)]",
                         "transition-all duration-300",
-                        getResponsiveClass(15).textClass
+                        getResponsiveClass(20).textClass
                     )}
                     onClick={async () => {
                         await signOut({ callbackUrl: "/?signedOut=true" });
