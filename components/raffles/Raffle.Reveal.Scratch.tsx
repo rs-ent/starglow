@@ -4,7 +4,7 @@
 
 import { memo, useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Star, Sparkles, Gem, Crown, Zap } from "lucide-react";
+import { Star, Sparkles, Gem, Crown } from "lucide-react";
 import Image from "next/image";
 import confetti from "canvas-confetti";
 
@@ -72,7 +72,6 @@ const CustomScratchCard = memo(function CustomScratchCard({
         if (canvas && ctx) {
             // 고해상도 디스플레이 대응
             const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
 
             canvas.width = width * dpr;
             canvas.height = height * dpr;
@@ -132,10 +131,6 @@ const CustomScratchCard = memo(function CustomScratchCard({
         const canvas = canvasRef.current;
         const ctx = canvas?.getContext("2d");
         if (canvas && ctx) {
-            const dpr = window.devicePixelRatio || 1;
-            const actualWidth = canvas.width / dpr;
-            const actualHeight = canvas.height / dpr;
-
             const imageData = ctx.getImageData(
                 0,
                 0,
@@ -183,7 +178,7 @@ const CustomScratchCard = memo(function CustomScratchCard({
                 fadeOut();
             }
         }
-    }, [width, height, isComplete, onComplete]);
+    }, [isComplete, onComplete]);
 
     // 마우스 이벤트
     const handleMouseDown = useCallback(

@@ -29,18 +29,17 @@ export const ScratchToReveal: React.FC<ScratchToRevealProps> = ({
 
     const controls = useAnimation();
 
-    const startAnimation = async () => {
+    const startAnimation = useCallback(async () => {
         await controls.start({
             scale: [1, 1.5, 1],
             rotate: [0, 10, -10, 10, -10, 0],
             transition: { duration: 0.5 },
         });
 
-        // Call onComplete after animation finishes
         if (onComplete) {
             onComplete();
         }
-    };
+    }, [controls, onComplete]);
 
     const checkCompletion = useCallback(() => {
         if (isComplete) return;
