@@ -6,13 +6,21 @@ import Star from "@/components/star/Star";
 import { getArtists } from "@/app/actions/artists";
 import type { Metadata } from "next";
 
-// SEO 메타데이터 정의
 export const metadata: Metadata = {
     title: "Star",
     description: "Explore the galaxy of K-pop artists with Starglow",
+    openGraph: {
+        title: "Star",
+        description: "Explore the galaxy of K-pop artists with Starglow",
+        images: ["/default-og-image.jpg"],
+    },
+    twitter: {
+        title: "Star",
+        description: "Explore the galaxy of K-pop artists with Starglow",
+        images: ["/default-og-image.jpg"],
+    },
 };
 
-// 로딩 상태 컴포넌트 (Web3 스타일)
 function StarLoading() {
     return (
         <div className="relative flex flex-col w-full h-screen overflow-hidden items-center justify-center">

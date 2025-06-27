@@ -20,7 +20,7 @@ import ArtistFeed from "../artists/Artist.Feed";
 import PollsContentsPrivateArtistList from "../polls/Polls.Contents.Private.ArtistList";
 import QuestsArtistMissions from "../quests/Quests.Contents.Private.ArtistMissions";
 import PartialLoading from "../atoms/PartialLoading";
-import BoardContent from "../boards/BoardContent";
+import BoardContent from "../boards/Board.Content";
 import StarStore from "../store/Star.Store";
 
 import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";

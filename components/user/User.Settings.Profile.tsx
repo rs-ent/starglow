@@ -4,8 +4,7 @@
 
 import { useState } from "react";
 
-
-import { usePlayerSet } from "@/app/hooks/usePlayer";
+import { usePlayerGet, usePlayerSet } from "@/app/hooks/usePlayer";
 import { useToast } from "@/app/hooks/useToast";
 import FileUploader from "@/components/atoms/FileUploader";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -13,6 +12,7 @@ import { cn } from "@/lib/utils/tailwind";
 
 import type { Player } from "@prisma/client";
 import type { User } from "next-auth";
+import Image from "next/image";
 
 interface UserSettingsProfileProps {
     player: Player;
@@ -31,10 +31,18 @@ export default function UserSettingsProfile({
     const { updatePlayerSettings, isUpdatePlayerSettingsPending } =
         usePlayerSet();
 
+    const { playerImage, refetchPlayerImage } = usePlayerGet({
+        getPlayerImageInput: {
+            playerId: player.id,
+        },
+    });
+
     const [nickname, setNickname] = useState(
         player.nickname || user.name || user.email || ""
     );
-    const [image, setImage] = useState(player.image || user.image || "");
+    const [image, setImage] = useState(
+        playerImage || player.image || user.image || ""
+    );
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -53,6 +61,9 @@ export default function UserSettingsProfile({
     const handleImageUpload = (files: { id: string; url: string }[]) => {
         if (files.length > 0) {
             setImage(files[0].url);
+            refetchPlayerImage().catch((error) => {
+                console.error("Error refetching player image:", error);
+            });
         }
     };
 
@@ -89,9 +100,11 @@ export default function UserSettingsProfile({
                         <div className="flex w-full items-center justify-center gap-4">
                             {image && (
                                 <div className="mt-2 flex-shrink-0 flex items-center justify-center">
-                                    <img
+                                    <Image
                                         src={image}
                                         alt="Profile preview"
+                                        width={100}
+                                        height={100}
                                         className={cn(
                                             "rounded-full object-cover",
                                             getResponsiveClass(70).frameClass

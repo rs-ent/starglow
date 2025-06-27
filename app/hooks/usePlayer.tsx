@@ -10,19 +10,23 @@ import {
 import {
     useDBUserFromPlayerQuery,
     usePlayerQuery,
+    usePlayerImageQuery,
 } from "@/app/queries/playerQueries";
 
 import type {
     GetPlayerInput,
     GetDBUserFromPlayerInput,
+    GetPlayerImageInput,
 } from "@/app/actions/player";
 
 export function usePlayerGet({
     getPlayerInput,
     getDBUserFromPlayerInput,
+    getPlayerImageInput,
 }: {
     getPlayerInput?: GetPlayerInput;
     getDBUserFromPlayerInput?: GetDBUserFromPlayerInput;
+    getPlayerImageInput?: GetPlayerImageInput;
 }) {
     const {
         data: player,
@@ -36,6 +40,13 @@ export function usePlayerGet({
         error: userError,
     } = useDBUserFromPlayerQuery(getDBUserFromPlayerInput);
 
+    const {
+        data: playerImage,
+        isLoading: isPlayerImageLoading,
+        error: playerImageError,
+        refetch: refetchPlayerImage,
+    } = usePlayerImageQuery(getPlayerImageInput);
+
     return {
         player,
         isPlayerLoading,
@@ -45,8 +56,14 @@ export function usePlayerGet({
         isUserLoading,
         userError,
 
+        playerImage,
+        isPlayerImageLoading,
+        playerImageError,
+        refetchPlayerImage,
+
         usePlayerQuery,
         useDBUserFromPlayerQuery,
+        usePlayerImageQuery,
     };
 }
 

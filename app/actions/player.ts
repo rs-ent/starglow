@@ -2,7 +2,6 @@
 
 "use server";
 
-
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 
@@ -11,7 +10,12 @@ import { prisma } from "@/lib/prisma/client";
 import { setDefaultPlayerAsset } from "./playerAssets";
 import { setReferralQuestLogs } from "./referral";
 
-import type { Prisma, User as DBUser, Player, ReferralLog } from "@prisma/client";
+import type {
+    Prisma,
+    User as DBUser,
+    Player,
+    ReferralLog,
+} from "@prisma/client";
 import type { User } from "next-auth";
 
 export interface GetPlayerInput {
@@ -418,6 +422,41 @@ export async function updatePlayerSettings(
         return updatedPlayer;
     } catch (error) {
         console.error("[updatePlayerSettings] Error:", error);
+        return null;
+    }
+}
+
+export interface GetPlayerImageInput {
+    playerId: string;
+}
+
+export async function getPlayerImage(
+    input?: GetPlayerImageInput
+): Promise<string | null> {
+    if (!input) {
+        return null;
+    }
+
+    try {
+        const player = await prisma.player.findUnique({
+            where: { id: input.playerId },
+            select: {
+                image: true,
+                user: {
+                    select: {
+                        image: true,
+                    },
+                },
+            },
+        });
+
+        if (!player) {
+            return null;
+        }
+
+        return player.image || player.user?.image || null;
+    } catch (error) {
+        console.error("[getPlayerImage] Error:", error);
         return null;
     }
 }

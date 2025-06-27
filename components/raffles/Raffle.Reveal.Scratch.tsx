@@ -396,8 +396,11 @@ export default memo(function RaffleScratchCard({
     const [isComplete, setIsComplete] = useState(false);
     const autoRevealRef = useRef<(() => void) | null>(null);
 
-    const tierInfo = prize ? getTierInfo(prize.order) : null;
-    const tier = prize ? Math.floor(prize.order / 10) : 0;
+    const { tierInfo, tier } = useMemo(() => {
+        const tierInfo = prize ? getTierInfo(prize.order) : null;
+        const tier = prize ? Math.floor(prize.order / 10) : 0;
+        return { tierInfo, tier };
+    }, [prize]);
 
     // 카드 크기에 따른 반응형 스케일 계산
     const scale = useMemo(() => {
@@ -420,13 +423,13 @@ export default memo(function RaffleScratchCard({
 
     const handleConfetti = useCallback(() => {
         const defaults = {
-            particleCount: 300,
+            particleCount: 60 * tier,
             spread: 360,
             ticks: 800,
             decay: 0.96,
             startVelocity: 20,
             scalar: 1,
-            zIndex: 1500,
+            zIndex: 20,
         };
 
         const shoot = () => {
@@ -442,7 +445,7 @@ export default memo(function RaffleScratchCard({
         };
 
         shoot();
-    }, []);
+    }, [tier]);
 
     const handleRevealComplete = useCallback(() => {
         setIsComplete(true);

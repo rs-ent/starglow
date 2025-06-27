@@ -9,14 +9,36 @@ import { getArtist } from "@/app/actions/artists";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-// SEO 메타데이터 정의
-export const metadata: Metadata = {
-    title: "Star",
-    description:
-        "Explore the galaxy of K-pop artists and their NFT collections in the Web3 universe",
-};
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+    const { id } = await params;
+    const artist = await getArtist({ id });
 
-// 로딩 상태 컴포넌트 (Web3 스타일)
+    return {
+        title: `Star - ${artist?.name || "Artist"}`,
+        description:
+            artist?.description ||
+            "Explore the galaxy of K-pop artists with Starglow",
+        openGraph: {
+            title: `Star - ${artist?.name || "Artist"}`,
+            description:
+                artist?.description ||
+                "Explore the galaxy of K-pop artists with Starglow",
+            images: [artist?.imageUrl || artist?.logoUrl || ""],
+        },
+        twitter: {
+            title: `Star - ${artist?.name || "Artist"}`,
+            description:
+                artist?.description ||
+                "Explore the galaxy of K-pop artists with Starglow",
+            images: [artist?.imageUrl || artist?.logoUrl || ""],
+        },
+    };
+}
+
 function StarLoading() {
     return (
         <div className="relative flex flex-col w-full h-screen overflow-hidden items-center justify-center">
