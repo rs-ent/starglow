@@ -145,7 +145,7 @@ export const playerKeys = {
         ["player", "referral-logs", input?.playerId] as const,
     pollLogs: (input?: GetPlayerPollLogsInput) =>
         ["player", "poll-logs", input?.playerId] as const,
-    image: (id: string) => ["player", "image", id] as const,
+    profile: (id: string) => ["player", "profile", id] as const,
 };
 
 export const assetKeys = {

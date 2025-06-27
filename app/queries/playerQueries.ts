@@ -7,14 +7,14 @@ import { useQuery } from "@tanstack/react-query";
 import {
     getDBUserFromPlayer,
     getPlayer,
-    getPlayerImage,
+    getPlayerProfile,
 } from "@/app/actions/player";
 import { playerKeys, queryKeys } from "@/app/queryKeys";
 
 import type {
     GetDBUserFromPlayerInput,
     GetPlayerInput,
-    GetPlayerImageInput,
+    GetPlayerProfileInput,
 } from "@/app/actions/player";
 
 export function usePlayerQuery(input?: GetPlayerInput) {
@@ -37,10 +37,10 @@ export function useDBUserFromPlayerQuery(input?: GetDBUserFromPlayerInput) {
     });
 }
 
-export function usePlayerImageQuery(input?: GetPlayerImageInput) {
+export function usePlayerProfileQuery(input?: GetPlayerProfileInput) {
     return useQuery({
-        queryKey: playerKeys.image(input?.playerId || ""),
-        queryFn: () => getPlayerImage(input),
+        queryKey: playerKeys.profile(input?.playerId || ""),
+        queryFn: () => getPlayerProfile(input),
         enabled: Boolean(input?.playerId),
         staleTime: 1000 * 60 * 30,
         gcTime: 1000 * 60 * 30,

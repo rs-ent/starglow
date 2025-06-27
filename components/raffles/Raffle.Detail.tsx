@@ -667,7 +667,12 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
             )}
         >
             {/* Crown Icon */}
-            <div className="absolute top-4 right-4">
+            <div
+                className="absolute top-4 right-4"
+                style={{
+                    zIndex: 1000,
+                }}
+            >
                 <motion.div
                     animate={{
                         rotate: [0, 5, -5, 0],

@@ -426,13 +426,19 @@ export async function updatePlayerSettings(
     }
 }
 
-export interface GetPlayerImageInput {
+export interface GetPlayerProfileInput {
     playerId: string;
 }
 
-export async function getPlayerImage(
-    input?: GetPlayerImageInput
-): Promise<string | null> {
+export interface GetPlayerProfileResult {
+    name: string | null;
+    image: string | null;
+    email: string | null;
+}
+
+export async function getPlayerProfile(
+    input?: GetPlayerProfileInput
+): Promise<GetPlayerProfileResult | null> {
     if (!input) {
         return null;
     }
@@ -441,10 +447,15 @@ export async function getPlayerImage(
         const player = await prisma.player.findUnique({
             where: { id: input.playerId },
             select: {
+                nickname: true,
+                name: true,
                 image: true,
+                email: true,
                 user: {
                     select: {
                         image: true,
+                        name: true,
+                        email: true,
                     },
                 },
             },
@@ -454,9 +465,13 @@ export async function getPlayerImage(
             return null;
         }
 
-        return player.image || player.user?.image || null;
+        return {
+            name: player.nickname || player.name || player.user?.name || null,
+            image: player.image || player.user?.image || null,
+            email: player.email || player.user?.email || null,
+        };
     } catch (error) {
-        console.error("[getPlayerImage] Error:", error);
+        console.error("[getPlayerProfile] Error:", error);
         return null;
     }
 }

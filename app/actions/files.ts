@@ -27,17 +27,19 @@ async function getImageDimensions(
 ): Promise<{ width: number; height: number } | null> {
     if (!file.type.startsWith("image/")) return null;
 
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-            resolve({
-                width: img.naturalWidth,
-                height: img.naturalHeight,
-            });
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const metadata = await sharp(buffer).metadata();
+
+        return {
+            width: metadata.width || 0,
+            height: metadata.height || 0,
         };
-        img.onerror = () => resolve(null);
-        img.src = URL.createObjectURL(file);
-    });
+    } catch (error) {
+        console.error("Error getting image dimensions:", error);
+        return null;
+    }
 }
 
 async function optimizeImage(

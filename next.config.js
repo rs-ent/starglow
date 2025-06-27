@@ -63,6 +63,17 @@ const nextConfig = {
     typescript: {
         ignoreBuildErrors: true, // 빌드 시 타입 에러 무시
     },
+
+    experimental: {
+        serverActions: {
+            bodySizeLimit: "100mb",
+            allowedOrigins: [
+                "https://starglow.io",
+                "https://starglow-six.vercel.app",
+                "http://localhost:3000",
+            ],
+        },
+    },
 };
 
 module.exports = nextConfig;

@@ -11,7 +11,7 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import FileUploader from "../atoms/FileUploader";
 import { Button } from "../ui/button";
-import type { Player } from "@prisma/client";
+import type { Player, Artist } from "@prisma/client";
 import type { FileData } from "../atoms/FileUploader";
 import { usePlayerGet } from "@/app/hooks/usePlayer";
 import BoardContentCommentItem from "./Board.Content.Comment.Item";
@@ -19,11 +19,13 @@ import BoardContentCommentItem from "./Board.Content.Comment.Item";
 interface BoardContentCommentProps {
     postId: string;
     player: Player | null;
+    artist: Artist;
 }
 
 export default function BoardContentComment({
     postId,
     player,
+    artist,
 }: BoardContentCommentProps) {
     const [newComment, setNewComment] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,8 +46,8 @@ export default function BoardContentComment({
         getBoardCommentsPostId: postId,
     });
 
-    const { playerImage } = usePlayerGet({
-        getPlayerImageInput: {
+    const { playerProfile } = usePlayerGet({
+        getPlayerProfileInput: {
             playerId: player?.id || "",
         },
     });
@@ -174,6 +176,7 @@ export default function BoardContentComment({
                     {comments.map((comment: any) => (
                         <BoardContentCommentItem
                             key={comment.id}
+                            artist={artist}
                             comment={comment}
                             player={player}
                             onReply={handleReply}
@@ -199,11 +202,11 @@ export default function BoardContentComment({
                 >
                     <Image
                         src={
-                            playerImage ||
+                            playerProfile?.image ||
                             player?.image ||
                             "/default-avatar.jpg"
                         }
-                        alt={player.name || "User"}
+                        alt={playerProfile?.name || player?.name || "User"}
                         width={25}
                         height={25}
                         priority={false}

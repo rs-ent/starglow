@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { usePlayerGet, usePlayerSet } from "@/app/hooks/usePlayer";
 import { useToast } from "@/app/hooks/useToast";
@@ -31,18 +31,27 @@ export default function UserSettingsProfile({
     const { updatePlayerSettings, isUpdatePlayerSettingsPending } =
         usePlayerSet();
 
-    const { playerImage, refetchPlayerImage } = usePlayerGet({
-        getPlayerImageInput: {
+    const { playerProfile, refetchPlayerProfile } = usePlayerGet({
+        getPlayerProfileInput: {
             playerId: player.id,
         },
     });
 
-    const [nickname, setNickname] = useState(
-        player.nickname || user.name || user.email || ""
-    );
-    const [image, setImage] = useState(
-        playerImage || player.image || user.image || ""
-    );
+    const { initialNickname, initialImage } = useMemo(() => {
+        return {
+            initialNickname:
+                playerProfile?.name ||
+                player.nickname ||
+                user.name ||
+                user.email ||
+                "",
+            initialImage:
+                playerProfile?.image || player.image || user.image || "",
+        };
+    }, [playerProfile, player, user]);
+
+    const [nickname, setNickname] = useState(initialNickname);
+    const [image, setImage] = useState(initialImage);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -55,15 +64,15 @@ export default function UserSettingsProfile({
             toast.error("Failed to update player settings");
         } else {
             toast.success("Successfully updated!");
+            refetchPlayerProfile().catch((error) => {
+                console.error("Error refetching player image:", error);
+            });
         }
     };
 
     const handleImageUpload = (files: { id: string; url: string }[]) => {
         if (files.length > 0) {
             setImage(files[0].url);
-            refetchPlayerImage().catch((error) => {
-                console.error("Error refetching player image:", error);
-            });
         }
     };
 
@@ -87,7 +96,7 @@ export default function UserSettingsProfile({
                 <p
                     className={cn(
                         "text-gray-400",
-                        getResponsiveClass(14).textClass
+                        getResponsiveClass(10).textClass
                     )}
                 >
                     Update your profile information
@@ -101,7 +110,7 @@ export default function UserSettingsProfile({
                             {image && (
                                 <div className="mt-2 flex-shrink-0 flex items-center justify-center">
                                     <Image
-                                        src={image}
+                                        src={image || "/default-avatar.jpg"}
                                         alt="Profile preview"
                                         width={100}
                                         height={100}
@@ -132,7 +141,7 @@ export default function UserSettingsProfile({
                                 onChange={(e) => setNickname(e.target.value)}
                                 className={cn(
                                     "w-full px-3 py-2 bg-[rgba(255,255,255,0.1)] rounded-lg",
-                                    getResponsiveClass(15).textClass
+                                    getResponsiveClass(20).textClass
                                 )}
                             />
                         </div>

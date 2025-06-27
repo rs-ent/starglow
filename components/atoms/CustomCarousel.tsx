@@ -22,6 +22,7 @@ interface CustomCarouselProps {
     direction?: CarouselDirection;
     onIndexChange?: (index: number) => void;
     initialIndex?: number;
+    currentIndex?: number;
     className?: string;
     containerClassName?: string;
     showIndicators?: boolean;
@@ -48,6 +49,7 @@ export default React.memo(function CustomCarousel({
     direction = "horizontal",
     onIndexChange,
     initialIndex = 0,
+    currentIndex: externalCurrentIndex,
     className,
     containerClassName,
     showIndicators = true,
@@ -60,10 +62,24 @@ export default React.memo(function CustomCarousel({
     const totalItems = childrenArray.length;
 
     // 최소한의 상태만
-    const [currentIndex, setCurrentIndex] = useState(initialIndex);
+    const [internalCurrentIndex, setInternalCurrentIndex] =
+        useState(initialIndex);
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState(0);
     const [dragCurrent, setDragCurrent] = useState(0);
+
+    // 외부에서 제어되는지 확인
+    const isControlled = externalCurrentIndex !== undefined;
+    const currentIndex = isControlled
+        ? externalCurrentIndex
+        : internalCurrentIndex;
+
+    // 외부 currentIndex 변경 시 내부 상태 동기화
+    useEffect(() => {
+        if (isControlled && externalCurrentIndex !== internalCurrentIndex) {
+            setInternalCurrentIndex(externalCurrentIndex);
+        }
+    }, [externalCurrentIndex, isControlled, internalCurrentIndex]);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const isHorizontal = direction === "horizontal";
@@ -74,11 +90,13 @@ export default React.memo(function CustomCarousel({
             const safeIndex = Math.max(0, Math.min(newIndex, totalItems - 1));
 
             if (safeIndex !== currentIndex) {
-                setCurrentIndex(safeIndex);
+                if (!isControlled) {
+                    setInternalCurrentIndex(safeIndex);
+                }
                 onIndexChange?.(safeIndex);
             }
         },
-        [currentIndex, totalItems, onIndexChange]
+        [currentIndex, totalItems, onIndexChange, isControlled]
     );
 
     // 이전/다음으로 이동
