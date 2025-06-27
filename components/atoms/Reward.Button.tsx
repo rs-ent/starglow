@@ -21,6 +21,7 @@ interface RewardButtonProps {
     gapSize?: number;
     paddingSize?: number;
     balanceSize?: number;
+    isBalanceVisible?: boolean;
     onClick?: () => void;
 }
 
@@ -35,6 +36,7 @@ export default React.memo(function RewardButton({
     gapSize = 35,
     paddingSize = 65,
     balanceSize = 20,
+    isBalanceVisible = true,
     onClick,
 }: RewardButtonProps) {
     const frameClass = getResponsiveClass(frameSize).frameClass;
@@ -102,9 +104,11 @@ export default React.memo(function RewardButton({
                     {name}
                 </h2>
             </motion.div>
-            <div className={cn("absolute top-0 right-0", balanceClass)}>
-                {balance}
-            </div>
+            {isBalanceVisible && (
+                <div className={cn("absolute top-0 right-0", balanceClass)}>
+                    {balance}
+                </div>
+            )}
         </div>
     );
 });

@@ -1,6 +1,6 @@
 /// components/atoms/Funds.tsx
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 
 import Image from "next/image";
 import CountUp from "react-countup";
@@ -54,7 +54,8 @@ function Funds({
     duration = 0.7,
     formatter,
 }: FundsProps) {
-    // 반응형 클래스 계산 - 메모이제이션 적용
+    const [isHovered, setIsHovered] = useState(false);
+
     const responsiveClasses = useMemo(() => {
         const { textClass } = getResponsiveClass(textSize);
         const { frameClass } = getResponsiveClass(frameSize);
@@ -95,7 +96,7 @@ function Funds({
     return (
         <div
             className={cn(
-                "flex items-center justify-center bg-muted rounded-full transition-all shadow-lg",
+                "flex items-center justify-center bg-muted rounded-full transition-all shadow-lg relative overflow-hidden",
                 paddingClass,
                 className,
                 onClick
@@ -109,7 +110,19 @@ function Funds({
             onKeyDown={
                 onClick ? (e) => e.key === "Enter" && onClick() : undefined
             }
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
         >
+            {/* Shimmer Effect */}
+            <div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer z-10"
+                style={{
+                    animation: isHovered ? "shimmer 2s infinite" : "none",
+                    background:
+                        "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+                    transform: "translateX(-100%) skewX(-12deg)",
+                }}
+            />
             <div className={cn("flex items-center justify-between", gapClass)}>
                 {renderIcon && (
                     <div className="rounded-full flex items-center justify-center">

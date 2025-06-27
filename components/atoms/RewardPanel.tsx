@@ -2,17 +2,17 @@
 
 "use client";
 
-import {memo, useCallback, useMemo, useState} from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
-import {Loader2} from "lucide-react";
+import { Loader2 } from "lucide-react";
 
-import {usePlayerAssetsGet} from "@/app/hooks/usePlayerAssets";
+import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
 import Funds from "@/components/atoms/Funds";
-import {cn} from "@/lib/utils/tailwind";
+import { cn } from "@/lib/utils/tailwind";
 
 import UserRewardsModal from "../user/User.Rewards.Modal";
 
-import type {Asset, PlayerAsset} from "@prisma/client";
+import type { Asset, PlayerAsset } from "@prisma/client";
 
 export type PlayerAssetWithAsset = PlayerAsset & { asset: Asset };
 
@@ -26,46 +26,44 @@ interface RewardPanelProps {
  * 사용자의 보상 자산을 표시하는 패널 컴포넌트
  * 클릭 시 상세 정보를 모달로 표시
  */
-function RewardPanel({
-    playerId,
-    assetNames,
-    className,
-}: RewardPanelProps) {
+function RewardPanel({ playerId, assetNames, className }: RewardPanelProps) {
     const [showRewardModal, setShowRewardModal] = useState(false);
-    const [selectedReward, setSelectedReward] = 
+    const [selectedReward, setSelectedReward] =
         useState<PlayerAssetWithAsset | null>(null);
 
     // SGP는 항상 표시되도록 보장
-    const displayAssetNames = useMemo(() => 
-        Array.from(new Set([...assetNames, "SGP"])),
-    [assetNames]);
+    const displayAssetNames = useMemo(
+        () => Array.from(new Set([...assetNames, "SGP"])),
+        [assetNames]
+    );
 
     // 플레이어 자산 데이터 가져오기
-    const { 
-        playerAssets, 
-        isPlayerAssetsLoading, 
-        playerAssetsError 
-    } = usePlayerAssetsGet({
-        getPlayerAssetsInput: {
-            filter: {
-                playerId,
+    const { playerAssets, isPlayerAssetsLoading, playerAssetsError } =
+        usePlayerAssetsGet({
+            getPlayerAssetsInput: {
+                filter: {
+                    playerId,
+                },
             },
-        },
-    });
+        });
 
     // 표시할 플레이어 자산 필터링
     const displayPlayerAssets = useMemo(() => {
         if (!playerAssets?.data) return [];
-        
-        return (playerAssets.data as Array<PlayerAsset & { asset: Asset }>)
-            .filter((pa) => displayAssetNames.includes(pa.asset.name));
+
+        return (
+            playerAssets.data as Array<PlayerAsset & { asset: Asset }>
+        ).filter((pa) => displayAssetNames.includes(pa.asset.name));
     }, [playerAssets, displayAssetNames]);
 
     // 보상 클릭 핸들러
-    const handleRewardClick = useCallback((asset: PlayerAsset & { asset: Asset }) => {
-        setSelectedReward(asset);
-        setShowRewardModal(true);
-    }, []);
+    const handleRewardClick = useCallback(
+        (asset: PlayerAsset & { asset: Asset }) => {
+            setSelectedReward(asset);
+            setShowRewardModal(true);
+        },
+        []
+    );
 
     // 모달 닫기 핸들러
     const handleCloseModal = useCallback(() => {
@@ -76,7 +74,10 @@ function RewardPanel({
     if (isPlayerAssetsLoading) {
         return (
             <div className={cn("flex items-center justify-center", className)}>
-                <Loader2 className="w-4 h-4 animate-spin text-white/70" aria-label="Loading assets" />
+                <Loader2
+                    className="w-4 h-4 animate-spin text-white/70"
+                    aria-label="Loading assets"
+                />
             </div>
         );
     }
@@ -84,7 +85,10 @@ function RewardPanel({
     // 에러 상태 처리
     if (playerAssetsError) {
         return (
-            <div className={cn("text-red-400 text-xs", className)} aria-live="polite">
+            <div
+                className={cn("text-red-400 text-xs", className)}
+                aria-live="polite"
+            >
                 Failed to load assets
             </div>
         );
@@ -107,14 +111,18 @@ function RewardPanel({
                     rewards={displayPlayerAssets}
                 />
             )}
-            
+
             {/* 보상 목록 */}
             <div className="flex gap-2 items-center justify-center">
                 {displayPlayerAssets.map((asset) => (
                     <button
                         key={asset.id}
                         onClick={() => handleRewardClick(asset)}
-                        className="focus:outline-none focus:ring-2 focus:ring-white/30 rounded-md"
+                        className={cn(
+                            "focus:outline-none focus:ring-2 focus:ring-white/30 rounded-md cursor-pointer relative group",
+                            "transition-all duration-300 hover:scale-105",
+                            "overflow-hidden"
+                        )}
                         aria-label={`View ${asset.asset.name} details`}
                     >
                         <Funds
