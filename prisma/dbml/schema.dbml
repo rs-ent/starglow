@@ -299,6 +299,14 @@ Table Poll {
   participationRewardAsset Asset
   pollLogs PollLog [not null]
   rewardLogs RewardsLog [not null]
+  bettingStatus BettingStatus [not null, default: 'OPEN']
+  isSettled Boolean [not null, default: false]
+  settledAt DateTime
+  winningOptionId String
+  settledBy String
+  houseCommissionRate Float [not null, default: 0.05]
+  totalCommissionAmount Int [not null, default: 0]
+  optionBetAmounts Json
 }
 
 Table PollLog {
@@ -309,6 +317,10 @@ Table PollLog {
   option Json [not null]
   amount Int [not null, default: 1]
   betAmount Int [not null, default: 0]
+  payoutAmount Int [not null, default: 0]
+  payoutMultiplier Float
+  isPayoutDistributed Boolean [not null, default: false]
+  payoutDistributedAt DateTime
   ipAddress String
   userAgent String
   createdAt DateTime [default: `now()`, not null]
@@ -1574,6 +1586,14 @@ Enum RarityTier {
   RARE
   UNCOMMON
   COMMON
+}
+
+Enum BettingStatus {
+  OPEN
+  CLOSED
+  SETTLING
+  SETTLED
+  CANCELLED
 }
 
 Ref: Account.userId > User.id [delete: Cascade]

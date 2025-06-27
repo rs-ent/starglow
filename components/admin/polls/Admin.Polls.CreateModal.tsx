@@ -19,7 +19,17 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { PollCategory, PollStatus } from "@prisma/client";
-import { ChevronDown } from "lucide-react";
+import {
+    ChevronDown,
+    Settings,
+    Image as ImageIcon,
+    Users,
+    Clock,
+    Gift,
+    Target,
+    BarChart3,
+    GripVertical,
+} from "lucide-react";
 import Image from "next/image";
 
 import { useArtistsGet } from "@/app/hooks/useArtists";
@@ -60,25 +70,58 @@ import type {
 } from "@/app/actions/polls";
 import type { Poll } from "@prisma/client";
 
+import PollTypeSelection from "./PollTypeSelection";
+
 function Section({
     title,
     children,
-    bgColor = "bg-muted/40",
+    icon,
+    bgColor = "bg-slate-800/50",
 }: {
     title: string;
     children: React.ReactNode;
+    icon?: React.ReactNode;
     bgColor?: string;
 }) {
     return (
-        <div className={`mb-10 rounded-lg px-6 py-6 ${bgColor}`}>
-            <div className="text-lg font-semibold mb-3 mt-2">{title}</div>
-            {children}
+        <div
+            className={`rounded-xl border border-slate-700/50 ${bgColor} backdrop-blur-sm`}
+        >
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700/50">
+                {icon}
+                <h3 className="text-lg font-semibold text-white">{title}</h3>
+            </div>
+            <div className="p-6">{children}</div>
         </div>
     );
 }
 
-function Divider() {
-    return <div className="border-b border-muted-foreground/20 my-6" />;
+// 탭 컴포넌트
+interface TabProps {
+    tabs: { id: string; label: string; icon: React.ReactNode }[];
+    activeTab: string;
+    onTabChange: (tab: string) => void;
+}
+
+function TabNavigation({ tabs, activeTab, onTabChange }: TabProps) {
+    return (
+        <div className="flex space-x-1 bg-slate-800/60 p-1 rounded-lg backdrop-blur-sm border border-slate-700/50">
+            {tabs.map((tab) => (
+                <button
+                    key={tab.id}
+                    onClick={() => onTabChange(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                        activeTab === tab.id
+                            ? "bg-slate-700 text-white shadow-lg"
+                            : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                    }`}
+                >
+                    {tab.icon}
+                    {tab.label}
+                </button>
+            ))}
+        </div>
+    );
 }
 
 interface PollCreateModalProps {
@@ -96,6 +139,43 @@ export default function AdminPollsCreateModal({
 }: PollCreateModalProps) {
     const { startLoading, endLoading } = useLoading();
     const toast = useToast();
+
+    // 폴 타입 선택 상태 (edit 모드에서는 기존 데이터로 초기화)
+    const [pollType, setPollType] = useState<"REGULAR" | "BETTING" | null>(
+        mode === "edit" && initialData
+            ? initialData.bettingMode
+                ? "BETTING"
+                : "REGULAR"
+            : null
+    );
+
+    // 탭 상태 관리
+    const [activeTab, setActiveTab] = useState("basic");
+
+    // 탭 구성
+    const tabs = [
+        {
+            id: "basic",
+            label: "기본 정보",
+            icon: <Settings className="w-4 h-4" />,
+        },
+        {
+            id: "media",
+            label: "미디어",
+            icon: <ImageIcon className="w-4 h-4" />,
+        },
+        { id: "settings", label: "설정", icon: <Target className="w-4 h-4" /> },
+        ...(pollType === "BETTING"
+            ? [
+                  {
+                      id: "betting",
+                      label: "베팅",
+                      icon: <BarChart3 className="w-4 h-4" />,
+                  },
+              ]
+            : []),
+        { id: "options", label: "옵션", icon: <Users className="w-4 h-4" /> },
+    ];
     const { pollsList } = usePollsGet({});
     const { polls, newPollId } = useMemo(() => {
         const sortedPolls = pollsList?.items
@@ -159,10 +239,10 @@ export default function AdminPollsCreateModal({
         exposeInScheduleTab: initialData?.exposeInScheduleTab || false,
         needToken: initialData?.needToken || false,
         needTokenAddress: initialData?.needTokenAddress || undefined,
-        bettingMode: initialData?.bettingMode || false,
+        bettingMode: pollType === "BETTING",
         bettingAssetId: initialData?.bettingAssetId || undefined,
-        minimumBet: initialData?.minimumBet || 0,
-        maximumBet: initialData?.maximumBet || 0,
+        minimumBet: initialData?.minimumBet || 1000,
+        maximumBet: initialData?.maximumBet || 10000,
         allowMultipleVote: initialData?.allowMultipleVote || false,
         participationRewardAssetId:
             initialData?.participationRewardAssetId || undefined,
@@ -177,6 +257,16 @@ export default function AdminPollsCreateModal({
         hasAnswer: initialData?.hasAnswer || false,
         answerOptionIds: initialData?.answerOptionIds || [],
     });
+
+    // pollType이 변경될 때마다 bettingMode 업데이트
+    useEffect(() => {
+        if (pollType !== null) {
+            setFormData((prev) => ({
+                ...prev,
+                bettingMode: pollType === "BETTING",
+            }));
+        }
+    }, [pollType]);
 
     // Update form data when initial data changes
     useEffect(() => {
@@ -431,877 +521,1112 @@ export default function AdminPollsCreateModal({
                             ? "신규 폴 생성기"
                             : `${initialData?.id} 수정하기`}
                     </DialogTitle>
-                    <DialogClose asChild>
-                        <Button variant="ghost" size="icon" aria-label="닫기">
-                            ✕
-                        </Button>
-                    </DialogClose>
-                </DialogHeader>
 
-                <form
-                    onSubmit={handleSubmit}
-                    className="flex-1 min-h-0 w-full flex justify-center items-start"
-                >
-                    <div className="w-full h-full px-8 py-12 overflow-y-auto space-y-8 text-lg">
-                        <Section title="기본 정보">
-                            <div className="grid grid-cols-2 gap-8">
-                                {/* ID */}
-                                <div className="mb-8">
-                                    <Label className="mb-2 block">ID</Label>
-                                    <Input
-                                        value={formData.id || ""}
-                                        onChange={(e) =>
-                                            handleFormChange(
-                                                "id",
-                                                e.target.value
-                                            )
-                                        }
-                                        className="py-3"
-                                    />
-                                </div>
-
-                                {/* 제목 */}
-                                <div className="mb-8">
-                                    <Label className="mb-2 block">
-                                        제목{" "}
-                                        <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                        value={formData.title || ""}
-                                        onChange={(e) =>
-                                            handleFormChange(
-                                                "title",
-                                                e.target.value
-                                            )
-                                        }
-                                        maxLength={100}
-                                        className="py-3"
-                                        placeholder="제목을 입력하세요"
-                                    />
-                                </div>
-
-                                {/* 짧은 제목 */}
-                                <div className="mb-8">
-                                    <Label className="mb-2 block">
-                                        짧은 제목
-                                    </Label>
-                                    <Input
-                                        value={formData.titleShorten || ""}
-                                        onChange={(e) =>
-                                            handleFormChange(
-                                                "titleShorten",
-                                                e.target.value
-                                            )
-                                        }
-                                        maxLength={20}
-                                        className="py-3"
-                                        placeholder="짧은 제목을 입력하세요"
-                                    />
-                                </div>
-
-                                {/* 설명 */}
-                                <div className="mb-8">
-                                    <Label className="mb-2 block">설명</Label>
-                                    <Textarea
-                                        value={formData.description || ""}
-                                        onChange={(e) =>
-                                            handleFormChange(
-                                                "description",
-                                                e.target.value
-                                            )
-                                        }
-                                        maxLength={200}
-                                        className="py-3"
-                                        placeholder="설명을 입력하세요"
-                                    />
-                                </div>
-                            </div>
-                        </Section>
-
-                        <Divider />
-
-                        <Section title="미디어">
-                            <div className="grid grid-cols-2 gap-8">
-                                {/* 이미지 URL */}
-                                <div className="mb-8">
-                                    <Label className="mb-2 block">이미지</Label>
-                                    <div className="flex gap-2">
-                                        {formData.imgUrl && (
-                                            <Image
-                                                src={formData.imgUrl}
-                                                alt="이미지"
-                                                width={170}
-                                                height={170}
-                                                className="object-cover rounded-md"
-                                            />
-                                        )}
-                                        <div className="flex flex-col gap-2">
-                                            <Input
-                                                value={formData.imgUrl || ""}
-                                                onChange={(e) =>
-                                                    handleFormChange(
-                                                        "imgUrl",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                placeholder="이미지 URL을 입력하거나 아래에서 업로드하세요"
-                                            />
-                                            <FileUploader
-                                                purpose="poll-option"
-                                                bucket="images"
-                                                onComplete={(files) => {
-                                                    if (
-                                                        files &&
-                                                        files.length > 0
-                                                    ) {
-                                                        handleFormChange(
-                                                            "imgUrl",
-                                                            files[0].url
-                                                        );
-                                                        toast.success(
-                                                            "이미지가 성공적으로 업로드되었습니다."
-                                                        );
-                                                    }
-                                                }}
-                                                accept={{
-                                                    "image/*": [
-                                                        ".png",
-                                                        ".jpg",
-                                                        ".jpeg",
-                                                        ".gif",
-                                                        ".webp",
-                                                    ],
-                                                }}
-                                                maxSize={5 * 1024 * 1024}
-                                                multiple={false}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* 유튜브 URL */}
-                                <div className="mb-8">
-                                    <Label className="mb-2 block">
-                                        유튜브 URL
-                                    </Label>
-                                    <div className="flex flex-col gap-2">
-                                        {formData.youtubeUrl && (
-                                            <div className="w-[350px]">
-                                                <YoutubeViewer
-                                                    videoId={
-                                                        getYoutubeVideoId(
-                                                            formData.youtubeUrl
-                                                        ) || undefined
-                                                    }
-                                                    autoPlay={false}
-                                                    framePadding={0}
-                                                />
-                                            </div>
-                                        )}
-                                        <Input
-                                            value={formData.youtubeUrl || ""}
-                                            onChange={(e) =>
-                                                handleFormChange(
-                                                    "youtubeUrl",
-                                                    e.target.value
-                                                )
-                                            }
-                                            placeholder="유튜브 URL을 입력하세요"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </Section>
-
-                        <Divider />
-
-                        <Section title="카테고리 & 아티스트">
-                            <div className="grid grid-cols-2 gap-8">
-                                {/* 카테고리 */}
-                                <div className="flex flex-col gap-4">
-                                    <div className="mb-8">
-                                        <Label className="mb-2 block">
-                                            카테고리{" "}
-                                            <span className="text-red-500">
-                                                *
-                                            </span>
-                                        </Label>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                type="button"
-                                                variant={
-                                                    formData.category ===
-                                                    PollCategory.PUBLIC
-                                                        ? "default"
-                                                        : "outline"
-                                                }
-                                                onClick={() => {
-                                                    handleFormChange(
-                                                        "category",
-                                                        PollCategory.PUBLIC
-                                                    );
-                                                    handleFormChange(
-                                                        "needToken",
-                                                        false
-                                                    );
-                                                    handleFormChange(
-                                                        "needTokenAddress",
-                                                        undefined
-                                                    );
-                                                }}
-                                                className="flex-1"
-                                            >
-                                                PUBLIC
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant={
-                                                    formData.category ===
-                                                    PollCategory.PRIVATE
-                                                        ? "default"
-                                                        : "outline"
-                                                }
-                                                onClick={() =>
-                                                    handleFormChange(
-                                                        "category",
-                                                        PollCategory.PRIVATE
-                                                    )
-                                                }
-                                                className="flex-1"
-                                            >
-                                                PRIVATE (토큰게이팅)
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    {/* 토큰게이팅 주소 */}
-                                    {formData.category ===
-                                        PollCategory.PRIVATE && (
-                                        <div className="mb-8">
-                                            <Label className="mb-2 block">
-                                                토큰 컨트랙트 주소{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
-                                            </Label>
-                                            <div className="space-y-4">
-                                                <Input
-                                                    value={
-                                                        formData.needTokenAddress ||
-                                                        ""
-                                                    }
-                                                    onChange={(e) =>
-                                                        handleFormChange(
-                                                            "needTokenAddress",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    className="py-3"
-                                                    placeholder="토큰 컨트랙트 주소를 입력하세요"
-                                                />
-
-                                                {/* 컬렉션 선택 UI */}
-                                                <div className="flex gap-4 overflow-auto">
-                                                    {getSPGsData?.map((spg) => (
-                                                        <div
-                                                            key={spg.address}
-                                                            onClick={() =>
-                                                                handleFormChange(
-                                                                    "needTokenAddress",
-                                                                    spg.address
-                                                                )
-                                                            }
-                                                            className={`cursor-pointer w-[300px] h-[150px] ${
-                                                                formData.needTokenAddress ===
-                                                                spg.address
-                                                                    ? "ring-2 ring-primary"
-                                                                    : ""
-                                                            }`}
-                                                        >
-                                                            <CollectionCard
-                                                                spg={spg}
-                                                                showPrice={
-                                                                    false
-                                                                }
-                                                                showSharePercentage={
-                                                                    false
-                                                                }
-                                                                showCirculation={
-                                                                    false
-                                                                }
-                                                                isLinked={false}
-                                                            />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* 아티스트 */}
-                                <div className="mb-8">
-                                    <Label className="mb-2 block">
-                                        아티스트
-                                    </Label>
-                                    <div className="flex gap-4 overflow-x-auto py-2 w-full">
-                                        {/* "선택 안함" 버튼 */}
-                                        <div
-                                            onClick={() =>
-                                                handleFormChange("artistId", "")
-                                            }
-                                            className={`cursor-pointer w-[150px] h-[80px] flex flex-col items-center justify-center border rounded
-                                                            ${
-                                                                !formData.artistId
-                                                                    ? "bg-[rgba(109,40,217,0.8)]"
-                                                                    : ""
-                                                            }`}
-                                        >
-                                            <span className="text-sm text-muted-foreground">
-                                                선택 안함
-                                            </span>
-                                        </div>
-                                        {/* 아티스트 목록 */}
-                                        {artists?.map((artist: any) => (
-                                            <div
-                                                key={artist.id}
-                                                onClick={() =>
-                                                    handleFormChange(
-                                                        "artistId",
-                                                        artist.id
-                                                    )
-                                                }
-                                                className={`p-4 cursor-pointer w-[150px] h-[80px] flex flex-col items-center justify-center border rounded
-                                                ${
-                                                    formData.artistId ===
-                                                    artist.id
-                                                        ? "bg-[rgba(109,40,217,0.8)]"
-                                                        : ""
-                                                }`}
-                                            >
-                                                {artist.logoUrl ? (
-                                                    <img
-                                                        src={artist.logoUrl}
-                                                        alt={artist.name}
-                                                        width={30}
-                                                        height={30}
-                                                        className="mb-1"
-                                                    />
-                                                ) : (
-                                                    <div className="w-10 h-10 flex items-center justify-center mb-1">
-                                                        <span className="text-xs text-gray-400">
-                                                            No Image
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                <span className="text-sm">
-                                                    {artist.name}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </Section>
-
-                        <Divider />
-
-                        <Section title="일정 및 참여 방식">
-                            <div className="grid grid-cols-2 gap-8">
-                                {/* 날짜 선택 */}
-                                <div className="mb-8">
-                                    <Label className="mb-2 block">
-                                        시작일{" "}
-                                        <span className="text-red-500">*</span>
-                                    </Label>
-                                    <DateTimePicker
-                                        value={formData.startDate || new Date()}
-                                        onChange={(value) =>
-                                            handleFormChange("startDate", value)
-                                        }
-                                        label="시작일"
-                                        required
-                                        showTime={true}
-                                        disabled={false}
-                                    />
-                                </div>
-
-                                <div className="mb-8">
-                                    <Label className="mb-2 block">
-                                        종료일{" "}
-                                        <span className="text-red-500">*</span>
-                                    </Label>
-                                    <DateTimePicker
-                                        value={formData.endDate || new Date()}
-                                        onChange={(value) =>
-                                            handleFormChange("endDate", value)
-                                        }
-                                        label="종료일"
-                                        required
-                                        showTime={true}
-                                    />
-                                </div>
-
-                                {/* 중복 투표 허용 여부 */}
-                                <div className="mb-8">
-                                    <Label className="mb-2 block">
-                                        중복 투표 허용 여부
-                                    </Label>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            type="button"
-                                            variant={
-                                                formData.allowMultipleVote ===
-                                                true
-                                                    ? "default"
-                                                    : "outline"
-                                            }
-                                            onClick={() =>
-                                                handleFormChange(
-                                                    "allowMultipleVote",
-                                                    true
-                                                )
-                                            }
-                                            className="flex-1"
-                                        >
-                                            중복 투표 허용
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant={
-                                                formData.allowMultipleVote ===
-                                                false
-                                                    ? "default"
-                                                    : "outline"
-                                            }
-                                            onClick={() =>
-                                                handleFormChange(
-                                                    "allowMultipleVote",
-                                                    false
-                                                )
-                                            }
-                                            className="flex-1"
-                                        >
-                                            중복 투표 불가
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                <Divider />
-
-                                <Section title="참여 보상">
-                                    <div className="flex flex-row gap-4 w-full">
-                                        {/* 참여 보상 에셋 */}
-                                        <div className="mb-8 flex-1">
-                                            <Label className="mb-2 block">
-                                                참여 보상 에셋
-                                            </Label>
-                                            <Select
-                                                value={
-                                                    formData.participationRewardAssetId ||
-                                                    ""
-                                                }
-                                                onValueChange={(value) => {
-                                                    if (value === "none") {
-                                                        handleFormChange(
-                                                            "participationRewardAssetId",
-                                                            undefined
-                                                        );
-                                                        handleFormChange(
-                                                            "participationRewardAmount",
-                                                            undefined
-                                                        );
-                                                    } else {
-                                                        handleFormChange(
-                                                            "participationRewardAssetId",
-                                                            value
-                                                        );
-                                                    }
-                                                }}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="보상 에셋을 선택하세요" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {/* 보상 없음 옵션 추가 */}
-                                                    <SelectItem value="none">
-                                                        <div className="flex items-center gap-2">
-                                                            <span>
-                                                                보상 없음
-                                                            </span>
-                                                        </div>
-                                                    </SelectItem>
-
-                                                    {isLoadingAssets ? (
-                                                        <SelectItem
-                                                            value="none"
-                                                            disabled
-                                                        >
-                                                            로딩 중...
-                                                        </SelectItem>
-                                                    ) : (
-                                                        assets?.assets?.map(
-                                                            (asset) => (
-                                                                <SelectItem
-                                                                    key={
-                                                                        asset.id
-                                                                    }
-                                                                    value={
-                                                                        asset.id
-                                                                    }
-                                                                >
-                                                                    <div className="flex items-center gap-2">
-                                                                        {asset.iconUrl && (
-                                                                            <Image
-                                                                                src={
-                                                                                    asset.iconUrl
-                                                                                }
-                                                                                alt={
-                                                                                    asset.name
-                                                                                }
-                                                                                width={
-                                                                                    24
-                                                                                }
-                                                                                height={
-                                                                                    24
-                                                                                }
-                                                                                className="rounded-full"
-                                                                            />
-                                                                        )}
-                                                                        <span>
-                                                                            {
-                                                                                asset.name
-                                                                            }
-                                                                        </span>
-                                                                        <span className="text-muted-foreground">
-                                                                            (
-                                                                            {
-                                                                                asset.symbol
-                                                                            }
-                                                                            )
-                                                                        </span>
-                                                                    </div>
-                                                                </SelectItem>
-                                                            )
-                                                        )
-                                                    )}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        {/* 보상 수량 */}
-                                        <div className="mb-8 flex-1">
-                                            <Label className="mb-2 block">
-                                                보상 수량
-                                            </Label>
-                                            <Input
-                                                type="number"
-                                                value={
-                                                    formData.participationRewardAmount?.toString() ||
-                                                    ""
-                                                }
-                                                onChange={(e) => {
-                                                    const value =
-                                                        e.target.value;
-                                                    if (
-                                                        value === "" ||
-                                                        /^\d+$/.test(value)
-                                                    ) {
-                                                        handleFormChange(
-                                                            "participationRewardAmount",
-                                                            value === ""
-                                                                ? undefined
-                                                                : Number(value)
-                                                        );
-                                                    }
-                                                }}
-                                                className="w-full py-3"
-                                                placeholder="보상 수량을 입력하세요"
-                                                disabled={
-                                                    !formData.participationRewardAssetId
-                                                }
-                                            />
-                                        </div>
-                                    </div>
-                                </Section>
-
-                                <Divider />
-
-                                <Section title="폴 옵션">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2">
-                                            <Checkbox
-                                                checked={formData.hasAnswer}
-                                                onCheckedChange={(checked) => {
-                                                    if (!checked) {
-                                                        handleFormChange(
-                                                            "hasAnswer",
-                                                            false
-                                                        );
-                                                        handleFormChange(
-                                                            "answerOptionIds",
-                                                            []
-                                                        );
-                                                    } else {
-                                                        handleFormChange(
-                                                            "hasAnswer",
-                                                            true
-                                                        );
-                                                    }
-                                                }}
-                                            />
-                                            <Label className="text-lg">
-                                                정답이 있는 폴
-                                            </Label>
-                                        </div>
-
-                                        {/* Conditionally render answer fields */}
-                                        {formData.hasAnswer && (
-                                            <div className="space-y-4 mt-4">
-                                                <div>
-                                                    <Label className="block font-semibold mb-1">
-                                                        정답 옵션 선택
-                                                    </Label>
-                                                    <div className="flex flex-col gap-2">
-                                                        {(
-                                                            formData.options ||
-                                                            []
-                                                        ).map((option) => (
-                                                            <div
-                                                                key={
-                                                                    option.optionId
-                                                                }
-                                                                className="flex items-center gap-1"
-                                                            >
-                                                                <Checkbox
-                                                                    checked={formData.answerOptionIds?.includes(
-                                                                        option.optionId
-                                                                    )}
-                                                                    onCheckedChange={(
-                                                                        checked
-                                                                    ) => {
-                                                                        let newIds =
-                                                                            formData.answerOptionIds ||
-                                                                            [];
-                                                                        if (
-                                                                            checked
-                                                                        ) {
-                                                                            newIds =
-                                                                                [
-                                                                                    ...newIds,
-                                                                                    option.optionId,
-                                                                                ];
-                                                                        } else {
-                                                                            newIds =
-                                                                                newIds.filter(
-                                                                                    (
-                                                                                        id
-                                                                                    ) =>
-                                                                                        id !==
-                                                                                        option.optionId
-                                                                                );
-                                                                        }
-                                                                        handleFormChange(
-                                                                            "answerOptionIds",
-                                                                            newIds
-                                                                        );
-                                                                    }}
-                                                                />
-                                                                <span>
-                                                                    {option.name ||
-                                                                        option.optionId}
-                                                                </span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <div className="flex justify-between items-center">
-                                            <h2 className="text-lg font-semibold">
-                                                폴 옵션
-                                            </h2>
-                                            <Button
-                                                type="button"
-                                                onClick={addNewOption}
-                                                variant="outline"
-                                                className="h-8"
-                                            >
-                                                + 옵션 추가
-                                            </Button>
-                                        </div>
-
-                                        <DndContext
-                                            sensors={sensors}
-                                            collisionDetection={closestCenter}
-                                            onDragStart={handleDragStart}
-                                            onDragEnd={handleDragEnd}
-                                        >
-                                            <SortableContext
-                                                items={(
-                                                    formData.options || []
-                                                ).map(
-                                                    (option) => option.optionId
-                                                )}
-                                                strategy={
-                                                    verticalListSortingStrategy
-                                                }
-                                            >
-                                                <div className="space-y-2">
-                                                    {(
-                                                        formData.options || []
-                                                    ).map((option) => (
-                                                        <div
-                                                            key={
-                                                                option.optionId
-                                                            }
-                                                        >
-                                                            <div className="flex items-center gap-2 w-full">
-                                                                <SortableOption
-                                                                    id={
-                                                                        option.optionId
-                                                                    }
-                                                                >
-                                                                    <div className="p-4 bg-background border rounded-lg shadow-sm">
-                                                                        {option.name ||
-                                                                            option.optionId}
-                                                                    </div>
-                                                                </SortableOption>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8 cursor-pointer flex-shrink-0"
-                                                                    onClick={() => {
-                                                                        if (
-                                                                            option.optionId ===
-                                                                            selectedOption?.optionId
-                                                                        ) {
-                                                                            setShowOptionCard(
-                                                                                !showOptionCard
-                                                                            );
-                                                                        } else {
-                                                                            setShowOptionCard(
-                                                                                true
-                                                                            );
-                                                                        }
-                                                                        setSelectedOption(
-                                                                            option
-                                                                        );
-                                                                    }}
-                                                                >
-                                                                    <ChevronDown
-                                                                        className={`${
-                                                                            showOptionCard &&
-                                                                            selectedOption?.optionId ===
-                                                                                option.optionId
-                                                                                ? "rotate-180"
-                                                                                : ""
-                                                                        } transition-transform duration-300`}
-                                                                    />
-                                                                </Button>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() =>
-                                                                        deleteOption(
-                                                                            option.optionId
-                                                                        )
-                                                                    }
-                                                                    className="h-8 w-8 cursor-pointer flex-shrink-0"
-                                                                >
-                                                                    ✕
-                                                                </Button>
-                                                            </div>
-                                                            {showOptionCard &&
-                                                                selectedOption?.optionId ===
-                                                                    option.optionId && (
-                                                                    <OptionCard
-                                                                        option={
-                                                                            option
-                                                                        }
-                                                                        editing={
-                                                                            true
-                                                                        }
-                                                                        onSave={
-                                                                            updateOption
-                                                                        }
-                                                                    />
-                                                                )}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </SortableContext>
-                                        </DndContext>
-                                    </div>
-                                </Section>
-
-                                <Divider />
-
-                                {/* 활성화 상태 */}
-                                <div className="w-full mb-8">
-                                    <Label className="mb-2 block">
-                                        활성화 상태
-                                    </Label>
-                                    <div className="flex gap-2 w-full">
-                                        <Button
-                                            type="button"
-                                            className="flex-1"
-                                            variant={
-                                                formData.isActive
-                                                    ? "default"
-                                                    : "outline"
-                                            }
-                                            onClick={() =>
-                                                handleFormChange(
-                                                    "isActive",
-                                                    true
-                                                )
-                                            }
-                                        >
-                                            활성화
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            className="flex-1"
-                                            variant={
-                                                !formData.isActive
-                                                    ? "default"
-                                                    : "outline"
-                                            }
-                                            onClick={() =>
-                                                handleFormChange(
-                                                    "isActive",
-                                                    false
-                                                )
-                                            }
-                                        >
-                                            비활성화
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end pt-4">
+                    <div className="flex flex-row gap-5 items-center justify-between">
+                        <div className="flex items-center justify-between mx-auto gap-10">
+                            <div className="flex items-center gap-4">
+                                <Label className="text-slate-200">
+                                    활성화 상태:
+                                </Label>
+                                <div className="flex gap-2">
                                     <Button
-                                        type="submit"
-                                        disabled={isLoading}
-                                        className="px-8"
+                                        type="button"
+                                        variant={
+                                            formData.isActive
+                                                ? "default"
+                                                : "outline"
+                                        }
+                                        onClick={() =>
+                                            handleFormChange("isActive", true)
+                                        }
+                                        size="sm"
                                     >
-                                        {isLoading
-                                            ? mode === "edit"
-                                                ? "수정 중..."
-                                                : "생성 중..."
-                                            : mode === "edit"
-                                            ? "수정"
-                                            : "생성"}
+                                        활성화
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={
+                                            !formData.isActive
+                                                ? "default"
+                                                : "outline"
+                                        }
+                                        onClick={() =>
+                                            handleFormChange("isActive", false)
+                                        }
+                                        size="sm"
+                                    >
+                                        비활성화
                                     </Button>
                                 </div>
                             </div>
-                        </Section>
+                            <Button
+                                type="submit"
+                                disabled={isLoading}
+                                className="px-8 bg-purple-600 hover:bg-purple-700"
+                            >
+                                {isLoading
+                                    ? mode === "edit"
+                                        ? "수정 중..."
+                                        : "생성 중..."
+                                    : mode === "edit"
+                                    ? "수정"
+                                    : "생성"}
+                            </Button>
+                        </div>
+
+                        <DialogClose asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="닫기"
+                            >
+                                ✕
+                            </Button>
+                        </DialogClose>
                     </div>
-                </form>
+                </DialogHeader>
+
+                {/* 타입이 선택되지 않았을 때 타입 선택 화면 표시 */}
+                {pollType === null && mode === "create" && (
+                    <PollTypeSelection onSelect={setPollType} />
+                )}
+
+                {/* 타입이 선택되었거나 편집 모드일 때 폼 표시 */}
+                {(pollType !== null || mode === "edit") && (
+                    <div className="flex-1 min-h-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-y-auto">
+                        {/* 탭 네비게이션 */}
+                        <div className="px-6 py-4 border-b border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
+                            <TabNavigation
+                                tabs={tabs}
+                                activeTab={activeTab}
+                                onTabChange={setActiveTab}
+                            />
+                        </div>
+
+                        {/* 폼 컨텐츠 */}
+                        <form onSubmit={handleSubmit} className="h-full">
+                            <div className="h-full flex flex-col">
+                                <div className="flex-1 p-6">
+                                    <div className="max-w-6xl mx-auto space-y-6">
+                                        {/* 기본 정보 탭 */}
+                                        {activeTab === "basic" && (
+                                            <Section
+                                                title="기본 정보"
+                                                icon={
+                                                    <Settings className="w-5 h-5" />
+                                                }
+                                            >
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                    <div>
+                                                        <Label className="mb-2 block text-slate-200">
+                                                            ID
+                                                        </Label>
+                                                        <Input
+                                                            value={
+                                                                formData.id ||
+                                                                ""
+                                                            }
+                                                            onChange={(e) =>
+                                                                handleFormChange(
+                                                                    "id",
+                                                                    e.target
+                                                                        .value
+                                                                )
+                                                            }
+                                                            className="bg-slate-700/50 border-slate-600 text-white"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label className="mb-2 block text-slate-200">
+                                                            제목{" "}
+                                                            <span className="text-red-400">
+                                                                *
+                                                            </span>
+                                                        </Label>
+                                                        <Input
+                                                            value={
+                                                                formData.title ||
+                                                                ""
+                                                            }
+                                                            onChange={(e) =>
+                                                                handleFormChange(
+                                                                    "title",
+                                                                    e.target
+                                                                        .value
+                                                                )
+                                                            }
+                                                            maxLength={100}
+                                                            placeholder="제목을 입력하세요"
+                                                            className="bg-slate-700/50 border-slate-600 text-white"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label className="mb-2 block text-slate-200">
+                                                            짧은 제목
+                                                        </Label>
+                                                        <Input
+                                                            value={
+                                                                formData.titleShorten ||
+                                                                ""
+                                                            }
+                                                            onChange={(e) =>
+                                                                handleFormChange(
+                                                                    "titleShorten",
+                                                                    e.target
+                                                                        .value
+                                                                )
+                                                            }
+                                                            maxLength={20}
+                                                            placeholder="짧은 제목을 입력하세요"
+                                                            className="bg-slate-700/50 border-slate-600 text-white"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label className="mb-2 block text-slate-200">
+                                                            설명
+                                                        </Label>
+                                                        <Textarea
+                                                            value={
+                                                                formData.description ||
+                                                                ""
+                                                            }
+                                                            onChange={(e) =>
+                                                                handleFormChange(
+                                                                    "description",
+                                                                    e.target
+                                                                        .value
+                                                                )
+                                                            }
+                                                            maxLength={200}
+                                                            placeholder="설명을 입력하세요"
+                                                            className="bg-slate-700/50 border-slate-600 text-white"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </Section>
+                                        )}
+
+                                        {/* 미디어 탭 */}
+                                        {activeTab === "media" && (
+                                            <Section
+                                                title="미디어"
+                                                icon={
+                                                    <ImageIcon className="w-5 h-5" />
+                                                }
+                                            >
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                                    <div>
+                                                        <Label className="mb-3 block text-slate-200">
+                                                            이미지
+                                                        </Label>
+                                                        <div className="space-y-4">
+                                                            {formData.imgUrl && (
+                                                                <div className="rounded-lg overflow-hidden border border-slate-600">
+                                                                    <Image
+                                                                        src={
+                                                                            formData.imgUrl
+                                                                        }
+                                                                        alt="이미지"
+                                                                        width={
+                                                                            200
+                                                                        }
+                                                                        height={
+                                                                            200
+                                                                        }
+                                                                        className="object-cover w-full h-48"
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                            <Input
+                                                                value={
+                                                                    formData.imgUrl ||
+                                                                    ""
+                                                                }
+                                                                onChange={(e) =>
+                                                                    handleFormChange(
+                                                                        "imgUrl",
+                                                                        e.target
+                                                                            .value
+                                                                    )
+                                                                }
+                                                                placeholder="이미지 URL을 입력하세요"
+                                                                className="bg-slate-700/50 border-slate-600 text-white"
+                                                            />
+                                                            <FileUploader
+                                                                purpose="poll-option"
+                                                                bucket="images"
+                                                                onComplete={(
+                                                                    files
+                                                                ) => {
+                                                                    if (
+                                                                        files &&
+                                                                        files.length >
+                                                                            0
+                                                                    ) {
+                                                                        handleFormChange(
+                                                                            "imgUrl",
+                                                                            files[0]
+                                                                                .url
+                                                                        );
+                                                                        toast.success(
+                                                                            "이미지가 성공적으로 업로드되었습니다."
+                                                                        );
+                                                                    }
+                                                                }}
+                                                                accept={{
+                                                                    "image/*": [
+                                                                        ".png",
+                                                                        ".jpg",
+                                                                        ".jpeg",
+                                                                        ".gif",
+                                                                        ".webp",
+                                                                    ],
+                                                                }}
+                                                                maxSize={
+                                                                    5 *
+                                                                    1024 *
+                                                                    1024
+                                                                }
+                                                                multiple={false}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <Label className="mb-3 block text-slate-200">
+                                                            유튜브 URL
+                                                        </Label>
+                                                        <div className="space-y-4">
+                                                            {formData.youtubeUrl && (
+                                                                <div className="rounded-lg overflow-hidden">
+                                                                    <YoutubeViewer
+                                                                        videoId={
+                                                                            getYoutubeVideoId(
+                                                                                formData.youtubeUrl
+                                                                            ) ||
+                                                                            undefined
+                                                                        }
+                                                                        autoPlay={
+                                                                            false
+                                                                        }
+                                                                        framePadding={
+                                                                            0
+                                                                        }
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                            <Input
+                                                                value={
+                                                                    formData.youtubeUrl ||
+                                                                    ""
+                                                                }
+                                                                onChange={(e) =>
+                                                                    handleFormChange(
+                                                                        "youtubeUrl",
+                                                                        e.target
+                                                                            .value
+                                                                    )
+                                                                }
+                                                                placeholder="유튜브 URL을 입력하세요"
+                                                                className="bg-slate-700/50 border-slate-600 text-white"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </Section>
+                                        )}
+
+                                        {/* 설정 탭 */}
+                                        {activeTab === "settings" && (
+                                            <div className="space-y-6">
+                                                {/* 카테고리 & 아티스트 */}
+                                                <Section
+                                                    title="카테고리 & 아티스트"
+                                                    icon={
+                                                        <Target className="w-5 h-5" />
+                                                    }
+                                                >
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                                        <div>
+                                                            <Label className="mb-3 block text-slate-200">
+                                                                카테고리
+                                                            </Label>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant={
+                                                                        formData.category ===
+                                                                        PollCategory.PUBLIC
+                                                                            ? "default"
+                                                                            : "outline"
+                                                                    }
+                                                                    onClick={() => {
+                                                                        handleFormChange(
+                                                                            "category",
+                                                                            PollCategory.PUBLIC
+                                                                        );
+                                                                        handleFormChange(
+                                                                            "needToken",
+                                                                            false
+                                                                        );
+                                                                        handleFormChange(
+                                                                            "needTokenAddress",
+                                                                            undefined
+                                                                        );
+                                                                    }}
+                                                                    className="flex-1"
+                                                                >
+                                                                    PUBLIC
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant={
+                                                                        formData.category ===
+                                                                        PollCategory.PRIVATE
+                                                                            ? "default"
+                                                                            : "outline"
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleFormChange(
+                                                                            "category",
+                                                                            PollCategory.PRIVATE
+                                                                        )
+                                                                    }
+                                                                    className="flex-1"
+                                                                >
+                                                                    PRIVATE
+                                                                    (토큰게이팅)
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <Label className="mb-3 block text-slate-200">
+                                                                아티스트
+                                                            </Label>
+                                                            <div className="flex gap-2 overflow-x-auto">
+                                                                <div
+                                                                    onClick={() =>
+                                                                        handleFormChange(
+                                                                            "artistId",
+                                                                            ""
+                                                                        )
+                                                                    }
+                                                                    className={`cursor-pointer w-20 h-16 flex flex-col items-center justify-center border rounded ${
+                                                                        !formData.artistId
+                                                                            ? "border-purple-500 bg-purple-500/20"
+                                                                            : "border-slate-600"
+                                                                    }`}
+                                                                >
+                                                                    <span className="text-xs text-slate-400">
+                                                                        없음
+                                                                    </span>
+                                                                </div>
+                                                                {artists?.map(
+                                                                    (
+                                                                        artist: any
+                                                                    ) => (
+                                                                        <div
+                                                                            key={
+                                                                                artist.id
+                                                                            }
+                                                                            onClick={() =>
+                                                                                handleFormChange(
+                                                                                    "artistId",
+                                                                                    artist.id
+                                                                                )
+                                                                            }
+                                                                            className={`cursor-pointer w-20 h-16 flex flex-col items-center justify-center border rounded ${
+                                                                                formData.artistId ===
+                                                                                artist.id
+                                                                                    ? "border-purple-500 bg-purple-500/20"
+                                                                                    : "border-slate-600"
+                                                                            }`}
+                                                                        >
+                                                                            {artist.logoUrl ? (
+                                                                                <Image
+                                                                                    src={
+                                                                                        artist.logoUrl
+                                                                                    }
+                                                                                    alt={
+                                                                                        artist.name
+                                                                                    }
+                                                                                    width={
+                                                                                        32
+                                                                                    }
+                                                                                    height={
+                                                                                        32
+                                                                                    }
+                                                                                    className="w-8 h-8 rounded object-contain"
+                                                                                />
+                                                                            ) : (
+                                                                                <span className="text-xs text-slate-400">
+                                                                                    {artist.name.slice(
+                                                                                        0,
+                                                                                        2
+                                                                                    )}
+                                                                                </span>
+                                                                            )}
+                                                                            <span className="text-xs text-slate-300">
+                                                                                {
+                                                                                    artist.name
+                                                                                }
+                                                                            </span>
+                                                                        </div>
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </Section>
+
+                                                {/* 일정 및 참여 설정 */}
+                                                <Section
+                                                    title="일정 및 참여 설정"
+                                                    icon={
+                                                        <Clock className="w-5 h-5" />
+                                                    }
+                                                >
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                        <div>
+                                                            <Label className="mb-2 block text-slate-200">
+                                                                시작일
+                                                            </Label>
+                                                            <DateTimePicker
+                                                                value={
+                                                                    formData.startDate ||
+                                                                    new Date()
+                                                                }
+                                                                onChange={(
+                                                                    value
+                                                                ) =>
+                                                                    handleFormChange(
+                                                                        "startDate",
+                                                                        value
+                                                                    )
+                                                                }
+                                                                label="시작일"
+                                                                required
+                                                                showTime={true}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label className="mb-2 block text-slate-200">
+                                                                종료일
+                                                            </Label>
+                                                            <DateTimePicker
+                                                                value={
+                                                                    formData.endDate ||
+                                                                    new Date()
+                                                                }
+                                                                onChange={(
+                                                                    value
+                                                                ) =>
+                                                                    handleFormChange(
+                                                                        "endDate",
+                                                                        value
+                                                                    )
+                                                                }
+                                                                label="종료일"
+                                                                required
+                                                                showTime={true}
+                                                            />
+                                                        </div>
+                                                        <div className="lg:col-span-2">
+                                                            <Label className="mb-3 block text-slate-200">
+                                                                중복 투표 허용
+                                                            </Label>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant={
+                                                                        formData.allowMultipleVote
+                                                                            ? "default"
+                                                                            : "outline"
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleFormChange(
+                                                                            "allowMultipleVote",
+                                                                            true
+                                                                        )
+                                                                    }
+                                                                    className="flex-1"
+                                                                >
+                                                                    허용
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant={
+                                                                        !formData.allowMultipleVote
+                                                                            ? "default"
+                                                                            : "outline"
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleFormChange(
+                                                                            "allowMultipleVote",
+                                                                            false
+                                                                        )
+                                                                    }
+                                                                    className="flex-1"
+                                                                >
+                                                                    불가
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </Section>
+
+                                                {/* 참여 보상 */}
+                                                <Section
+                                                    title="참여 보상"
+                                                    icon={
+                                                        <Gift className="w-5 h-5" />
+                                                    }
+                                                >
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                        <div>
+                                                            <Label className="mb-2 block text-slate-200">
+                                                                보상 에셋
+                                                            </Label>
+                                                            <Select
+                                                                value={
+                                                                    formData.participationRewardAssetId ||
+                                                                    ""
+                                                                }
+                                                                onValueChange={(
+                                                                    value
+                                                                ) => {
+                                                                    if (
+                                                                        value ===
+                                                                        "none"
+                                                                    ) {
+                                                                        handleFormChange(
+                                                                            "participationRewardAssetId",
+                                                                            undefined
+                                                                        );
+                                                                        handleFormChange(
+                                                                            "participationRewardAmount",
+                                                                            undefined
+                                                                        );
+                                                                    } else {
+                                                                        handleFormChange(
+                                                                            "participationRewardAssetId",
+                                                                            value
+                                                                        );
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
+                                                                    <SelectValue placeholder="보상 에셋을 선택하세요" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="none">
+                                                                        보상
+                                                                        없음
+                                                                    </SelectItem>
+                                                                    {assets?.assets?.map(
+                                                                        (
+                                                                            asset
+                                                                        ) => (
+                                                                            <SelectItem
+                                                                                key={
+                                                                                    asset.id
+                                                                                }
+                                                                                value={
+                                                                                    asset.id
+                                                                                }
+                                                                            >
+                                                                                <div className="flex items-center gap-2">
+                                                                                    {asset.iconUrl && (
+                                                                                        <Image
+                                                                                            src={
+                                                                                                asset.iconUrl
+                                                                                            }
+                                                                                            alt={
+                                                                                                asset.name
+                                                                                            }
+                                                                                            width={
+                                                                                                20
+                                                                                            }
+                                                                                            height={
+                                                                                                20
+                                                                                            }
+                                                                                        />
+                                                                                    )}
+                                                                                    <span>
+                                                                                        {
+                                                                                            asset.name
+                                                                                        }{" "}
+                                                                                        (
+                                                                                        {
+                                                                                            asset.symbol
+                                                                                        }
+
+                                                                                        )
+                                                                                    </span>
+                                                                                </div>
+                                                                            </SelectItem>
+                                                                        )
+                                                                    )}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div>
+                                                            <Label className="mb-2 block text-slate-200">
+                                                                보상 수량
+                                                            </Label>
+                                                            <Input
+                                                                type="number"
+                                                                value={
+                                                                    formData.participationRewardAmount?.toString() ||
+                                                                    ""
+                                                                }
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    const value =
+                                                                        e.target
+                                                                            .value;
+                                                                    handleFormChange(
+                                                                        "participationRewardAmount",
+                                                                        value ===
+                                                                            ""
+                                                                            ? undefined
+                                                                            : Number(
+                                                                                  value
+                                                                              )
+                                                                    );
+                                                                }}
+                                                                placeholder="보상 수량"
+                                                                disabled={
+                                                                    !formData.participationRewardAssetId
+                                                                }
+                                                                className="bg-slate-700/50 border-slate-600 text-white"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </Section>
+                                            </div>
+                                        )}
+
+                                        {/* 베팅 설정 탭 */}
+                                        {activeTab === "betting" &&
+                                            pollType === "BETTING" && (
+                                                <Section
+                                                    title="베팅 설정"
+                                                    icon={
+                                                        <BarChart3 className="w-5 h-5" />
+                                                    }
+                                                    bgColor="bg-gradient-to-br from-orange-900/30 to-yellow-900/30"
+                                                >
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                        <div>
+                                                            <Label className="mb-2 block text-orange-200">
+                                                                베팅 에셋{" "}
+                                                                <span className="text-red-400">
+                                                                    *
+                                                                </span>
+                                                            </Label>
+                                                            <Select
+                                                                value={
+                                                                    formData.bettingAssetId ||
+                                                                    ""
+                                                                }
+                                                                onValueChange={(
+                                                                    value
+                                                                ) =>
+                                                                    handleFormChange(
+                                                                        "bettingAssetId",
+                                                                        value
+                                                                    )
+                                                                }
+                                                            >
+                                                                <SelectTrigger className="bg-slate-700/50 border-orange-600/50 text-white">
+                                                                    <SelectValue placeholder="베팅에 사용할 에셋을 선택하세요" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {assets?.assets?.map(
+                                                                        (
+                                                                            asset
+                                                                        ) => (
+                                                                            <SelectItem
+                                                                                key={
+                                                                                    asset.id
+                                                                                }
+                                                                                value={
+                                                                                    asset.id
+                                                                                }
+                                                                            >
+                                                                                <div className="flex items-center gap-2">
+                                                                                    {asset.iconUrl && (
+                                                                                        <Image
+                                                                                            src={
+                                                                                                asset.iconUrl
+                                                                                            }
+                                                                                            alt={
+                                                                                                asset.name
+                                                                                            }
+                                                                                            width={
+                                                                                                20
+                                                                                            }
+                                                                                            height={
+                                                                                                20
+                                                                                            }
+                                                                                        />
+                                                                                    )}
+                                                                                    <span>
+                                                                                        {
+                                                                                            asset.name
+                                                                                        }{" "}
+                                                                                        (
+                                                                                        {
+                                                                                            asset.symbol
+                                                                                        }
+
+                                                                                        )
+                                                                                    </span>
+                                                                                </div>
+                                                                            </SelectItem>
+                                                                        )
+                                                                    )}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div>
+                                                            <Label className="mb-2 block text-orange-200">
+                                                                수수료율 (%)
+                                                            </Label>
+                                                            <Input
+                                                                type="number"
+                                                                value={
+                                                                    (formData.houseCommissionRate ||
+                                                                        0.05) *
+                                                                    100
+                                                                }
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    const value =
+                                                                        Number(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        ) / 100;
+                                                                    handleFormChange(
+                                                                        "houseCommissionRate",
+                                                                        value
+                                                                    );
+                                                                }}
+                                                                min={0}
+                                                                max={50}
+                                                                step={0.1}
+                                                                placeholder="5.0"
+                                                                className="bg-slate-700/50 border-orange-600/50 text-white"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label className="mb-2 block text-orange-200">
+                                                                최소 베팅 금액
+                                                            </Label>
+                                                            <Input
+                                                                type="number"
+                                                                value={
+                                                                    formData.minimumBet ||
+                                                                    ""
+                                                                }
+                                                                onChange={(e) =>
+                                                                    handleFormChange(
+                                                                        "minimumBet",
+                                                                        Number(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        )
+                                                                    )
+                                                                }
+                                                                min={1}
+                                                                placeholder="1000"
+                                                                className="bg-slate-700/50 border-orange-600/50 text-white"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label className="mb-2 block text-orange-200">
+                                                                최대 베팅 금액
+                                                            </Label>
+                                                            <Input
+                                                                type="number"
+                                                                value={
+                                                                    formData.maximumBet ||
+                                                                    ""
+                                                                }
+                                                                onChange={(e) =>
+                                                                    handleFormChange(
+                                                                        "maximumBet",
+                                                                        Number(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        )
+                                                                    )
+                                                                }
+                                                                min={
+                                                                    formData.minimumBet ||
+                                                                    1
+                                                                }
+                                                                placeholder="10000"
+                                                                className="bg-slate-700/50 border-orange-600/50 text-white"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-6 p-4 bg-gradient-to-r from-orange-900/20 to-yellow-900/20 rounded-lg border border-orange-600/30">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className="text-orange-400">
+                                                                💰
+                                                            </span>
+                                                            <span className="font-semibold text-orange-200">
+                                                                베팅 모드 안내
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-sm text-orange-300/80">
+                                                            • 사용자들이
+                                                            선택지에 베팅할 수
+                                                            있습니다
+                                                            <br />
+                                                            • 폴 종료 후
+                                                            관리자가 수동으로
+                                                            정답을 설정하고
+                                                            정산해야 합니다
+                                                            <br />• 승리자들은
+                                                            베팅 풀을 나누어
+                                                            배당을 받습니다
+                                                        </div>
+                                                    </div>
+                                                </Section>
+                                            )}
+
+                                        {/* 옵션 탭 */}
+                                        {activeTab === "options" && (
+                                            <Section
+                                                title="폴 옵션"
+                                                icon={
+                                                    <Users className="w-5 h-5" />
+                                                }
+                                            >
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <Checkbox
+                                                                checked={
+                                                                    formData.hasAnswer
+                                                                }
+                                                                onCheckedChange={(
+                                                                    checked
+                                                                ) => {
+                                                                    if (
+                                                                        !checked
+                                                                    ) {
+                                                                        handleFormChange(
+                                                                            "hasAnswer",
+                                                                            false
+                                                                        );
+                                                                        handleFormChange(
+                                                                            "answerOptionIds",
+                                                                            []
+                                                                        );
+                                                                    } else {
+                                                                        handleFormChange(
+                                                                            "hasAnswer",
+                                                                            true
+                                                                        );
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <Label className="text-slate-200">
+                                                                정답이 있는 폴
+                                                            </Label>
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            onClick={
+                                                                addNewOption
+                                                            }
+                                                            variant="outline"
+                                                            className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600"
+                                                        >
+                                                            + 옵션 추가
+                                                        </Button>
+                                                    </div>
+
+                                                    <DndContext
+                                                        sensors={sensors}
+                                                        collisionDetection={
+                                                            closestCenter
+                                                        }
+                                                        onDragStart={
+                                                            handleDragStart
+                                                        }
+                                                        onDragEnd={
+                                                            handleDragEnd
+                                                        }
+                                                    >
+                                                        <SortableContext
+                                                            items={(
+                                                                formData.options ||
+                                                                []
+                                                            ).map(
+                                                                (option) =>
+                                                                    option.optionId
+                                                            )}
+                                                            strategy={
+                                                                verticalListSortingStrategy
+                                                            }
+                                                        >
+                                                            <div className="space-y-3">
+                                                                {(
+                                                                    formData.options ||
+                                                                    []
+                                                                ).map(
+                                                                    (
+                                                                        option
+                                                                    ) => (
+                                                                        <div
+                                                                            key={
+                                                                                option.optionId
+                                                                            }
+                                                                            className="space-y-2"
+                                                                        >
+                                                                            <SortableOption
+                                                                                id={
+                                                                                    option.optionId
+                                                                                }
+                                                                            >
+                                                                                <div className="p-4 bg-slate-700/30 border border-slate-600 rounded-lg">
+                                                                                    <div className="flex items-center justify-between">
+                                                                                        <span className="text-white">
+                                                                                            {option.name ||
+                                                                                                option.optionId}
+                                                                                        </span>
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            {formData.hasAnswer && (
+                                                                                                <Checkbox
+                                                                                                    checked={formData.answerOptionIds?.includes(
+                                                                                                        option.optionId
+                                                                                                    )}
+                                                                                                    onCheckedChange={(
+                                                                                                        checked
+                                                                                                    ) => {
+                                                                                                        let newIds =
+                                                                                                            formData.answerOptionIds ||
+                                                                                                            [];
+                                                                                                        if (
+                                                                                                            checked
+                                                                                                        ) {
+                                                                                                            newIds =
+                                                                                                                [
+                                                                                                                    ...newIds,
+                                                                                                                    option.optionId,
+                                                                                                                ];
+                                                                                                        } else {
+                                                                                                            newIds =
+                                                                                                                newIds.filter(
+                                                                                                                    (
+                                                                                                                        id
+                                                                                                                    ) =>
+                                                                                                                        id !==
+                                                                                                                        option.optionId
+                                                                                                                );
+                                                                                                        }
+                                                                                                        handleFormChange(
+                                                                                                            "answerOptionIds",
+                                                                                                            newIds
+                                                                                                        );
+                                                                                                    }}
+                                                                                                />
+                                                                                            )}
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => {
+                                                                                                    console.log(
+                                                                                                        "option.optionId",
+                                                                                                        option.optionId
+                                                                                                    );
+                                                                                                    console.log(
+                                                                                                        "selectedOption?.optionId",
+                                                                                                        selectedOption?.optionId
+                                                                                                    );
+                                                                                                    if (
+                                                                                                        option.optionId ===
+                                                                                                        selectedOption?.optionId
+                                                                                                    ) {
+                                                                                                        setShowOptionCard(
+                                                                                                            !showOptionCard
+                                                                                                        );
+                                                                                                    } else {
+                                                                                                        setShowOptionCard(
+                                                                                                            true
+                                                                                                        );
+                                                                                                    }
+                                                                                                    setSelectedOption(
+                                                                                                        option
+                                                                                                    );
+                                                                                                }}
+                                                                                                className="h-8 w-8 text-slate-400 hover:text-white"
+                                                                                            >
+                                                                                                <ChevronDown
+                                                                                                    className={`w-4 h-4 transition-transform ${
+                                                                                                        showOptionCard &&
+                                                                                                        selectedOption?.optionId ===
+                                                                                                            option.optionId
+                                                                                                            ? "rotate-180"
+                                                                                                            : ""
+                                                                                                    }`}
+                                                                                                />
+                                                                                            </button>
+                                                                                            <Button
+                                                                                                type="button"
+                                                                                                variant="ghost"
+                                                                                                size="icon"
+                                                                                                onClick={() =>
+                                                                                                    deleteOption(
+                                                                                                        option.optionId
+                                                                                                    )
+                                                                                                }
+                                                                                                className="h-8 w-8 text-red-400 hover:text-red-300"
+                                                                                            >
+                                                                                                ✕
+                                                                                            </Button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </SortableOption>
+                                                                            {showOptionCard &&
+                                                                                selectedOption?.optionId ===
+                                                                                    option.optionId && (
+                                                                                    <OptionCard
+                                                                                        option={
+                                                                                            option
+                                                                                        }
+                                                                                        editing={
+                                                                                            true
+                                                                                        }
+                                                                                        onSave={
+                                                                                            updateOption
+                                                                                        }
+                                                                                    />
+                                                                                )}
+                                                                        </div>
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                        </SortableContext>
+                                                    </DndContext>
+                                                </div>
+                                            </Section>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     );
@@ -1322,10 +1647,16 @@ function SortableOption({ id, children }: SortableOptionProps) {
     };
 
     return (
-        <div ref={setNodeRef} style={style} className="flex-1">
-            <div {...attributes} {...listeners} className="w-full cursor-move">
-                {children}
+        <div ref={setNodeRef} style={style} className="flex items-center gap-2">
+            <div
+                {...attributes}
+                {...listeners}
+                className="cursor-grab hover:cursor-grabbing p-2 text-slate-400 hover:text-slate-200 transition-colors"
+                title="드래그하여 순서 변경"
+            >
+                <GripVertical className="w-4 h-4" />
             </div>
+            <div className="flex-1">{children}</div>
         </div>
     );
 }
@@ -1355,11 +1686,11 @@ function OptionCard({
     };
 
     return (
-        <div className="p-4 bg-card rounded-lg shadow-sm mt-2 space-y-2">
-            <div className="space-y-8">
+        <div className="p-6 bg-slate-800/80 rounded-lg border border-slate-600/50 mt-2 space-y-2 backdrop-blur-sm">
+            <div className="space-y-6">
                 <div className="space-y-2">
-                    <Label className="block font-semibold">
-                        선택지 내용 <span className="text-red-500">*</span>
+                    <Label className="block font-semibold text-slate-200">
+                        선택지 내용 <span className="text-red-400">*</span>
                     </Label>
                     <Input
                         value={editedOption.name}
@@ -1370,11 +1701,12 @@ function OptionCard({
                             })
                         }
                         disabled={!isEditing}
+                        className="bg-slate-700/50 border-slate-600 text-white"
                     />
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="block font-semibold">
+                    <Label className="block font-semibold text-slate-200">
                         짧은 선택지 내용
                     </Label>
                     <Input
@@ -1386,11 +1718,14 @@ function OptionCard({
                             })
                         }
                         disabled={!isEditing}
+                        className="bg-slate-700/50 border-slate-600 text-white"
                     />
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="block font-semibold">설명</Label>
+                    <Label className="block font-semibold text-slate-200">
+                        설명
+                    </Label>
                     <Textarea
                         value={editedOption.description || ""}
                         onChange={(e) =>
@@ -1400,27 +1735,32 @@ function OptionCard({
                             })
                         }
                         disabled={!isEditing}
+                        className="bg-slate-700/50 border-slate-600 text-white"
                     />
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="block font-semibold">이미지 URL</Label>
+                    <Label className="block font-semibold text-slate-200">
+                        이미지 URL
+                    </Label>
                     <div className="space-y-4">
                         <div className="flex gap-4">
                             {editedOption.imgUrl && (
-                                <Image
-                                    src={
-                                        editedOption.imgUrl ||
-                                        "/default-image.jpg"
-                                    }
-                                    alt="이미지"
-                                    width={170}
-                                    height={170}
-                                    className="object-cover rounded-md"
-                                />
+                                <div className="rounded-lg overflow-hidden border border-slate-600">
+                                    <Image
+                                        src={
+                                            editedOption.imgUrl ||
+                                            "/default-image.jpg"
+                                        }
+                                        alt="이미지"
+                                        width={170}
+                                        height={170}
+                                        className="object-cover"
+                                    />
+                                </div>
                             )}
                             {isEditing && (
-                                <div className="flex flex-col gap-2">
+                                <div className="flex flex-col gap-2 flex-1">
                                     <Input
                                         value={editedOption.imgUrl || ""}
                                         onChange={(e) =>
@@ -1431,6 +1771,7 @@ function OptionCard({
                                         }
                                         disabled={!isEditing}
                                         placeholder="이미지 URL을 입력하거나 아래에서 업로드하세요"
+                                        className="bg-slate-700/50 border-slate-600 text-white"
                                     />
                                     <FileUploader
                                         purpose="poll-option"
@@ -1465,11 +1806,13 @@ function OptionCard({
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="block font-semibold">유튜브 URL</Label>
+                    <Label className="block font-semibold text-slate-200">
+                        유튜브 URL
+                    </Label>
                     <div className="space-y-4">
                         <div className="flex gap-4">
                             {editedOption.youtubeUrl && (
-                                <div className="w-[350px]">
+                                <div className="w-[350px] rounded-lg overflow-hidden">
                                     <YoutubeViewer
                                         videoId={
                                             getYoutubeVideoId(
@@ -1482,7 +1825,7 @@ function OptionCard({
                                 </div>
                             )}
                             {isEditing && (
-                                <div className="flex flex-col gap-2">
+                                <div className="flex flex-col gap-2 flex-1">
                                     <Input
                                         value={editedOption.youtubeUrl || ""}
                                         onChange={(e) =>
@@ -1493,6 +1836,7 @@ function OptionCard({
                                         }
                                         disabled={!isEditing}
                                         placeholder="유튜브 URL을 입력하세요"
+                                        className="bg-slate-700/50 border-slate-600 text-white"
                                     />
                                 </div>
                             )}
@@ -1501,22 +1845,31 @@ function OptionCard({
                 </div>
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-600/50">
                 {isEditing ? (
                     <>
                         <Button
                             type="button"
                             variant="outline"
                             onClick={handleCancel}
+                            className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600"
                         >
                             취소
                         </Button>
-                        <Button type="button" onClick={handleSave}>
+                        <Button
+                            type="button"
+                            onClick={handleSave}
+                            className="bg-purple-600 hover:bg-purple-700"
+                        >
                             저장
                         </Button>
                     </>
                 ) : (
-                    <Button type="button" onClick={() => setIsEditing(true)}>
+                    <Button
+                        type="button"
+                        onClick={() => setIsEditing(true)}
+                        className="bg-slate-700 hover:bg-slate-600 text-white"
+                    >
                         편집
                     </Button>
                 )}

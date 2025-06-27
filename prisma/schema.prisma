@@ -340,6 +340,14 @@ model Poll {
   participationRewardAsset   Asset?       @relation("PollParticipationReward", fields: [participationRewardAssetId], references: [id])
   pollLogs                   PollLog[]
   rewardLogs                 RewardsLog[]
+  bettingStatus              BettingStatus @default(OPEN)
+  isSettled                  Boolean      @default(false)
+  settledAt                  DateTime?
+  winningOptionId            String?
+  settledBy                  String?
+  houseCommissionRate        Float        @default(0.05)  // 5% 수수료
+  totalCommissionAmount      Int          @default(0)
+  optionBetAmounts           Json?        // {"optionA": 50000, "optionB": 30000}
 
   @@index([category])
   @@index([artistId])
@@ -355,6 +363,10 @@ model PollLog {
   option        Json
   amount        Int          @default(1)
   betAmount     Int          @default(0)
+  payoutAmount  Int          @default(0)
+  payoutMultiplier Float?
+  isPayoutDistributed Boolean @default(false)
+  payoutDistributedAt DateTime?
   ipAddress     String?
   userAgent     String?
   createdAt     DateTime     @default(now())
@@ -1830,4 +1842,12 @@ enum RarityTier {
   RARE        // 희귀급 (7)
   UNCOMMON    // 언커먼급 (8)
   COMMON      // 일반급 (9) - 기본값
+}
+
+enum BettingStatus {
+  OPEN
+  CLOSED
+  SETTLING
+  SETTLED
+  CANCELLED
 }

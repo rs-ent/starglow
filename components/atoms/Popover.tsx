@@ -3,7 +3,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-
 import { cn } from "@/lib/utils/tailwind";
 
 interface PopoverProps {
@@ -62,7 +61,7 @@ export default function Popover({
     }, [isOpen]);
 
     return (
-        <div className="relative">
+        <div className="relative" style={{ zIndex: 1000 }}>
             <div onClick={() => setIsOpen(!isOpen)}>{trigger}</div>
             <div
                 ref={popoverRef}

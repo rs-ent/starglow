@@ -226,25 +226,34 @@ function PollsList({
                             : tokenGating.data[poll.needTokenAddress];
 
                     const isCenter = index === centerIndex;
-                    const scale = isCenter ? 1.0 : 0.95;
-                    const opacity = isCenter ? 1 : 0.85;
+                    const scale = isCenter ? 1.0 : 0.95; // 측면 카드 차이 최소화
 
                     return (
                         <motion.div
                             key={poll.id}
                             className={cn("px-[2px]")}
                             onClick={() => handleCardClick(index)}
-                            initial={{ scale: 0.9, opacity: 0.7 }}
+                            initial={{ scale: 0.95, opacity: 0.9 }}
                             animate={{
                                 scale,
-                                opacity,
-                                transition: { duration: 0.3 },
+                                opacity: 1,
+                                transition: {
+                                    duration: 0.3,
+                                    ease: "easeOut", // 더 부드러운 애니메이션
+                                },
                             }}
                             whileHover={{
-                                scale: isCenter ? 1.02 : scale * 1.01,
-                                transition: { duration: 0.2 },
+                                scale: isCenter ? 1.0 : 0.97,
+                                opacity: 1, // hover 시 모든 카드 완전 불투명
+                                transition: {
+                                    duration: 0.15,
+                                    ease: "easeInOut", // 더 자연스러운 hover 효과
+                                },
                             }}
-                            style={{ cursor: "pointer" }}
+                            style={{
+                                cursor: "pointer",
+                                willChange: "transform, opacity", // GPU 가속 최적화
+                            }}
                         >
                             <PollsListCard
                                 index={index}

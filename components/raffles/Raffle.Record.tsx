@@ -123,11 +123,13 @@ export default memo(function RaffleRecord({
                 {/* Full Screen Modal */}
                 <div
                     className={cn(
-                        "h-full w-full overflow-hidden flex flex-col max-w-[1200px] mx-auto max-h-[800px]",
+                        "h-[80vh] w-[95vw] overflow-hidden flex flex-col max-w-[1200px] mx-auto max-h-[800px]",
+                        "p-[50px]",
                         "shadow-2xl",
                         "bg-gradient-to-br from-[#040449] to-[#5d0c7b] rounded-xl",
                         "border border-white/10"
                     )}
+                    onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
                     <motion.div
@@ -159,14 +161,13 @@ export default memo(function RaffleRecord({
                                 </div>
                             </div>
                             <div>
-                                <h1
+                                <h2
                                     className={cn(
-                                        "text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400",
                                         getResponsiveClass(30).textClass
                                     )}
                                 >
                                     My Prize Records
-                                </h1>
+                                </h2>
                                 <p
                                     className={cn(
                                         "text-white/60",

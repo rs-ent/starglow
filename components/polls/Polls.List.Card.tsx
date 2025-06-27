@@ -20,6 +20,7 @@ import Countdown from "../atoms/Countdown";
 import Doorman from "../atoms/Doorman";
 import Popup from "../atoms/Popup";
 import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
+import PollsBettingModeTutorialModal from "./Polls.BettingModeTutorial.Modal";
 import type { PollsWithArtist, PollOption } from "@/app/actions/polls";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import type { TokenGatingData } from "@/app/story/nft/actions";
@@ -55,6 +56,7 @@ interface UIState {
     showInteractFeedback: boolean;
     confirmedAnswer: boolean;
     rewarded: boolean;
+    showBettingTutorial: boolean;
 }
 
 function PollsListCard({
@@ -87,7 +89,23 @@ function PollsListCard({
         showInteractFeedback: false,
         confirmedAnswer: false,
         rewarded: false,
+        showBettingTutorial: false,
     });
+
+    const { accentColorFrom, accentColorTo } = useMemo(() => {
+        return {
+            accentColorFrom: poll.bettingMode
+                ? "rgba(160, 16, 11, 0.9)"
+                : poll.artist
+                ? ArtistBG(poll.artist, 2, 100)
+                : bgColorAccentFrom,
+            accentColorTo: poll.bettingMode
+                ? "rgba(32,20,47,0.9)"
+                : poll.artist
+                ? ArtistBG(poll.artist, 3, 100)
+                : bgColorAccentTo,
+        };
+    }, [poll]);
 
     // 날짜 관련 계산 메모이제이션
     const pollDateInfo = useMemo(() => {
@@ -612,7 +630,7 @@ function PollsListCard({
                             (_, idx) => (
                                 <div
                                     key={idx}
-                                    className="h-[34px] bg-[rgba(255,255,255,0.3)] blur-sm rounded mb-2"
+                                    className="h-[34px] bg-[rgba(255,255,255,0.3)] rounded mb-2"
                                 ></div>
                             )
                         )}
@@ -745,7 +763,7 @@ function PollsListCard({
                         "cursor-pointer",
                         "w-full hover:glow-purple rounded-full font-main",
                         "transition-all duration-300 ease-in",
-                        "mb-[30px]",
+                        "mb-[50px]",
                         getResponsiveClass(15).paddingClass,
                         getResponsiveClass(15).textClass
                     )}
@@ -772,175 +790,6 @@ function PollsListCard({
         animations.submit,
         bgColorFrom,
         bgColorTo,
-    ]);
-
-    // 투표 결과 보기 버튼 렌더링 함수
-    const renderResultsToggle = useCallback(() => {
-        if (
-            pollDateInfo.status !== "ONGOING" ||
-            (pollLogs &&
-                pollLogs.filter((log) => log.pollId === poll.id).length ===
-                    0) ||
-            (poll.hasAnswer &&
-                (!pollLogs ||
-                    pollLogs.filter((log) => log.pollId === poll.id).length ===
-                        0))
-        ) {
-            return null;
-        }
-
-        return (
-            <>
-                <div className="absolute bottom-[12px] right-[12px]">
-                    <img
-                        src="/icons/charts-fill.svg"
-                        alt="charts-fill"
-                        className={cn(
-                            uiState.showOngoingResults
-                                ? "opacity-45"
-                                : "opacity-0",
-                            "transition-all duration-300 ease-in",
-                            getResponsiveClass(25).frameClass
-                        )}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setUIState((prev) => ({
-                                ...prev,
-                                showOngoingResults: !prev.showOngoingResults,
-                            }));
-                        }}
-                    />
-                </div>
-                <div className="absolute bottom-[12px] right-[12px]">
-                    <img
-                        src="/icons/charts-stroke.svg"
-                        alt="charts-stroke"
-                        className={cn(
-                            !uiState.showOngoingResults
-                                ? "opacity-45"
-                                : "opacity-0",
-                            "transition-all duration-300 ease-in",
-                            getResponsiveClass(25).frameClass
-                        )}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setUIState((prev) => ({
-                                ...prev,
-                                showOngoingResults: !prev.showOngoingResults,
-                            }));
-                        }}
-                    />
-                </div>
-            </>
-        );
-    }, [
-        pollDateInfo.status,
-        poll.hasAnswer,
-        pollLogs,
-        uiState.showOngoingResults,
-        poll.id,
-    ]);
-
-    // Poll 특성 태그들 렌더링 함수
-    const renderPollTags = useCallback(() => {
-        const tags = [];
-
-        // Artist 태그 (가장 먼저 배치)
-        if (poll.artist) {
-            tags.push({
-                label: poll.artist.name,
-                artistLogo: poll.artist.logoUrl,
-                color: "from-pink-500/20 to-rose-500/20 border-pink-500/30 text-pink-300",
-            });
-        } else {
-            tags.push({
-                label: "General",
-                emoji: "🌍",
-                color: "from-gray-500/20 to-slate-500/20 border-gray-500/30 text-gray-300",
-            });
-        }
-
-        // Betting Mode 태그
-        if (poll.bettingMode) {
-            tags.push({
-                label: "Betting Mode",
-                emoji: "💰",
-                color: "from-yellow-500/20 to-orange-500/20 border-yellow-500/30 text-yellow-300",
-            });
-        }
-
-        // Multiple Vote 태그
-        if (poll.allowMultipleVote) {
-            tags.push({
-                label: "Multi Vote",
-                emoji: "✨",
-                color: "from-purple-500/20 to-pink-500/20 border-purple-500/30 text-purple-300",
-            });
-        }
-
-        // Has Answer 태그
-        if (poll.hasAnswer) {
-            tags.push({
-                label: "Quiz",
-                emoji: "🧠",
-                color: "from-green-500/20 to-emerald-500/20 border-green-500/30 text-green-300",
-            });
-        }
-
-        // Token Gating 태그
-        if (poll.needToken && poll.needTokenAddress) {
-            tags.push({
-                label: "NFT Required",
-                emoji: "🎫",
-                color: "from-blue-500/20 to-cyan-500/20 border-blue-500/30 text-blue-300",
-            });
-        }
-
-        return (
-            <div
-                className={cn(
-                    "flex flex-wrap gap-2 mt-3",
-                    getResponsiveClass(10).marginYClass
-                )}
-            >
-                {tags.map((tag, index) => (
-                    <motion.div
-                        key={index}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 0.1 }}
-                        className={cn(
-                            "flex items-center gap-1 rounded-full",
-                            "backdrop-blur-sm border font-medium text-xs",
-                            "transition-all duration-300",
-                            "morp-glass-2",
-                            getResponsiveClass(10).paddingClass
-                        )}
-                    >
-                        {tag.artistLogo ? (
-                            <img
-                                src={tag.artistLogo}
-                                alt={tag.label}
-                                className={cn(
-                                    "object-contain",
-                                    getResponsiveClass(15).frameClass
-                                )}
-                            />
-                        ) : (
-                            <span>{tag.emoji}</span>
-                        )}
-                        <span>{tag.label}</span>
-                    </motion.div>
-                ))}
-            </div>
-        );
-    }, [
-        poll.artist,
-        poll.bettingMode,
-        poll.allowMultipleVote,
-        poll.hasAnswer,
-        poll.needToken,
-        poll.needTokenAddress,
     ]);
 
     // 토큰 게이팅 정보 렌더링 함수
@@ -970,7 +819,9 @@ function PollsListCard({
         if (
             !poll.participationRewardAssetId ||
             !poll.participationRewardAmount ||
-            !poll.participationRewardAsset
+            !poll.participationRewardAsset ||
+            (pollLogs &&
+                pollLogs.filter((log) => log.pollId === poll.id).length > 0)
         ) {
             return null;
         }
@@ -1066,6 +917,127 @@ function PollsListCard({
         poll.participationRewardAssetId,
         poll.participationRewardAmount,
         poll.participationRewardAsset,
+        pollLogs,
+    ]);
+
+    // Poll 특성 태그들 렌더링 함수
+    const renderPollTags = useCallback(() => {
+        const tags = [];
+
+        // Artist 태그 (가장 먼저 배치)
+        if (poll.artist) {
+            tags.push({
+                label: poll.artist.name,
+                artistLogo: poll.artist.logoUrl,
+                color: "from-pink-500/20 to-rose-500/20 border-pink-500/30 text-pink-300",
+            });
+        } else {
+            tags.push({
+                label: "General",
+                emoji: "🌍",
+                color: "from-gray-500/20 to-slate-500/20 border-gray-500/30 text-gray-300",
+            });
+        }
+
+        // Betting Mode 태그
+        if (poll.bettingMode) {
+            tags.push({
+                label: "Betting Mode",
+                emoji: "🎰",
+                color: "from-yellow-500/20 to-orange-500/20 border-yellow-500/30 text-yellow-300",
+            });
+        }
+
+        // Multiple Vote 태그
+        if (poll.allowMultipleVote) {
+            tags.push({
+                label: "Multi Vote",
+                emoji: "✨",
+                color: "from-purple-500/20 to-pink-500/20 border-purple-500/30 text-purple-300",
+            });
+        }
+
+        // Has Answer 태그
+        if (poll.hasAnswer) {
+            tags.push({
+                label: "Quiz",
+                emoji: "🧠",
+                color: "from-green-500/20 to-emerald-500/20 border-green-500/30 text-green-300",
+            });
+        }
+
+        // Token Gating 태그
+        if (poll.needToken && poll.needTokenAddress) {
+            tags.push({
+                label: "NFT Required",
+                emoji: "🎫",
+                color: "from-blue-500/20 to-cyan-500/20 border-blue-500/30 text-blue-300",
+            });
+        }
+
+        return (
+            <div
+                className={cn(
+                    "flex flex-wrap gap-2 mt-3",
+                    getResponsiveClass(10).marginYClass
+                )}
+            >
+                {tags.map((tag, index) => (
+                    <motion.div
+                        key={index}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.1 }}
+                        className={cn(
+                            "flex items-center gap-1 rounded-full relative overflow-hidden",
+                            "backdrop-blur-sm border font-medium text-xs",
+                            "transition-all duration-300",
+                            "morp-glass-2",
+                            getResponsiveClass(10).paddingClass
+                        )}
+                    >
+                        {tag.artistLogo ? (
+                            <img
+                                src={tag.artistLogo}
+                                alt={tag.label}
+                                className={cn(
+                                    "object-contain",
+                                    getResponsiveClass(15).frameClass
+                                )}
+                            />
+                        ) : (
+                            <span>{tag.emoji}</span>
+                        )}
+
+                        {tag.label === "Betting Mode" && (
+                            <>
+                                {/* 메인 불길 GIF */}
+                                <div className="absolute inset-0 pointer-events-none z-0">
+                                    <img
+                                        src="/elements/fire-background.gif"
+                                        alt="Fire background"
+                                        className="absolute inset-0 w-full h-full object-cover opacity-20"
+                                        style={{
+                                            mixBlendMode: "overlay",
+                                            filter: "hue-rotate(10deg) saturate(1.3) brightness(1.1)",
+                                        }}
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        <span>{tag.label}</span>
+                    </motion.div>
+                ))}
+            </div>
+        );
+    }, [
+        poll.artist,
+        poll.bettingMode,
+        poll.allowMultipleVote,
+        poll.hasAnswer,
+        poll.needToken,
+        poll.needTokenAddress,
     ]);
 
     // 정답 확인 팝업 렌더링 함수
@@ -1146,6 +1118,121 @@ function PollsListCard({
         handleSubmit,
     ]);
 
+    // 새로운 renderFooter 함수로 통합
+    const renderFooter = useCallback(() => {
+        const showBettingButton = poll.bettingMode;
+        const showResultsButton =
+            pollDateInfo.status === "ONGOING" &&
+            pollLogs &&
+            pollLogs.filter((log) => log.pollId === poll.id).length > 0 &&
+            !(
+                poll.hasAnswer &&
+                (!pollLogs ||
+                    pollLogs.filter((log) => log.pollId === poll.id).length ===
+                        0)
+            );
+
+        // 둘 다 안 보이면 footer 자체를 렌더링하지 않음
+        if (!showBettingButton && !showResultsButton) {
+            return null;
+        }
+
+        return (
+            <div
+                className={cn(
+                    "flex items-center justify-between mt-3",
+                    "w-full relative z-10"
+                )}
+            >
+                {/* Left side - How it works button */}
+                <div className="flex">
+                    {showBettingButton && (
+                        <motion.button
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setUIState((prev) => ({
+                                    ...prev,
+                                    showBettingTutorial: true,
+                                }));
+                            }}
+                            className={cn(
+                                "rounded-full flex items-center gap-1",
+                                "bg-gradient-to-r from-orange-900/30 to-red-900/30",
+                                "border border-orange-500/40",
+                                "text-orange-300 hover:text-orange-200",
+                                "transition-all duration-300",
+                                "hover:scale-105 hover:border-orange-400/60",
+                                "cursor-pointer",
+                                getResponsiveClass(10).textClass,
+                                getResponsiveClass(15).paddingClass
+                            )}
+                        >
+                            <span>❓</span>
+                            <span>How it works</span>
+                        </motion.button>
+                    )}
+                </div>
+
+                {/* Right side - Results toggle button */}
+                <div className="flex">
+                    {showResultsButton && (
+                        <div className="relative">
+                            <img
+                                src="/icons/charts-fill.svg"
+                                alt="charts-fill"
+                                className={cn(
+                                    uiState.showOngoingResults
+                                        ? "opacity-45"
+                                        : "opacity-0",
+                                    "transition-all duration-300 ease-in cursor-pointer",
+                                    getResponsiveClass(25).frameClass
+                                )}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setUIState((prev) => ({
+                                        ...prev,
+                                        showOngoingResults:
+                                            !prev.showOngoingResults,
+                                    }));
+                                }}
+                            />
+                            <img
+                                src="/icons/charts-stroke.svg"
+                                alt="charts-stroke"
+                                className={cn(
+                                    !uiState.showOngoingResults
+                                        ? "opacity-45"
+                                        : "opacity-0",
+                                    "absolute top-0 left-0",
+                                    "transition-all duration-300 ease-in cursor-pointer",
+                                    getResponsiveClass(25).frameClass
+                                )}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setUIState((prev) => ({
+                                        ...prev,
+                                        showOngoingResults:
+                                            !prev.showOngoingResults,
+                                    }));
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }, [
+        poll.bettingMode,
+        pollDateInfo.status,
+        poll.hasAnswer,
+        pollLogs,
+        poll.id,
+        uiState.showOngoingResults,
+    ]);
+
     return (
         <>
             <PopupInteractFeedback
@@ -1171,148 +1258,156 @@ function PollsListCard({
                 rewardAmount={poll.participationRewardAmount}
             />
             {renderAnswerConfirmPopup()}
+            <PollsBettingModeTutorialModal
+                isOpen={uiState.showBettingTutorial}
+                onClose={() =>
+                    setUIState((prev) => ({
+                        ...prev,
+                        showBettingTutorial: false,
+                    }))
+                }
+                onComplete={() => {
+                    console.log("User completed betting tutorial");
+                }}
+            />
             <div className="relative w-full max-w-[800px] min-w-[180px] my-[25px] mx-auto">
                 <div
                     className={cn(
-                        "absolute inset-0 rounded-[16px] pointer-events-none transition-opacity duration-700 -z-40",
+                        "absolute inset-0 rounded-[16px] pointer-events-none transition-opacity duration-300 ease-out -z-40", // 더 빠른 transition
                         tokenGatingInfo.permission && isSelected
                             ? "opacity-100"
                             : "opacity-0"
                     )}
                     style={{
-                        background: `linear-gradient(to bottom right, ${
-                            poll.artist
-                                ? ArtistBG(poll.artist, 2, 100)
-                                : bgColorAccentFrom
-                        }, ${
-                            poll.artist
-                                ? ArtistBG(poll.artist, 3, 100)
-                                : bgColorAccentTo
-                        })`,
+                        background: `linear-gradient(to bottom right, ${accentColorFrom}, ${accentColorTo})`,
                     }}
                 />
                 {!tokenGatingInfo.permission && <Doorman />}
                 <div
                     className={cn(
                         "flex flex-col p-[12px] border border-[rgba(255,255,255,0.4)] rounded-[16px]",
-                        "transition-all duration-500 ease-in-out",
+                        "transition-opacity duration-300 ease-out", // opacity만 transition 적용
                         "bg-gradient-to-br from-[rgba(0,0,0,0.1)] to-[rgba(255,255,255,0.15)]",
-                        !tokenGatingInfo.permission && "blur-sm"
+                        "relative overflow-hidden"
                     )}
                 >
-                    {/* 이미지 섹션 */}
-                    <div className="gradient-border rounded-[16px] p-[1px] shadow-sm">
-                        <div className="aspect-[2.0625/1] relative">
-                            <PollThumbnail
-                                poll={poll}
-                                className="rounded-[16px] shadow-md w-full h-full"
-                                imageClassName="rounded-[16px]"
-                            />
-                        </div>
-                    </div>
-
-                    {/* 폴 정보 섹션 */}
-                    <div className="flex flex-wrap items-center justify-between mt-3">
-                        <div
-                            className={cn(
-                                "flex flex-row gap-1",
-                                getResponsiveClass(10).textClass
-                            )}
-                        >
-                            <div className="morp-glass-1 rounded-full py-1 px-3">
-                                <h2>{pollDateInfo.status}</h2>
+                    {/* 모든 컨텐츠를 불길 위에 표시하기 위한 wrapper */}
+                    <div className="relative z-10">
+                        {/* 이미지 섹션 */}
+                        <div className="gradient-border rounded-[16px] p-[1px] shadow-sm">
+                            <div className="aspect-[2.0625/1] relative">
+                                <PollThumbnail
+                                    poll={poll}
+                                    className="rounded-[16px] shadow-md w-full h-full"
+                                    imageClassName="rounded-[16px]"
+                                />
                             </div>
                         </div>
 
-                        {pollDateInfo.status !== "ENDED" &&
-                            pollDateInfo.status !== "UPCOMING" && (
-                                <div>
-                                    <Countdown
-                                        endDate={pollDateInfo.endDateObj}
-                                        size={15}
-                                        className="font-main opacity-50"
-                                    />
-                                </div>
-                            )}
-                    </div>
-
-                    {/* 제목 섹션 */}
-                    <div className="mt-3">
-                        <h2
-                            className={cn(
-                                "text-2xl text-[rgba(255,255,255,0.85)]",
-                                getResponsiveClass(15).textClass
-                            )}
-                        >
-                            #{poll.id.replace(/^p0+/, "")}
-                        </h2>
-                        <h2
-                            className={cn(
-                                " text-[rgba(255,255,255,1)] break-words",
-                                "text-xl",
-                                getResponsiveClass(25).textClass,
-                                "!leading-tight"
-                            )}
-                        >
-                            {poll.title}
-                        </h2>
-                        <p
-                            className={cn(
-                                "text-xs text-[rgba(255,255,255,0.6)]",
-                                getResponsiveClass(10).textClass
-                            )}
-                        >
-                            {pollDateInfo.startDate} ~ {pollDateInfo.endDate}
-                        </p>
-
-                        {/* Poll 특성 태그들 */}
-                        {renderPollTags()}
-                    </div>
-
-                    {/* UPCOMING 상태일 경우 옵션 대신 COUNTDOWN 렌더링 */}
-                    {pollDateInfo.status === "UPCOMING" && (
-                        <div
-                            className={cn(
-                                "my-6 flex-col items-center justify-center text-center",
-                                "rounded-[16px] p-3 inner-shadow"
-                            )}
-                            style={{
-                                background: `linear-gradient(to bottom right, rgba(0,0,0,0.05), rgba(0,0,0,0.1))`,
-                            }}
-                        >
-                            <h3
+                        {/* 폴 정보 섹션 */}
+                        <div className="flex flex-wrap items-center justify-between mt-3">
+                            <div
                                 className={cn(
-                                    "text-[rgba(255,255,255,0.85)]",
+                                    "flex flex-row gap-1",
+                                    getResponsiveClass(10).textClass
+                                )}
+                            >
+                                <div className="morp-glass-1 rounded-full py-1 px-3">
+                                    <h2>{pollDateInfo.status}</h2>
+                                </div>
+                            </div>
+
+                            {pollDateInfo.status !== "ENDED" &&
+                                pollDateInfo.status !== "UPCOMING" && (
+                                    <div>
+                                        <Countdown
+                                            endDate={pollDateInfo.endDateObj}
+                                            size={15}
+                                            className="font-main opacity-50"
+                                        />
+                                    </div>
+                                )}
+                        </div>
+
+                        {/* 제목 섹션 */}
+                        <div className="mt-3 relative z-10">
+                            <h2
+                                className={cn(
+                                    "text-2xl text-[rgba(255,255,255,0.85)]",
                                     getResponsiveClass(15).textClass
                                 )}
                             >
-                                OPEN IN
-                            </h3>
-                            <Countdown
-                                endDate={pollDateInfo.startDateObj}
-                                size={30}
-                                className="font-main text-center"
-                            />
+                                #{poll.id.replace(/^p0+/, "")}
+                            </h2>
+                            <h2
+                                className={cn(
+                                    " text-[rgba(255,255,255,1)] break-words",
+                                    "text-xl",
+                                    getResponsiveClass(25).textClass,
+                                    "!leading-tight"
+                                )}
+                            >
+                                {poll.title}
+                            </h2>
+                            <p
+                                className={cn(
+                                    "text-xs text-[rgba(255,255,255,0.6)]",
+                                    getResponsiveClass(10).textClass
+                                )}
+                            >
+                                {pollDateInfo.startDate} ~{" "}
+                                {pollDateInfo.endDate}
+                            </p>
+
+                            {/* Poll 특성 태그들 */}
+                            {renderPollTags()}
                         </div>
-                    )}
 
-                    {/* 옵션 섹션 */}
-                    {renderOptions()}
+                        {/* UPCOMING 상태일 경우 옵션 대신 COUNTDOWN 렌더링 */}
+                        {pollDateInfo.status === "UPCOMING" && (
+                            <div
+                                className={cn(
+                                    "my-6 flex-col items-center justify-center text-center",
+                                    "rounded-[16px] p-3 inner-shadow"
+                                )}
+                                style={{
+                                    background: `linear-gradient(to bottom right, rgba(0,0,0,0.05), rgba(0,0,0,0.1))`,
+                                }}
+                            >
+                                <h3
+                                    className={cn(
+                                        "text-[rgba(255,255,255,0.85)]",
+                                        getResponsiveClass(15).textClass
+                                    )}
+                                >
+                                    OPEN IN
+                                </h3>
+                                <Countdown
+                                    endDate={pollDateInfo.startDateObj}
+                                    size={30}
+                                    className="font-main text-center"
+                                />
+                            </div>
+                        )}
 
-                    {/* 보상 정보 - options 바로 아래 배치 */}
-                    {renderRewardInfo()}
+                        {/* 옵션 섹션 */}
+                        {renderOptions()}
 
-                    {/* 차트 섹션 */}
-                    {renderResults()}
+                        {/* 보상 정보 - options 바로 아래 배치 */}
+                        {renderRewardInfo()}
 
-                    {/* Submit Button */}
-                    {renderSubmitButton()}
+                        {/* 차트 섹션 */}
+                        {renderResults()}
 
-                    {/* 토큰 게이팅이 필요한 폴의 경우 몇 개의 폴을 추가로 참여할 수 있는지 */}
-                    {renderTokenGatingInfo()}
+                        {/* Submit Button */}
+                        {renderSubmitButton()}
 
-                    {/* 투표 결과 보기 버튼 */}
-                    {renderResultsToggle()}
+                        {/* 토큰 게이팅이 필요한 폴의 경우 몇 개의 폴을 추가로 참여할 수 있는지 */}
+                        {renderTokenGatingInfo()}
+
+                        {/* Footer - How it works & Results toggle buttons */}
+                        {renderFooter()}
+                    </div>
                 </div>
             </div>
         </>

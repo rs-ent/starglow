@@ -12,11 +12,7 @@ import NFTsCollections from "./NFTs.Collections";
 
 import type { SPG } from "@/app/story/spg/actions";
 
-export default function NFTs({
-    spgs,
-}: {
-    spgs: SPG[];
-}) {
+export default function NFTs({ spgs }: { spgs: SPG[] }) {
     const router = useRouter();
     const [isFadingOut, setIsFadingOut] = useState(false);
 
