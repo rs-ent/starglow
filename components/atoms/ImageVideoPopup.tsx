@@ -103,7 +103,9 @@ export default memo(function ImageVideoPopup({
             }
         };
 
-        fetchImageDimensions();
+        fetchImageDimensions().catch((error) => {
+            console.error("Error fetching image dimensions:", error);
+        });
     }, [images, isOpen]);
 
     // 초기 인덱스 설정
