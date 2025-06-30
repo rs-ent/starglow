@@ -17,7 +17,7 @@ const menuItems = [
         href: "/user/rewards",
     },
     {
-        label: "GLOWs",
+        label: "XGLOWs",
         icon: "/ui/user/user-tweets.svg",
         href: "/user/glows",
     },
