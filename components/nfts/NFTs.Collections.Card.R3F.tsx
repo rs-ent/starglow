@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { CollectionParticipantType } from "@prisma/client";
 import { animated, useSpring } from "@react-spring/three";
-import { RoundedBox, Text, useCursor, Html } from "@react-three/drei";
+import { RoundedBox, Text, useCursor } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { DoubleSide, LinearFilter, Vector3 } from "three";
 
@@ -51,6 +51,7 @@ export interface NFTsCollectionsCard3DR3FProps {
     onClick?: () => void;
     onBuyNowClick?: () => void;
     confirmedAlpha?: number;
+    comingSoon?: boolean;
 }
 
 const CONSTANTS = {
@@ -161,7 +162,6 @@ interface InfoBoxProps {
     foregroundColor: string;
     isSelected: boolean;
     isLoading?: boolean;
-    comingSoon?: boolean;
 }
 
 const InfoBox = React.memo(function InfoBox({
@@ -176,7 +176,6 @@ const InfoBox = React.memo(function InfoBox({
     foregroundColor,
     isSelected,
     isLoading = false,
-    comingSoon = false,
 }: InfoBoxProps) {
     const LoadingDots = React.memo(function LoadingDots() {
         const { scale, opacity } = useSpring({
@@ -213,9 +212,6 @@ const InfoBox = React.memo(function InfoBox({
             <meshPhysicalMaterial
                 {...CONSTANTS.BOX.INFO.materialProps}
                 color={backgroundColor}
-                opacity={
-                    comingSoon ? 0.6 : CONSTANTS.BOX.INFO.materialProps.opacity
-                }
             />
             <Text
                 font={labelFont}
@@ -223,7 +219,6 @@ const InfoBox = React.memo(function InfoBox({
                 maxWidth={10}
                 {...CONSTANTS.TEXT.COMMON}
                 {...CONSTANTS.TEXT.LABEL}
-                fillOpacity={comingSoon ? 0.4 : 1}
             >
                 {label}
             </Text>
@@ -244,10 +239,6 @@ const InfoBox = React.memo(function InfoBox({
                     outlineColor={backgroundColor}
                     {...CONSTANTS.TEXT.COMMON}
                     {...CONSTANTS.TEXT.VALUE}
-                    fillOpacity={comingSoon ? 0.4 : 1}
-                    outlineOpacity={
-                        comingSoon ? 0.2 : CONSTANTS.TEXT.VALUE.outlineOpacity
-                    }
                 >
                     {value}
                 </Text>
@@ -283,6 +274,22 @@ const CardMesh = React.memo(function CardMesh({
         loadedTexture.magFilter = LinearFilter;
         loadedTexture.generateMipmaps = false;
         loadedTexture.needsUpdate = true;
+
+        if (comingSoon) {
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+
+            if (ctx && loadedTexture.image) {
+                canvas.width = loadedTexture.image.width;
+                canvas.height = loadedTexture.image.height;
+
+                ctx.filter = "blur(8px)";
+                ctx.drawImage(loadedTexture.image, 0, 0);
+
+                // 블러 처리된 이미지로 텍스처 업데이트
+                loadedTexture.image = canvas;
+            }
+        }
     });
 
     const logoTexture = useCachedTexture("/logo/3d.svg", (loadedTexture) => {
@@ -372,7 +379,6 @@ const CardMesh = React.memo(function CardMesh({
     const handlePointerOut = () => setHovered(false);
     const handleBuyNowClick = (e: React.MouseEvent | React.TouchEvent) => {
         e.stopPropagation();
-        if (comingSoon) return;
         onBuyNowClick?.();
     };
 
@@ -509,7 +515,7 @@ const CardMesh = React.memo(function CardMesh({
                             outlineBlur={0.8}
                             outlineOpacity={0.3}
                         >
-                            {comingSoon ? "COMING SOON" : "SEE MORE"}
+                            SEE MORE
                         </Text>
                     </RoundedBox>
                 </animated.group>
@@ -521,26 +527,25 @@ const CardMesh = React.memo(function CardMesh({
                     <meshPhysicalMaterial
                         map={texture}
                         transparent={true}
-                        opacity={comingSoon ? 0.3 : 1}
                         metalness={0.1}
-                        roughness={comingSoon ? 0.8 : 0.01}
+                        roughness={0.01}
                         clearcoat={1}
-                        clearcoatRoughness={comingSoon ? 0.9 : 0.1}
-                        transmission={comingSoon ? 0.6 : 0.01}
+                        clearcoatRoughness={0.1}
+                        transmission={0.01}
                         ior={1.2}
                         reflectivity={0.6}
                         thickness={0.5}
-                        envMapIntensity={comingSoon ? 0.3 : 1}
+                        envMapIntensity={1}
                     />
                 ) : (
                     <meshPhysicalMaterial
                         color="rgb(78,59,153)"
                         transparent={true}
-                        opacity={comingSoon ? 0.3 : 0.7}
-                        roughness={comingSoon ? 0.9 : 0.7}
+                        opacity={0.7}
+                        roughness={0.7}
                         metalness={0.1}
                         clearcoat={1}
-                        clearcoatRoughness={comingSoon ? 0.9 : 0.8}
+                        clearcoatRoughness={0.8}
                     />
                 )}
             </mesh>
@@ -562,12 +567,6 @@ const CardMesh = React.memo(function CardMesh({
                         outlineColor={foregroundColor}
                         {...CONSTANTS.TEXT.COMMON}
                         {...CONSTANTS.TEXT.TITLE}
-                        fillOpacity={comingSoon ? 0.4 : 1}
-                        outlineOpacity={
-                            comingSoon
-                                ? 0.2
-                                : CONSTANTS.TEXT.TITLE.outlineOpacity
-                        }
                     >
                         {name}
                     </Text>
@@ -581,7 +580,6 @@ const CardMesh = React.memo(function CardMesh({
                         backgroundColor={backgroundColor}
                         foregroundColor={foregroundColor}
                         isSelected={isSelected}
-                        comingSoon={comingSoon}
                     />
                     <InfoBox
                         label={dateLabel}
@@ -592,7 +590,6 @@ const CardMesh = React.memo(function CardMesh({
                         backgroundColor={backgroundColor}
                         foregroundColor={foregroundColor}
                         isSelected={isSelected}
-                        comingSoon={comingSoon}
                     />
                     <InfoBox
                         label="Stock"
@@ -604,7 +601,6 @@ const CardMesh = React.memo(function CardMesh({
                         foregroundColor={foregroundColor}
                         isSelected={isSelected}
                         isLoading={circulationLoading}
-                        comingSoon={comingSoon}
                     />
                     <InfoBox
                         label="Artist"
@@ -615,7 +611,6 @@ const CardMesh = React.memo(function CardMesh({
                         backgroundColor={backgroundColor}
                         foregroundColor={foregroundColor}
                         isSelected={isSelected}
-                        comingSoon={comingSoon}
                     />
                 </RoundedBox>
             </mesh>
@@ -625,7 +620,6 @@ const CardMesh = React.memo(function CardMesh({
                     <meshPhysicalMaterial
                         map={logoTexture}
                         transparent={true}
-                        opacity={comingSoon ? 0.3 : 1}
                         metalness={0.01}
                         roughness={0.1}
                         side={DoubleSide}
@@ -634,44 +628,13 @@ const CardMesh = React.memo(function CardMesh({
                     <meshPhysicalMaterial
                         color={foregroundColor}
                         transparent={true}
-                        opacity={comingSoon ? 0.2 : 0.5}
+                        opacity={0.5}
                         metalness={0.01}
                         roughness={0.1}
                         side={DoubleSide}
                     />
                 )}
             </mesh>
-
-            {/* Coming Soon 블러 오버레이 */}
-            {comingSoon && (
-                <Html
-                    position={[0, 0, 8.5]}
-                    transform
-                    distanceFactor={10}
-                    style={{
-                        pointerEvents: "none",
-                        userSelect: "none",
-                    }}
-                >
-                    <div className="relative w-96 h-96 flex items-center justify-center">
-                        {/* 블러 배경 */}
-                        <div className="absolute inset-0 backdrop-blur-md bg-black/40 rounded-3xl border border-white/20" />
-
-                        {/* Coming Soon 텍스트 */}
-                        <div className="relative z-10 text-center">
-                            <div className="text-white text-3xl font-black tracking-wider mb-2 drop-shadow-2xl">
-                                COMING SOON
-                            </div>
-                            <div className="text-blue-300 text-sm font-medium opacity-80">
-                                🌟 Stay tuned for launch
-                            </div>
-                        </div>
-
-                        {/* 글로우 효과 */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 rounded-3xl animate-pulse" />
-                    </div>
-                </Html>
-            )}
         </animated.group>
     );
 });
@@ -700,6 +663,7 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
         dateLabel,
         dateValue,
         artistName,
+        comingSoon,
     } = useMemo(() => {
         const now = new Date();
         const preSaleStart = spg.preOrderStart;
@@ -769,6 +733,8 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
 
         const artistName = spg.artist?.name || "";
 
+        const comingSoon = spg.comingSoon || false;
+
         return {
             backgroundColor,
             foregroundColor,
@@ -779,6 +745,7 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             dateValue,
             participantsType,
             artistName,
+            comingSoon,
         };
     }, [spg]);
 
@@ -803,7 +770,7 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             onClick={onClick}
             onBuyNowClick={onBuyNowClick}
             confirmedAlpha={confirmedAlpha}
-            comingSoon={spg.comingSoon}
+            comingSoon={comingSoon}
         />
     );
 });
