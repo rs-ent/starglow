@@ -125,18 +125,6 @@ DecorationElements.displayName = "DecorationElements";
 
 // 메인 컴포넌트
 export default function MainGitbook() {
-    // 애니메이션 변수 메모이제이션
-    const bounceAnimation = useMemo(
-        () => ({
-            y: [0, -10, 0],
-            transition: {
-                repeat: Infinity,
-                duration: 1.5,
-                ease: "easeInOut",
-            },
-        }),
-        []
-    );
 
     return (
         <div
