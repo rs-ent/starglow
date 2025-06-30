@@ -272,7 +272,7 @@ export default function UserTweetsDashboard({
                                 height={16}
                                 className={cn(
                                     "w-4 h-4 object-contain",
-                                    getResponsiveClass(20).frameClass
+                                    getResponsiveClass(15).frameClass
                                 )}
                             />
                             <p
@@ -307,7 +307,7 @@ export default function UserTweetsDashboard({
                             <Gift
                                 className={cn(
                                     "w-4 h-4 text-white/70",
-                                    getResponsiveClass(20).frameClass
+                                    getResponsiveClass(15).frameClass
                                 )}
                             />
                             <p
@@ -352,7 +352,7 @@ export default function UserTweetsDashboard({
                             <TrendingUp
                                 className={cn(
                                     "w-4 h-4 text-white/70",
-                                    getResponsiveClass(20).frameClass
+                                    getResponsiveClass(15).frameClass
                                 )}
                             />
                             <p
@@ -387,10 +387,15 @@ export default function UserTweetsDashboard({
                             <Zap
                                 className={cn(
                                     "w-4 h-4 text-white/70",
-                                    getResponsiveClass(20).frameClass
+                                    getResponsiveClass(15).frameClass
                                 )}
                             />
-                            <p className={cn("text-xs text-white/80")}>
+                            <p
+                                className={cn(
+                                    "text-xs text-white/80",
+                                    getResponsiveClass(15).textClass
+                                )}
+                            >
                                 This Week
                             </p>
                         </div>
