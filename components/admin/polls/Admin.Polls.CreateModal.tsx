@@ -37,11 +37,9 @@ import { useAssetsGet } from "@/app/hooks/useAssets";
 import { useLoading } from "@/app/hooks/useLoading";
 import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
 import { useToast } from "@/app/hooks/useToast";
-import { useSPG } from "@/app/story/spg/hooks";
 import DateTimePicker from "@/components/atoms/DateTimePicker";
 import FileUploader from "@/components/atoms/FileUploader";
 import YoutubeViewer from "@/components/atoms/YoutubeViewer";
-import CollectionCard from "@/components/nfts/NFTs.CollectionCard";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -197,11 +195,8 @@ export default function AdminPollsCreateModal({
         };
     }, [pollsList]);
     const { createPoll, updatePoll, isLoading } = usePollsSet();
-    const { getSPGsData } = useSPG({
-        getSPGsInput: {},
-    });
 
-    const { assets, isLoading: isLoadingAssets } = useAssetsGet({
+    const { assets } = useAssetsGet({
         getAssetsInput: {
             isActive: true,
         },
@@ -560,8 +555,22 @@ export default function AdminPollsCreateModal({
                                 </div>
                             </div>
                             <Button
-                                type="submit"
+                                type="button"
                                 disabled={isLoading}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    handleSubmit(e as any).catch((error) => {
+                                        console.error(
+                                            "Error saving poll:",
+                                            error
+                                        );
+                                        toast.error(
+                                            mode === "edit"
+                                                ? "폴 수정 중 오류가 발생했습니다."
+                                                : "폴 생성 중 오류가 발생했습니다."
+                                        );
+                                    });
+                                }}
                                 className="px-8 bg-purple-600 hover:bg-purple-700"
                             >
                                 {isLoading
@@ -1544,14 +1553,6 @@ export default function AdminPollsCreateModal({
                                                                                             <button
                                                                                                 type="button"
                                                                                                 onClick={() => {
-                                                                                                    console.log(
-                                                                                                        "option.optionId",
-                                                                                                        option.optionId
-                                                                                                    );
-                                                                                                    console.log(
-                                                                                                        "selectedOption?.optionId",
-                                                                                                        selectedOption?.optionId
-                                                                                                    );
                                                                                                     if (
                                                                                                         option.optionId ===
                                                                                                         selectedOption?.optionId

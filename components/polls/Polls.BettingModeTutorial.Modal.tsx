@@ -8,14 +8,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     FlameIcon,
     TrendingUp,
-    Award,
     ArrowRight,
     AlertTriangle,
     Target,
     Coins,
     Trophy,
 } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
@@ -324,8 +323,8 @@ export default function PollsBettingModeTutorialModal({
                                 getResponsiveClass(10).textClass
                             )}
                         >
-                            The platform takes a tiny fee to maintain the
-                            system.
+                            • The platform takes a tiny fee to maintain the
+                            system. (about 1% of the betting pool)
                         </p>
                     </div>
                 </div>
@@ -449,10 +448,10 @@ export default function PollsBettingModeTutorialModal({
                                 getResponsiveClass(10).textClass
                             )}
                         >
-                            <strong>Example:</strong> You bet 100 tokens on the
-                            winning option. Total winning bets: 1,000 tokens.
-                            Total pool: 10,000 tokens. Your payout: (100÷1,000)
-                            × 9,500 = 950 tokens!
+                            <strong>EXAMPLE:</strong> Bet 100 👉 Win 950 tokens!
+                            (9.5x return!)
+                            <br />
+                            Your 100 tokens bet + 850 profit from the pool
                         </div>
                     </div>
                 </div>
@@ -549,6 +548,7 @@ export default function PollsBettingModeTutorialModal({
     return (
         <>
             <Dialog open={isOpen} onOpenChange={onClose}>
+                <DialogTitle> </DialogTitle>
                 <DialogContent className="sm:max-w-[800px] bg-gray-900 border-gray-800 p-0 overflow-hidden [&>button]:z-20">
                     <div className="relative">
                         {/* Fire background for betting theme */}
@@ -556,7 +556,7 @@ export default function PollsBettingModeTutorialModal({
                             <img
                                 src="/elements/fire-background.gif"
                                 alt="Fire background"
-                                className="absolute inset-0 w-full h-full object-cover"
+                                className="absolute inset-0 w-full h-full object-cover opacity-50"
                                 style={{
                                     mixBlendMode: "overlay",
                                     filter: "hue-rotate(10deg) saturate(1.3) brightness(1.1)",
@@ -696,24 +696,3 @@ export default function PollsBettingModeTutorialModal({
         </>
     );
 }
-
-const BettingIcon = ({ className }: { className: string }) => {
-    return (
-        <svg
-            className={className}
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-        >
-            <path
-                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                fill="currentColor"
-            />
-            <circle cx="8" cy="8" r="2" fill="currentColor" opacity="0.7" />
-            <circle cx="16" cy="8" r="2" fill="currentColor" opacity="0.7" />
-            <circle cx="12" cy="16" r="2" fill="currentColor" opacity="0.7" />
-        </svg>
-    );
-};

@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { useLoading } from "@/app/hooks/useLoading";
 import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
 import { useToast } from "@/app/hooks/useToast";
+import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
 import PollBar from "@/components/atoms/Polls.Bar";
 import PollThumbnail from "@/components/atoms/Polls.Thumbnail";
 import { formatDate } from "@/lib/utils/format";
@@ -21,6 +22,8 @@ import Doorman from "../atoms/Doorman";
 import Popup from "../atoms/Popup";
 import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
 import PollsBettingModeTutorialModal from "./Polls.BettingModeTutorial.Modal";
+import PollBettingParticipationModal from "./Poll.Betting.Participation.Modal";
+import PollBettingRecord from "./Poll.Betting.Record";
 import type { PollsWithArtist, PollOption } from "@/app/actions/polls";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import type { TokenGatingData } from "@/app/story/nft/actions";
@@ -57,6 +60,8 @@ interface UIState {
     confirmedAnswer: boolean;
     rewarded: boolean;
     showBettingTutorial: boolean;
+    showBettingModal: boolean;
+    showBettingRecord: boolean;
 }
 
 function PollsListCard({
@@ -90,6 +95,8 @@ function PollsListCard({
         confirmedAnswer: false,
         rewarded: false,
         showBettingTutorial: false,
+        showBettingModal: false,
+        showBettingRecord: false,
     });
 
     const { accentColorFrom, accentColorTo } = useMemo(() => {
@@ -105,7 +112,7 @@ function PollsListCard({
                 ? ArtistBG(poll.artist, 3, 100)
                 : bgColorAccentTo,
         };
-    }, [poll]);
+    }, [poll, bgColorAccentFrom, bgColorAccentTo]);
 
     // 날짜 관련 계산 메모이제이션
     const pollDateInfo = useMemo(() => {
@@ -159,6 +166,19 @@ function PollsListCard({
     // 투표 제출 훅
     const { participatePoll } = usePollsSet();
 
+    // 베팅 에셋 정보 가져오기 (베팅 모드인 경우에만)
+    const { playerAssets: bettingAssets } = usePlayerAssetsGet({
+        getPlayerAssetsInput:
+            poll.bettingMode && player && poll.bettingAssetId
+                ? {
+                      filter: {
+                          playerId: player.id,
+                          assetId: poll.bettingAssetId,
+                      },
+                  }
+                : undefined,
+    });
+
     // 옵션 파싱
     const options = useMemo(
         () => poll.options as unknown as PollOption[],
@@ -193,6 +213,44 @@ function PollsListCard({
         };
     }, [tokenGating, poll.needToken, pollLogs]);
 
+    // 베팅 정보 메모이제이션
+    const bettingInfo = useMemo(() => {
+        if (!poll.bettingMode || !player) {
+            return {
+                hasBet: false,
+                bettingAsset: null,
+                myBetLogs: [],
+            };
+        }
+
+        // 내 베팅 기록 확인
+        const myBetLogs =
+            pollLogs?.filter(
+                (log) => log.pollId === poll.id && log.playerId === player.id
+            ) || [];
+
+        const hasBet = myBetLogs.length > 0;
+
+        // 베팅 에셋 정보
+        const bettingAsset =
+            bettingAssets?.data?.find(
+                (asset) => asset.assetId === poll.bettingAssetId
+            ) || null;
+
+        return {
+            hasBet,
+            bettingAsset,
+            myBetLogs,
+        };
+    }, [
+        poll.bettingMode,
+        poll.id,
+        poll.bettingAssetId,
+        player,
+        pollLogs,
+        bettingAssets,
+    ]);
+
     // 옵션 클릭 핸들러
     const handleOptionClick = useCallback(
         (option: PollOption) => {
@@ -225,11 +283,77 @@ function PollsListCard({
         [poll.needToken, poll.needTokenAddress]
     );
 
+    // 베팅 확인 핸들러 (모달에서 호출)
+    const handleBettingConfirm = useCallback(
+        async (betAmount: number) => {
+            // 기존 participatePoll 로직 실행
+            const result = await participatePoll({
+                poll: poll,
+                player: player!,
+                optionId: votingState.selection!.optionId,
+                amount: betAmount,
+                tokenGating: tokenGating || undefined,
+                alreadyVotedAmount: tokenGatingInfo.alreadyVotedAmount,
+            });
+
+            // 결과 처리
+            if (result.success) {
+                if (result.error === "MISSED_ANSWER") {
+                    toast.error("I'm sorry, you missed the answer.");
+                } else {
+                    setUIState((prev) => ({
+                        ...prev,
+                        rewarded: result.playerAssetUpdated || false,
+                        showInteractFeedback: true,
+                        showBettingModal: false,
+                    }));
+                }
+            } else {
+                toast.error(result.error || "Failed to bet.");
+            }
+
+            // 상태 초기화
+            setVotingState((prev) => ({
+                ...prev,
+                voteAmount: poll.needToken && poll.needTokenAddress ? 0 : 1,
+                voteAmountInput: "0",
+            }));
+        },
+        [
+            poll,
+            player,
+            votingState.selection,
+            tokenGating,
+            tokenGatingInfo.alreadyVotedAmount,
+            participatePoll,
+            toast,
+        ]
+    );
+
     // 투표 제출 핸들러
     const handleSubmit = useCallback(
         async (confirmed = false) => {
             startLoading();
             try {
+                // 베팅 모드인 경우 모달 열기
+                if (poll.bettingMode && !confirmed) {
+                    if (!votingState.selection) {
+                        toast.error("Please select an option");
+                        return;
+                    }
+                    if (!player) {
+                        toast.error(
+                            "Please login to participate in this poll."
+                        );
+                        return;
+                    }
+                    setUIState((prev) => ({
+                        ...prev,
+                        showBettingModal: true,
+                    }));
+                    return;
+                }
+
                 // 정답이 있는 폴인 경우 확인 팝업 표시
                 if (poll.hasAnswer && !uiState.confirmedAnswer && !confirmed) {
                     setUIState((prev) => ({
@@ -757,25 +881,43 @@ function PollsListCard({
                         </div>
                     )}
 
-                <button
+                <div
                     onClick={() => void handleSubmit()}
                     className={cn(
-                        "cursor-pointer",
+                        "cursor-pointer relative text-center",
                         "w-full hover:glow-purple rounded-full font-main",
                         "transition-all duration-300 ease-in",
                         "mb-[50px]",
-                        getResponsiveClass(15).paddingClass,
+                        getResponsiveClass(30).paddingClass,
                         getResponsiveClass(15).textClass
                     )}
                     style={{
-                        background: `linear-gradient(to bottom right, ${bgColorFrom}, ${bgColorTo})`,
+                        background: `${
+                            poll.bettingMode
+                                ? "linear-gradient(to bottom right,rgba(147, 45, 67, 0.84),rgba(147, 34, 124, 0.84))"
+                                : `linear-gradient(to bottom right, ${bgColorFrom}, ${bgColorTo})`
+                        }`,
                     }}
                 >
-                    SUBMIT
-                </button>
+                    {poll.bettingMode ? "BET" : "SUBMIT"}
+                    {poll.bettingMode && (
+                        <div className="absolute inset-0 pointer-events-none z-0">
+                            <img
+                                src="/elements/fire-background.gif"
+                                alt="Fire background"
+                                className="absolute inset-0 w-full h-full object-cover opacity-20"
+                                style={{
+                                    mixBlendMode: "overlay",
+                                    filter: "hue-rotate(10deg) saturate(1.3) brightness(1.1)",
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
             </motion.div>
         );
     }, [
+        poll.bettingMode,
         pollDateInfo.showOptions,
         votingState.selection,
         votingState.animateSubmit,
@@ -914,6 +1056,7 @@ function PollsListCard({
             </div>
         );
     }, [
+        poll.id,
         poll.participationRewardAssetId,
         poll.participationRewardAmount,
         poll.participationRewardAsset,
@@ -1121,6 +1264,7 @@ function PollsListCard({
     // 새로운 renderFooter 함수로 통합
     const renderFooter = useCallback(() => {
         const showBettingButton = poll.bettingMode;
+        const showBettingRecordButton = poll.bettingMode && bettingInfo.hasBet;
         const showResultsButton =
             pollDateInfo.status === "ONGOING" &&
             pollLogs &&
@@ -1132,8 +1276,12 @@ function PollsListCard({
                         0)
             );
 
-        // 둘 다 안 보이면 footer 자체를 렌더링하지 않음
-        if (!showBettingButton && !showResultsButton) {
+        // 아무것도 안 보이면 footer 자체를 렌더링하지 않음
+        if (
+            !showBettingButton &&
+            !showBettingRecordButton &&
+            !showResultsButton
+        ) {
             return null;
         }
 
@@ -1144,8 +1292,8 @@ function PollsListCard({
                     "w-full relative z-10"
                 )}
             >
-                {/* Left side - How it works button */}
-                <div className="flex">
+                {/* Left side - How it works button & Betting record button */}
+                <div className="flex gap-2">
                     {showBettingButton && (
                         <motion.button
                             initial={{ opacity: 0, y: 10 }}
@@ -1172,6 +1320,81 @@ function PollsListCard({
                         >
                             <span>❓</span>
                             <span>How it works</span>
+                        </motion.button>
+                    )}
+
+                    {showBettingRecordButton && (
+                        <motion.button
+                            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                            animate={{
+                                opacity: 1,
+                                y: 0,
+                                scale: [0.9, 1.05, 1],
+                                boxShadow: [
+                                    "0 0 0 rgba(34, 197, 94, 0)",
+                                    "0 0 15px rgba(34, 197, 94, 0.4)",
+                                    "0 0 0 rgba(34, 197, 94, 0)",
+                                ],
+                            }}
+                            transition={{
+                                delay: 0.5,
+                                scale: { duration: 0.6 },
+                                boxShadow: {
+                                    duration: 2.5,
+                                    repeat: Infinity,
+                                    ease: "easeInOut",
+                                },
+                            }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setUIState((prev) => ({
+                                    ...prev,
+                                    showBettingRecord: true,
+                                }));
+                            }}
+                            whileHover={{
+                                scale: 1.08,
+                                boxShadow: "0 0 20px rgba(34, 197, 94, 0.6)",
+                            }}
+                            whileTap={{ scale: 0.95 }}
+                            className={cn(
+                                "rounded-full flex items-center gap-1 relative overflow-hidden",
+                                "bg-gradient-to-r from-green-900/30 to-emerald-900/30",
+                                "border border-green-500/50",
+                                "text-green-300 hover:text-green-200",
+                                "transition-all duration-300",
+                                "cursor-pointer font-medium",
+                                getResponsiveClass(10).textClass,
+                                getResponsiveClass(15).paddingClass
+                            )}
+                        >
+                            {/* 반짝이는 효과 */}
+                            <motion.div
+                                animate={{
+                                    x: ["-100%", "100%"],
+                                }}
+                                transition={{
+                                    duration: 2,
+                                    repeat: Infinity,
+                                    ease: "linear",
+                                    repeatDelay: 1,
+                                }}
+                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                            />
+                            <motion.span
+                                animate={{
+                                    rotate: [0, 15, -15, 0],
+                                    scale: [1, 1.1, 1],
+                                }}
+                                transition={{
+                                    duration: 2,
+                                    repeat: Infinity,
+                                    ease: "easeInOut",
+                                }}
+                            >
+                                🎰
+                            </motion.span>
+                            <span className="relative z-10">My Bets</span>
                         </motion.button>
                     )}
                 </div>
@@ -1226,6 +1449,7 @@ function PollsListCard({
         );
     }, [
         poll.bettingMode,
+        bettingInfo.hasBet,
         pollDateInfo.status,
         poll.hasAnswer,
         pollLogs,
@@ -1257,6 +1481,22 @@ function PollsListCard({
                 reward={poll.participationRewardAsset || undefined}
                 rewardAmount={poll.participationRewardAmount}
             />
+            {poll.bettingMode && votingState.selection && player && (
+                <PollBettingParticipationModal
+                    isOpen={uiState.showBettingModal}
+                    onClose={() =>
+                        setUIState((prev) => ({
+                            ...prev,
+                            showBettingModal: false,
+                        }))
+                    }
+                    onConfirm={handleBettingConfirm}
+                    poll={poll}
+                    player={player}
+                    selectedOption={votingState.selection}
+                    isLoading={false}
+                />
+            )}
             {renderAnswerConfirmPopup()}
             <PollsBettingModeTutorialModal
                 isOpen={uiState.showBettingTutorial}
@@ -1266,10 +1506,25 @@ function PollsListCard({
                         showBettingTutorial: false,
                     }))
                 }
-                onComplete={() => {
-                    console.log("User completed betting tutorial");
-                }}
             />
+
+            {/* 베팅 현황 모달 */}
+            {bettingInfo.hasBet && bettingInfo.bettingAsset && player && (
+                <PollBettingRecord
+                    isOpen={uiState.showBettingRecord}
+                    onClose={() =>
+                        setUIState((prev) => ({
+                            ...prev,
+                            showBettingRecord: false,
+                        }))
+                    }
+                    poll={poll}
+                    player={player}
+                    pollLogs={bettingInfo.myBetLogs}
+                    bettingAsset={bettingInfo.bettingAsset}
+                />
+            )}
+
             <div className="relative w-full max-w-[800px] min-w-[180px] my-[25px] mx-auto">
                 <div
                     className={cn(

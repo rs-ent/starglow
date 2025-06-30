@@ -16,7 +16,7 @@ export default function PartialLoadingServer({
 }: PartialLoadingProps) {
     return (
         <div
-            className="flex flex-col items-center justify-center w-full h-full"
+            className="flex flex-col items-center justify-center w-full h-full p-[100px]"
             role="status"
             aria-label={text}
             aria-live="polite"

@@ -636,7 +636,7 @@ export default function UserTweetsRegister({
                                     "disabled:opacity-50 disabled:cursor-not-allowed",
                                     "transition-all duration-300 shadow-lg",
                                     getResponsiveClass(20).paddingClass,
-                                    getResponsiveClass(18).textClass
+                                    getResponsiveClass(20).textClass
                                 )}
                             >
                                 {isConfirmRegisterXAuthorPending ? (
@@ -695,7 +695,7 @@ export default function UserTweetsRegister({
                                 }}
                                 className={cn(
                                     "mb-6",
-                                    getResponsiveClass(80).textClass
+                                    getResponsiveClass(70).textClass
                                 )}
                             >
                                 🎉
@@ -721,7 +721,7 @@ export default function UserTweetsRegister({
                                 transition={{ delay: 0.4 }}
                                 className={cn(
                                     "text-gray-300 mb-8",
-                                    getResponsiveClass(18).textClass
+                                    getResponsiveClass(20).textClass
                                 )}
                             >
                                 Your X account has been successfully connected

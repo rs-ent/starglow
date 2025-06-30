@@ -978,3 +978,93 @@ export const boardKeys: BoardKeysType = {
             [...BOARD_BASE_KEY, "rewards", "reason", reason] as const,
     },
 } as const;
+
+// Notification query keys 기본 배열 정의
+const NOTIFICATION_BASE_KEY = ["notifications"] as const;
+
+// Notification query keys 타입 정의
+type NotificationKeysType = {
+    all: readonly ["notifications"];
+    lists: () => readonly ["notifications", "list"];
+    list: (input?: any) => readonly ["notifications", "list", any];
+    detail: (
+        notificationId: string
+    ) => readonly ["notifications", "detail", string];
+    byPlayer: (
+        playerId: string
+    ) => readonly ["notifications", "player", string];
+    byType: (type: string) => readonly ["notifications", "type", string];
+    byCategory: (
+        category: string
+    ) => readonly ["notifications", "category", string];
+    byEntity: (
+        entityType: string,
+        entityId: string
+    ) => readonly ["notifications", "entity", string, string];
+    byStatus: (status: string) => readonly ["notifications", "status", string];
+    unreadCount: (
+        playerId: string,
+        category?: string
+    ) => readonly ["notifications", "unread-count", string, string?];
+    settings: {
+        all: (
+            playerId: string
+        ) => readonly ["notifications", "settings", string];
+        byPlayer: (
+            playerId: string
+        ) => readonly ["notifications", "settings", "player", string];
+    };
+    stats: {
+        all: readonly ["notifications", "stats"];
+        daily: (
+            date: string
+        ) => readonly ["notifications", "stats", "daily", string];
+        byPlayer: (
+            playerId: string
+        ) => readonly ["notifications", "stats", "player", string];
+    };
+};
+
+// Notification query keys
+export const notificationKeys: NotificationKeysType = {
+    all: NOTIFICATION_BASE_KEY,
+    lists: () => [...NOTIFICATION_BASE_KEY, "list"] as const,
+    list: (input?: any) => [...NOTIFICATION_BASE_KEY, "list", input] as const,
+    detail: (notificationId: string) =>
+        [...NOTIFICATION_BASE_KEY, "detail", notificationId] as const,
+    byPlayer: (playerId: string) =>
+        [...NOTIFICATION_BASE_KEY, "player", playerId] as const,
+    byType: (type: string) => [...NOTIFICATION_BASE_KEY, "type", type] as const,
+    byCategory: (category: string) =>
+        [...NOTIFICATION_BASE_KEY, "category", category] as const,
+    byEntity: (entityType: string, entityId: string) =>
+        [...NOTIFICATION_BASE_KEY, "entity", entityType, entityId] as const,
+    byStatus: (status: string) =>
+        [...NOTIFICATION_BASE_KEY, "status", status] as const,
+    unreadCount: (playerId: string, category?: string) =>
+        category
+            ? ([
+                  ...NOTIFICATION_BASE_KEY,
+                  "unread-count",
+                  playerId,
+                  category,
+              ] as const)
+            : ([...NOTIFICATION_BASE_KEY, "unread-count", playerId] as const),
+
+    // Notification settings
+    settings: {
+        all: (playerId: string) =>
+            [...NOTIFICATION_BASE_KEY, "settings", playerId] as const,
+        byPlayer: (playerId: string) =>
+            [...NOTIFICATION_BASE_KEY, "settings", "player", playerId] as const,
+    },
+
+    // Notification stats
+    stats: {
+        all: [...NOTIFICATION_BASE_KEY, "stats"] as const,
+        daily: (date: string) =>
+            [...NOTIFICATION_BASE_KEY, "stats", "daily", date] as const,
+        byPlayer: (playerId: string) =>
+            [...NOTIFICATION_BASE_KEY, "stats", "player", playerId] as const,
+    },
+} as const;

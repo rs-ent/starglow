@@ -135,6 +135,8 @@ Table Player {
   grantedBoardRewards BoardPostReward [not null]
   raffleParticipants RaffleParticipant [not null]
   raffleWinners RaffleWinner [not null]
+  userNotifications user_notifications [not null]
+  notificationSettings notification_settings
   isArtist Boolean [not null, default: false]
   artistId String
   artist Artist
@@ -307,6 +309,7 @@ Table Poll {
   houseCommissionRate Float [not null, default: 0.05]
   totalCommissionAmount Int [not null, default: 0]
   optionBetAmounts Json
+  settlementLogs PollBettingSettlementLog [not null]
 }
 
 Table PollLog {
@@ -1423,6 +1426,155 @@ Table RaffleWinner {
   updatedAt DateTime [not null]
 }
 
+Table PollBettingSettlementLog {
+  id String [pk]
+  pollId String [not null]
+  settlementType PollBettingSettlementType [not null, default: 'AUTO']
+  winningOptionIds String[] [not null]
+  totalPayout Int [not null, default: 0]
+  totalWinners Int [not null, default: 0]
+  totalBettingPool Int [not null, default: 0]
+  houseCommission Int [not null, default: 0]
+  houseCommissionRate Float [not null, default: 0.05]
+  optionResults Json
+  payoutDistribution Json
+  settlementRule Json
+  tieBreakApplied String
+  tieCount Int
+  status PollBettingSettlementStatus [not null, default: 'SUCCESS']
+  isManual Boolean [not null, default: false]
+  processedBy String
+  processingTimeMs Int
+  errorMessage String
+  errorDetails Json
+  retryCount Int [not null, default: 0]
+  metadata Json
+  alertsSent String[] [not null]
+  settlementStartedAt DateTime [default: `now()`, not null]
+  settlementCompletedAt DateTime
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  poll Poll [not null]
+}
+
+Table user_notifications {
+  id String [pk]
+  playerId String [not null]
+  player Player [not null]
+  type NotificationType [not null]
+  category NotificationCategory [not null, default: 'GENERAL']
+  title String [not null]
+  message String [not null]
+  description String
+  actionType NotificationActionType [not null, default: 'NONE']
+  actionUrl String
+  actionData Json
+  entityType String
+  entityId String
+  entityData Json
+  betAmount Float
+  winAmount Float
+  rewardAmount Float
+  priority NotificationPriority [not null, default: 'MEDIUM']
+  status NotificationStatus [not null, default: 'PENDING']
+  isRead Boolean [not null, default: false]
+  readAt DateTime
+  isSent Boolean [not null, default: false]
+  sentAt DateTime
+  sentChannels String[] [not null]
+  failedChannels String[] [not null]
+  iconUrl String
+  imageUrl String
+  badgeCount Int [default: 0]
+  showBadge Boolean [not null, default: false]
+  scheduledAt DateTime
+  expiresAt DateTime
+  metadata Json
+  tags String[] [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table notification_settings {
+  id String [pk]
+  playerId String [unique, not null]
+  player Player [not null]
+  inAppEnabled Boolean [not null, default: true]
+  pushEnabled Boolean [not null, default: true]
+  emailEnabled Boolean [not null, default: false]
+  smsEnabled Boolean [not null, default: false]
+  telegramEnabled Boolean [not null, default: false]
+  discordEnabled Boolean [not null, default: false]
+  bettingEnabled Boolean [not null, default: true]
+  bettingSuccessEnabled Boolean [not null, default: true]
+  bettingResultEnabled Boolean [not null, default: true]
+  bettingPayoutEnabled Boolean [not null, default: true]
+  pollEnabled Boolean [not null, default: true]
+  pollEndingEnabled Boolean [not null, default: true]
+  pollResultEnabled Boolean [not null, default: true]
+  pollNewEnabled Boolean [not null, default: true]
+  questEnabled Boolean [not null, default: true]
+  questCompleteEnabled Boolean [not null, default: true]
+  questRewardEnabled Boolean [not null, default: true]
+  questNewEnabled Boolean [not null, default: true]
+  raffleEnabled Boolean [not null, default: true]
+  raffleResultEnabled Boolean [not null, default: true]
+  raffleNewEnabled Boolean [not null, default: true]
+  boardEnabled Boolean [not null, default: true]
+  boardCommentEnabled Boolean [not null, default: true]
+  boardReactionEnabled Boolean [not null, default: true]
+  boardRewardEnabled Boolean [not null, default: true]
+  artistEnabled Boolean [not null, default: true]
+  artistFeedEnabled Boolean [not null, default: true]
+  artistMessageEnabled Boolean [not null, default: true]
+  assetEnabled Boolean [not null, default: true]
+  assetRewardEnabled Boolean [not null, default: true]
+  assetTransferEnabled Boolean [not null, default: false]
+  nftEnabled Boolean [not null, default: true]
+  nftMintEnabled Boolean [not null, default: true]
+  nftTransferEnabled Boolean [not null, default: false]
+  socialEnabled Boolean [not null, default: true]
+  referralEnabled Boolean [not null, default: true]
+  followEnabled Boolean [not null, default: true]
+  systemEnabled Boolean [not null, default: true]
+  maintenanceEnabled Boolean [not null, default: true]
+  updateEnabled Boolean [not null, default: true]
+  securityEnabled Boolean [not null, default: true]
+  doNotDisturbEnabled Boolean [not null, default: false]
+  doNotDisturbStart String
+  doNotDisturbEnd String
+  doNotDisturbDays String[] [not null]
+  maxDailyNotifications Int [default: 50]
+  maxHourlyNotifications Int [default: 10]
+  enableDigestMode Boolean [not null, default: false]
+  digestFrequency String [not null, default: 'DAILY']
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table notification_stats {
+  id String [pk]
+  date DateTime [default: `now()`, unique, not null]
+  totalSent Int [not null, default: 0]
+  totalRead Int [not null, default: 0]
+  totalClicked Int [not null, default: 0]
+  totalFailed Int [not null, default: 0]
+  inAppSent Int [not null, default: 0]
+  pushSent Int [not null, default: 0]
+  emailSent Int [not null, default: 0]
+  telegramSent Int [not null, default: 0]
+  bettingCount Int [not null, default: 0]
+  pollCount Int [not null, default: 0]
+  questCount Int [not null, default: 0]
+  raffleCount Int [not null, default: 0]
+  socialCount Int [not null, default: 0]
+  systemCount Int [not null, default: 0]
+  openRate Float
+  clickRate Float
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
 Table StakeReward {
   stakerewardsId String [ref: > StakeReward.id]
   stakerewardsId String [ref: > StakeReward.id]
@@ -1594,6 +1746,129 @@ Enum BettingStatus {
   SETTLING
   SETTLED
   CANCELLED
+}
+
+Enum PollBettingSettlementType {
+  AUTO
+  MANUAL
+  REFUND
+  EMERGENCY
+}
+
+Enum PollBettingSettlementStatus {
+  SUCCESS
+  FAILED
+  PARTIAL
+  PENDING
+  CANCELLED
+}
+
+Enum NotificationType {
+  BETTING_SUCCESS
+  BETTING_FAILED
+  POLL_BETTING_WIN
+  POLL_BETTING_LOSE
+  POLL_BETTING_PAYOUT
+  POLL_BETTING_REFUND
+  SETTLEMENT_COMPLETE
+  POLL_STARTED
+  POLL_ENDING_SOON
+  POLL_ENDED
+  POLL_RESULT_ANNOUNCED
+  POLL_PARTICIPATION_REWARD
+  QUEST_AVAILABLE
+  QUEST_REMINDER
+  QUEST_COMPLETED
+  QUEST_REWARD_RECEIVED
+  QUEST_EXPIRING_SOON
+  RAFFLE_NEW
+  RAFFLE_ENTRY_CONFIRMED
+  RAFFLE_DRAWING_SOON
+  RAFFLE_RESULT_AVAILABLE
+  RAFFLE_WIN
+  RAFFLE_PRIZE_DISTRIBUTED
+  BOARD_POST_COMMENT
+  BOARD_POST_REACTION
+  BOARD_COMMENT_REPLY
+  BOARD_POST_REWARD
+  BOARD_MENTION
+  ARTIST_NEW_FEED
+  ARTIST_NEW_MESSAGE
+  ARTIST_LIVE_EVENT
+  ARTIST_SPECIAL_CONTENT
+  ASSET_RECEIVED
+  ASSET_SENT
+  ASSET_STAKING_REWARD
+  ASSET_BALANCE_LOW
+  NFT_MINTED
+  NFT_TRANSFERRED
+  NFT_STAKING_REWARD
+  NFT_COLLECTION_NEW
+  REFERRAL_JOINED
+  REFERRAL_REWARD
+  ACHIEVEMENT_UNLOCKED
+  LEVEL_UP
+  SYSTEM_MAINTENANCE
+  SYSTEM_UPDATE
+  ACCOUNT_SECURITY
+  TERMS_UPDATED
+  PROMOTIONAL
+  EVENT_STARTED
+  EVENT_ENDING_SOON
+  EVENT_REWARD
+  GENERAL_INFO
+  WELCOME
+  BIRTHDAY
+}
+
+Enum NotificationCategory {
+  BETTING
+  POLLS
+  QUESTS
+  RAFFLES
+  SOCIAL
+  ASSETS
+  NFTS
+  ARTISTS
+  BOARDS
+  EVENTS
+  SYSTEM
+  GENERAL
+}
+
+Enum NotificationActionType {
+  NONE
+  OPEN_APP
+  OPEN_URL
+  OPEN_POLL
+  OPEN_QUEST
+  OPEN_RAFFLE
+  OPEN_BOARD_POST
+  OPEN_ARTIST_FEED
+  OPEN_WALLET
+  OPEN_NFT_COLLECTION
+  OPEN_SETTINGS
+  CLAIM_REWARD
+  PARTICIPATE_POLL
+  PARTICIPATE_RAFFLE
+  VIEW_RESULT
+}
+
+Enum NotificationPriority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+}
+
+Enum NotificationStatus {
+  PENDING
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+  EXPIRED
 }
 
 Ref: Account.userId > User.id [delete: Cascade]
@@ -1805,3 +2080,9 @@ Ref: RaffleWinner.raffleId > Raffle.id [delete: Cascade]
 Ref: RaffleWinner.prizeId > RafflePrize.id
 
 Ref: RaffleWinner.playerId > Player.id [delete: Cascade]
+
+Ref: PollBettingSettlementLog.pollId > Poll.id
+
+Ref: user_notifications.playerId > Player.id [delete: Cascade]
+
+Ref: notification_settings.playerId - Player.id [delete: Cascade]

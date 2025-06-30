@@ -7,7 +7,13 @@ import { PlayerAssetStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 
 import type { AssetStatusChangeEvent } from "./assets";
-import type { Prisma, PlayerAsset, AssetType, Player } from "@prisma/client";
+import type {
+    Prisma,
+    PlayerAsset,
+    AssetType,
+    Player,
+    Asset,
+} from "@prisma/client";
 
 export interface PlayerAssetResult<T> {
     success: boolean;
@@ -49,9 +55,13 @@ export interface GetPlayerAssetsInput {
     filter: GetPlayerAssetsFilter;
 }
 
+export type PlayerAssetWithAsset = PlayerAsset & {
+    asset: Asset;
+};
+
 export async function getPlayerAssets(
     input?: GetPlayerAssetsInput
-): Promise<PlayerAssetResult<PlayerAsset[]>> {
+): Promise<PlayerAssetResult<PlayerAssetWithAsset[]>> {
     if (!input) {
         return {
             success: false,
@@ -97,7 +107,7 @@ export async function getPlayerAssets(
 
     return {
         success: true,
-        data: playerAssets,
+        data: playerAssets as PlayerAssetWithAsset[],
     };
 }
 

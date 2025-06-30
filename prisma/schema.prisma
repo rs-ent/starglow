@@ -165,6 +165,8 @@ model Player {
   grantedBoardRewards    BoardPostReward[]    @relation("BoardPostRewardGranter")
   raffleParticipants     RaffleParticipant[]
   raffleWinners          RaffleWinner[]
+  userNotifications      UserNotification[]
+  notificationSettings   NotificationSettings?
   isArtist               Boolean              @default(false)
   artistId               String?
   artist                 Artist?              @relation("PlayerArtist", fields: [artistId], references: [id])
@@ -348,6 +350,7 @@ model Poll {
   houseCommissionRate        Float        @default(0.05)  // 5% 수수료
   totalCommissionAmount      Int          @default(0)
   optionBetAmounts           Json?        // {"optionA": 50000, "optionB": 30000}
+  settlementLogs             PollBettingSettlementLog[]
 
   @@index([category])
   @@index([artistId])
@@ -1850,4 +1853,406 @@ enum BettingStatus {
   SETTLING
   SETTLED
   CANCELLED
+}
+
+// 폴 베팅 정산 로그 모델 추가
+model PollBettingSettlementLog {
+  id                    String                     @id @default(cuid())
+  pollId                String
+  
+  // 🎯 정산 결과
+  settlementType        PollBettingSettlementType  @default(AUTO)
+  winningOptionIds      String[]                   @default([])
+  totalPayout           Int                        @default(0)
+  totalWinners          Int                        @default(0)
+  totalBettingPool      Int                        @default(0)
+  houseCommission       Int                        @default(0)
+  houseCommissionRate   Float                      @default(0.05)
+  
+  // 📊 정산 통계
+  optionResults         Json?                      // {optionId: {voteCount, betAmount, winners, payout}}
+  payoutDistribution    Json?                      // {playerId: payoutAmount}
+  
+  // ⚖️ 정산 규칙 적용 정보
+  settlementRule        Json?                      // 적용된 정산 규칙 설정
+  tieBreakApplied       String?                    // "SPLIT", "REFUND", "MANUAL" 등
+  tieCount              Int?                       // 동점 옵션 수
+  
+  // 🔄 처리 정보
+  status                PollBettingSettlementStatus @default(SUCCESS)
+  isManual              Boolean                    @default(false)
+  processedBy           String?                    // "cron", "admin", "manual"
+  processingTimeMs      Int?                       // 처리 시간 (밀리초)
+  
+  // 🚨 에러 정보
+  errorMessage          String?
+  errorDetails          Json?                      // 상세 에러 스택 등
+  retryCount            Int                        @default(0)
+  
+  // 📝 메타데이터
+  metadata              Json?                      // 추가 정보
+  alertsSent            String[]                   @default([]) // 발송된 알림 타입들
+  
+  // 📅 시간 정보
+  settlementStartedAt   DateTime                   @default(now())
+  settlementCompletedAt DateTime?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  
+  // Relations
+  poll                  Poll                       @relation(fields: [pollId], references: [id])
+  
+  @@index([pollId])
+  @@index([settlementType, status])
+  @@index([createdAt])
+  @@index([status, isManual])
+  @@index([processedBy, createdAt])
+}
+
+enum PollBettingSettlementType {
+  AUTO          // 자동 정산
+  MANUAL        // 수동 정산 
+  REFUND        // 전액 환불
+  EMERGENCY     // 긴급 정산
+}
+
+enum PollBettingSettlementStatus {
+  SUCCESS       // 정산 완료
+  FAILED        // 정산 실패
+  PARTIAL       // 부분 정산 (일부만 성공)
+  PENDING       // 정산 대기
+  CANCELLED     // 정산 취소
+}
+
+// 🔔 ===== NOTIFICATION SYSTEM =====
+
+// 사용자 알림 메인 테이블
+model UserNotification {
+  id          String   @id @default(cuid())
+  playerId    String
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  
+  // 📱 알림 기본 정보
+  type        NotificationType
+  category    NotificationCategory @default(GENERAL)
+  title       String
+  message     String
+  description String?               // 상세 설명 (선택적)
+  
+  // 🎯 알림 액션 정보
+  actionType  NotificationActionType @default(NONE)
+  actionUrl   String?               // 딥링크 또는 웹 URL
+  actionData  Json?                 // 액션에 필요한 추가 데이터
+  
+  // 🔗 관련 엔티티 정보 (JSON으로 유연하게 처리)
+  entityType  String?   // "poll", "quest", "raffle", "boardPost", "artist", "asset" 등
+  entityId    String?   // 관련 엔티티의 ID
+  entityData  Json?     // 엔티티 관련 추가 데이터 (이름, 이미지 등 캐시용)
+  
+  // 💰 베팅/보상 관련 정보 (해당 타입에만 사용)
+  betAmount   Float?
+  winAmount   Float?
+  rewardAmount Float?
+  
+  // 📊 우선순위 및 상태
+  priority    NotificationPriority @default(MEDIUM)
+  status      NotificationStatus @default(PENDING)
+  
+  // 📺 읽음 상태
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  
+  // 📡 발송 상태 및 채널
+  isSent      Boolean  @default(false)
+  sentAt      DateTime?
+  sentChannels String[] @default([]) // ['in-app', 'push', 'telegram']
+  failedChannels String[] @default([]) // 발송 실패한 채널들
+  
+  // 🎨 UI 표시 옵션
+  iconUrl     String?
+  imageUrl    String?
+  badgeCount  Int?     @default(0)
+  showBadge   Boolean  @default(false)
+  
+  // ⏰ 스케줄링
+  scheduledAt DateTime? // 예약 발송 시간
+  expiresAt   DateTime? // 알림 만료 시간
+  
+  // 📝 메타데이터 (확장성을 위한)
+  metadata    Json?     // 알림별 커스텀 데이터
+  tags        String[]  @default([]) // 필터링용 태그
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([playerId, isRead, createdAt])
+  @@index([playerId, type, createdAt])
+  @@index([playerId, category, createdAt])
+  @@index([type, status, createdAt])
+  @@index([scheduledAt, status])
+  @@index([expiresAt])
+  @@index([entityType, entityId])
+  @@index([entityType, type])
+  @@index([playerId, entityType, createdAt])
+  @@map("user_notifications")
+}
+
+// 사용자별 알림 설정
+model NotificationSettings {
+  id          String   @id @default(cuid())
+  playerId    String   @unique
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  
+  // 📱 채널별 글로벌 설정
+  inAppEnabled     Boolean @default(true)
+  pushEnabled      Boolean @default(true)
+  emailEnabled     Boolean @default(false)
+  smsEnabled       Boolean @default(false)
+  telegramEnabled  Boolean @default(false)
+  discordEnabled   Boolean @default(false)
+  
+  // 🎰 베팅 관련 알림 설정
+  bettingEnabled        Boolean @default(true)
+  bettingSuccessEnabled Boolean @default(true)
+  bettingResultEnabled  Boolean @default(true)
+  bettingPayoutEnabled  Boolean @default(true)
+  
+  // 📊 폴 관련 알림 설정
+  pollEnabled           Boolean @default(true)
+  pollEndingEnabled     Boolean @default(true)
+  pollResultEnabled     Boolean @default(true)
+  pollNewEnabled        Boolean @default(true)
+  
+  // 🎯 퀘스트 관련 알림 설정
+  questEnabled          Boolean @default(true)
+  questCompleteEnabled  Boolean @default(true)
+  questRewardEnabled    Boolean @default(true)
+  questNewEnabled       Boolean @default(true)
+  
+  // 🎲 래플 관련 알림 설정
+  raffleEnabled         Boolean @default(true)
+  raffleResultEnabled   Boolean @default(true)
+  raffleNewEnabled      Boolean @default(true)
+  
+  // 📝 보드 관련 알림 설정
+  boardEnabled          Boolean @default(true)
+  boardCommentEnabled   Boolean @default(true)
+  boardReactionEnabled  Boolean @default(true)
+  boardRewardEnabled    Boolean @default(true)
+  
+  // ⭐ 아티스트 관련 알림 설정
+  artistEnabled         Boolean @default(true)
+  artistFeedEnabled     Boolean @default(true)
+  artistMessageEnabled  Boolean @default(true)
+  
+  // 💎 자산 관련 알림 설정
+  assetEnabled          Boolean @default(true)
+  assetRewardEnabled    Boolean @default(true)
+  assetTransferEnabled  Boolean @default(false)
+  
+  // 🖼️ NFT 관련 알림 설정
+  nftEnabled            Boolean @default(true)
+  nftMintEnabled        Boolean @default(true)
+  nftTransferEnabled    Boolean @default(false)
+  
+  // 👥 소셜 관련 알림 설정
+  socialEnabled         Boolean @default(true)
+  referralEnabled       Boolean @default(true)
+  followEnabled         Boolean @default(true)
+  
+  // ⚙️ 시스템 관련 알림 설정
+  systemEnabled         Boolean @default(true)
+  maintenanceEnabled    Boolean @default(true)
+  updateEnabled         Boolean @default(true)
+  securityEnabled       Boolean @default(true)
+  
+  // 🔕 방해 금지 설정
+  doNotDisturbEnabled   Boolean @default(false)
+  doNotDisturbStart     String? // "22:00" 형태
+  doNotDisturbEnd       String? // "08:00" 형태
+  doNotDisturbDays      String[] @default([]) // ["MON", "TUE", ...]
+  
+  // 📊 빈도 제한 설정
+  maxDailyNotifications   Int? @default(50)
+  maxHourlyNotifications  Int? @default(10)
+  enableDigestMode        Boolean @default(false) // 요약 모드
+  digestFrequency         String @default("DAILY") // "HOURLY", "DAILY", "WEEKLY"
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("notification_settings")
+}
+
+// 📊 알림 통계 및 분석 (선택적)
+model NotificationStats {
+  id                String   @id @default(cuid())
+  date              DateTime @default(now()) @db.Date
+  
+  // 📈 발송 통계
+  totalSent         Int @default(0)
+  totalRead         Int @default(0)
+  totalClicked      Int @default(0)
+  totalFailed       Int @default(0)
+  
+  // 📱 채널별 통계
+  inAppSent         Int @default(0)
+  pushSent          Int @default(0)
+  emailSent         Int @default(0)
+  telegramSent      Int @default(0)
+  
+  // 🎯 타입별 통계
+  bettingCount      Int @default(0)
+  pollCount         Int @default(0)
+  questCount        Int @default(0)
+  raffleCount       Int @default(0)
+  socialCount       Int @default(0)
+  systemCount       Int @default(0)
+  
+  // 📊 응답률 계산
+  openRate          Float? // 읽음률
+  clickRate         Float? // 클릭률
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([date])
+  @@index([date])
+  @@map("notification_stats")
+}
+
+// 🔔 알림 타입 정의
+enum NotificationType {
+  // 🎰 베팅 관련
+  BETTING_SUCCESS           // 베팅 성공
+  BETTING_FAILED            // 베팅 실패
+  POLL_BETTING_WIN          // 베팅 당첨
+  POLL_BETTING_LOSE         // 베팅 낙첨
+  POLL_BETTING_PAYOUT       // 배당 지급
+  POLL_BETTING_REFUND       // 베팅 환불
+  SETTLEMENT_COMPLETE       // 정산 완료
+  
+  // 📊 폴 관련
+  POLL_STARTED              // 폴 시작
+  POLL_ENDING_SOON          // 폴 종료 예고 (1시간 전)
+  POLL_ENDED                // 폴 종료
+  POLL_RESULT_ANNOUNCED     // 폴 결과 발표
+  POLL_PARTICIPATION_REWARD // 폴 참여 보상
+  
+  // 🎯 퀘스트 관련
+  QUEST_AVAILABLE           // 새 퀘스트 등록
+  QUEST_REMINDER            // 퀘스트 리마인더
+  QUEST_COMPLETED           // 퀘스트 완료
+  QUEST_REWARD_RECEIVED     // 퀘스트 보상 지급
+  QUEST_EXPIRING_SOON       // 퀘스트 만료 예고
+  
+  // 🎲 래플 관련
+  RAFFLE_NEW                // 새 래플 등록
+  RAFFLE_ENTRY_CONFIRMED    // 래플 참가 확인
+  RAFFLE_DRAWING_SOON       // 추첨 예고
+  RAFFLE_RESULT_AVAILABLE   // 추첨 결과 확인 가능
+  RAFFLE_WIN                // 래플 당첨
+  RAFFLE_PRIZE_DISTRIBUTED  // 상품 지급 완료
+  
+  // 📝 보드 관련
+  BOARD_POST_COMMENT        // 내 게시글에 댓글
+  BOARD_POST_REACTION       // 내 게시글에 반응
+  BOARD_COMMENT_REPLY       // 내 댓글에 답글
+  BOARD_POST_REWARD         // 게시글 보상
+  BOARD_MENTION             // 게시글/댓글에서 멘션
+  
+  // ⭐ 아티스트 관련
+  ARTIST_NEW_FEED           // 아티스트 새 피드
+  ARTIST_NEW_MESSAGE        // 아티스트 새 메시지
+  ARTIST_LIVE_EVENT         // 아티스트 라이브 이벤트
+  ARTIST_SPECIAL_CONTENT    // 아티스트 특별 컨텐츠
+  
+  // 💎 자산 관련
+  ASSET_RECEIVED            // 자산 수령
+  ASSET_SENT                // 자산 전송
+  ASSET_STAKING_REWARD      // 스테이킹 보상
+  ASSET_BALANCE_LOW         // 잔액 부족 경고
+  
+  // 🖼️ NFT 관련
+  NFT_MINTED                // NFT 민팅 완료
+  NFT_TRANSFERRED           // NFT 전송
+  NFT_STAKING_REWARD        // NFT 스테이킹 보상
+  NFT_COLLECTION_NEW        // 새 컬렉션 등록
+  
+  // 👥 소셜 관련
+  REFERRAL_JOINED           // 추천인 가입
+  REFERRAL_REWARD           // 추천 보상
+  ACHIEVEMENT_UNLOCKED      // 업적 달성
+  LEVEL_UP                  // 레벨업
+  
+  // ⚙️ 시스템 관련
+  SYSTEM_MAINTENANCE        // 시스템 점검
+  SYSTEM_UPDATE             // 업데이트 알림
+  ACCOUNT_SECURITY          // 보안 알림
+  TERMS_UPDATED             // 약관 업데이트
+  PROMOTIONAL               // 프로모션 알림
+  
+  // 🎉 이벤트 관련
+  EVENT_STARTED             // 이벤트 시작
+  EVENT_ENDING_SOON         // 이벤트 종료 예고
+  EVENT_REWARD              // 이벤트 보상
+  
+  // 📞 일반 알림
+  GENERAL_INFO              // 일반 정보
+  WELCOME                   // 환영 메시지
+  BIRTHDAY                  // 생일 축하
+}
+
+// 📂 알림 카테고리
+enum NotificationCategory {
+  BETTING      // 베팅 관련
+  POLLS        // 폴 관련  
+  QUESTS       // 퀘스트 관련
+  RAFFLES      // 래플 관련
+  SOCIAL       // 소셜 활동
+  ASSETS       // 자산 관련
+  NFTS         // NFT 관련
+  ARTISTS      // 아티스트 관련
+  BOARDS       // 게시판 관련
+  EVENTS       // 이벤트 관련
+  SYSTEM       // 시스템 관련
+  GENERAL      // 일반
+}
+
+// 🎯 알림 액션 타입
+enum NotificationActionType {
+  NONE                // 액션 없음
+  OPEN_APP            // 앱 열기
+  OPEN_URL            // URL 열기
+  OPEN_POLL           // 특정 폴 열기
+  OPEN_QUEST          // 특정 퀘스트 열기
+  OPEN_RAFFLE         // 특정 래플 열기
+  OPEN_BOARD_POST     // 특정 게시글 열기
+  OPEN_ARTIST_FEED    // 아티스트 피드 열기
+  OPEN_WALLET         // 지갑 열기
+  OPEN_NFT_COLLECTION // NFT 컬렉션 열기
+  OPEN_SETTINGS       // 설정 열기
+  CLAIM_REWARD        // 보상 수령
+  PARTICIPATE_POLL    // 폴 참여
+  PARTICIPATE_RAFFLE  // 래플 참여
+  VIEW_RESULT         // 결과 확인
+}
+
+// 🚦 알림 우선순위
+enum NotificationPriority {
+  URGENT      // 긴급 (빨간색, 즉시 표시)
+  HIGH        // 높음 (주황색, 우선 표시)  
+  MEDIUM      // 보통 (기본값)
+  LOW         // 낮음 (회색, 나중에 표시)
+}
+
+// 📊 알림 상태
+enum NotificationStatus {
+  PENDING     // 발송 대기
+  SCHEDULED   // 예약됨
+  SENDING     // 발송 중
+  SENT        // 발송 완료
+  FAILED      // 발송 실패
+  CANCELLED   // 취소됨
+  EXPIRED     // 만료됨
 }
