@@ -10,8 +10,6 @@ import {
     UserPlus,
     Package,
     Wallet,
-    PlayCircle,
-    StopCircle,
     Percent,
 } from "lucide-react";
 import Image from "next/image";
@@ -19,7 +17,6 @@ import Image from "next/image";
 import { useToast } from "@/app/hooks/useToast";
 import Countdown from "@/components/atoms/Countdown";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/utils/format";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
@@ -57,14 +54,10 @@ export default React.memo(function NFTContentsDetails({
             toast.error("Failed to copy collection address");
         }
     }, [spg.address, toast]);
-    const { sharePercentage, glowStartDate, glowEndDate } = useMemo(() => {
+    const { sharePercentage } = useMemo(() => {
         const sharePercentage = spg.sharePercentage ?? 0;
 
-        const glowStartDate = spg.glowStart;
-
-        const glowEndDate = spg.glowEnd;
-
-        return { sharePercentage, glowStartDate, glowEndDate };
+        return { sharePercentage };
     }, [spg]);
 
     // 원하는 size를 지정 (예: 20)

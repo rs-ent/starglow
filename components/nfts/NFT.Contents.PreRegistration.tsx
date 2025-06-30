@@ -4,11 +4,8 @@ import React, { useMemo } from "react";
 
 import { CollectionParticipantType } from "@prisma/client";
 
-import { formatDate } from "@/lib/utils/format";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-
-import Countdown from "../atoms/Countdown";
 
 import type { SPG } from "@/app/story/spg/actions";
 interface NFTContentsPreRegistrationProps {
@@ -31,7 +28,7 @@ export default React.memo(function NFTContentsPreRegistration({
         };
     }, [participantsType, spg.saleEnd, spg.saleStart]);
 
-    if (!date) return null;
+    if (!saleLabel && !date) return null;
 
     return (
         <div className="w-full bg-card/40 backdrop-blur-sm rounded-xl overflow-hidden border border-border/50 p-6">
