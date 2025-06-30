@@ -16,7 +16,7 @@ import type { SPG } from "@/app/story/spg/actions";
 import type { Currency } from "@/lib/types/payment";
 import type { Payment } from "@prisma/client";
 
-interface NFTContentsPaymentProps {
+interface NFTContentsPaymentProps    {
     spg: SPG;
     collectionStock:
         | {

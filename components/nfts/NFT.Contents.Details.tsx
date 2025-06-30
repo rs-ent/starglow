@@ -182,28 +182,6 @@ export default React.memo(function NFTContentsDetails({
                         />
                     </div>
 
-                    {glowStartDate && (
-                        <div
-                            className={`flex items-center text-foreground/70 ${textClass}`}
-                        >
-                            <PlayCircle
-                                className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
-                            />
-                            <span>Glow Start: {formatDate(glowStartDate)}</span>
-                        </div>
-                    )}
-
-                    {glowEndDate && (
-                        <div
-                            className={`flex items-center text-foreground/70 ${textClass}`}
-                        >
-                            <StopCircle
-                                className={`flex-shrink-0 text-primary ${frameClass} mr-2`}
-                            />
-                            <span>Glow End: {formatDate(glowEndDate)}</span>
-                        </div>
-                    )}
-
                     {sharePercentage && (
                         <div
                             className={`flex items-center text-foreground/70 ${textClass}`}

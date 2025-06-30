@@ -516,7 +516,7 @@ const CardMesh = React.memo(function CardMesh({
                             outlineBlur={0.8}
                             outlineOpacity={0.3}
                         >
-                            {comingSoon ? "Coming Soon" : "Buy Now"}
+                            {comingSoon ? "COMING SOON" : "SEE MORE"}
                         </Text>
                     </RoundedBox>
                 </animated.group>

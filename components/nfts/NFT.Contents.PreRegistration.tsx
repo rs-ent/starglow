@@ -26,7 +26,7 @@ export default React.memo(function NFTContentsPreRegistration({
         }
 
         return {
-            saleLabel: "Sale Open",
+            saleLabel: "Coming Soon",
             date: spg.saleStart,
         };
     }, [participantsType, spg.saleEnd, spg.saleStart]);
@@ -41,49 +41,14 @@ export default React.memo(function NFTContentsPreRegistration({
                     "text-center"
                 )}
             >
-                <h2 className={cn(getResponsiveClass(45).textClass)}>
-                    {saleLabel}
-                </h2>
-                <h3
-                    className={cn(
-                        getResponsiveClass(35).textClass,
-                        "text-glow-white-smooth animate-pulse"
-                    )}
-                >
-                    {formatDate(date)}
-                </h3>
-
-                <div
-                    className={cn(
-                        "flex flex-col items-center justify-center",
-                        "bg-[#471ca9] rounded-sm w-full",
-                        "border border-white/40 font-main p-5 my-[30px]"
-                    )}
-                >
-                    <Countdown endDate={date} className="opacity-80" />
-                </div>
-
-                <h3 className={cn(getResponsiveClass(20).textClass)}>
-                    NOW OR NEVER!
-                </h3>
-                <h3
-                    className={cn(
-                        getResponsiveClass(20).textClass,
-                        "text-[rgba(255,255,255,0.7)] text-center"
-                    )}
-                >
-                    {participantsType === CollectionParticipantType.PUBLICSALE
-                        ? "PURCHASE NOW AND GET YOURS"
-                        : "PRE-ORDER TO GET YOURS"}
-                </h3>
                 <h3
                     className={cn(
                         "button-feather-purple !font-main my-[30px] text-center",
                         "hover:scale-120 transition-all duration-500",
-                        getResponsiveClass(30).textClass
+                        getResponsiveClass(25).textClass
                     )}
                 >
-                    Pre-Order
+                    COMING SOON
                 </h3>
             </div>
         </div>
