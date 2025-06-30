@@ -1150,6 +1150,7 @@ model Story_spg {
   price                    Int                @default(0)
   circulation              Int                @default(1000)
   pageImages               String[]
+  comingSoon               Boolean            @default(false)
   backgroundColor          String?
   foregroundColor          String?
   story_nfts               Story_nft[]

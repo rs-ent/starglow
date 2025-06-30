@@ -50,6 +50,7 @@ interface SPGForm {
     address: string;
     contractURI?: string;
     isListed?: boolean;
+    comingSoon?: boolean;
     sharePercentage?: number;
     reportUrl?: string;
     preOrderStart?: string;
@@ -323,6 +324,7 @@ export default function AdminStoryManagementSPG({
                     setForm({
                         address: spg.address,
                         isListed: spg.isListed,
+                        comingSoon: spg.comingSoon || false,
                         preOrderStart: spg.preOrderStart || "",
                         preOrderEnd: spg.preOrderEnd || "",
                         saleStart: spg.saleStart || "",
@@ -635,6 +637,43 @@ export default function AdminStoryManagementSPG({
                                                     <span
                                                         className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg transform transition-transform duration-300 ${
                                                             form.isListed
+                                                                ? "translate-x-1"
+                                                                : "-translate-x-7"
+                                                        }`}
+                                                    />
+                                                </button>
+                                            </div>
+
+                                            {/* comingSoon 토글 추가 */}
+                                            <div className="flex items-center justify-between p-4 bg-blue-900/20 rounded-xl border border-blue-800/30">
+                                                <div>
+                                                    <h3 className="text-lg font-semibold text-white">
+                                                        출시 예정 상태
+                                                    </h3>
+                                                    <p className="text-sm text-blue-300 mt-1">
+                                                        활성화하면 컬렉션이 블러
+                                                        처리되어 티저 형태로
+                                                        표시됩니다
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className={`relative w-16 h-8 rounded-full transition-all duration-300 ${
+                                                        form.comingSoon
+                                                            ? "bg-gradient-to-r from-orange-500 to-orange-600"
+                                                            : "bg-gray-600"
+                                                    }`}
+                                                    onClick={() =>
+                                                        setForm((f) => ({
+                                                            ...f,
+                                                            comingSoon:
+                                                                !f.comingSoon,
+                                                        }))
+                                                    }
+                                                >
+                                                    <span
+                                                        className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg transform transition-transform duration-300 ${
+                                                            form.comingSoon
                                                                 ? "translate-x-1"
                                                                 : "-translate-x-7"
                                                         }`}

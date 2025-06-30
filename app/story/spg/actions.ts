@@ -390,6 +390,7 @@ export interface updateSPGUtils {
     pageImages?: string[];
     backgroundColor?: string;
     foregroundColor?: string;
+    comingSoon?: boolean;
 }
 
 export async function updateSPGUtils(input: updateSPGUtils): Promise<SPG> {

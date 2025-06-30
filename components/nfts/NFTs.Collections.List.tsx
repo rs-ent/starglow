@@ -322,8 +322,17 @@ export default function NFTsCollectionsList({
                     getResponsiveClass(45).textClass
                 )}
             >
-                NFTs
+                Glow
             </h2>
+
+            <p
+                className={cn(
+                    "text-center text-[rgba(255,255,255,0.8)]",
+                    getResponsiveClass(10).textClass
+                )}
+            >
+                GLOW AND GROW WITH YOUR STAR
+            </p>
 
             {isPreloaded ? (
                 <Canvas camera={{ position: [0, 0, targetCameraZ], fov: 40 }}>

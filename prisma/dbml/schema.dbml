@@ -1027,6 +1027,7 @@ Table Story_spg {
   price Int [not null, default: 0]
   circulation Int [not null, default: 1000]
   pageImages String[] [not null]
+  comingSoon Boolean [not null, default: false]
   backgroundColor String
   foregroundColor String
   story_nfts Story_nft [not null]

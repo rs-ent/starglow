@@ -12,7 +12,7 @@ import type { Metadata } from "next";
 
 // SEO 메타데이터 정의
 export const metadata: Metadata = {
-    title: "NFTs",
+    title: "Glow",
     description: "Discover and collect unique artist NFTs on Starglow",
 };
 
