@@ -1,9 +1,14 @@
 /// components/nfts/NFTs.Collections.tsx
 
-import NFTsCollectionsList from "./NFTs.Collections.List";
-import { AlertDescription , Alert } from "../ui/alert";
+import { AlertDescription, Alert } from "../ui/alert";
 
 import type { SPG } from "@/app/story/spg/actions";
+
+import dynamic from "next/dynamic";
+
+const NFTsCollectionsList = dynamic(() => import("./NFTs.Collections.List"), {
+    ssr: false,
+});
 
 export default function NFTsCollections({
     onBuyNowClick,
@@ -22,10 +27,7 @@ export default function NFTsCollections({
 
     return (
         <div className="m-auto">
-            <NFTsCollectionsList
-                spgs={spgs}
-                onBuyNowClick={onBuyNowClick}
-            />
+            <NFTsCollectionsList spgs={spgs} onBuyNowClick={onBuyNowClick} />
         </div>
     );
 }

@@ -379,6 +379,7 @@ const CardMesh = React.memo(function CardMesh({
     const handlePointerOut = () => setHovered(false);
     const handleBuyNowClick = (e: React.MouseEvent | React.TouchEvent) => {
         e.stopPropagation();
+        if (comingSoon) return;
         onBuyNowClick?.();
     };
 
@@ -508,14 +509,14 @@ const CardMesh = React.memo(function CardMesh({
                             font="/fonts/conthrax.otf"
                             position={[0, -0.1, 0.7]}
                             color="#fff"
-                            fontSize={1.2}
+                            fontSize={comingSoon ? 0.95 : 1.2}
                             maxWidth={10}
                             outlineWidth={0.05}
                             outlineColor="rgb(255,255,255)"
                             outlineBlur={0.8}
                             outlineOpacity={0.3}
                         >
-                            SEE MORE
+                            {comingSoon ? "Coming Soon" : "Buy Now"}
                         </Text>
                     </RoundedBox>
                 </animated.group>

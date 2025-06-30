@@ -333,9 +333,14 @@ export default function NFTsCollectionsList({
             >
                 GLOW AND GROW WITH YOUR STAR
             </p>
-
             {isPreloaded ? (
-                <Canvas camera={{ position: [0, 0, targetCameraZ], fov: 40 }}>
+                <Canvas
+                    camera={{ position: [0, 0, targetCameraZ], fov: 40 }}
+                    style={{
+                        width: "100%",
+                        display: "block",
+                    }}
+                >
                     <Environment preset="city" />
                     <CameraLerp targetCameraZ={targetCameraZ} />
                     <ambientLight intensity={0.1} color="#ffffab" />
@@ -427,7 +432,7 @@ export default function NFTsCollectionsList({
                     {spgs.map(renderCollection)}
                 </Canvas>
             ) : (
-                <PartialLoading text="Preparing Special Gifts... 🎁" />
+                <PartialLoading text="Loading..." />
             )}
         </div>
     );
