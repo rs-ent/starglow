@@ -124,47 +124,47 @@ web3/contracts/
 ```mermaid
 sequenceDiagram
     participant WEB2_User as WEB2 User
-    participant Frontend as "Starglow Frontend"
-    participant EscrowWallet as "Escrow Wallet"
-    participant NFTContract as "NFT Contract"
-    participant Blockchain as "Blockhain Network"
+    participant Frontend as Starglow Frontend
+    participant EscrowWallet as Escrow Wallet
+    participant NFTContract as NFT Contract
+    participant Blockchain as Blockhain Network
 
-    WEB2_User->>Frontend: "Buy NFT (Fiat Payment)"
-    Note over WEB2_User: "No Crypto Knowledge<br/>Required"
+    WEB2_User->>Frontend: Buy NFT (Fiat Payment)
+    Note over WEB2_User: No Crypto Knowledge<br/>Required
 
-    Frontend->>EscrowWallet: "Execute Transfer Request<br/>(Payment Confirmed)"
-    EscrowWallet->>EscrowWallet: "Generate EIP-712 Signature<br/>(Platform's NFT)"
+    Frontend->>EscrowWallet: Execute Transfer Request<br/>(Payment Confirmed)
+    EscrowWallet->>EscrowWallet: Generate EIP-712 Signature<br/>(Platform's NFT)
 
-    EscrowWallet->>NFTContract: "escrowTransferBatch()<br/>(Pays Gas + Signature)"
-    NFTContract->>Blockchain: "Transfer NFT to User"
+    EscrowWallet->>NFTContract: escrowTransferBatch()<br/>(Pays Gas + Signature)
+    NFTContract->>Blockchain: Transfer NFT to User
 
-    Blockchain->>WEB2_User: "NFT Received<br/>(Completely Gas-free)"
+    Blockchain->>WEB2_User: NFT Received<br/>(Completely Gas-free)
 ```
 
 #### Scenario 2: User-to-User Trading (Secure P2P) **[In Development]**
 
 ```mermaid
 sequenceDiagram
-    participant UserA as "User A (Seller)"
-    participant Frontend as "Starglow Frontend"
-    participant EscrowWallet as "Escrow Wallet"
-    participant NFTContract as "NFT Contract"
-    participant UserB as "User B (Buyer)"
+    participant UserA as User A (Seller)
+    participant Frontend as Starglow Frontend
+    participant EscrowWallet as Escrow Wallet
+    participant NFTContract as NFT Contract
+    participant UserB as User B (Buyer)
 
-    UserA->>Frontend: "List NFT for Sale"
-    UserB->>Frontend: "Purchase NFT (Fiat Payment)"
-    Frontend->>UserA: "Sign Transfer Permission<br/>(EIP-712 Signature)"
+    UserA->>Frontend: List NFT for Sale
+    UserB->>Frontend: Purchase NFT (Fiat Payment)
+    Frontend->>UserA: Sign Transfer Permission<br/>(EIP-712 Signature)
 
-    UserA->>Frontend: "Signature (Authorizes Escrow)"
-    Frontend->>EscrowWallet: "Execute Transfer<br/>(User Permission + Payment)"
+    UserA->>Frontend: Signature (Authorizes Escrow)
+    Frontend->>EscrowWallet: Execute Transfer<br/>(User Permission + Payment)
 
-    EscrowWallet->>NFTContract: "escrowTransferBatch()<br/>(User's Signature + Gas)"
-    NFTContract->>NFTContract: "Verify User A Signature"
-    NFTContract->>UserB: "Transfer NFT"
+    EscrowWallet->>NFTContract: escrowTransferBatch()<br/>(User's Signature + Gas)
+    NFTContract->>NFTContract: Verify User A Signature
+    NFTContract->>UserB: Transfer NFT
 
-    Note over EscrowWallet: "Pays Gas for User A"
-    Note over UserA: "Secure: Must Sign Permission"
-    Note over UserB: "Gas-free Purchase"
+    Note over EscrowWallet: Pays Gas for User A
+    Note over UserA: Secure: Must Sign Permission
+    Note over UserB: Gas-free Purchase
 ```
 
 #### Technical Implementation
