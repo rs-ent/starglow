@@ -40,7 +40,7 @@ interface RaffleScratchCardProps {
     };
 }
 
-// 직접 구현한 스크래치 카드 컴포넌트
+// 직접 구현한 스크래치 카드 컴포넌트 - 근본적 개선 버전
 const CustomScratchCard = memo(function CustomScratchCard({
     width,
     height,
@@ -58,147 +58,290 @@ const CustomScratchCard = memo(function CustomScratchCard({
 }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isScratching, setIsScratching] = useState(false);
-    const [isComplete, setIsComplete] = useState(false);
     const [canvasOpacity, setCanvasOpacity] = useState(1);
 
-    // 성능 최적화를 위한 ref들
-    const contextRef = useRef<CanvasRenderingContext2D | null>(null);
-    const lastCheckTime = useRef(0);
-    const scratchedPixels = useRef(0);
-    const totalPixels = useRef(0);
+    // 성능 최적화를 위한 상태 관리
+    const completionStateRef = useRef({
+        isCompleted: false,
+        isProcessing: false,
+        scratchCount: 0,
+        lastCheckTime: 0,
+    });
+
+    // 🚀 성능 최적화: 값들을 캐싱해서 불필요한 재계산 방지
+    const cachedValuesRef = useRef({
+        brushSize: 0,
+        canvasRect: null as DOMRect | null,
+        lastResizeTime: 0,
+    });
+
+    // 디바운스된 완료 체크
+    const checkCompletionDebounced = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const ctx = canvas.getContext("2d", {
+        const ctx = canvas?.getContext("2d", {
+            // 성능 최적화 옵션
             alpha: true,
             desynchronized: true,
-            willReadFrequently: true, // 픽셀 검사를 위해 true로 변경
+            willReadFrequently: false,
         });
 
-        if (ctx) {
-            contextRef.current = ctx;
-
+        if (canvas && ctx) {
             // 고해상도 디스플레이 대응
             const dpr = window.devicePixelRatio || 1;
+
             canvas.width = width * dpr;
             canvas.height = height * dpr;
-            totalPixels.current = canvas.width * canvas.height;
-
             ctx.scale(dpr, dpr);
 
-            // 색상 유효성 검증 및 기본값 설정
-            const validScratchColor = scratchColor || "#C0C0C0";
-
-            // 초기 스크래치 레이어 그리기
-            const gradient = ctx.createLinearGradient(0, 0, width, height);
-            try {
-                gradient.addColorStop(0, validScratchColor);
-                gradient.addColorStop(0.5, "#E5E7EB");
-                gradient.addColorStop(1, validScratchColor);
-                ctx.fillStyle = gradient;
-            } catch (error) {
-                // 그라디언트 생성 실패 시 단일 색상 사용
-                console.warn(
-                    "Gradient creation failed, using solid color:",
-                    error
-                );
-                ctx.fillStyle = "#C0C0C0";
-            }
+            // 스크래치 레이어 생성
+            ctx.fillStyle = scratchColor;
             ctx.fillRect(0, 0, width, height);
 
-            // 스크래치 힌트 텍스트
+            // 그라디언트로 더 매력적인 스크래치 표면 만들기
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, scratchColor);
+            gradient.addColorStop(0.5, "#E5E7EB");
+            gradient.addColorStop(1, scratchColor);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            // 🚀 반응형 최적화: 스크래치 힌트 텍스트
             ctx.fillStyle = "#4B5563";
-            const fontSize = Math.max(12, Math.min(16, width * 0.05));
-            ctx.font = `bold ${fontSize}px Arial`;
+            // 카드 크기에 따른 동적 폰트 크기 (더 정교한 계산)
+            const baseSize = Math.min(width, height);
+            const fontSize =
+                baseSize < 300
+                    ? Math.max(10, baseSize * 0.04) // 작은 카드
+                    : baseSize < 400
+                    ? Math.max(12, baseSize * 0.045) // 중간 카드
+                    : Math.max(14, baseSize * 0.05); // 큰 카드
+
+            ctx.font = `bold ${Math.round(fontSize)}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText("🎁 Scratch to reveal! 🎁", width / 2, height / 2);
+
+            // 텍스트가 카드에 맞게 조정
+            const text = "🎁 Scratch to reveal! 🎁";
+            ctx.fillText(text, width / 2, height / 2);
+
+            // 상태 초기화
+            completionStateRef.current = {
+                isCompleted: false,
+                isProcessing: false,
+                scratchCount: 0,
+                lastCheckTime: 0,
+            };
         }
+
+        // cleanup
+        return () => {
+            if (checkCompletionDebounced.current) {
+                clearTimeout(checkCompletionDebounced.current);
+            }
+        };
     }, [width, height, scratchColor]);
 
-    // 성능 최적화된 스크래치 함수
+    // 🚀 성능 최적화: resize 이벤트로 캐시 무효화
+    useEffect(() => {
+        const handleResize = () => {
+            // 캐시 무효화 (새 크기로 재계산하도록)
+            cachedValuesRef.current.brushSize = 0;
+            cachedValuesRef.current.canvasRect = null;
+            cachedValuesRef.current.lastResizeTime = 0;
+        };
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    // 🚀 성능 최적화: 브러시 크기 계산 및 캐싱
+    const calculateBrushSize = useCallback(() => {
+        const now = Date.now();
+
+        // 100ms 쓰로틀링으로 불필요한 재계산 방지
+        if (
+            now - cachedValuesRef.current.lastResizeTime < 100 &&
+            cachedValuesRef.current.brushSize > 0
+        ) {
+            return cachedValuesRef.current.brushSize;
+        }
+
+        const screenWidth = window.innerWidth;
+        const canvasWidth = width;
+        let brushSize: number;
+
+        // 화면 크기와 캔버스 크기에 따른 동적 브러시 크기
+        if (screenWidth < 400) {
+            brushSize = Math.max(12, canvasWidth * 0.035);
+        } else if (screenWidth < 600) {
+            brushSize = Math.max(18, canvasWidth * 0.045);
+        } else if (screenWidth < 768) {
+            brushSize = Math.max(22, canvasWidth * 0.055);
+        } else if (screenWidth < 1024) {
+            brushSize = Math.max(28, canvasWidth * 0.065);
+        } else if (screenWidth < 1440) {
+            brushSize = Math.max(35, canvasWidth * 0.075);
+        } else {
+            brushSize = Math.max(45, canvasWidth * 0.085);
+        }
+
+        // 캐시 업데이트
+        cachedValuesRef.current.brushSize = brushSize;
+        cachedValuesRef.current.lastResizeTime = now;
+
+        return brushSize;
+    }, [width]);
+
+    // 🚀 캐싱된 캔버스 영역 정보 가져오기
+    const getCanvasRect = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
+
+        // 캐시된 값이 있고 여전히 유효한 경우 사용
+        const now = Date.now();
+        if (
+            cachedValuesRef.current.canvasRect &&
+            now - cachedValuesRef.current.lastResizeTime < 500
+        ) {
+            return cachedValuesRef.current.canvasRect;
+        }
+
+        // 새로 계산하고 캐시
+        const rect = canvas.getBoundingClientRect();
+        cachedValuesRef.current.canvasRect = rect;
+        cachedValuesRef.current.lastResizeTime = now;
+
+        return rect;
+    }, []);
+
     const scratch = useCallback(
         (clientX: number, clientY: number) => {
             const canvas = canvasRef.current;
-            const ctx = contextRef.current;
+            const ctx = canvas?.getContext("2d");
 
-            if (!canvas || !ctx || isComplete) return;
+            if (canvas && ctx && !completionStateRef.current.isCompleted) {
+                // 🚀 성능 최적화: 캐싱된 rect 사용
+                const rect = getCanvasRect();
+                if (!rect) return;
 
-            const rect = canvas.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
-            const scaleX = canvas.width / dpr / rect.width;
-            const scaleY = canvas.height / dpr / rect.height;
+                const dpr = window.devicePixelRatio || 1;
 
-            const x = (clientX - rect.left) * scaleX;
-            const y = (clientY - rect.top) * scaleY;
+                // 고해상도 디스플레이를 고려한 좌표 계산
+                const scaleX = canvas.width / dpr / rect.width;
+                const scaleY = canvas.height / dpr / rect.height;
 
-            ctx.globalCompositeOperation = "destination-out";
-            ctx.beginPath();
-            const brushSize = window.innerWidth < 768 ? 25 : 50;
-            ctx.arc(x, y, brushSize, 0, Math.PI * 2);
-            ctx.fill();
+                const x = (clientX - rect.left) * scaleX;
+                const y = (clientY - rect.top) * scaleY;
 
-            // 스크래치된 픽셀 수 추정 (정확한 계산 대신 근사값 사용)
-            const brushArea = Math.PI * brushSize * brushSize;
-            scratchedPixels.current += brushArea;
+                ctx.globalCompositeOperation = "destination-out";
+                ctx.beginPath();
+                // 🚀 성능 최적화: 캐싱된 브러시 크기 사용
+                const brushSize = calculateBrushSize();
+                ctx.arc(x, y, brushSize, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 스크래치 횟수 증가
+                completionStateRef.current.scratchCount++;
+            }
         },
-        [isComplete]
+        [calculateBrushSize, getCanvasRect]
     );
 
-    // 성능 최적화된 완료 검사 (throttling 적용)
-    const checkCompletion = useCallback(() => {
-        if (isComplete) return;
-
-        const now = Date.now();
-        // 300ms마다만 검사 (기존보다 빈도 감소)
-        if (now - lastCheckTime.current < 300) return;
-        lastCheckTime.current = now;
+    // 🚀 근본적 개선: 샘플링 기반 완료 체크 (성능 최적화)
+    const checkCompletionOptimized = useCallback(() => {
+        if (
+            completionStateRef.current.isCompleted ||
+            completionStateRef.current.isProcessing
+        ) {
+            return;
+        }
 
         const canvas = canvasRef.current;
-        const ctx = contextRef.current;
+        const ctx = canvas?.getContext("2d");
 
         if (!canvas || !ctx) return;
 
-        // 전체 픽셀 검사 대신 샘플링 방식 사용
-        const sampleSize = 100; // 100개 포인트만 샘플링
-        const step = Math.floor(Math.sqrt(totalPixels.current / sampleSize));
-        let transparentCount = 0;
-        let totalSamples = 0;
+        // 최소 스크래치 횟수 체크 (너무 빨리 완료되는 것 방지)
+        if (completionStateRef.current.scratchCount < 3) return;
+
+        // 쓰로틀링: 100ms 간격으로만 체크
+        const now = Date.now();
+        if (now - completionStateRef.current.lastCheckTime < 100) return;
+
+        completionStateRef.current.lastCheckTime = now;
+        completionStateRef.current.isProcessing = true;
 
         try {
-            // 샘플링으로 투명도 검사
-            for (let y = 0; y < canvas.height; y += step) {
-                for (let x = 0; x < canvas.width; x += step) {
-                    const pixel = ctx.getImageData(x, y, 1, 1).data;
-                    if (pixel[3] < 128) transparentCount++;
-                    totalSamples++;
+            // 🎯 핵심 최적화: 샘플링으로 픽셀 체크 (전체의 10%만 검사)
+            const sampleRate = 10; // 10픽셀마다 1개씩 검사
+            const imageData = ctx.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+            const pixels = imageData.data;
+
+            let sampleCount = 0;
+            let transparentSamples = 0;
+
+            for (let i = 3; i < pixels.length; i += 4 * sampleRate) {
+                sampleCount++;
+                if (pixels[i] < 128) {
+                    transparentSamples++;
                 }
             }
 
-            const scratchPercentage = (transparentCount / totalSamples) * 100;
+            const scratchPercentage = (transparentSamples / sampleCount) * 100;
 
             if (scratchPercentage > 50) {
-                setIsComplete(true);
+                // 완료 상태 설정
+                completionStateRef.current.isCompleted = true;
 
-                // 최적화된 페이드 아웃
+                // 한 번만 실행되는 fadeOut 애니메이션
+                let alpha = 1;
+                const fadeStep = 0.045;
+
                 const fadeOut = () => {
-                    setCanvasOpacity(0);
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    if (onComplete) {
-                        setTimeout(onComplete, 100);
+                    alpha -= fadeStep;
+
+                    if (alpha <= 0) {
+                        setCanvasOpacity(0);
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                        // onComplete 콜백을 단 한 번만 호출
+                        if (onComplete) {
+                            setTimeout(onComplete, 100);
+                        }
+                        return;
                     }
+
+                    setCanvasOpacity(alpha);
+                    requestAnimationFrame(fadeOut);
                 };
 
-                requestAnimationFrame(fadeOut);
+                fadeOut();
             }
-        } catch (error) {
-            console.warn("Scratch completion check failed:", error);
+        } finally {
+            completionStateRef.current.isProcessing = false;
         }
-    }, [isComplete, onComplete]);
+    }, [onComplete]);
 
-    // 이벤트 핸들러들 (최적화)
+    // 🚀 디바운스된 완료 체크 함수
+    const scheduleCompletionCheck = useCallback(() => {
+        if (checkCompletionDebounced.current) {
+            clearTimeout(checkCompletionDebounced.current);
+        }
+
+        // 150ms 디바운스로 불필요한 체크 방지
+        checkCompletionDebounced.current = setTimeout(() => {
+            checkCompletionOptimized();
+        }, 150);
+    }, [checkCompletionOptimized]);
+
+    // 이벤트 핸들러들
     const handleMouseDown = useCallback(
         (e: React.MouseEvent) => {
             e.preventDefault();
@@ -210,7 +353,12 @@ const CustomScratchCard = memo(function CustomScratchCard({
 
     const handleTouchStart = useCallback(
         (e: React.TouchEvent) => {
-            e.preventDefault();
+            // 🚀 passive event listener 오류 방지
+            try {
+                e.preventDefault();
+            } catch (error) {
+                console.error(error);
+            }
             setIsScratching(true);
             const touch = e.touches[0];
             scratch(touch.clientX, touch.clientY);
@@ -218,73 +366,121 @@ const CustomScratchCard = memo(function CustomScratchCard({
         [scratch]
     );
 
-    // 전역 이벤트 리스너 최적화
+    // 🚀 최적화된 전역 이벤트 리스너
     useEffect(() => {
-        if (!isScratching) return;
-
-        let animationId: number;
-        let lastMoveTime = 0;
-        const throttleMs = 16; // 60fps 제한
-
-        const handleMove = (clientX: number, clientY: number) => {
-            const now = Date.now();
-            if (now - lastMoveTime < throttleMs) return;
-            lastMoveTime = now;
-
-            scratch(clientX, clientY);
-
-            // requestAnimationFrame으로 completion 체크 최적화
-            if (animationId) cancelAnimationFrame(animationId);
-            animationId = requestAnimationFrame(checkCompletion);
-        };
-
-        const handleMouseMove = (e: MouseEvent) =>
-            handleMove(e.clientX, e.clientY);
-        const handleTouchMove = (e: TouchEvent) => {
-            if (e.touches.length > 0) {
-                e.preventDefault();
-                const touch = e.touches[0];
-                handleMove(touch.clientX, touch.clientY);
+        const handleGlobalMouseMove = (e: MouseEvent) => {
+            if (isScratching && !completionStateRef.current.isCompleted) {
+                scratch(e.clientX, e.clientY);
+                // 매번 체크하지 않고 디바운스된 체크 스케줄링
+                scheduleCompletionCheck();
             }
         };
 
-        const handleEnd = () => setIsScratching(false);
+        const handleGlobalMouseUp = () => {
+            if (isScratching) {
+                setIsScratching(false);
+                // 마우스 업 시 한 번 더 체크
+                scheduleCompletionCheck();
+            }
+        };
 
-        document.addEventListener("mousemove", handleMouseMove, {
-            passive: false,
-        });
-        document.addEventListener("mouseup", handleEnd);
-        document.addEventListener("touchmove", handleTouchMove, {
-            passive: false,
-        });
-        document.addEventListener("touchend", handleEnd);
+        const handleGlobalTouchMove = (e: TouchEvent) => {
+            if (
+                isScratching &&
+                e.touches.length > 0 &&
+                !completionStateRef.current.isCompleted
+            ) {
+                const canvas = canvasRef.current;
+                const touch = e.touches[0];
+
+                // 🚀 캔버스 영역 내의 터치만 처리 (캐싱된 rect 사용)
+                if (canvas) {
+                    const rect = getCanvasRect();
+                    if (rect) {
+                        const isInCanvas =
+                            touch.clientX >= rect.left &&
+                            touch.clientX <= rect.right &&
+                            touch.clientY >= rect.top &&
+                            touch.clientY <= rect.bottom;
+
+                        if (isInCanvas) {
+                            // 🚀 passive event listener 오류 방지
+                            try {
+                                e.preventDefault();
+                            } catch (error) {
+                                console.error(error);
+                            }
+                            scratch(touch.clientX, touch.clientY);
+                            scheduleCompletionCheck();
+                        }
+                    }
+                }
+            }
+        };
+
+        const handleGlobalTouchEnd = () => {
+            if (isScratching) {
+                setIsScratching(false);
+                scheduleCompletionCheck();
+            }
+        };
+
+        if (isScratching) {
+            document.addEventListener("mousemove", handleGlobalMouseMove);
+            document.addEventListener("mouseup", handleGlobalMouseUp);
+
+            // 🚀 모바일 터치 이벤트 안전 처리
+            try {
+                document.addEventListener("touchmove", handleGlobalTouchMove, {
+                    passive: false,
+                });
+            } catch (error) {
+                console.error(error);
+                document.addEventListener("touchmove", handleGlobalTouchMove);
+            }
+            document.addEventListener("touchend", handleGlobalTouchEnd);
+        }
 
         return () => {
-            if (animationId) cancelAnimationFrame(animationId);
-            document.removeEventListener("mousemove", handleMouseMove);
-            document.removeEventListener("mouseup", handleEnd);
-            document.removeEventListener("touchmove", handleTouchMove);
-            document.removeEventListener("touchend", handleEnd);
+            document.removeEventListener("mousemove", handleGlobalMouseMove);
+            document.removeEventListener("mouseup", handleGlobalMouseUp);
+            document.removeEventListener("touchmove", handleGlobalTouchMove);
+            document.removeEventListener("touchend", handleGlobalTouchEnd);
         };
-    }, [isScratching, scratch, checkCompletion]);
+    }, [isScratching, scratch, scheduleCompletionCheck, getCanvasRect]);
 
-    // 자동 reveal 함수 최적화
+    // 자동 reveal 함수
     const autoReveal = useCallback(() => {
-        if (isComplete) return;
+        if (completionStateRef.current.isCompleted) return;
 
-        setIsComplete(true);
-        setCanvasOpacity(0);
+        completionStateRef.current.isCompleted = true;
 
-        const canvas = canvasRef.current;
-        const ctx = contextRef.current;
-        if (canvas && ctx) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        // 부드러운 fadeOut 애니메이션
+        let alpha = 1;
+        const fadeStep = 0.045;
 
-        if (onComplete) {
-            setTimeout(onComplete, 100);
-        }
-    }, [isComplete, onComplete]);
+        const fadeOut = () => {
+            alpha -= fadeStep;
+
+            if (alpha <= 0) {
+                setCanvasOpacity(0);
+                const canvas = canvasRef.current;
+                const ctx = canvas?.getContext("2d");
+                if (canvas && ctx) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+                if (onComplete) {
+                    setTimeout(onComplete, 100);
+                }
+                return;
+            }
+
+            setCanvasOpacity(alpha);
+            requestAnimationFrame(fadeOut);
+        };
+
+        fadeOut();
+    }, [onComplete]);
 
     useEffect(() => {
         if (onAutoReveal) {
@@ -293,27 +489,61 @@ const CustomScratchCard = memo(function CustomScratchCard({
     }, [onAutoReveal, autoReveal]);
 
     return (
-        <div className="relative select-none" style={{ width, height }}>
+        <div
+            className="relative select-none overflow-hidden rounded-2xl"
+            style={{
+                width,
+                height,
+                // 🚀 컨테이너 레벨에서도 터치 동작 제어
+                touchAction: "none",
+                WebkitTouchCallout: "none",
+                userSelect: "none",
+            }}
+        >
+            {/* 결과 콘텐츠 (아래에 숨김) */}
             {children}
 
+            {/* 스크래치 레이어 (위에 덮음) */}
             <canvas
                 ref={canvasRef}
-                width={width}
-                height={height}
                 className={cn(
-                    "absolute top-0 left-0 cursor-crosshair rounded-2xl",
-                    "touch-manipulation select-none transition-opacity duration-200"
+                    "absolute top-0 left-0 cursor-crosshair rounded-2xl transition-opacity duration-75",
+                    "touch-manipulation select-none"
                 )}
                 style={{
+                    // 🚀 Canvas 크기를 정확히 컨테이너에 맞춤
+                    width: `${width}px`,
+                    height: `${height}px`,
+                    // 🚀 모바일 터치 최적화 - 브라우저 기본 터치 동작 완전 차단
                     touchAction: "none",
+                    WebkitTouchCallout: "none",
+                    WebkitUserSelect: "none",
                     userSelect: "none",
+                    MozUserSelect: "none",
+                    msUserSelect: "none",
+                    // 터치 스크롤 방지
+                    overscrollBehavior: "none",
                     zIndex: 10,
                     opacity: canvasOpacity,
-                    transform: "translateZ(0)", // GPU 가속
+                    // 모바일 렌더링 최적화
+                    WebkitBackfaceVisibility: "hidden",
+                    backfaceVisibility: "hidden",
+                    transform: "translateZ(0)",
                     willChange: "opacity",
+                    imageRendering: "pixelated",
                 }}
                 onMouseDown={handleMouseDown}
                 onTouchStart={handleTouchStart}
+            />
+
+            <div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer z-50"
+                style={{
+                    animation: "shimmer 2s infinite",
+                    background:
+                        "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+                    transform: "translateX(-100%) skewX(-12deg)",
+                }}
             />
         </div>
     );
@@ -328,36 +558,64 @@ export default memo(function RaffleScratchCard({
     const [isComplete, setIsComplete] = useState(false);
     const autoRevealRef = useRef<(() => void) | null>(null);
 
-    // 티어 정보 최적화 (계산 최소화)
+    // 🚀 근본적 개선: 완료 상태를 한 곳에서 관리
+    const revealStateRef = useRef({
+        isCompleted: false,
+        isProcessing: false,
+    });
+
+    // 컴포넌트 마운트 시 상태 초기화
+    useEffect(() => {
+        revealStateRef.current = {
+            isCompleted: false,
+            isProcessing: false,
+        };
+    }, [prize?.id]); // prize가 바뀔 때마다 초기화
+
+    // 🎯 성능 최적화: 티어 정보를 안정적으로 메모이제이션
     const tierInfo = useMemo(() => {
         if (!prize) return null;
 
         const tier = Math.floor(prize.order / 10);
         const tierData = tierMap[tier as keyof typeof tierMap] || tierMap[0];
+
         return {
-            ...tierData,
             tier,
-            gradient: `linear-gradient(135deg, ${tierData.colors[0]}, ${tierData.colors[1]})`,
-            gradientCover: `linear-gradient(135deg, ${tierData.colorsCover[0]}, ${tierData.colorsCover[1]})`,
-            borderColor: `${tierData.colors[0]}40`,
+            name: tierData.name,
+            colors: tierData.colors,
+            colorsCover: tierData.colorsCover,
+            glow: tierData.glow,
+            bg: tierData.bg,
+            border: tierData.border,
+            gradient: tierData.gradient,
         };
     }, [prize]);
 
-    // 반응형 크기 최적화 (단순화)
-    const sizes = useMemo(() => {
-        const baseScale = Math.min(Math.max(cardSize.width / 300, 0.8), 1.5);
+    // 🚀 반응형 크기 클래스들 (5의 배수로 최적화)
+    const responsiveStyles = useMemo(() => {
         return {
-            title: Math.round(18 * baseScale),
-            subtitle: Math.round(14 * baseScale),
-            icon: Math.round(40 * baseScale),
+            // 텍스트 크기
+            titleSize: 40,
+            subtitleSize: 20,
+            // 아이콘/이미지 크기
+            imageSize: 70,
+            // 티어 배지 크기
+            badgeTextSize: 10,
+            badgePadding: 5,
+            // 간격들
+            containerGap: 20,
+            elementGap: 20,
+            // 패딩
+            containerPadding: 25,
         };
-    }, [cardSize.width]);
+    }, []);
 
-    // 콘페티 핸들러 최적화
+    // 🎯 콘페티 핸들러 - 의존성 최소화
     const handleConfetti = useCallback(() => {
-        if (!tierInfo) return;
+        if (!prize) return;
 
-        const particleCount = 15 * (tierInfo.tier * 4 + 1);
+        const tier = Math.floor(prize.order / 10);
+        const particleCount = Math.min(150, 15 * (tier * 4 + 1)); // 최대값 제한으로 성능 보장
 
         try {
             confetti({
@@ -368,18 +626,37 @@ export default memo(function RaffleScratchCard({
                 startVelocity: 20,
                 zIndex: 3000,
             })?.catch((error) => {
-                console.warn("Confetti failed:", error);
+                console.warn("Confetti animation failed:", error);
             });
         } catch (error) {
-            console.warn("Confetti failed:", error);
+            console.warn("Confetti initialization failed:", error);
         }
-    }, [tierInfo]);
+    }, [prize]);
 
+    // 🚀 근본적 개선: 완료 처리를 원자적으로 수행
     const handleRevealComplete = useCallback(() => {
+        // 이미 처리 중이거나 완료된 경우 즉시 리턴
+        if (
+            revealStateRef.current.isCompleted ||
+            revealStateRef.current.isProcessing
+        ) {
+            return;
+        }
+
+        // 원자적 상태 변경
+        revealStateRef.current.isProcessing = true;
+        revealStateRef.current.isCompleted = true;
         setIsComplete(true);
+
         if (onReveal) {
+            // 콘페티를 먼저 실행하고 약간의 지연 후 콜백 호출
             handleConfetti();
-            setTimeout(onReveal, 500);
+            setTimeout(() => {
+                onReveal();
+                revealStateRef.current.isProcessing = false;
+            }, 500);
+        } else {
+            revealStateRef.current.isProcessing = false;
         }
     }, [onReveal, handleConfetti]);
 
@@ -387,11 +664,32 @@ export default memo(function RaffleScratchCard({
         autoRevealRef.current = autoRevealFn;
     }, []);
 
+    // 🚀 Skip 버튼 로직 최적화
     const handleSkipClick = useCallback(() => {
-        if (autoRevealRef.current && !isComplete) {
+        // 이미 완료되었거나 처리 중인 경우 스킵 불가
+        if (
+            revealStateRef.current.isCompleted ||
+            revealStateRef.current.isProcessing
+        ) {
+            return;
+        }
+
+        // 자동 reveal 함수가 있는 경우 실행
+        if (autoRevealRef.current) {
             autoRevealRef.current();
         }
-    }, [isComplete]);
+    }, []);
+
+    // 동적 스타일 계산 (메모이제이션)
+    const dynamicStyles = useMemo(() => {
+        if (!tierInfo) return {};
+
+        return {
+            gradient: `linear-gradient(135deg, ${tierInfo.colors[0]}, ${tierInfo.colors[1]})`,
+            gradientCover: `linear-gradient(135deg, ${tierInfo.colorsCover[0]}, ${tierInfo.colorsCover[1]})`,
+            borderColor: `${tierInfo.colors[0]}40`,
+        };
+    }, [tierInfo]);
 
     // 상품이 없는 경우 (꽝)
     if (!prize) {
@@ -420,44 +718,76 @@ export default memo(function RaffleScratchCard({
                         onAutoReveal={handleAutoReveal}
                         scratchColor="#9CA3AF"
                     >
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-2xl">
-                            {/* 결과는 항상 보이게 - 스크래치할 때마다 드러남 */}
-                            <div className="text-center">
+                        <div
+                            className={cn(
+                                "w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-2xl",
+                                getResponsiveClass(
+                                    responsiveStyles.containerPadding
+                                ).paddingClass
+                            )}
+                        >
+                            {/* 🚀 반응형 최적화: 결과 표시 */}
+                            <div
+                                className={cn(
+                                    "text-center",
+                                    getResponsiveClass(
+                                        responsiveStyles.elementGap
+                                    ).gapClass
+                                )}
+                            >
                                 <div
-                                    style={{
-                                        fontSize: `${sizes.icon}px`,
-                                        marginBottom: "16px",
-                                    }}
+                                    className={cn(
+                                        getResponsiveClass(
+                                            responsiveStyles.imageSize
+                                        ).textClass,
+                                        getResponsiveClass(
+                                            responsiveStyles.elementGap
+                                        ).marginYClass
+                                    )}
                                 >
                                     😔
                                 </div>
                                 <h3
-                                    className="font-bold text-gray-600 dark:text-gray-400 mb-2"
-                                    style={{
-                                        fontSize: `${sizes.title}px`,
-                                    }}
+                                    className={cn(
+                                        "font-bold text-gray-600 dark:text-gray-400",
+                                        getResponsiveClass(
+                                            responsiveStyles.titleSize
+                                        ).textClass,
+                                        getResponsiveClass(
+                                            responsiveStyles.elementGap
+                                        ).marginYClass
+                                    )}
                                 >
                                     Better Luck Next Time
                                 </h3>
                                 <p
-                                    className="text-gray-500 dark:text-gray-500"
-                                    style={{
-                                        fontSize: `${sizes.subtitle}px`,
-                                    }}
+                                    className={cn(
+                                        "text-gray-500 dark:text-gray-500",
+                                        getResponsiveClass(
+                                            responsiveStyles.subtitleSize
+                                        ).textClass
+                                    )}
                                 >
                                     Try again!
                                 </p>
                             </div>
 
-                            {/* 완료 시 추가 애니메이션 */}
+                            {/* 🚀 반응형 최적화: 완료 시 추가 애니메이션 */}
                             {isComplete && (
                                 <motion.div
                                     initial={{ opacity: 0, scale: 0 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: 0.3, type: "spring" }}
-                                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                                    className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]"
                                 >
-                                    <div className="text-6xl animate-bounce">
+                                    <div
+                                        className={cn(
+                                            "animate-bounce",
+                                            getResponsiveClass(
+                                                responsiveStyles.imageSize
+                                            ).textClass
+                                        )}
+                                    >
                                         💔
                                     </div>
                                 </motion.div>
@@ -497,7 +827,7 @@ export default memo(function RaffleScratchCard({
                     height={cardSize.height}
                     onComplete={handleRevealComplete}
                     onAutoReveal={handleAutoReveal}
-                    scratchColor={tierInfo?.gradientCover || "#A97CF8"}
+                    scratchColor={tierInfo?.colorsCover?.[0] || "#A97CF8"}
                 >
                     <div
                         className={cn(
@@ -505,7 +835,7 @@ export default memo(function RaffleScratchCard({
                         )}
                         style={{
                             background: tierInfo
-                                ? tierInfo.gradient
+                                ? dynamicStyles.gradient
                                 : "linear-gradient(135deg, rgba(167,139,250,0.1), rgba(243,140,184,0.1))",
                         }}
                     >
@@ -517,11 +847,11 @@ export default memo(function RaffleScratchCard({
                                 background:
                                     "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
                                 transform: "translateX(-100%) skewX(-12deg)",
-                                zIndex: 1000,
+                                zIndex: 5, // 스크래치 레이어보다 낮게
                             }}
                         />
                         <div className="absolute inset-0 overflow-hidden opacity-50">
-                            {/* 자연스러운 별빛 파티클 효과 - 24개 */}
+                            {/* 🚀 반응형 최적화: 별빛 파티클 효과 */}
                             {[
                                 { top: "7%", left: "18%" },
                                 { top: "12%", left: "43%" },
@@ -557,18 +887,33 @@ export default memo(function RaffleScratchCard({
                                     style={{
                                         top: position.top,
                                         left: position.left,
-                                        width:
-                                            i % 4 === 0
-                                                ? "3px"
+                                        // 🚀 반응형 파티클 크기
+                                        width: (() => {
+                                            const baseSize =
+                                                cardSize.width < 350
+                                                    ? 0.8
+                                                    : cardSize.width < 400
+                                                    ? 1
+                                                    : 1.2;
+                                            return i % 4 === 0
+                                                ? `${3 * baseSize}px`
                                                 : i % 3 === 0
-                                                ? "2px"
-                                                : "1px",
-                                        height:
-                                            i % 4 === 0
-                                                ? "3px"
+                                                ? `${2 * baseSize}px`
+                                                : `${1 * baseSize}px`;
+                                        })(),
+                                        height: (() => {
+                                            const baseSize =
+                                                cardSize.width < 350
+                                                    ? 0.8
+                                                    : cardSize.width < 400
+                                                    ? 1
+                                                    : 1.2;
+                                            return i % 4 === 0
+                                                ? `${3 * baseSize}px`
                                                 : i % 3 === 0
-                                                ? "2px"
-                                                : "1px",
+                                                ? `${2 * baseSize}px`
+                                                : `${1 * baseSize}px`;
+                                        })(),
                                         animationDelay: `${
                                             i * 0.08 + Math.random() * 0.5
                                         }s`,
@@ -584,30 +929,64 @@ export default memo(function RaffleScratchCard({
                             ))}
                         </div>
 
-                        {/* 티어 배지 - 항상 보이게 */}
+                        {/* 🚀 반응형 최적화: 티어 배지 */}
                         {tierInfo && (
-                            <div className="absolute top-4 right-4 z-10">
+                            <div
+                                className={cn(
+                                    "absolute z-[1]",
+                                    getResponsiveClass(
+                                        responsiveStyles.badgePadding
+                                    ).paddingClass
+                                )}
+                                style={{ top: 5, right: 5 }}
+                            >
                                 <div
-                                    className="px-3 py-1 rounded-full text-white font-bold text-xs flex items-center gap-1"
+                                    className={cn(
+                                        "rounded-full text-white font-bold flex items-center",
+                                        getResponsiveClass(
+                                            responsiveStyles.badgeTextSize
+                                        ).textClass,
+                                        getResponsiveClass(
+                                            responsiveStyles.badgePadding
+                                        ).paddingClass,
+                                        getResponsiveClass(5).gapClass
+                                    )}
                                     style={{
                                         background: tierInfo.gradient,
                                     }}
                                 >
                                     {tierInfo.tier >= 4 && (
-                                        <Crown className="w-3 h-3" />
+                                        <Crown
+                                            className={cn(
+                                                getResponsiveClass(10)
+                                                    .frameClass
+                                            )}
+                                        />
                                     )}
                                     {tierInfo.name}
                                 </div>
                             </div>
                         )}
 
-                        {/* 메인 콘텐츠 - 항상 보이게 */}
-                        <div className="text-center z-10">
-                            {/* 상품 이미지 */}
+                        {/* 🚀 반응형 최적화: 메인 콘텐츠 */}
+                        <div
+                            className={cn(
+                                "text-center z-[1]",
+                                getResponsiveClass(
+                                    responsiveStyles.containerGap
+                                ).gapClass
+                            )}
+                        >
+                            {/* 🚀 반응형 최적화: 상품 이미지 */}
                             <div
                                 className={cn(
-                                    "mb-4 mx-auto relative",
-                                    getResponsiveClass(70).frameClass
+                                    "mx-auto relative",
+                                    getResponsiveClass(
+                                        responsiveStyles.imageSize
+                                    ).frameClass,
+                                    getResponsiveClass(
+                                        responsiveStyles.elementGap
+                                    ).marginYClass
                                 )}
                             >
                                 {prize.prizeType === "NFT" ? (
@@ -623,7 +1002,7 @@ export default memo(function RaffleScratchCard({
                                                 padding: "2px",
                                             }}
                                         />
-                                        <div className="relative w-full h-full rounded-xl overflow-hidden bg-black">
+                                        <div className="relative w-full h-full overflow-hidden bg-black">
                                             {prize.spg?.imageUrl ||
                                             prize.spg?.metadata?.image ? (
                                                 <Image
@@ -635,12 +1014,16 @@ export default memo(function RaffleScratchCard({
                                                     }
                                                     alt={prize.title}
                                                     fill
-                                                    className="object-cover"
+                                                    className="object-contain"
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center">
                                                     <Gem
-                                                        className="w-8 h-8"
+                                                        className={cn(
+                                                            getResponsiveClass(
+                                                                responsiveStyles.titleSize
+                                                            ).frameClass
+                                                        )}
                                                         style={{
                                                             color: tierInfo?.glow,
                                                         }}
@@ -651,30 +1034,42 @@ export default memo(function RaffleScratchCard({
                                     </div>
                                 ) : (
                                     <div
-                                        className="w-full h-full rounded-xl border-2 flex items-center justify-center p-3"
+                                        className="w-full h-full rounded-xl border-2 flex items-center justify-center p-2"
                                         style={{
                                             borderColor:
-                                                tierInfo?.borderColor ||
+                                                dynamicStyles.borderColor ||
                                                 "rgba(168,85,247,0.3)",
                                             background: tierInfo
-                                                ? tierInfo.gradient
+                                                ? dynamicStyles.gradient
                                                 : "linear-gradient(135deg, rgba(168,85,247,0.1), rgba(59,130,246,0.1))",
                                         }}
                                     >
                                         {prize.asset?.iconUrl ? (
-                                            <Image
-                                                src={prize.asset.iconUrl}
-                                                alt={prize.title}
-                                                width={60}
-                                                height={60}
-                                                className="object-contain"
-                                                quality={100}
-                                                priority={true}
-                                                unoptimized={false}
-                                            />
+                                            <div
+                                                className={cn(
+                                                    "relative",
+                                                    getResponsiveClass(
+                                                        responsiveStyles.imageSize
+                                                    ).frameClass
+                                                )}
+                                            >
+                                                <Image
+                                                    src={prize.asset.iconUrl}
+                                                    alt={prize.title}
+                                                    fill
+                                                    className="object-contain"
+                                                    quality={100}
+                                                    priority={true}
+                                                    unoptimized={false}
+                                                />
+                                            </div>
                                         ) : (
                                             <Star
-                                                className="w-8 h-8"
+                                                className={cn(
+                                                    getResponsiveClass(
+                                                        responsiveStyles.imageSize
+                                                    ).frameClass
+                                                )}
                                                 style={{
                                                     color: tierInfo?.glow,
                                                 }}
@@ -684,38 +1079,72 @@ export default memo(function RaffleScratchCard({
                                 )}
                             </div>
 
-                            {/* 상품 정보 */}
+                            {/* 🚀 반응형 최적화: 상품 정보 */}
                             <h3
-                                className="font-bold text-white mb-2 text-center drop-shadow-lg"
-                                style={{ fontSize: `${sizes.title}px` }}
+                                className={cn(
+                                    "font-bold text-white text-center drop-shadow-lg",
+                                    getResponsiveClass(
+                                        responsiveStyles.titleSize
+                                    ).textClass,
+                                    getResponsiveClass(
+                                        responsiveStyles.elementGap
+                                    ).marginYClass
+                                )}
                             >
                                 {prize.title}
                             </h3>
 
-                            {/* 축하 메시지 */}
-                            <div className="flex items-center justify-center gap-2">
-                                <Sparkles className="w-4 h-4 text-yellow-300" />
+                            {/* 🚀 반응형 최적화: 축하 메시지 */}
+                            <div
+                                className={cn(
+                                    "flex items-center justify-center",
+                                    getResponsiveClass(
+                                        responsiveStyles.elementGap
+                                    ).gapClass
+                                )}
+                            >
+                                <Sparkles
+                                    className={cn(
+                                        "text-yellow-300",
+                                        getResponsiveClass(15).frameClass
+                                    )}
+                                />
                                 <p
-                                    className="text-white font-medium drop-shadow-lg"
-                                    style={{ fontSize: `${sizes.subtitle}px` }}
+                                    className={cn(
+                                        "text-white font-medium drop-shadow-lg",
+                                        getResponsiveClass(
+                                            responsiveStyles.subtitleSize
+                                        ).textClass
+                                    )}
                                 >
                                     Congratulations!
                                 </p>
-                                <Sparkles className="w-4 h-4 text-yellow-300" />
+                                <Sparkles
+                                    className={cn(
+                                        "text-yellow-300",
+                                        getResponsiveClass(15).frameClass
+                                    )}
+                                />
                             </div>
                         </div>
                     </div>
                 </CustomScratchCard>
             </motion.div>
 
-            {/* Skip 버튼 */}
+            {/* 🚀 반응형 최적화: Skip 버튼 */}
             <button
                 onClick={handleSkipClick}
                 className={cn(
-                    "mt-2 text-sm text-white/70 hover:text-white transition-all duration-300",
+                    "text-white/70 hover:text-white transition-all duration-300",
                     "transition-opacity duration-500",
+                    getResponsiveClass(responsiveStyles.subtitleSize).textClass,
+                    getResponsiveClass(responsiveStyles.elementGap)
+                        .marginYClass,
+                    getResponsiveClass(10).paddingClass,
+                    // React 상태로 표시 조건 관리
                     isComplete ? "opacity-0 pointer-events-none" : "opacity-100"
                 )}
+                disabled={isComplete}
             >
                 Reveal!
             </button>

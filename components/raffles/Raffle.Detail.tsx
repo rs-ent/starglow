@@ -218,6 +218,23 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
     const isLive = raffleStatus === "ACTIVE";
     const isUpcoming = raffleStatus === "UPCOMING";
 
+    // onReveal 콜백을 컴포넌트 최상위에서 정의 (Hook 순서 유지)
+    const handleScratchReveal = useCallback(() => {
+        setScratchRevealed(true);
+
+        if (toastShown) return;
+        setToastShown(true);
+
+        const prizeTitle = scratchResult?.prize?.title;
+        setTimeout(() => {
+            if (prizeTitle) {
+                toast.success(`🎊 Congratulations! You won ${prizeTitle}!`);
+            } else {
+                toast.info("Better luck next time! Keep trying!");
+            }
+        }, 500);
+    }, [toastShown, scratchResult?.prize?.title, toast]);
+
     if (isRaffleLoading) {
         return <RaffleDetailSkeleton />;
     }
@@ -273,24 +290,7 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
                             >
                                 <RaffleScratchCard
                                     prize={scratchResult?.prize || null}
-                                    onReveal={() => {
-                                        setScratchRevealed(true);
-
-                                        if (toastShown) return;
-                                        setToastShown(true);
-
-                                        setTimeout(() => {
-                                            if (scratchResult?.prize) {
-                                                toast.success(
-                                                    `🎊 Congratulations! You won ${scratchResult.prize.title}!`
-                                                );
-                                            } else {
-                                                toast.info(
-                                                    "Better luck next time! Keep trying!"
-                                                );
-                                            }
-                                        }, 500);
-                                    }}
+                                    onReveal={handleScratchReveal}
                                     cardSize={scratchCardSize}
                                     className="mx-auto"
                                 />
