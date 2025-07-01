@@ -115,9 +115,8 @@ web3/contracts/
 
 ### Escrow Wallet System (Enhance WEB2 UX)
 
-**Problem**: WEB2 users avoid blockchain services due to gas fee complexity and crypto wallet requirements.
-
-**Solution**: Starglow's dual-mode Escrow Wallet system handles both purchases and P2P trading.
+> **Problem**: WEB2 users avoid blockchain services due to gas fee complexity and crypto wallet requirements.
+> **Solution**: Starglow's dual-mode Escrow Wallet system handles both purchases and P2P trading.
 
 #### Scenario 1: NFT Purchase (Platform → User) **[Production Ready]**
 
