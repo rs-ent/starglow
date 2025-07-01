@@ -126,8 +126,8 @@ sequenceDiagram
     participant WEB2_User as "WEB2 User"
     participant Frontend as "Starglow Frontend"
     participant EscrowWallet as "Escrow Wallet"
-    participant NFTContract as "SPG NFT Contract"
-    participant Blockchain as "Berachain"
+    participant NFTContract as "NFT Contract"
+    participant Blockchain as "Blockhain Network"
 
     WEB2_User->>Frontend: "Buy NFT (Fiat Payment)"
     Note over WEB2_User: "No Crypto Knowledge<br/>Required"
@@ -148,7 +148,7 @@ sequenceDiagram
     participant UserA as "User A (Seller)"
     participant Frontend as "Starglow Frontend"
     participant EscrowWallet as "Escrow Wallet"
-    participant NFTContract as "SPG NFT Contract"
+    participant NFTContract as "NFT Contract"
     participant UserB as "User B (Buyer)"
 
     UserA->>Frontend: "List NFT for Sale"
