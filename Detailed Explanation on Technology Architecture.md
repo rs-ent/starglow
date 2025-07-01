@@ -20,7 +20,6 @@
 
 ### State Management
 
-- **Zustand 5.0.3** - Client-side state management
 - **TanStack Query 5.71.5** - Server state synchronization and caching
 
 ### Database & ORM
@@ -86,7 +85,7 @@ app/
 ### Key Design Principles
 
 - **Server Actions**: Next.js 15 native server functions with type safety
-- **Query Management**: Centralized caching with 1071-line query key system
+- **Query Management**: Centralized caching with query key system
 - **Type Safety**: Full TypeScript coverage across database-to-UI
 - **Separation of Concerns**: Clear data flow from server to client
 - **Performance**: Strategic cache times based on data volatility
@@ -97,6 +96,18 @@ app/
 
 - **Multi-chain Support**: Flexible architecture for network migration
 - **Smart Contract Stack**: Solidity + Hardhat with TypeScript type generation
+
+### Private Key Security Architecture
+
+> **Implementation**: Permanently deletes all key fragments from both storage locations upon backup confirmation.
+
+- **Split-Key Storage**: Private keys split into two encrypted fragments stored separately - Database (Part 1) + Vercel Blob (Part 2). Immediate deletion after user backup confirmation.
+
+- **Security Features**
+  - **Hidden Algorithm**: Encryption method stored in environment variables
+  - **Unique Nonce**: Each fragment encrypted with cryptographically secure random nonce
+  - **Hash Verification**: SHA-256 integrity checks prevent tampering
+  - **Session-Based Access**: Requires active user session for decryption
 
 ### Token Bound Accounts (TBA)
 
@@ -116,56 +127,54 @@ web3/contracts/
 
 ### Escrow Wallet System (Enhance WEB2 UX)
 
-**Problem**: WEB2 users avoid blockchain services due to gas fee complexity and crypto wallet requirements.
-
-**Solution**: Starglow's dual-mode Escrow Wallet system handles both purchases and P2P trading.
+> **Problem**: WEB2 users avoid blockchain services due to gas fee complexity and crypto wallet requirements.<br />**Solution**: Starglow's dual-mode Escrow Wallet system handles both purchases and P2P trading.
 
 #### Scenario 1: NFT Purchase (Platform → User) **[Production Ready]**
 
 ```mermaid
 sequenceDiagram
-    participant WEB2_User as "WEB2 User"
-    participant Frontend as "Starglow Frontend"
-    participant EscrowWallet as "Escrow Wallet"
-    participant NFTContract as "SPG NFT Contract"
-    participant Blockchain as "Berachain"
+    participant WEB2_User as WEB2 User
+    participant Frontend as Starglow Frontend
+    participant EscrowWallet as Escrow Wallet
+    participant NFTContract as NFT Contract
+    participant Blockchain as Blockhain Network
 
-    WEB2_User->>Frontend: "Buy NFT (Fiat Payment)"
-    Note over WEB2_User: "No Crypto Knowledge<br/>Required"
+    WEB2_User->>Frontend: Buy NFT (Fiat Payment)
+    Note over WEB2_User: No Crypto Knowledge<br/>Required
 
-    Frontend->>EscrowWallet: "Execute Transfer Request<br/>(Payment Confirmed)"
-    EscrowWallet->>EscrowWallet: "Generate EIP-712 Signature<br/>(Platform's NFT)"
+    Frontend->>EscrowWallet: Execute Transfer Request<br/>(Payment Confirmed)
+    EscrowWallet->>EscrowWallet: Generate EIP-712 Signature<br/>(Platform's NFT)
 
-    EscrowWallet->>NFTContract: "escrowTransferBatch()<br/>(Pays Gas + Signature)"
-    NFTContract->>Blockchain: "Transfer NFT to User"
+    EscrowWallet->>NFTContract: escrowTransferBatch()<br/>(Pays Gas + Signature)
+    NFTContract->>Blockchain: Transfer NFT to User
 
-    Blockchain->>WEB2_User: "NFT Received<br/>(Completely Gas-free)"
+    Blockchain->>WEB2_User: NFT Received<br/>(Completely Gas-free)
 ```
 
 #### Scenario 2: User-to-User Trading (Secure P2P) **[In Development]**
 
 ```mermaid
 sequenceDiagram
-    participant UserA as "User A (Seller)"
-    participant Frontend as "Starglow Frontend"
-    participant EscrowWallet as "Escrow Wallet"
-    participant NFTContract as "SPG NFT Contract"
-    participant UserB as "User B (Buyer)"
+    participant UserA as User A (Seller)
+    participant Frontend as Starglow Frontend
+    participant EscrowWallet as Escrow Wallet
+    participant NFTContract as NFT Contract
+    participant UserB as User B (Buyer)
 
-    UserA->>Frontend: "List NFT for Sale"
-    UserB->>Frontend: "Purchase NFT (Fiat Payment)"
-    Frontend->>UserA: "Sign Transfer Permission<br/>(EIP-712 Signature)"
+    UserA->>Frontend: List NFT for Sale
+    UserB->>Frontend: Purchase NFT (Fiat Payment)
+    Frontend->>UserA: Sign Transfer Permission<br/>(EIP-712 Signature)
 
-    UserA->>Frontend: "Signature (Authorizes Escrow)"
-    Frontend->>EscrowWallet: "Execute Transfer<br/>(User Permission + Payment)"
+    UserA->>Frontend: Signature (Authorizes Escrow)
+    Frontend->>EscrowWallet: Execute Transfer<br/>(User Permission + Payment)
 
-    EscrowWallet->>NFTContract: "escrowTransferBatch()<br/>(User's Signature + Gas)"
-    NFTContract->>NFTContract: "Verify User A Signature"
-    NFTContract->>UserB: "Transfer NFT"
+    EscrowWallet->>NFTContract: escrowTransferBatch()<br/>(User's Signature + Gas)
+    NFTContract->>NFTContract: Verify User A Signature
+    NFTContract->>UserB: Transfer NFT
 
-    Note over EscrowWallet: "Pays Gas for User A"
-    Note over UserA: "Secure: Must Sign Permission"
-    Note over UserB: "Gas-free Purchase"
+    Note over EscrowWallet: Pays Gas for User A
+    Note over UserA: Secure: Must Sign Permission
+    Note over UserB: Gas-free Purchase
 ```
 
 #### Technical Implementation
@@ -185,19 +194,6 @@ sequenceDiagram
 - **P2P Trading** [Development]: Secure user authorization + gas-free execution
 - **Market Innovation**: First platform to eliminate gas fees while maintaining security
 - **Mainstream Adoption**: Removes all WEB3 friction for both buying and trading
-
-### Private Key Security Architecture
-
-**Split-Key Storage**: Private keys split into two encrypted fragments stored separately - Database (Part 1) + Vercel Blob (Part 2). Immediate deletion after user backup confirmation.
-
-#### Security Features
-
-- **Hidden Algorithm**: Encryption method stored in environment variables
-- **Unique Nonce**: Each fragment encrypted with cryptographically secure random nonce
-- **Hash Verification**: SHA-256 integrity checks prevent tampering
-- **Session-Based Access**: Requires active user session for decryption
-
-**Implementation**: Permanently deletes all key fragments from both storage locations upon backup confirmation.
 
 ## Telegram Mini App Optimization
 
