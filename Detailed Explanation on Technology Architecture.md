@@ -86,7 +86,7 @@ app/
 ### Key Design Principles
 
 - **Server Actions**: Next.js 15 native server functions with type safety
-- **Query Management**: Centralized caching with 1071-line query key system
+- **Query Management**: Centralized caching with query key system
 - **Type Safety**: Full TypeScript coverage across database-to-UI
 - **Separation of Concerns**: Clear data flow from server to client
 - **Performance**: Strategic cache times based on data volatility
