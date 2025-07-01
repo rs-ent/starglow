@@ -123,7 +123,7 @@ web3/contracts/
 
 ```mermaid
 sequenceDiagram
-    participant WEB2_User as "WEB2 User"
+    participant WEB2_User as WEB2 User
     participant Frontend as "Starglow Frontend"
     participant EscrowWallet as "Escrow Wallet"
     participant NFTContract as "NFT Contract"
