@@ -97,18 +97,6 @@ app/
 - **Multi-chain Support**: Flexible architecture for network migration
 - **Smart Contract Stack**: Solidity + Hardhat with TypeScript type generation
 
-### Private Key Security Architecture
-
-> **Implementation**: Permanently deletes all key fragments from both storage locations upon backup confirmation.
-
-- **Split-Key Storage**: Private keys split into two encrypted fragments stored separately - Database (Part 1) + Vercel Blob (Part 2). Immediate deletion after user backup confirmation.
-
-- **Security Features**
-  - **Hidden Algorithm**: Encryption method stored in environment variables
-  - **Unique Nonce**: Each fragment encrypted with cryptographically secure random nonce
-  - **Hash Verification**: SHA-256 integrity checks prevent tampering
-  - **Session-Based Access**: Requires active user session for decryption
-
 ### Token Bound Accounts (TBA)
 
 - **ERC6551 Standard**: Each NFT automatically owns a dedicated smart wallet
