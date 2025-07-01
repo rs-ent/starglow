@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "./Collection.sol";
+import "./Collection-deprecated.sol";
 
 contract CollectionFactory is OwnableUpgradeable {
     address[] public collections;
