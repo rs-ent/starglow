@@ -12,6 +12,7 @@ import Providers from "./Providers";
 
 import Loading from "@/components/atoms/Loading";
 import Navigation from "@/components/navigation/Navigation";
+import GlobalNotificationManager from "@/components/notifications/GlobalNotificationManager";
 
 export const metadata: Metadata = {
     // 기본 메타데이터
@@ -163,6 +164,7 @@ export default function RootLayout({
                     <SpeedInsights />
                     <Analytics />
                     <Navigation />
+                    <GlobalNotificationManager />
                     {children}
                 </Providers>
             </body>

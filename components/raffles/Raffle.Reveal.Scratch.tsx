@@ -8,8 +8,9 @@ import { Star, Sparkles, Gem, Crown } from "lucide-react";
 import Image from "next/image";
 import confetti from "canvas-confetti";
 
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { tierMap } from "./raffle-tier";
 
 interface Prize {
     id: string;
@@ -60,38 +61,56 @@ const CustomScratchCard = memo(function CustomScratchCard({
     const [isComplete, setIsComplete] = useState(false);
     const [canvasOpacity, setCanvasOpacity] = useState(1);
 
+    // 성능 최적화를 위한 ref들
+    const contextRef = useRef<CanvasRenderingContext2D | null>(null);
+    const lastCheckTime = useRef(0);
+    const scratchedPixels = useRef(0);
+    const totalPixels = useRef(0);
+
     useEffect(() => {
         const canvas = canvasRef.current;
-        const ctx = canvas?.getContext("2d", {
-            // 모바일 성능 최적화 옵션
+        if (!canvas) return;
+
+        const ctx = canvas.getContext("2d", {
             alpha: true,
             desynchronized: true,
-            willReadFrequently: false,
+            willReadFrequently: true, // 픽셀 검사를 위해 true로 변경
         });
 
-        if (canvas && ctx) {
+        if (ctx) {
+            contextRef.current = ctx;
+
             // 고해상도 디스플레이 대응
             const dpr = window.devicePixelRatio || 1;
-
             canvas.width = width * dpr;
             canvas.height = height * dpr;
+            totalPixels.current = canvas.width * canvas.height;
+
             ctx.scale(dpr, dpr);
 
-            // 스크래치 레이어를 완전히 불투명하게 만들어 아래 내용을 완전히 가림
-            ctx.fillStyle = scratchColor;
-            ctx.fillRect(0, 0, width, height);
+            // 색상 유효성 검증 및 기본값 설정
+            const validScratchColor = scratchColor || "#C0C0C0";
 
-            // 그라디언트로 더 매력적인 스크래치 표면 만들기
+            // 초기 스크래치 레이어 그리기
             const gradient = ctx.createLinearGradient(0, 0, width, height);
-            gradient.addColorStop(0, scratchColor);
-            gradient.addColorStop(0.5, "#E5E7EB");
-            gradient.addColorStop(1, scratchColor);
-            ctx.fillStyle = gradient;
+            try {
+                gradient.addColorStop(0, validScratchColor);
+                gradient.addColorStop(0.5, "#E5E7EB");
+                gradient.addColorStop(1, validScratchColor);
+                ctx.fillStyle = gradient;
+            } catch (error) {
+                // 그라디언트 생성 실패 시 단일 색상 사용
+                console.warn(
+                    "Gradient creation failed, using solid color:",
+                    error
+                );
+                ctx.fillStyle = "#C0C0C0";
+            }
             ctx.fillRect(0, 0, width, height);
 
-            // 스크래치 힌트 텍스트 추가 (반응형 폰트 크기)
+            // 스크래치 힌트 텍스트
             ctx.fillStyle = "#4B5563";
-            const fontSize = Math.max(12, Math.min(16, width * 0.05)); // 카드 크기에 따른 폰트 크기
+            const fontSize = Math.max(12, Math.min(16, width * 0.05));
             ctx.font = `bold ${fontSize}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
@@ -99,88 +118,87 @@ const CustomScratchCard = memo(function CustomScratchCard({
         }
     }, [width, height, scratchColor]);
 
+    // 성능 최적화된 스크래치 함수
     const scratch = useCallback(
         (clientX: number, clientY: number) => {
             const canvas = canvasRef.current;
-            const ctx = canvas?.getContext("2d");
-            if (canvas && ctx && !isComplete) {
-                const rect = canvas.getBoundingClientRect();
-                const dpr = window.devicePixelRatio || 1;
+            const ctx = contextRef.current;
 
-                // 고해상도 디스플레이를 고려한 좌표 계산
-                const scaleX = canvas.width / dpr / rect.width;
-                const scaleY = canvas.height / dpr / rect.height;
+            if (!canvas || !ctx || isComplete) return;
 
-                const x = (clientX - rect.left) * scaleX;
-                const y = (clientY - rect.top) * scaleY;
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            const scaleX = canvas.width / dpr / rect.width;
+            const scaleY = canvas.height / dpr / rect.height;
 
-                ctx.globalCompositeOperation = "destination-out";
-                ctx.beginPath();
-                // 모바일에서 더 부드러운 스크래치를 위해 크기 조정
-                const brushSize = window.innerWidth < 768 ? 25 : 50;
-                ctx.arc(x, y, brushSize, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            const x = (clientX - rect.left) * scaleX;
+            const y = (clientY - rect.top) * scaleY;
+
+            ctx.globalCompositeOperation = "destination-out";
+            ctx.beginPath();
+            const brushSize = window.innerWidth < 768 ? 25 : 50;
+            ctx.arc(x, y, brushSize, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 스크래치된 픽셀 수 추정 (정확한 계산 대신 근사값 사용)
+            const brushArea = Math.PI * brushSize * brushSize;
+            scratchedPixels.current += brushArea;
         },
         [isComplete]
     );
 
+    // 성능 최적화된 완료 검사 (throttling 적용)
     const checkCompletion = useCallback(() => {
         if (isComplete) return;
 
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext("2d");
-        if (canvas && ctx) {
-            const imageData = ctx.getImageData(
-                0,
-                0,
-                canvas.width,
-                canvas.height
-            );
-            const pixels = imageData.data;
-            let transparentPixels = 0;
+        const now = Date.now();
+        // 300ms마다만 검사 (기존보다 빈도 감소)
+        if (now - lastCheckTime.current < 300) return;
+        lastCheckTime.current = now;
 
-            for (let i = 3; i < pixels.length; i += 4) {
-                if (pixels[i] < 128) transparentPixels++;
+        const canvas = canvasRef.current;
+        const ctx = contextRef.current;
+
+        if (!canvas || !ctx) return;
+
+        // 전체 픽셀 검사 대신 샘플링 방식 사용
+        const sampleSize = 100; // 100개 포인트만 샘플링
+        const step = Math.floor(Math.sqrt(totalPixels.current / sampleSize));
+        let transparentCount = 0;
+        let totalSamples = 0;
+
+        try {
+            // 샘플링으로 투명도 검사
+            for (let y = 0; y < canvas.height; y += step) {
+                for (let x = 0; x < canvas.width; x += step) {
+                    const pixel = ctx.getImageData(x, y, 1, 1).data;
+                    if (pixel[3] < 128) transparentCount++;
+                    totalSamples++;
+                }
             }
 
-            const totalPixels = canvas.width * canvas.height;
-            const scratchPercentage = (transparentPixels / totalPixels) * 100;
+            const scratchPercentage = (transparentCount / totalSamples) * 100;
 
             if (scratchPercentage > 50) {
                 setIsComplete(true);
 
-                // 부드러운 fadeOut 애니메이션 (CSS opacity 사용)
-                let alpha = 1;
-                const fadeStep = 0.045; // 페이드 속도 조절 (더 빠르게)
-
+                // 최적화된 페이드 아웃
                 const fadeOut = () => {
-                    alpha -= fadeStep;
-
-                    if (alpha <= 0) {
-                        // 완전히 투명해지면 캔버스 완전 제거
-                        setCanvasOpacity(0);
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        if (onComplete) {
-                            setTimeout(onComplete, 100);
-                        }
-                        return;
+                    setCanvasOpacity(0);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    if (onComplete) {
+                        setTimeout(onComplete, 100);
                     }
-
-                    // CSS opacity 조절
-                    setCanvasOpacity(alpha);
-
-                    // 다음 프레임에서 계속 페이드
-                    requestAnimationFrame(fadeOut);
                 };
 
-                // 페이드아웃 시작
-                fadeOut();
+                requestAnimationFrame(fadeOut);
             }
+        } catch (error) {
+            console.warn("Scratch completion check failed:", error);
         }
     }, [isComplete, onComplete]);
 
-    // 마우스 이벤트
+    // 이벤트 핸들러들 (최적화)
     const handleMouseDown = useCallback(
         (e: React.MouseEvent) => {
             e.preventDefault();
@@ -190,7 +208,6 @@ const CustomScratchCard = memo(function CustomScratchCard({
         [scratch]
     );
 
-    // 터치 이벤트
     const handleTouchStart = useCallback(
         (e: React.TouchEvent) => {
             e.preventDefault();
@@ -201,83 +218,74 @@ const CustomScratchCard = memo(function CustomScratchCard({
         [scratch]
     );
 
-    // 전역 이벤트 리스너로 자연스러운 드래그 지원
+    // 전역 이벤트 리스너 최적화
     useEffect(() => {
-        const handleGlobalMouseMove = (e: MouseEvent) => {
-            if (isScratching) {
-                scratch(e.clientX, e.clientY);
-                checkCompletion();
-            }
+        if (!isScratching) return;
+
+        let animationId: number;
+        let lastMoveTime = 0;
+        const throttleMs = 16; // 60fps 제한
+
+        const handleMove = (clientX: number, clientY: number) => {
+            const now = Date.now();
+            if (now - lastMoveTime < throttleMs) return;
+            lastMoveTime = now;
+
+            scratch(clientX, clientY);
+
+            // requestAnimationFrame으로 completion 체크 최적화
+            if (animationId) cancelAnimationFrame(animationId);
+            animationId = requestAnimationFrame(checkCompletion);
         };
 
-        const handleGlobalMouseUp = () => {
-            setIsScratching(false);
-        };
-
-        const handleGlobalTouchMove = (e: TouchEvent) => {
-            if (isScratching && e.touches.length > 0) {
+        const handleMouseMove = (e: MouseEvent) =>
+            handleMove(e.clientX, e.clientY);
+        const handleTouchMove = (e: TouchEvent) => {
+            if (e.touches.length > 0) {
                 e.preventDefault();
                 const touch = e.touches[0];
-                scratch(touch.clientX, touch.clientY);
-                checkCompletion();
+                handleMove(touch.clientX, touch.clientY);
             }
         };
 
-        const handleGlobalTouchEnd = () => {
-            setIsScratching(false);
-        };
+        const handleEnd = () => setIsScratching(false);
 
-        if (isScratching) {
-            document.addEventListener("mousemove", handleGlobalMouseMove);
-            document.addEventListener("mouseup", handleGlobalMouseUp);
-            document.addEventListener("touchmove", handleGlobalTouchMove, {
-                passive: false,
-            });
-            document.addEventListener("touchend", handleGlobalTouchEnd);
-        }
+        document.addEventListener("mousemove", handleMouseMove, {
+            passive: false,
+        });
+        document.addEventListener("mouseup", handleEnd);
+        document.addEventListener("touchmove", handleTouchMove, {
+            passive: false,
+        });
+        document.addEventListener("touchend", handleEnd);
 
         return () => {
-            document.removeEventListener("mousemove", handleGlobalMouseMove);
-            document.removeEventListener("mouseup", handleGlobalMouseUp);
-            document.removeEventListener("touchmove", handleGlobalTouchMove);
-            document.removeEventListener("touchend", handleGlobalTouchEnd);
+            if (animationId) cancelAnimationFrame(animationId);
+            document.removeEventListener("mousemove", handleMouseMove);
+            document.removeEventListener("mouseup", handleEnd);
+            document.removeEventListener("touchmove", handleTouchMove);
+            document.removeEventListener("touchend", handleEnd);
         };
     }, [isScratching, scratch, checkCompletion]);
 
-    // 자동 reveal 함수
+    // 자동 reveal 함수 최적화
     const autoReveal = useCallback(() => {
         if (isComplete) return;
 
         setIsComplete(true);
+        setCanvasOpacity(0);
 
-        // 부드러운 fadeOut 애니메이션 (수동 스크래치와 동일)
-        let alpha = 1;
-        const fadeStep = 0.045;
+        const canvas = canvasRef.current;
+        const ctx = contextRef.current;
+        if (canvas && ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
 
-        const fadeOut = () => {
-            alpha -= fadeStep;
-
-            if (alpha <= 0) {
-                setCanvasOpacity(0);
-                const canvas = canvasRef.current;
-                const ctx = canvas?.getContext("2d");
-                if (canvas && ctx) {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                }
-                if (onComplete) {
-                    setTimeout(onComplete, 100);
-                }
-                return;
-            }
-
-            setCanvasOpacity(alpha);
-            requestAnimationFrame(fadeOut);
-        };
-
-        fadeOut();
+        if (onComplete) {
+            setTimeout(onComplete, 100);
+        }
     }, [isComplete, onComplete]);
 
-    // 부모 컴포넌트에 autoReveal 함수 전달
     useEffect(() => {
         if (onAutoReveal) {
             onAutoReveal(autoReveal);
@@ -286,106 +294,30 @@ const CustomScratchCard = memo(function CustomScratchCard({
 
     return (
         <div className="relative select-none" style={{ width, height }}>
-            {/* 결과 콘텐츠 (아래에 숨김) */}
             {children}
 
-            {/* 스크래치 레이어 (위에 덮음) */}
             <canvas
                 ref={canvasRef}
                 width={width}
                 height={height}
                 className={cn(
-                    "absolute top-0 left-0 cursor-crosshair rounded-2xl transition-opacity duration-75",
-                    // 모바일 터치 최적화
-                    "touch-manipulation select-none"
+                    "absolute top-0 left-0 cursor-crosshair rounded-2xl",
+                    "touch-manipulation select-none transition-opacity duration-200"
                 )}
                 style={{
                     touchAction: "none",
                     userSelect: "none",
-                    zIndex: 10, // 확실히 위에 오도록
+                    zIndex: 10,
                     opacity: canvasOpacity,
-                    // 모바일 렌더링 최적화
-                    WebkitBackfaceVisibility: "hidden",
-                    backfaceVisibility: "hidden",
-                    transform: "translateZ(0)",
+                    transform: "translateZ(0)", // GPU 가속
                     willChange: "opacity",
-                    // 고해상도 디스플레이 대응
-                    imageRendering: "pixelated",
                 }}
                 onMouseDown={handleMouseDown}
                 onTouchStart={handleTouchStart}
             />
-
-            <div
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer z-50"
-                style={{
-                    animation: "shimmer 2s infinite",
-                    background:
-                        "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
-                    transform: "translateX(-100%) skewX(-12deg)",
-                }}
-            />
         </div>
     );
 });
-
-// 티어별 색상 및 스타일 정의
-const getTierInfo = (order: number) => {
-    const tier = Math.floor(order / 10);
-
-    const tierMap = {
-        0: {
-            name: "COMMON",
-            gradient: ["#94A3B8", "#64748B", "#475569"],
-            glowColor: "rgba(148,163,184,0.6)",
-            borderColor: "rgba(148,163,184,0.4)",
-        },
-        1: {
-            name: "UNCOMMON",
-            gradient: ["#10B981", "#059669", "#047857"],
-            glowColor: "rgba(16,185,129,0.6)",
-            borderColor: "rgba(16,185,129,0.4)",
-        },
-        2: {
-            name: "RARE",
-            gradient: ["#3B82F6", "#2563EB", "#1D4ED8"],
-            glowColor: "rgba(59,130,246,0.6)",
-            borderColor: "rgba(59,130,246,0.4)",
-        },
-        3: {
-            name: "EPIC",
-            gradient: ["#8B5CF6", "#7C3AED", "#6D28D9"],
-            glowColor: "rgba(139,92,246,0.6)",
-            borderColor: "rgba(139,92,246,0.4)",
-        },
-        4: {
-            name: "LEGENDARY",
-            gradient: ["#F59E0B", "#D97706", "#B45309"],
-            glowColor: "rgba(245,158,11,0.6)",
-            borderColor: "rgba(245,158,11,0.4)",
-        },
-        5: {
-            name: "CELESTIAL",
-            gradient: ["#06B6D4", "#0891B2", "#0E7490"],
-            glowColor: "rgba(6,182,212,0.6)",
-            borderColor: "rgba(6,182,212,0.4)",
-        },
-        6: {
-            name: "STELLAR",
-            gradient: ["#EC4899", "#DB2777", "#BE185D"],
-            glowColor: "rgba(236,72,153,0.6)",
-            borderColor: "rgba(236,72,153,0.4)",
-        },
-        7: {
-            name: "COSMIC",
-            gradient: ["#EAB308", "#CA8A04", "#A16207"],
-            glowColor: "rgba(234,179,8,0.6)",
-            borderColor: "rgba(234,179,8,0.4)",
-        },
-    };
-
-    return tierMap[tier as keyof typeof tierMap] || tierMap[0];
-};
 
 export default memo(function RaffleScratchCard({
     prize,
@@ -396,64 +328,58 @@ export default memo(function RaffleScratchCard({
     const [isComplete, setIsComplete] = useState(false);
     const autoRevealRef = useRef<(() => void) | null>(null);
 
-    const { tierInfo, tier } = useMemo(() => {
-        const tierInfo = prize ? getTierInfo(prize.order) : null;
-        const tier = prize ? Math.floor(prize.order / 10) : 0;
-        return { tierInfo, tier };
+    // 티어 정보 최적화 (계산 최소화)
+    const tierInfo = useMemo(() => {
+        if (!prize) return null;
+
+        const tier = Math.floor(prize.order / 10);
+        const tierData = tierMap[tier as keyof typeof tierMap] || tierMap[0];
+        return {
+            ...tierData,
+            tier,
+            gradient: `linear-gradient(135deg, ${tierData.colors[0]}, ${tierData.colors[1]})`,
+            gradientCover: `linear-gradient(135deg, ${tierData.colorsCover[0]}, ${tierData.colorsCover[1]})`,
+            borderColor: `${tierData.colors[0]}40`,
+        };
     }, [prize]);
 
-    // 카드 크기에 따른 반응형 스케일 계산
-    const scale = useMemo(() => {
-        const baseWidth = 300; // 기본 카드 너비
-        return cardSize.width / baseWidth;
+    // 반응형 크기 최적화 (단순화)
+    const sizes = useMemo(() => {
+        const baseScale = Math.min(Math.max(cardSize.width / 300, 0.8), 1.5);
+        return {
+            title: Math.round(18 * baseScale),
+            subtitle: Math.round(14 * baseScale),
+            icon: Math.round(40 * baseScale),
+        };
     }, [cardSize.width]);
 
-    // 스케일에 따른 텍스트와 아이콘 크기 계산
-    const responsiveSize = useMemo(() => {
-        const baseScale = Math.min(Math.max(scale, 0.8), 1.5); // 0.8 ~ 1.5 사이로 제한
-
-        return {
-            titleText: Math.round(18 * baseScale),
-            subtitleText: Math.round(14 * baseScale),
-            hintText: Math.round(14 * baseScale),
-            iconSize: Math.round(40 * baseScale),
-            spacing: Math.round(16 * baseScale),
-        };
-    }, [scale]);
-
+    // 콘페티 핸들러 최적화
     const handleConfetti = useCallback(() => {
-        const defaults = {
-            particleCount: 60 * tier,
-            spread: 360,
-            ticks: 800,
-            decay: 0.96,
-            startVelocity: 20,
-            scalar: 1,
-            zIndex: 20,
-        };
+        if (!tierInfo) return;
 
-        const shoot = () => {
-            try {
-                confetti({
-                    ...defaults,
-                })?.catch((error) => {
-                    console.error("Failed to shoot confetti:", error);
-                });
-            } catch (error) {
-                console.error("Failed to shoot confetti:", error);
-            }
-        };
+        const particleCount = 15 * (tierInfo.tier * 4 + 1);
 
-        shoot();
-    }, [tier]);
+        try {
+            confetti({
+                particleCount,
+                spread: 360,
+                ticks: 800,
+                decay: 0.96,
+                startVelocity: 20,
+                zIndex: 3000,
+            })?.catch((error) => {
+                console.warn("Confetti failed:", error);
+            });
+        } catch (error) {
+            console.warn("Confetti failed:", error);
+        }
+    }, [tierInfo]);
 
     const handleRevealComplete = useCallback(() => {
         setIsComplete(true);
         if (onReveal) {
             handleConfetti();
-            setTimeout(() => {
-                onReveal();
-            }, 500);
+            setTimeout(onReveal, 500);
         }
     }, [onReveal, handleConfetti]);
 
@@ -499,8 +425,8 @@ export default memo(function RaffleScratchCard({
                             <div className="text-center">
                                 <div
                                     style={{
-                                        fontSize: `${responsiveSize.iconSize}px`,
-                                        marginBottom: `${responsiveSize.spacing}px`,
+                                        fontSize: `${sizes.icon}px`,
+                                        marginBottom: "16px",
                                     }}
                                 >
                                     😔
@@ -508,7 +434,7 @@ export default memo(function RaffleScratchCard({
                                 <h3
                                     className="font-bold text-gray-600 dark:text-gray-400 mb-2"
                                     style={{
-                                        fontSize: `${responsiveSize.titleText}px`,
+                                        fontSize: `${sizes.title}px`,
                                     }}
                                 >
                                     Better Luck Next Time
@@ -516,7 +442,7 @@ export default memo(function RaffleScratchCard({
                                 <p
                                     className="text-gray-500 dark:text-gray-500"
                                     style={{
-                                        fontSize: `${responsiveSize.subtitleText}px`,
+                                        fontSize: `${sizes.subtitle}px`,
                                     }}
                                 >
                                     Try again!
@@ -562,7 +488,7 @@ export default memo(function RaffleScratchCard({
                     width: cardSize.width,
                     height: cardSize.height,
                     boxShadow: tierInfo
-                        ? `0 0px 80px ${tierInfo.glowColor}`
+                        ? `0 0px 80px ${tierInfo.glow}`
                         : undefined,
                 }}
             >
@@ -571,7 +497,7 @@ export default memo(function RaffleScratchCard({
                     height={cardSize.height}
                     onComplete={handleRevealComplete}
                     onAutoReveal={handleAutoReveal}
-                    scratchColor={tierInfo?.gradient[0] || "#A97CF8"}
+                    scratchColor={tierInfo?.gradientCover || "#A97CF8"}
                 >
                     <div
                         className={cn(
@@ -579,54 +505,80 @@ export default memo(function RaffleScratchCard({
                         )}
                         style={{
                             background: tierInfo
-                                ? `linear-gradient(135deg, ${tierInfo.gradient[0]}15, ${tierInfo.gradient[1]}15, ${tierInfo.gradient[2]}15)`
+                                ? tierInfo.gradient
                                 : "linear-gradient(135deg, rgba(167,139,250,0.1), rgba(243,140,184,0.1))",
                         }}
                     >
-                        {/* 배경 효과 - 항상 보이게 */}
-                        <div className="absolute inset-0 overflow-hidden rounded-2xl">
-                            {/* 반짝이는 파티클 효과 - 24개 고정 위치 */}
+                        {/* Holographic shimmer */}
+                        <div
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer"
+                            style={{
+                                animation: "shimmer 2s infinite",
+                                background:
+                                    "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+                                transform: "translateX(-100%) skewX(-12deg)",
+                                zIndex: 1000,
+                            }}
+                        />
+                        <div className="absolute inset-0 overflow-hidden opacity-50">
+                            {/* 자연스러운 별빛 파티클 효과 - 24개 */}
                             {[
-                                { top: "88%", left: "85%" },
-                                { top: "52%", left: "85%" },
-                                { top: "20%", left: "85%" },
-                                { top: "38%", left: "50%" },
-                                { top: "82%", left: "15%" },
-                                { top: "58%", left: "10%" },
-                                { top: "40%", left: "30%" },
-                                { top: "15%", left: "45%" },
-                                { top: "45%", left: "80%" },
-                                { top: "85%", left: "65%" },
-                                { top: "60%", left: "40%" },
-                                { top: "25%", left: "25%" },
-                                { top: "80%", left: "25%" },
-                                { top: "50%", left: "60%" },
-                                { top: "18%", left: "65%" },
-                                { top: "30%", left: "90%" },
-                                { top: "55%", left: "20%" },
-                                { top: "75%", left: "55%" },
-                                { top: "12%", left: "75%" },
-                                { top: "70%", left: "35%" },
-                                { top: "35%", left: "10%" },
-                                { top: "10%", left: "15%" },
-                                { top: "65%", left: "75%" },
-                                { top: "32%", left: "70%" },
+                                { top: "7%", left: "18%" },
+                                { top: "12%", left: "43%" },
+                                { top: "9%", left: "67%" },
+                                { top: "15%", left: "84%" },
+                                { top: "26%", left: "12%" },
+                                { top: "96%", left: "11%" },
+                                { top: "28%", left: "56%" },
+                                { top: "23%", left: "78%" },
+                                { top: "21%", left: "92%" },
+                                { top: "88%", left: "21%" },
+                                { top: "38%", left: "22%" },
+                                { top: "44%", left: "41%" },
+                                { top: "35%", left: "63%" },
+                                { top: "42%", left: "88%" },
+                                { top: "78%", left: "41%" },
+                                { top: "55%", left: "15%" },
+                                { top: "62%", left: "34%" },
+                                { top: "58%", left: "49%" },
+                                { top: "88%", left: "91%" },
+                                { top: "64%", left: "71%" },
+                                { top: "59%", left: "85%" },
+                                { top: "73%", left: "16%" },
+                                { top: "81%", left: "38%" },
+                                { top: "76%", left: "61%" },
+                                { top: "79%", left: "79%" },
+                                { top: "89%", left: "22%" },
+                                { top: "92%", left: "8%" },
                             ].map((position, i) => (
-                                <motion.div
+                                <div
                                     key={i}
-                                    className="absolute w-1 h-1 bg-[rgba(255,255,255,0.6)] rounded-full"
+                                    className="absolute bg-white/80 rounded-full animate-pulse"
                                     style={{
                                         top: position.top,
                                         left: position.left,
-                                    }}
-                                    animate={{
-                                        opacity: [0, 1, 0],
-                                        scale: [0, 0.7, 0],
-                                    }}
-                                    transition={{
-                                        duration: 2,
-                                        repeat: Infinity,
-                                        delay: i * 0.08, // 24개이므로 더 짧은 간격
+                                        width:
+                                            i % 4 === 0
+                                                ? "3px"
+                                                : i % 3 === 0
+                                                ? "2px"
+                                                : "1px",
+                                        height:
+                                            i % 4 === 0
+                                                ? "3px"
+                                                : i % 3 === 0
+                                                ? "2px"
+                                                : "1px",
+                                        animationDelay: `${
+                                            i * 0.08 + Math.random() * 0.5
+                                        }s`,
+                                        animationDuration: `${
+                                            1.2 + (i % 4) * 0.4
+                                        }s`,
+                                        boxShadow:
+                                            i % 4 === 0
+                                                ? "0 0 6px rgba(255,255,255,0.9)"
+                                                : "0 0 3px rgba(255,255,255,0.7)",
                                     }}
                                 />
                             ))}
@@ -638,10 +590,12 @@ export default memo(function RaffleScratchCard({
                                 <div
                                     className="px-3 py-1 rounded-full text-white font-bold text-xs flex items-center gap-1"
                                     style={{
-                                        background: `linear-gradient(135deg, ${tierInfo.gradient[0]}, ${tierInfo.gradient[1]})`,
+                                        background: tierInfo.gradient,
                                     }}
                                 >
-                                    {tier >= 4 && <Crown className="w-3 h-3" />}
+                                    {tierInfo.tier >= 4 && (
+                                        <Crown className="w-3 h-3" />
+                                    )}
                                     {tierInfo.name}
                                 </div>
                             </div>
@@ -664,7 +618,7 @@ export default memo(function RaffleScratchCard({
                                             style={{
                                                 animationDuration: "3s",
                                                 background: tierInfo
-                                                    ? `conic-gradient(from 0deg, ${tierInfo.gradient[0]}, ${tierInfo.gradient[1]}, ${tierInfo.gradient[2]}, ${tierInfo.gradient[0]})`
+                                                    ? `conic-gradient(from 0deg, ${tierInfo.gradient})`
                                                     : "conic-gradient(from 0deg, #a855f7, #3b82f6, #06b6d4, #10b981, #eab308, #ef4444, #a855f7)",
                                                 padding: "2px",
                                             }}
@@ -686,15 +640,9 @@ export default memo(function RaffleScratchCard({
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center">
                                                     <Gem
-                                                        className={cn(
-                                                            getResponsiveClass(
-                                                                40
-                                                            ).frameClass
-                                                        )}
+                                                        className="w-8 h-8"
                                                         style={{
-                                                            color:
-                                                                tierInfo?.glowColor ||
-                                                                "#A855F7",
+                                                            color: tierInfo?.glow,
                                                         }}
                                                     />
                                                 </div>
@@ -709,7 +657,7 @@ export default memo(function RaffleScratchCard({
                                                 tierInfo?.borderColor ||
                                                 "rgba(168,85,247,0.3)",
                                             background: tierInfo
-                                                ? `linear-gradient(135deg, ${tierInfo.gradient[0]}10, ${tierInfo.gradient[1]}10)`
+                                                ? tierInfo.gradient
                                                 : "linear-gradient(135deg, rgba(168,85,247,0.1), rgba(59,130,246,0.1))",
                                         }}
                                     >
@@ -717,27 +665,18 @@ export default memo(function RaffleScratchCard({
                                             <Image
                                                 src={prize.asset.iconUrl}
                                                 alt={prize.title}
-                                                width={1000}
-                                                height={1000}
-                                                className={cn(
-                                                    getResponsiveClass(70)
-                                                        .frameClass,
-                                                    "object-contain"
-                                                )}
+                                                width={60}
+                                                height={60}
+                                                className="object-contain"
                                                 quality={100}
                                                 priority={true}
                                                 unoptimized={false}
                                             />
                                         ) : (
                                             <Star
-                                                className={cn(
-                                                    getResponsiveClass(40)
-                                                        .frameClass
-                                                )}
+                                                className="w-8 h-8"
                                                 style={{
-                                                    color:
-                                                        tierInfo?.glowColor ||
-                                                        "#A855F7",
+                                                    color: tierInfo?.glow,
                                                 }}
                                             />
                                         )}
@@ -747,10 +686,8 @@ export default memo(function RaffleScratchCard({
 
                             {/* 상품 정보 */}
                             <h3
-                                className={cn(
-                                    "font-bold text-white mb-2 text-center drop-shadow-lg",
-                                    getResponsiveClass(30).textClass
-                                )}
+                                className="font-bold text-white mb-2 text-center drop-shadow-lg"
+                                style={{ fontSize: `${sizes.title}px` }}
                             >
                                 {prize.title}
                             </h3>
@@ -759,10 +696,8 @@ export default memo(function RaffleScratchCard({
                             <div className="flex items-center justify-center gap-2">
                                 <Sparkles className="w-4 h-4 text-yellow-300" />
                                 <p
-                                    className={cn(
-                                        "text-white font-medium drop-shadow-lg",
-                                        getResponsiveClass(20).textClass
-                                    )}
+                                    className="text-white font-medium drop-shadow-lg"
+                                    style={{ fontSize: `${sizes.subtitle}px` }}
                                 >
                                     Congratulations!
                                 </p>
@@ -777,12 +712,9 @@ export default memo(function RaffleScratchCard({
             <button
                 onClick={handleSkipClick}
                 className={cn(
-                    "mt-2",
+                    "mt-2 text-sm text-white/70 hover:text-white transition-all duration-300",
                     "transition-opacity duration-500",
-                    isComplete
-                        ? "opacity-0 pointer-events-none"
-                        : "opacity-100",
-                    getResponsiveClass(10).textClass
+                    isComplete ? "opacity-0 pointer-events-none" : "opacity-100"
                 )}
             >
                 Reveal!

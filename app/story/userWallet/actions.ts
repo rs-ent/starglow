@@ -8,9 +8,11 @@ import { verifyMessage } from "viem";
 
 import { prisma } from "@/lib/prisma/client";
 import { decryptPrivateKey, encryptPrivateKey } from "@/lib/utils/encryption";
+import { createNotification } from "@/app/actions/notification/actions";
 
 import type { Prisma, Wallet } from "@prisma/client";
 import type { Hex } from "viem";
+import { auth } from "@/app/auth/authSettings";
 
 export async function createWallet(userId: string) {
     try {
@@ -66,6 +68,8 @@ export async function createWallet(userId: string) {
             };
         });
 
+        await needToBackupWallet({ userId: userId });
+
         return result;
     } catch (error) {
         console.error("Error creating wallet", error);
@@ -82,6 +86,7 @@ export async function createWallet(userId: string) {
  */
 export async function getPrivateKey(address: string) {
     try {
+        const session = await auth();
         const wallet = await prisma.wallet.findUnique({
             where: { address },
             select: {
@@ -98,6 +103,10 @@ export async function getPrivateKey(address: string) {
 
         if (!wallet.privateKey || !wallet.keyHash || !wallet.nonce) {
             throw new Error("This wallet is not created by Starglow");
+        }
+
+        if (session?.user?.id !== wallet.userId) {
+            throw new Error("Not authorized function");
         }
 
         const decryptedKey = await decryptPrivateKey({
@@ -368,5 +377,204 @@ export async function getDefaultUserWallet(
     } catch (error) {
         console.error("Failed to get default user wallet:", error);
         return "Failed to get default user wallet";
+    }
+}
+
+export interface needToBackupWalletInput {
+    userId: string;
+}
+
+export async function needToBackupWallet(input: needToBackupWalletInput) {
+    try {
+        // 만약 여전히 private key를 DB가 저장하고 있다면, 백업 알림을 생성
+        // 이미 백업 알림을 생성했다면, 백업 알림을 업데이트
+
+        const needBackupWallets = await prisma.wallet.findMany({
+            where: {
+                userId: input.userId,
+                // privateKey가 null이 아닌 지갑들만
+                privateKey: { not: null },
+            },
+            select: {
+                address: true,
+                privateKey: true,
+                createdAt: true,
+            },
+        });
+
+        if (needBackupWallets.length === 0) {
+            return {
+                success: true,
+                message: "No custodial wallets found that need backup",
+                walletsNeedingBackup: 0,
+            };
+        }
+
+        // Player 정보 가져오기 (createNotification에 필요)
+        const player = await prisma.player.findUnique({
+            where: { userId: input.userId },
+            select: { id: true },
+        });
+
+        if (!player) {
+            return {
+                success: false,
+                error: "Player not found",
+            };
+        }
+
+        let notificationsCreated = 0;
+        let notificationsSkipped = 0;
+
+        for (const wallet of needBackupWallets) {
+            try {
+                // 이미 해당 지갑에 대한 백업 알림이 있는지 확인
+                const existingNotification =
+                    await prisma.userNotification.findFirst({
+                        where: {
+                            playerId: player.id,
+                            entityType: "wallet",
+                            entityId: wallet.address,
+                            category: "SYSTEM",
+                            OR: [
+                                { expiresAt: null },
+                                { expiresAt: { gt: new Date() } },
+                            ],
+                            tags: { has: "backup" },
+                        },
+                    });
+
+                if (existingNotification) {
+                    notificationsSkipped++;
+                    continue;
+                }
+
+                // 백업 알림 생성
+                const notificationResult = await createNotification({
+                    playerId: player.id,
+                    type: "ACCOUNT_SECURITY",
+                    category: "SYSTEM",
+                    title: "Backup Your Private Key",
+                    message:
+                        "Secure your wallet by backing up your private key for safer asset management.",
+                    description:
+                        "For your security, please backup your private key. Starglow recommends keeping your private key safe and accessible only to you.",
+                    entityType: "wallet",
+                    entityId: wallet.address,
+                    entityData: {
+                        walletAddress: wallet.address,
+                        reason: "MIGRATION_PREPARATION",
+                        urgency: "RECOMMENDED",
+                        walletCreatedAt: wallet.createdAt,
+                    },
+                    priority: "HIGH",
+                    channels: ["in-app", "push"],
+                    iconUrl: "/icons/security-shield.svg",
+                    showBadge: true,
+                    // 7일 후 만료 (너무 오래 남아있지 않도록)
+                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                    metadata: {
+                        backupReminder: true,
+                        securityLevel: "HIGH",
+                        triggerSource: "MANUAL_CHECK",
+                        walletType: "DEVELOPMENT_CUSTODIAL",
+                        productionReady: "NON_CUSTODIAL",
+                    },
+                    tags: ["security", "wallet", "backup", "development"],
+                });
+
+                if (notificationResult.success) {
+                    notificationsCreated++;
+                } else {
+                    console.error(
+                        `Failed to create backup notification for wallet ${wallet.address}:`,
+                        notificationResult.error
+                    );
+                }
+            } catch (error) {
+                console.error(
+                    `Error processing wallet ${wallet.address}:`,
+                    error
+                );
+            }
+        }
+
+        return {
+            success: true,
+            message: `Backup notifications processed successfully`,
+            walletsNeedingBackup: needBackupWallets.length,
+            notificationsCreated,
+            notificationsSkipped,
+            details: {
+                totalWallets: needBackupWallets.length,
+                newNotifications: notificationsCreated,
+                existingNotifications: notificationsSkipped,
+            },
+        };
+    } catch (error) {
+        console.error("Error in needToBackupWallet:", error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+        };
+    }
+}
+
+export interface walletBackupPostProcessInput {
+    userId: string;
+    walletAddress: string;
+}
+
+export interface walletBackupPostProcessOutput {
+    success: boolean;
+    message: string;
+}
+
+export async function walletBackupPostProcess(
+    input: walletBackupPostProcessInput
+): Promise<walletBackupPostProcessOutput> {
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            const wallet = await tx.wallet.findUnique({
+                where: { address: input.walletAddress },
+            });
+
+            if (!wallet) {
+                return {
+                    success: false,
+                    message: "Wallet not found",
+                };
+            }
+
+            await tx.wallet.update({
+                where: { id: wallet.id },
+                data: {
+                    privateKey: null,
+                    keyHash: null,
+                    nonce: null,
+                },
+            });
+
+            await tx.userNotification.deleteMany({
+                where: {
+                    playerId: input.userId,
+                    entityType: "wallet",
+                    entityId: input.walletAddress,
+                },
+            });
+
+            return {
+                success: true,
+                message: "Wallet backup completed successfully",
+            };
+        });
+
+        return result;
+    } catch (error) {
+        console.error("Failed to backup wallet", error);
+        return {
+            success: false,
+            message: "Failed to backup wallet",
+        };
     }
 }

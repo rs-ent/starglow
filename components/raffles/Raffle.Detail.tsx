@@ -18,7 +18,6 @@ import {
     ArrowLeft,
     Timer,
     Award,
-    Crown,
     Gem,
     CheckCircle2,
     Play,
@@ -42,6 +41,7 @@ import type { RaffleStatus } from "@/app/actions/raffles/utils";
 import { useAssetsGet } from "@/app/hooks/useAssets";
 import Image from "next/image";
 import RaffleRecord from "./Raffle.Record";
+import { tierMap } from "./raffle-tier";
 
 // Utility function to calculate raffle status based on dates
 const getRaffleStatus = (
@@ -68,6 +68,7 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
     const [showRecordModal, setShowRecordModal] = useState(false);
     const [showScratchModal, setShowScratchModal] = useState(false);
     const [scratchResult, setScratchResult] = useState<any>(null);
+    const [toastShown, setToastShown] = useState(false);
     const [timeLeft, setTimeLeft] = useState<{
         days: number;
         hours: number;
@@ -122,6 +123,13 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
         return () => window.removeEventListener("resize", updateCardSize);
     }, []);
 
+    // 스크래치 모달이 열릴 때마다 toast 상태 리셋
+    useEffect(() => {
+        if (showScratchModal) {
+            setToastShown(false);
+        }
+    }, [showScratchModal]);
+
     const toast = useToast();
 
     const { raffleData, isRaffleLoading, raffleError } = useRaffles({
@@ -165,74 +173,6 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
     // 티어 시스템 정의
     const getTierInfo = (order: number) => {
         const tier = Math.floor(order / 10);
-
-        const tierMap = {
-            0: {
-                name: "COMMON",
-                color: "slate",
-                gradient: "from-[rgba(148,163,184,1)] to-[rgba(100,116,139,1)]",
-                bg: "from-[rgba(148,163,184,0.15)] to-[rgba(100,116,139,0.15)]",
-                border: "[rgba(148,163,184,0.30)]",
-                glow: "[rgba(148,163,184,0.20)]",
-            },
-            1: {
-                name: "UNCOMMON",
-                color: "emerald",
-                gradient: "from-[rgba(52,211,153,1)] to-[rgba(20,184,166,1)]",
-                bg: "from-[rgba(52,211,153,0.15)] to-[rgba(20,184,166,0.15)]",
-                border: "[rgba(52,211,153,0.30)]",
-                glow: "[rgba(52,211,153,0.20)]",
-            },
-            2: {
-                name: "RARE",
-                color: "sky",
-                gradient: "from-[rgba(56,189,248,1)] to-[rgba(59,130,246,1)]",
-                bg: "from-[rgba(56,189,248,0.15)] to-[rgba(59,130,246,0.15)]",
-                border: "[rgba(56,189,248,0.30)]",
-                glow: "[rgba(56,189,248,0.20)]",
-            },
-            3: {
-                name: "EPIC",
-                color: "violet",
-                gradient: "from-[rgba(167,139,250,1)] to-[rgba(139,92,246,1)]",
-                bg: "from-[rgba(167,139,250,0.15)] to-[rgba(139,92,246,0.15)]",
-                border: "[rgba(167,139,250,0.30)]",
-                glow: "[rgba(167,139,250,0.20)]",
-            },
-            4: {
-                name: "LEGENDARY",
-                color: "amber",
-                gradient: "from-[rgba(251,191,36,1)] to-[rgba(249,115,22,1)]",
-                bg: "from-[rgba(251,191,36,0.15)] to-[rgba(249,115,22,0.15)]",
-                border: "[rgba(251,191,36,0.30)]",
-                glow: "[rgba(251,191,36,0.20)]",
-            },
-            5: {
-                name: "CELESTIAL",
-                color: "cyan",
-                gradient: "from-[rgba(34,211,238,1)] to-[rgba(14,165,233,1)]",
-                bg: "from-[rgba(34,211,238,0.15)] to-[rgba(14,165,233,0.15)]",
-                border: "[rgba(34,211,238,0.30)]",
-                glow: "[rgba(34,211,238,0.20)]",
-            },
-            6: {
-                name: "STELLAR",
-                color: "rose",
-                gradient: "from-[rgba(251,113,133,1)] to-[rgba(236,72,153,1)]",
-                bg: "from-[rgba(251,113,133,0.15)] to-[rgba(236,72,153,0.15)]",
-                border: "[rgba(251,113,133,0.30)]",
-                glow: "[rgba(251,113,133,0.20)]",
-            },
-            7: {
-                name: "COSMIC",
-                color: "amber",
-                gradient: "from-[rgba(252,211,77,1)] to-[rgba(250,204,21,1)]",
-                bg: "from-[rgba(252,211,77,0.15)] to-[rgba(250,204,21,0.15)]",
-                border: "[rgba(252,211,77,0.30)]",
-                glow: "[rgba(252,211,77,0.20)]",
-            },
-        };
-
         return tierMap[tier as keyof typeof tierMap] || tierMap[0];
     };
 
@@ -335,6 +275,10 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
                                     prize={scratchResult?.prize || null}
                                     onReveal={() => {
                                         setScratchRevealed(true);
+
+                                        if (toastShown) return;
+                                        setToastShown(true);
+
                                         setTimeout(() => {
                                             if (scratchResult?.prize) {
                                                 toast.success(
@@ -358,13 +302,13 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
                                     onClick={() => {
                                         setShowScratchModal(false);
                                         setScratchRevealed(false);
+                                        setToastShown(false);
                                     }}
                                     className={cn(
                                         "absolute -top-12 right-0 text-white/60 hover:text-white",
                                         "w-10 h-10 flex items-center justify-center rounded-full",
                                         "bg-black/20 backdrop-blur-sm transition-all",
                                         "text-xl font-light",
-                                        // 모바일 터치 최적화
                                         "touch-manipulation select-none"
                                     )}
                                 >
@@ -666,30 +610,6 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
                 getResponsiveClass(30).paddingClass
             )}
         >
-            {/* Crown Icon */}
-            <div
-                className="absolute top-4 right-4"
-                style={{
-                    zIndex: 1000,
-                }}
-            >
-                <motion.div
-                    animate={{
-                        rotate: [0, 5, -5, 0],
-                        scale: [1, 1.1, 1],
-                    }}
-                    transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                    }}
-                >
-                    <Crown
-                        className={cn(getResponsiveClass(50).frameClass)}
-                        style={{ color: "rgba(160,140,200,0.5)" }}
-                    />
-                </motion.div>
-            </div>
-
             <div className="text-center">
                 <motion.div
                     animate={{
@@ -869,12 +789,11 @@ const PrizeCard = memo(function PrizeCard({
     isSmall?: boolean;
     getTierInfo?: (order: number) => any;
 }) {
-    const { tierInfo, tier, isPremium } = useMemo(() => {
+    const { tierInfo, tier } = useMemo(() => {
         const tierInfo = getTierInfo ? getTierInfo(prize.order) : null;
         const tier = Math.floor(prize.order / 10);
-        const isPremium = tier >= 4;
 
-        return { tierInfo, tier, isPremium };
+        return { tierInfo, tier };
     }, [prize.order, getTierInfo]);
 
     const percentage = useMemo(() => {
@@ -912,17 +831,6 @@ const PrizeCard = memo(function PrizeCard({
                     >
                         T{tier}
                     </div>
-                </div>
-            )}
-
-            {isPremium && !isSmall && !tierInfo && (
-                <div className="absolute top-3 right-3 z-10">
-                    <Crown
-                        className={cn(
-                            "text-amber-300",
-                            getResponsiveClass(20).frameClass
-                        )}
-                    />
                 </div>
             )}
 
