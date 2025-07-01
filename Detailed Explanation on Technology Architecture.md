@@ -20,7 +20,6 @@
 
 ### State Management
 
-- **Zustand 5.0.3** - Client-side state management
 - **TanStack Query 5.71.5** - Server state synchronization and caching
 
 ### Database & ORM
