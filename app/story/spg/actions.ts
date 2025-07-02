@@ -391,6 +391,7 @@ export interface updateSPGUtils {
     backgroundColor?: string;
     foregroundColor?: string;
     comingSoon?: boolean;
+    hiddenDetails?: boolean;
 }
 
 export async function updateSPGUtils(input: updateSPGUtils): Promise<SPG> {

@@ -18,6 +18,11 @@ export async function getReferralLogs(
     }
     try {
         const referralLogs = await prisma.referralLog.findMany({
+            cacheStrategy: {
+                swr: 60 * 1,
+                ttl: 60 * 1,
+                tags: ["referralLogs", input.playerId],
+            },
             where: {
                 referrerPlayerId: input.playerId,
             },

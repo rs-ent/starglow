@@ -10,7 +10,10 @@ import { DoubleSide, LinearFilter, Vector3 } from "three";
 
 import { useNFT } from "@/app/story/nft/hooks";
 import { formatDate } from "@/lib/utils/format";
-import { useCachedTexture } from "@/lib/utils/useCachedTexture";
+import {
+    useCachedTexture,
+    useBlurredTexture,
+} from "@/lib/utils/useCachedTexture";
 
 import type { SPG } from "@/app/story/spg/actions";
 import type { Mesh } from "three";
@@ -30,7 +33,7 @@ export interface CardMeshProps {
     remainStock: number;
     totalStock: number;
     circulationLoading: boolean;
-    artistName: string;
+    artistName: string | undefined;
     position?: [number, number, number];
     rotationY?: number;
     isSelected?: boolean;
@@ -38,6 +41,7 @@ export interface CardMeshProps {
     onBuyNowClick?: () => void;
     confirmedAlpha?: number;
     comingSoon?: boolean;
+    hiddenDetails?: boolean;
 }
 
 /**
@@ -52,6 +56,7 @@ export interface NFTsCollectionsCard3DR3FProps {
     onBuyNowClick?: () => void;
     confirmedAlpha?: number;
     comingSoon?: boolean;
+    hiddenDetails?: boolean;
 }
 
 const CONSTANTS = {
@@ -89,6 +94,13 @@ const CONSTANTS = {
             anchorY: "middle" as const,
             glyphGeometryDetail: 4,
         },
+        VALUE_COMING_SOON: {
+            fontSize: 0.3,
+            fontWeight: 700,
+            outlineWidth: 0.05,
+            outlineBlur: 0.3,
+            outlineOpacity: 0.2,
+        },
     },
     BOX: {
         INFO: {
@@ -123,6 +135,7 @@ const CONSTANTS = {
             RIGHT: [2.57, 0.5, 0.15] as [number, number, number],
             BOTTOM_LEFT: [-2.57, -1.8, 0.15] as [number, number, number],
             BOTTOM_RIGHT: [2.57, -1.8, 0.15] as [number, number, number],
+            CENTER: [0, 0, 0.15] as [number, number, number],
         },
         TEXT: {
             LABEL: [0, 0.4, 0.26] as [number, number, number],
@@ -238,7 +251,9 @@ const InfoBox = React.memo(function InfoBox({
                     color={foregroundColor}
                     outlineColor={backgroundColor}
                     {...CONSTANTS.TEXT.COMMON}
-                    {...CONSTANTS.TEXT.VALUE}
+                    {...(value === "COMING SOON" || value === ""
+                        ? CONSTANTS.TEXT.VALUE_COMING_SOON
+                        : CONSTANTS.TEXT.VALUE)}
                 >
                     {value}
                 </Text>
@@ -265,32 +280,33 @@ const CardMesh = React.memo(function CardMesh({
     onBuyNowClick,
     confirmedAlpha = 1,
     comingSoon = false,
+    hiddenDetails = false,
 }: CardMeshProps) {
     const meshRef = useRef<Mesh>(null);
     const { camera } = useThree();
 
-    const texture = useCachedTexture(imageUrl, (loadedTexture) => {
+    // Call both hooks unconditionally
+    const blurredTexture = useBlurredTexture(
+        imageUrl,
+        {
+            blur: 80, // 강한 블러 효과
+            brightness: 1,
+            contrast: 1,
+        },
+        (loadedTexture) => {
+            loadedTexture.needsUpdate = true;
+        }
+    );
+
+    const normalTexture = useCachedTexture(imageUrl, (loadedTexture) => {
         loadedTexture.minFilter = LinearFilter;
         loadedTexture.magFilter = LinearFilter;
         loadedTexture.generateMipmaps = false;
         loadedTexture.needsUpdate = true;
-
-        if (comingSoon) {
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-
-            if (ctx && loadedTexture.image) {
-                canvas.width = loadedTexture.image.width;
-                canvas.height = loadedTexture.image.height;
-
-                ctx.filter = "blur(8px)";
-                ctx.drawImage(loadedTexture.image, 0, 0);
-
-                // 블러 처리된 이미지로 텍스처 업데이트
-                loadedTexture.image = canvas;
-            }
-        }
     });
+
+    // Then conditionally choose which texture to use
+    const texture = hiddenDetails ? blurredTexture : normalTexture;
 
     const logoTexture = useCachedTexture("/logo/3d.svg", (loadedTexture) => {
         loadedTexture.minFilter = LinearFilter;
@@ -379,7 +395,7 @@ const CardMesh = React.memo(function CardMesh({
     const handlePointerOut = () => setHovered(false);
     const handleBuyNowClick = (e: React.MouseEvent | React.TouchEvent) => {
         e.stopPropagation();
-        if (comingSoon) return;
+        if (hiddenDetails) return;
         onBuyNowClick?.();
     };
 
@@ -516,7 +532,7 @@ const CardMesh = React.memo(function CardMesh({
                             outlineBlur={0.8}
                             outlineOpacity={0.3}
                         >
-                            {comingSoon ? "COMING SOON" : "SEE MORE"}
+                            {hiddenDetails ? "COMING SOON" : "SEE MORE"}
                         </Text>
                     </RoundedBox>
                 </animated.group>
@@ -571,48 +587,69 @@ const CardMesh = React.memo(function CardMesh({
                     >
                         {name}
                     </Text>
-                    {/* InfoBox로 분리된 정보 박스들 */}
-                    <InfoBox
-                        label="Glow Chance"
-                        value={status}
-                        labelPosition={CONSTANTS.POSITION.TEXT.LABEL}
-                        valuePosition={CONSTANTS.POSITION.TEXT.VALUE}
-                        boxPosition={CONSTANTS.POSITION.INFO_BOX.LEFT}
-                        backgroundColor={backgroundColor}
-                        foregroundColor={foregroundColor}
-                        isSelected={isSelected}
-                    />
-                    <InfoBox
-                        label={dateLabel}
-                        value={dateValue}
-                        labelPosition={CONSTANTS.POSITION.TEXT.LABEL}
-                        valuePosition={CONSTANTS.POSITION.TEXT.VALUE}
-                        boxPosition={CONSTANTS.POSITION.INFO_BOX.RIGHT}
-                        backgroundColor={backgroundColor}
-                        foregroundColor={foregroundColor}
-                        isSelected={isSelected}
-                    />
-                    <InfoBox
-                        label="Stock"
-                        value={`${remainStock}/${totalStock}`}
-                        labelPosition={CONSTANTS.POSITION.TEXT.LABEL}
-                        valuePosition={CONSTANTS.POSITION.TEXT.VALUE}
-                        boxPosition={CONSTANTS.POSITION.INFO_BOX.BOTTOM_LEFT}
-                        backgroundColor={backgroundColor}
-                        foregroundColor={foregroundColor}
-                        isSelected={isSelected}
-                        isLoading={circulationLoading}
-                    />
-                    <InfoBox
-                        label="Artist"
-                        value={artistName}
-                        labelPosition={CONSTANTS.POSITION.TEXT.LABEL}
-                        valuePosition={CONSTANTS.POSITION.TEXT.VALUE}
-                        boxPosition={CONSTANTS.POSITION.INFO_BOX.BOTTOM_RIGHT}
-                        backgroundColor={backgroundColor}
-                        foregroundColor={foregroundColor}
-                        isSelected={isSelected}
-                    />
+
+                    {hiddenDetails ? (
+                        <Text
+                            font="/fonts/conthrax.otf"
+                            position={
+                                [0, -0.5, 0.26] as [number, number, number]
+                            }
+                            color="#fff"
+                            maxWidth={10}
+                            outlineColor={foregroundColor}
+                            {...CONSTANTS.TEXT.COMMON}
+                        >
+                            COMING SOON
+                        </Text>
+                    ) : (
+                        <>
+                            <InfoBox
+                                label="Glow Chance"
+                                value={status}
+                                labelPosition={CONSTANTS.POSITION.TEXT.LABEL}
+                                valuePosition={CONSTANTS.POSITION.TEXT.VALUE}
+                                boxPosition={CONSTANTS.POSITION.INFO_BOX.LEFT}
+                                backgroundColor={backgroundColor}
+                                foregroundColor={foregroundColor}
+                                isSelected={isSelected}
+                            />
+                            <InfoBox
+                                label={dateLabel}
+                                value={dateValue}
+                                labelPosition={CONSTANTS.POSITION.TEXT.LABEL}
+                                valuePosition={CONSTANTS.POSITION.TEXT.VALUE}
+                                boxPosition={CONSTANTS.POSITION.INFO_BOX.RIGHT}
+                                backgroundColor={backgroundColor}
+                                foregroundColor={foregroundColor}
+                                isSelected={isSelected}
+                            />
+                            <InfoBox
+                                label="Stock"
+                                value={`${remainStock}/${totalStock}`}
+                                labelPosition={CONSTANTS.POSITION.TEXT.LABEL}
+                                valuePosition={CONSTANTS.POSITION.TEXT.VALUE}
+                                boxPosition={
+                                    CONSTANTS.POSITION.INFO_BOX.BOTTOM_LEFT
+                                }
+                                backgroundColor={backgroundColor}
+                                foregroundColor={foregroundColor}
+                                isSelected={isSelected}
+                                isLoading={circulationLoading}
+                            />
+                            <InfoBox
+                                label="Artist"
+                                value={artistName || ""}
+                                labelPosition={CONSTANTS.POSITION.TEXT.LABEL}
+                                valuePosition={CONSTANTS.POSITION.TEXT.VALUE}
+                                boxPosition={
+                                    CONSTANTS.POSITION.INFO_BOX.BOTTOM_RIGHT
+                                }
+                                backgroundColor={backgroundColor}
+                                foregroundColor={foregroundColor}
+                                isSelected={isSelected}
+                            />
+                        </>
+                    )}
                 </RoundedBox>
             </mesh>
             <mesh position={[0, 0, -0.45]}>
@@ -665,8 +702,47 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
         dateValue,
         artistName,
         comingSoon,
+        hiddenDetails,
     } = useMemo(() => {
+        const name = spg.name || "";
+        const imageUrl = spg.imageUrl || "";
+        const backgroundColor = spg.backgroundColor || "#05010D";
+        const foregroundColor = spg.foregroundColor || "#ffffff";
+
+        const hiddenDetails = spg.hiddenDetails || false;
+        if (hiddenDetails) {
+            return {
+                backgroundColor,
+                foregroundColor,
+                imageUrl,
+                name: "",
+                status: "",
+                dateLabel: "",
+                dateValue: "",
+                artistName: "",
+                comingSoon: true,
+                hiddenDetails: true,
+            };
+        }
         const now = new Date();
+
+        const artistName = spg.artist?.name || "";
+        const comingSoon = spg.comingSoon || false;
+        if (comingSoon) {
+            return {
+                backgroundColor,
+                foregroundColor,
+                imageUrl,
+                name,
+                status: "COMING SOON",
+                dateLabel: "Sale Open",
+                dateValue: "COMING SOON",
+                comingSoon: true,
+                hiddenDetails: false,
+                artistName,
+            };
+        }
+
         const preSaleStart = spg.preOrderStart;
         const preSaleEnd = spg.preOrderEnd;
         const saleStart = spg.saleStart;
@@ -727,15 +803,6 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             }
         }
 
-        const name = spg.name || "";
-        const imageUrl = spg.imageUrl || "";
-        const backgroundColor = spg.backgroundColor || "#05010D";
-        const foregroundColor = spg.foregroundColor || "#ffffff";
-
-        const artistName = spg.artist?.name || "";
-
-        const comingSoon = spg.comingSoon || false;
-
         return {
             backgroundColor,
             foregroundColor,
@@ -747,6 +814,7 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             participantsType,
             artistName,
             comingSoon,
+            hiddenDetails,
         };
     }, [spg]);
 
@@ -772,6 +840,7 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             onBuyNowClick={onBuyNowClick}
             confirmedAlpha={confirmedAlpha}
             comingSoon={comingSoon}
+            hiddenDetails={hiddenDetails}
         />
     );
 });

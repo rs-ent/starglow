@@ -69,6 +69,12 @@ export const getResponsiveClass = (size: number) => {
         60: "w-[50px] h-[50px]  sm:w-[57px] sm:h-[57px]  md:w-[65px] md:h-[65px] lg:w-[73px] lg:h-[73px] xl:w-[80px] xl:h-[80px]",
         65: "w-[59px] h-[59px]  sm:w-[68px] sm:h-[68px]  md:w-[77px] md:h-[77px] lg:w-[86px] lg:h-[86px] xl:w-[94px] xl:h-[94px]",
         70: "w-[70px] h-[70px]  sm:w-[81px] sm:h-[81px]  md:w-[91px] md:h-[91px] lg:w-[102px] lg:h-[102px] xl:w-[112px] xl:h-[112px]",
+        75: "w-[75px] h-[75px]  sm:w-[86px] sm:h-[86px]  md:w-[97px] md:h-[97px] lg:w-[108px] lg:h-[108px] xl:w-[119px] xl:h-[119px]",
+        80: "w-[80px] h-[80px]  sm:w-[91px] sm:h-[91px]  md:w-[102px] md:h-[102px] lg:w-[113px] lg:h-[113px] xl:w-[124px] xl:h-[124px]",
+        85: "w-[85px] h-[85px]  sm:w-[96px] sm:h-[96px]  md:w-[107px] md:h-[107px] lg:w-[118px] lg:h-[118px] xl:w-[129px] xl:h-[129px]",
+        90: "w-[90px] h-[90px]  sm:w-[101px] sm:h-[101px]  md:w-[112px] md:h-[112px] lg:w-[123px] lg:h-[123px] xl:w-[134px] xl:h-[134px]",
+        95: "w-[95px] h-[95px]  sm:w-[106px] sm:h-[106px]  md:w-[117px] md:h-[117px] lg:w-[128px] lg:h-[128px] xl:w-[139px] xl:h-[139px]",
+        100: "w-[100px] h-[100px]  sm:w-[111px] sm:h-[111px]  md:w-[122px] md:h-[122px] lg:w-[133px] lg:h-[133px] xl:w-[144px] xl:h-[144px]",
     };
 
     const marginX = {

@@ -49,66 +49,93 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
         },
     });
 
-    const { status, dateValue, participantsType } = useMemo(() => {
-        const now = new Date();
-        const preSaleStart = spg.preOrderStart;
-        const preSaleEnd = spg.preOrderEnd;
-        const saleStart = spg.saleStart;
-        const saleEnd = spg.saleEnd;
-        const glowStart = spg.glowStart;
-        const glowEnd = spg.glowEnd;
-
-        let status = "SCHEDULED";
-        let dateValue = "Unknown";
-        let participantsType: CollectionParticipantType =
-            CollectionParticipantType.PREREGISTRATION;
-
-        if (glowStart && glowEnd) {
-            if (now < glowStart) {
-                participantsType = CollectionParticipantType.GLOW;
-                status = "GLOWING";
-                dateValue = formatDate(glowStart.toISOString());
-            } else if (now > glowStart && now < glowEnd) {
-                participantsType = CollectionParticipantType.GLOW;
-                status = "GLOWING";
-                dateValue = formatDate(glowEnd.toISOString());
-            } else {
-                participantsType = CollectionParticipantType.GLOW;
-                status = "GLOWED";
-                dateValue = formatDate(glowEnd.toISOString());
+    const { status, dateValue, participantsType, comingSoon, hiddenDetails } =
+        useMemo(() => {
+            const now = new Date();
+            const comingSoon = spg.comingSoon || false;
+            const hiddenDetails = spg.hiddenDetails || false;
+            if (hiddenDetails) {
+                return {
+                    status: "COMING SOON",
+                    dateValue: formatDate(new Date().toISOString()),
+                    participantsType: CollectionParticipantType.PREREGISTRATION,
+                    comingSoon: true,
+                    hiddenDetails: true,
+                };
             }
-        }
 
-        if (saleStart && saleEnd) {
-            if (now < saleStart) {
-                participantsType = CollectionParticipantType.PRIVATESALE;
-                status = "SCHEDULED";
-                dateValue = formatDate(saleStart.toISOString());
-            } else if (now > saleStart && now < saleEnd) {
-                participantsType = CollectionParticipantType.PUBLICSALE;
-                status = "ONGOING";
-                dateValue = formatDate(saleEnd.toISOString());
+            if (comingSoon) {
+                return {
+                    status: "COMING SOON",
+                    dateValue: formatDate(new Date().toISOString()),
+                    participantsType: CollectionParticipantType.PREREGISTRATION,
+                    comingSoon: true,
+                    hiddenDetails: false,
+                };
             }
-        }
 
-        if (preSaleStart && preSaleEnd) {
-            if (now < preSaleStart) {
-                participantsType = CollectionParticipantType.PREREGISTRATION;
-                status = "PREORDER";
-                dateValue = formatDate(preSaleStart.toISOString());
-            } else if (now > preSaleStart && now < preSaleEnd) {
-                participantsType = CollectionParticipantType.PREREGISTRATION;
-                status = "PREORDER";
-                dateValue = formatDate(preSaleEnd.toISOString());
+            const preSaleStart = spg.preOrderStart;
+            const preSaleEnd = spg.preOrderEnd;
+            const saleStart = spg.saleStart;
+            const saleEnd = spg.saleEnd;
+            const glowStart = spg.glowStart;
+            const glowEnd = spg.glowEnd;
+
+            let status = "SCHEDULED";
+            let dateValue = "Unknown";
+            let participantsType: CollectionParticipantType =
+                CollectionParticipantType.PREREGISTRATION;
+
+            if (glowStart && glowEnd) {
+                if (now < glowStart) {
+                    participantsType = CollectionParticipantType.GLOW;
+                    status = "GLOWING";
+                    dateValue = formatDate(glowStart.toISOString());
+                } else if (now > glowStart && now < glowEnd) {
+                    participantsType = CollectionParticipantType.GLOW;
+                    status = "GLOWING";
+                    dateValue = formatDate(glowEnd.toISOString());
+                } else {
+                    participantsType = CollectionParticipantType.GLOW;
+                    status = "GLOWED";
+                    dateValue = formatDate(glowEnd.toISOString());
+                }
             }
-        }
 
-        return {
-            status,
-            dateValue,
-            participantsType,
-        };
-    }, [spg]);
+            if (saleStart && saleEnd) {
+                if (now < saleStart) {
+                    participantsType = CollectionParticipantType.PRIVATESALE;
+                    status = "SCHEDULED";
+                    dateValue = formatDate(saleStart.toISOString());
+                } else if (now > saleStart && now < saleEnd) {
+                    participantsType = CollectionParticipantType.PUBLICSALE;
+                    status = "ONGOING";
+                    dateValue = formatDate(saleEnd.toISOString());
+                }
+            }
+
+            if (preSaleStart && preSaleEnd) {
+                if (now < preSaleStart) {
+                    participantsType =
+                        CollectionParticipantType.PREREGISTRATION;
+                    status = "PREORDER";
+                    dateValue = formatDate(preSaleStart.toISOString());
+                } else if (now > preSaleStart && now < preSaleEnd) {
+                    participantsType =
+                        CollectionParticipantType.PREREGISTRATION;
+                    status = "PREORDER";
+                    dateValue = formatDate(preSaleEnd.toISOString());
+                }
+            }
+
+            return {
+                status,
+                dateValue,
+                participantsType,
+                comingSoon: false,
+                hiddenDetails: false,
+            };
+        }, [spg]);
 
     const handlePaymentSuccess = useCallback(() => {
         setShowWaitWarning(true);
@@ -147,6 +174,8 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
                             status={status}
                             dateValue={dateValue}
                             circulation={circulation ?? null}
+                            comingSoon={comingSoon}
+                            hiddenDetails={hiddenDetails}
                         />
                         <h2
                             className={cn(

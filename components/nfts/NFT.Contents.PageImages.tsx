@@ -12,10 +12,22 @@ interface NFTContentsPageImagesProps {
     spg: SPG;
 }
 
+const DEFAULT_IMAGES = [
+    "/elements/default-nft-page-images/01.webp",
+    "/elements/default-nft-page-images/02.webp",
+    "/elements/default-nft-page-images/03.webp",
+    "/elements/default-nft-page-images/04.webp",
+    "/elements/default-nft-page-images/05.webp",
+    "/elements/default-nft-page-images/06.webp",
+];
+
 export default React.memo(function NFTContentsPageImages({
     spg,
 }: NFTContentsPageImagesProps) {
-    const images = useMemo(() => spg.pageImages || [], [spg.pageImages]);
+    const images = useMemo(
+        () => (spg.pageImages.length > 0 ? spg.pageImages : DEFAULT_IMAGES),
+        [spg.pageImages]
+    );
     const [showAll, setShowAll] = useState(false);
 
     if (!images.length) return null;

@@ -9,15 +9,21 @@ import { cn } from "@/lib/utils/tailwind";
 
 import UserSettingsProfile from "./User.Settings.Profile";
 
-import type { Player } from "@prisma/client";
+import type { Player, ReferralLog } from "@prisma/client";
 import type { User } from "next-auth";
 
 interface UserSettingsProps {
     user: User;
     player: Player;
+    referralLogs: ReferralLog[];
 }
 
-export default function UserSettings({ user, player }: UserSettingsProps) {
+export default function UserSettings({
+    user,
+    player,
+    referralLogs,
+}: UserSettingsProps) {
+    console.info("Referral Logs", referralLogs);
     return (
         <div
             className={cn(

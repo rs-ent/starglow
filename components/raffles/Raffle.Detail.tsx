@@ -15,7 +15,6 @@ import {
     Zap,
     Shield,
     ExternalLink,
-    ArrowLeft,
     Timer,
     Award,
     Gem,
@@ -323,40 +322,8 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
             <div className={cn("relative w-full min-h-screen overflow-hidden")}>
                 {/* Background Effects - Elegant Space Theme */}
                 <div className="fixed inset-0 -z-10">
-                    <div className="absolute inset-0 bg-[rgba(25,25,35,0.95)]" />
-                    <div className="absolute inset-0 bg-gradient-to-br from-[rgba(120,100,140,0.06)] via-[rgba(100,80,120,0.04)] to-[rgba(140,120,160,0.05)]" />
-                    <motion.div
-                        animate={{
-                            scale: [1, 1.2, 1],
-                            opacity: [0.15, 0.25, 0.15],
-                            rotate: [0, 180, 360],
-                        }}
-                        transition={{
-                            duration: 20,
-                            repeat: Infinity,
-                            ease: "linear",
-                        }}
-                        className={cn(
-                            "absolute top-1/4 left-1/4 bg-[rgba(120,100,140,0.08)] rounded-full blur-3xl",
-                            "w-[200px] h-[200px] sm:w-[250px] sm:h-[250px] md:w-[300px] md:h-[300px] lg:w-[350px] lg:h-[350px] xl:w-[400px] xl:h-[400px]"
-                        )}
-                    />
-                    <motion.div
-                        animate={{
-                            scale: [1.2, 1, 1.2],
-                            opacity: [0.2, 0.3, 0.2],
-                            rotate: [360, 180, 0],
-                        }}
-                        transition={{
-                            duration: 25,
-                            repeat: Infinity,
-                            ease: "linear",
-                        }}
-                        className={cn(
-                            "absolute bottom-1/4 right-1/4 bg-[rgba(140,120,160,0.08)] rounded-full blur-3xl",
-                            "w-[250px] h-[250px] sm:w-[300px] sm:h-[300px] md:w-[350px] md:h-[350px] lg:w-[400px] lg:h-[400px] xl:w-[450px] xl:h-[450px]"
-                        )}
-                    />
+                    <div className="absolute inset-0 bg-[rgba(35,10,55,0.95)]" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-[rgba(120,100,160,0.15)] via-[rgba(100,80,120,0.15)] to-[rgba(150,120,185,0.3)]" />
                 </div>
 
                 <div
@@ -376,7 +343,7 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="relative text-center mb-12"
+                            className="relative text-center mt-6 mb-12"
                         >
                             <h2
                                 className={cn(
@@ -396,25 +363,6 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
                                     {raffle.description}
                                 </p>
                             )}
-                            <motion.div
-                                initial={{ opacity: 0, y: -20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="absolute top-2 left-2"
-                            >
-                                <Link
-                                    href="/raffles"
-                                    className={cn(
-                                        "flex items-center text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.8)] transition-colors",
-                                        getResponsiveClass(10).gapClass
-                                    )}
-                                >
-                                    <ArrowLeft
-                                        className={cn(
-                                            getResponsiveClass(40).frameClass
-                                        )}
-                                    />
-                                </Link>
-                            </motion.div>
                         </motion.div>
 
                         {/* Main Content Grid */}
@@ -533,8 +481,10 @@ const TierSection = memo(function TierSection({
     totalQuantity: number;
     getTierInfo: (order: number) => any;
 }) {
-    const tierInfo = useMemo(() => {
-        return getTierInfo(tier * 10);
+    const { tierInfo, bestTier } = useMemo(() => {
+        const tierInfo = getTierInfo(tier * 10);
+        const bestTier = Object.keys(tierMap).length - 1;
+        return { tierInfo, bestTier };
     }, [tier, getTierInfo]);
 
     return (
@@ -556,7 +506,7 @@ const TierSection = memo(function TierSection({
                         tierInfo.gradient
                     )}
                 >
-                    {tierInfo.name} TIER {tier}
+                    {tierInfo.name} TIER {bestTier - tier}
                 </div>
                 <span className="text-[rgba(255,255,255,0.5)] text-sm">
                     {prizes.length} {prizes.length === 1 ? "prize" : "prizes"}
@@ -596,12 +546,9 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
     const tierInfo = getTierInfo(prize.order);
     const tier = Math.floor(prize.order / 10);
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+        <div
             className={cn(
-                "relative overflow-visible rounded-3xl",
+                "relative overflow-visible rounded-3xl opacity-0 animate-[fadeIn_0.6s_ease-out_0.1s_forwards]",
                 `bg-gradient-to-br ${tierInfo.bg}`,
                 "backdrop-blur-lg border-2",
                 `border-${tierInfo.border}`,
@@ -610,38 +557,36 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
                 getResponsiveClass(30).paddingClass
             )}
         >
+            <div
+                className="absolute inset-0 rounded-xl "
+                style={{
+                    opacity: 0.15,
+                    background:
+                        "conic-gradient(from 0deg, #a855f7, #06b6d4, #10b981, #eab308, #a855f7)",
+                }}
+            />
             <div className="text-center">
-                <motion.div
-                    animate={{
-                        y: [0, -20, 0],
-                    }}
-                    transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                    }}
-                    className="mb-6"
-                >
+                <div className="mb-6 animate-[floatGentle_4s_ease-in-out_infinite]">
                     <div
                         className={cn(
-                            "mx-auto mb-4 relative scale-110",
-                            getResponsiveClass(70).frameClass
+                            "mx-auto mb-4 relative",
+                            getResponsiveClass(90).frameClass
                         )}
                     >
                         <div className="relative w-full h-full rounded-[10px] overflow-hidden">
-                            {/* Holographic border animation */}
+                            {/* Compact holographic border for smaller cards */}
                             <div
-                                className="absolute inset-0 animate-spin scale-150"
+                                className="absolute inset-0 rounded-xl animate-spin scale-150"
                                 style={{
-                                    animationDuration: "3s",
+                                    animationDuration: "2s",
                                     background:
-                                        "conic-gradient(from 0deg, #a855f7, #3b82f6, #06b6d4, #10b981, #eab308, #ef4444, #a855f7)",
+                                        "conic-gradient(from 0deg, #a855f7, #06b6d4, #10b981, #eab308, #a855f7)",
                                 }}
                             />
                             {prize.prizeType === "NFT" ? (
                                 <div
                                     className={cn(
-                                        "w-full h-full rounded-[10px] flex items-center justify-center p-[3px]"
+                                        "relative w-full h-full rounded-[10px] flex items-center justify-center p-[3px] z-10"
                                     )}
                                     style={{
                                         background:
@@ -660,21 +605,22 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
                                                 fill
                                                 className="object-cover"
                                             />
-                                            {/* Holographic shimmer */}
+
+                                            {/* Compact shimmer effect */}
                                             <div
-                                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer"
+                                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -skew-x-12"
                                                 style={{
                                                     animation:
                                                         "shimmer 2s infinite",
                                                     background:
-                                                        "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+                                                        "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)",
                                                     transform:
                                                         "translateX(-100%) skewX(-12deg)",
                                                 }}
                                             />
                                         </div>
                                     ) : (
-                                        <div className="relative">
+                                        <div className="relative z-10">
                                             <Gem
                                                 className={cn(
                                                     "animate-pulse",
@@ -685,29 +631,13 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
                                                     color: "rgba(160,140,200,0.5)",
                                                 }}
                                             />
-                                            {/* Floating particles around gem */}
-                                            {[...Array(6)].map((_, i) => (
-                                                <div
-                                                    key={i}
-                                                    className="absolute w-1 h-1 bg-cyan-400 rounded-full animate-bounce"
-                                                    style={{
-                                                        top: `${20 + i * 10}%`,
-                                                        left: `${15 + i * 12}%`,
-                                                        animationDelay: `${
-                                                            i * 0.2
-                                                        }s`,
-                                                        animationDuration:
-                                                            "1.5s",
-                                                    }}
-                                                />
-                                            ))}
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 <div
                                     className={cn(
-                                        "w-full h-full rounded-[10px] border-2 flex items-center justify-center p-3"
+                                        "relative w-full h-full rounded-[10px] border-2 flex items-center justify-center p-3 z-10"
                                     )}
                                     style={{
                                         background:
@@ -723,18 +653,6 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
                                                 alt={prize.title}
                                                 fill
                                                 className="object-contain"
-                                            />
-                                            {/* Holographic shimmer */}
-                                            <div
-                                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer"
-                                                style={{
-                                                    animation:
-                                                        "shimmer 2s infinite",
-                                                    background:
-                                                        "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
-                                                    transform:
-                                                        "translateX(-100%) skewX(-12deg)",
-                                                }}
                                             />
                                         </div>
                                     ) : (
@@ -752,7 +670,7 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
                             )}
                         </div>
                     </div>
-                </motion.div>
+                </div>
 
                 <h3
                     className={cn(
@@ -771,7 +689,7 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
                     {prize.title}
                 </h4>
             </div>
-        </motion.div>
+        </div>
     );
 });
 

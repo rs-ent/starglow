@@ -88,6 +88,8 @@ export interface CreatePollInput {
     startDate: Date;
     endDate: Date;
     exposeInScheduleTab: boolean;
+    showOnPollPage?: boolean;
+    showOnStarPage?: boolean;
     needToken: boolean;
     needTokenAddress?: string;
     bettingMode?: boolean;
@@ -97,6 +99,8 @@ export interface CreatePollInput {
     allowMultipleVote?: boolean;
     participationRewardAssetId?: string;
     participationRewardAmount?: number;
+    participationConsumeAssetId?: string;
+    participationConsumeAmount?: number;
     minimumPoints?: number;
     minimumSGP?: number;
     minimumSGT?: number;
@@ -104,7 +108,9 @@ export interface CreatePollInput {
     artistId?: string;
     isActive?: boolean;
     hasAnswer?: boolean;
+    hasAnswerAnnouncement?: boolean;
     answerOptionIds?: string[];
+    answerAnnouncementDate?: Date;
     // 베팅 시스템 필드들
     houseCommissionRate?: number;
     totalCommissionAmount?: number;
@@ -130,6 +136,16 @@ export async function createPoll(input: CreatePollInput): Promise<Poll> {
 
             if (!rewardAsset || !rewardAsset.isActive) {
                 throw new Error("Invalid reward asset");
+            }
+        }
+
+        if (input.participationConsumeAssetId) {
+            const consumeAsset = await prisma.asset.findUnique({
+                where: { id: input.participationConsumeAssetId },
+            });
+
+            if (!consumeAsset || !consumeAsset.isActive) {
+                throw new Error("Invalid consume asset");
             }
         }
 
@@ -163,6 +179,11 @@ export interface GetPollsInput {
     status?: PollStatus;
     needToken?: boolean;
     needTokenAddress?: string;
+    showOnPollPage?: boolean;
+    showOnStarPage?: boolean;
+    hasAnswer?: boolean;
+    hasAnswerAnnouncement?: boolean;
+    answerAnnouncementDate?: Date;
     startDate?: Date;
     startDateBefore?: Date;
     startDateAfter?: Date;
@@ -173,6 +194,7 @@ export interface GetPollsInput {
     bettingMode?: boolean;
     bettingAssetId?: string;
     participationRewardAssetId?: string;
+    participationConsumeAssetId?: string;
     artistId?: string | null;
     isActive?: boolean;
 }
@@ -257,6 +279,16 @@ export async function getPolls({
         if (input?.artistId === null) where.artistId = null;
         else if (input?.artistId) where.artistId = input.artistId;
         if (input?.isActive) where.isActive = input.isActive;
+        if (input?.participationConsumeAssetId)
+            where.participationConsumeAssetId =
+                input.participationConsumeAssetId;
+        if (input?.showOnPollPage) where.showOnPollPage = input.showOnPollPage;
+        if (input?.showOnStarPage) where.showOnStarPage = input.showOnStarPage;
+        if (input?.hasAnswer) where.hasAnswer = input.hasAnswer;
+        if (input?.hasAnswerAnnouncement)
+            where.hasAnswerAnnouncement = input.hasAnswerAnnouncement;
+        if (input?.answerAnnouncementDate)
+            where.answerAnnouncementDate = input.answerAnnouncementDate;
         const [items, totalItems] = await Promise.all([
             prisma.poll.findMany({
                 where,
@@ -324,6 +356,8 @@ export interface UpdatePollInput {
     startDate?: Date;
     endDate?: Date;
     exposeInScheduleTab?: boolean;
+    showOnPollPage?: boolean;
+    showOnStarPage?: boolean;
     needToken?: boolean;
     needTokenAddress?: string;
     bettingMode?: boolean;
@@ -335,6 +369,9 @@ export interface UpdatePollInput {
     participationRewardAssetId?: string;
     participationRewardAsset?: Asset | null;
     participationRewardAmount?: number;
+    participationConsumeAssetId?: string;
+    participationConsumeAsset?: Asset | null;
+    participationConsumeAmount?: number;
     minimumPoints?: number;
     minimumSGP?: number;
     minimumSGT?: number;
@@ -343,7 +380,9 @@ export interface UpdatePollInput {
     artist?: Artist | null;
     isActive?: boolean;
     hasAnswer?: boolean;
+    hasAnswerAnnouncement?: boolean;
     answerOptionIds?: string[];
+    answerAnnouncementDate?: Date;
     // 베팅 시스템 필드들
     houseCommissionRate?: number;
     totalCommissionAmount?: number;
@@ -374,6 +413,16 @@ export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
             }
         }
 
+        if (input.participationConsumeAssetId) {
+            const consumeAsset = await prisma.asset.findUnique({
+                where: { id: input.participationConsumeAssetId },
+            });
+
+            if (!consumeAsset || !consumeAsset.isActive) {
+                throw new Error("Invalid consume asset");
+            }
+        }
+
         if (input.artistId) {
             const artist = await prisma.artist.findUnique({
                 where: { id: input.artistId },
@@ -391,11 +440,14 @@ export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
             bettingAsset,
             participationRewardAssetId,
             participationRewardAsset,
+            participationConsumeAssetId,
+            participationConsumeAsset,
             options,
             ...rest
         } = data;
 
         console.info("Participation Reward Asset", participationRewardAsset);
+        console.info("Participation Consume Asset", participationConsumeAsset);
         console.info("Betting Asset", bettingAsset);
         console.info("Artist", artist);
 
@@ -416,6 +468,11 @@ export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
                     participationRewardAssetId === ""
                         ? null
                         : participationRewardAssetId || undefined,
+                participationConsumeAssetId:
+                    participationConsumeAssetId === null ||
+                    participationConsumeAssetId === ""
+                        ? null
+                        : participationConsumeAssetId || undefined,
                 options: options?.map((option) => ({
                     ...option,
                     option: JSON.stringify(option),

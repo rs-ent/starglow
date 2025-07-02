@@ -254,14 +254,18 @@ Table Poll {
   category PollCategory [not null, default: 'PUBLIC']
   status PollStatus [not null, default: 'UPCOMING']
   isActive Boolean [not null, default: false]
+  showOnPollPage Boolean [not null, default: true]
+  showOnStarPage Boolean [not null, default: true]
   options Json[] [not null]
   optionsOrder String[] [not null]
   hasAnswer Boolean [not null, default: false]
+  hasAnswerAnnouncement Boolean [not null, default: false]
   answerOptionIds String[] [not null]
   imgUrl String
   youtubeUrl String
   startDate DateTime [default: `now()`, not null]
   endDate DateTime [not null]
+  answerAnnouncementDate DateTime
   exposeInScheduleTab Boolean [not null, default: true]
   hideResults Boolean [not null, default: false]
   resultVisibleDate DateTime
@@ -281,6 +285,8 @@ Table Poll {
   bettingAssetId String
   minimumBet Int [not null, default: 1000]
   maximumBet Int [not null, default: 10000]
+  participationConsumeAssetId String
+  participationConsumeAmount Int
   participationRewardAssetId String
   participationRewardAmount Int
   viewCount Int [not null, default: 0]
@@ -298,6 +304,7 @@ Table Poll {
   artistId String
   artist Artist
   bettingAsset Asset
+  participationConsumeAsset Asset
   participationRewardAsset Asset
   pollLogs PollLog [not null]
   rewardLogs RewardsLog [not null]
@@ -636,6 +643,7 @@ Table Asset {
   boardQualityContentRewards Board [not null]
   rafflePrizes RafflePrize [not null]
   raffleEntryFeeAssets Raffle [not null]
+  pollParticipationConsumeAssets Poll [not null]
 }
 
 Table AssetTransaction {
@@ -1028,6 +1036,7 @@ Table Story_spg {
   circulation Int [not null, default: 1000]
   pageImages String[] [not null]
   comingSoon Boolean [not null, default: false]
+  hiddenDetails Boolean [not null, default: false]
   backgroundColor String
   foregroundColor String
   story_nfts Story_nft [not null]
@@ -1909,6 +1918,8 @@ Ref: QuestLog.rewardAssetId > Asset.id
 Ref: Poll.artistId > Artist.id
 
 Ref: Poll.bettingAssetId > Asset.id
+
+Ref: Poll.participationConsumeAssetId > Asset.id
 
 Ref: Poll.participationRewardAssetId > Asset.id
 

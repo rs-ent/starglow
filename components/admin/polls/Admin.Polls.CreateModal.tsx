@@ -27,6 +27,7 @@ import {
     Clock,
     Gift,
     Target,
+    Eye,
     BarChart3,
     GripVertical,
 } from "lucide-react";
@@ -250,7 +251,16 @@ export default function AdminPollsCreateModal({
         artistId: initialData?.artistId || undefined,
         isActive: initialData?.isActive,
         hasAnswer: initialData?.hasAnswer || false,
+        hasAnswerAnnouncement: initialData?.hasAnswerAnnouncement || false,
         answerOptionIds: initialData?.answerOptionIds || [],
+        answerAnnouncementDate:
+            initialData?.answerAnnouncementDate || undefined,
+        showOnPollPage: initialData?.showOnPollPage ?? true,
+        showOnStarPage: initialData?.showOnStarPage ?? true,
+        participationConsumeAssetId:
+            initialData?.participationConsumeAssetId || undefined,
+        participationConsumeAmount:
+            initialData?.participationConsumeAmount || undefined,
     });
 
     // pollType이 변경될 때마다 bettingMode 업데이트
@@ -297,7 +307,17 @@ export default function AdminPollsCreateModal({
                 artistId: initialData.artistId || undefined,
                 isActive: initialData.isActive,
                 hasAnswer: initialData.hasAnswer || false,
+                hasAnswerAnnouncement:
+                    initialData.hasAnswerAnnouncement || false,
                 answerOptionIds: initialData.answerOptionIds || [],
+                answerAnnouncementDate:
+                    initialData.answerAnnouncementDate || undefined,
+                showOnPollPage: initialData.showOnPollPage ?? true,
+                showOnStarPage: initialData.showOnStarPage ?? true,
+                participationConsumeAssetId:
+                    initialData.participationConsumeAssetId || undefined,
+                participationConsumeAmount:
+                    initialData.participationConsumeAmount || undefined,
             });
         }
     }, [open, initialData]);
@@ -383,12 +403,30 @@ export default function AdminPollsCreateModal({
             return false;
         }
 
+        if (
+            formData.participationConsumeAmount &&
+            !formData.participationConsumeAssetId
+        ) {
+            toast.error("소모 수량을 설정할 때는 소모 에셋을 선택해주세요.");
+            return false;
+        }
+
         if (formData.hasAnswer) {
             if (
                 !formData.answerOptionIds ||
                 formData.answerOptionIds.length === 0
             ) {
                 toast.error("정답 옵션을 선택해주세요.");
+                return false;
+            }
+
+            if (
+                formData.hasAnswerAnnouncement &&
+                !formData.answerAnnouncementDate
+            ) {
+                toast.error(
+                    "정답 발표 예약을 설정할 때는 발표 일시를 입력해주세요."
+                );
                 return false;
             }
         }
@@ -987,6 +1025,99 @@ export default function AdminPollsCreateModal({
                                                     </div>
                                                 </Section>
 
+                                                {/* 표시 설정 */}
+                                                <Section
+                                                    title="표시 설정"
+                                                    icon={
+                                                        <Eye className="w-5 h-5" />
+                                                    }
+                                                >
+                                                    <div className="grid grid-cols-2 gap-6">
+                                                        <div>
+                                                            <Label className="mb-3 block text-slate-200">
+                                                                폴 페이지 표시
+                                                            </Label>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant={
+                                                                        formData.showOnPollPage
+                                                                            ? "default"
+                                                                            : "outline"
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleFormChange(
+                                                                            "showOnPollPage",
+                                                                            true
+                                                                        )
+                                                                    }
+                                                                    className="flex-1"
+                                                                >
+                                                                    표시
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant={
+                                                                        !formData.showOnPollPage
+                                                                            ? "default"
+                                                                            : "outline"
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleFormChange(
+                                                                            "showOnPollPage",
+                                                                            false
+                                                                        )
+                                                                    }
+                                                                    className="flex-1"
+                                                                >
+                                                                    숨김
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <Label className="mb-3 block text-slate-200">
+                                                                스타 페이지 표시
+                                                            </Label>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant={
+                                                                        formData.showOnStarPage
+                                                                            ? "default"
+                                                                            : "outline"
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleFormChange(
+                                                                            "showOnStarPage",
+                                                                            true
+                                                                        )
+                                                                    }
+                                                                    className="flex-1"
+                                                                >
+                                                                    표시
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant={
+                                                                        !formData.showOnStarPage
+                                                                            ? "default"
+                                                                            : "outline"
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleFormChange(
+                                                                            "showOnStarPage",
+                                                                            false
+                                                                        )
+                                                                    }
+                                                                    className="flex-1"
+                                                                >
+                                                                    숨김
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </Section>
+
                                                 {/* 일정 및 참여 설정 */}
                                                 <Section
                                                     title="일정 및 참여 설정"
@@ -994,11 +1125,8 @@ export default function AdminPollsCreateModal({
                                                         <Clock className="w-5 h-5" />
                                                     }
                                                 >
-                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                    <div className="grid grid-cols-2 gap-6">
                                                         <div>
-                                                            <Label className="mb-2 block text-slate-200">
-                                                                시작일
-                                                            </Label>
                                                             <DateTimePicker
                                                                 value={
                                                                     formData.startDate ||
@@ -1018,9 +1146,6 @@ export default function AdminPollsCreateModal({
                                                             />
                                                         </div>
                                                         <div>
-                                                            <Label className="mb-2 block text-slate-200">
-                                                                종료일
-                                                            </Label>
                                                             <DateTimePicker
                                                                 value={
                                                                     formData.endDate ||
@@ -1028,18 +1153,23 @@ export default function AdminPollsCreateModal({
                                                                 }
                                                                 onChange={(
                                                                     value
-                                                                ) =>
+                                                                ) => {
                                                                     handleFormChange(
                                                                         "endDate",
                                                                         value
-                                                                    )
-                                                                }
+                                                                    );
+
+                                                                    handleFormChange(
+                                                                        "answerAnnouncementDate",
+                                                                        value
+                                                                    );
+                                                                }}
                                                                 label="종료일"
                                                                 required
                                                                 showTime={true}
                                                             />
                                                         </div>
-                                                        <div className="lg:col-span-2">
+                                                        <div>
                                                             <Label className="mb-3 block text-slate-200">
                                                                 중복 투표 허용
                                                             </Label>
@@ -1080,17 +1210,99 @@ export default function AdminPollsCreateModal({
                                                                 </Button>
                                                             </div>
                                                         </div>
+                                                        <div>
+                                                            <Label className="mb-3 block text-slate-200">
+                                                                폴 페이지 표시
+                                                            </Label>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant={
+                                                                        formData.showOnPollPage
+                                                                            ? "default"
+                                                                            : "outline"
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleFormChange(
+                                                                            "showOnPollPage",
+                                                                            true
+                                                                        )
+                                                                    }
+                                                                    className="flex-1"
+                                                                >
+                                                                    표시
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant={
+                                                                        !formData.showOnPollPage
+                                                                            ? "default"
+                                                                            : "outline"
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleFormChange(
+                                                                            "showOnPollPage",
+                                                                            false
+                                                                        )
+                                                                    }
+                                                                    className="flex-1"
+                                                                >
+                                                                    숨김
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <Label className="mb-3 block text-slate-200">
+                                                                스타 페이지 표시
+                                                            </Label>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant={
+                                                                        formData.showOnStarPage
+                                                                            ? "default"
+                                                                            : "outline"
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleFormChange(
+                                                                            "showOnStarPage",
+                                                                            true
+                                                                        )
+                                                                    }
+                                                                    className="flex-1"
+                                                                >
+                                                                    표시
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant={
+                                                                        !formData.showOnStarPage
+                                                                            ? "default"
+                                                                            : "outline"
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleFormChange(
+                                                                            "showOnStarPage",
+                                                                            false
+                                                                        )
+                                                                    }
+                                                                    className="flex-1"
+                                                                >
+                                                                    숨김
+                                                                </Button>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </Section>
 
-                                                {/* 참여 보상 */}
+                                                {/* 참여 보상 및 소모 */}
                                                 <Section
-                                                    title="참여 보상"
+                                                    title="참여 보상 및 소모"
                                                     icon={
                                                         <Gift className="w-5 h-5" />
                                                     }
                                                 >
-                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                    <div className="grid grid-cols-2 gap-6">
                                                         <div>
                                                             <Label className="mb-2 block text-slate-200">
                                                                 보상 에셋
@@ -1207,6 +1419,126 @@ export default function AdminPollsCreateModal({
                                                                 placeholder="보상 수량"
                                                                 disabled={
                                                                     !formData.participationRewardAssetId
+                                                                }
+                                                                className="bg-slate-700/50 border-slate-600 text-white"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label className="mb-2 block text-slate-200">
+                                                                소모 에셋
+                                                            </Label>
+                                                            <Select
+                                                                value={
+                                                                    formData.participationConsumeAssetId ||
+                                                                    ""
+                                                                }
+                                                                onValueChange={(
+                                                                    value
+                                                                ) => {
+                                                                    if (
+                                                                        value ===
+                                                                        "none"
+                                                                    ) {
+                                                                        handleFormChange(
+                                                                            "participationConsumeAssetId",
+                                                                            undefined
+                                                                        );
+                                                                        handleFormChange(
+                                                                            "participationConsumeAmount",
+                                                                            undefined
+                                                                        );
+                                                                    } else {
+                                                                        handleFormChange(
+                                                                            "participationConsumeAssetId",
+                                                                            value
+                                                                        );
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
+                                                                    <SelectValue placeholder="참여 시 소모할 에셋을 선택하세요" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="none">
+                                                                        소모
+                                                                        없음
+                                                                    </SelectItem>
+                                                                    {assets?.assets?.map(
+                                                                        (
+                                                                            asset
+                                                                        ) => (
+                                                                            <SelectItem
+                                                                                key={
+                                                                                    asset.id
+                                                                                }
+                                                                                value={
+                                                                                    asset.id
+                                                                                }
+                                                                            >
+                                                                                <div className="flex items-center gap-2">
+                                                                                    {asset.iconUrl && (
+                                                                                        <Image
+                                                                                            src={
+                                                                                                asset.iconUrl
+                                                                                            }
+                                                                                            alt={
+                                                                                                asset.name
+                                                                                            }
+                                                                                            width={
+                                                                                                20
+                                                                                            }
+                                                                                            height={
+                                                                                                20
+                                                                                            }
+                                                                                        />
+                                                                                    )}
+                                                                                    <span>
+                                                                                        {
+                                                                                            asset.name
+                                                                                        }{" "}
+                                                                                        (
+                                                                                        {
+                                                                                            asset.symbol
+                                                                                        }
+
+                                                                                        )
+                                                                                    </span>
+                                                                                </div>
+                                                                            </SelectItem>
+                                                                        )
+                                                                    )}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div>
+                                                            <Label className="mb-2 block text-slate-200">
+                                                                소모 수량
+                                                            </Label>
+                                                            <Input
+                                                                type="number"
+                                                                value={
+                                                                    formData.participationConsumeAmount?.toString() ||
+                                                                    ""
+                                                                }
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    const value =
+                                                                        e.target
+                                                                            .value;
+                                                                    handleFormChange(
+                                                                        "participationConsumeAmount",
+                                                                        value ===
+                                                                            ""
+                                                                            ? undefined
+                                                                            : Number(
+                                                                                  value
+                                                                              )
+                                                                    );
+                                                                }}
+                                                                placeholder="소모 수량"
+                                                                disabled={
+                                                                    !formData.participationConsumeAssetId
                                                                 }
                                                                 className="bg-slate-700/50 border-slate-600 text-white"
                                                             />
@@ -1420,48 +1752,167 @@ export default function AdminPollsCreateModal({
                                                 }
                                             >
                                                 <div className="space-y-4">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <Checkbox
-                                                                checked={
-                                                                    formData.hasAnswer
-                                                                }
-                                                                onCheckedChange={(
-                                                                    checked
-                                                                ) => {
-                                                                    if (
-                                                                        !checked
-                                                                    ) {
-                                                                        handleFormChange(
-                                                                            "hasAnswer",
-                                                                            false
-                                                                        );
-                                                                        handleFormChange(
-                                                                            "answerOptionIds",
-                                                                            []
-                                                                        );
-                                                                    } else {
-                                                                        handleFormChange(
-                                                                            "hasAnswer",
-                                                                            true
-                                                                        );
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <Checkbox
+                                                                    checked={
+                                                                        formData.hasAnswer
                                                                     }
-                                                                }}
-                                                            />
-                                                            <Label className="text-slate-200">
-                                                                정답이 있는 폴
-                                                            </Label>
+                                                                    onCheckedChange={(
+                                                                        checked
+                                                                    ) => {
+                                                                        if (
+                                                                            !checked
+                                                                        ) {
+                                                                            handleFormChange(
+                                                                                "hasAnswer",
+                                                                                false
+                                                                            );
+                                                                            handleFormChange(
+                                                                                "answerOptionIds",
+                                                                                []
+                                                                            );
+                                                                        } else {
+                                                                            handleFormChange(
+                                                                                "hasAnswer",
+                                                                                true
+                                                                            );
+
+                                                                            handleFormChange(
+                                                                                "hasAnswerAnnouncement",
+                                                                                false
+                                                                            );
+                                                                            handleFormChange(
+                                                                                "answerAnnouncementDate",
+                                                                                undefined
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <Label className="text-slate-200">
+                                                                    정답이 있는
+                                                                    폴
+                                                                </Label>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-3">
+                                                                <Checkbox
+                                                                    checked={
+                                                                        formData.hasAnswerAnnouncement
+                                                                    }
+                                                                    onCheckedChange={(
+                                                                        checked
+                                                                    ) => {
+                                                                        if (
+                                                                            !checked
+                                                                        ) {
+                                                                            handleFormChange(
+                                                                                "hasAnswerAnnouncement",
+                                                                                false
+                                                                            );
+                                                                            handleFormChange(
+                                                                                "answerOptionIds",
+                                                                                []
+                                                                            );
+                                                                        } else {
+                                                                            handleFormChange(
+                                                                                "hasAnswerAnnouncement",
+                                                                                true
+                                                                            );
+
+                                                                            handleFormChange(
+                                                                                "answerAnnouncementDate",
+                                                                                formData.answerAnnouncementDate ||
+                                                                                    formData.endDate ||
+                                                                                    new Date()
+                                                                            );
+
+                                                                            handleFormChange(
+                                                                                "hasAnswer",
+                                                                                false
+                                                                            );
+
+                                                                            handleFormChange(
+                                                                                "answerOptionIds",
+                                                                                []
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <Label className="text-slate-200">
+                                                                    나중에
+                                                                    정답이
+                                                                    정해지는 폴
+                                                                </Label>
+                                                            </div>
+                                                            <Button
+                                                                type="button"
+                                                                onClick={
+                                                                    addNewOption
+                                                                }
+                                                                variant="outline"
+                                                                className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600"
+                                                            >
+                                                                + 옵션 추가
+                                                            </Button>
                                                         </div>
-                                                        <Button
-                                                            type="button"
-                                                            onClick={
-                                                                addNewOption
-                                                            }
-                                                            variant="outline"
-                                                            className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600"
-                                                        >
-                                                            + 옵션 추가
-                                                        </Button>
+
+                                                        {formData.hasAnswerAnnouncement && (
+                                                            <div className="p-4 bg-slate-800/60 rounded-lg border border-slate-600/50 space-y-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <Checkbox
+                                                                        checked={
+                                                                            formData.hasAnswerAnnouncement
+                                                                        }
+                                                                        onCheckedChange={(
+                                                                            checked
+                                                                        ) => {
+                                                                            handleFormChange(
+                                                                                "hasAnswerAnnouncement",
+                                                                                checked
+                                                                            );
+                                                                            if (
+                                                                                !checked
+                                                                            ) {
+                                                                                handleFormChange(
+                                                                                    "answerAnnouncementDate",
+                                                                                    undefined
+                                                                                );
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <Label className="text-slate-200">
+                                                                        정답
+                                                                        발표
+                                                                        예약
+                                                                    </Label>
+                                                                </div>
+                                                                {formData.hasAnswerAnnouncement && (
+                                                                    <div>
+                                                                        <DateTimePicker
+                                                                            value={
+                                                                                formData.answerAnnouncementDate ||
+                                                                                formData.endDate ||
+                                                                                new Date()
+                                                                            }
+                                                                            onChange={(
+                                                                                value
+                                                                            ) =>
+                                                                                handleFormChange(
+                                                                                    "answerAnnouncementDate",
+                                                                                    value
+                                                                                )
+                                                                            }
+                                                                            label="정답 발표 일시"
+                                                                            showTime={
+                                                                                true
+                                                                            }
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     <DndContext

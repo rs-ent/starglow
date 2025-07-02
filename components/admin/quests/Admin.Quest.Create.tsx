@@ -5,6 +5,14 @@
 import { useState, useEffect, useMemo } from "react";
 
 import { QuestType } from "@prisma/client";
+import {
+    Settings,
+    Image as ImageIcon,
+    Users,
+    Clock,
+    Gift,
+    Target,
+} from "lucide-react";
 
 import { useArtistsGet } from "@/app/hooks/useArtists";
 import { useAssetsGet } from "@/app/hooks/useAssets";
@@ -81,22 +89,57 @@ interface AdminQuestCreateProps {
 function Section({
     title,
     children,
-    bgColor = "bg-muted/40",
+    icon,
+    bgColor = "bg-slate-800/50",
 }: {
     title: string;
     children: React.ReactNode;
+    icon?: React.ReactNode;
     bgColor?: string;
 }) {
     return (
-        <div className={`mb-10 rounded-lg px-6 py-6 ${bgColor}`}>
-            <div className="text-lg font-semibold mb-3 mt-2">{title}</div>
-            {children}
+        <div
+            className={`rounded-xl border border-slate-700/50 ${bgColor} backdrop-blur-sm mb-6`}
+        >
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700/50">
+                {icon}
+                <h3 className="text-lg font-semibold text-white">{title}</h3>
+            </div>
+            <div className="p-6">{children}</div>
         </div>
     );
 }
 
 function Divider() {
     return <div className="border-b border-muted-foreground/20 my-6" />;
+}
+
+// 탭 컴포넌트
+interface TabProps {
+    tabs: { id: string; label: string; icon: React.ReactNode }[];
+    activeTab: string;
+    onTabChange: (tab: string) => void;
+}
+
+function TabNavigation({ tabs, activeTab, onTabChange }: TabProps) {
+    return (
+        <div className="flex space-x-1 bg-slate-800/60 p-1 rounded-lg backdrop-blur-sm border border-slate-700/50">
+            {tabs.map((tab) => (
+                <button
+                    key={tab.id}
+                    onClick={() => onTabChange(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                        activeTab === tab.id
+                            ? "bg-slate-700 text-white shadow-lg"
+                            : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                    }`}
+                >
+                    {tab.icon}
+                    {tab.label}
+                </button>
+            ))}
+        </div>
+    );
 }
 
 export default function AdminQuestCreate({
@@ -123,10 +166,47 @@ export default function AdminQuestCreate({
     });
     const toast = useToast();
 
+    // 탭 상태 관리
+    const [activeTab, setActiveTab] = useState("basic");
+
     // 퀘스트 타입
     const [questType, setQuestType] = useState<QuestType | null>(
         initialData?.questType || null
     );
+
+    // 탭 구성
+    const tabs = [
+        {
+            id: "basic",
+            label: "기본 정보",
+            icon: <Settings className="w-4 h-4" />,
+        },
+        {
+            id: "artist",
+            label: "아티스트",
+            icon: <Users className="w-4 h-4" />,
+        },
+        {
+            id: "reward",
+            label: "보상",
+            icon: <Gift className="w-4 h-4" />,
+        },
+        {
+            id: "access",
+            label: "참여 제한",
+            icon: <Target className="w-4 h-4" />,
+        },
+        {
+            id: "media",
+            label: "미디어",
+            icon: <ImageIcon className="w-4 h-4" />,
+        },
+        {
+            id: "settings",
+            label: "설정",
+            icon: <Clock className="w-4 h-4" />,
+        },
+    ];
 
     const [formData, setFormData] = useState<QuestFormData>({
         title: initialData?.title || "",
@@ -382,7 +462,21 @@ export default function AdminQuestCreate({
                     <QuestTypeSelection onSelect={setQuestType} />
                 )}
 
-                {questType && renderQuestForm(questType)}
+                {questType && (
+                    <div className="flex-1 min-h-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-y-auto">
+                        {/* 탭 네비게이션 */}
+                        <div className="px-6 py-4 border-b border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
+                            <TabNavigation
+                                tabs={tabs}
+                                activeTab={activeTab}
+                                onTabChange={setActiveTab}
+                            />
+                        </div>
+
+                        {/* 폼 컨텐츠 */}
+                        {renderQuestForm(questType)}
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     );
@@ -443,7 +537,10 @@ function URLQuestForm({
             className="flex-1 min-h-0 w-full flex flex-col items-center"
         >
             <div className="w-full h-full px-8 py-12 overflow-y-auto space-y-8 text-lg">
-                <Section title="기본 정보" bgColor="bg-muted/40">
+                <Section
+                    title="기본 정보"
+                    icon={<Settings className="w-5 h-5" />}
+                >
                     <div className="mb-8">
                         <Label className="mb-2 block">퀘스트 제목</Label>
                         <Input
@@ -488,7 +585,7 @@ function URLQuestForm({
                     </div>
                 </Section>
                 <Divider />
-                <Section title="아티스트" bgColor="bg-muted/30">
+                <Section title="아티스트" icon={<Users className="w-5 h-5" />}>
                     <div className="mb-8">
                         <Label className="mb-2 block">아티스트</Label>
                         <div className="flex gap-4 overflow-x-auto py-2 w-full">
@@ -543,7 +640,7 @@ function URLQuestForm({
                     </div>
                 </Section>
                 <Divider />
-                <Section title="보상" bgColor="bg-muted/40">
+                <Section title="보상" icon={<Gift className="w-5 h-5" />}>
                     <div className="mb-8">
                         <Label className="mb-2 block">보상 에셋</Label>
                         <Select
@@ -604,7 +701,10 @@ function URLQuestForm({
                     </div>
                 </Section>
                 <Divider />
-                <Section title="참여 제한" bgColor="bg-muted/30">
+                <Section
+                    title="참여 제한"
+                    icon={<Target className="w-5 h-5" />}
+                >
                     <div className="flex gap-2 mb-2">
                         <Button
                             type="button"
@@ -678,7 +778,10 @@ function URLQuestForm({
                     )}
                 </Section>
                 <Divider />
-                <Section title="이미지/미디어" bgColor="bg-muted/40">
+                <Section
+                    title="이미지/미디어"
+                    icon={<ImageIcon className="w-5 h-5" />}
+                >
                     <div className="mt-8 space-y-4">
                         <Label>아이콘 이미지</Label>
                         {/* 프리셋 아이콘 리스트 */}
@@ -1273,7 +1376,10 @@ function ReferralQuestForm({
             className="flex-1 min-h-0 w-full flex flex-col items-center"
         >
             <div className="w-full h-full px-8 py-12 overflow-y-auto space-y-8 text-lg">
-                <Section title="기본 정보" bgColor="bg-muted/40">
+                <Section
+                    title="기본 정보"
+                    icon={<Settings className="w-5 h-5" />}
+                >
                     <div className="mb-8">
                         <Label className="mb-2 block">퀘스트 제목</Label>
                         <Input
@@ -1300,7 +1406,7 @@ function ReferralQuestForm({
                     </div>
                 </Section>
                 <Divider />
-                <Section title="보상" bgColor="bg-muted/40">
+                <Section title="보상" icon={<Gift className="w-5 h-5" />}>
                     <div className="mb-8">
                         <Label className="mb-2 block">보상</Label>
                         <Select
@@ -1349,7 +1455,10 @@ function ReferralQuestForm({
                     </div>
                 </Section>
                 <Divider />
-                <Section title="보상 기준" bgColor="bg-muted/30">
+                <Section
+                    title="보상 기준"
+                    icon={<Target className="w-5 h-5" />}
+                >
                     <div className="mb-8">
                         <Label className="mb-2 block">
                             보상을 위한 친구 초대 횟수
@@ -1369,7 +1478,10 @@ function ReferralQuestForm({
                     </div>
                 </Section>
                 <Divider />
-                <Section title="이미지/미디어" bgColor="bg-muted/40">
+                <Section
+                    title="이미지/미디어"
+                    icon={<ImageIcon className="w-5 h-5" />}
+                >
                     <div className="mt-8 space-y-4">
                         <Label>아이콘 이미지</Label>
                         {/* 프리셋 아이콘 리스트 */}

@@ -136,7 +136,7 @@ const partners: Partner[] = [
         title: "Korea Art Management Service",
         purpose: "Government Partnership",
         description:
-            "Korea Arts Management Service supporting Korean arts organizations, international promotion, and arts-related startup development",
+            "Supporting Korean arts organizations, international promotion, and arts-related startup development",
     },
     {
         name: "seoul",

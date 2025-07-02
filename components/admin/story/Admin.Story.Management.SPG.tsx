@@ -68,6 +68,7 @@ interface SPGForm {
     artistId?: string;
     networkId?: string;
     imageUrl?: string;
+    hiddenDetails?: boolean;
 }
 
 function formatKSTDate(dateStr?: string) {
@@ -222,6 +223,7 @@ export default function AdminStoryManagementSPG({
         pageImages: [],
         backgroundColor: "",
         foregroundColor: "",
+        hiddenDetails: false,
     });
 
     const {
@@ -325,6 +327,7 @@ export default function AdminStoryManagementSPG({
                         address: spg.address,
                         isListed: spg.isListed,
                         comingSoon: spg.comingSoon || false,
+                        hiddenDetails: spg.hiddenDetails || false,
                         preOrderStart: spg.preOrderStart || "",
                         preOrderEnd: spg.preOrderEnd || "",
                         saleStart: spg.saleStart || "",
@@ -651,9 +654,11 @@ export default function AdminStoryManagementSPG({
                                                         출시 예정 상태
                                                     </h3>
                                                     <p className="text-sm text-blue-300 mt-1">
-                                                        활성화하면 컬렉션이 블러
-                                                        처리되어 티저 형태로
-                                                        표시됩니다
+                                                        활성화하면 컬렉션의 날짜
+                                                        표시가 숨겨집니다
+                                                        <br />
+                                                        (비활성화 시 상세 정보
+                                                        숨김 상태는 해제됩니다)
                                                     </p>
                                                 </div>
                                                 <button
@@ -668,12 +673,59 @@ export default function AdminStoryManagementSPG({
                                                             ...f,
                                                             comingSoon:
                                                                 !f.comingSoon,
+                                                            hiddenDetails:
+                                                                f.comingSoon
+                                                                    ? false
+                                                                    : f.hiddenDetails,
                                                         }))
                                                     }
                                                 >
                                                     <span
                                                         className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg transform transition-transform duration-300 ${
                                                             form.comingSoon
+                                                                ? "translate-x-1"
+                                                                : "-translate-x-7"
+                                                        }`}
+                                                    />
+                                                </button>
+                                            </div>
+
+                                            {/* comingSoon 토글 추가 */}
+                                            <div className="flex items-center justify-between p-4 bg-blue-900/20 rounded-xl border border-blue-800/30">
+                                                <div>
+                                                    <h3 className="text-lg font-semibold text-white">
+                                                        상세 정보 숨김
+                                                    </h3>
+                                                    <p className="text-sm text-blue-300 mt-1">
+                                                        활성화하면 컬렉션 상세
+                                                        정보를 들어갈 수
+                                                        없게되고 블러 처리됩니다
+                                                        <br />
+                                                        (활성화 시 출시 예정
+                                                        상태와 함께
+                                                        활성화됩니다)
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className={`relative w-16 h-8 rounded-full transition-all duration-300 ${
+                                                        form.hiddenDetails
+                                                            ? "bg-gradient-to-r from-red-500 to-red-600"
+                                                            : "bg-gray-600"
+                                                    }`}
+                                                    onClick={() =>
+                                                        setForm((f) => ({
+                                                            ...f,
+                                                            hiddenDetails:
+                                                                !f.hiddenDetails,
+                                                            comingSoon:
+                                                                !f.comingSoon,
+                                                        }))
+                                                    }
+                                                >
+                                                    <span
+                                                        className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg transform transition-transform duration-300 ${
+                                                            form.hiddenDetails
                                                                 ? "translate-x-1"
                                                                 : "-translate-x-7"
                                                         }`}

@@ -118,6 +118,7 @@ export default function UserSettingsProfile({
                                             "rounded-full object-cover",
                                             getResponsiveClass(70).frameClass
                                         )}
+                                        unoptimized={true}
                                     />
                                 </div>
                             )}

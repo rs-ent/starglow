@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
@@ -24,28 +24,38 @@ export default function InviteFriendsModal({
     player,
     onClose,
 }: InviteFriendsModalProps) {
+    const [isShareSupported, setIsShareSupported] = useState(false);
+
+    // 클라이언트 사이드에서 navigator.share 지원 여부 확인
+    useEffect(() => {
+        setIsShareSupported(typeof navigator.share === "function");
+    }, []);
+
     const refUrl = useMemo(() => {
         const code = player?.referralCode || "";
         if (typeof window !== "undefined") {
-            if (typeof navigator.share === "function") {
+            if (isShareSupported) {
                 return code
                     ? `${window.location.origin}/invite?ref=${code}&method=webapp`
                     : `${window.location.origin}/invite`;
             } else {
+                const telegramBot =
+                    process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ||
+                    "starglow_redslippers_bot";
                 return code
-                    ? `https://t.me/Waydcloud_bot?startapp=${code}`
-                    : "https://t.me/Waydcloud_bot?startapp";
+                    ? `https://t.me/${telegramBot}?startapp=${code}`
+                    : `https://t.me/${telegramBot}?startapp`;
             }
         }
         return "";
-    }, [player?.referralCode]);
+    }, [player?.referralCode, isShareSupported]);
 
     const [showQrCode, setShowQrCode] = useState(false);
 
     const toast = useToast();
     const selection = [];
 
-    if (navigator.share) {
+    if (isShareSupported) {
         selection.push({
             title: "Share",
             icon: "/icons/share.svg",

@@ -295,14 +295,18 @@ model Poll {
   category                   PollCategory @default(PUBLIC)
   status                     PollStatus   @default(UPCOMING)
   isActive                   Boolean      @default(false)
+  showOnPollPage             Boolean      @default(true)
+  showOnStarPage             Boolean      @default(true)
   options                    Json[]
   optionsOrder               String[]     @default([])
   hasAnswer                  Boolean      @default(false)
+  hasAnswerAnnouncement      Boolean      @default(false)
   answerOptionIds            String[]     @default([])
   imgUrl                     String?
   youtubeUrl                 String?
   startDate                  DateTime     @default(now())
   endDate                    DateTime
+  answerAnnouncementDate     DateTime?
   exposeInScheduleTab        Boolean      @default(true)
   hideResults                Boolean      @default(false)
   resultVisibleDate          DateTime?
@@ -322,6 +326,8 @@ model Poll {
   bettingAssetId             String?
   minimumBet                 Int          @default(1000)
   maximumBet                 Int          @default(10000)
+  participationConsumeAssetId String?
+  participationConsumeAmount Int?
   participationRewardAssetId String?
   participationRewardAmount  Int?
   viewCount                  Int          @default(0)
@@ -339,6 +345,7 @@ model Poll {
   artistId                   String?
   artist                     Artist?      @relation("ArtistPolls", fields: [artistId], references: [id])
   bettingAsset               Asset?       @relation("PollBettingAsset", fields: [bettingAssetId], references: [id])
+  participationConsumeAsset  Asset?       @relation("PollParticipationConsume", fields: [participationConsumeAssetId], references: [id])
   participationRewardAsset   Asset?       @relation("PollParticipationReward", fields: [participationRewardAssetId], references: [id])
   pollLogs                   PollLog[]
   rewardLogs                 RewardsLog[]
@@ -349,7 +356,7 @@ model Poll {
   settledBy                  String?
   houseCommissionRate        Float        @default(0.05)  // 5% 수수료
   totalCommissionAmount      Int          @default(0)
-  optionBetAmounts           Json?        // {"optionA": 50000, "optionB": 30000}
+  optionBetAmounts           Json?
   settlementLogs             PollBettingSettlementLog[]
 
   @@index([category])
@@ -725,6 +732,7 @@ model Asset {
   boardQualityContentRewards    Board[]            @relation("BoardQualityContentReward")
   rafflePrizes                  RafflePrize[]      @relation("RafflePrizeAsset")
   raffleEntryFeeAssets          Raffle[]           @relation("RaffleEntryFeeAsset")
+  pollParticipationConsumeAssets Poll[]             @relation("PollParticipationConsume")
 
   @@index([isDefault])
   @@index([assetType, isActive])
@@ -1151,6 +1159,7 @@ model Story_spg {
   circulation              Int                @default(1000)
   pageImages               String[]
   comingSoon               Boolean            @default(false)
+  hiddenDetails            Boolean            @default(false)
   backgroundColor          String?
   foregroundColor          String?
   story_nfts               Story_nft[]
