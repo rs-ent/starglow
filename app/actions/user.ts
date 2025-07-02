@@ -4,7 +4,6 @@
 
 import crypto from "crypto";
 
-
 import { cookies } from "next/headers";
 
 import { prisma } from "@/lib/prisma/client";
@@ -13,8 +12,6 @@ import { setPlayer, invitePlayer } from "./player";
 import { createWallet } from "../story/userWallet/actions";
 
 import type { Prisma, Player, User } from "@prisma/client";
-
-
 
 export interface GetUsersInput {
     ids?: string[];
@@ -242,7 +239,7 @@ export async function setUserWithWallet(
             });
         }
 
-        // 플레이어와 지갑 생성
+        // 플레이어 생성
         const [player] = await Promise.all([setPlayer({ user })]);
 
         if (!player.player) {

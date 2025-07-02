@@ -27,7 +27,6 @@ export async function createWallet(userId: string) {
             const existingWallet = await tx.wallet.findFirst({
                 where: {
                     userId,
-                    network: networkValue,
                 },
             });
 
