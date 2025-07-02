@@ -9,6 +9,7 @@ import { ArrowDown } from "lucide-react";
 
 import Icon from "../atoms/Icon";
 import LinkButton from "../atoms/LinkButton";
+import Image from "next/image";
 
 // 메모이제이션된 애니메이션 요소들
 const AnimatedTitle = memo(() => (
@@ -162,34 +163,13 @@ export default function MainGitbook() {
                 xl:w-[130px] xl:mb-20
             "
             >
-                <img
+                <Image
                     src="/elements/el01.svg"
                     alt="Decorative element"
                     className="w-full h-auto"
+                    fill
+
                 />
-            </div>
-            <LinkButton
-                href="https://docs.starglow.io"
-                target="_blank"
-                img="/icons/gitbook.svg"
-                frameSize={35}
-                textSize={30}
-                paddingSize={45}
-                gapSize={35}
-                className="flex mb-32 bg-gradient-to-br font-body font-extrabold from-[rgba(103,101,241,1)] to-[rgba(135,94,244,1)] rounded-full drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] hover:text-white hover:animate-pulse"
-            >
-                About Us
-            </LinkButton>
-            <p
-                className="
-                    font-body mb-4
-                    text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl
-                "
-            >
-                Scroll to
-            </p>
-            <div className="flex items-center justify-center animate-bounce">
-                <Icon icon={ArrowDown} size={35} />
             </div>
         </div>
     );
