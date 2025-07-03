@@ -6,8 +6,6 @@ import { Suspense } from "react";
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 import NFTs from "@/components/nfts/NFTs";
 
-import { getSPGs } from "../story/spg/actions";
-
 import type { Metadata } from "next";
 
 // SEO 메타데이터 정의
@@ -28,9 +26,7 @@ function NFTsLoading() {
 
 // NFT 데이터를 가져오는 컴포넌트
 async function NFTsContent() {
-    const spgs = await getSPGs();
-
-    return <NFTs spgs={spgs || []} />;
+    return <NFTs />;
 }
 
 export default function NFTsEntryPage() {

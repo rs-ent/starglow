@@ -1106,7 +1106,7 @@ export async function handlePostCreationReward(
             board
         );
         if (!rewardLimitCheck.allowed) {
-            console.log(
+            console.info(
                 `Post creation reward limit reached for player ${playerId}:`,
                 rewardLimitCheck.reason
             );

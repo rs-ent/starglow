@@ -204,13 +204,6 @@ export function useWagmiConnection() {
         toast,
     ]);
 
-    // 컴포넌트 언마운트 시 처리된 주소 정리
-    useEffect(() => {
-        return () => {
-            processedAddresses.current.clear();
-        };
-    }, []);
-
     // 체인 전환
     const handleSwitchChain = useCallback(
         async (targetChainId: number) => {

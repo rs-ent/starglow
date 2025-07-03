@@ -12,7 +12,7 @@ import NFTsCollections from "./NFTs.Collections";
 
 import type { SPG } from "@/app/story/spg/actions";
 
-export default function NFTs({ spgs }: { spgs: SPG[] }) {
+export default function NFTs() {
     const router = useRouter();
     const [isFadingOut, setIsFadingOut] = useState(false);
 
@@ -38,10 +38,7 @@ export default function NFTs({ spgs }: { spgs: SPG[] }) {
                             : ""
                     )}
                 />
-                <NFTsCollections
-                    onBuyNowClick={handleBuyNowClick}
-                    spgs={spgs}
-                />
+                <NFTsCollections onBuyNowClick={handleBuyNowClick} />
             </div>
         </div>
     );

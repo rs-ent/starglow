@@ -13,10 +13,8 @@ import { useThree, useFrame, Canvas } from "@react-three/fiber";
 import { useGesture } from "@use-gesture/react";
 import { Vector3 } from "three";
 
-import { fetchURI } from "@/app/story/metadata/actions";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { prefetchTextures } from "@/lib/utils/useCachedTexture";
 
 import NFTsCollectionsCard3DR3F from "./NFTs.Collections.Card.R3F";
 import PartialLoading from "../atoms/PartialLoading";
@@ -24,9 +22,9 @@ import PartialLoading from "../atoms/PartialLoading";
 import type { SPG } from "@/app/story/spg/actions";
 import type { WebKitGestureEvent } from "@use-gesture/react";
 import type { Mesh } from "three";
+import { useSPG } from "@/app/story/spg/hooks";
 
 interface NFTsCollectionsListProps {
-    spgs: SPG[];
     initialTargetCameraZ?: number;
     onBuyNowClick: (spg: SPG) => void;
 }
@@ -72,7 +70,6 @@ const Arrow = React.memo(function Arrow({
 });
 
 export default function NFTsCollectionsList({
-    spgs,
     onBuyNowClick,
     initialTargetCameraZ = 35,
 }: NFTsCollectionsListProps) {
@@ -87,44 +84,17 @@ export default function NFTsCollectionsList({
     const containerRef = useRef<HTMLDivElement>(null);
     const [isPinching, setIsPinching] = useState(false);
     const [confirmedAlpha, setConfirmedAlpha] = useState(1);
-    const [isPreloaded, setIsPreloaded] = useState(false);
 
-    // 3D 카드 이미지 프리로딩
-    useEffect(() => {
-        let cancelled = false;
-        async function preload() {
-            const urls = (
-                await Promise.all(
-                    spgs.map(async (c) => {
-                        if (c.imageUrl) {
-                            return c.imageUrl;
-                        }
-                        const contractURI = c.contractURI;
-                        const metadata = await fetchURI({ uri: contractURI });
-                        return metadata?.image || null;
-                    })
-                )
-            ).filter(Boolean) as string[];
-            if (cancelled) return;
-            if (urls.length === 0) {
-                setIsPreloaded(true);
-                return;
-            }
-            await prefetchTextures(urls);
-            if (!cancelled) setIsPreloaded(true);
-        }
-        void preload();
-        return () => {
-            cancelled = true;
-        };
-    }, [spgs]);
+    const { getSPGsData, getSPGsIsLoading } = useSPG({
+        getSPGsInput: {},
+    });
 
-    const len = spgs.length;
     const handleDrag = useCallback(
         (state: any) => {
-            if (isPinching) {
+            if (isPinching || !getSPGsData) {
                 return;
             }
+            const len = getSPGsData.length;
             const {
                 movement: [mx],
                 last,
@@ -141,8 +111,9 @@ export default function NFTsCollectionsList({
                 setConfirmedAlpha(1);
             }
         },
-        [selected, len, isPinching]
+        [selected, getSPGsData, isPinching]
     );
+
     const handleWheel = useCallback(
         ({
             event,
@@ -153,7 +124,9 @@ export default function NFTsCollectionsList({
         }) => {
             event.preventDefault();
 
-            // 마우스휠로 카드 네비게이션
+            if (!getSPGsData) return;
+
+            const len = getSPGsData.length;
             if (Math.abs(dy) > 0.5) {
                 // 최소 임계값으로 민감도 조절
                 let nextSelected = selected;
@@ -171,7 +144,7 @@ export default function NFTsCollectionsList({
                 setTargetCameraZ(cameraZByWidth);
             }
         },
-        [selected, len, cameraZByWidth]
+        [selected, getSPGsData, cameraZByWidth]
     );
     const handlePinch = useCallback(
         ({
@@ -212,10 +185,14 @@ export default function NFTsCollectionsList({
     );
     const { radius, angleStep } = useMemo(() => {
         const baseRadius = 30;
+        if (!getSPGsData) return { radius: baseRadius, angleStep: 0 };
+
+        const len = getSPGsData.length;
         const radius = baseRadius + Math.max(0, len - 5) * 0.7;
         const angleStep = (2 * Math.PI) / len;
         return { radius, angleStep };
-    }, [len]);
+    }, [getSPGsData]);
+
     const CameraLerp = React.memo(function CameraLerp({
         targetCameraZ,
     }: {
@@ -230,11 +207,13 @@ export default function NFTsCollectionsList({
 
     const handleClickCollection = useCallback(
         (collectionId: string, buyNowClicked: boolean) => {
-            const index = spgs.findIndex((c) => c.id === collectionId);
+            if (!getSPGsData) return;
+
+            const index = getSPGsData.findIndex((c) => c.id === collectionId);
             if (buyNowClicked && index !== -1) {
                 const cameraZ = 5;
                 setTargetCameraZ(cameraZ);
-                onBuyNowClick(spgs[index]);
+                onBuyNowClick(getSPGsData[index]);
             }
             if (selected === index) {
                 if (!buyNowClicked && confirmedAlpha > 1) {
@@ -251,7 +230,7 @@ export default function NFTsCollectionsList({
                 setTargetCameraZ(cameraZByWidth);
             }
         },
-        [spgs, selected, confirmedAlpha, onBuyNowClick, cameraZByWidth]
+        [getSPGsData, selected, confirmedAlpha, onBuyNowClick, cameraZByWidth]
     );
 
     const renderCollection = useCallback(
@@ -325,17 +304,20 @@ export default function NFTsCollectionsList({
                 Glow
             </h2>
 
-            <p
-                className={cn(
-                    "text-center text-[rgba(255,255,255,0.8)]",
-                    getResponsiveClass(10).textClass
-                )}
-            >
-                GLOW AND GROW WITH YOUR STAR
-            </p>
-            {isPreloaded ? (
+            {getSPGsIsLoading ? (
+                <PartialLoading text="Loading..." />
+            ) : !getSPGsData || getSPGsData.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-center text-[rgba(255,255,255,0.8)]">
+                        No collections found
+                    </p>
+                </div>
+            ) : (
                 <Canvas
-                    camera={{ position: [0, 0, targetCameraZ], fov: 40 }}
+                    camera={{
+                        position: [0, 0, targetCameraZ],
+                        fov: 40,
+                    }}
                     style={{
                         width: "100%",
                         display: "block",
@@ -429,10 +411,8 @@ export default function NFTsCollectionsList({
                         confirmedAlpha={confirmedAlpha}
                     />
 
-                    {spgs.map(renderCollection)}
+                    {getSPGsData && getSPGsData.map(renderCollection)}
                 </Canvas>
-            ) : (
-                <PartialLoading text="Loading..." />
             )}
         </div>
     );

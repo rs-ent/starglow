@@ -692,7 +692,7 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
 }: NFTsCollectionsCard3DR3FProps) {
     const { circulation, isCirculationLoading } = useNFT({
         getCirculationInput: {
-            spgAddress: spg.address,
+            spgAddress: spg.hiddenDetails ? "" : spg.address,
         },
     });
 

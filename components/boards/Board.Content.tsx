@@ -298,6 +298,7 @@ export default React.memo(function BoardContent({
         createBoardPostAsync,
         canPost,
         remainingCooldown,
+        toast,
     ]);
 
     // 파일 업로드 핸들러

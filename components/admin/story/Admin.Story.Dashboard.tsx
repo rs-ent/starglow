@@ -10,7 +10,9 @@ import {
     FaEdit,
     FaRocket,
     FaShieldAlt,
- FaCube } from "react-icons/fa";
+    FaCube,
+    FaPalette,
+} from "react-icons/fa";
 import { SiEthereum } from "react-icons/si";
 import { TbTopologyStar3 } from "react-icons/tb";
 
@@ -22,6 +24,7 @@ import AdminStoryRegisterIPAsset from "./Admin.Story.RegisterIPAsset";
 import AdminStorySPG from "./Admin.Story.SPG";
 import AdminStoryTBA from "./Admin.Story.TBA";
 import AdminStoryWallets from "./Admin.Story.Wallets";
+import AdminStorySPGPreview from "./Admin.Story.SPG.Preview";
 
 export default function AdminStoryDashboard() {
     const [selection, setSelection] = useState<
@@ -29,6 +32,7 @@ export default function AdminStoryDashboard() {
         | "escrow"
         | "metadata"
         | "spg"
+        | "spg-preview"
         | "mint"
         | "register-ip"
         | "spg-management"
@@ -47,6 +51,9 @@ export default function AdminStoryDashboard() {
     }
     if (selection === "spg") {
         return <AdminStorySPG onBack={() => setSelection(null)} />;
+    }
+    if (selection === "spg-preview") {
+        return <AdminStorySPGPreview onBack={() => setSelection(null)} />;
     }
     if (selection === "mint") {
         return <AdminStoryMint onBack={() => setSelection(null)} />;
@@ -104,6 +111,7 @@ export default function AdminStoryDashboard() {
                 >
                     Create SPG Collections
                 </button>
+
                 <button
                     className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-700 via-pink-700 to-orange-700 text-white font-bold rounded-xl shadow-xl hover:scale-105 hover:from-orange-700 hover:to-purple-700 transition-all duration-200 text-lg tracking-wide border border-pink-500/30"
                     onClick={() => setSelection("mint")}
@@ -117,6 +125,13 @@ export default function AdminStoryDashboard() {
                 >
                     <FaCube className="text-2xl" />
                     Register IP Assets
+                </button>
+                <button
+                    className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-pink-700 via-purple-700 to-fuchsia-700 text-white font-bold rounded-xl shadow-xl hover:scale-105 hover:from-fuchsia-700 hover:to-pink-700 transition-all duration-200 text-lg tracking-wide border border-pink-500/30"
+                    onClick={() => setSelection("spg-preview")}
+                >
+                    <FaPalette className="text-2xl" />
+                    Preview Collections
                 </button>
                 <button
                     className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-700 via-cyan-700 to-blue-700 text-white font-bold rounded-xl shadow-xl hover:scale-105 hover:from-blue-700 hover:to-green-700 transition-all duration-200 text-lg tracking-wide border border-green-500/30"

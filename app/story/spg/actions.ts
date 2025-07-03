@@ -113,6 +113,53 @@ export async function createSPG(
     input: createSPGInput
 ): Promise<Story_spg & { txHash: string }> {
     try {
+        if (input.networkId === "default-preview-network") {
+            const network = await prisma.blockchainNetwork.findFirst({
+                where: {
+                    defaultNetwork: true,
+                },
+                select: {
+                    id: true,
+                },
+            });
+
+            if (!network) {
+                throw new Error("Default network not found");
+            }
+
+            const escrowWallet = await prisma.escrowWallet.findFirst({
+                where: {
+                    isActive: true,
+                },
+                select: {
+                    address: true,
+                },
+            });
+
+            if (!escrowWallet) {
+                throw new Error("Escrow wallet not found");
+            }
+
+            const spg = await prisma.story_spg.create({
+                data: {
+                    address: new Date().getTime().toString(),
+                    baseURI: "hidden",
+                    contractURI: "hidden",
+                    name: `${input.name} - Hidden`,
+                    symbol: `${input.symbol} - Hidden`,
+                    networkId: network.id,
+                    ownerAddress: escrowWallet.address,
+                    comingSoon: true,
+                    hiddenDetails: true,
+                },
+            });
+
+            return {
+                ...spg,
+                txHash: "",
+            };
+        }
+
         const publicClient = await fetchPublicClient({
             networkId: input.networkId,
         });
