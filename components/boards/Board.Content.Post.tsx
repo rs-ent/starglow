@@ -150,7 +150,7 @@ export default React.memo(function BoardContentPost({
                                     priority={false}
                                     unoptimized={true}
                                     className={cn(
-                                        "rounded-full flex-shrink-0 w-8 h-8 md:w-10 md:h-10",
+                                        "rounded-full flex-shrink-0 w-8 h-8 md:w-10 md:h-10 object-cover",
                                         isPlayerProfileLoading &&
                                             "animate-pulse blur-sm",
                                         getResponsiveClass(35).frameClass

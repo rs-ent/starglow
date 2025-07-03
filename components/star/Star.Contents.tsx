@@ -2,9 +2,16 @@
 
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Zap, Users, Trophy } from "lucide-react";
+import {
+    Sparkles,
+    Zap,
+    VoteIcon,
+    Trophy,
+    Users,
+    MessageCircleHeart,
+} from "lucide-react";
 import Image from "next/image";
 import Head from "next/head";
 
@@ -24,12 +31,12 @@ import BoardContent from "../boards/Board.Content";
 import StarStore from "../store/Star.Store";
 
 import type { ArtistFeedWithReactions } from "@/app/actions/artistFeeds";
-import type { ArtistWithSPG } from "@/app/actions/artists";
 import type { Player } from "@prisma/client";
+import type { PolishedArtist } from "./Star.List";
 
 interface StarContentsProps {
     player: Player | null;
-    artist: ArtistWithSPG;
+    artist: PolishedArtist;
 }
 
 type ModalState = "none" | "feed";
@@ -38,6 +45,41 @@ export default React.memo(function StarContents({
     player,
     artist,
 }: StarContentsProps) {
+    const polishedArtist: PolishedArtist = useMemo(() => {
+        const collections = artist.story_spg?.filter(
+            (collection) =>
+                collection.isListed &&
+                !collection.comingSoon &&
+                !collection.hiddenDetails
+        );
+
+        const totalPosts =
+            artist.boards?.reduce(
+                (sum, board) => sum + board.posts.length,
+                0
+            ) || 0;
+
+        const polls = artist.polls?.filter(
+            (poll) => poll.isActive && poll.showOnStarPage
+        );
+
+        const totalPolls = polls?.length || 0;
+
+        const quests = artist.quests?.filter((quest) => quest.isActive);
+
+        const totalQuests = quests?.length || 0;
+
+        return {
+            ...artist,
+            story_spg: collections,
+            polls,
+            quests,
+            totalPosts,
+            totalPolls,
+            totalQuests,
+        } as PolishedArtist;
+    }, [artist]);
+
     const [modalState, setModalState] = useState<ModalState>("none");
     const [initialFeeds, setInitialFeeds] = useState<ArtistFeedWithReactions[]>(
         []
@@ -279,7 +321,7 @@ export default React.memo(function StarContents({
                                             getResponsiveClass(25).paddingClass
                                         )}
                                     >
-                                        <Sparkles
+                                        <MessageCircleHeart
                                             className={cn(
                                                 "mx-auto text-white/80",
                                                 getResponsiveClass(35)
@@ -297,7 +339,7 @@ export default React.memo(function StarContents({
                                                     .marginYClass
                                             )}
                                         >
-                                            NFTs
+                                            Posts
                                         </p>
                                         <p
                                             className={cn(
@@ -305,7 +347,11 @@ export default React.memo(function StarContents({
                                                 getResponsiveClass(25).textClass
                                             )}
                                         >
-                                            {artist.story_spg?.length || 0}
+                                            {artist.boards?.reduce(
+                                                (sum, board) =>
+                                                    sum + board.posts.length,
+                                                0
+                                            ) || 0}
                                         </p>
                                     </div>
                                     <div
@@ -315,7 +361,7 @@ export default React.memo(function StarContents({
                                             getResponsiveClass(25).paddingClass
                                         )}
                                     >
-                                        <Users
+                                        <VoteIcon
                                             className={cn(
                                                 "mx-auto text-white/80",
                                                 getResponsiveClass(35)
@@ -333,7 +379,7 @@ export default React.memo(function StarContents({
                                                     .marginYClass
                                             )}
                                         >
-                                            Polls
+                                            Engagements
                                         </p>
                                         <p
                                             className={cn(
@@ -341,7 +387,7 @@ export default React.memo(function StarContents({
                                                 getResponsiveClass(25).textClass
                                             )}
                                         >
-                                            {artist.polls?.length || 0}
+                                            {artist.totalPolls || 0}
                                         </p>
                                     </div>
                                     <div
@@ -369,7 +415,7 @@ export default React.memo(function StarContents({
                                                     .marginYClass
                                             )}
                                         >
-                                            Quests
+                                            Earnings
                                         </p>
                                         <p
                                             className={cn(
@@ -384,8 +430,8 @@ export default React.memo(function StarContents({
                             </motion.section>
 
                             {/* Collections Section */}
-                            {artist.story_spg &&
-                                artist.story_spg.length > 0 && (
+                            {polishedArtist.story_spg &&
+                                polishedArtist.story_spg.length > 0 && (
                                     <motion.section
                                         initial={{ opacity: 0, y: 30 }}
                                         animate={{ opacity: 1, y: 0 }}
@@ -435,7 +481,7 @@ export default React.memo(function StarContents({
                                                             .textClass
                                                     )}
                                                 >
-                                                    NFT Collections
+                                                    Glow Collections
                                                 </h2>
                                             </motion.div>
 
@@ -446,7 +492,7 @@ export default React.memo(function StarContents({
                                                         .gapClass
                                                 )}
                                             >
-                                                {artist.story_spg.map(
+                                                {polishedArtist.story_spg.map(
                                                     (spg, index) => (
                                                         <motion.div
                                                             key={spg.id}
@@ -650,7 +696,7 @@ export default React.memo(function StarContents({
                                                 getResponsiveClass(30).textClass
                                             )}
                                         >
-                                            Engage & Earn
+                                            Earn & Engage
                                         </h2>
                                     </motion.div>
 
@@ -760,7 +806,7 @@ export default React.memo(function StarContents({
                                         )}
                                     >
                                         <div className="rounded-xl bg-gradient-to-r from-white/20 to-white/30 p-3">
-                                            <Users
+                                            <VoteIcon
                                                 className={cn(
                                                     "text-white",
                                                     getResponsiveClass(30)

@@ -920,7 +920,7 @@ export default React.memo(function BoardContent({
                                                         .textClass
                                                 )}
                                             >
-                                                💡 Earn {artist.name} Tokens!
+                                                💡 Earn Starglow Points!
                                             </h2>
                                         </ShinyButton>
                                     </motion.div>

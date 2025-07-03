@@ -5,10 +5,7 @@
 import { memo } from "react";
 
 import { motion } from "framer-motion";
-import { ArrowDown } from "lucide-react";
 
-import Icon from "../atoms/Icon";
-import LinkButton from "../atoms/LinkButton";
 import Image from "next/image";
 
 // 메모이제이션된 애니메이션 요소들
@@ -126,7 +123,6 @@ DecorationElements.displayName = "DecorationElements";
 
 // 메인 컴포넌트
 export default function MainGitbook() {
-
     return (
         <div
             className="
@@ -156,19 +152,21 @@ export default function MainGitbook() {
             </h2>
             <div
                 className="
-                w-[60px] mb-12
-                sm:w-[70px] sm:mb-14
-                md:w-[90px] md:mb-16
-                lg:w-[110px] lg:mb-20
-                xl:w-[130px] xl:mb-20
+                w-[60px] mb-2
+                sm:w-[70px] sm:mb-3
+                md:w-[90px] md:mb-4
+                lg:w-[110px] lg:mb-5
+                xl:w-[130px] xl:mb-6
             "
             >
                 <Image
                     src="/elements/el01.svg"
                     alt="Decorative element"
                     className="w-full h-auto"
-                    fill
-
+                    width={130}
+                    height={130}
+                    loading="lazy"
+                    priority={false}
                 />
             </div>
         </div>

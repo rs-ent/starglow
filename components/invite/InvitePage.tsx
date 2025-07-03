@@ -58,17 +58,22 @@ export default function InvitePage() {
         setHasProcessed(true);
 
         try {
-            await invitePlayer({
+            const result = await invitePlayer({
                 referredUser: user,
                 referrerCode: ref,
                 method: method,
                 telegramId: tgId && tgId.trim().length > 0 ? tgId : undefined,
             });
 
-            // 성공 시 메인 페이지로 리다이렉트하면서 성공 params 전달
+            const referrerName =
+                result?.referrerPlayer.nickname ||
+                result?.referrerPlayer.name ||
+                result?.referrerPlayer.email ||
+                ref;
+
             router.push(
                 `/?inviteSuccess=true&referrer=${encodeURIComponent(
-                    ref
+                    referrerName
                 )}&method=${encodeURIComponent(method)}`
             );
         } catch (error: any) {

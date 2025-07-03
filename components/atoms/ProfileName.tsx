@@ -4,6 +4,8 @@
 
 import React, { useState, useMemo } from "react";
 
+import { motion } from "framer-motion";
+
 import { getProviderIdentity } from "@/lib/utils/get/provider-identity";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -36,10 +38,15 @@ export default React.memo(function ProfileName({
     }, [player?.nickname, user]);
 
     const { textClass, frameClass, iconClass } = useMemo(() => {
+        // Ensure all sizes are multiples of 5
+        const normalizedSize = Math.round(size / 5) * 5;
+        const frameSize = Math.max(5, Math.round((normalizedSize + 5) / 5) * 5);
+        const iconSize = Math.max(5, Math.round((normalizedSize - 5) / 5) * 5);
+
         return {
-            textClass: getResponsiveClass(size).textClass,
-            frameClass: getResponsiveClass(size + 5).frameClass,
-            iconClass: getResponsiveClass(size - 5).frameClass,
+            textClass: getResponsiveClass(normalizedSize).textClass,
+            frameClass: getResponsiveClass(frameSize).frameClass,
+            iconClass: getResponsiveClass(iconSize).frameClass,
         };
     }, [size]);
 
@@ -54,8 +61,18 @@ export default React.memo(function ProfileName({
                     onClose={() => setShowUserSettings(false)}
                 />
             )}
-            <div
-                className="flex flex-row gap-[5px] items-center justify-center group cursor-pointer"
+            <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={cn(
+                    "flex flex-row gap-[5px] items-center justify-center group cursor-pointer",
+                    "bg-gradient-to-br from-white/5 to-white/0",
+                    "hover:from-white/10 hover:to-white/5",
+                    "border border-white/10 hover:border-white/20",
+                    "rounded-xl px-3 py-2",
+                    "transition-all duration-300 ease-out",
+                    "hover:shadow-lg hover:shadow-white/10"
+                )}
                 onClick={() => setShowUserSettings(true)}
             >
                 {icon && (
@@ -63,7 +80,8 @@ export default React.memo(function ProfileName({
                         {provider !== "telegram" &&
                         provider !== "io.metamask" &&
                         provider !== "metaMaskSDK" ? (
-                            <div
+                            <motion.div
+                                whileHover={{ rotate: 5 }}
                                 className={cn(
                                     "rounded-full",
                                     "flex items-center justify-center",
@@ -80,31 +98,32 @@ export default React.memo(function ProfileName({
                                     priority={false}
                                     unoptimized={false}
                                 />
-                            </div>
+                            </motion.div>
                         ) : (
-                            <Image
-                                src={icon}
-                                alt={`${provider} icon`}
-                                className={iconClass}
-                                width={size}
-                                height={size}
-                                priority={false}
-                                unoptimized={false}
-                            />
+                            <motion.div whileHover={{ rotate: 5 }}>
+                                <Image
+                                    src={icon}
+                                    alt={`${provider} icon`}
+                                    className={iconClass}
+                                    width={size}
+                                    height={size}
+                                    priority={false}
+                                    unoptimized={false}
+                                />
+                            </motion.div>
                         )}
                     </>
                 )}
-                <p className={cn("text-[rgba(255,255,255,0.7)]", textClass)}>
+                <p
+                    className={cn(
+                        "text-white/80 group-hover:text-white",
+                        "transition-colors duration-300",
+                        textClass
+                    )}
+                >
                     {nickname}
                 </p>
-                <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                    <img
-                        src="/ui/edit.svg"
-                        alt="Edit"
-                        className={getResponsiveClass(5).frameClass}
-                    />
-                </div>
-            </div>
+            </motion.div>
         </>
     );
 });

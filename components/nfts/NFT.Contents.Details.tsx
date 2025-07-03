@@ -13,8 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
-import { H2 } from "../atoms/Typography";
-
 import type { SPG } from "@/app/story/spg/actions";
 import type { CollectionParticipantType } from "@prisma/client";
 
@@ -102,14 +100,14 @@ export default React.memo(function NFTContentsDetails({
                 <>
                     {/* Collection Info */}
                     <div className="p-4 sm:p-6 md:p-8">
-                        <H2
+                        <h2
                             className={cn(
                                 getResponsiveClass(40).textClass,
                                 "mb-[5px]"
                             )}
                         >
                             {spg.name}
-                        </H2>
+                        </h2>
 
                         {/* Status Badge + Date */}
                         <div className="flex items-center gap-3 mb-[20px]">
@@ -158,7 +156,10 @@ export default React.memo(function NFTContentsDetails({
                                         "mr-2"
                                     )}
                                 />
-                                <span>Price: ${spg.price}</span>
+                                <span>Price </span>
+                                {!comingSoon && !hiddenDetails && (
+                                    <span>: ${spg.price}</span>
+                                )}
                             </div>
 
                             <div
@@ -174,11 +175,48 @@ export default React.memo(function NFTContentsDetails({
                                         "mr-2"
                                     )}
                                 />
-                                <span>
-                                    Circulation: {circulation?.remain || 0} /{" "}
-                                    {circulation?.total || 0}
-                                </span>
+                                <span>Circulation</span>
+                                {!comingSoon && !hiddenDetails && (
+                                    <span>
+                                        : {circulation?.remain || 0} /{" "}
+                                        {circulation?.total || 0}
+                                    </span>
+                                )}
                             </div>
+
+                            {sharePercentage && (
+                                <div
+                                    className={cn(
+                                        "flex items-baseline text-foreground/70",
+                                        getResponsiveClass(20).textClass
+                                    )}
+                                >
+                                    <Percent
+                                        className={cn(
+                                            "flex-shrink-0 text-primary",
+                                            getResponsiveClass(20).frameClass,
+                                            "mr-2"
+                                        )}
+                                    />
+                                    <span>Share</span>
+                                    {!comingSoon && !hiddenDetails && (
+                                        <>
+                                            <span className="font-bold mx-1">
+                                                : {`${sharePercentage * 100}%`}
+                                            </span>
+                                            <span
+                                                className={cn(
+                                                    "text-foreground/70",
+                                                    getResponsiveClass(10)
+                                                        .textClass
+                                                )}
+                                            >
+                                                {`of Artist's Total Sales`}
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+                            )}
 
                             <div
                                 className={cn(
@@ -205,35 +243,6 @@ export default React.memo(function NFTContentsDetails({
                                     )}
                                 />
                             </div>
-
-                            {sharePercentage && (
-                                <div
-                                    className={cn(
-                                        "flex items-baseline text-foreground/70",
-                                        getResponsiveClass(20).textClass
-                                    )}
-                                >
-                                    <Percent
-                                        className={cn(
-                                            "flex-shrink-0 text-primary",
-                                            getResponsiveClass(20).frameClass,
-                                            "mr-2"
-                                        )}
-                                    />
-                                    <span>Share:</span>
-                                    <span className="font-bold mx-1">
-                                        {`${sharePercentage * 100}%`}
-                                    </span>
-                                    <span
-                                        className={cn(
-                                            "text-foreground/70",
-                                            getResponsiveClass(10).textClass
-                                        )}
-                                    >
-                                        {`of Artist's Total Sales`}
-                                    </span>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </>

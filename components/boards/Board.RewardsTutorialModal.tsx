@@ -35,7 +35,7 @@ export default function BoardRewardsTutorialModal({
     const steps = [
         {
             icon: <Award className="w-16 h-16 text-yellow-400" />,
-            title: "💎 EARN TOKENS",
+            title: "💎 EARN POINTS",
             subtitle: `Support ${artistName} and Get Rewarded!`,
             content: (
                 <div className="space-y-4">
@@ -50,7 +50,7 @@ export default function BoardRewardsTutorialModal({
                                 getResponsiveClass(15).textClass
                             )}
                         >
-                            💰 <strong>Post content</strong> and earn tokens
+                            💰 <strong>Post content</strong> and earn SGP
                             instantly
                         </p>
                         <p
@@ -129,7 +129,7 @@ export default function BoardRewardsTutorialModal({
                                         getResponsiveClass(10).textClass
                                     )}
                                 >
-                                    Receive SGP tokens immediately after posting
+                                    Receive SGP immediately after posting
                                 </p>
                             </div>
                         </div>
@@ -221,7 +221,7 @@ export default function BoardRewardsTutorialModal({
                                     getResponsiveClass(5).textClass
                                 )}
                             >
-                                Get featured for bonus tokens
+                                Get featured for bonus SGP
                             </p>
                         </div>
 
@@ -310,7 +310,7 @@ export default function BoardRewardsTutorialModal({
                                         getResponsiveClass(10).textClass
                                     )}
                                 >
-                                    Meaningful comments earn tokens too
+                                    Meaningful comments earn SGP too
                                 </p>
                             </div>
                         </div>

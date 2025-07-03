@@ -28,6 +28,8 @@ import type { PollsWithArtist, PollOption } from "@/app/actions/polls";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import type { TokenGatingData } from "@/app/story/nft/actions";
 import type { Artist, Player, PollLog } from "@prisma/client";
+import { getPlayerAsset } from "@/app/actions/playerAssets";
+import Image from "next/image";
 
 interface PollsCardProps {
     index?: number;
@@ -286,7 +288,6 @@ function PollsListCard({
     // 베팅 확인 핸들러 (모달에서 호출)
     const handleBettingConfirm = useCallback(
         async (betAmount: number) => {
-            // 기존 participatePoll 로직 실행
             const result = await participatePoll({
                 poll: poll,
                 player: player!,
@@ -439,6 +440,37 @@ function PollsListCard({
                             confirmedAnswer: false,
                             showAnswerPopup: false,
                         }));
+                        return;
+                    }
+                }
+
+                if (
+                    poll.participationConsumeAssetId &&
+                    poll.participationConsumeAmount
+                ) {
+                    const consumeAmount =
+                        poll.participationConsumeAmount *
+                        votingState.voteAmount;
+                    const playerConsumeAsset = await getPlayerAsset({
+                        playerId: player.id,
+                        assetId: poll.participationConsumeAssetId,
+                    });
+                    if (!playerConsumeAsset.success) {
+                        toast.error(
+                            playerConsumeAsset.error ||
+                                "Failed to get player asset."
+                        );
+                        return;
+                    }
+                    if (
+                        playerConsumeAsset.data == null ||
+                        playerConsumeAsset.data.balance < consumeAmount
+                    ) {
+                        toast.error(
+                            `Insufficient balance for participation fee. Required: ${consumeAmount} ${
+                                poll.participationConsumeAsset?.symbol || ""
+                            } to participate in this poll.`
+                        );
                         return;
                     }
                 }
@@ -881,6 +913,61 @@ function PollsListCard({
                         </div>
                     )}
 
+                {/* 참여 비용 정보 - options 바로 위 배치 */}
+                {poll.participationConsumeAssetId &&
+                    poll.participationConsumeAsset &&
+                    poll.participationConsumeAmount && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className={cn(
+                                "flex flex-row items-center justify-center gap-3 p-3 mb-4",
+                                "rounded-[16px] relative overflow-hidden",
+                                "bg-gradient-to-r from-[rgba(255,100,100,0.1)] to-[rgba(255,150,150,0.2)]",
+                                "border border-[rgba(255,150,150,0.3)]",
+                                "backdrop-blur-sm inner-shadow",
+                                "transition-all duration-300",
+                                getResponsiveClass(15).textClass
+                            )}
+                        >
+                            {/* 아이콘과 텍스트 */}
+                            <div className="relative z-10 flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[rgba(255,233,233,0.9)] font-medium">
+                                        Participation Fee:
+                                    </span>
+                                    <Image
+                                        src={
+                                            poll.participationConsumeAsset
+                                                .imageUrl || "/icons/coin.svg"
+                                        }
+                                        alt={
+                                            poll.participationConsumeAsset.name
+                                        }
+                                        width={24}
+                                        height={24}
+                                        className={cn(
+                                            "object-contain",
+                                            getResponsiveClass(20).frameClass
+                                        )}
+                                    />
+                                    <span className="text-[rgba(255,233,233,1)] font-semibold">
+                                        {poll.participationConsumeAmount *
+                                            (poll.allowMultipleVote &&
+                                            poll.needToken &&
+                                            poll.needTokenAddress
+                                                ? votingState.voteAmount
+                                                : 1)}{" "}
+                                        {poll.participationConsumeAsset
+                                            .symbol ||
+                                            poll.participationConsumeAsset.name}
+                                    </span>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
                 <div
                     onClick={() => void handleSubmit()}
                     className={cn(
@@ -899,7 +986,12 @@ function PollsListCard({
                         }`,
                     }}
                 >
-                    {poll.bettingMode ? "BET" : "SUBMIT"}
+                    {poll.bettingMode
+                        ? "BET"
+                        : poll.participationConsumeAssetId &&
+                          poll.participationConsumeAmount
+                        ? "SUBMIT WITH FEE"
+                        : "SUBMIT"}
                     {poll.bettingMode && (
                         <div className="absolute inset-0 pointer-events-none z-0">
                             <img
@@ -918,12 +1010,16 @@ function PollsListCard({
         );
     }, [
         poll.bettingMode,
+        poll.needToken,
+        poll.needTokenAddress,
+        poll.participationConsumeAssetId,
+        poll.participationConsumeAsset,
+        poll.participationConsumeAmount,
         pollDateInfo.showOptions,
         votingState.selection,
         votingState.animateSubmit,
+        votingState.voteAmount,
         poll.allowMultipleVote,
-        poll.needToken,
-        poll.needTokenAddress,
         votingState.voteAmountInput,
         handleVoteAmountChange,
         decreaseVoteAmount,
@@ -1001,7 +1097,7 @@ function PollsListCard({
                                     )}
                                 >
                                     {poll.participationRewardAsset.imageUrl ? (
-                                        <img
+                                        <Image
                                             src={
                                                 poll.participationRewardAsset
                                                     .imageUrl
@@ -1010,13 +1106,17 @@ function PollsListCard({
                                                 poll.participationRewardAsset
                                                     .name
                                             }
+                                            width={32}
+                                            height={32}
                                             className="w-full h-full rounded-full object-contain"
                                         />
                                     ) : (
-                                        <img
+                                        <Image
                                             src="/icons/reward-star.svg"
                                             alt="reward"
                                             className="w-5 h-5 opacity-80"
+                                            width={32}
+                                            height={32}
                                         />
                                     )}
                                 </div>
@@ -1140,9 +1240,11 @@ function PollsListCard({
                         )}
                     >
                         {tag.artistLogo ? (
-                            <img
+                            <Image
                                 src={tag.artistLogo}
                                 alt={tag.label}
+                                width={32}
+                                height={32}
                                 className={cn(
                                     "object-contain",
                                     getResponsiveClass(15).frameClass
@@ -1199,9 +1301,11 @@ function PollsListCard({
                 }
             >
                 <div className="flex flex-col items-center justify-center p-10 gap-2 rounded-2xl">
-                    <img
+                    <Image
                         src="/ui/information.svg"
                         alt="info"
+                        width={32}
+                        height={32}
                         className={cn(getResponsiveClass(60).frameClass)}
                     />
                     <h2
@@ -1274,7 +1378,8 @@ function PollsListCard({
                 (!pollLogs ||
                     pollLogs.filter((log) => log.pollId === poll.id).length ===
                         0)
-            );
+            ) &&
+            !poll.bettingMode;
 
         // 아무것도 안 보이면 footer 자체를 렌더링하지 않음
         if (
@@ -1399,13 +1504,14 @@ function PollsListCard({
                     )}
                 </div>
 
-                {/* Right side - Results toggle button */}
-                <div className="flex">
-                    {showResultsButton && (
+                {showResultsButton && (
+                    <div className="flex">
                         <div className="relative">
-                            <img
+                            <Image
                                 src="/icons/charts-fill.svg"
                                 alt="charts-fill"
+                                width={32}
+                                height={32}
                                 className={cn(
                                     uiState.showOngoingResults
                                         ? "opacity-45"
@@ -1422,9 +1528,11 @@ function PollsListCard({
                                     }));
                                 }}
                             />
-                            <img
+                            <Image
                                 src="/icons/charts-stroke.svg"
                                 alt="charts-stroke"
+                                width={32}
+                                height={32}
                                 className={cn(
                                     !uiState.showOngoingResults
                                         ? "opacity-45"
@@ -1443,8 +1551,8 @@ function PollsListCard({
                                 }}
                             />
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         );
     }, [

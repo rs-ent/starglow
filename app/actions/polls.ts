@@ -57,6 +57,10 @@ const ERROR_MESSAGES = {
     FAILED_TO_CREATE_POLL_LOG: "Failed to create poll log",
     FAILED_TO_GET_POLL_LOGS: "Failed to get poll logs",
     MISSED_ANSWER: "MISSED_ANSWER",
+    PARTICIPATION_ASSET_NOT_CONFIGURED:
+        "Participation fee asset not configured for this poll.",
+    INSUFFICIENT_PARTICIPATION_FEE:
+        "Insufficient balance for participation fee.",
 } as const;
 
 export type PaginationInput = {
@@ -171,6 +175,7 @@ export async function createPoll(input: CreatePollInput): Promise<Poll> {
 export type PollsWithArtist = Poll & {
     artist: Artist | null;
     participationRewardAsset: Asset | null;
+    participationConsumeAsset: Asset | null;
 };
 
 export interface GetPollsInput {
@@ -300,6 +305,7 @@ export async function getPolls({
                 include: {
                     artist: true,
                     participationRewardAsset: true,
+                    participationConsumeAsset: true,
                 },
             }),
             prisma.poll.count({ where }),
@@ -324,6 +330,7 @@ export async function getPoll(id: string): Promise<
     | (Poll & {
           participationRewardAsset: Asset | null;
           artist: Artist | null;
+          participationConsumeAsset: Asset | null;
       })
     | null
 > {
@@ -333,6 +340,7 @@ export async function getPoll(id: string): Promise<
             include: {
                 participationRewardAsset: true,
                 artist: true,
+                participationConsumeAsset: true,
             },
         });
 
@@ -692,6 +700,38 @@ export async function participatePoll(
             }
         }
 
+        // 일반 폴 참여 비용 검증 (베팅 모드가 아닌 경우)
+        if (
+            !poll.bettingMode &&
+            poll.participationConsumeAssetId &&
+            poll.participationConsumeAmount
+        ) {
+            // 참여 비용 에셋 잔액 확인
+            const playerConsumeAsset = await prisma.playerAsset.findUnique({
+                where: {
+                    playerId_assetId: {
+                        playerId: player.id,
+                        assetId: poll.participationConsumeAssetId,
+                    },
+                },
+            });
+
+            const requiredAmount = poll.participationConsumeAmount * amount;
+            if (
+                !playerConsumeAsset ||
+                playerConsumeAsset.balance < requiredAmount
+            ) {
+                return {
+                    success: false,
+                    error: `${
+                        ERROR_MESSAGES.INSUFFICIENT_PARTICIPATION_FEE
+                    } Required: ${requiredAmount}, Available: ${
+                        playerConsumeAsset?.balance || 0
+                    }`,
+                };
+            }
+        }
+
         if (poll.needToken && poll.needTokenAddress) {
             if (!input.tokenGating || !input.tokenGating.hasToken)
                 return {
@@ -756,6 +796,33 @@ export async function participatePoll(
                 }
             }
 
+            // 일반 폴 참여 비용 실시간 잔액 재확인 (Race Condition 방지)
+            if (
+                !poll.bettingMode &&
+                poll.participationConsumeAssetId &&
+                poll.participationConsumeAmount
+            ) {
+                const requiredAmount = poll.participationConsumeAmount * amount;
+                const currentPlayerConsumeAsset =
+                    await tx.playerAsset.findUnique({
+                        where: {
+                            playerId_assetId: {
+                                playerId: player.id,
+                                assetId: poll.participationConsumeAssetId,
+                            },
+                        },
+                    });
+
+                if (
+                    !currentPlayerConsumeAsset ||
+                    currentPlayerConsumeAsset.balance < requiredAmount
+                ) {
+                    throw new Error(
+                        "Insufficient balance for participation fee"
+                    );
+                }
+            }
+
             // PollLog 생성/업데이트
             const pollLog = await tx.pollLog.upsert({
                 where: {
@@ -796,7 +863,7 @@ export async function participatePoll(
                             assetId: poll.bettingAssetId,
                             amount: amount,
                             operation: "SUBTRACT",
-                            reason: `Betting on poll ${poll.id}, option ${optionId}`,
+                            reason: `Betting on poll 『${poll.title}』`,
                             metadata: {
                                 pollId: poll.id,
                                 optionId: optionId,
@@ -857,6 +924,45 @@ export async function participatePoll(
                 playerAssetUpdated = true;
             } else {
                 // 일반 폴 처리
+
+                // 참여 비용 차감 처리 (매번 차감)
+                if (
+                    poll.participationConsumeAssetId &&
+                    poll.participationConsumeAmount
+                ) {
+                    const consumeAmount =
+                        poll.participationConsumeAmount * amount;
+
+                    const consumeResult = await updatePlayerAsset(
+                        {
+                            transaction: {
+                                playerId: player.id,
+                                assetId: poll.participationConsumeAssetId,
+                                amount: consumeAmount,
+                                operation: "SUBTRACT",
+                                reason: `Participation fee for poll 『${poll.title}』`,
+                                metadata: {
+                                    pollId: poll.id,
+                                    isParticipationFee: true,
+                                    consumeAmount: consumeAmount,
+                                },
+                                pollId: poll.id,
+                                pollLogId: pollLog.id,
+                            },
+                        },
+                        tx
+                    );
+
+                    if (!consumeResult.success) {
+                        throw new Error(
+                            consumeResult.error ||
+                                "Failed to deduct participation fee"
+                        );
+                    }
+
+                    playerAssetUpdated = true;
+                }
+
                 if (isFirstTimeVote) {
                     if (
                         poll.participationRewardAssetId &&
@@ -871,7 +977,7 @@ export async function participatePoll(
                                     amount:
                                         poll.participationRewardAmount * amount,
                                     operation: "ADD",
-                                    reason: `Participation reward for poll ${poll.id}`,
+                                    reason: `Participation reward for poll 『${poll.title}』`,
                                     metadata: {
                                         pollId: poll.id,
                                         isParticipationReward: true,
@@ -1337,6 +1443,7 @@ export async function settleBettingPoll(
             const poll = await tx.poll.findUnique({
                 where: { id: pollId },
                 select: {
+                    title: true,
                     bettingMode: true,
                     bettingAssetId: true,
                     optionBetAmounts: true,
@@ -1399,7 +1506,7 @@ export async function settleBettingPoll(
                                 assetId: poll.bettingAssetId,
                                 amount: bettor.amount,
                                 operation: "ADD",
-                                reason: `Betting refund for poll ${pollId} (no winners)`,
+                                reason: `Betting refund for poll 『${poll.title}』 (no winners)`,
                                 metadata: {
                                     pollId: pollId,
                                     isRefund: true,
@@ -1474,7 +1581,7 @@ export async function settleBettingPoll(
                                 assetId: poll.bettingAssetId,
                                 amount: payout,
                                 operation: "ADD",
-                                reason: `Betting payout for poll ${pollId}, option ${winner.optionId}`,
+                                reason: `Betting payout for poll 『${poll.title}』`,
                                 metadata: {
                                     pollId: pollId,
                                     winningOptionId: winner.optionId,
@@ -1522,7 +1629,7 @@ export async function settleBettingPoll(
                                 assetId: poll.bettingAssetId,
                                 amount: remainingAmount,
                                 operation: "ADD",
-                                reason: `Remaining payout adjustment for poll ${pollId}`,
+                                reason: `Remaining payout adjustment for poll 『${poll.title}』`,
                                 metadata: {
                                     pollId: pollId,
                                     isRemainingAdjustment: true,

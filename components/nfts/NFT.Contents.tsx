@@ -14,7 +14,6 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
 import NFTContentsDetails from "./NFT.Contents.Details";
-import NFTContentsPageImages from "./NFT.Contents.PageImages";
 import NFTContentsPayment from "./NFT.Contents.Payment";
 import NFTContentsPreRegistration from "./NFT.Contents.PreRegistration";
 import NFTContentsReport from "./NFT.Contents.Report";
@@ -22,6 +21,7 @@ import InteractFeedback from "../atoms/Popup.InteractFeedback";
 import WarningPopup from "../atoms/WarningPopup";
 
 import type { SPG } from "@/app/story/spg/actions";
+import NFTBenefits from "./NFT.Benefits";
 
 interface NFTContentsProps {
     spg: SPG;
@@ -183,19 +183,18 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
                                 "mt-[50px]"
                             )}
                         >
-                            Official Report
+                            What will you get
                         </h2>
-                        <NFTContentsReport spg={spg} />
+                        <NFTBenefits />
                         <h2
                             className={cn(
                                 getResponsiveClass(30).textClass,
                                 "mt-[50px]"
                             )}
                         >
-                            Details
+                            Official Report
                         </h2>
-                        <NFTContentsPageImages spg={spg} />
-                        <ToTheTopButton className="fixed lg:sticky" />
+                        <NFTContentsReport spg={spg} />
                     </div>
 
                     <div className="lg:col-span-1 order-2 lg:order-2">
@@ -226,13 +225,17 @@ export default React.memo(function NFTContents({ spg }: NFTContentsProps) {
                 </div>
             </div>
 
-            <NFTStickyPurchaseButton
-                text={
-                    participantsType === CollectionParticipantType.PUBLICSALE
-                        ? "Buy Now"
-                        : "Pre Register Now"
-                }
-            />
+            {!comingSoon && !hiddenDetails && (
+                <NFTStickyPurchaseButton
+                    text={
+                        participantsType ===
+                        CollectionParticipantType.PUBLICSALE
+                            ? "Buy Now"
+                            : "Pre Register Now"
+                    }
+                />
+            )}
+
             <InteractFeedback
                 open={showFeedback}
                 onClose={() => setShowFeedback(false)}
@@ -331,35 +334,6 @@ const NFTStickyPurchaseButton = React.memo(function NFTStickyPurchaseButton({
                 {text}
             </h2>
         </ShinyButton>
-    );
-});
-
-const ToTheTopButton = React.memo(function ToTheTopButton({
-    className,
-}: {
-    className?: string;
-}) {
-    const handleClick = useCallback(() => {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    }, []);
-
-    return (
-        <div
-            className={cn(
-                "sticky w-full bottom-[90px] right-0 z-20",
-                className
-            )}
-        >
-            <img
-                src="/ui/to-top.svg"
-                alt="To the Top"
-                className={cn(
-                    "absolute right-[10px] text-white cursor-pointer opacity-80",
-                    getResponsiveClass(35).frameClass
-                )}
-                onClick={handleClick}
-            />
-        </div>
     );
 });
 

@@ -33,7 +33,7 @@ function PollsContentsTotal({
 
     // 전체 데이터를 한 번만 가져오기
     const { pollsList, isLoading, error } = usePollsGet({
-        getPollsInput: { isActive: true }, // 기본적으로 활성 투표만
+        getPollsInput: { isActive: true, showOnPollPage: true },
     });
 
     // 클라이언트 사이드 필터링

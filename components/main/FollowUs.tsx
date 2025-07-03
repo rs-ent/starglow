@@ -1,9 +1,9 @@
 /// components/main/FollowUs.tsx
 
-import {memo} from "react";
+import { memo } from "react";
 
-import {getResponsiveClass} from "@/lib/utils/responsiveClass";
-import {cn} from "@/lib/utils/tailwind";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import { cn } from "@/lib/utils/tailwind";
 
 import LinkButton from "../atoms/LinkButton";
 
@@ -17,6 +17,11 @@ interface FollowUsProps {
 
 // 소셜 링크 데이터 - 컴포넌트 외부로 이동
 const socialLinks = [
+    {
+        href: "https://discord.gg/starglow",
+        icon: "/icons/discord-black-round.svg",
+        alt: "Discord",
+    },
     {
         href: "https://docs.starglow.io",
         icon: "/icons/gitbook-black-round.svg",
@@ -40,38 +45,46 @@ const socialLinks = [
 ];
 
 // 소셜 링크 아이템 컴포넌트
-const SocialLinkItem = memo(({ href, icon, alt, frameSize, minimal }: {
-    href: string;
-    icon: string;
-    alt: string;
-    frameSize: number;
-    minimal?: boolean;
-}) => (
-    <LinkButton
-        href={href}
-        target="_blank"
-        frameSize={frameSize}
-        paddingSize={minimal ? 0 : undefined}
-        aria-label={`Follow us on ${alt}`}
-    >
-        <img
-            src={icon}
-            alt={alt}
-            style={{ width: `${frameSize}px`, height: "auto" }}
-            loading="lazy"
-        />
-    </LinkButton>
-));
-SocialLinkItem.displayName = 'SocialLinkItem';
+const SocialLinkItem = memo(
+    ({
+        href,
+        icon,
+        alt,
+        frameSize,
+        minimal,
+    }: {
+        href: string;
+        icon: string;
+        alt: string;
+        frameSize: number;
+        minimal?: boolean;
+    }) => (
+        <LinkButton
+            href={href}
+            target="_blank"
+            frameSize={frameSize}
+            paddingSize={minimal ? 0 : undefined}
+            aria-label={`Follow us on ${alt}`}
+        >
+            <img
+                src={icon}
+                alt={alt}
+                style={{ width: `${frameSize}px`, height: "auto" }}
+                loading="lazy"
+            />
+        </LinkButton>
+    )
+);
+SocialLinkItem.displayName = "SocialLinkItem";
 
 // 메모이제이션된 FollowUs 컴포넌트
 const FollowUs = memo(function FollowUs({
-                                            frameSize = 20,
-                                            textSize = 15,
-                                            gapSize = 15,
-                                            minimal = false,
-                                            className = "",
-                                        }: FollowUsProps) {
+    frameSize = 20,
+    textSize = 15,
+    gapSize = 15,
+    minimal = false,
+    className = "",
+}: FollowUsProps) {
     const { gapClass } = getResponsiveClass(gapSize);
     const { textClass } = getResponsiveClass(textSize);
 

@@ -15,6 +15,8 @@ import type {
     Quest,
     Story_spg,
     Player,
+    Board,
+    BoardPost,
 } from "@prisma/client";
 
 export interface CreateArtistInput {
@@ -75,6 +77,9 @@ export type ArtistWithSPG = Artist & {
     polls: Poll[];
     quests: Quest[];
     players: Player[];
+    boards: (Board & {
+        posts: BoardPost[];
+    })[];
 };
 export interface GetArtistInput {
     id?: string;
@@ -91,6 +96,11 @@ export async function getArtist(
 
         if (input.id) {
             return (await prisma.artist.findUnique({
+                cacheStrategy: {
+                    tags: ["artist", input.id],
+                    swr: 60 * 30,
+                    ttl: 60 * 60,
+                },
                 where: { id: input.id },
                 include: {
                     story_spg: true,
@@ -98,11 +108,22 @@ export async function getArtist(
                     quests: true,
                     polls: true,
                     players: true,
+                    boards: {
+                        include: {
+                            posts: true,
+                        },
+                    },
                 },
             })) as ArtistWithSPG;
         }
+
         if (input.name) {
             return (await prisma.artist.findFirst({
+                cacheStrategy: {
+                    tags: ["artist", input.name],
+                    swr: 60 * 30,
+                    ttl: 60 * 60,
+                },
                 where: { name: input.name },
                 include: {
                     story_spg: true,
@@ -110,6 +131,11 @@ export async function getArtist(
                     quests: true,
                     polls: true,
                     players: true,
+                    boards: {
+                        include: {
+                            posts: true,
+                        },
+                    },
                 },
             })) as ArtistWithSPG;
         }
@@ -133,12 +159,22 @@ export async function getArtists(
     try {
         if (!input) {
             return (await prisma.artist.findMany({
+                cacheStrategy: {
+                    tags: ["artists"],
+                    swr: 60 * 30,
+                    ttl: 60 * 60,
+                },
                 include: {
                     story_spg: true,
                     messages: true,
                     polls: true,
                     quests: true,
                     players: true,
+                    boards: {
+                        include: {
+                            posts: true,
+                        },
+                    },
                 },
                 orderBy: {
                     name: "asc",
@@ -161,6 +197,14 @@ export async function getArtists(
             };
         }
         const artists = await prisma.artist.findMany({
+            cacheStrategy: {
+                tags: [
+                    "artists",
+                    `${input.id}-${input.name}-${input.collectionContractId}`,
+                ],
+                swr: 60 * 30,
+                ttl: 60 * 60,
+            },
             where,
             include: {
                 story_spg: true,
@@ -168,6 +212,11 @@ export async function getArtists(
                 polls: true,
                 quests: true,
                 players: true,
+                boards: {
+                    include: {
+                        posts: true,
+                    },
+                },
             },
             orderBy: {
                 name: "asc",

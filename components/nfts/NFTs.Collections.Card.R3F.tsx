@@ -625,7 +625,11 @@ const CardMesh = React.memo(function CardMesh({
                             />
                             <InfoBox
                                 label="Stock"
-                                value={`${remainStock}/${totalStock}`}
+                                value={
+                                    comingSoon
+                                        ? "COMING SOON"
+                                        : `${remainStock}/${totalStock}`
+                                }
                                 labelPosition={CONSTANTS.POSITION.TEXT.LABEL}
                                 valuePosition={CONSTANTS.POSITION.TEXT.VALUE}
                                 boxPosition={

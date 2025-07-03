@@ -100,15 +100,17 @@ export default function ArtistMessage({
                         />
                     </motion.div>
                 )}
-                <motion.div
-                    initial={ANIMATION_VARIANTS.initial}
-                    animate={ANIMATION_VARIANTS.animate}
-                    exit={ANIMATION_VARIANTS.exit}
-                    transition={{ ...ANIMATION_TRANSITION, delay: 0.1 }}
-                    className="w-full"
-                >
-                    <ArtistMessageMessage message={message.message} />
-                </motion.div>
+                {message.message && message.message.length > 2 && (
+                    <motion.div
+                        initial={ANIMATION_VARIANTS.initial}
+                        animate={ANIMATION_VARIANTS.animate}
+                        exit={ANIMATION_VARIANTS.exit}
+                        transition={{ ...ANIMATION_TRANSITION, delay: 0.1 }}
+                        className="w-full"
+                    >
+                        <ArtistMessageMessage message={message.message} />
+                    </motion.div>
+                )}
             </div>
         );
     }, [message, containerClasses, artist]);

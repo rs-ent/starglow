@@ -63,7 +63,6 @@ export default function UserDiscord({ user }: UserDiscordProps) {
             )}
         >
             {!discordCode ? (
-                // 코드 발급 화면
                 <div
                     className={cn(
                         "bg-gradient-to-br from-indigo-900/20 via-purple-900/20 to-pink-900/20",

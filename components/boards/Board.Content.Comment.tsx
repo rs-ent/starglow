@@ -212,7 +212,7 @@ export default function BoardContentComment({
                         priority={false}
                         unoptimized={true}
                         className={cn(
-                            "rounded-full flex-shrink-0",
+                            "rounded-full flex-shrink-0 object-cover",
                             getResponsiveClass(30).frameClass
                         )}
                     />

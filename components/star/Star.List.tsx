@@ -4,13 +4,19 @@
 
 import { memo, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Gem, Rocket } from "lucide-react";
 import { createArtistGradients } from "@/lib/utils/artist-styles";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import type { ArtistWithSPG } from "@/app/actions/artists";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import Link from "next/link";
+import Image from "next/image";
+
+export interface PolishedArtist extends ArtistWithSPG {
+    totalPosts: number;
+    totalPolls: number;
+    totalQuests: number;
+}
 
 interface StarListProps {
     artists: ArtistWithSPG[];
@@ -18,6 +24,43 @@ interface StarListProps {
 
 export default memo(function StarList({ artists }: StarListProps) {
     const [hoveredArtist, setHoveredArtist] = useState<string | null>(null);
+
+    const polishedArtists: PolishedArtist[] = useMemo(() => {
+        return artists.map((artist) => {
+            const collections = artist.story_spg?.filter(
+                (collection) =>
+                    collection.isListed &&
+                    !collection.comingSoon &&
+                    !collection.hiddenDetails
+            );
+
+            const totalPosts =
+                artist.boards?.reduce(
+                    (sum, board) => sum + board.posts.length,
+                    0
+                ) || 0;
+
+            const polls = artist.polls?.filter(
+                (poll) => poll.isActive && poll.showOnStarPage
+            );
+
+            const totalPolls = polls?.length || 0;
+
+            const quests = artist.quests?.filter((quest) => quest.isActive);
+
+            const totalQuests = quests?.length || 0;
+
+            return {
+                ...artist,
+                story_spg: collections,
+                polls,
+                quests,
+                totalPosts,
+                totalPolls,
+                totalQuests,
+            } as PolishedArtist;
+        });
+    }, [artists]);
 
     return (
         <div
@@ -38,7 +81,7 @@ export default memo(function StarList({ artists }: StarListProps) {
 
             {/* Artists Grid */}
             <AnimatePresence mode="wait">
-                {artists.length > 0 ? (
+                {polishedArtists.length > 0 ? (
                     <motion.div
                         key="artists"
                         initial={{ opacity: 0 }}
@@ -50,7 +93,7 @@ export default memo(function StarList({ artists }: StarListProps) {
                             getResponsiveClass(70).gapClass
                         )}
                     >
-                        {artists.map((artist, index) => (
+                        {polishedArtists.map((artist, index) => (
                             <ArtistCard
                                 key={artist.id}
                                 artist={artist}
@@ -108,7 +151,7 @@ export default memo(function StarList({ artists }: StarListProps) {
 
 // Artist Card Component
 interface ArtistCardProps {
-    artist: ArtistWithSPG;
+    artist: PolishedArtist;
     index: number;
     isHovered: boolean;
     onHover: (id: string | null) => void;
@@ -121,35 +164,6 @@ const ArtistCard = memo(function ArtistCard({
     onHover,
 }: ArtistCardProps) {
     const gradients = useMemo(() => createArtistGradients(artist), [artist]);
-
-    const stats = useMemo(() => {
-        const totalCollections = artist.story_spg?.length || 0;
-        const totalCirculation =
-            artist.story_spg?.reduce((sum, spg) => sum + spg.circulation, 0) ||
-            0;
-        const activeCollections =
-            artist.story_spg?.filter((spg) => {
-                const now = new Date();
-                return (
-                    spg.saleStart &&
-                    spg.saleEnd &&
-                    new Date(spg.saleStart) <= now &&
-                    new Date(spg.saleEnd) >= now
-                );
-            }).length || 0;
-
-        // Real data from artist
-        const totalPolls = artist.polls?.length || 0;
-        const totalQuests = artist.quests?.length || 0;
-
-        return {
-            totalCollections,
-            totalCirculation,
-            activeCollections,
-            totalPolls,
-            totalQuests,
-        };
-    }, [artist]);
 
     return (
         <Link href={`/star/${artist.id}`}>
@@ -205,13 +219,17 @@ const ArtistCard = memo(function ArtistCard({
                         "h-[400px] sm:h-[440px] md:h-[460px] lg:h-[500px]"
                     )}
                 >
-                    <img
+                    <Image
                         src={
                             artist.imageUrl ||
                             artist.logoUrl ||
                             "/default-avatar.jpg"
                         }
                         alt={artist.name}
+                        fill
+                        loading="lazy"
+                        priority={false}
+                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 30vw, 25vw"
                         className="w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-105 group-hover:brightness-110"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10 transition-opacity duration-700 group-hover:from-black/40" />
@@ -265,7 +283,7 @@ const ArtistCard = memo(function ArtistCard({
                                     getResponsiveClass(10).textClass
                                 )}
                             >
-                                NFTs
+                                Posts
                             </p>
                             <p
                                 className={cn(
@@ -273,7 +291,7 @@ const ArtistCard = memo(function ArtistCard({
                                     getResponsiveClass(15).textClass
                                 )}
                             >
-                                {stats.totalCollections}
+                                {artist.totalPosts}
                             </p>
                         </div>
                         <div
@@ -288,7 +306,7 @@ const ArtistCard = memo(function ArtistCard({
                                     getResponsiveClass(10).textClass
                                 )}
                             >
-                                Polls
+                                Engagements
                             </p>
                             <p
                                 className={cn(
@@ -296,7 +314,7 @@ const ArtistCard = memo(function ArtistCard({
                                     getResponsiveClass(15).textClass
                                 )}
                             >
-                                {stats.totalPolls}
+                                {artist.totalPolls}
                             </p>
                         </div>
                         <div
@@ -319,280 +337,11 @@ const ArtistCard = memo(function ArtistCard({
                                     getResponsiveClass(15).textClass
                                 )}
                             >
-                                {stats.totalQuests}
+                                {artist.totalQuests}
                             </p>
                         </div>
                     </div>
-
-                    {/* Action Button */}
-                    <motion.button
-                        whileHover={{
-                            scale: 1.02,
-                            y: -2,
-                            transition: {
-                                type: "spring",
-                                stiffness: 400,
-                                damping: 25,
-                            },
-                        }}
-                        whileTap={{
-                            scale: 0.98,
-                            transition: { duration: 0.1 },
-                        }}
-                        className={cn(
-                            "w-full text-white font-bold rounded-lg",
-                            "transition-all duration-500 ease-out inner-shadow",
-                            "flex items-center justify-center relative overflow-hidden",
-                            "hover:shadow-lg hover:shadow-purple-500/25",
-                            "before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent",
-                            "before:translate-x-[-200%] before:transition-transform before:duration-700",
-                            "hover:before:translate-x-[200%]",
-                            getResponsiveClass(14).textClass,
-                            getResponsiveClass(15).paddingClass,
-                            getResponsiveClass(10).gapClass
-                        )}
-                        style={{
-                            background:
-                                "linear-gradient(135deg, rgba(139,92,246,0.9), rgba(139,92,246,1), rgba(168,85,247,0.9))",
-                        }}
-                    >
-                        <motion.div
-                            whileHover={{
-                                rotate: 15,
-                                transition: { duration: 0.3 },
-                            }}
-                        >
-                            <Rocket
-                                className={cn(
-                                    getResponsiveClass(20).frameClass
-                                )}
-                            />
-                        </motion.div>
-                        Glow!
-                    </motion.button>
                 </div>
-
-                {/* Activity Preview (on hover) */}
-                <AnimatePresence>
-                    {isHovered &&
-                        (stats.totalCollections > 0 ||
-                            stats.totalPolls > 0 ||
-                            stats.totalQuests > 0) && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 10 }}
-                                className="absolute bottom-full left-0 right-0 mb-2 z-20"
-                            >
-                                <div
-                                    className={cn(
-                                        "morp-glass-1 inner-shadow rounded-lg p-3 max-w-xs mx-auto"
-                                    )}
-                                    style={{
-                                        background:
-                                            "linear-gradient(to bottom right, rgba(0,0,0,0.9), rgba(139,92,246,0.1))",
-                                    }}
-                                >
-                                    <p
-                                        className={cn(
-                                            "font-bold text-[rgba(139,92,246,0.9)] mb-2 text-center",
-                                            getResponsiveClass(10).textClass
-                                        )}
-                                    >
-                                        🌟 {artist.name} Activity
-                                    </p>
-
-                                    <div
-                                        className={cn(
-                                            "space-y-2",
-                                            getResponsiveClass(10).gapClass
-                                        )}
-                                    >
-                                        {/* Collections */}
-                                        {stats.totalCollections > 0 && (
-                                            <div className="flex items-center justify-between">
-                                                <div
-                                                    className={cn(
-                                                        "flex items-center",
-                                                        getResponsiveClass(5)
-                                                            .gapClass
-                                                    )}
-                                                >
-                                                    <Gem
-                                                        className={cn(
-                                                            "text-[rgba(139,92,246,0.9)]",
-                                                            getResponsiveClass(
-                                                                15
-                                                            ).frameClass
-                                                        )}
-                                                    />
-                                                    <span
-                                                        className={cn(
-                                                            "text-white",
-                                                            getResponsiveClass(
-                                                                10
-                                                            ).textClass
-                                                        )}
-                                                    >
-                                                        Collections
-                                                    </span>
-                                                </div>
-                                                <span
-                                                    className={cn(
-                                                        "font-bold text-[rgba(139,92,246,0.9)]",
-                                                        getResponsiveClass(10)
-                                                            .textClass
-                                                    )}
-                                                >
-                                                    {stats.totalCollections}
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        {/* Active Polls */}
-                                        {stats.totalPolls > 0 && (
-                                            <div className="flex items-center justify-between">
-                                                <div
-                                                    className={cn(
-                                                        "flex items-center",
-                                                        getResponsiveClass(5)
-                                                            .gapClass
-                                                    )}
-                                                >
-                                                    <span
-                                                        className={cn(
-                                                            getResponsiveClass(
-                                                                15
-                                                            ).textClass
-                                                        )}
-                                                    >
-                                                        📊
-                                                    </span>
-                                                    <span
-                                                        className={cn(
-                                                            "text-white",
-                                                            getResponsiveClass(
-                                                                10
-                                                            ).textClass
-                                                        )}
-                                                    >
-                                                        Active Polls
-                                                    </span>
-                                                </div>
-                                                <span
-                                                    className={cn(
-                                                        "font-bold text-[rgba(59,130,246,0.9)]",
-                                                        getResponsiveClass(10)
-                                                            .textClass
-                                                    )}
-                                                >
-                                                    {stats.totalPolls}
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        {/* Available Quests */}
-                                        {stats.totalQuests > 0 && (
-                                            <div className="flex items-center justify-between">
-                                                <div
-                                                    className={cn(
-                                                        "flex items-center",
-                                                        getResponsiveClass(5)
-                                                            .gapClass
-                                                    )}
-                                                >
-                                                    <span
-                                                        className={cn(
-                                                            getResponsiveClass(
-                                                                15
-                                                            ).textClass
-                                                        )}
-                                                    >
-                                                        🎯
-                                                    </span>
-                                                    <span
-                                                        className={cn(
-                                                            "text-white",
-                                                            getResponsiveClass(
-                                                                10
-                                                            ).textClass
-                                                        )}
-                                                    >
-                                                        Quests
-                                                    </span>
-                                                </div>
-                                                <span
-                                                    className={cn(
-                                                        "font-bold text-[rgba(16,185,129,0.9)]",
-                                                        getResponsiveClass(10)
-                                                            .textClass
-                                                    )}
-                                                >
-                                                    {stats.totalQuests}
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        {/* Latest Collection Preview */}
-                                        {artist.story_spg &&
-                                            artist.story_spg.length > 0 && (
-                                                <div
-                                                    className={cn(
-                                                        "border-t border-[rgba(255,255,255,0.1)]",
-                                                        getResponsiveClass(10)
-                                                            .paddingClass,
-                                                        "pt-2"
-                                                    )}
-                                                >
-                                                    <div
-                                                        className={cn(
-                                                            "flex items-center",
-                                                            getResponsiveClass(
-                                                                10
-                                                            ).gapClass
-                                                        )}
-                                                    >
-                                                        <img
-                                                            src={
-                                                                artist
-                                                                    .story_spg[0]
-                                                                    .imageUrl ||
-                                                                ""
-                                                            }
-                                                            alt={
-                                                                artist
-                                                                    .story_spg[0]
-                                                                    .name
-                                                            }
-                                                            className={cn(
-                                                                "rounded object-cover",
-                                                                getResponsiveClass(
-                                                                    25
-                                                                ).frameClass
-                                                            )}
-                                                        />
-                                                        <span
-                                                            className={cn(
-                                                                "text-[rgba(255,255,255,0.7)] truncate flex-1",
-                                                                getResponsiveClass(
-                                                                    10
-                                                                ).textClass
-                                                            )}
-                                                        >
-                                                            {
-                                                                artist
-                                                                    .story_spg[0]
-                                                                    .name
-                                                            }
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                </AnimatePresence>
             </motion.div>
         </Link>
     );
