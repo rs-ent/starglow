@@ -490,18 +490,8 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                     <div className="mb-8">
                         <TbTopologyStar3 className="text-8xl text-cyan-400 mx-auto mb-4" />
                         <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                            새로운 SPG 배포
+                            새로운 컬렉션 배포
                         </h1>
-                        <p className="text-xl text-blue-200 mb-2">
-                            Story Protocol Gateway NFT Collection
-                        </p>
-                        <p className="text-blue-300 mb-8 max-w-2xl mx-auto">
-                            SPG는 Story Protocol의 핵심 구성요소로, NFT 발행과
-                            IP 자산 등록을 하나의 트랜잭션으로 처리할 수 있게
-                            해주는 스마트 컨트랙트입니다. K-pop 아티스트의
-                            디지털 자산을 Web3 세계에 안전하게 등록하고
-                            관리하세요.
-                        </p>
                     </div>
                     <button
                         onClick={() => setStep(1)}
@@ -514,7 +504,7 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                             onClick={() => setStep(-1)}
                             className="text-blue-400 hover:text-cyan-300 transition-colors"
                         >
-                            SPG 컬렉션 목록 보기
+                            컬렉션 목록 보기
                         </button>
                     </div>
                 </div>
@@ -527,7 +517,7 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                         어떤 네트워크에 배포할까요?
                     </h2>
                     <p className="text-blue-300 text-center mb-8">
-                        SPG를 배포할 블록체인 네트워크를 선택하세요
+                        컬렉션을 배포할 블록체인 네트워크를 선택하세요
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -622,7 +612,7 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                         어떤 지갑으로 배포할까요?
                     </h2>
                     <p className="text-blue-300 text-center mb-8">
-                        SPG 컬렉션의 소유자가 될 지갑을 선택하세요
+                        컬렉션의 소유자가 될 지갑을 선택하세요
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -1097,7 +1087,7 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                         컬렉션 메타데이터를 선택하세요
                     </h2>
                     <p className="text-blue-300 text-center mb-8">
-                        SPG 컬렉션의 메타데이터(이미지, 설명 등)를 선택하세요
+                        컬렉션의 메타데이터(이미지, 설명 등)를 선택하세요
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 max-h-[1200px] overflow-y-auto p-2">
@@ -1210,7 +1200,7 @@ export default function AdminStorySPG({ onBack }: { onBack?: () => void }) {
                         어떤 아티스트와 연결할까요?
                     </h2>
                     <p className="text-blue-300 text-center mb-8">
-                        이 SPG 컬렉션과 연결될 K-pop 아티스트를 선택하세요
+                        이 컬렉션과 연결될 K-pop 아티스트를 선택하세요
                     </p>
 
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8 max-h-[400px] overflow-y-auto p-2">

@@ -5,6 +5,7 @@
 import React from "react";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import Image from "next/image";
 
 interface Benefit {
     id: string;
@@ -33,7 +34,7 @@ export default React.memo(function NFTBenefits({
             id: "revenue",
             title: "Artist's Revenue",
             description: `Share goes to holders during project`,
-            icon: "💰",
+            icon: "/elements/money.png",
             gradient: "from-purple-600 via-purple-500 to-pink-500",
             highlight: `${sharePercentage}%`,
         },
@@ -41,7 +42,7 @@ export default React.memo(function NFTBenefits({
             id: "airdrop",
             title: "Airdrop",
             description: `Token drops per number of purchase`,
-            icon: "🪂",
+            icon: "/elements/parachute.png",
             gradient: "from-blue-600 via-purple-500 to-purple-600",
             highlight: `${airdropAmount.toLocaleString()} $SGT`,
         },
@@ -49,7 +50,7 @@ export default React.memo(function NFTBenefits({
             id: "membership",
             title: "Membership",
             description: "Private events to join for holders only",
-            icon: "🔒",
+            icon: "/elements/card.png",
             gradient: "from-purple-600 via-purple-400 to-purple-500",
             highlight: "VIP Access",
         },
@@ -57,7 +58,7 @@ export default React.memo(function NFTBenefits({
             id: "limited",
             title: "Limited Edition",
             description: `Few amount of NFT minted only`,
-            icon: "🌟",
+            icon: "/elements/money.png",
             gradient: "from-yellow-500 via-purple-500 to-purple-600",
             highlight: `${totalSupply.toLocaleString()} Only`,
         },
@@ -124,14 +125,13 @@ function BenefitCard({ benefit, index }: BenefitCardProps) {
                             "shadow-lg group-hover:shadow-purple-500/25 transition-shadow duration-300"
                         )}
                     >
-                        <span
-                            className={cn(
-                                "text-white",
-                                getResponsiveClass(60).textClass
-                            )}
-                        >
-                            {icon}
-                        </span>
+                        <Image
+                            src={icon}
+                            alt={title}
+                            width={120}
+                            height={120}
+                            className={cn(getResponsiveClass(60).frameClass)}
+                        />
                     </div>
                 </div>
 
