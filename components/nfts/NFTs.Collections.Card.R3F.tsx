@@ -289,7 +289,7 @@ const CardMesh = React.memo(function CardMesh({
     const blurredTexture = useBlurredTexture(
         imageUrl,
         {
-            blur: 80, // 강한 블러 효과
+            blur: 30, // 강한 블러 효과
             brightness: 1,
             contrast: 1,
         },
