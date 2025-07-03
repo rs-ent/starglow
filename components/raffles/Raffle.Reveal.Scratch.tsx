@@ -15,7 +15,7 @@ import { tierMap } from "./raffle-tier";
 interface Prize {
     id: string;
     title: string;
-    prizeType: "NFT" | "ASSET";
+    prizeType: "NFT" | "ASSET" | "EMPTY";
     order: number;
     quantity: number;
     spg?: {
@@ -174,17 +174,17 @@ const CustomScratchCard = memo(function CustomScratchCard({
 
         // 화면 크기와 캔버스 크기에 따른 동적 브러시 크기
         if (screenWidth < 400) {
-            brushSize = Math.max(12, canvasWidth * 0.035);
+            brushSize = Math.max(24, canvasWidth * 0.055);
         } else if (screenWidth < 600) {
-            brushSize = Math.max(18, canvasWidth * 0.045);
+            brushSize = Math.max(30, canvasWidth * 0.065);
         } else if (screenWidth < 768) {
-            brushSize = Math.max(22, canvasWidth * 0.055);
+            brushSize = Math.max(30, canvasWidth * 0.065);
         } else if (screenWidth < 1024) {
-            brushSize = Math.max(28, canvasWidth * 0.065);
-        } else if (screenWidth < 1440) {
             brushSize = Math.max(35, canvasWidth * 0.075);
+        } else if (screenWidth < 1440) {
+            brushSize = Math.max(40, canvasWidth * 0.085);
         } else {
-            brushSize = Math.max(45, canvasWidth * 0.085);
+            brushSize = Math.max(45, canvasWidth * 0.095);
         }
 
         // 캐시 업데이트
@@ -615,7 +615,10 @@ export default memo(function RaffleScratchCard({
         if (!prize) return;
 
         const tier = Math.floor(prize.order / 10);
-        const particleCount = Math.min(150, 15 * (tier * 4 + 1)); // 최대값 제한으로 성능 보장
+        const particleCount =
+            prize.prizeType === "EMPTY"
+                ? 3
+                : Math.min(600, 15 * (tier * 4 + 1));
 
         try {
             confetti({
@@ -1032,6 +1035,30 @@ export default memo(function RaffleScratchCard({
                                             )}
                                         </div>
                                     </div>
+                                ) : prize.prizeType === "EMPTY" ? (
+                                    <div
+                                        className="w-full h-full rounded-xl border-2 flex items-center justify-center p-4"
+                                        style={{
+                                            borderColor:
+                                                dynamicStyles.borderColor ||
+                                                "rgba(168,85,247,0.3)",
+                                            background: tierInfo
+                                                ? dynamicStyles.gradient
+                                                : "linear-gradient(135deg, rgba(168,85,247,0.1), rgba(59,130,246,0.1))",
+                                        }}
+                                    >
+                                        <div
+                                            className={cn(
+                                                "text-red-400 mb-1 text-center",
+                                                getResponsiveClass(
+                                                    responsiveStyles.imageSize -
+                                                        5
+                                                ).textClass
+                                            )}
+                                        >
+                                            💔
+                                        </div>
+                                    </div>
                                 ) : (
                                     <div
                                         className="w-full h-full rounded-xl border-2 flex items-center justify-center p-2"
@@ -1095,37 +1122,39 @@ export default memo(function RaffleScratchCard({
                             </h3>
 
                             {/* 🚀 반응형 최적화: 축하 메시지 */}
-                            <div
-                                className={cn(
-                                    "flex items-center justify-center",
-                                    getResponsiveClass(
-                                        responsiveStyles.elementGap
-                                    ).gapClass
-                                )}
-                            >
-                                <Sparkles
+                            {prize.prizeType !== "EMPTY" && (
+                                <div
                                     className={cn(
-                                        "text-yellow-300",
-                                        getResponsiveClass(15).frameClass
-                                    )}
-                                />
-                                <p
-                                    className={cn(
-                                        "text-white font-medium drop-shadow-lg",
+                                        "flex items-center justify-center",
                                         getResponsiveClass(
-                                            responsiveStyles.subtitleSize
-                                        ).textClass
+                                            responsiveStyles.elementGap
+                                        ).gapClass
                                     )}
                                 >
-                                    Congratulations!
-                                </p>
-                                <Sparkles
-                                    className={cn(
-                                        "text-yellow-300",
-                                        getResponsiveClass(15).frameClass
-                                    )}
-                                />
-                            </div>
+                                    <Sparkles
+                                        className={cn(
+                                            "text-yellow-300",
+                                            getResponsiveClass(15).frameClass
+                                        )}
+                                    />
+                                    <p
+                                        className={cn(
+                                            "text-white font-medium drop-shadow-lg",
+                                            getResponsiveClass(
+                                                responsiveStyles.subtitleSize
+                                            ).textClass
+                                        )}
+                                    >
+                                        Congratulations!
+                                    </p>
+                                    <Sparkles
+                                        className={cn(
+                                            "text-yellow-300",
+                                            getResponsiveClass(15).frameClass
+                                        )}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
                 </CustomScratchCard>

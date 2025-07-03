@@ -578,6 +578,24 @@ export default memo(function RaffleRecord({
                                                                             />
                                                                         </div>
                                                                     )}
+
+                                                                {record.prize
+                                                                    .prizeType ===
+                                                                    "EMPTY" && (
+                                                                    <div className="text-center">
+                                                                        <div
+                                                                            className={cn(
+                                                                                "text-red-400",
+                                                                                getResponsiveClass(
+                                                                                    30
+                                                                                )
+                                                                                    .textClass
+                                                                            )}
+                                                                        >
+                                                                            💔
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                                 <div className="text-right">
                                                                     <div
                                                                         className={cn(

@@ -41,6 +41,7 @@ import { useAssetsGet } from "@/app/hooks/useAssets";
 import Image from "next/image";
 import RaffleRecord from "./Raffle.Record";
 import { tierMap } from "./raffle-tier";
+import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
 
 // Utility function to calculate raffle status based on dates
 const getRaffleStatus = (
@@ -225,11 +226,12 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
         setToastShown(true);
 
         const prizeTitle = scratchResult?.prize?.title;
+        const prizeType = scratchResult?.prize?.prizeType;
         setTimeout(() => {
-            if (prizeTitle) {
+            if (prizeTitle && prizeType !== "EMPTY") {
                 toast.success(`🎊 Congratulations! You won ${prizeTitle}!`);
             } else {
-                toast.info("Better luck next time! Keep trying!");
+                toast.info("Owww...😢 Better luck next time! Keep trying! 🍀");
             }
         }, 500);
     }, [toastShown, scratchResult?.prize?.title, toast]);
@@ -778,8 +780,8 @@ const PrizeCard = memo(function PrizeCard({
                                     "bg-gradient-to-br from-violet-300/10 to-purple-300/10"
                                 )}
                             >
-                                {prize.spg.imageUrl ||
-                                prize.spg.metadata.image ? (
+                                {prize.spg?.imageUrl ||
+                                prize.spg?.metadata?.image ? (
                                     <div className="relative w-full h-full rounded-[8px] overflow-hidden">
                                         <Image
                                             src={
@@ -838,6 +840,27 @@ const PrizeCard = memo(function PrizeCard({
                                 )}
                             </div>
                         </div>
+                    ) : prize.prizeType === "EMPTY" ? (
+                        <div
+                            className={cn(
+                                "w-full h-full rounded-[8px] border flex items-center justify-center p-2",
+                                "bg-gradient-to-br from-gray-400/10 to-gray-500/10",
+                                "border-gray-400/20"
+                            )}
+                        >
+                            <div className="text-center">
+                                <div
+                                    className={cn(
+                                        "text-red-400 mb-1",
+                                        isSmall
+                                            ? getResponsiveClass(45).textClass
+                                            : getResponsiveClass(60).textClass
+                                    )}
+                                >
+                                    💔
+                                </div>
+                            </div>
+                        </div>
                     ) : (
                         <div
                             className={cn(
@@ -846,10 +869,10 @@ const PrizeCard = memo(function PrizeCard({
                                 "border-violet-300/20"
                             )}
                         >
-                            {prize.asset.iconUrl ? (
+                            {prize.asset?.iconUrl ? (
                                 <div className="relative w-full h-full">
                                     <Image
-                                        src={prize.asset.iconUrl}
+                                        src={prize.asset.iconUrl || ""}
                                         alt={prize.title}
                                         fill
                                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -986,6 +1009,13 @@ const ParticipationCard = memo(function ParticipationCard({
         },
     });
 
+    const { playerAsset } = usePlayerAssetsGet({
+        getPlayerAssetInput: {
+            playerId: session?.player?.id || "",
+            assetId: raffle?.entryFeeAssetId || "",
+        },
+    });
+
     const entryFeeAsset = useMemo(() => (asset ? asset : null), [asset]);
 
     // 사용자 참여 여부 및 횟수 확인
@@ -1010,10 +1040,21 @@ const ParticipationCard = memo(function ParticipationCard({
         ? userParticipationCount >= raffle.maxEntriesPerPlayer
         : false;
 
-    const canParticipate =
-        isLive &&
-        (!hasParticipated ||
-            (raffle?.allowMultipleEntry && !hasReachedMaxEntries));
+    const canParticipate = useMemo(() => {
+        return (
+            isLive &&
+            (!hasParticipated ||
+                (raffle?.allowMultipleEntry && !hasReachedMaxEntries)) &&
+            raffle.entryFeeAmount <= (playerAsset?.data?.balance || 0)
+        );
+    }, [
+        isLive,
+        hasParticipated,
+        raffle?.allowMultipleEntry,
+        hasReachedMaxEntries,
+        playerAsset?.data?.balance,
+        raffle.entryFeeAmount,
+    ]);
 
     // 참여 핸들러
     const handleParticipate = async () => {
@@ -1349,7 +1390,7 @@ const ParticipationCard = memo(function ParticipationCard({
                                         getResponsiveClass(30).frameClass
                                     )}
                                 />
-                                Results Available
+                                Unavailable
                             </>
                         )}
                     </motion.button>

@@ -185,8 +185,7 @@ function drawPrizeFromPool(
         throw new Error("No available prizes in pool");
     }
 
-    // 🎯 암호학적 안전한 난수 생성
-    const randomSlot = Math.floor(Math.random() * totalSlots);
+    const randomSlot = crypto.randomInt(0, totalSlots);
 
     let currentSlot = 0;
     for (const prize of activePrizes.sort((a, b) => a.order - b.order)) {

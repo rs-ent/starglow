@@ -23,14 +23,6 @@ import { useToast } from "@/app/hooks/useToast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-    Pagination,
-    PaginationContent,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from "@/components/ui/pagination";
 
 // Import new components
 import QuestsFilter, { type QuestFilterState } from "./Admin.Quest.Filter";
@@ -62,12 +54,10 @@ export default function AdminQuestList() {
     const [showCreate, setShowCreate] = useState(false);
     const [showOrderChange, setShowOrderChange] = useState(false);
     const [viewMode, setViewMode] = useState<"table" | "cards">("table");
-    const [currentPage, setCurrentPage] = useState(1);
     const [filteredQuests, setFilteredQuests] = useState<QuestWithRelations[]>(
         []
     );
     const [sortedQuests, setSortedQuests] = useState<QuestWithRelations[]>([]);
-    const itemsPerPage = 20;
 
     // Filter state
     const [filter, setFilter] = useState<QuestFilterState>({
@@ -159,7 +149,6 @@ export default function AdminQuestList() {
         });
 
         setFilteredQuests(filtered);
-        setCurrentPage(1); // Reset to first page when filtering
     }, [quests, filter]);
 
     // Apply filters when quest data or filter changes
@@ -174,15 +163,6 @@ export default function AdminQuestList() {
         );
         setSortedQuests(sorted);
     }, [filteredQuests]);
-
-    // Pagination
-    const paginatedQuests = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        return sortedQuests.slice(startIndex, endIndex);
-    }, [sortedQuests, currentPage]);
-
-    const totalPages = Math.ceil(sortedQuests.length / itemsPerPage);
 
     // Event handlers
     const handleEdit = (quest: Quest) => {
@@ -510,7 +490,7 @@ export default function AdminQuestList() {
             {/* Content */}
             {viewMode === "table" ? (
                 <QuestsTable
-                    quests={paginatedQuests}
+                    quests={quests.items}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onActiveChange={handleActiveChange}
@@ -522,70 +502,11 @@ export default function AdminQuestList() {
                 />
             ) : (
                 <QuestsCards
-                    quests={paginatedQuests}
+                    quests={quests.items}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onActiveChange={handleActiveChange}
                 />
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex items-center justify-center">
-                    <Pagination>
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious
-                                    onClick={() =>
-                                        setCurrentPage(
-                                            Math.max(1, currentPage - 1)
-                                        )
-                                    }
-                                    className={
-                                        currentPage === 1
-                                            ? "pointer-events-none opacity-50"
-                                            : "cursor-pointer"
-                                    }
-                                />
-                            </PaginationItem>
-                            {[...Array(totalPages)].map((_, index) => {
-                                const pageNumber = index + 1;
-                                return (
-                                    <PaginationItem key={pageNumber}>
-                                        <PaginationLink
-                                            onClick={() =>
-                                                setCurrentPage(pageNumber)
-                                            }
-                                            isActive={
-                                                currentPage === pageNumber
-                                            }
-                                            className="cursor-pointer"
-                                        >
-                                            {pageNumber}
-                                        </PaginationLink>
-                                    </PaginationItem>
-                                );
-                            })}
-                            <PaginationItem>
-                                <PaginationNext
-                                    onClick={() =>
-                                        setCurrentPage(
-                                            Math.min(
-                                                totalPages,
-                                                currentPage + 1
-                                            )
-                                        )
-                                    }
-                                    className={
-                                        currentPage === totalPages
-                                            ? "pointer-events-none opacity-50"
-                                            : "cursor-pointer"
-                                    }
-                                />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
-                </div>
             )}
         </div>
     );
