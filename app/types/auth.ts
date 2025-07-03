@@ -19,7 +19,7 @@ export type Provider = {
     callbackUrl: string;
 };
 
-export type WalletProviderType = "metamask" | "walletconnect";
+export type WalletProviderType = "metamask" | "walletconnect" | "starglow";
 
 export type WalletProvider = {
     id: WalletProviderType;
@@ -114,6 +114,21 @@ function isMobileDevice(): boolean {
 }
 
 export const WALLET_PROVIDERS: Record<WalletProviderType, WalletProvider> = {
+    starglow: {
+        id: "starglow",
+        name: "Starglow",
+        icon: "/logo/l-white.svg",
+        color: "bg-[rgba(132,78,216,1.0)] border-[rgba(255,255,255,1.0)] text-[rgba(255,255,255,1.0)]",
+        installUrl: {
+            desktop: "https://starglow.io/",
+            ios: "https://starglow.io/",
+            android: "https://starglow.io/",
+            default: "https://starglow.io/",
+        },
+        detectFunction: async () => {
+            return true;
+        },
+    },
     metamask: {
         id: "metamask",
         name: "MetaMask",

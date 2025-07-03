@@ -169,8 +169,6 @@ export function useWagmiConnection() {
                         userId: user.id,
                     });
 
-                    toast.success("Wallet connected successfully");
-
                     // 콜백 URL로 리다이렉트
                     if (callbackUrlRef.current) {
                         window.location.href = callbackUrlRef.current;

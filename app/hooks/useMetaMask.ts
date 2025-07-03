@@ -4,215 +4,245 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { formatEther } from "viem";
-import {
-    useAccount,
-    useConnect,
-    useDisconnect,
-    useBalance,
-    useSwitchChain,
-} from "wagmi";
-import { mainnet, sepolia } from "wagmi/chains";
-import { injected } from "wagmi/connectors";
+import { MetaMaskSDK } from "@metamask/sdk";
 
-// 애플리케이션에서 지원하는 체인 목록
-const SUPPORTED_CHAINS = [mainnet, sepolia];
-const DEFAULT_CHAIN = sepolia; // 테스트넷을 기본값으로 설정
+import { useToast } from "./useToast";
+import {
+    exportWalletToMetaMask,
+    walletBackupPostProcess,
+} from "@/app/story/userWallet/actions";
 
 interface UseMetaMaskReturn {
-    // 지갑 연결 상태
-    address: string | undefined;
+    // SDK 상태
+    sdk: MetaMaskSDK | null;
+    isSDKReady: boolean;
+
+    // 연결 상태
     isConnected: boolean;
+    currentAccount: string | null;
 
-    // 지갑 잔액
-    balance: string;
-    formattedBalance: string;
-    isBalanceLoading: boolean;
+    // 기본 액션
+    connectSDK: () => Promise<void>;
+    disconnectSDK: () => Promise<void>;
 
-    // 연결 관련 함수 및 상태
-    connect: () => Promise<void>;
-    disconnect: () => void;
-    isPending: boolean;
-    isConnecting: boolean;
-    isDisconnecting: boolean;
+    // Export 관련
+    exportWalletToMetaMask: (
+        walletAddress: string
+    ) => Promise<{ success: boolean; privateKey?: string; error?: string }>;
+    confirmWalletExport: (walletAddress: string) => Promise<boolean>;
+    isExporting: boolean;
+    exportError: string | null;
 
-    // 체인 관련
-    chainId: number | undefined;
-    isUnsupportedChain: boolean;
-    switchToDefaultChain: () => Promise<void>;
-    isSwitchingChain: boolean;
-    supportedChains: typeof SUPPORTED_CHAINS;
-
-    // 오류 관련
-    error: Error | null;
-    clearError: () => void;
-
-    // MetaMask 관련
-    isMetaMaskInstalled: boolean;
+    // 상태
+    isLoading: boolean;
+    error: string | null;
 }
 
-export function useMetaMask(): UseMetaMaskReturn {
-    const [error, setError] = useState<Error | null>(null);
-    const [isMetaMaskInstalled, setIsMetaMaskInstalled] =
-        useState<boolean>(false);
+export function useMetaMask(userId?: string): UseMetaMaskReturn {
+    const toast = useToast();
 
-    // 지갑 계정 정보
-    const { address, isConnected, chainId } = useAccount();
+    const [sdk, setSdk] = useState<MetaMaskSDK | null>(null);
+    const [isSDKReady, setIsSDKReady] = useState(false);
+    const [isConnected, setIsConnected] = useState(false);
+    const [currentAccount, setCurrentAccount] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
+    const [exportError, setExportError] = useState<string | null>(null);
 
-    // 지갑 연결/해제 훅
-    const {
-        connectAsync,
-        status: connectStatus,
-        error: connectError,
-    } = useConnect();
-    const { disconnectAsync, status: disconnectStatus } = useDisconnect();
-
-    // 체인 전환 훅
-    const {
-        switchChainAsync,
-        status: switchChainStatus,
-        error: switchChainError,
-    } = useSwitchChain();
-
-    // 지갑 잔액 정보
-    const { data: balanceData, isLoading: isBalanceLoading } = useBalance({
-        address: address,
-    });
-
-    // 지원하지 않는 체인인지 확인
-    const isUnsupportedChain =
-        chainId !== undefined &&
-        !SUPPORTED_CHAINS.some((chain) => chain.id === chainId);
-
-    // 초기화 시 MetaMask 설치 여부 확인
+    // SDK 초기화
     useEffect(() => {
-        const checkMetaMaskInstalled = () => {
-            const isInstalled =
-                typeof window !== "undefined" &&
-                window.ethereum &&
-                window.ethereum.isMetaMask;
-            setIsMetaMaskInstalled(!!isInstalled);
+        const initSDK = async () => {
+            try {
+                const sdkInstance = new MetaMaskSDK({
+                    dappMetadata: {
+                        name: "Starglow",
+                        url: window.location.origin,
+                        iconUrl: `${window.location.origin}/logo/starglow-logo.svg`,
+                    },
+                    logging: {
+                        developerMode: process.env.NODE_ENV === "development",
+                    },
+                    storage: {
+                        enabled: true,
+                    },
+                });
+
+                setSdk(sdkInstance);
+                setIsSDKReady(true);
+
+                // 연결 상태 변화 감지
+                const provider = sdkInstance.getProvider();
+                if (provider) {
+                    provider.on("accountsChanged", (...args: unknown[]) => {
+                        const accounts = args[0] as string[];
+                        setCurrentAccount(accounts[0] || null);
+                        setIsConnected(accounts.length > 0);
+                    });
+
+                    provider.on("chainChanged", (...args: unknown[]) => {
+                        const _chainId = args[0] as string;
+                        console.info("Chain changed:", _chainId);
+                    });
+
+                    provider.on("connect", (...args: unknown[]) => {
+                        const _connectInfo = args[0];
+                        console.info("Connected:", _connectInfo);
+                        setIsConnected(true);
+                    });
+
+                    provider.on("disconnect", () => {
+                        setIsConnected(false);
+                        setCurrentAccount(null);
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to initialize MetaMask SDK:", err);
+                setError("Failed to initialize MetaMask SDK");
+            }
         };
 
-        checkMetaMaskInstalled();
+        initSDK().catch((err) => {
+            console.error("Failed to initialize MetaMask SDK:", err);
+            setError("Failed to initialize MetaMask SDK");
+        });
     }, []);
 
-    // 연결 오류 업데이트
-    useEffect(() => {
-        if (connectError) {
-            setError(connectError);
+    // SDK 연결
+    const connectSDK = useCallback(async () => {
+        if (!sdk) {
+            toast.error("MetaMask SDK not ready");
+            return;
         }
-    }, [connectError]);
 
-    // 체인 전환 오류 업데이트
-    useEffect(() => {
-        if (switchChainError) {
-            setError(switchChainError);
-        }
-    }, [switchChainError]);
-
-    // 오류 초기화
-    const clearError = useCallback(() => {
-        setError(null);
-    }, []);
-
-    // 지갑 연결 함수
-    const connect = useCallback(async () => {
         try {
+            setIsLoading(true);
             setError(null);
 
-            if (!isMetaMaskInstalled) {
-                throw new Error(
-                    "MetaMask가 설치되어 있지 않습니다. MetaMask를 설치한 후 다시 시도해주세요."
-                );
+            const accounts = await sdk.connect();
+            if (accounts && accounts.length > 0) {
+                setCurrentAccount(accounts[0]);
+                setIsConnected(true);
+                toast.success("Connected to MetaMask");
             }
-
-            await connectAsync({ connector: injected() });
-
-            // 연결 후 지원하지 않는 체인이면 기본 체인으로 전환 안내
-            if (isUnsupportedChain) {
-                console.warn(
-                    "지원하지 않는 체인에 연결되었습니다. 기본 체인으로 전환해주세요."
-                );
-            }
-        } catch (err) {
-            // 사용자가 거부한 경우와 다른 오류 구분
-            if (err instanceof Error && err.message.includes("User rejected")) {
-                setError(new Error("사용자가 지갑 연결을 거부했습니다."));
-            } else {
-                setError(err instanceof Error ? err : new Error(String(err)));
-            }
-            console.error("MetaMask 연결 오류:", err);
+        } catch (err: any) {
+            const errorMessage = err.message || "Failed to connect";
+            setError(errorMessage);
+            toast.error(errorMessage);
+        } finally {
+            setIsLoading(false);
         }
-    }, [connectAsync, isMetaMaskInstalled, isUnsupportedChain]);
+    }, [sdk, toast]);
 
-    // 지갑 연결 해제 함수
-    const disconnect = useCallback(async () => {
+    // SDK 연결 해제
+    const disconnectSDK = useCallback(async () => {
+        if (!sdk) return;
+
         try {
-            await disconnectAsync();
-        } catch (err) {
-            console.error("MetaMask 연결 해제 오류:", err);
+            await sdk.disconnect();
+            setIsConnected(false);
+            setCurrentAccount(null);
+            toast.success("Disconnected from MetaMask");
+        } catch (err: any) {
+            console.error("Failed to disconnect:", err);
+            toast.error("Failed to disconnect");
         }
-    }, [disconnectAsync]);
+    }, [sdk, toast]);
 
-    // 기본 체인으로 전환 함수
-    const switchToDefaultChain = useCallback(async () => {
-        try {
-            if (!isConnected) {
-                throw new Error(
-                    "지갑이 연결되어 있지 않습니다. 먼저 지갑을 연결해주세요."
-                );
+    // 지갑 Export 기능
+    const exportWalletToMetaMaskHandler = useCallback(
+        async (
+            walletAddress: string
+        ): Promise<{
+            success: boolean;
+            privateKey?: string;
+            error?: string;
+        }> => {
+            setIsExporting(true);
+            setExportError(null);
+
+            try {
+                if (!userId) {
+                    throw new Error("User ID is required");
+                }
+
+                const result = await exportWalletToMetaMask({
+                    userId,
+                    walletAddress,
+                });
+
+                if (result.success) {
+                    toast.success("Wallet exported successfully!");
+                    return { success: true, privateKey: result.privateKey };
+                } else {
+                    setExportError(result.message);
+                    toast.error(result.message);
+                    return { success: false, error: result.error };
+                }
+            } catch (error: any) {
+                const errorMessage = error.message || "Failed to export wallet";
+                setExportError(errorMessage);
+                toast.error(errorMessage);
+                return { success: false, error: errorMessage };
+            } finally {
+                setIsExporting(false);
             }
+        },
+        [userId, toast]
+    );
 
-            await switchChainAsync({ chainId: DEFAULT_CHAIN.id });
-        } catch (err) {
-            if (err instanceof Error && err.message.includes("User rejected")) {
-                setError(new Error("사용자가 체인 전환을 거부했습니다."));
-            } else {
-                setError(err instanceof Error ? err : new Error(String(err)));
+    // 지갑 Export 확인 기능
+    const confirmWalletExportHandler = useCallback(
+        async (walletAddress: string): Promise<boolean> => {
+            try {
+                if (!userId) {
+                    throw new Error("User ID is required");
+                }
+
+                const result = await walletBackupPostProcess({
+                    userId,
+                    walletAddress,
+                    newProvider: "metaMaskSDK", // MetaMask로 provider 변경
+                });
+
+                if (result.success) {
+                    toast.success("Wallet export confirmed!");
+                    return true;
+                } else {
+                    toast.error(result.message);
+                    return false;
+                }
+            } catch (error: any) {
+                const errorMessage =
+                    error.message || "Failed to confirm export";
+                toast.error(errorMessage);
+                return false;
             }
-            console.error("체인 전환 오류:", err);
-        }
-    }, [isConnected, switchChainAsync]);
-
-    // 잔액 포맷팅
-    const formattedBalance = balanceData
-        ? `${parseFloat(formatEther(balanceData.value)).toFixed(4)} ${
-              balanceData.symbol
-          }`
-        : "0 ETH";
+        },
+        [userId, toast]
+    );
 
     return {
-        // 지갑 연결 상태
-        address,
+        // SDK 상태
+        sdk,
+        isSDKReady,
+
+        // 연결 상태
         isConnected,
+        currentAccount,
 
-        // 지갑 잔액
-        balance: balanceData ? formatEther(balanceData.value) : "0",
-        formattedBalance,
-        isBalanceLoading,
+        // 기본 액션
+        connectSDK,
+        disconnectSDK,
 
-        // 연결 관련 함수 및 상태
-        connect,
-        disconnect,
-        isPending: connectStatus === "pending",
-        isConnecting:
-            connectStatus === "success" || connectStatus === "pending",
-        isDisconnecting:
-            disconnectStatus === "success" || disconnectStatus === "pending",
+        // Export 관련
+        exportWalletToMetaMask: exportWalletToMetaMaskHandler,
+        confirmWalletExport: confirmWalletExportHandler,
+        isExporting,
+        exportError,
 
-        // 체인 관련
-        chainId,
-        isUnsupportedChain,
-        switchToDefaultChain,
-        isSwitchingChain: switchChainStatus === "pending",
-        supportedChains: SUPPORTED_CHAINS,
-
-        // 오류 관련
+        // 상태
+        isLoading,
         error,
-        clearError,
-
-        // MetaMask 관련
-        isMetaMaskInstalled,
     };
 }

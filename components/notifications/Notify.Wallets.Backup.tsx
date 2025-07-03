@@ -18,6 +18,8 @@ import {
     Star,
     Sparkles,
     FileText,
+    QrCode,
+    Smartphone,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -29,6 +31,7 @@ import {
     walletBackupPostProcess,
 } from "@/app/story/userWallet/actions";
 import { useToast } from "@/app/hooks/useToast";
+import Image from "next/image";
 
 interface NotifyWalletsBackupProps {
     isOpen: boolean;
@@ -48,6 +51,7 @@ export default function NotifyWalletsBackup({
     const [isPrivateKeyVisible, setIsPrivateKeyVisible] = useState(false);
     const [isPrivateKeyCopied, setIsPrivateKeyCopied] = useState(false);
     const [isAddressCopied, setIsAddressCopied] = useState(false);
+    const [showQRCode, setShowQRCode] = useState(false);
     const [agreedToDisclaimer, setAgreedToDisclaimer] = useState(false);
     const [agreedToResponsibility, setAgreedToResponsibility] = useState(false);
     const [agreedToPrivateKey, setAgreedToPrivateKey] = useState(false);
@@ -56,25 +60,16 @@ export default function NotifyWalletsBackup({
     const { data: session } = useSession();
     const toast = useToast();
 
-    // Private Key 가져오기
-    const fetchPrivateKey = useCallback(async () => {
-        if (privateKey) return;
-
-        setIsLoading(true);
-        try {
-            const key = await getPrivateKey(walletAddress);
-            setPrivateKey(key);
-        } catch (error) {
-            console.error("Failed to fetch private key:", error);
-            toast.error("Failed to fetch private key");
-            onClose();
-        } finally {
-            setIsLoading(false);
-        }
-    }, [privateKey, walletAddress, onClose, toast]);
+    // QR Code 생성 함수
+    const generateQRCode = useCallback((data: string) => {
+        // QR 코드 라이브러리가 없다면 간단한 URL 기반 생성
+        return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+            data
+        )}`;
+    }, []);
 
     // 백업 완료 처리
-    const handleBackupComplete = async () => {
+    const handleBackupComplete = useCallback(async () => {
         if (!session?.user?.id) {
             toast.error("User not authenticated");
             return;
@@ -92,7 +87,13 @@ export default function NotifyWalletsBackup({
                 return;
             }
 
-            toast.success("🎉 Backup completed successfully!");
+            // 성공 메시지 구분
+            if (result.message.includes("cleaned up")) {
+                toast.success("🧹 Notifications cleaned up!");
+            } else {
+                toast.success("🎉 Backup completed successfully!");
+            }
+
             onComplete?.();
             onClose();
         } catch (error) {
@@ -101,7 +102,61 @@ export default function NotifyWalletsBackup({
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [session?.user?.id, walletAddress, onComplete, onClose, toast]);
+
+    // Private Key 가져오기
+    const fetchPrivateKey = useCallback(async () => {
+        if (privateKey) return;
+
+        setIsLoading(true);
+        try {
+            const key = await getPrivateKey(walletAddress);
+            setPrivateKey(key);
+        } catch (error) {
+            console.error("Failed to fetch private key:", error);
+
+            // 이미 백업된 지갑인지 더 정확하게 확인
+            const errorMessage =
+                error instanceof Error ? error.message : String(error);
+            const isAlreadyBackedUp =
+                errorMessage.includes(
+                    "This wallet is not created by Starglow"
+                ) ||
+                errorMessage.includes(
+                    "This wallet is not managed by Starglow"
+                ) ||
+                errorMessage.toLowerCase().includes("private key") ||
+                errorMessage.toLowerCase().includes("not custodial");
+
+            if (isAlreadyBackedUp) {
+                // 이미 백업된 지갑 - 알림만 정리하고 종료
+                toast.info(
+                    "This wallet has already been backed up! Cleaning up notifications..."
+                );
+
+                try {
+                    await handleBackupComplete();
+                    // handleBackupComplete에서 이미 성공 토스트를 보여주므로 여기서는 생략
+                } catch (cleanupError) {
+                    console.error(
+                        "Failed to cleanup notifications:",
+                        cleanupError
+                    );
+                    toast.warning(
+                        "Wallet already backed up, but couldn't clean notifications"
+                    );
+                }
+
+                onClose();
+                return;
+            }
+
+            toast.error("Failed to fetch private key");
+            onClose();
+        } finally {
+            setIsLoading(false);
+        }
+    }, [privateKey, walletAddress, onClose, toast, handleBackupComplete]);
 
     // Private Key 복사
     const copyPrivateKey = async () => {
@@ -678,6 +733,270 @@ export default function NotifyWalletsBackup({
                                 </p>
                             )}
                         </div>
+
+                        {/* Enhanced Backup Options */}
+                        {isPrivateKeyVisible && privateKey && (
+                            <div className="mt-4 space-y-3">
+                                <div className="bg-gradient-to-r from-orange-900/30 to-yellow-900/30 p-3 rounded-lg border border-orange-500/30">
+                                    <p className="text-orange-300 font-bold mb-2 text-sm">
+                                        🚀 Quick Actions
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                try {
+                                                    window.open(
+                                                        "https://metamask.io/import/",
+                                                        "_blank"
+                                                    );
+                                                    toast.info(
+                                                        "MetaMask opened! Paste your private key there."
+                                                    );
+                                                } catch (error) {
+                                                    console.error(error);
+                                                    toast.error(
+                                                        "Please open MetaMask manually"
+                                                    );
+                                                }
+                                            }}
+                                            className="text-orange-300 border-orange-500/50 hover:bg-orange-900/50 bg-orange-900/20 text-xs"
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                <img
+                                                    src="/icons/blockchain/metamask.svg"
+                                                    alt="MetaMask"
+                                                    className="w-4 h-4"
+                                                />
+                                                MetaMask
+                                            </div>
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                const keystore = {
+                                                    address:
+                                                        walletAddress.slice(2),
+                                                    privateKey: privateKey,
+                                                    created:
+                                                        new Date().toISOString(),
+                                                    source: "Starglow",
+                                                };
+                                                const blob = new Blob(
+                                                    [
+                                                        JSON.stringify(
+                                                            keystore,
+                                                            null,
+                                                            2
+                                                        ),
+                                                    ],
+                                                    { type: "application/json" }
+                                                );
+                                                const url =
+                                                    URL.createObjectURL(blob);
+                                                const a =
+                                                    document.createElement("a");
+                                                a.href = url;
+                                                a.download = `starglow-wallet-${walletAddress.slice(
+                                                    0,
+                                                    8
+                                                )}.json`;
+                                                a.click();
+                                                URL.revokeObjectURL(url);
+                                                toast.success(
+                                                    "Backup file downloaded!"
+                                                );
+                                            }}
+                                            className="text-blue-300 border-blue-500/50 hover:bg-blue-900/50 bg-blue-900/20 text-xs"
+                                        >
+                                            <FileText className="w-4 h-4 mr-1" />
+                                            JSON File
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                                setShowQRCode(!showQRCode)
+                                            }
+                                            className="text-purple-300 border-purple-500/50 hover:bg-purple-900/50 bg-purple-900/20 text-xs"
+                                        >
+                                            <QrCode className="w-4 h-4 mr-1" />
+                                            QR Code
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* QR Code Display */}
+                                {showQRCode && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: "auto" }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 p-4 rounded-lg border border-purple-500/30"
+                                    >
+                                        <div className="text-center">
+                                            <p className="text-purple-300 font-bold mb-3 text-sm">
+                                                📱 Mobile Wallet Import
+                                            </p>
+                                            <div className="bg-white p-3 rounded-lg inline-block mb-3">
+                                                <Image
+                                                    src={generateQRCode(
+                                                        privateKey
+                                                    )}
+                                                    alt="Private Key QR Code"
+                                                    width={160}
+                                                    height={160}
+                                                    className={cn(
+                                                        getResponsiveClass(60)
+                                                            .frameClass
+                                                    )}
+                                                />
+                                            </div>
+                                            <p className="text-gray-300 text-xs">
+                                                Scan with Trust Wallet, Coinbase
+                                                Wallet, or any mobile wallet
+                                            </p>
+                                            <div className="flex justify-center gap-2 mt-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        try {
+                                                            window.open(
+                                                                "https://trustwallet.com/",
+                                                                "_blank"
+                                                            );
+                                                            toast.info(
+                                                                "Trust Wallet page opened!"
+                                                            );
+                                                        } catch (error) {
+                                                            console.error(
+                                                                error
+                                                            );
+                                                            toast.error(
+                                                                "Please visit Trust Wallet manually"
+                                                            );
+                                                        }
+                                                    }}
+                                                    className="text-blue-300 border-blue-500/50 hover:bg-blue-900/50 bg-blue-900/20 text-xs"
+                                                >
+                                                    <Smartphone className="w-3 h-3 mr-1" />
+                                                    Trust Wallet
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        try {
+                                                            window.open(
+                                                                "https://www.coinbase.com/wallet",
+                                                                "_blank"
+                                                            );
+                                                            toast.info(
+                                                                "Coinbase Wallet page opened!"
+                                                            );
+                                                        } catch (error) {
+                                                            console.error(
+                                                                error
+                                                            );
+                                                            toast.error(
+                                                                "Please visit Coinbase Wallet manually"
+                                                            );
+                                                        }
+                                                    }}
+                                                    className="text-indigo-300 border-indigo-500/50 hover:bg-indigo-900/50 bg-indigo-900/20 text-xs"
+                                                >
+                                                    <Smartphone className="w-3 h-3 mr-1" />
+                                                    Coinbase
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {/* Advanced Options */}
+                                <div className="bg-gradient-to-r from-gray-900/30 to-slate-900/30 p-3 rounded-lg border border-gray-500/30">
+                                    <p className="text-gray-300 font-bold mb-2 text-sm">
+                                        🔧 Advanced Options
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                const textData = `Starglow Wallet Backup
+Address: ${walletAddress}
+Private Key: ${privateKey}
+Created: ${new Date().toISOString()}
+Security Notice: Keep this information safe and never share it.`;
+                                                const blob = new Blob(
+                                                    [textData],
+                                                    { type: "text/plain" }
+                                                );
+                                                const url =
+                                                    URL.createObjectURL(blob);
+                                                const a =
+                                                    document.createElement("a");
+                                                a.href = url;
+                                                a.download = `starglow-wallet-backup-${walletAddress.slice(
+                                                    0,
+                                                    8
+                                                )}.txt`;
+                                                a.click();
+                                                URL.revokeObjectURL(url);
+                                                toast.success(
+                                                    "Text backup downloaded!"
+                                                );
+                                            }}
+                                            className="text-gray-300 border-gray-500/50 hover:bg-gray-900/50 bg-gray-900/20 text-xs"
+                                        >
+                                            <FileText className="w-4 h-4 mr-1" />
+                                            Text File
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                if (navigator.share) {
+                                                    navigator
+                                                        .share({
+                                                            title: "Starglow Wallet Backup",
+                                                            text: `Wallet Address: ${walletAddress}\nPrivate Key: ${privateKey}`,
+                                                        })
+                                                        .catch(() => {
+                                                            toast.error(
+                                                                "Sharing not supported"
+                                                            );
+                                                        });
+                                                } else {
+                                                    toast.error(
+                                                        "Sharing not supported on this device"
+                                                    );
+                                                }
+                                            }}
+                                            className="text-green-300 border-green-500/50 hover:bg-green-900/50 bg-green-900/20 text-xs"
+                                        >
+                                            <Smartphone className="w-4 h-4 mr-1" />
+                                            Share (Mobile)
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Security Reminder */}
+                                <div className="bg-gradient-to-r from-red-900/30 to-pink-900/30 p-3 rounded-lg border border-red-500/30">
+                                    <p className="text-red-300 font-bold mb-1 text-sm">
+                                        ⚠️ Security Reminder
+                                    </p>
+                                    <p className="text-gray-300 text-xs">
+                                        Close this window immediately after
+                                        backup. Never leave private keys visible
+                                        on screen.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Security Tip */}

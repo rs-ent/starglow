@@ -69,6 +69,7 @@ function SignInButtons() {
     }
 
     const DONOT_SHOW_PROVIDERS = ["spotify", "coinbase", "discord", "kakao"];
+    const DONOT_SHOW_WALLET_PROVIDERS = ["starglow"];
 
     return (
         <div className="w-full flex flex-col gap-4 items-center justify-center">
@@ -86,13 +87,18 @@ function SignInButtons() {
                     );
                 })}
                 <div className="w-full border-t border-gray-600 h-[1px] my-1"></div>
-                {Object.values(WALLET_PROVIDERS).map((provider) => (
-                    <WalletAuthButton
-                        key={provider.id}
-                        provider={provider}
-                        callbackUrl={callbackUrl}
-                    />
-                ))}
+                {Object.values(WALLET_PROVIDERS).map((provider) => {
+                    if (DONOT_SHOW_WALLET_PROVIDERS.includes(provider.id)) {
+                        return null;
+                    }
+                    return (
+                        <WalletAuthButton
+                            key={provider.id}
+                            provider={provider}
+                            callbackUrl={callbackUrl}
+                        />
+                    );
+                })}
             </div>
             <div className="my-2 flex flex-row items-center justify-around">
                 <div className="w-full border-t border-gray-600 h-[1px]"></div>

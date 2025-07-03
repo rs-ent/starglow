@@ -2,57 +2,36 @@
 
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import { motion } from "framer-motion";
-import {
-    Copy,
-    CheckCircle2,
-    Shield,
-    Sparkles,
-    RefreshCcw,
-    ExternalLink,
-    Link,
-} from "lucide-react";
+import { ExternalLink, ArrowRight, Copy } from "lucide-react";
 
-import { useDiscord } from "@/app/hooks/useDiscord";
 import { useToast } from "@/app/hooks/useToast";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
 import type { User } from "next-auth";
+import { useUserWallet } from "@/app/story/userWallet/hooks";
 
 interface UserDiscordProps {
     user: User;
 }
 
 export default function UserDiscord({ user }: UserDiscordProps) {
-    const [discordCode, setDiscordCode] = useState<string>("");
-    const [copiedCode, setCopiedCode] = useState(false);
-
     const toast = useToast();
-    const { createDiscordCodeAsync, createDiscordCodePending } = useDiscord();
-
-    const handleGenerateCode = async () => {
-        try {
-            const result = await createDiscordCodeAsync({ input: { user } });
-            setDiscordCode(result.code);
-            toast.success("Discord verification code generated! 🎉");
-        } catch (error) {
-            console.error("Error generating Discord code:", error);
-            toast.error("Failed to generate code. Please try again.");
-        }
-    };
-
-    const handleCopy = useCallback(
-        async (value: string) => {
-            await navigator.clipboard.writeText(value);
-            setCopiedCode(true);
-            toast.success("Copied to clipboard");
-            setTimeout(() => setCopiedCode(false), 2000);
+    const { defaultUserWallet } = useUserWallet({
+        getDefaultUserWalletInput: {
+            userId: user.id ?? "",
         },
-        [toast]
-    );
+    });
+
+    const handleOpenCollab = useCallback(() => {
+        window.open("https://discord.gg/starglow", "_blank");
+        toast.success(
+            "Opening Discord server - Follow the verification steps! 🎉"
+        );
+    }, [toast]);
 
     return (
         <div
@@ -62,283 +41,302 @@ export default function UserDiscord({ user }: UserDiscordProps) {
                 "px-4 sm:px-3 md:px-4 lg:px-6"
             )}
         >
-            {!discordCode ? (
-                <div
+            <div
+                className={cn(
+                    "bg-gradient-to-br from-indigo-900/20 via-purple-900/20 to-pink-900/20",
+                    "backdrop-blur-lg border border-indigo-500/30",
+                    "rounded-2xl text-center shadow-2xl w-full",
+                    getResponsiveClass(35).paddingClass
+                )}
+            >
+                <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 200 }}
+                    className={cn(getResponsiveClass(25).marginYClass)}
+                >
+                    <img
+                        src="/icons/providers/discord.svg"
+                        alt="Discord"
+                        className={cn(
+                            "mx-auto text-indigo-400",
+                            getResponsiveClass(60).frameClass
+                        )}
+                    />
+                </motion.div>
+
+                <h3
                     className={cn(
-                        "bg-gradient-to-br from-indigo-900/20 via-purple-900/20 to-pink-900/20",
-                        "backdrop-blur-lg border border-indigo-500/30",
-                        "rounded-2xl p-8 text-center shadow-2xl w-full"
+                        "font-bold text-white",
+                        getResponsiveClass(10).marginYClass,
+                        getResponsiveClass(25).textClass
                     )}
                 >
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200 }}
-                        className="mb-6"
-                    >
-                        <img
-                            src="/icons/providers/discord.svg"
-                            alt="Discord"
-                            className={cn(
-                                "mx-auto text-indigo-400",
-                                getResponsiveClass(60).frameClass
-                            )}
-                        />
-                    </motion.div>
+                    HOW TO VERIFY YOUR NFTs
+                </h3>
+                <p
+                    className={cn(
+                        "text-gray-400",
+                        getResponsiveClass(35).marginYClass,
+                        getResponsiveClass(15).textClass
+                    )}
+                >
+                    Follow these steps to verify your NFT ownership and get the
+                    HOLDER role
+                </p>
 
-                    <h3
+                {/* Verification Steps */}
+                <div
+                    className={cn(
+                        "bg-gradient-to-r from-blue-900/30 to-indigo-900/30 rounded-xl border border-blue-500/20",
+                        getResponsiveClass(25).paddingClass,
+                        getResponsiveClass(35).marginYClass
+                    )}
+                >
+                    <div
                         className={cn(
-                            "font-bold text-white mb-2",
-                            getResponsiveClass(25).textClass
-                        )}
-                    >
-                        🔗 Discord Verification
-                    </h3>
-                    <p
-                        className={cn(
-                            "text-gray-400 mb-8",
+                            "text-left space-y-4",
                             getResponsiveClass(15).textClass
                         )}
                     >
-                        Generate a code to verify your NFT ownership in Discord
-                    </p>
+                        <div
+                            className={cn(
+                                "flex items-start",
+                                getResponsiveClass(15).gapClass
+                            )}
+                        >
+                            <div
+                                className={cn(
+                                    "flex-shrink-0 bg-blue-400 rounded-full flex items-center justify-center text-white font-bold",
+                                    getResponsiveClass(25).frameClass,
+                                    getResponsiveClass(10).textClass
+                                )}
+                            >
+                                1
+                            </div>
+                            <p className="text-gray-300">
+                                Join the{" "}
+                                <span className="text-blue-300 font-semibold">
+                                    Starglow Discord Server
+                                </span>
+                            </p>
+                        </div>
+                        <div
+                            className={cn(
+                                "flex items-start",
+                                getResponsiveClass(15).gapClass
+                            )}
+                        >
+                            <div
+                                className={cn(
+                                    "flex-shrink-0 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold",
+                                    getResponsiveClass(25).frameClass,
+                                    getResponsiveClass(10).textClass
+                                )}
+                            >
+                                2
+                            </div>
+                            <p className="text-gray-300">
+                                Go to the channel{" "}
+                                <span
+                                    className={cn(
+                                        "text-indigo-300 font-bold bg-gray-800/30 rounded-[4px]",
+                                        getResponsiveClass(5).paddingClass
+                                    )}
+                                >
+                                    🔒ㅣnft-verify
+                                </span>
+                            </p>
+                        </div>
+                        <div
+                            className={cn(
+                                "flex items-start",
+                                getResponsiveClass(15).gapClass
+                            )}
+                        >
+                            <div
+                                className={cn(
+                                    "flex-shrink-0 bg-purple-700 rounded-full flex items-center justify-center text-white font-bold",
+                                    getResponsiveClass(25).frameClass,
+                                    getResponsiveClass(10).textClass
+                                )}
+                            >
+                                3
+                            </div>
+                            <p className="text-gray-300">
+                                Click{" "}
+                                <span className="text-purple-300 font-semibold">
+                                    {`"Let's Go"`}
+                                </span>
+                            </p>
+                        </div>
 
+                        <div
+                            className={cn(
+                                "flex items-start",
+                                getResponsiveClass(15).gapClass
+                            )}
+                        >
+                            <div
+                                className={cn(
+                                    "flex-shrink-0 bg-violet-500 rounded-full flex items-center justify-center text-white font-bold",
+                                    getResponsiveClass(25).frameClass,
+                                    getResponsiveClass(10).textClass
+                                )}
+                            >
+                                4
+                            </div>
+                            <p className="text-gray-300">
+                                Click{" "}
+                                <span className="text-violet-300 font-semibold">
+                                    {`"Connect Wallet"`}
+                                </span>
+                            </p>
+                        </div>
+
+                        <div
+                            className={cn(
+                                "flex flex-col items-start",
+                                getResponsiveClass(15).gapClass
+                            )}
+                        >
+                            <div className="flex items-start gap-2">
+                                <div
+                                    className={cn(
+                                        "flex-shrink-0 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold",
+                                        getResponsiveClass(25).frameClass,
+                                        getResponsiveClass(10).textClass
+                                    )}
+                                >
+                                    5
+                                </div>
+                                <p className="text-gray-300">
+                                    Visit{" "}
+                                    <span className="text-cyan-300 font-semibold">
+                                        Collab.Land
+                                    </span>{" "}
+                                    and link your wallet
+                                </p>
+                            </div>
+
+                            {defaultUserWallet &&
+                                typeof defaultUserWallet === "object" && (
+                                    <div
+                                        className={cn(
+                                            "flex items-center gap-2 w-full truncate",
+                                            "cursor-pointer",
+                                            "bg-gray-800/30 rounded-[4px] p-1",
+                                            "transition-all duration-300",
+                                            getResponsiveClass(5).textClass
+                                        )}
+                                        onClick={async () => {
+                                            await navigator.clipboard
+                                                .writeText(
+                                                    defaultUserWallet.address
+                                                )
+                                                .catch((error) => {
+                                                    console.error(error);
+                                                });
+                                            toast.success(
+                                                "Copied to clipboard"
+                                            );
+                                        }}
+                                    >
+                                        <p className="text-gray-300">
+                                            {defaultUserWallet.address}
+                                        </p>{" "}
+                                        <Copy
+                                            className={cn(
+                                                getResponsiveClass(10)
+                                                    .frameClass
+                                            )}
+                                        />
+                                    </div>
+                                )}
+                        </div>
+
+                        <div
+                            className={cn(
+                                "flex items-start",
+                                getResponsiveClass(15).gapClass
+                            )}
+                        >
+                            <div
+                                className={cn(
+                                    "flex-shrink-0 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold",
+                                    getResponsiveClass(25).frameClass,
+                                    getResponsiveClass(10).textClass
+                                )}
+                            >
+                                6
+                            </div>
+                            <p className="text-gray-300">
+                                Click{" "}
+                                <span className="text-emerald-300 font-semibold">
+                                    {`"Use Connected Wallets"`}
+                                </span>
+                            </p>
+                        </div>
+
+                        <div
+                            className={cn(
+                                "flex items-start",
+                                getResponsiveClass(15).gapClass
+                            )}
+                        >
+                            <div
+                                className={cn(
+                                    "flex-shrink-0 bg-pink-500 rounded-full flex items-center justify-center text-white font-bold",
+                                    getResponsiveClass(25).frameClass,
+                                    getResponsiveClass(10).textClass
+                                )}
+                            >
+                                7
+                            </div>
+                            <p className="text-gray-300">
+                                {`Once your NFT ownership is verified, you'll
+                                automatically receive the `}
+                                <span className="text-pink-300 font-semibold">
+                                    HOLDER role
+                                </span>{" "}
+                                🎉
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div
+                    className={cn(
+                        "flex flex-col",
+                        getResponsiveClass(20).gapClass
+                    )}
+                >
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={handleGenerateCode}
-                        disabled={createDiscordCodePending}
+                        onClick={handleOpenCollab}
                         className={cn(
                             "bg-gradient-to-r from-indigo-500 to-purple-500",
                             "text-white font-bold rounded-full",
                             "hover:from-indigo-600 hover:to-purple-600",
-                            "disabled:opacity-50 disabled:cursor-not-allowed",
                             "transition-all duration-300 shadow-lg",
-                            "flex items-center gap-2 mx-auto",
+                            "flex items-center justify-center",
+                            getResponsiveClass(10).gapClass,
                             getResponsiveClass(20).paddingClass,
                             getResponsiveClass(20).textClass
                         )}
                     >
-                        {createDiscordCodePending ? (
-                            <>
-                                <RefreshCcw
-                                    className={cn(
-                                        "animate-spin",
-                                        getResponsiveClass(25).frameClass
-                                    )}
-                                />
-                                Generating...
-                            </>
-                        ) : (
-                            <>
-                                <Shield
-                                    className={cn(
-                                        getResponsiveClass(25).frameClass
-                                    )}
-                                />
-                                Generate Code
-                            </>
-                        )}
-                    </motion.button>
-                </div>
-            ) : (
-                // 코드 표시 화면
-                <div
-                    className={cn(
-                        "bg-gradient-to-br from-emerald-900/20 via-cyan-900/20 to-blue-900/20",
-                        "backdrop-blur-lg border border-emerald-500/30",
-                        "rounded-2xl p-8 text-center shadow-2xl w-full"
-                    )}
-                >
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200 }}
-                        className="mb-6"
-                    >
-                        <Sparkles
-                            className={cn(
-                                "mx-auto text-emerald-400",
-                                getResponsiveClass(60).frameClass
-                            )}
+                        <ExternalLink
+                            className={cn(getResponsiveClass(25).frameClass)}
                         />
-                    </motion.div>
-
-                    <h3
-                        className={cn(
-                            "font-bold text-white mb-2",
-                            getResponsiveClass(25).textClass
-                        )}
-                    >
-                        Verification Code
-                    </h3>
-                    <p
-                        className={cn(
-                            "text-gray-400 mb-6",
-                            getResponsiveClass(15).textClass
-                        )}
-                    >
-                        Use this code in our Discord server to get verified!
-                    </p>
-
-                    {/* Code Display */}
-                    <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                        className={cn(
-                            "bg-black/40 border-2 border-dashed border-emerald-400/50",
-                            "rounded-2xl p-6 mb-6 relative overflow-hidden"
-                        )}
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/10 to-cyan-400/10 animate-pulse" />
-                        <p
-                            className={cn(
-                                "text-emerald-300 font-mono font-bold tracking-[0.5em] relative z-10",
-                                getResponsiveClass(35).textClass
-                            )}
-                        >
-                            {discordCode}
-                        </p>
-                    </motion.div>
-
-                    {/* Copy Button */}
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleCopy(discordCode)}
-                        className={cn(
-                            "bg-gradient-to-r from-emerald-500 to-cyan-500",
-                            "text-white font-bold rounded-full mb-6",
-                            "hover:from-emerald-600 hover:to-cyan-600",
-                            "transition-all duration-300 shadow-lg",
-                            "flex items-center gap-2 mx-auto",
-                            getResponsiveClass(20).paddingClass,
-                            getResponsiveClass(20).textClass
-                        )}
-                    >
-                        {copiedCode ? (
-                            <>
-                                <CheckCircle2
-                                    className={cn(
-                                        getResponsiveClass(25).frameClass
-                                    )}
-                                />
-                                Copied!
-                            </>
-                        ) : (
-                            <>
-                                <Copy
-                                    className={cn(
-                                        getResponsiveClass(25).frameClass
-                                    )}
-                                />
-                                Copy Code
-                            </>
-                        )}
+                        Join Discord Server
+                        <ArrowRight
+                            className={cn(getResponsiveClass(20).frameClass)}
+                        />
                     </motion.button>
-
-                    {/* Instructions */}
-                    <div
-                        className={cn(
-                            "bg-gradient-to-r from-blue-900/30 to-indigo-900/30 p-4 rounded-xl border border-blue-500/20 mb-6"
-                        )}
-                    >
-                        <h4
-                            className={cn(
-                                "font-bold text-blue-300 mb-2",
-                                getResponsiveClass(25).textClass
-                            )}
-                        >
-                            📋 How to Use:
-                        </h4>
-                        <div
-                            className={cn(
-                                "text-left space-y-2",
-                                getResponsiveClass(15).textClass
-                            )}
-                        >
-                            <Link
-                                href="https://discord.gg/starglow"
-                                target="_blank"
-                                className="text-gray-400 underline"
-                            >
-                                1. Join our Discord server
-                            </Link>
-                            <p className="text-gray-400">
-                                2. Type:{" "}
-                                <code
-                                    className="bg-black/30 px-2 py-1 rounded text-cyan-300 cursor-pointer"
-                                    onClick={() => {
-                                        handleCopy(
-                                            `/verify ${discordCode}`
-                                        ).catch((error) => {
-                                            console.error(
-                                                "Failed to copy code:",
-                                                error
-                                            );
-                                        });
-                                    }}
-                                >
-                                    /verify {discordCode}
-                                </code>
-                            </p>
-                            <p className="text-gray-400">
-                                3. Get your NFT Holder role! 🎉
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() =>
-                                window.open(
-                                    "https://discord.gg/starglow",
-                                    "_blank"
-                                )
-                            }
-                            className={cn(
-                                "flex-1 bg-indigo-600 text-white font-bold rounded-full",
-                                "hover:bg-indigo-700 transition-all duration-300",
-                                "flex items-center justify-center gap-2",
-                                getResponsiveClass(20).paddingClass,
-                                getResponsiveClass(20).textClass
-                            )}
-                        >
-                            <ExternalLink
-                                className={cn(
-                                    getResponsiveClass(25).frameClass
-                                )}
-                            />
-                            Join Discord
-                        </motion.button>
-
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setDiscordCode("")}
-                            className={cn(
-                                "flex-1 bg-gradient-to-r from-purple-500 to-pink-500",
-                                "text-white font-bold rounded-full",
-                                "hover:from-purple-600 hover:to-pink-600",
-                                "transition-all duration-300",
-                                "flex items-center justify-center gap-2",
-                                getResponsiveClass(20).paddingClass,
-                                getResponsiveClass(20).textClass
-                            )}
-                        >
-                            <RefreshCcw
-                                className={cn(
-                                    getResponsiveClass(25).frameClass
-                                )}
-                            />
-                            New Code
-                        </motion.button>
-                    </div>
                 </div>
-            )}
+            </div>
         </div>
     );
 }

@@ -42,15 +42,15 @@ export async function createWallet(userId: string) {
             });
 
             const wallet = ethers.Wallet.createRandom();
-            const ecryptedParts = await encryptPrivateKey(wallet.privateKey);
+            const encryptedParts = await encryptPrivateKey(wallet.privateKey);
 
             const newWallet = await tx.wallet.create({
                 data: {
                     userId: userId,
                     address: wallet.address,
-                    privateKey: ecryptedParts.dbPart,
-                    keyHash: ecryptedParts.keyHash,
-                    nonce: ecryptedParts.nonce,
+                    privateKey: encryptedParts.dbPart,
+                    keyHash: encryptedParts.keyHash,
+                    nonce: encryptedParts.nonce,
                     network: networkValue,
                     primary: 1,
                     default: hasDefaultWallet ? false : true,
@@ -211,6 +211,7 @@ export interface updateWalletInput {
     status?: WalletStatus;
     default?: boolean;
     nickname?: string;
+    primary?: number;
 }
 
 export async function updateWallet(
@@ -290,9 +291,14 @@ export async function getWallets(
         }
 
         const wallets = await prisma.wallet.findMany({
+            cacheStrategy: {
+                swr: 60 * 10,
+                ttl: 60 * 30,
+                tags: ["wallets", input.userId],
+            },
             where,
             orderBy: {
-                lastAccessedAt: "desc",
+                default: "desc",
             },
         });
 
@@ -522,6 +528,7 @@ export async function needToBackupWallet(input: needToBackupWalletInput) {
 export interface walletBackupPostProcessInput {
     userId: string;
     walletAddress: string;
+    newProvider?: string; // MetaMask export 시 provider 변경용
 }
 
 export interface walletBackupPostProcessOutput {
@@ -536,6 +543,14 @@ export async function walletBackupPostProcess(
         const result = await prisma.$transaction(async (tx) => {
             const wallet = await tx.wallet.findUnique({
                 where: { address: input.walletAddress },
+                select: {
+                    id: true,
+                    userId: true,
+                    privateKey: true,
+                    keyHash: true,
+                    nonce: true,
+                    provider: true,
+                },
             });
 
             if (!wallet) {
@@ -545,26 +560,69 @@ export async function walletBackupPostProcess(
                 };
             }
 
-            await tx.wallet.update({
-                where: { id: wallet.id },
-                data: {
+            // 권한 확인
+            if (wallet.userId !== input.userId) {
+                return {
+                    success: false,
+                    message: "Not authorized to backup this wallet",
+                };
+            }
+
+            let updateData: any = {};
+            let wasAlreadyBackedUp = false;
+
+            // 이미 백업된 지갑인지 확인
+            if (!wallet.privateKey && !wallet.keyHash && !wallet.nonce) {
+                wasAlreadyBackedUp = true;
+            } else {
+                // 아직 백업되지 않은 지갑 - private key 제거
+                updateData = {
                     privateKey: null,
                     keyHash: null,
                     nonce: null,
-                },
+                    ...(input.newProvider && { provider: input.newProvider }),
+                };
+            }
+
+            // Provider 변경이 있는 경우에만 업데이트
+            if (input.newProvider && wallet.provider !== input.newProvider) {
+                updateData.provider = input.newProvider;
+            }
+
+            // 업데이트할 내용이 있는 경우에만 실행
+            if (Object.keys(updateData).length > 0) {
+                await tx.wallet.update({
+                    where: { id: wallet.id },
+                    data: updateData,
+                });
+            }
+
+            // 백업 알림 삭제를 위해 playerId 찾기
+            const player = await tx.player.findUnique({
+                where: { userId: input.userId },
+                select: { id: true },
             });
 
-            await tx.userNotification.deleteMany({
-                where: {
-                    playerId: input.userId,
-                    entityType: "wallet",
-                    entityId: input.walletAddress,
-                },
-            });
+            if (player) {
+                await tx.userNotification.deleteMany({
+                    where: {
+                        playerId: player.id,
+                        entityType: "wallet",
+                        entityId: input.walletAddress,
+                        OR: [
+                            { tags: { has: "backup" } },
+                            { tags: { has: "security" } },
+                            { type: "ACCOUNT_SECURITY" },
+                        ],
+                    },
+                });
+            }
 
             return {
                 success: true,
-                message: "Wallet backup completed successfully",
+                message: wasAlreadyBackedUp
+                    ? "Backup notifications cleaned up successfully"
+                    : "Wallet backup completed successfully",
             };
         });
 
@@ -574,6 +632,103 @@ export async function walletBackupPostProcess(
         return {
             success: false,
             message: "Failed to backup wallet",
+        };
+    }
+}
+
+export interface exportWalletToMetaMaskInput {
+    userId: string;
+    walletAddress: string;
+}
+
+export interface exportWalletToMetaMaskOutput {
+    success: boolean;
+    message: string;
+    privateKey?: string;
+    address?: string;
+    error?: string;
+}
+
+export async function exportWalletToMetaMask(
+    input: exportWalletToMetaMaskInput
+): Promise<exportWalletToMetaMaskOutput> {
+    try {
+        if (!input.walletAddress) {
+            return {
+                success: false,
+                message: "Wallet address is required",
+                error: "INVALID_WALLET_ADDRESS",
+            };
+        }
+
+        // 현재 세션 확인
+        const session = await auth();
+        if (!session?.user?.id || session.user.id !== input.userId) {
+            return {
+                success: false,
+                message: "Not authorized",
+                error: "UNAUTHORIZED",
+            };
+        }
+
+        // 지갑 정보 확인
+        const wallet = await prisma.wallet.findUnique({
+            where: { address: input.walletAddress },
+            select: {
+                userId: true,
+                address: true,
+                privateKey: true,
+                keyHash: true,
+                nonce: true,
+                provider: true,
+                nickname: true,
+            },
+        });
+
+        if (!wallet) {
+            return {
+                success: false,
+                message: "Wallet not found",
+                error: "WALLET_NOT_FOUND",
+            };
+        }
+
+        if (wallet.userId !== input.userId) {
+            return {
+                success: false,
+                message: "Not authorized to export this wallet",
+                error: "UNAUTHORIZED",
+            };
+        }
+
+        // Starglow 지갑인지 확인 (private key가 있는지)
+        if (!wallet.privateKey || !wallet.keyHash || !wallet.nonce) {
+            return {
+                success: false,
+                message: "This wallet is not managed by Starglow",
+                error: "NOT_CUSTODIAL_WALLET",
+            };
+        }
+
+        // Private key 복호화
+        const privateKey = await getPrivateKey(input.walletAddress);
+
+        return {
+            success: true,
+            message: "Wallet exported successfully",
+            privateKey,
+            address: wallet.address,
+        };
+    } catch (error) {
+        console.error("Error exporting wallet:", {
+            address: input.walletAddress?.slice(0, 10) + "...",
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+
+        return {
+            success: false,
+            message: "Failed to export wallet",
+            error: "EXPORT_FAILED",
         };
     }
 }

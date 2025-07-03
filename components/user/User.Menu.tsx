@@ -17,10 +17,16 @@ const menuItems = [
         href: "/user/rewards",
     },
     {
+        label: "Wallets",
+        icon: "/ui/user/user-wallets.svg",
+        href: "/user/wallets",
+    },
+    {
         label: "XGLOWs",
         icon: "/ui/user/user-tweets.svg",
         href: "/user/glows",
     },
+
     {
         label: "Discord",
         icon: "/icons/providers/discord.svg",
@@ -40,7 +46,7 @@ export default memo(function UserMenu() {
         <div className="w-full flex justify-center">
             <div
                 className={cn(
-                    "grid grid-cols-4 gap-1 sm:gap-2 md:gap-3 lg:gap-4 w-full max-w-[800px]",
+                    "grid grid-cols-5 gap-1 sm:gap-2 md:gap-3 lg:gap-4 w-full max-w-[800px]",
                     "pt-6 sm:pt-3 md:pt-4 lg:pt-6",
                     "px-4 sm:px-3 md:px-4 lg:px-6",
                     "pb-[20px]"

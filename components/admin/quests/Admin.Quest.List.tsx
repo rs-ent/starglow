@@ -89,18 +89,18 @@ export default function AdminQuestList() {
     );
 
     const [questFilter, setQuestFilter] = useState({
-        type: "world",
-        artistId: "",
+        artistId: "", // "" means show all quests, specific ID means filter by artist
     });
 
     const filteringQuests = useCallback(() => {
         const filtered = quests.items.filter((quest) => {
-            if (questFilter.type === "world") {
-                return !quest.artistId;
-            } else if (questFilter.type === "exclusive") {
-                return quest.artistId === questFilter.artistId;
+            // If no artist filter is set, show all quests
+            if (!questFilter.artistId) {
+                return true;
             }
-            return true;
+
+            // If artist filter is set, show only quests for that artist
+            return quest.artistId === questFilter.artistId;
         });
 
         setFilteredQuests(filtered);
@@ -206,7 +206,15 @@ export default function AdminQuestList() {
                     )}
                 </td>
                 <td className="px-4 py-2">{quest.title}</td>
-                <td className="px-4 py-2">{quest.artist?.name || "-"}</td>
+                <td className="px-4 py-2">
+                    <span
+                        className={
+                            quest.artistId ? "text-blue-400" : "text-gray-400"
+                        }
+                    >
+                        {quest.artist?.name || "World"}
+                    </span>
+                </td>
                 <td className="px-4 py-2">
                     {quest.rewardAmount} {quest.rewardAsset?.symbol || ""}
                 </td>
@@ -293,7 +301,7 @@ export default function AdminQuestList() {
                             {showOrderChange && <th className="px-2 py-2"></th>}
                             <th className="px-2 py-2">아이콘</th>
                             <th className="px-4 py-2">제목</th>
-                            <th className="px-4 py-2">아티스트</th>
+                            <th className="px-4 py-2">분류</th>
                             <th className="px-4 py-2">보상</th>
                             <th className="px-4 py-2">반복</th>
                             <th className="px-4 py-2">시작일</th>
@@ -333,35 +341,21 @@ export default function AdminQuestList() {
             )}
 
             <div className="flex gap-2 mb-4 justify-between">
-                <div className="flex gap-2">
-                    <Button
-                        variant={
-                            questFilter.type === "world" ? "default" : "outline"
-                        }
-                        onClick={() => {
-                            setQuestFilter({
-                                ...questFilter,
-                                type: "world",
-                            });
-                        }}
-                    >
-                        World
-                    </Button>
-                    <Button
-                        variant={
-                            questFilter.type === "exclusive"
-                                ? "default"
-                                : "outline"
-                        }
-                        onClick={() => {
-                            setQuestFilter({
-                                ...questFilter,
-                                type: "exclusive",
-                            });
-                        }}
-                    >
-                        Exclusive
-                    </Button>
+                <div className="flex gap-2 items-center">
+                    <span className="text-sm text-muted-foreground">
+                        전체 퀘스트: {quests?.items?.length || 0}개
+                        {questFilter.artistId && (
+                            <span className="ml-2 text-blue-400">
+                                (
+                                {
+                                    artists?.find(
+                                        (a) => a.id === questFilter.artistId
+                                    )?.name
+                                }{" "}
+                                필터링됨)
+                            </span>
+                        )}
+                    </span>
                 </div>
                 <div className="flex gap-2">
                     {showOrderChange && (
@@ -397,65 +391,72 @@ export default function AdminQuestList() {
                 </div>
             </div>
 
-            {questFilter.type === "exclusive" &&
-                artists &&
-                artists.length > 0 && (
-                    <div className="flex gap-2 mb-4">
-                        <Popover open={open} onOpenChange={setOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={open}
-                                    className="w-[300px] justify-between"
-                                >
-                                    {questFilter.artistId
-                                        ? artists.find(
-                                              (artist: Artist) =>
-                                                  artist.id ===
-                                                  questFilter.artistId
-                                          )?.name
-                                        : "아티스트 선택..."}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[300px] p-0">
-                                <Command>
-                                    <CommandInput placeholder="아티스트 검색..." />
-                                    <CommandEmpty>
-                                        아티스트를 찾을 수 없습니다.
-                                    </CommandEmpty>
-                                    <CommandGroup>
-                                        {artists.map((artist: Artist) => (
-                                            <CommandItem
-                                                key={artist.id}
-                                                value={artist.name}
-                                                onSelect={() => {
-                                                    setQuestFilter({
-                                                        ...questFilter,
-                                                        artistId: artist.id,
-                                                    });
-                                                    setOpen(false);
-                                                }}
-                                            >
-                                                <Check
-                                                    className={cn(
-                                                        "mr-2 h-4 w-4",
-                                                        questFilter.artistId ===
-                                                            artist.id
-                                                            ? "opacity-100"
-                                                            : "opacity-0"
-                                                    )}
-                                                />
-                                                {artist.name}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
+            {/* Artist Filter Section */}
+            <div className="flex gap-2 mb-4 items-center">
+                <span className="text-sm font-medium">아티스트 필터:</span>
+                <Button
+                    size="sm"
+                    variant={!questFilter.artistId ? "default" : "outline"}
+                    onClick={() => setQuestFilter({ artistId: "" })}
+                >
+                    전체 보기
+                </Button>
+
+                {artists && artists.length > 0 && (
+                    <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={open}
+                                className="w-[200px] justify-between"
+                            >
+                                {questFilter.artistId
+                                    ? artists.find(
+                                          (artist: Artist) =>
+                                              artist.id === questFilter.artistId
+                                      )?.name
+                                    : "아티스트 선택..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0">
+                            <Command>
+                                <CommandInput placeholder="아티스트 검색..." />
+                                <CommandEmpty>
+                                    아티스트를 찾을 수 없습니다.
+                                </CommandEmpty>
+                                <CommandGroup>
+                                    {artists.map((artist: Artist) => (
+                                        <CommandItem
+                                            key={artist.id}
+                                            value={artist.name}
+                                            onSelect={() => {
+                                                setQuestFilter({
+                                                    artistId: artist.id,
+                                                });
+                                                setOpen(false);
+                                            }}
+                                        >
+                                            <Check
+                                                className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    questFilter.artistId ===
+                                                        artist.id
+                                                        ? "opacity-100"
+                                                        : "opacity-0"
+                                                )}
+                                            />
+                                            {artist.name}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
                 )}
+            </div>
 
             <TableView />
         </div>
