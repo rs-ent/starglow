@@ -35,7 +35,7 @@ export default React.memo(function NFTBenefits({
             title: "Artist's Revenue",
             description: `Share goes to holders during project`,
             icon: "/elements/distribution.png",
-            gradient: "from-purple-600 via-purple-500 to-pink-500",
+            gradient: "from-purple-900 via-purple-700 to-pink-800",
             highlight: `${sharePercentage}%`,
         },
         {
@@ -43,7 +43,7 @@ export default React.memo(function NFTBenefits({
             title: "Airdrop",
             description: `Token drops per number of purchase`,
             icon: "/elements/parachute.png",
-            gradient: "from-blue-600 via-purple-500 to-purple-600",
+            gradient: "from-blue-900 via-purple-700 to-purple-800",
             highlight: `${airdropAmount.toLocaleString()} $SGT`,
         },
         {
@@ -51,7 +51,7 @@ export default React.memo(function NFTBenefits({
             title: "Membership",
             description: "Private events to join for holders only",
             icon: "/elements/card.png",
-            gradient: "from-purple-600 via-purple-400 to-purple-500",
+            gradient: "from-purple-900 via-purple-700 to-purple-800",
             highlight: "VIP Access",
         },
         {
@@ -59,7 +59,7 @@ export default React.memo(function NFTBenefits({
             title: "Limited Edition",
             description: `Few amount of NFT minted only`,
             icon: "/elements/money.png",
-            gradient: "from-yellow-500 via-purple-500 to-purple-600",
+            gradient: "from-yellow-900 via-purple-700 to-purple-800",
             highlight: `${totalSupply.toLocaleString()} Only`,
         },
     ];
@@ -119,7 +119,7 @@ function BenefitCard({ benefit, index }: BenefitCardProps) {
                     <div
                         className={cn(
                             "inline-flex items-center justify-center",
-                            "w-fit h-fit rounded-xl p-[5px] md:p-[10px]",
+                            "w-fit h-fit rounded-xl p-[5px]",
                             "bg-gradient-to-br",
                             gradient,
                             "shadow-lg group-hover:shadow-purple-500/25 transition-shadow duration-300"
@@ -130,7 +130,10 @@ function BenefitCard({ benefit, index }: BenefitCardProps) {
                             alt={title}
                             width={120}
                             height={120}
-                            className={cn(getResponsiveClass(60).frameClass)}
+                            className={cn(
+                                "object-contain",
+                                getResponsiveClass(70).frameClass
+                            )}
                         />
                     </div>
                 </div>
