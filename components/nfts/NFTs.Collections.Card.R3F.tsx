@@ -285,19 +285,6 @@ const CardMesh = React.memo(function CardMesh({
     const meshRef = useRef<Mesh>(null);
     const { camera } = useThree();
 
-    // Call both hooks unconditionally
-    const blurredTexture = useBlurredTexture(
-        imageUrl,
-        {
-            blur: 30, // 강한 블러 효과
-            brightness: 1,
-            contrast: 1,
-        },
-        (loadedTexture) => {
-            loadedTexture.needsUpdate = true;
-        }
-    );
-
     const normalTexture = useCachedTexture(imageUrl, (loadedTexture) => {
         loadedTexture.minFilter = LinearFilter;
         loadedTexture.magFilter = LinearFilter;
@@ -306,7 +293,7 @@ const CardMesh = React.memo(function CardMesh({
     });
 
     // Then conditionally choose which texture to use
-    const texture = hiddenDetails ? blurredTexture : normalTexture;
+    const texture = normalTexture;
 
     const logoTexture = useCachedTexture("/logo/3d.svg", (loadedTexture) => {
         loadedTexture.minFilter = LinearFilter;
