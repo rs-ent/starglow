@@ -86,7 +86,7 @@ export default function NFTsCollectionsList({
     const [confirmedAlpha, setConfirmedAlpha] = useState(1);
 
     const { getSPGsData, getSPGsIsLoading } = useSPG({
-        getSPGsInput: {},
+        getSPGsInput: { isListed: true },
     });
 
     const handleDrag = useCallback(
