@@ -42,6 +42,7 @@ import type { BoardPostWithDetails } from "@/app/actions/boards/actions";
 
 import BoardContentPost from "./Board.Content.Post";
 import { ShinyButton } from "../magicui/shiny-button";
+import { useToast } from "@/app/hooks/useToast";
 
 interface BoardContentProps {
     artist: ArtistWithSPG;
@@ -55,6 +56,7 @@ export default React.memo(function BoardContent({
     artist,
     player,
 }: BoardContentProps) {
+    const toast = useToast();
     const [showPostEditor, setShowPostEditor] = useState(false);
     const [newPostTitle, setNewPostTitle] = useState("");
     const [newPostContent, setNewPostContent] = useState("");
@@ -78,8 +80,38 @@ export default React.memo(function BoardContent({
     // 튜토리얼 모달 상태
     const [showRewardsTutorial, setShowRewardsTutorial] = useState(false);
 
+    // 30초 게시글 쿨다운 관련 상태
+    const [lastPostTime, setLastPostTime] = useState<number | null>(() => {
+        if (typeof window !== "undefined") {
+            const stored = localStorage.getItem("lastPostTime");
+            return stored ? parseInt(stored) : null;
+        }
+        return null;
+    });
+    const [currentTime, setCurrentTime] = useState(Date.now());
+
     // 무한 스크롤을 위한 ref
     const loadMoreRef = useRef<HTMLDivElement>(null);
+
+    // 1초마다 현재 시간 업데이트 (쿨다운 표시를 위해)
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentTime(Date.now());
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    // 쿨다운 시간 계산 (초 단위)
+    const getRemainingCooldown = useCallback(() => {
+        if (!lastPostTime) return 0;
+        const elapsed = Math.floor((currentTime - lastPostTime) / 1000);
+        const remaining = Math.max(0, 30 - elapsed);
+        return remaining;
+    }, [lastPostTime, currentTime]);
+
+    const remainingCooldown = getRemainingCooldown();
+    const canPost = remainingCooldown === 0;
 
     const {
         boardsData,
@@ -206,6 +238,15 @@ export default React.memo(function BoardContent({
             !activeBoard ||
             !player
         ) {
+            toast.info("Please fill in all fields");
+            return;
+        }
+
+        // 30초 쿨다운 체크
+        if (!canPost) {
+            toast.info(
+                `Please wait ${remainingCooldown} seconds before posting again.`
+            );
             return;
         }
 
@@ -235,6 +276,11 @@ export default React.memo(function BoardContent({
                     sizeBytes: f.sizeBytes,
                 })),
             });
+
+            // 게시글 작성 성공 시 쿨다운 시작
+            const now = Date.now();
+            setLastPostTime(now);
+            localStorage.setItem("lastPostTime", now.toString());
         } catch (error) {
             console.error("Failed to create post:", error);
 
@@ -250,6 +296,8 @@ export default React.memo(function BoardContent({
         activeBoard,
         player,
         createBoardPostAsync,
+        canPost,
+        remainingCooldown,
     ]);
 
     // 파일 업로드 핸들러
@@ -533,10 +581,20 @@ export default React.memo(function BoardContent({
                                 {/* New Post Button - 모바일에서 더 컴팩트 */}
                                 {player ? (
                                     <Button
-                                        onClick={() =>
-                                            setShowPostEditor(!showPostEditor)
-                                        }
-                                        className="bg-white/10 hover:bg-white/20 border border-white/20 text-white"
+                                        onClick={() => {
+                                            if (canPost) {
+                                                setShowPostEditor(
+                                                    !showPostEditor
+                                                );
+                                            }
+                                        }}
+                                        disabled={!canPost}
+                                        className={cn(
+                                            "border text-white transition-all duration-200",
+                                            canPost
+                                                ? "bg-white/10 hover:bg-white/20 border-white/20 cursor-pointer"
+                                                : "bg-white/5 border-white/10 text-white/50 cursor-not-allowed"
+                                        )}
                                         size="sm"
                                     >
                                         <Plus
@@ -549,10 +607,17 @@ export default React.memo(function BoardContent({
                                         <span
                                             className={cn(
                                                 "hidden md:inline",
-                                                getResponsiveClass(10).textClass
+                                                canPost
+                                                    ? getResponsiveClass(10)
+                                                          .textClass
+                                                    : getResponsiveClass(5)
+                                                          .textClass +
+                                                          " text-white/50"
                                             )}
                                         >
-                                            New Post
+                                            {canPost
+                                                ? "New Post"
+                                                : `${remainingCooldown}`}
                                         </span>
                                     </Button>
                                 ) : (
@@ -784,16 +849,24 @@ export default React.memo(function BoardContent({
                                                 onClick={handleCreatePost}
                                                 size="sm"
                                                 variant="outline"
-                                                className="bg-white/15 hover:bg-white/25 text-white text-sm flex-1 sm:flex-none"
+                                                className={cn(
+                                                    "text-sm flex-1 sm:flex-none transition-all duration-200",
+                                                    canPost
+                                                        ? "bg-white/15 hover:bg-white/25 text-white"
+                                                        : "bg-white/5 text-white/50"
+                                                )}
                                                 disabled={
                                                     isCreateBoardPostPending ||
                                                     !newPostTitle.trim() ||
                                                     !newPostContent.trim() ||
-                                                    !player
+                                                    !player ||
+                                                    !canPost
                                                 }
                                             >
                                                 {isCreateBoardPostPending
                                                     ? "Posting..."
+                                                    : !canPost
+                                                    ? `Wait ${remainingCooldown}s`
                                                     : "Post & Earn"}
                                             </Button>
                                         </div>

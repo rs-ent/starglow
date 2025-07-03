@@ -34,7 +34,7 @@ export default React.memo(function NFTBenefits({
             id: "revenue",
             title: "Artist's Revenue",
             description: `Share goes to holders during project`,
-            icon: "/elements/money.png",
+            icon: "/elements/distribution.png",
             gradient: "from-purple-600 via-purple-500 to-pink-500",
             highlight: `${sharePercentage}%`,
         },

@@ -236,6 +236,21 @@ export default React.memo(function Boards({ artist }: BoardsProps) {
                                                         board.postCreationRewardAmount
                                                     }{" "}
                                                     SGP
+                                                    {(board.dailyPostLimit ||
+                                                        board.weeklyPostLimit) && (
+                                                        <span className="text-white/50">
+                                                            {" "}
+                                                            (
+                                                            {board.dailyPostLimit &&
+                                                                `${board.dailyPostLimit}/day`}
+                                                            {board.dailyPostLimit &&
+                                                                board.weeklyPostLimit &&
+                                                                ", "}
+                                                            {board.weeklyPostLimit &&
+                                                                `${board.weeklyPostLimit}/week`}
+                                                            )
+                                                        </span>
+                                                    )}
                                                 </div>
                                             )}
                                             {board.popularPostRewardEnabled && (

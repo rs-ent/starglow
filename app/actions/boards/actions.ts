@@ -977,6 +977,93 @@ export async function getPostRewards(
 
 // ===== BOARD REWARD HANDLERS (Admin Configurable) =====
 
+interface PostRewardLimitCheck {
+    allowed: boolean;
+    reason?: string;
+    dailyRewardCount?: number;
+    weeklyRewardCount?: number;
+}
+
+async function checkPostRewardLimits(
+    boardId: string,
+    playerId: string,
+    boardSettings: any
+): Promise<PostRewardLimitCheck> {
+    try {
+        const now = new Date();
+        const todayStart = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate()
+        );
+        const weekStart = new Date(
+            now.getTime() - now.getDay() * 24 * 60 * 60 * 1000
+        );
+
+        const [dailyRewardCount, weeklyRewardCount] = await Promise.all([
+            // 일일 게시글 작성 보상 수 (POST_CREATION 보상만 카운트)
+            prisma.boardPostReward.count({
+                where: {
+                    playerId,
+                    reason: "POST_CREATION",
+                    status: "COMPLETED", // 실제 지급된 보상만 카운트
+                    createdAt: { gte: todayStart },
+                    post: {
+                        boardId, // 해당 보드의 게시글에 대한 보상만
+                    },
+                },
+            }),
+            // 주간 게시글 작성 보상 수 (POST_CREATION 보상만 카운트)
+            prisma.boardPostReward.count({
+                where: {
+                    playerId,
+                    reason: "POST_CREATION",
+                    status: "COMPLETED", // 실제 지급된 보상만 카운트
+                    createdAt: { gte: weekStart },
+                    post: {
+                        boardId, // 해당 보드의 게시글에 대한 보상만
+                    },
+                },
+            }),
+        ]);
+
+        // 일일 보상 제한 확인 (dailyPostLimit을 dailyRewardLimit으로 재해석)
+        if (
+            boardSettings.dailyPostLimit &&
+            dailyRewardCount >= boardSettings.dailyPostLimit
+        ) {
+            return {
+                allowed: false,
+                reason: `Daily post creation reward limit exceeded (${dailyRewardCount}/${boardSettings.dailyPostLimit})`,
+                dailyRewardCount,
+                weeklyRewardCount,
+            };
+        }
+
+        // 주간 보상 제한 확인 (weeklyPostLimit을 weeklyRewardLimit으로 재해석)
+        if (
+            boardSettings.weeklyPostLimit &&
+            weeklyRewardCount >= boardSettings.weeklyPostLimit
+        ) {
+            return {
+                allowed: false,
+                reason: `Weekly post creation reward limit exceeded (${weeklyRewardCount}/${boardSettings.weeklyPostLimit})`,
+                dailyRewardCount,
+                weeklyRewardCount,
+            };
+        }
+
+        return {
+            allowed: true,
+            dailyRewardCount,
+            weeklyRewardCount,
+        };
+    } catch (error) {
+        console.error("Failed to check post reward limits:", error);
+        return { allowed: true }; // 에러 시 허용
+    }
+}
+
 export async function handlePostCreationReward(
     postId: string,
     boardId: string,
@@ -1012,14 +1099,18 @@ export async function handlePostCreationReward(
             return;
         }
 
-        // 일일/주간 게시글 제한 확인
-        const limitCheck = await checkPostLimits(boardId, playerId, board);
-        if (!limitCheck.allowed) {
-            console.error(
-                `Post limit exceeded for player ${playerId}:`,
-                limitCheck.reason
+        // 일일/주간 게시글 보상 제한 확인 (게시글 작성 자체는 제한하지 않음)
+        const rewardLimitCheck = await checkPostRewardLimits(
+            boardId,
+            playerId,
+            board
+        );
+        if (!rewardLimitCheck.allowed) {
+            console.log(
+                `Post creation reward limit reached for player ${playerId}:`,
+                rewardLimitCheck.reason
             );
-            return;
+            return; // 보상만 지급하지 않고, 게시글 작성은 허용
         }
 
         await createPostReward({
@@ -1218,84 +1309,5 @@ function checkRewardPermission(
             return boardSettings.allowAdminRewards;
         default:
             return false;
-    }
-}
-
-interface PostLimitCheck {
-    allowed: boolean;
-    reason?: string;
-    dailyCount?: number;
-    weeklyCount?: number;
-}
-
-async function checkPostLimits(
-    boardId: string,
-    playerId: string,
-    boardSettings: any
-): Promise<PostLimitCheck> {
-    try {
-        const now = new Date();
-        const todayStart = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            now.getDate()
-        );
-        const weekStart = new Date(
-            now.getTime() - now.getDay() * 24 * 60 * 60 * 1000
-        );
-
-        const [dailyCount, weeklyCount] = await Promise.all([
-            // 일일 게시글 수
-            prisma.boardPost.count({
-                where: {
-                    boardId,
-                    authorId: playerId,
-                    createdAt: { gte: todayStart },
-                },
-            }),
-            // 주간 게시글 수
-            prisma.boardPost.count({
-                where: {
-                    boardId,
-                    authorId: playerId,
-                    createdAt: { gte: weekStart },
-                },
-            }),
-        ]);
-
-        // 일일 제한 확인
-        if (
-            boardSettings.dailyPostLimit &&
-            dailyCount >= boardSettings.dailyPostLimit
-        ) {
-            return {
-                allowed: false,
-                reason: `Daily post limit exceeded (${dailyCount}/${boardSettings.dailyPostLimit})`,
-                dailyCount,
-                weeklyCount,
-            };
-        }
-
-        // 주간 제한 확인
-        if (
-            boardSettings.weeklyPostLimit &&
-            weeklyCount >= boardSettings.weeklyPostLimit
-        ) {
-            return {
-                allowed: false,
-                reason: `Weekly post limit exceeded (${weeklyCount}/${boardSettings.weeklyPostLimit})`,
-                dailyCount,
-                weeklyCount,
-            };
-        }
-
-        return {
-            allowed: true,
-            dailyCount,
-            weeklyCount,
-        };
-    } catch (error) {
-        console.error("Failed to check post limits:", error);
-        return { allowed: true }; // 에러 시 허용
     }
 }
