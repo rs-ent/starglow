@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     uploadFile,
     deleteFile,
+    deleteFiles,
     updateFileOrder,
     updateFilesOrder,
 } from "@/app/actions/files";
@@ -108,6 +109,25 @@ export function useDeleteFile() {
     return useMutation({
         mutationFn: async (id: string) => {
             return deleteFile(id);
+        },
+        onSuccess: () => {
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.files.all,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+        },
+    });
+}
+
+export function useDeleteFiles() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (ids: string[]) => {
+            return deleteFiles(ids);
         },
         onSuccess: () => {
             queryClient

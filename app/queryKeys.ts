@@ -71,6 +71,8 @@ export const queryKeys = {
             ["files", purpose, bucket] as const,
         metadataByUrls: (urls: string[]) =>
             ["files", "metadata", "urls", urls] as const,
+        allWithFilters: (params?: any) =>
+            ["files", "all-with-filters", params] as const,
     },
     exchangeRate: {
         info: (

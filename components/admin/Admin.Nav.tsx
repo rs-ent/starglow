@@ -39,6 +39,7 @@ export default function AdminNav() {
             label: "Notifications",
             icon: PartyPopperIcon,
         },
+        { href: "/admin/files", label: "Files", icon: PartyPopperIcon },
         { href: "/admin/settings", label: "Settings", icon: CogIcon },
     ];
 

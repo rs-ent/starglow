@@ -8,10 +8,14 @@ import {
     getFilesByPurposeAndBucket,
     getFileById,
     getFilesMetadataByUrls,
+    getAllFiles,
 } from "@/app/actions/files";
 import { queryKeys } from "@/app/queryKeys";
 
-import type { GetFilesMetadataByUrlsParams } from "@/app/actions/files";
+import type {
+    GetFilesMetadataByUrlsParams,
+    GetAllFilesParams,
+} from "@/app/actions/files";
 
 export function useFilesByPurposeAndBucket(purpose?: string, bucket?: string) {
     return useQuery({
@@ -40,5 +44,14 @@ export function useFilesMetadataByUrls(input?: GetFilesMetadataByUrlsParams) {
         enabled: input?.urls && input.urls.length > 0,
         staleTime: 3600 * 24, // 1 day
         gcTime: 3600 * 24 * 30, // 30 days
+    });
+}
+
+export function useAllFiles(params?: GetAllFilesParams) {
+    return useQuery({
+        queryKey: queryKeys.files.allWithFilters(params),
+        queryFn: () => getAllFiles(params),
+        staleTime: 1000 * 60 * 5, // 5 minutes
+        gcTime: 1000 * 60 * 30, // 30 minutes
     });
 }

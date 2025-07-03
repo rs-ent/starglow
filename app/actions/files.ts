@@ -2,7 +2,7 @@
 
 "use server";
 
-import { put } from "@vercel/blob";
+import { put, del } from "@vercel/blob";
 import sharp from "sharp";
 import { v4 as uuidv4 } from "uuid";
 
@@ -127,8 +127,58 @@ export async function deleteFile(id: string): Promise<boolean> {
         throw new Error("File not found");
     }
 
+    // Vercel Blob에서 파일 삭제
+    try {
+        await del(file.url);
+    } catch (error) {
+        console.error("Error deleting file from Vercel Blob:", error);
+        // Blob 삭제에 실패해도 DB에서는 삭제 진행
+        // 실제 운영에서는 에러 처리 정책에 따라 결정
+    }
+
+    // DB에서 파일 정보 삭제
     await prisma.storedFiles.delete({
         where: { id },
+    });
+
+    return true;
+}
+
+export async function deleteFiles(ids: string[]): Promise<boolean> {
+    await requireAuth();
+
+    if (!ids || ids.length === 0) {
+        throw new Error("No file IDs provided");
+    }
+
+    // DB에서 파일 정보 조회
+    const files = await prisma.storedFiles.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, url: true },
+    });
+
+    if (files.length === 0) {
+        throw new Error("No files found");
+    }
+
+    // Vercel Blob에서 파일들 삭제
+    const deletePromises = files.map(async (file) => {
+        try {
+            await del(file.url);
+        } catch (error) {
+            console.error(
+                `Error deleting file ${file.id} from Vercel Blob:`,
+                error
+            );
+            // 개별 파일 삭제 실패는 로그만 남기고 계속 진행
+        }
+    });
+
+    await Promise.all(deletePromises);
+
+    // DB에서 파일 정보들 삭제
+    await prisma.storedFiles.deleteMany({
+        where: { id: { in: ids } },
     });
 
     return true;
@@ -246,6 +296,98 @@ export async function getFilesByPurposeAndBucket(
         order: file.order || 0,
         createdAt: file.createdAt,
     }));
+}
+
+export interface GetAllFilesParams {
+    search?: string;
+    fileType?: string;
+    purpose?: string;
+    bucket?: string;
+    sortBy?: "name" | "createdAt" | "size" | "type";
+    sortOrder?: "asc" | "desc";
+    limit?: number;
+    offset?: number;
+}
+
+export async function getAllFiles(params?: GetAllFilesParams): Promise<{
+    files: StoredFile[];
+    total: number;
+}> {
+    await requireAuth();
+
+    const {
+        search,
+        fileType,
+        purpose,
+        bucket,
+        sortBy = "createdAt",
+        sortOrder = "desc",
+        limit = 50,
+        offset = 0,
+    } = params || {};
+
+    // 필터 조건 구성
+    const where: any = {};
+
+    if (search) {
+        where.name = {
+            contains: search,
+            mode: "insensitive",
+        };
+    }
+
+    if (fileType) {
+        where.type = {
+            contains: fileType,
+            mode: "insensitive",
+        };
+    }
+
+    if (purpose) {
+        where.purpose = purpose;
+    }
+
+    if (bucket) {
+        where.bucket = bucket;
+    }
+
+    // 정렬 조건 구성
+    const orderBy: any = {};
+    if (sortBy === "name") {
+        orderBy.name = sortOrder;
+    } else if (sortBy === "size") {
+        orderBy.sizeBytes = sortOrder;
+    } else if (sortBy === "type") {
+        orderBy.type = sortOrder;
+    } else {
+        orderBy.createdAt = sortOrder;
+    }
+
+    // 파일 조회 및 총 개수 조회
+    const [files, total] = await Promise.all([
+        prisma.storedFiles.findMany({
+            where,
+            orderBy,
+            take: limit,
+            skip: offset,
+        }),
+        prisma.storedFiles.count({ where }),
+    ]);
+
+    return {
+        files: files.map((file) => ({
+            id: file.id,
+            url: file.url,
+            name: file.name || "",
+            type: file.type || "",
+            size: file.sizeBytes || 0,
+            purpose: file.purpose || "",
+            bucket: file.bucket || "",
+            order: file.order || 0,
+            createdAt: file.createdAt,
+        })),
+        total,
+    };
 }
 
 export async function getFileById(id?: string): Promise<StoredFile | null> {

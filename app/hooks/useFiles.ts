@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import {
     useUploadFiles,
-    useDeleteFile,
+    useDeleteFiles,
     useUpdateFileOrder,
     useUpdateFilesOrder,
 } from "@/app/mutations/filesMutations";
@@ -37,7 +37,7 @@ export function useFiles(input?: UseFilesInput) {
     const toast = useToast();
 
     const uploadFilesMutation = useUploadFiles();
-    const deleteFileMutation = useDeleteFile();
+    const deleteFilesMutation = useDeleteFiles();
     const updateFileOrderMutation = useUpdateFileOrder();
     const updateFilesOrderMutation = useUpdateFilesOrder();
 
@@ -73,13 +73,11 @@ export function useFiles(input?: UseFilesInput) {
         }
     };
 
-    const deleteFiles = async (ids: string[]): Promise<boolean[]> => {
+    const deleteFiles = async (ids: string[]): Promise<boolean> => {
         try {
-            const results = await Promise.all(
-                ids.map((id) => deleteFileMutation.mutateAsync(id))
-            );
+            const result = await deleteFilesMutation.mutateAsync(ids);
             toast.success("Files deleted successfully");
-            return results;
+            return result;
         } catch (error) {
             console.error("Error deleting files:", error);
             toast.error("Failed to delete files");
