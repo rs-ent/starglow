@@ -714,7 +714,7 @@ function PollsListCard({
                                         )}
                                     </div>
 
-                                    <h3
+                                    <p
                                         className={cn(
                                             "text-[rgba(255,255,255,0.9)] z-10 leading-0",
                                             getResponsiveClass(15).textClass,
@@ -722,7 +722,7 @@ function PollsListCard({
                                         )}
                                     >
                                         {option.name}
-                                    </h3>
+                                    </p>
                                 </div>
                                 {/* 투표 확인 아이콘 */}
                                 <div
