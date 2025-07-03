@@ -1,4 +1,4 @@
-import type { StoredFile, OrphanedFile, BlobFile } from "@/app/actions/files";
+import type { StoredFile } from "@/app/actions/files";
 
 export type FileViewMode =
     | "db_files"
@@ -16,7 +16,7 @@ export interface FileGridItemProps {
     isImage: (file: StoredFile) => boolean;
 }
 
-export interface FileListRowProps extends FileGridItemProps {}
+export type FileListRowProps = FileGridItemProps;
 
 export interface FileFiltersProps {
     search: string;

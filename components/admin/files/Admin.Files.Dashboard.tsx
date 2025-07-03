@@ -22,7 +22,7 @@ import {
     getMimeTypeFromFilename,
 } from "./";
 
-import type { GetAllFilesParams, StoredFile } from "@/app/actions/files";
+import type { GetAllFilesParams } from "@/app/actions/files";
 
 export default function AdminFilesDashboard() {
     // 상태 관리 훅
@@ -53,8 +53,12 @@ export default function AdminFilesDashboard() {
     );
 
     const { data, isLoading, refetch } = useAllFiles(params);
-    const files = data?.files || [];
-    const total = data?.total || 0;
+    const { files, total } = useMemo(() => {
+        return {
+            files: data?.files || [],
+            total: data?.total || 0,
+        };
+    }, [data]);
 
     // 파일 비교 데이터 조회
     const {

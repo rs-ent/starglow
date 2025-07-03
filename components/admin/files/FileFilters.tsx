@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Filter, Grid, List, X } from "lucide-react";
+import { Search, Grid, List, X } from "lucide-react";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import type { FileFiltersProps } from "./types";
