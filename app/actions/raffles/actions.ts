@@ -961,6 +961,11 @@ export async function getRaffles(
         }
 
         const raffles = await prisma.raffle.findMany({
+            cacheStrategy: {
+                swr: 30,
+                ttl: 60,
+                tags: ["raffles", JSON.stringify(input)],
+            },
             where,
             include: {
                 artist: { select: { id: true, name: true } },
@@ -1019,6 +1024,11 @@ export async function getRaffleDetails(
 ): Promise<RaffleResult<RaffleWithDetails>> {
     try {
         const raffle = await prisma.raffle.findUnique({
+            cacheStrategy: {
+                swr: 5,
+                ttl: 10,
+                tags: ["raffleDetails", raffleId],
+            },
             where: { id: raffleId },
             include: {
                 artist: { select: { id: true, name: true } },

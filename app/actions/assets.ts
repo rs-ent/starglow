@@ -144,6 +144,11 @@ export async function getAssetsContract(
         if (input.networkId) where.networkId = input.networkId;
 
         const contract = await prisma.assetsContract.findFirst({
+            cacheStrategy: {
+                swr: 30,
+                ttl: 60,
+                tags: ["assetsContract", JSON.stringify(input)],
+            },
             where,
             include: {
                 network: true,
@@ -183,6 +188,11 @@ export async function getAssetsContracts(
         if (input?.creatorAddress) where.creatorAddress = input.creatorAddress;
 
         const contracts = await prisma.assetsContract.findMany({
+            cacheStrategy: {
+                swr: 30,
+                ttl: 60,
+                tags: ["assetsContracts", JSON.stringify(input)],
+            },
             where,
             include: {
                 network: true,
@@ -424,6 +434,11 @@ export async function getAssets(
         }
 
         const assets = await prisma.asset.findMany({
+            cacheStrategy: {
+                swr: 30,
+                ttl: 60,
+                tags: ["assets", JSON.stringify(input)],
+            },
             where,
             skip: (currentPage - 1) * itemsPerPage,
             take: itemsPerPage,

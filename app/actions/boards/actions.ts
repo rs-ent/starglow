@@ -185,6 +185,11 @@ export async function getBoards(
 
         const [boards, totalItems] = await Promise.all([
             prisma.board.findMany({
+                cacheStrategy: {
+                    swr: 30,
+                    ttl: 60,
+                    tags: ["boards", JSON.stringify(input)],
+                },
                 where,
                 include: {
                     posts: {
@@ -227,6 +232,11 @@ export async function getBoard(
 ): Promise<BoardWithPosts | null> {
     try {
         const board = await prisma.board.findUnique({
+            cacheStrategy: {
+                swr: 30,
+                ttl: 60,
+                tags: ["board", boardId],
+            },
             where: { id: boardId },
             include: {
                 posts: {
@@ -435,6 +445,11 @@ export async function getBoardPosts(
 
         const [posts, totalItems] = await Promise.all([
             prisma.boardPost.findMany({
+                cacheStrategy: {
+                    swr: 1,
+                    ttl: 2,
+                    tags: ["boardPosts", JSON.stringify(input)],
+                },
                 where,
                 include: {
                     author: {
@@ -497,6 +512,11 @@ export async function getBoardPost(
         });
 
         const post = await prisma.boardPost.findUnique({
+            cacheStrategy: {
+                swr: 1,
+                ttl: 2,
+                tags: ["boardPost", postId],
+            },
             where: { id: postId },
             include: {
                 author: {
@@ -647,6 +667,11 @@ export async function getBoardComments(
 ): Promise<BoardCommentWithDetails[]> {
     try {
         const comments = await prisma.boardComment.findMany({
+            cacheStrategy: {
+                swr: 1,
+                ttl: 2,
+                tags: ["boardComments", postId],
+            },
             where: {
                 postId,
                 parentId: null,

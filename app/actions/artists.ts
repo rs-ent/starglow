@@ -98,8 +98,8 @@ export async function getArtist(
             return (await prisma.artist.findUnique({
                 cacheStrategy: {
                     tags: ["artist", input.id],
-                    swr: 60 * 30,
-                    ttl: 60 * 60,
+                    swr: 30,
+                    ttl: 60,
                 },
                 where: { id: input.id },
                 include: {
@@ -121,8 +121,8 @@ export async function getArtist(
             return (await prisma.artist.findFirst({
                 cacheStrategy: {
                     tags: ["artist", input.name],
-                    swr: 60 * 30,
-                    ttl: 60 * 60,
+                    swr: 30,
+                    ttl: 60,
                 },
                 where: { name: input.name },
                 include: {
@@ -160,9 +160,9 @@ export async function getArtists(
         if (!input) {
             return (await prisma.artist.findMany({
                 cacheStrategy: {
-                    tags: ["artists"],
-                    swr: 60 * 30,
-                    ttl: 60 * 60,
+                    tags: ["artists", JSON.stringify(input)],
+                    swr: 30,
+                    ttl: 60,
                 },
                 include: {
                     story_spg: true,
@@ -198,12 +198,9 @@ export async function getArtists(
         }
         const artists = await prisma.artist.findMany({
             cacheStrategy: {
-                tags: [
-                    "artists",
-                    `${input.id}-${input.name}-${input.collectionContractId}`,
-                ],
-                swr: 60 * 30,
-                ttl: 60 * 60,
+                tags: ["artists", JSON.stringify(input)],
+                swr: 30,
+                ttl: 60,
             },
             where,
             include: {

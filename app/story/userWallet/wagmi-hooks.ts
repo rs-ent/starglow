@@ -56,6 +56,7 @@ export function useWagmiConnection() {
     // 연결 처리 중복 방지를 위한 ref
     const isProcessingConnection = useRef(false);
     const callbackUrlRef = useRef<string | null>(null);
+    const processedAddresses = useRef<Set<string>>(new Set());
 
     const {
         connectWalletAsync,
@@ -142,6 +143,11 @@ export function useWagmiConnection() {
                 return;
             }
 
+            // 이미 처리된 주소인지 확인
+            if (processedAddresses.current.has(address)) {
+                return;
+            }
+
             // 현재 연결된 커넥터 찾기
             const currentConnection = connections.find((conn) =>
                 conn.accounts.includes(address)
@@ -151,6 +157,7 @@ export function useWagmiConnection() {
 
             try {
                 isProcessingConnection.current = true;
+                processedAddresses.current.add(address);
 
                 let user = session?.user;
                 if (!user) {
@@ -178,6 +185,9 @@ export function useWagmiConnection() {
             } catch (error) {
                 console.error("Failed to process wallet connection:", error);
                 toast.error("Failed to save wallet connection");
+
+                // 에러 발생 시 처리된 주소에서 제거하여 재시도 가능하게 함
+                processedAddresses.current.delete(address);
             } finally {
                 isProcessingConnection.current = false;
             }
@@ -193,6 +203,13 @@ export function useWagmiConnection() {
         session?.user,
         toast,
     ]);
+
+    // 컴포넌트 언마운트 시 처리된 주소 정리
+    useEffect(() => {
+        return () => {
+            processedAddresses.current.clear();
+        };
+    }, []);
 
     // 체인 전환
     const handleSwitchChain = useCallback(
@@ -221,6 +238,11 @@ export function useWagmiConnection() {
 
             // 먼저 지갑 연결 해제
             await disconnect();
+
+            // 처리된 주소 목록에서 제거
+            if (prevAddress) {
+                processedAddresses.current.delete(prevAddress);
+            }
 
             // DB 업데이트
             if (prevAddress && session?.user?.id) {
