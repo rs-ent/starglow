@@ -10,10 +10,7 @@ import { DoubleSide, LinearFilter, Vector3 } from "three";
 
 import { useNFT } from "@/app/story/nft/hooks";
 import { formatDate } from "@/lib/utils/format";
-import {
-    useCachedTexture,
-    useBlurredTexture,
-} from "@/lib/utils/useCachedTexture";
+import { useCachedTexture } from "@/lib/utils/useCachedTexture";
 
 import type { SPG } from "@/app/story/spg/actions";
 import type { Mesh } from "three";
