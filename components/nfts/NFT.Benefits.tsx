@@ -35,7 +35,7 @@ export default React.memo(function NFTBenefits({
             title: "Artist's Revenue",
             description: `Share goes to holders during project`,
             icon: "/elements/distribution.png",
-            gradient: "from-purple-900 via-purple-700 to-pink-800",
+            gradient: "from-purple-600 via-purple-400 to-pink-500",
             highlight: `${sharePercentage}%`,
         },
         {
@@ -43,7 +43,7 @@ export default React.memo(function NFTBenefits({
             title: "Airdrop",
             description: `Token drops per number of purchase`,
             icon: "/elements/parachute.png",
-            gradient: "from-blue-900 via-purple-700 to-purple-800",
+            gradient: "from-blue-600 via-purple-400 to-purple-500",
             highlight: `${airdropAmount.toLocaleString()} $SGT`,
         },
         {
@@ -51,7 +51,7 @@ export default React.memo(function NFTBenefits({
             title: "Membership",
             description: "Private events to join for holders only",
             icon: "/elements/card.png",
-            gradient: "from-purple-900 via-purple-700 to-purple-800",
+            gradient: "from-purple-600 via-purple-400 to-purple-500",
             highlight: "VIP Access",
         },
         {
@@ -59,7 +59,7 @@ export default React.memo(function NFTBenefits({
             title: "Limited Edition",
             description: `Few amount of NFT minted only`,
             icon: "/elements/money.png",
-            gradient: "from-yellow-900 via-purple-700 to-purple-800",
+            gradient: "from-yellow-600 via-purple-400 to-purple-500",
             highlight: `${totalSupply.toLocaleString()} Only`,
         },
     ];
@@ -115,13 +115,14 @@ function BenefitCard({ benefit, index }: BenefitCardProps) {
                 />
 
                 {/* Icon Container */}
-                <div className="mb-3">
+                <div className="flex flex-row gap-3 md:flex-col md:items-start">
                     <div
                         className={cn(
                             "inline-flex items-center justify-center",
                             "w-fit h-fit rounded-xl p-[5px]",
                             "bg-gradient-to-br",
-                            gradient,
+                            "gradient-border",
+                            "from-[rgba(0,0,0,0.2)] via-[rgb(255,255,255,0.1)] to-[rgb(0,0,0,0.4)]",
                             "shadow-lg group-hover:shadow-purple-500/25 transition-shadow duration-300"
                         )}
                     >
@@ -132,32 +133,31 @@ function BenefitCard({ benefit, index }: BenefitCardProps) {
                             height={120}
                             className={cn(
                                 "object-contain",
-                                getResponsiveClass(70).frameClass
+                                getResponsiveClass(90).frameClass
                             )}
                         />
                     </div>
-                </div>
 
-                {/* Content */}
-                <div className="relative">
-                    <h3
-                        className={cn(
-                            "font-bold mb-1 rainbow-text",
-                            getResponsiveClass(30).textClass,
-                            "text-foreground group-hover:text-purple-300 transition-colors duration-300"
-                        )}
-                    >
-                        {title}
-                    </h3>
-
-                    <p
-                        className={cn(
-                            "text-foreground/70 leading-relaxed",
-                            getResponsiveClass(15).textClass
-                        )}
-                    >
-                        {description}
-                    </p>
+                    {/* Content */}
+                    <div className="relative">
+                        <h3
+                            className={cn(
+                                "font-bold mb-1 rainbow-text",
+                                getResponsiveClass(35).textClass,
+                                "text-foreground group-hover:text-purple-300 transition-colors duration-300"
+                            )}
+                        >
+                            {title}
+                        </h3>
+                        <p
+                            className={cn(
+                                "text-foreground/70 leading-relaxed",
+                                getResponsiveClass(15).textClass
+                            )}
+                        >
+                            {description}
+                        </p>
+                    </div>
                 </div>
 
                 {/* Hover Glow Effect */}

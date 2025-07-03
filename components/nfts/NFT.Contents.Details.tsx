@@ -184,22 +184,23 @@ export default React.memo(function NFTContentsDetails({
                                 )}
                             </div>
 
-                            {sharePercentage && (
-                                <div
+                            <div
+                                className={cn(
+                                    "flex items-baseline text-foreground/70",
+                                    getResponsiveClass(20).textClass
+                                )}
+                            >
+                                <Percent
                                     className={cn(
-                                        "flex items-baseline text-foreground/70",
-                                        getResponsiveClass(20).textClass
+                                        "flex-shrink-0 text-primary",
+                                        getResponsiveClass(20).frameClass,
+                                        "mr-2"
                                     )}
-                                >
-                                    <Percent
-                                        className={cn(
-                                            "flex-shrink-0 text-primary",
-                                            getResponsiveClass(20).frameClass,
-                                            "mr-2"
-                                        )}
-                                    />
-                                    <span>Share</span>
-                                    {!comingSoon && !hiddenDetails && (
+                                />
+                                <span>Share</span>
+                                {!comingSoon &&
+                                    !hiddenDetails &&
+                                    sharePercentage > 0 && (
                                         <>
                                             <span className="font-bold mx-1">
                                                 : {`${sharePercentage * 100}%`}
@@ -215,8 +216,7 @@ export default React.memo(function NFTContentsDetails({
                                             </span>
                                         </>
                                     )}
-                                </div>
-                            )}
+                            </div>
 
                             <div
                                 className={cn(
