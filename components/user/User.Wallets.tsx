@@ -63,8 +63,9 @@ export default function UserWallets({ user }: UserWalletsProps) {
     }, []);
 
     const getProviderInfo = useCallback((provider: string) => {
+        const key = provider === "metaMaskSDK" ? "metamask" : provider;
         return (
-            WALLET_PROVIDERS[provider as keyof typeof WALLET_PROVIDERS] || {
+            WALLET_PROVIDERS[key as keyof typeof WALLET_PROVIDERS] || {
                 name: provider,
                 icon: "/ui/wallet.svg",
                 color: "bg-gray-500",
