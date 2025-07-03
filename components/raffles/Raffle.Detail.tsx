@@ -234,7 +234,12 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
                 toast.info("Owww...😢 Better luck next time! Keep trying! 🍀");
             }
         }, 500);
-    }, [toastShown, scratchResult?.prize?.title, toast]);
+    }, [
+        toastShown,
+        scratchResult?.prize?.title,
+        scratchResult?.prize?.prizeType,
+        toast,
+    ]);
 
     if (isRaffleLoading) {
         return <RaffleDetailSkeleton />;
