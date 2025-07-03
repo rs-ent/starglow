@@ -73,6 +73,8 @@ export const queryKeys = {
             ["files", "metadata", "urls", urls] as const,
         allWithFilters: (params?: any) =>
             ["files", "all-with-filters", params] as const,
+        allBlob: ["files", "all-blob"] as const,
+        comparison: ["files", "comparison"] as const,
     },
     exchangeRate: {
         info: (

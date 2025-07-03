@@ -2,7 +2,7 @@
 
 "use server";
 
-import { put, del } from "@vercel/blob";
+import { put, del, list } from "@vercel/blob";
 import sharp from "sharp";
 import { v4 as uuidv4 } from "uuid";
 
@@ -467,6 +467,166 @@ export async function updateFilesOrder(
         order: file.order || 0,
         createdAt: file.createdAt,
     }));
+}
+
+export interface BlobFile {
+    url: string;
+    pathname: string;
+    size: number;
+    uploadedAt: Date;
+    downloadUrl: string;
+}
+
+export interface OrphanedFile extends BlobFile {
+    isOrphaned: true;
+    reason: "missing_in_db" | "manual_upload" | "failed_db_insert";
+}
+
+export interface FileComparisonResult {
+    dbFiles: StoredFile[];
+    blobFiles: BlobFile[];
+    orphanedFiles: OrphanedFile[];
+    missingBlobs: StoredFile[]; // DB에는 있지만 Blob에는 없는 파일들
+    totalDbFiles: number;
+    totalBlobFiles: number;
+    totalOrphanedFiles: number;
+}
+
+export async function getAllBlobFiles(): Promise<BlobFile[]> {
+    await requireAuth();
+
+    try {
+        const { blobs } = await list();
+
+        return blobs.map((blob) => ({
+            url: blob.url,
+            pathname: blob.pathname,
+            size: blob.size,
+            uploadedAt: blob.uploadedAt,
+            downloadUrl: blob.downloadUrl,
+        }));
+    } catch (error) {
+        console.error("Error fetching blob files:", error);
+        throw new Error("Failed to fetch blob files");
+    }
+}
+
+export async function compareDbAndBlobFiles(): Promise<FileComparisonResult> {
+    await requireAuth();
+
+    try {
+        // 병렬로 DB 파일과 Blob 파일 목록 가져오기
+        const [dbFilesData, blobFiles] = await Promise.all([
+            getAllFiles({ limit: 10000 }), // 큰 limit으로 모든 파일 가져오기
+            getAllBlobFiles(),
+        ]);
+
+        const dbFiles = dbFilesData.files;
+
+        // URL을 기준으로 매핑 생성
+        const dbFileUrls = new Set(dbFiles.map((f) => f.url));
+        const blobFileUrls = new Set(blobFiles.map((f) => f.url));
+
+        // 고아 파일들 찾기 (Blob에는 있지만 DB에는 없는 파일들)
+        const orphanedFiles: OrphanedFile[] = blobFiles
+            .filter((blobFile) => !dbFileUrls.has(blobFile.url))
+            .map((blobFile) => ({
+                ...blobFile,
+                isOrphaned: true as const,
+                reason: "missing_in_db" as const,
+            }));
+
+        // 누락된 Blob들 찾기 (DB에는 있지만 Blob에는 없는 파일들)
+        const missingBlobs = dbFiles.filter(
+            (dbFile) => !blobFileUrls.has(dbFile.url)
+        );
+
+        return {
+            dbFiles,
+            blobFiles,
+            orphanedFiles,
+            missingBlobs,
+            totalDbFiles: dbFiles.length,
+            totalBlobFiles: blobFiles.length,
+            totalOrphanedFiles: orphanedFiles.length,
+        };
+    } catch (error) {
+        console.error("Error comparing DB and Blob files:", error);
+        throw new Error("Failed to compare DB and Blob files");
+    }
+}
+
+export async function registerOrphanedFiles(
+    orphanedFiles: OrphanedFile[]
+): Promise<StoredFile[]> {
+    await requireAuth();
+
+    if (!orphanedFiles || orphanedFiles.length === 0) {
+        throw new Error("No orphaned files provided");
+    }
+
+    try {
+        const registeredFiles = await Promise.all(
+            orphanedFiles.map(async (orphanedFile) => {
+                // 파일명 추출 (pathname에서)
+                const fileName =
+                    orphanedFile.pathname.split("/").pop() || "unknown";
+
+                // 파일 타입 추정
+                const fileExtension =
+                    fileName.split(".").pop()?.toLowerCase() || "";
+                let mimeType = "application/octet-stream";
+
+                if (
+                    ["jpg", "jpeg", "png", "gif", "webp"].includes(
+                        fileExtension
+                    )
+                ) {
+                    mimeType = `image/${
+                        fileExtension === "jpg" ? "jpeg" : fileExtension
+                    }`;
+                } else if (["mp4", "mov", "avi"].includes(fileExtension)) {
+                    mimeType = `video/${fileExtension}`;
+                } else if (["mp3", "wav", "flac"].includes(fileExtension)) {
+                    mimeType = `audio/${fileExtension}`;
+                } else if (["pdf"].includes(fileExtension)) {
+                    mimeType = "application/pdf";
+                }
+
+                const storedFile = await prisma.storedFiles.create({
+                    data: {
+                        url: orphanedFile.url,
+                        name: fileName,
+                        type: mimeType,
+                        mimeType: mimeType,
+                        sizeBytes: orphanedFile.size,
+                        purpose: "orphaned-recovery",
+                        bucket: "recovered",
+                        order: 0,
+                        width: 0,
+                        height: 0,
+                    },
+                });
+
+                return {
+                    id: storedFile.id,
+                    url: storedFile.url,
+                    name: storedFile.name || fileName,
+                    type: storedFile.type || mimeType,
+                    size: storedFile.sizeBytes || orphanedFile.size,
+                    purpose: storedFile.purpose || "orphaned-recovery",
+                    bucket: storedFile.bucket || "recovered",
+                    order: storedFile.order || 0,
+                    createdAt: storedFile.createdAt,
+                };
+            })
+        );
+
+        return registeredFiles;
+    } catch (error) {
+        console.error("Error registering orphaned files:", error);
+        throw new Error("Failed to register orphaned files");
+    }
 }
 
 export interface GetFilesMetadataByUrlsParams {

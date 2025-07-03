@@ -10,6 +10,7 @@ import {
     deleteFiles,
     updateFileOrder,
     updateFilesOrder,
+    registerOrphanedFiles,
 } from "@/app/actions/files";
 import { queryKeys } from "@/app/queryKeys";
 
@@ -196,6 +197,33 @@ export function useUpdateFilesOrder() {
                         variables.purpose,
                         variables.bucket
                     ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+        },
+    });
+}
+
+export function useRegisterOrphanedFiles() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (orphanedFiles: any[]) => {
+            return registerOrphanedFiles(orphanedFiles);
+        },
+        onSuccess: () => {
+            // 파일 비교 결과 및 전체 파일 목록 새로고침
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.files.comparison,
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: queryKeys.files.all,
                 })
                 .catch((error) => {
                     console.error(error);

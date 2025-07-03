@@ -9,6 +9,8 @@ import {
     getFileById,
     getFilesMetadataByUrls,
     getAllFiles,
+    getAllBlobFiles,
+    compareDbAndBlobFiles,
 } from "@/app/actions/files";
 import { queryKeys } from "@/app/queryKeys";
 
@@ -53,5 +55,23 @@ export function useAllFiles(params?: GetAllFilesParams) {
         queryFn: () => getAllFiles(params),
         staleTime: 1000 * 60 * 5, // 5 minutes
         gcTime: 1000 * 60 * 30, // 30 minutes
+    });
+}
+
+export function useAllBlobFiles() {
+    return useQuery({
+        queryKey: queryKeys.files.allBlob,
+        queryFn: () => getAllBlobFiles(),
+        staleTime: 1000 * 60 * 2, // 2 minutes
+        gcTime: 1000 * 60 * 10, // 10 minutes
+    });
+}
+
+export function useFileComparison() {
+    return useQuery({
+        queryKey: queryKeys.files.comparison,
+        queryFn: () => compareDbAndBlobFiles(),
+        staleTime: 1000 * 60 * 2, // 2 minutes
+        gcTime: 1000 * 60 * 10, // 10 minutes
     });
 }
