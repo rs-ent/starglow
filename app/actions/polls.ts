@@ -296,11 +296,6 @@ export async function getPolls({
             where.answerAnnouncementDate = input.answerAnnouncementDate;
         const [items, totalItems] = await Promise.all([
             prisma.poll.findMany({
-                cacheStrategy: {
-                    swr: 30,
-                    ttl: 60,
-                    tags: ["polls", JSON.stringify(input)],
-                },
                 where,
                 orderBy: {
                     id: "desc",
@@ -341,11 +336,6 @@ export async function getPoll(id: string): Promise<
 > {
     try {
         const poll = await prisma.poll.findUnique({
-            cacheStrategy: {
-                swr: 30,
-                ttl: 60,
-                tags: ["poll", id],
-            },
             where: { id },
             include: {
                 participationRewardAsset: true,
