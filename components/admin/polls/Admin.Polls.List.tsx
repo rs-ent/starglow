@@ -2,24 +2,18 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-
-import { Check, ChevronsUpDown } from "lucide-react";
+import React, { useState, useMemo, useCallback } from "react";
+import { LayoutGrid, List, Plus, RefreshCw, BarChart3 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type { Poll } from "@prisma/client";
 
 import { useArtistsGet } from "@/app/hooks/useArtists";
 import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
 import { useToast } from "@/app/hooks/useToast";
 import { usePollsResultsQuery } from "@/app/queries/pollsQueries";
-import PollThumbnail from "@/components/atoms/Polls.Thumbnail";
 import { Button } from "@/components/ui/button";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-} from "@/components/ui/command";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
     Pagination,
     PaginationContent,
@@ -28,391 +22,396 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
-import { formatDate } from "@/lib/utils/format";
-import { cn } from "@/lib/utils/tailwind";
 
 import PollCreateModal from "./Admin.Polls.CreateModal";
-
-import type { Artist, Poll } from "@prisma/client";
+import PollsFilter, { type PollFilterState } from "./Admin.Polls.Filter";
+import PollsTable from "./Admin.Polls.Table";
+import PollsCards from "./Admin.Polls.Cards";
 
 interface PollListProps {
     viewType: "table" | "card";
 }
 
-export default function AdminPollsList({ viewType }: PollListProps) {
+export default function AdminPollsList({
+    viewType: initialViewType,
+}: PollListProps) {
     const toast = useToast();
+    const router = useRouter();
+
+    // State management
+    const [viewType, setViewType] = useState<"table" | "card">(initialViewType);
+    const [editPoll, setEditPoll] = useState<Poll | null>(null);
+    const [showCreateModal, setShowCreateModal] = useState(false);
     const [pagination, setPagination] = useState({
         currentPage: 1,
-        itemsPerPage: 50,
+        itemsPerPage: 24, // Increased for better card view
     });
-    const [editPoll, setEditPoll] = useState<Poll | null>(null);
-    const [open, setOpen] = useState(false);
-    const [pollFilter, setPollFilter] = useState<{
-        type: "world" | "exclusive";
-        artistId: string;
-    }>({
-        type: "world",
+    const [filter, setFilter] = useState<PollFilterState>({
+        search: "",
+        type: "all",
+        pollMode: "all",
+        activeStatus: "all",
         artistId: "",
     });
 
-    const [artistPopoverOpen, setArtistPopoverOpen] = useState(false);
-    const [filteredPolls, setFilteredPolls] = useState<Poll[]>([]);
-    const router = useRouter();
-
-    const { pollsList, isLoading, error } = usePollsGet({
-        pagination,
-    });
-
-    const { updateActivePoll } = usePollsSet();
-
+    // Data fetching
+    const { pollsList, isLoading, error } = usePollsGet({ pagination });
+    const { updateActivePoll, deletePoll } = usePollsSet();
     const { artists } = useArtistsGet({});
 
-    const { deletePoll } = usePollsSet();
+    const { polls, totalPages, pollIds } = useMemo(() => {
+        return {
+            polls: pollsList?.items || [],
+            totalPages: pollsList?.totalPages || 0,
+            pollIds: pollsList?.items.map((poll) => poll.id) || [],
+        };
+    }, [pollsList]);
 
-    const polls = pollsList?.items;
-    const pollIds = polls?.map((poll) => poll.id) || [];
-    const totalPages = pollsList?.totalPages;
+    const { data: pollsResults } = usePollsResultsQuery({ pollIds });
+    const resultsData = useMemo(
+        () => pollsResults?.results || [],
+        [pollsResults]
+    );
 
-    const { data: pollsResults } = usePollsResultsQuery({
-        pollIds,
-    });
-
-    const resultsData = pollsResults?.results;
-
-    const handleEditPoll = (poll: Poll) => {
-        setEditPoll(poll);
-        setOpen(true);
-    };
-
-    const handlePageChange = (page: number) => {
-        setPagination((prev) => ({
-            ...prev,
-            currentPage: page,
-        }));
-    };
-
-    const handleDeletePoll = async (pollId: string) => {
-        if (window.confirm("정말 삭제하시겠습니까?")) {
-            await deletePoll(pollId);
-            router.refresh();
-        }
-    };
-
-    const filteringPolls = useCallback(() => {
-        const filtered = polls?.filter((poll) => {
-            if (pollFilter.type === "world") {
-                return !poll.artistId;
-            } else if (pollFilter.type === "exclusive") {
-                return poll.artistId === pollFilter.artistId;
+    // Filter logic
+    const filteredPolls = useMemo(() => {
+        return polls.filter((poll) => {
+            // Search filter
+            if (
+                filter.search &&
+                !poll.title.toLowerCase().includes(filter.search.toLowerCase())
+            ) {
+                return false;
             }
+
+            // Type filter (world/exclusive)
+            if (filter.type === "world" && poll.artistId) return false;
+            if (filter.type === "exclusive" && !poll.artistId) return false;
+
+            // Poll mode filter (regular/betting)
+            if (filter.pollMode === "regular" && poll.bettingMode) return false;
+            if (filter.pollMode === "betting" && !poll.bettingMode)
+                return false;
+
+            // Active status filter
+            if (filter.activeStatus === "active" && !poll.isActive)
+                return false;
+            if (filter.activeStatus === "inactive" && poll.isActive)
+                return false;
+
+            // Artist filter
+            if (filter.artistId && poll.artistId !== filter.artistId)
+                return false;
+
             return true;
         });
+    }, [polls, filter]);
 
-        setFilteredPolls(filtered ?? []);
-    }, [pollFilter, polls]);
+    // Statistics
+    const stats = useMemo(() => {
+        const total = polls.length;
+        const active = polls.filter((p) => p.isActive).length;
+        const betting = polls.filter((p) => p.bettingMode).length;
+        const totalVotes = resultsData.reduce(
+            (sum, result) => sum + result.totalVotes,
+            0
+        );
 
-    useEffect(() => {
-        if (!polls) return;
-        filteringPolls();
-    }, [polls, filteringPolls]);
+        return { total, active, betting, totalVotes };
+    }, [polls, resultsData]);
 
-    if (isLoading) return <div>로딩 중</div>;
-    if (error) return <div>오류 발생: {error.message}</div>;
+    // Handlers
+    const handleEditPoll = useCallback((poll: Poll) => {
+        setEditPoll(poll);
+        setShowCreateModal(true);
+    }, []);
 
-    const handleActiveChange = async (poll: Poll, checked: boolean) => {
-        if (!poll) return;
+    const handleDeletePoll = useCallback(
+        async (pollId: string) => {
+            const poll = polls.find((p) => p.id === pollId);
+            if (!poll) return;
 
-        const result = await updateActivePoll({
-            pollId: poll.id,
-            isActive: checked,
-        });
+            if (
+                window.confirm(`정말로 "${poll.title}" 폴을 삭제하시겠습니까?`)
+            ) {
+                try {
+                    await deletePoll(pollId);
+                    toast.success("폴이 성공적으로 삭제되었습니다.");
+                    router.refresh();
+                } catch (error) {
+                    console.error(error);
+                    toast.error("폴 삭제 중 오류가 발생했습니다.");
+                }
+            }
+        },
+        [polls, deletePoll, toast, router]
+    );
 
-        if (result) {
-            toast.success(`『${poll.title}』 투표가 활성화되었습니다.`);
-        } else {
-            toast.success(`『${poll.title}』 투표 비활성화되었습니다.`);
-        }
-    };
+    const handleActiveChange = useCallback(
+        async (poll: Poll, isActive: boolean) => {
+            try {
+                const result = await updateActivePoll({
+                    pollId: poll.id,
+                    isActive,
+                });
+
+                if (result) {
+                    toast.success(
+                        `『${poll.title}』 폴이 ${
+                            isActive ? "활성화" : "비활성화"
+                        }되었습니다.`
+                    );
+                }
+            } catch (error) {
+                console.error(error);
+                toast.error("폴 상태 변경 중 오류가 발생했습니다.");
+            }
+        },
+        [updateActivePoll, toast]
+    );
+
+    const handlePageChange = useCallback((page: number) => {
+        setPagination((prev) => ({ ...prev, currentPage: page }));
+    }, []);
+
+    const handleFilterChange = useCallback((newFilter: PollFilterState) => {
+        setFilter(newFilter);
+        setPagination((prev) => ({ ...prev, currentPage: 1 })); // Reset to first page
+    }, []);
+
+    const handleModalClose = useCallback(() => {
+        setShowCreateModal(false);
+        setEditPoll(null);
+    }, []);
+
+    if (error) {
+        return (
+            <div className="text-center py-12">
+                <div className="text-red-400 mb-4">⚠️ 오류 발생</div>
+                <p className="text-slate-400">{error.message}</p>
+            </div>
+        );
+    }
 
     return (
-        <div>
-            <div className="flex gap-2 mb-4">
-                <div className="flex gap-2">
-                    <Button
-                        variant={
-                            pollFilter.type === "world" ? "default" : "outline"
-                        }
-                        onClick={() => {
-                            setPollFilter({
-                                ...pollFilter,
-                                type: "world",
-                            });
-                        }}
-                    >
-                        World
-                    </Button>
-                    <Button
-                        variant={
-                            pollFilter.type === "exclusive"
-                                ? "default"
-                                : "outline"
-                        }
-                        onClick={() => {
-                            setPollFilter({
-                                ...pollFilter,
-                                type: "exclusive",
-                            });
-                        }}
-                    >
-                        Exclusive
-                    </Button>
+        <div className="space-y-6">
+            {/* Header with Statistics */}
+            <Card className="p-6 bg-gradient-to-r from-slate-900/50 to-slate-800/50 border-slate-700/50 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                        <h1 className="text-2xl font-bold text-white">
+                            폴 관리
+                        </h1>
+                        <Badge
+                            variant="outline"
+                            className="bg-purple-500/20 text-purple-300 border-purple-500/50"
+                        >
+                            Admin Dashboard
+                        </Badge>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => router.refresh()}
+                            className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600"
+                        >
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            새로고침
+                        </Button>
+                        <Button
+                            onClick={() => setShowCreateModal(true)}
+                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />새 폴 생성
+                        </Button>
+                    </div>
                 </div>
 
-                {pollFilter.type === "exclusive" &&
-                    artists &&
-                    artists.length > 0 && (
-                        <div className="flex gap-2 mb-4">
-                            <Popover
-                                open={artistPopoverOpen}
-                                onOpenChange={setArtistPopoverOpen}
-                            >
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        role="combobox"
-                                        aria-expanded={artistPopoverOpen}
-                                        className="w-[300px] justify-between"
-                                    >
-                                        {pollFilter.artistId
-                                            ? artists.find(
-                                                  (artist: Artist) =>
-                                                      artist.id ===
-                                                      pollFilter.artistId
-                                              )?.name
-                                            : "아티스트 선택..."}
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[300px] p-0">
-                                    <Command>
-                                        <CommandInput placeholder="아티스트 검색..." />
-                                        <CommandEmpty>
-                                            아티스트를 찾을 수 없습니다.
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                            {artists.map((artist: Artist) => (
-                                                <CommandItem
-                                                    key={artist.id}
-                                                    value={artist.name}
-                                                    onSelect={() => {
-                                                        setPollFilter({
-                                                            ...pollFilter,
-                                                            artistId: artist.id,
-                                                        });
-                                                        setArtistPopoverOpen(
-                                                            false
-                                                        );
-                                                    }}
-                                                >
-                                                    <Check
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4",
-                                                            pollFilter.artistId ===
-                                                                artist.id
-                                                                ? "opacity-100"
-                                                                : "opacity-0"
-                                                        )}
-                                                    />
-                                                    {artist.name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+                {/* Statistics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-slate-700/30 rounded-lg">
+                        <div className="text-2xl font-bold text-white">
+                            {stats.total}
                         </div>
-                    )}
-            </div>
-            {viewType === "table" ? (
-                <div className="overflow-x-auto">
-                    <table className="bg-card min-w-full border border-[rgba(255,255,255,0.2)] text-center">
-                        <thead>
-                            <tr className="bg-secondary text-accent-foreground divide-x divide-[rgba(255,255,255,0.1)]">
-                                <th className="px-2 py-2 align-middle">
-                                    썸네일
-                                </th>
-                                <th className="px-4 py-2 align-middle">ID</th>
-                                <th className="px-4 py-2 align-middle">제목</th>
-                                <th className="px-4 py-2 align-middle">
-                                    카테고리
-                                </th>
-                                <th className="px-4 py-2 align-middle">
-                                    시작일
-                                </th>
-                                <th className="px-4 py-2 align-middle">
-                                    종료일
-                                </th>
-                                <th className="px-4 py-2 align-middle">
-                                    활성화
-                                </th>
-                                <th className="px-4 py-2 align-middle">
-                                    총 투표 수
-                                </th>
-                                <th className="px-4 py-2 align-middle">
-                                    고유 투표자 수
-                                </th>
-                                <th className="px-4 py-2 align-middle">결과</th>
-                                <th className="px-4 py-2 align-middle">기능</th>
-                            </tr>
-                        </thead>
-                        <tbody className="align-middle divide-y text-sm divide-[rgba(255,255,255,0.2)]">
-                            {filteredPolls?.map((poll) => {
-                                const result = resultsData?.find(
-                                    (result) => result.pollId === poll.id
-                                );
-                                const pollResultData = result?.results?.map(
-                                    (option) =>
-                                        `${option.voteRate.toFixed(2)}% (${
-                                            option.name
-                                        })`
-                                );
-                                return (
-                                    <tr
-                                        key={poll.id}
-                                        className="divide-x divide-[rgba(255,255,255,0.1)] h-[70px]"
-                                    >
-                                        <td className="px-2 py-2 align-middle">
-                                            <div className="flex justify-center items-center w-[90px] h-[60px]">
-                                                <PollThumbnail
-                                                    poll={poll}
-                                                    quality={100}
-                                                    imageClassName="rounded-sm"
-                                                />
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-2 align-middle">
-                                            {poll.id}
-                                        </td>
-                                        <td className="px-4 py-2 align-middle">
-                                            {poll.title}
-                                        </td>
-                                        <td className="px-4 py-2 align-middle">
-                                            {poll.category}
-                                        </td>
-                                        <td className="px-4 py-2 align-middle">
-                                            {formatDate(poll.startDate)}
-                                        </td>
-                                        <td className="px-4 py-2 align-middle">
-                                            {formatDate(poll.endDate)}
-                                        </td>
-                                        <td className="px-4 py-2 align-middle">
-                                            <Switch
-                                                checked={poll.isActive}
-                                                onCheckedChange={() =>
-                                                    handleActiveChange(
-                                                        poll,
-                                                        !poll.isActive
-                                                    )
-                                                }
-                                            />
-                                        </td>
-                                        <td className="px-4 py-2 align-middle">
-                                            {result?.totalVotes.toLocaleString()}
-                                        </td>
-                                        <td className="px-4 py-2 align-middle">
-                                            {poll.uniqueVoters.toLocaleString()}
-                                            명
-                                        </td>
-                                        <td className="px-4 py-2 align-middle">
-                                            {pollResultData?.join(" : ")}
-                                        </td>
-                                        <td className="px-4 py-2 align-middle">
-                                            <div className="flex gap-2 items-center justify-center h-full">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() =>
-                                                        handleEditPoll(poll)
-                                                    }
-                                                >
-                                                    수정
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="destructive"
-                                                    onClick={async () =>
-                                                        handleDeletePoll(
-                                                            poll.id
-                                                        )
-                                                    }
-                                                >
-                                                    삭제
-                                                </Button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                        <div className="text-sm text-slate-400">총 폴</div>
+                    </div>
+                    <div className="text-center p-4 bg-green-500/20 rounded-lg">
+                        <div className="text-2xl font-bold text-green-300">
+                            {stats.active}
+                        </div>
+                        <div className="text-sm text-slate-400">활성 폴</div>
+                    </div>
+                    <div className="text-center p-4 bg-orange-500/20 rounded-lg">
+                        <div className="text-2xl font-bold text-orange-300">
+                            {stats.betting}
+                        </div>
+                        <div className="text-sm text-slate-400">🎰 베팅 폴</div>
+                    </div>
+                    <div className="text-center p-4 bg-blue-500/20 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-300">
+                            {stats.totalVotes.toLocaleString()}
+                        </div>
+                        <div className="text-sm text-slate-400">총 투표수</div>
+                    </div>
                 </div>
+            </Card>
+
+            {/* Filters */}
+            <PollsFilter
+                filter={filter}
+                onFilterChange={handleFilterChange}
+                artists={artists || []}
+            />
+
+            {/* View Toggle and Results Info */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-1">
+                        <Button
+                            size="sm"
+                            variant={viewType === "table" ? "default" : "ghost"}
+                            onClick={() => setViewType("table")}
+                            className="px-3"
+                        >
+                            <List className="w-4 h-4 mr-1" />
+                            테이블
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant={viewType === "card" ? "default" : "ghost"}
+                            onClick={() => setViewType("card")}
+                            className="px-3"
+                        >
+                            <LayoutGrid className="w-4 h-4 mr-1" />
+                            카드
+                        </Button>
+                    </div>
+
+                    <div className="text-sm text-slate-400">
+                        총 {filteredPolls.length}개 폴
+                        {filter.search ||
+                        filter.type !== "all" ||
+                        filter.pollMode !== "all" ||
+                        filter.activeStatus !== "all" ||
+                        filter.artistId
+                            ? ` (${polls.length}개 중 필터링됨)`
+                            : ""}
+                    </div>
+                </div>
+
+                {/* Betting Mode Quick Filter */}
+                <Button
+                    variant="outline"
+                    onClick={() =>
+                        handleFilterChange({
+                            ...filter,
+                            pollMode:
+                                filter.pollMode === "betting"
+                                    ? "all"
+                                    : "betting",
+                        })
+                    }
+                    className={`
+                        ${
+                            filter.pollMode === "betting"
+                                ? "bg-orange-500/20 border-orange-500/50 text-orange-300"
+                                : "bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600"
+                        }
+                    `}
+                >
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    베팅 폴만 보기
+                </Button>
+            </div>
+
+            {/* Content */}
+            {isLoading ? (
+                <div className="text-center py-12">
+                    <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-slate-400">폴을 불러오는 중...</p>
+                </div>
+            ) : viewType === "table" ? (
+                <PollsTable
+                    polls={filteredPolls}
+                    results={resultsData}
+                    onEdit={handleEditPoll}
+                    onDelete={handleDeletePoll}
+                    onActiveChange={handleActiveChange}
+                />
             ) : (
-                <div>카드 뷰</div>
+                <PollsCards
+                    polls={filteredPolls}
+                    results={resultsData}
+                    onEdit={handleEditPoll}
+                    onDelete={handleDeletePoll}
+                    onActiveChange={handleActiveChange}
+                />
             )}
 
             {/* Pagination */}
-            <div className="flex justify-center mt-4">
-                <Pagination>
-                    <PaginationContent>
-                        <PaginationItem>
-                            <PaginationPrevious
-                                onClick={() =>
-                                    handlePageChange(pagination.currentPage - 1)
-                                }
-                                className={
-                                    pagination.currentPage === 1
-                                        ? "pointer-events-none opacity-50"
-                                        : ""
-                                }
-                            />
-                        </PaginationItem>
-                        {Array.from(
-                            { length: totalPages || 0 },
-                            (_, i) => i + 1
-                        ).map((page) => (
-                            <PaginationItem key={page}>
-                                <PaginationLink
-                                    isActive={pagination.currentPage === page}
-                                    onClick={() => handlePageChange(page)}
-                                >
-                                    {page}
-                                </PaginationLink>
+            {totalPages > 1 && (
+                <div className="flex justify-center">
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious
+                                    onClick={() =>
+                                        handlePageChange(
+                                            pagination.currentPage - 1
+                                        )
+                                    }
+                                    className={
+                                        pagination.currentPage === 1
+                                            ? "pointer-events-none opacity-50"
+                                            : "cursor-pointer"
+                                    }
+                                />
                             </PaginationItem>
-                        ))}
-                        <PaginationItem>
-                            <PaginationNext
-                                onClick={() =>
-                                    handlePageChange(pagination.currentPage + 1)
+                            {Array.from(
+                                { length: Math.min(totalPages, 5) },
+                                (_, i) => {
+                                    const page = i + 1;
+                                    return (
+                                        <PaginationItem key={page}>
+                                            <PaginationLink
+                                                isActive={
+                                                    pagination.currentPage ===
+                                                    page
+                                                }
+                                                onClick={() =>
+                                                    handlePageChange(page)
+                                                }
+                                                className="cursor-pointer"
+                                            >
+                                                {page}
+                                            </PaginationLink>
+                                        </PaginationItem>
+                                    );
                                 }
-                                className={
-                                    pagination.currentPage === totalPages
-                                        ? "pointer-events-none opacity-50"
-                                        : ""
-                                }
-                            />
-                        </PaginationItem>
-                    </PaginationContent>
-                </Pagination>
-            </div>
+                            )}
+                            <PaginationItem>
+                                <PaginationNext
+                                    onClick={() =>
+                                        handlePageChange(
+                                            pagination.currentPage + 1
+                                        )
+                                    }
+                                    className={
+                                        pagination.currentPage === totalPages
+                                            ? "pointer-events-none opacity-50"
+                                            : "cursor-pointer"
+                                    }
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
+            )}
+
+            {/* Create/Edit Modal */}
             <PollCreateModal
-                open={open}
-                onClose={() => setOpen(false)}
+                open={showCreateModal}
+                onClose={handleModalClose}
                 initialData={editPoll}
                 mode={editPoll ? "edit" : "create"}
             />

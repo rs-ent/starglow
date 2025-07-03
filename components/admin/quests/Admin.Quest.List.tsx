@@ -3,47 +3,40 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-
 import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-} from "@dnd-kit/core";
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    useSortable,
-    verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { Check, ChevronsUpDown, GripVertical } from "lucide-react";
+    LayoutGrid,
+    List,
+    Plus,
+    RefreshCw,
+    Link,
+    UserPlus,
+    GripVertical,
+    BarChart3,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import type { Quest, Artist, Asset } from "@prisma/client";
 
 import { useArtistsGet } from "@/app/hooks/useArtists";
+import { useAssetsGet } from "@/app/hooks/useAssets";
 import { useQuestGet, useQuestSet } from "@/app/hooks/useQuest";
 import { useToast } from "@/app/hooks/useToast";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-} from "@/components/ui/command";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
-import { formatDate } from "@/lib/utils/format";
-import { cn } from "@/lib/utils/tailwind";
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 
+// Import new components
+import QuestsFilter, { type QuestFilterState } from "./Admin.Quest.Filter";
+import QuestsTable from "./Admin.Quest.Table";
+import QuestsCards from "./Admin.Quest.Cards";
 import AdminQuestCreate from "./Admin.Quest.Create";
-
-import type { Quest, Artist, Asset } from "@prisma/client";
 
 type QuestWithRelations = Quest & {
     artist?: Artist | null;
@@ -51,25 +44,45 @@ type QuestWithRelations = Quest & {
 };
 
 export default function AdminQuestList() {
+    const router = useRouter();
     const { quests, isLoading, error } = useQuestGet({}) as {
         quests: { items: QuestWithRelations[] };
         isLoading: boolean;
         error: Error | null;
     };
-
     const { artists } = useArtistsGet({});
-
+    const { assets } = useAssetsGet({
+        getAssetsInput: { isActive: true },
+    });
     const { deleteQuest, updateQuestOrder, updateQuestActive } = useQuestSet();
-
     const toast = useToast();
 
-    const [open, setOpen] = useState(false);
-    const [showCreate, setShowCreate] = useState(false);
+    // State management
     const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
+    const [showCreate, setShowCreate] = useState(false);
     const [showOrderChange, setShowOrderChange] = useState(false);
+    const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [filteredQuests, setFilteredQuests] = useState<QuestWithRelations[]>(
+        []
+    );
+    const [sortedQuests, setSortedQuests] = useState<QuestWithRelations[]>([]);
+    const itemsPerPage = 20;
+
+    // Filter state
+    const [filter, setFilter] = useState<QuestFilterState>({
+        search: "",
+        questType: "all",
+        artistType: "all",
+        artistId: "",
+        repeatable: "all",
+        activeStatus: "all",
+        rewardAssetId: "",
+    });
+
+    // Registered types for quest creation
     const registeredTypes = useMemo(() => {
         if (!quests) return [];
-
         return [
             ...new Set(
                 quests.items
@@ -84,33 +97,94 @@ export default function AdminQuestList() {
         ];
     }, [quests]);
 
-    const [filteredQuests, setFilteredQuests] = useState<QuestWithRelations[]>(
-        quests?.items ?? []
-    );
+    // Filter quests based on current filter state
+    const applyFilters = useCallback(() => {
+        if (!quests?.items) return;
 
-    const [questFilter, setQuestFilter] = useState({
-        artistId: "", // "" means show all quests, specific ID means filter by artist
-    });
-
-    const filteringQuests = useCallback(() => {
         const filtered = quests.items.filter((quest) => {
-            // If no artist filter is set, show all quests
-            if (!questFilter.artistId) {
-                return true;
+            // Search filter
+            if (
+                filter.search &&
+                !quest.title.toLowerCase().includes(filter.search.toLowerCase())
+            ) {
+                return false;
             }
 
-            // If artist filter is set, show only quests for that artist
-            return quest.artistId === questFilter.artistId;
+            // Quest type filter
+            if (
+                filter.questType !== "all" &&
+                quest.questType !== filter.questType
+            ) {
+                return false;
+            }
+
+            // Artist type filter
+            if (filter.artistType === "world" && quest.artistId) {
+                return false;
+            }
+            if (filter.artistType === "exclusive" && !quest.artistId) {
+                return false;
+            }
+
+            // Specific artist filter
+            if (filter.artistId && quest.artistId !== filter.artistId) {
+                return false;
+            }
+
+            // Repeatable filter
+            if (filter.repeatable === "repeatable" && !quest.repeatable) {
+                return false;
+            }
+            if (filter.repeatable === "single" && quest.repeatable) {
+                return false;
+            }
+
+            // Active status filter
+            if (filter.activeStatus === "active" && !quest.isActive) {
+                return false;
+            }
+            if (filter.activeStatus === "inactive" && quest.isActive) {
+                return false;
+            }
+
+            // Reward asset filter
+            if (
+                filter.rewardAssetId &&
+                quest.rewardAsset?.id !== filter.rewardAssetId
+            ) {
+                return false;
+            }
+
+            return true;
         });
 
         setFilteredQuests(filtered);
-    }, [quests, questFilter]);
+        setCurrentPage(1); // Reset to first page when filtering
+    }, [quests, filter]);
 
+    // Apply filters when quest data or filter changes
     useEffect(() => {
-        if (!quests) return;
-        filteringQuests();
-    }, [questFilter, quests, filteringQuests]);
+        applyFilters();
+    }, [applyFilters]);
 
+    // Sort quests by order
+    useEffect(() => {
+        const sorted = [...filteredQuests].sort(
+            (a, b) => (a.order || 0) - (b.order || 0)
+        );
+        setSortedQuests(sorted);
+    }, [filteredQuests]);
+
+    // Pagination
+    const paginatedQuests = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        return sortedQuests.slice(startIndex, endIndex);
+    }, [sortedQuests, currentPage]);
+
+    const totalPages = Math.ceil(sortedQuests.length / itemsPerPage);
+
+    // Event handlers
     const handleEdit = (quest: Quest) => {
         setSelectedQuest(quest);
         setShowCreate(true);
@@ -135,9 +209,14 @@ export default function AdminQuestList() {
         setShowCreate(false);
     };
 
-    const handleOrderChange = async () => {
+    const handleOrderChange = async (newQuests: QuestWithRelations[]) => {
+        setSortedQuests(newQuests);
+        setFilteredQuests(newQuests);
+    };
+
+    const handleSaveOrderChange = async () => {
         const result = await updateQuestOrder({
-            quests: filteredQuests.map((quest) => ({
+            quests: sortedQuests.map((quest) => ({
                 id: quest.id,
                 order: quest.order ?? 0,
             })),
@@ -157,179 +236,52 @@ export default function AdminQuestList() {
         });
 
         if (result) {
-            toast.success(`『${quest.title}』 퀘스트가 활성화되었습니다.`);
+            toast.success(
+                `『${quest.title}』 퀘스트가 ${
+                    quest.isActive ? "비활성화" : "활성화"
+                }되었습니다.`
+            );
         } else {
-            toast.success(`『${quest.title}』 퀘스트 비활성화되었습니다.`);
+            toast.error(`『${quest.title}』 퀘스트 상태 변경에 실패했습니다.`);
         }
     };
 
-    if (isLoading) return <div>로딩 중</div>;
-    if (error) return <div>오류 발생: {error.message}</div>;
+    // Statistics
+    const stats = useMemo(() => {
+        const total = filteredQuests.length;
+        const active = filteredQuests.filter((q) => q.isActive).length;
+        const url = filteredQuests.filter((q) => q.questType === "URL").length;
+        const referral = filteredQuests.filter(
+            (q) => q.questType === "REFERRAL"
+        ).length;
+        const world = filteredQuests.filter((q) => !q.artistId).length;
+        const exclusive = filteredQuests.filter((q) => q.artistId).length;
 
-    function SortableQuestRow({ quest }: { quest: QuestWithRelations }) {
-        const { attributes, listeners, setNodeRef, transform, transition } =
-            useSortable({ id: quest.id });
+        return { total, active, url, referral, world, exclusive };
+    }, [filteredQuests]);
 
-        const style = {
-            transform: transform
-                ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-                : undefined,
-            transition,
-        };
-
+    if (isLoading) {
         return (
-            <tr
-                ref={setNodeRef}
-                style={style}
-                className="divide-x divide-[rgba(255,255,255,0.1)] h-[50px]"
-            >
-                {showOrderChange && (
-                    <td className="px-1 py-1">
-                        <button
-                            className="cursor-grab p-1 hover:bg-accent rounded"
-                            {...attributes}
-                            {...listeners}
-                        >
-                            <GripVertical className="h-4 w-4" />
-                        </button>
-                    </td>
-                )}
-                <td className="px-2 py-2 flex justify-center items-center">
-                    {quest.icon ? (
-                        <img
-                            src={quest.icon}
-                            alt={quest.title}
-                            className="w-[30px] h-[30px] object-contain rounded"
-                        />
-                    ) : (
-                        <div className="w-[30px] h-[30px] bg-muted rounded" />
-                    )}
-                </td>
-                <td className="px-4 py-2">{quest.title}</td>
-                <td className="px-4 py-2">
-                    <span
-                        className={
-                            quest.artistId ? "text-blue-400" : "text-gray-400"
-                        }
-                    >
-                        {quest.artist?.name || "World"}
-                    </span>
-                </td>
-                <td className="px-4 py-2">
-                    {quest.rewardAmount} {quest.rewardAsset?.symbol || ""}
-                </td>
-                <td className="px-4 py-2">
-                    {quest.repeatable
-                        ? `O (${quest.repeatableCount ?? "무제한"})`
-                        : "X"}
-                </td>
-                <td className="px-4 py-2">
-                    {quest.startDate ? formatDate(quest.startDate) : "-"}
-                </td>
-                <td className="px-4 py-2">
-                    {quest.endDate ? formatDate(quest.endDate) : "-"}
-                </td>
-                <td className="px-4 py-2">
-                    <Switch
-                        checked={quest.isActive}
-                        onCheckedChange={() => handleActiveChange(quest)}
-                    />
-                </td>
-                <td className="px-4 py-2">
-                    <div className="flex gap-2 justify-center">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                                handleEdit(quest);
-                            }}
-                        >
-                            수정
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDelete(quest)}
-                        >
-                            삭제
-                        </Button>
-                    </div>
-                </td>
-            </tr>
+            <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                    <RefreshCw className="w-8 h-8 animate-spin text-green-400 mx-auto mb-4" />
+                    <p className="text-slate-400">퀘스트를 불러오는 중...</p>
+                </div>
+            </div>
         );
     }
 
-    function TableView() {
-        const sensors = useSensors(
-            useSensor(PointerSensor),
-            useSensor(KeyboardSensor, {
-                coordinateGetter: sortableKeyboardCoordinates,
-            })
-        );
-
-        const handleDragEnd = (event: any) => {
-            const { active, over } = event;
-
-            if (active.id !== over.id) {
-                setFilteredQuests((items) => {
-                    const oldIndex = items.findIndex(
-                        (item) => item.id === active.id
-                    );
-                    const newIndex = items.findIndex(
-                        (item) => item.id === over.id
-                    );
-
-                    return arrayMove(items, oldIndex, newIndex).map(
-                        (quest, index) => ({
-                            ...quest,
-                            order: index * 10,
-                        })
-                    );
-                });
-            }
-        };
-
+    if (error) {
         return (
-            <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-            >
-                <table className="bg-card min-w-full border border-[rgba(255,255,255,0.2)] text-center">
-                    <thead>
-                        <tr className="bg-secondary text-accent-foreground divide-x divide-[rgba(255,255,255,0.1)]">
-                            {showOrderChange && <th className="px-2 py-2"></th>}
-                            <th className="px-2 py-2">아이콘</th>
-                            <th className="px-4 py-2">제목</th>
-                            <th className="px-4 py-2">분류</th>
-                            <th className="px-4 py-2">보상</th>
-                            <th className="px-4 py-2">반복</th>
-                            <th className="px-4 py-2">시작일</th>
-                            <th className="px-4 py-2">종료일</th>
-                            <th className="px-4 py-2">활성화</th>
-                            <th className="px-4 py-2">기능</th>
-                        </tr>
-                    </thead>
-                    <tbody className="align-middle divide-y text-sm divide-[rgba(255,255,255,0.2)]">
-                        <SortableContext
-                            items={filteredQuests.map((quest) => quest.id)}
-                            strategy={verticalListSortingStrategy}
-                        >
-                            {filteredQuests?.map((quest) => (
-                                <SortableQuestRow
-                                    key={quest.id}
-                                    quest={quest}
-                                />
-                            ))}
-                        </SortableContext>
-                    </tbody>
-                </table>
-            </DndContext>
+            <div className="text-center py-12">
+                <p className="text-red-400">오류 발생: {error.message}</p>
+            </div>
         );
     }
 
     return (
-        <div className="overflow-x-auto">
+        <div className="space-y-6">
+            {/* Modal */}
             {showCreate && (
                 <AdminQuestCreate
                     onClose={handleCreateModalClose}
@@ -340,125 +292,301 @@ export default function AdminQuestList() {
                 />
             )}
 
-            <div className="flex gap-2 mb-4 justify-between">
-                <div className="flex gap-2 items-center">
-                    <span className="text-sm text-muted-foreground">
-                        전체 퀘스트: {quests?.items?.length || 0}개
-                        {questFilter.artistId && (
-                            <span className="ml-2 text-blue-400">
-                                (
-                                {
-                                    artists?.find(
-                                        (a) => a.id === questFilter.artistId
-                                    )?.name
-                                }{" "}
-                                필터링됨)
-                            </span>
-                        )}
-                    </span>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-white">
+                        퀘스트 관리
+                    </h1>
+                    <p className="text-slate-400 mt-1">
+                        사용자 퀘스트와 보상을 관리하세요
+                    </p>
                 </div>
-                <div className="flex gap-2">
-                    {showOrderChange && (
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setShowOrderChange(false);
-                                filteringQuests();
-                            }}
-                        >
-                            순서 변경 취소
-                        </Button>
-                    )}
+                <div className="flex items-center gap-3">
                     <Button
-                        variant={showOrderChange ? "default" : "outline"}
-                        onClick={() => {
-                            if (showOrderChange) {
-                                handleOrderChange().catch((err) => {
-                                    console.error(err);
-                                });
-                            } else {
-                                setShowOrderChange(true);
-                            }
-                        }}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.refresh()}
+                        className="bg-slate-700/50 border-slate-600 hover:bg-slate-600 text-white"
                     >
-                        {showOrderChange
-                            ? "순서 변경 사항 저장"
-                            : "퀘스트 순서 변경하기"}
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        새로고침
                     </Button>
-                    <Button onClick={() => setShowCreate(true)}>
+                    <Button
+                        onClick={() => setShowCreate(true)}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
                         퀘스트 생성
                     </Button>
                 </div>
             </div>
 
-            {/* Artist Filter Section */}
-            <div className="flex gap-2 mb-4 items-center">
-                <span className="text-sm font-medium">아티스트 필터:</span>
-                <Button
-                    size="sm"
-                    variant={!questFilter.artistId ? "default" : "outline"}
-                    onClick={() => setQuestFilter({ artistId: "" })}
-                >
-                    전체 보기
-                </Button>
+            {/* Statistics Dashboard */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                {/* Total Quests */}
+                <Card className="p-4 bg-gradient-to-br from-slate-900/50 to-slate-800/50 border-slate-700/50">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-slate-400">
+                                전체 퀘스트
+                            </p>
+                            <p className="text-2xl font-bold text-white">
+                                {stats.total}
+                            </p>
+                        </div>
+                        <div className="p-2 bg-green-500/20 rounded-lg">
+                            <BarChart3 className="w-6 h-6 text-green-400" />
+                        </div>
+                    </div>
+                </Card>
 
-                {artists && artists.length > 0 && (
-                    <Popover open={open} onOpenChange={setOpen}>
-                        <PopoverTrigger asChild>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={open}
-                                className="w-[200px] justify-between"
-                            >
-                                {questFilter.artistId
-                                    ? artists.find(
-                                          (artist: Artist) =>
-                                              artist.id === questFilter.artistId
-                                      )?.name
-                                    : "아티스트 선택..."}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[200px] p-0">
-                            <Command>
-                                <CommandInput placeholder="아티스트 검색..." />
-                                <CommandEmpty>
-                                    아티스트를 찾을 수 없습니다.
-                                </CommandEmpty>
-                                <CommandGroup>
-                                    {artists.map((artist: Artist) => (
-                                        <CommandItem
-                                            key={artist.id}
-                                            value={artist.name}
-                                            onSelect={() => {
-                                                setQuestFilter({
-                                                    artistId: artist.id,
-                                                });
-                                                setOpen(false);
-                                            }}
-                                        >
-                                            <Check
-                                                className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    questFilter.artistId ===
-                                                        artist.id
-                                                        ? "opacity-100"
-                                                        : "opacity-0"
-                                                )}
-                                            />
-                                            {artist.name}
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                )}
+                {/* Active Quests */}
+                <Card className="p-4 bg-gradient-to-br from-green-900/20 to-green-800/20 border-green-700/50">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-green-400">
+                                활성 퀘스트
+                            </p>
+                            <p className="text-2xl font-bold text-white">
+                                {stats.active}
+                            </p>
+                        </div>
+                        <div className="p-2 bg-green-500/20 rounded-lg">
+                            <BarChart3 className="w-6 h-6 text-green-400" />
+                        </div>
+                    </div>
+                </Card>
+
+                {/* URL Quests */}
+                <Card className="p-4 bg-gradient-to-br from-blue-900/20 to-blue-800/20 border-blue-700/50">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-blue-400">URL 퀘스트</p>
+                            <p className="text-2xl font-bold text-white">
+                                {stats.url}
+                            </p>
+                        </div>
+                        <div className="p-2 bg-blue-500/20 rounded-lg">
+                            <Link className="w-6 h-6 text-blue-400" />
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Referral Quests */}
+                <Card className="p-4 bg-gradient-to-br from-purple-900/20 to-purple-800/20 border-purple-700/50">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-purple-400">
+                                추천 퀘스트
+                            </p>
+                            <p className="text-2xl font-bold text-white">
+                                {stats.referral}
+                            </p>
+                        </div>
+                        <div className="p-2 bg-purple-500/20 rounded-lg">
+                            <UserPlus className="w-6 h-6 text-purple-400" />
+                        </div>
+                    </div>
+                </Card>
+
+                {/* World Quests */}
+                <Card className="p-4 bg-gradient-to-br from-cyan-900/20 to-cyan-800/20 border-cyan-700/50">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-cyan-400">
+                                World 퀘스트
+                            </p>
+                            <p className="text-2xl font-bold text-white">
+                                {stats.world}
+                            </p>
+                        </div>
+                        <div className="p-2 bg-cyan-500/20 rounded-lg">
+                            <BarChart3 className="w-6 h-6 text-cyan-400" />
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Exclusive Quests */}
+                <Card className="p-4 bg-gradient-to-br from-pink-900/20 to-pink-800/20 border-pink-700/50">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-pink-400">
+                                아티스트 전용
+                            </p>
+                            <p className="text-2xl font-bold text-white">
+                                {stats.exclusive}
+                            </p>
+                        </div>
+                        <div className="p-2 bg-pink-500/20 rounded-lg">
+                            <BarChart3 className="w-6 h-6 text-pink-400" />
+                        </div>
+                    </div>
+                </Card>
             </div>
 
-            <TableView />
+            {/* Filters */}
+            <QuestsFilter
+                filter={filter}
+                onFilterChange={setFilter}
+                artists={artists || []}
+                assets={assets?.assets || []}
+            />
+
+            {/* View Controls */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-slate-400">보기:</span>
+                        <div className="flex items-center bg-slate-700/50 rounded-lg p-1">
+                            <Button
+                                size="sm"
+                                variant={
+                                    viewMode === "table" ? "secondary" : "ghost"
+                                }
+                                onClick={() => setViewMode("table")}
+                                className="h-8 px-3"
+                            >
+                                <List className="w-4 h-4" />
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant={
+                                    viewMode === "cards" ? "secondary" : "ghost"
+                                }
+                                onClick={() => setViewMode("cards")}
+                                className="h-8 px-3"
+                            >
+                                <LayoutGrid className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Order change toggle */}
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant={showOrderChange ? "secondary" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                                if (showOrderChange) {
+                                    setShowOrderChange(false);
+                                } else {
+                                    setShowOrderChange(true);
+                                }
+                            }}
+                            className="bg-slate-700/50 border-slate-600 hover:bg-slate-600 text-white"
+                        >
+                            <GripVertical className="w-4 h-4 mr-2" />
+                            {showOrderChange ? "순서 변경 취소" : "순서 변경"}
+                        </Button>
+
+                        {showOrderChange && (
+                            <Button
+                                size="sm"
+                                onClick={handleSaveOrderChange}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                                변경사항 저장
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-slate-300">
+                        {stats.total}개 퀘스트
+                    </Badge>
+                    {filter.search && (
+                        <Badge
+                            variant="outline"
+                            className="text-blue-300 border-blue-500/50"
+                        >
+                            {`"${filter.search}" 검색중`}
+                        </Badge>
+                    )}
+                </div>
+            </div>
+
+            {/* Content */}
+            {viewMode === "table" ? (
+                <QuestsTable
+                    quests={paginatedQuests}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onActiveChange={handleActiveChange}
+                    onOrderChange={handleOrderChange}
+                    showOrderChange={showOrderChange}
+                    onToggleOrderChange={() =>
+                        setShowOrderChange(!showOrderChange)
+                    }
+                />
+            ) : (
+                <QuestsCards
+                    quests={paginatedQuests}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onActiveChange={handleActiveChange}
+                />
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-center">
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious
+                                    onClick={() =>
+                                        setCurrentPage(
+                                            Math.max(1, currentPage - 1)
+                                        )
+                                    }
+                                    className={
+                                        currentPage === 1
+                                            ? "pointer-events-none opacity-50"
+                                            : "cursor-pointer"
+                                    }
+                                />
+                            </PaginationItem>
+                            {[...Array(totalPages)].map((_, index) => {
+                                const pageNumber = index + 1;
+                                return (
+                                    <PaginationItem key={pageNumber}>
+                                        <PaginationLink
+                                            onClick={() =>
+                                                setCurrentPage(pageNumber)
+                                            }
+                                            isActive={
+                                                currentPage === pageNumber
+                                            }
+                                            className="cursor-pointer"
+                                        >
+                                            {pageNumber}
+                                        </PaginationLink>
+                                    </PaginationItem>
+                                );
+                            })}
+                            <PaginationItem>
+                                <PaginationNext
+                                    onClick={() =>
+                                        setCurrentPage(
+                                            Math.min(
+                                                totalPages,
+                                                currentPage + 1
+                                            )
+                                        )
+                                    }
+                                    className={
+                                        currentPage === totalPages
+                                            ? "pointer-events-none opacity-50"
+                                            : "cursor-pointer"
+                                    }
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
+            )}
         </div>
     );
 }
