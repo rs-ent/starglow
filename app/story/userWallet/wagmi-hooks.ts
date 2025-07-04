@@ -184,7 +184,6 @@ export function useWagmiConnection() {
                 }
             } catch (error) {
                 console.error("Failed to process wallet connection:", error);
-                toast.error("Failed to save wallet connection");
 
                 // 에러 발생 시 처리된 주소에서 제거하여 재시도 가능하게 함
                 processedAddresses.current.delete(address);

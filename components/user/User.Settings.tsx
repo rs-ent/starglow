@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils/tailwind";
 import UserSettingsProfile from "./User.Settings.Profile";
 import UserSettingsReferral from "./User.Settings.Referral";
 
+import SignOut from "@/components/atoms/SignOut";
+
 import type { Player, ReferralLog } from "@prisma/client";
 import type { User } from "next-auth";
 
@@ -108,26 +110,7 @@ export default function UserSettings({
                         </div>
                     </div>
 
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleSignOut}
-                        className={cn(
-                            "bg-gradient-to-r from-red-500 to-pink-500",
-                            "text-white font-bold rounded-[6px]",
-                            "hover:from-red-600 hover:to-pink-600",
-                            "transition-all duration-300 shadow-lg",
-                            "hover:shadow-red-500/25 hover:shadow-2xl",
-                            "flex items-center gap-2",
-                            getResponsiveClass(10).textClass,
-                            getResponsiveClass(20).paddingClass
-                        )}
-                    >
-                        <LogOut
-                            className={cn(getResponsiveClass(15).frameClass)}
-                        />
-                        Sign Out
-                    </motion.button>
+                    <SignOut />
                 </div>
             </motion.section>
         </div>

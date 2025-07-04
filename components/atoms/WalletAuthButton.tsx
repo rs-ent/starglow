@@ -32,29 +32,23 @@ export default function WalletAuthButton({
     const connectors = useConnectors();
 
     const handleConnect = useCallback(async () => {
-        // 이미 연결되어 있으면 리다이렉트
         if (isConnected) {
             window.location.href = callbackUrl;
             return;
         }
 
-        // provider.id에 해당하는 커넥터 찾기
         const connector = connectors.find((c) => {
-            // MetaMask 처리
             if (provider.id === "metamask") {
                 return c.id === "metaMask" || c.name === "MetaMask";
             }
-            // WalletConnect 처리
             if (provider.id === "walletconnect") {
                 return c.id === "walletConnect" || c.name === "WalletConnect";
             }
-            // Coinbase Wallet 처리
             if (provider.id === "coinbase") {
                 return (
                     c.id === "coinbaseWallet" || c.name === "Coinbase Wallet"
                 );
             }
-            // 기타 지갑
             return c.id.toLowerCase() === provider.id.toLowerCase();
         });
 
