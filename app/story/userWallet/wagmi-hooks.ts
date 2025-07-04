@@ -53,7 +53,6 @@ export function useWagmiConnection() {
     });
     const connections = useConnections();
 
-    // 연결 처리 중복 방지를 위한 ref
     const isProcessingConnection = useRef(false);
     const callbackUrlRef = useRef<string | null>(null);
     const processedAddresses = useRef<Set<string>>(new Set());
@@ -77,20 +76,17 @@ export function useWagmiConnection() {
         isErrorUpdateWallet,
     } = useUserWallet();
 
-    // 현재 네트워크 정보
     const currentNetwork = storyNetworks
         ? (storyNetworks as BlockchainNetwork[]).find(
               (network: BlockchainNetwork) => network.chainId === chainId
           )
         : null;
 
-    // Wagmi 에러 처리
     const handleWagmiError = useCallback(
         (error: Error) => {
             if (error instanceof BaseError) {
                 const errorMessage = error.shortMessage || error.message;
 
-                // 사용자 친화적인 에러 메시지
                 if (error.name === "UserRejectedRequestError") {
                     toast.info("Connection request was cancelled");
                 } else if (error.name === "ChainMismatchError") {
@@ -114,7 +110,6 @@ export function useWagmiConnection() {
         [toast]
     );
 
-    // 지갑 연결
     const handleConnect = useCallback(
         async (selectedConnector: Connector, callbackUrl?: string) => {
             try {
@@ -136,19 +131,16 @@ export function useWagmiConnection() {
         [connect, handleWagmiError]
     );
 
-    // 연결 성공 시 처리
     useEffect(() => {
         const processConnection = async () => {
             if (!isConnected || !address || isProcessingConnection.current) {
                 return;
             }
 
-            // 이미 처리된 주소인지 확인
             if (processedAddresses.current.has(address)) {
                 return;
             }
 
-            // 현재 연결된 커넥터 찾기
             const currentConnection = connections.find((conn) =>
                 conn.accounts.includes(address)
             );
@@ -184,8 +176,6 @@ export function useWagmiConnection() {
                 }
             } catch (error) {
                 console.error("Failed to process wallet connection:", error);
-
-                // 에러 발생 시 처리된 주소에서 제거하여 재시도 가능하게 함
                 processedAddresses.current.delete(address);
             } finally {
                 isProcessingConnection.current = false;
@@ -202,6 +192,38 @@ export function useWagmiConnection() {
         session?.user,
         toast,
     ]);
+
+    useEffect(() => {
+        const handleExternalDisconnect = async () => {
+            // 지갑이 연결 해제되었고, 이전에 처리된 주소가 있는 경우
+            if (!isConnected && processedAddresses.current.size > 0) {
+                const lastAddress = Array.from(processedAddresses.current)[0];
+
+                try {
+                    // DB에서 지갑 상태를 INACTIVE로 업데이트
+                    if (lastAddress && session?.user?.id) {
+                        await updateWalletAsync({
+                            userId: session.user.id,
+                            walletAddress: lastAddress,
+                            status: WalletStatus.INACTIVE,
+                        });
+                    }
+
+                    // 처리된 주소 목록 초기화
+                    processedAddresses.current.clear();
+
+                    toast.info("Wallet disconnected externally");
+                } catch (error) {
+                    console.error(
+                        "Failed to handle external disconnect:",
+                        error
+                    );
+                }
+            }
+        };
+
+        handleExternalDisconnect();
+    }, [isConnected, session?.user?.id, updateWalletAsync, toast]);
 
     // 체인 전환
     const handleSwitchChain = useCallback(
