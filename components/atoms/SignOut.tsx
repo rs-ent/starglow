@@ -21,7 +21,7 @@ export default memo(function SignOut() {
             setIsSigningOut(true);
             if (isConnected) {
                 await disconnect();
-                toast.success("Wallet disconnected");
+                toast.success("Wallet Disconnected");
             }
 
             // NextAuth 세션 종료
@@ -52,13 +52,8 @@ export default memo(function SignOut() {
                 getResponsiveClass(20).paddingClass
             )}
         >
-            <LogOut
-                className={cn(
-                    getResponsiveClass(15).frameClass,
-                    isSigningOut && "animate-spin"
-                )}
-            />
-            {isSigningOut ? "Signing Out..." : "Sign Out"}
+            <LogOut className={cn(getResponsiveClass(15).frameClass)} />
+            {isSigningOut ? "Wait..." : "Sign Out"}
         </motion.button>
     );
 });

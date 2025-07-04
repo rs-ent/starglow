@@ -3,7 +3,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
 
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -28,10 +27,6 @@ export default function UserSettings({
     player,
     referralLogs,
 }: UserSettingsProps) {
-    const handleSignOut = async () => {
-        await signOut({ callbackUrl: "/?signedOut=true" });
-    };
-
     return (
         <div
             className={cn(
