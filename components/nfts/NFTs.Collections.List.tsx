@@ -15,7 +15,6 @@ import { Vector3 } from "three";
 
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { useViewportTextureManager } from "@/lib/utils/smartTextureManager";
 
 import NFTsCollectionsCard3DR3F from "./NFTs.Collections.Card.R3F";
 import PartialLoading from "../atoms/PartialLoading";
@@ -24,6 +23,8 @@ import type { SPG } from "@/app/story/spg/actions";
 import type { WebKitGestureEvent } from "@use-gesture/react";
 import type { Mesh } from "three";
 import { useSPG } from "@/app/story/spg/hooks";
+import { fetchURI } from "@/app/story/metadata/actions";
+import { prefetchTextures } from "@/lib/utils/useCachedTexture";
 
 interface NFTsCollectionsListProps {
     initialTargetCameraZ?: number;
@@ -85,8 +86,9 @@ export default function NFTsCollectionsList({
     const containerRef = useRef<HTMLDivElement>(null);
     const [isPinching, setIsPinching] = useState(false);
     const [confirmedAlpha, setConfirmedAlpha] = useState(1);
+    const [isPreloaded, setIsPreloaded] = useState(false);
 
-    const { getSPGsData, getSPGsIsLoading } = useSPG({
+    const { getSPGsData } = useSPG({
         getSPGsInput: { isListed: true },
     });
 
@@ -117,21 +119,6 @@ export default function NFTsCollectionsList({
             return a.name.localeCompare(b.name);
         });
     }, [getSPGsData]);
-
-    // 스마트 텍스처 매니저 사용 (성능 최적화)
-    const textureItems = useMemo(() => {
-        if (!sortedSPGsData) return [];
-        return sortedSPGsData.map((spg) => ({
-            id: spg.id,
-            imageUrl: spg.imageUrl || "",
-        }));
-    }, [sortedSPGsData]);
-
-    const {
-        getTexture,
-        isTextureLoading,
-        isTextureLoaded,
-    } = useViewportTextureManager(textureItems, selected, 3);
 
     const handleDrag = useCallback(
         (state: any) => {
@@ -288,12 +275,6 @@ export default function NFTsCollectionsList({
             const x = Math.sin(angle) * radius;
             const z = Math.cos(angle) * radius - radius;
             const rotationY = angle;
-
-            // 텍스처 정보 전달
-            const texture = getTexture(spg.id);
-            const textureLoading = isTextureLoading(spg.imageUrl || "");
-            const textureIsLoaded = isTextureLoaded(spg.imageUrl || "");
-
             return (
                 <NFTsCollectionsCard3DR3F
                     key={i}
@@ -304,10 +285,6 @@ export default function NFTsCollectionsList({
                     onClick={() => handleClickCollection(spg.id, false)}
                     onBuyNowClick={() => handleClickCollection(spg.id, true)}
                     confirmedAlpha={confirmedAlpha}
-                    // 텍스처 정보 전달
-                    preloadedTexture={texture}
-                    textureLoading={textureLoading}
-                    textureLoaded={textureIsLoaded}
                 />
             );
         },
@@ -319,11 +296,9 @@ export default function NFTsCollectionsList({
             positionY,
             confirmedAlpha,
             handleClickCollection,
-            getTexture,
-            isTextureLoading,
-            isTextureLoaded,
         ]
     );
+
     useEffect(() => {
         const handleResize = () => {
             setWidth(window.innerWidth);
@@ -349,6 +324,40 @@ export default function NFTsCollectionsList({
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
+    useEffect(() => {
+        let cancelled = false;
+        async function preload() {
+            if (!sortedSPGsData) {
+                setIsPreloaded(true);
+                return;
+            }
+
+            const urls = (
+                await Promise.all(
+                    sortedSPGsData.map(async (c) => {
+                        if (c.imageUrl) return c.imageUrl;
+                        if (!c.contractURI) return null;
+
+                        const contractURI = c.contractURI;
+                        const metadata = await fetchURI({ uri: contractURI });
+                        return metadata?.image || null;
+                    })
+                )
+            ).filter(Boolean) as string[];
+            if (cancelled) return;
+            if (urls.length === 0) {
+                setIsPreloaded(true);
+                return;
+            }
+            await prefetchTextures(urls);
+            if (!cancelled) setIsPreloaded(true);
+        }
+        void preload();
+        return () => {
+            cancelled = true;
+        };
+    }, [sortedSPGsData]);
+
     return (
         <div
             {...bind()}
@@ -362,23 +371,20 @@ export default function NFTsCollectionsList({
                     getResponsiveClass(45).textClass
                 )}
             >
-                NFTs
+                Glow
             </h2>
 
-            {getSPGsIsLoading ? (
-                <PartialLoading text="Loading..." />
-            ) : !sortedSPGsData || sortedSPGsData.length === 0 ? (
-                <div className="flex items-center justify-center h-full">
-                    <p className="text-center text-[rgba(255,255,255,0.8)]">
-                        No collections found
-                    </p>
-                </div>
-            ) : (
+            <p
+                className={cn(
+                    "text-center text-[rgba(255,255,255,0.8)]",
+                    getResponsiveClass(10).textClass
+                )}
+            >
+                GLOW AND GROW WITH YOUR STAR
+            </p>
+            {isPreloaded ? (
                 <Canvas
-                    camera={{
-                        position: [0, 0, targetCameraZ],
-                        fov: 40,
-                    }}
+                    camera={{ position: [0, 0, targetCameraZ], fov: 40 }}
                     style={{
                         width: "100%",
                         display: "block",
@@ -472,8 +478,10 @@ export default function NFTsCollectionsList({
                         confirmedAlpha={confirmedAlpha}
                     />
 
-                    {sortedSPGsData && sortedSPGsData.map(renderCollection)}
+                    {sortedSPGsData?.map(renderCollection)}
                 </Canvas>
+            ) : (
+                <PartialLoading text="Loading..." />
             )}
         </div>
     );
