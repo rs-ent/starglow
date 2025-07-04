@@ -21,6 +21,7 @@ import type {
 
 export interface CreateArtistInput {
     name: string;
+    order?: number;
     description?: string;
     logoUrl?: string;
     imageUrl?: string;
@@ -37,6 +38,8 @@ export interface CreateArtistInput {
     foregroundColors?: string[];
     collectionContractIds?: string[];
     playerIds?: string[];
+    hidden?: boolean;
+    code?: string;
 }
 
 export async function createArtist(input: CreateArtistInput): Promise<Artist> {
@@ -209,6 +212,7 @@ export async function getArtists(
 export interface UpdateArtistInput {
     id: string;
     name?: string;
+    order?: number;
     description?: string;
     logoUrl?: string;
     imageUrl?: string;
@@ -225,6 +229,8 @@ export interface UpdateArtistInput {
     foregroundColors?: string[];
     collectionContractIds?: string[];
     playerIds?: string[];
+    hidden?: boolean;
+    code?: string;
 }
 
 export async function updateArtist(input: UpdateArtistInput): Promise<Artist> {
@@ -273,6 +279,34 @@ export async function updateArtist(input: UpdateArtistInput): Promise<Artist> {
     } catch (error) {
         console.error(error);
         throw new Error("Failed to update artist");
+    }
+}
+
+export interface UpdateArtistOrderInput {
+    orders: {
+        id: string;
+        order: number;
+    }[];
+}
+
+export async function updateArtistOrder(
+    input: UpdateArtistOrderInput
+): Promise<boolean> {
+    try {
+        await prisma.$transaction(async (tx) => {
+            const updatePromises = input.orders.map(({ id, order }) =>
+                tx.artist.update({
+                    where: { id },
+                    data: { order },
+                })
+            );
+            await Promise.all(updatePromises);
+        });
+
+        return true;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to update artist order");
     }
 }
 

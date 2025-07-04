@@ -873,6 +873,7 @@ Table NFTEvent {
 
 Table Artist {
   id String [pk]
+  order Int [not null, default: 0]
   name String [not null]
   description String
   logoUrl String
@@ -891,6 +892,7 @@ Table Artist {
   code String [unique]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  hidden Boolean [not null, default: false]
   feeds ArtistFeed [not null]
   members ArtistMember [not null]
   messages ArtistMessage [not null]

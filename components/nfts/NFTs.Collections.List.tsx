@@ -255,11 +255,17 @@ export default function NFTsCollectionsList({
                     setConfirmedAlpha(2.5);
                 }
             } else {
+                const len = sortedSPGsData.length;
                 const diff = index - selected;
-                let target = diff > 0 ? selected + 1 : selected - 1;
-                if (target < 0) target = sortedSPGsData.length - 1;
-                if (target >= sortedSPGsData.length) target = 0;
-                setSelected(target);
+                let nextSelected = selected;
+
+                if (diff > 0) {
+                    nextSelected = selected === 0 ? len - 1 : selected + 1;
+                } else {
+                    nextSelected = selected === len - 1 ? 0 : selected - 1;
+                }
+
+                setSelected(nextSelected);
                 setConfirmedAlpha(1);
                 setTargetCameraZ(cameraZByWidth);
             }

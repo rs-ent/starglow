@@ -8,6 +8,7 @@ import {
     createArtist,
     deleteArtist,
     updateArtist,
+    updateArtistOrder,
     createArtistMessage,
     updateArtistMessage,
     deleteArtistMessage,
@@ -83,6 +84,25 @@ export function useUpdateArtist() {
                 .invalidateQueries({
                     queryKey: artistKeys.players(),
                 })
+                .catch((error) => {
+                    console.error(error);
+                });
+        },
+    });
+}
+
+export function useUpdateArtistOrder() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: updateArtistOrder,
+        onSuccess: () => {
+            queryClient
+                .invalidateQueries({ queryKey: artistKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({ queryKey: artistKeys.list() })
                 .catch((error) => {
                     console.error(error);
                 });
