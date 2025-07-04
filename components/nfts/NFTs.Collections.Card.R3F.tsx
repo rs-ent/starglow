@@ -7,6 +7,7 @@ import { animated, useSpring } from "@react-spring/three";
 import { RoundedBox, Text, useCursor } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { DoubleSide, LinearFilter, Vector3 } from "three";
+import * as THREE from "three";
 
 import { useNFT } from "@/app/story/nft/hooks";
 import { formatDate } from "@/lib/utils/format";
@@ -39,6 +40,10 @@ export interface CardMeshProps {
     confirmedAlpha?: number;
     comingSoon?: boolean;
     hiddenDetails?: boolean;
+    // 스마트 텍스처 매니저 관련 props
+    preloadedTexture?: THREE.Texture | null;
+    textureLoading?: boolean;
+    textureLoaded?: boolean;
 }
 
 /**
@@ -54,6 +59,10 @@ export interface NFTsCollectionsCard3DR3FProps {
     confirmedAlpha?: number;
     comingSoon?: boolean;
     hiddenDetails?: boolean;
+    // 스마트 텍스처 매니저 관련 props
+    preloadedTexture?: THREE.Texture | null;
+    textureLoading?: boolean;
+    textureLoaded?: boolean;
 }
 
 const CONSTANTS = {
@@ -259,6 +268,70 @@ const InfoBox = React.memo(function InfoBox({
     );
 });
 
+// 스켈레톤 로딩 애니메이션 컴포넌트
+const SkeletonMaterial = React.memo(function SkeletonMaterial({
+    backgroundColor,
+    foregroundColor,
+}: {
+    backgroundColor: string;
+    foregroundColor: string;
+}) {
+    const materialRef = useRef<THREE.MeshPhysicalMaterial>(null);
+
+    // 색상을 THREE.Color로 변환
+    const bgColor = useMemo(
+        () => new THREE.Color(backgroundColor),
+        [backgroundColor]
+    );
+    const fgColor = useMemo(
+        () => new THREE.Color(foregroundColor),
+        [foregroundColor]
+    );
+
+    useFrame((state) => {
+        if (materialRef.current) {
+            const time = state.clock.getElapsedTime();
+            // 시간에 따른 shimmer 효과 (0-1 범위)
+            const intensity = (Math.sin(time * 3) + 1) * 0.5;
+
+            // 배경색과 전경색을 믹스하여 자연스러운 그라데이션
+            const mixedColor = bgColor.clone().lerp(fgColor, intensity * 0.3);
+
+            // 밝기 조정으로 shimmer 효과
+            const brightness = 0.7 + intensity * 0.4; // 0.7-1.1 범위
+            mixedColor.multiplyScalar(brightness);
+
+            materialRef.current.color.copy(mixedColor);
+            materialRef.current.emissiveIntensity = intensity * 0.15;
+        }
+    });
+
+    // 초기 색상을 배경색 기반으로 설정
+    const initialColor = useMemo(() => {
+        return bgColor.clone().multiplyScalar(0.8); // 약간 어둡게
+    }, [bgColor]);
+
+    const emissiveColor = useMemo(() => {
+        return bgColor.clone().multiplyScalar(0.5); // 배경색 기반 emissive
+    }, [bgColor]);
+
+    return (
+        <meshPhysicalMaterial
+            ref={materialRef}
+            color={initialColor}
+            transparent={true}
+            opacity={0.85}
+            roughness={0.4}
+            metalness={0.3}
+            clearcoat={0.7}
+            clearcoatRoughness={0.4}
+            emissive={emissiveColor}
+            emissiveIntensity={0.1}
+            envMapIntensity={0.6}
+        />
+    );
+});
+
 const CardMesh = React.memo(function CardMesh({
     backgroundColor,
     foregroundColor,
@@ -278,19 +351,16 @@ const CardMesh = React.memo(function CardMesh({
     confirmedAlpha = 1,
     comingSoon = false,
     hiddenDetails = false,
+    // 스마트 텍스처 매니저 관련 props
+    preloadedTexture,
+    textureLoading = false,
+    textureLoaded = false,
 }: CardMeshProps) {
     const meshRef = useRef<Mesh>(null);
     const { camera } = useThree();
 
-    const normalTexture = useCachedTexture(imageUrl, (loadedTexture) => {
-        loadedTexture.minFilter = LinearFilter;
-        loadedTexture.magFilter = LinearFilter;
-        loadedTexture.generateMipmaps = false;
-        loadedTexture.needsUpdate = true;
-    });
-
-    // Then conditionally choose which texture to use
-    const texture = normalTexture;
+    // 스마트 텍스처 매니저에서 전달받은 텍스처 사용
+    const texture = preloadedTexture || null;
 
     const logoTexture = useCachedTexture("/logo/3d.svg", (loadedTexture) => {
         loadedTexture.minFilter = LinearFilter;
@@ -440,11 +510,7 @@ const CardMesh = React.memo(function CardMesh({
         [backgroundColor, detailLevel, emissiveIntensity]
     );
 
-    useEffect(() => {
-        return () => {
-            texture.dispose();
-        };
-    }, [texture]);
+    // 텍스처 dispose는 스마트 텍스처 매니저에서 관리하므로 제거
 
     const {
         scale: buyNowScale,
@@ -525,6 +591,7 @@ const CardMesh = React.memo(function CardMesh({
             <mesh position={[0, 3.3, 0.32]}>
                 <planeGeometry args={[10.56, 7.92]} />
                 {texture && texture.image ? (
+                    // 텍스처가 로드된 경우
                     <meshPhysicalMaterial
                         map={texture}
                         transparent={true}
@@ -538,7 +605,14 @@ const CardMesh = React.memo(function CardMesh({
                         thickness={0.5}
                         envMapIntensity={1}
                     />
+                ) : textureLoading ? (
+                    // 로딩 중일 때 스켈레톤 애니메이션
+                    <SkeletonMaterial
+                        backgroundColor={backgroundColor}
+                        foregroundColor={foregroundColor}
+                    />
                 ) : (
+                    // 로딩 실패 또는 기본 상태
                     <meshPhysicalMaterial
                         color="rgb(78,59,153)"
                         transparent={true}
@@ -673,6 +747,10 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
     onClick,
     onBuyNowClick,
     confirmedAlpha,
+    // 스마트 텍스처 매니저 관련 props
+    preloadedTexture,
+    textureLoading = false,
+    textureLoaded = false,
 }: NFTsCollectionsCard3DR3FProps) {
     const { circulation, isCirculationLoading } = useNFT({
         getCirculationInput: {
@@ -829,6 +907,10 @@ export default React.memo(function NFTsCollectionsCard3DR3F({
             confirmedAlpha={confirmedAlpha}
             comingSoon={comingSoon}
             hiddenDetails={hiddenDetails}
+            // 스마트 텍스처 매니저 관련 props 전달
+            preloadedTexture={preloadedTexture}
+            textureLoading={textureLoading}
+            textureLoaded={textureLoaded}
         />
     );
 });

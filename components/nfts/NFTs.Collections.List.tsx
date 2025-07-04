@@ -15,6 +15,7 @@ import { Vector3 } from "three";
 
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
+import { useViewportTextureManager } from "@/lib/utils/smartTextureManager";
 
 import NFTsCollectionsCard3DR3F from "./NFTs.Collections.Card.R3F";
 import PartialLoading from "../atoms/PartialLoading";
@@ -116,6 +117,23 @@ export default function NFTsCollectionsList({
             return a.name.localeCompare(b.name);
         });
     }, [getSPGsData]);
+
+    // 스마트 텍스처 매니저 사용 (성능 최적화)
+    const textureItems = useMemo(() => {
+        if (!sortedSPGsData) return [];
+        return sortedSPGsData.map((spg) => ({
+            id: spg.id,
+            imageUrl: spg.imageUrl || "",
+        }));
+    }, [sortedSPGsData]);
+
+    const {
+        getTexture,
+        isTextureLoading,
+        isTextureLoaded,
+        loadedCount,
+        loadingCount,
+    } = useViewportTextureManager(textureItems, selected, 3);
 
     const handleDrag = useCallback(
         (state: any) => {
@@ -272,6 +290,12 @@ export default function NFTsCollectionsList({
             const x = Math.sin(angle) * radius;
             const z = Math.cos(angle) * radius - radius;
             const rotationY = angle;
+
+            // 텍스처 정보 전달
+            const texture = getTexture(spg.id);
+            const textureLoading = isTextureLoading(spg.imageUrl || "");
+            const textureIsLoaded = isTextureLoaded(spg.imageUrl || "");
+
             return (
                 <NFTsCollectionsCard3DR3F
                     key={i}
@@ -282,6 +306,10 @@ export default function NFTsCollectionsList({
                     onClick={() => handleClickCollection(spg.id, false)}
                     onBuyNowClick={() => handleClickCollection(spg.id, true)}
                     confirmedAlpha={confirmedAlpha}
+                    // 텍스처 정보 전달
+                    preloadedTexture={texture}
+                    textureLoading={textureLoading}
+                    textureLoaded={textureIsLoaded}
                 />
             );
         },
@@ -293,6 +321,9 @@ export default function NFTsCollectionsList({
             positionY,
             confirmedAlpha,
             handleClickCollection,
+            getTexture,
+            isTextureLoading,
+            isTextureLoaded,
         ]
     );
     useEffect(() => {
@@ -333,7 +364,7 @@ export default function NFTsCollectionsList({
                     getResponsiveClass(45).textClass
                 )}
             >
-                Glow
+                NFTs
             </h2>
 
             {getSPGsIsLoading ? (

@@ -15,7 +15,7 @@ import { WagmiProvider, createConfig, http, createStorage } from "wagmi";
 import { sepolia, storyAeneid } from "wagmi/chains";
 
 import { ModalProvider } from "@/app/hooks/useModalStack";
-import { WalletDisconnectWatcher } from "../components/WalletDisconnectWatcher";
+import { WalletDisconnectWatcher } from "@/components/atoms/WalletDisconnectWatcher";
 
 // 체인 배열 정의
 export const chains = [sepolia, storyAeneid] as const;
