@@ -335,7 +335,6 @@ const SkeletonMaterial = React.memo(function SkeletonMaterial({
 const CardMesh = React.memo(function CardMesh({
     backgroundColor,
     foregroundColor,
-    imageUrl,
     name,
     status,
     dateLabel,
@@ -354,7 +353,6 @@ const CardMesh = React.memo(function CardMesh({
     // 스마트 텍스처 매니저 관련 props
     preloadedTexture,
     textureLoading = false,
-    textureLoaded = false,
 }: CardMeshProps) {
     const meshRef = useRef<Mesh>(null);
     const { camera } = useThree();

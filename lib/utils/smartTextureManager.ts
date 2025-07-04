@@ -7,13 +7,6 @@ interface TextureData {
     refCount: number;
 }
 
-interface TextureRequest {
-    url: string;
-    priority: number;
-    onLoad?: (texture: THREE.Texture) => void;
-    onError?: (error: Error) => void;
-}
-
 class SmartTextureManager {
     private static instance: SmartTextureManager;
     private textureCache = new Map<string, TextureData>();
@@ -70,10 +63,7 @@ class SmartTextureManager {
         });
     }
 
-    async loadTexture(
-        url: string,
-        priority: number = 0
-    ): Promise<THREE.Texture> {
+    async loadTexture(url: string): Promise<THREE.Texture> {
         if (!url) throw new Error("Invalid URL");
 
         // 캐시에서 확인
@@ -217,10 +207,7 @@ export function useSmartTexture(url: string, priority: number = 0) {
 
         // 이미 로드된 텍스처 확인
         if (textureManager.isTextureLoaded(url)) {
-            textureManager
-                .loadTexture(url, priority)
-                .then(setTexture)
-                .catch(setError);
+            textureManager.loadTexture(url).then(setTexture).catch(setError);
             return;
         }
 
@@ -228,7 +215,7 @@ export function useSmartTexture(url: string, priority: number = 0) {
         setError(null);
 
         textureManager
-            .loadTexture(url, priority)
+            .loadTexture(url)
             .then((loadedTexture) => {
                 setTexture(loadedTexture);
                 setIsLoading(false);
@@ -267,7 +254,7 @@ export function useViewportTextureManager(
         items.forEach((item) => {
             if (textureManager.isTextureLoaded(item.imageUrl)) {
                 textureManager
-                    .loadTexture(item.imageUrl, 0)
+                    .loadTexture(item.imageUrl)
                     .then((texture) => {
                         newLoaded.set(item.id, texture);
                         setLoadedTextures((prev) =>
@@ -310,14 +297,8 @@ export function useViewportTextureManager(
         if (toLoad.length > 0) {
             // 우선순위 기반 로딩 (선택된 카드가 가장 높은 우선순위)
             const priorityLoading = toLoad.map((url) => {
-                const itemIndex = items.findIndex(
-                    (item) => item.imageUrl === url
-                );
-                const distance = Math.abs(itemIndex - selectedIndex);
-                const priority = Math.max(0, 10 - distance);
-
                 return textureManager
-                    .loadTexture(url, priority)
+                    .loadTexture(url)
                     .then(() => {
                         setLoadingTextures((prev) => {
                             const newSet = new Set(prev);
@@ -334,9 +315,13 @@ export function useViewportTextureManager(
                     });
             });
 
-            Promise.all(priorityLoading).then(() => {
-                updateLoadedTextures();
-            });
+            Promise.all(priorityLoading)
+                .then(() => {
+                    updateLoadedTextures();
+                })
+                .catch((e) => {
+                    console.error("Failed to update loaded textures", e);
+                });
         }
 
         updateLoadedTextures();

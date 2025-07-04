@@ -32,7 +32,9 @@ export function WalletDisconnectWatcher() {
     }, [isConnected, toast]);
 
     useEffect(() => {
-        handleExternalDisconnect();
+        handleExternalDisconnect().catch((e) => {
+            console.error("Failed to handle external disconnect:", e);
+        });
     }, [handleExternalDisconnect]);
 
     return null;

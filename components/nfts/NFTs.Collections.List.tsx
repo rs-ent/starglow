@@ -131,8 +131,6 @@ export default function NFTsCollectionsList({
         getTexture,
         isTextureLoading,
         isTextureLoaded,
-        loadedCount,
-        loadingCount,
     } = useViewportTextureManager(textureItems, selected, 3);
 
     const handleDrag = useCallback(
