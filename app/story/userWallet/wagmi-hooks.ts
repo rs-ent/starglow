@@ -214,7 +214,9 @@ export function useWagmiConnection() {
             }
         };
 
-        handleExternalDisconnect();
+        handleExternalDisconnect().catch((e) => {
+            console.error("Failed to handle external disconnect:", e);
+        });
     }, [isConnected, toast]);
 
     // 체인 전환
