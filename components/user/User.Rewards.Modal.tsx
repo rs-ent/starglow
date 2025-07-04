@@ -9,7 +9,7 @@ import Slider from "react-slick";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
-import type { PlayerAssetWithAsset } from "./User.Rewards";
+import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets";
 
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";

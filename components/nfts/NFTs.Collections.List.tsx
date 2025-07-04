@@ -89,12 +89,40 @@ export default function NFTsCollectionsList({
         getSPGsInput: { isListed: true },
     });
 
+    const sortedSPGsData = useMemo(() => {
+        if (!getSPGsData) return null;
+
+        return getSPGsData.sort((a, b) => {
+            const aIsNormal = !a.comingSoon && !a.hiddenDetails;
+            const bIsNormal = !b.comingSoon && !b.hiddenDetails;
+
+            const aIsComingSoon = a.comingSoon && !a.hiddenDetails;
+            const bIsComingSoon = b.comingSoon && !b.hiddenDetails;
+
+            const aIsHidden = a.hiddenDetails;
+            const bIsHidden = b.hiddenDetails;
+
+            if (aIsNormal && !bIsNormal) return -1;
+            if (!aIsNormal && bIsNormal) return 1;
+
+            if (aIsComingSoon && !bIsComingSoon && !bIsNormal) return -1;
+            if (!aIsComingSoon && bIsComingSoon && !aIsNormal) return 1;
+
+            if (aIsHidden && !bIsHidden && !bIsNormal && !bIsComingSoon)
+                return -1;
+            if (!aIsHidden && bIsHidden && !aIsNormal && !aIsComingSoon)
+                return 1;
+
+            return a.name.localeCompare(b.name);
+        });
+    }, [getSPGsData]);
+
     const handleDrag = useCallback(
         (state: any) => {
-            if (isPinching || !getSPGsData) {
+            if (isPinching || !sortedSPGsData) {
                 return;
             }
-            const len = getSPGsData.length;
+            const len = sortedSPGsData.length;
             const {
                 movement: [mx],
                 last,
@@ -111,7 +139,7 @@ export default function NFTsCollectionsList({
                 setConfirmedAlpha(1);
             }
         },
-        [selected, getSPGsData, isPinching]
+        [selected, sortedSPGsData, isPinching]
     );
 
     const handleWheel = useCallback(
@@ -124,9 +152,9 @@ export default function NFTsCollectionsList({
         }) => {
             event.preventDefault();
 
-            if (!getSPGsData) return;
+            if (!sortedSPGsData) return;
 
-            const len = getSPGsData.length;
+            const len = sortedSPGsData.length;
             if (Math.abs(dy) > 0.5) {
                 // 최소 임계값으로 민감도 조절
                 let nextSelected = selected;
@@ -144,7 +172,7 @@ export default function NFTsCollectionsList({
                 setTargetCameraZ(cameraZByWidth);
             }
         },
-        [selected, getSPGsData, cameraZByWidth]
+        [selected, sortedSPGsData, cameraZByWidth]
     );
     const handlePinch = useCallback(
         ({
@@ -185,13 +213,13 @@ export default function NFTsCollectionsList({
     );
     const { radius, angleStep } = useMemo(() => {
         const baseRadius = 30;
-        if (!getSPGsData) return { radius: baseRadius, angleStep: 0 };
+        if (!sortedSPGsData) return { radius: baseRadius, angleStep: 0 };
 
-        const len = getSPGsData.length;
+        const len = sortedSPGsData.length;
         const radius = baseRadius + Math.max(0, len - 5) * 0.7;
         const angleStep = (2 * Math.PI) / len;
         return { radius, angleStep };
-    }, [getSPGsData]);
+    }, [sortedSPGsData]);
 
     const CameraLerp = React.memo(function CameraLerp({
         targetCameraZ,
@@ -207,13 +235,15 @@ export default function NFTsCollectionsList({
 
     const handleClickCollection = useCallback(
         (collectionId: string, buyNowClicked: boolean) => {
-            if (!getSPGsData) return;
+            if (!sortedSPGsData) return;
 
-            const index = getSPGsData.findIndex((c) => c.id === collectionId);
+            const index = sortedSPGsData.findIndex(
+                (c) => c.id === collectionId
+            );
             if (buyNowClicked && index !== -1) {
                 const cameraZ = 5;
                 setTargetCameraZ(cameraZ);
-                onBuyNowClick(getSPGsData[index]);
+                onBuyNowClick(sortedSPGsData[index]);
             }
             if (selected === index) {
                 if (!buyNowClicked && confirmedAlpha > 1) {
@@ -225,12 +255,22 @@ export default function NFTsCollectionsList({
                     setConfirmedAlpha(2.5);
                 }
             } else {
-                setSelected(index);
+                const diff = index - selected;
+                let target = diff > 0 ? selected + 1 : selected - 1;
+                if (target < 0) target = sortedSPGsData.length - 1;
+                if (target >= sortedSPGsData.length) target = 0;
+                setSelected(target);
                 setConfirmedAlpha(1);
                 setTargetCameraZ(cameraZByWidth);
             }
         },
-        [getSPGsData, selected, confirmedAlpha, onBuyNowClick, cameraZByWidth]
+        [
+            sortedSPGsData,
+            selected,
+            confirmedAlpha,
+            onBuyNowClick,
+            cameraZByWidth,
+        ]
     );
 
     const renderCollection = useCallback(
@@ -306,7 +346,7 @@ export default function NFTsCollectionsList({
 
             {getSPGsIsLoading ? (
                 <PartialLoading text="Loading..." />
-            ) : !getSPGsData || getSPGsData.length === 0 ? (
+            ) : !sortedSPGsData || sortedSPGsData.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                     <p className="text-center text-[rgba(255,255,255,0.8)]">
                         No collections found
@@ -411,7 +451,7 @@ export default function NFTsCollectionsList({
                         confirmedAlpha={confirmedAlpha}
                     />
 
-                    {getSPGsData && getSPGsData.map(renderCollection)}
+                    {sortedSPGsData && sortedSPGsData.map(renderCollection)}
                 </Canvas>
             )}
         </div>

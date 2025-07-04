@@ -15,7 +15,7 @@ import Funds from "../atoms/Funds";
 import PartialLoading from "../atoms/PartialLoading";
 import { Button } from "../ui/button";
 
-import type { PlayerAssetWithAsset } from "./User.Rewards";
+import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets";
 
 interface UserRewardsModalCardProps {
     playerId?: string;
@@ -58,7 +58,7 @@ function UserRewardsModalCard({
     return (
         <div
             className={cn(
-                "w-full max-w-[1000px] h-full max-h-[85vh] mx-auto",
+                "w-full max-w-[1000px] h-full max-h-[90vh] mx-auto",
                 "flex flex-col",
                 "border border-[rgba(255,255,255,0.1)]",
                 "bg-gradient-to-br from-[#09021B] to-[#311473]",
@@ -148,14 +148,14 @@ function UserRewardsModalCard({
                     <h2
                         className={cn(
                             getResponsiveClass(35).textClass,
-                            "font-bold mb-6"
+                            "font-bold mb-3"
                         )}
                         id="reward-modal-title"
                     >
                         {reward.asset.name}
                     </h2>
 
-                    <div className="flex justify-center mb-6">
+                    <div className="flex justify-center mb-3">
                         <img
                             src="/elements/el03.svg"
                             alt="el03"
@@ -168,7 +168,7 @@ function UserRewardsModalCard({
                         />
                     </div>
 
-                    <div className="flex flex-col items-center gap-2">
+                    <div className="flex flex-col items-center gap-1">
                         <Funds
                             funds={reward.balance}
                             fundsLabel={reward.asset.symbol}
@@ -211,12 +211,17 @@ function UserRewardsModalCard({
                     <div
                         className={cn(
                             "h-full mt-[20px]",
-                            "overflow-y-auto",
                             "scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent"
                         )}
                     >
                         <div className="max-w-[800px] mx-auto pb-2">
-                            <div className="space-y-3 h-[300px] sm:h-[350px] md:h-[400px] lg:h-[450px] xl:h-[500px]">
+                            <div
+                                className={cn(
+                                    "space-y-2 h-[300px] sm:h-[350px] md:h-[400px] lg:h-[450px] xl:h-[500px] overflow-y-auto",
+                                    "scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent",
+                                    "pb-6"
+                                )}
+                            >
                                 {/* 로딩 상태 */}
                                 {isRewardsLogsLoading && (
                                     <div className="py-8">
@@ -260,82 +265,94 @@ function UserRewardsModalCard({
                                     )}
 
                                 {/* 보상 히스토리 목록 */}
-                                {rewardsLogs?.map((log) => (
-                                    <article
-                                        key={log.id}
-                                        className={cn(
-                                            "gradient-border",
-                                            "rounded-[16px]",
-                                            "bg-gradient-to-br from-black/20 to-black/40",
-                                            "p-4",
-                                            "backdrop-blur-sm",
-                                            "transition-transform duration-200 hover:scale-[1.01]"
-                                        )}
-                                    >
-                                        <div className="flex items-center justify-between gap-3">
-                                            <div className="flex-1 min-w-0">
-                                                <p
+                                {rewardsLogs?.map((log) => {
+                                    return (
+                                        <article
+                                            key={log.id}
+                                            className={cn(
+                                                "gradient-border",
+                                                "rounded-[16px]",
+                                                "bg-gradient-to-br from-black/20 to-black/40",
+                                                "p-4",
+                                                "backdrop-blur-sm",
+                                                "transition-all duration-300",
+                                                "hover:bg-gradient-to-br hover:from-white/10 hover:to-white/20"
+                                            )}
+                                        >
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <p
+                                                        className={cn(
+                                                            getResponsiveClass(
+                                                                15
+                                                            ).textClass,
+                                                            "font-semibold",
+                                                            "line-clamp-2"
+                                                        )}
+                                                    >
+                                                        {log.reason}
+                                                    </p>
+                                                    <div className="flex items-center mt-1">
+                                                        <time
+                                                            className={cn(
+                                                                getResponsiveClass(
+                                                                    10
+                                                                ).textClass,
+                                                                "text-white/50",
+                                                                "block"
+                                                            )}
+                                                            title={formatDate(
+                                                                new Date(
+                                                                    log.createdAt
+                                                                )
+                                                            )}
+                                                        >
+                                                            {getRelativeTime(
+                                                                new Date(
+                                                                    log.createdAt
+                                                                )
+                                                            )}
+                                                        </time>
+                                                    </div>
+                                                </div>
+
+                                                <div
                                                     className={cn(
                                                         getResponsiveClass(15)
                                                             .textClass,
-                                                        "font-semibold",
-                                                        "line-clamp-2"
+                                                        "font-main",
+                                                        (log.balanceAfter ??
+                                                            0) -
+                                                            (log.balanceBefore ??
+                                                                0) >=
+                                                            0
+                                                            ? "text-green-400"
+                                                            : "text-red-400"
                                                     )}
                                                 >
-                                                    {log.reason}
-                                                </p>
-                                                <div className="flex items-center mt-1">
-                                                    <time
+                                                    <div
                                                         className={cn(
-                                                            getResponsiveClass(
-                                                                10
-                                                            ).textClass,
-                                                            "text-white/50",
-                                                            "block"
-                                                        )}
-                                                        title={formatDate(
-                                                            new Date(
-                                                                log.createdAt
-                                                            )
+                                                            "flex-shrink-0",
+                                                            "text-right"
                                                         )}
                                                     >
-                                                        {getRelativeTime(
-                                                            new Date(
-                                                                log.createdAt
-                                                            )
-                                                        )}
-                                                    </time>
+                                                        {(log.balanceAfter ??
+                                                            0) -
+                                                            (log.balanceBefore ??
+                                                                0) >=
+                                                        0
+                                                            ? "+"
+                                                            : "-"}
+                                                        {Math.abs(
+                                                            log.amount
+                                                        ).toLocaleString()}{" "}
+                                                        {log.asset?.symbol}
+                                                    </div>
                                                 </div>
                                             </div>
-
-                                            <div
-                                                className={cn(
-                                                    getResponsiveClass(15)
-                                                        .textClass,
-                                                    "font-main",
-                                                    log.amount >= 0
-                                                        ? "text-green-400"
-                                                        : "text-red-400"
-                                                )}
-                                            >
-                                                <div
-                                                    className={cn(
-                                                        "flex-shrink-0",
-                                                        "text-right"
-                                                    )}
-                                                >
-                                                    {log.amount >= 0
-                                                        ? "+"
-                                                        : "-"}
-                                                    {Math.abs(
-                                                        log.amount
-                                                    ).toLocaleString()}{" "}
-                                                    {log.asset?.symbol}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </article>
-                                ))}
+                                        </article>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>

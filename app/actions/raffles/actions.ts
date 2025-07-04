@@ -21,22 +21,16 @@ import type {
     RafflePrizeType,
 } from "@prisma/client";
 
-// ==================== Types & Status Management ====================
-
-// 🎁 단순화된 상품 입력 타입
 export interface RafflePrizeInput {
     title: string;
     description?: string;
     imageUrl?: string;
     order?: number;
 
-    // 📦 수량 = 확률 (핵심!)
-    quantity: number; // 이 상품의 총 개수
+    quantity: number;
 
-    // 🏆 상품 타입
-    type: RafflePrizeType; // "ASSET", "NFT", "EMPTY"
+    type: RafflePrizeType;
 
-    // 💎 레어도 시스템
     rarityTier?:
         | "COSMIC"
         | "STELLAR"
@@ -47,49 +41,39 @@ export interface RafflePrizeInput {
         | "RARE"
         | "UNCOMMON"
         | "COMMON";
-    rarityOrder?: number; // 1(최고) ~ 9(최저)
+    rarityOrder?: number;
 
-    // Asset 상품
     assetId?: string;
     assetAmount?: number;
 
-    // NFT 상품
     spgAddress?: string;
     nftQuantity?: number;
 }
 
-// 🎰 단순화된 래플 생성 입력
 export interface CreateRaffleInput {
     title: string;
     description?: string;
     imgUrl?: string;
     artistId?: string;
 
-    // 📅 날짜 설정
     startDate?: Date;
     endDate: Date;
-    drawDate?: Date; // null이면 즉시 공개
+    drawDate?: Date;
 
-    // ⚡ 공개 방식 (단순화!)
-    instantReveal?: boolean; // 즉시 결과 확인 여부
+    instantReveal?: boolean;
 
-    // 🎯 상품 소진 방식
-    isLimited?: boolean; // true: 수량 소진형 (기본값), false: 고정 확률형
+    isLimited?: boolean;
 
-    // 🎨 UI 표현 (프론트엔드 전용)
-    displayType?: string; // "GACHA", "SCRATCH_CARD", "SLOT_MACHINE", etc.
+    displayType?: string;
 
-    // 🎁 상품 풀 (수량 기반)
     prizes: RafflePrizeInput[];
 
-    // 👥 참가 조건
     maxParticipants?: number;
     entryFeeAssetId?: string;
     entryFeeAmount?: number;
     allowMultipleEntry?: boolean;
     maxEntriesPerPlayer?: number;
 
-    // 🔧 설정
     isPublic?: boolean;
 }
 
@@ -111,7 +95,6 @@ export type RaffleWithDetails = Raffle & {
         winners: number;
         prizes: number;
     };
-    // 계산된 상태
     status?: RaffleStatus;
 };
 
@@ -155,17 +138,6 @@ export type RaffleWinnerWithRelations = RaffleWinner & {
     };
 };
 
-// ==================== 핵심 추첨 로직 (단순화!) ====================
-
-/**
- * 🎲 상품 풀 기반 추첨 로직
- *
- * 예시: 총 1000개 슬롯
- * - 전설 NFT: 1개 (0.1%)
- * - 레어 굿즈: 49개 (4.9%)
- * - 일반 스티커: 200개 (20%)
- * - 꽝: 750개 (75%)
- */
 function drawPrizeFromPool(
     prizes: RafflePrize[],
     isLimited: boolean = true
@@ -173,7 +145,6 @@ function drawPrizeFromPool(
     prize: RafflePrize;
     slotNumber: number;
 } {
-    // 🎯 제한형: 수량 > 0인 상품만, 무제한형: 모든 활성 상품
     const activePrizes = isLimited
         ? prizes.filter((prize) => prize.isActive && prize.quantity > 0)
         : prizes.filter((prize) => prize.isActive);
@@ -199,19 +170,14 @@ function drawPrizeFromPool(
     throw new Error("Invalid prize pool configuration");
 }
 
-// ==================== Update Raffle Input ====================
-
 export interface UpdateRaffleInput extends Partial<CreateRaffleInput> {
-    id: string; // 업데이트할 래플 ID
+    id: string;
 }
-
-// ==================== Create Raffle (단순화!) ====================
 
 export async function createRaffle(
     input: CreateRaffleInput
 ): Promise<RaffleResult<RaffleWithDetails>> {
     try {
-        // 🔒 인증 및 권한 검증
         const session = await requireAuth();
         if (!session?.user?.id) {
             return { success: false, error: "Authentication required" };
@@ -226,7 +192,6 @@ export async function createRaffle(
             return { success: false, error: "User not found" };
         }
 
-        // Admin 또는 Artist 권한 확인
         if (user.role !== "admin" && !user.player?.isArtist) {
             return {
                 success: false,
@@ -234,7 +199,6 @@ export async function createRaffle(
             };
         }
 
-        // Artist인 경우 자신의 래플만 생성 가능
         if (
             user.role !== "admin" &&
             input.artistId &&
@@ -246,7 +210,6 @@ export async function createRaffle(
             };
         }
 
-        // artistId 유효성 검증 및 변환
         let validatedArtistId: string | undefined;
         if (input.artistId && input.artistId.trim() !== "") {
             const artist = await prisma.artist.findUnique({
@@ -263,7 +226,6 @@ export async function createRaffle(
             validatedArtistId = input.artistId;
         }
 
-        // ✅ 기본 입력 검증
         if (!input.title?.trim()) {
             return { success: false, error: "Title is required" };
         }
@@ -290,7 +252,6 @@ export async function createRaffle(
             return { success: false, error: "At least one prize is required" };
         }
 
-        // ✅ 상품 풀 검증
         let totalSlots = 0;
         for (const [index, prize] of input.prizes.entries()) {
             if (!prize.title?.trim()) {
@@ -311,7 +272,6 @@ export async function createRaffle(
 
             totalSlots += prize.quantity;
 
-            // 상품 타입별 검증
             if (prize.type === "ASSET") {
                 if (!prize.assetId || !prize.assetAmount) {
                     return {
@@ -331,7 +291,6 @@ export async function createRaffle(
                     };
                 }
 
-                // Asset 존재 확인
                 const asset = await prisma.asset.findUnique({
                     where: { id: prize.assetId },
                 });
@@ -362,7 +321,6 @@ export async function createRaffle(
                     };
                 }
 
-                // SPG 주소 형식 검증
                 if (!/^0x[a-fA-F0-9]{40}$/.test(prize.spgAddress)) {
                     return {
                         success: false,
@@ -382,9 +340,7 @@ export async function createRaffle(
             }
         }
 
-        // 🏗️ 트랜잭션으로 래플과 상품들 생성
         const raffleResult = await prisma.$transaction(async (tx) => {
-            // 1. Raffle 생성
             const newRaffle = await tx.raffle.create({
                 data: {
                     title: input.title,
@@ -392,38 +348,30 @@ export async function createRaffle(
                     imgUrl: input.imgUrl,
                     artistId: validatedArtistId,
 
-                    // 📅 날짜 설정
                     startDate: input.startDate || new Date(),
                     endDate: input.endDate,
                     drawDate: input.drawDate,
 
-                    // ⚡ 공개 방식
                     instantReveal: input.instantReveal ?? true,
 
-                    // 🎯 상품 소진 방식
                     isLimited: input.isLimited ?? true,
 
-                    // 🎨 UI 표현
                     displayType: input.displayType || "GACHA",
 
-                    // 👥 참가 조건
                     maxParticipants: input.maxParticipants,
                     entryFeeAssetId: input.entryFeeAssetId,
                     entryFeeAmount: input.entryFeeAmount || 0,
                     allowMultipleEntry: input.allowMultipleEntry || false,
                     maxEntriesPerPlayer: input.maxEntriesPerPlayer,
 
-                    // 🔧 설정
                     isPublic: input.isPublic !== false,
                     isActive: true,
 
-                    // 📊 통계
                     totalSlots,
                     totalParticipants: 0,
                 },
             });
 
-            // 2. RafflePrize들 생성
             const prizes = await Promise.all(
                 input.prizes.map(async (prize, index) => {
                     return await tx.rafflePrize.create({
@@ -452,7 +400,6 @@ export async function createRaffle(
             return { raffle: newRaffle, prizes };
         });
 
-        // 완전한 데이터 조회
         const completeRaffle = await prisma.raffle.findUnique({
             where: { id: raffleResult.raffle.id },
             include: {
@@ -474,7 +421,6 @@ export async function createRaffle(
             },
         });
 
-        // 상태 계산 추가
         const raffleWithStatus = {
             ...completeRaffle,
             status: calculateRaffleStatus(
@@ -502,13 +448,10 @@ export async function createRaffle(
     }
 }
 
-// ==================== Update Raffle ====================
-
 export async function updateRaffle(
     input: UpdateRaffleInput
 ): Promise<RaffleResult<RaffleWithDetails>> {
     try {
-        // 🔒 인증 및 권한 검증
         const session = await requireAuth();
         if (!session?.user?.id) {
             return { success: false, error: "Authentication required" };
@@ -523,7 +466,6 @@ export async function updateRaffle(
             return { success: false, error: "User not found" };
         }
 
-        // 기존 래플 조회 및 권한 확인
         const existingRaffle = await prisma.raffle.findUnique({
             where: { id: input.id },
             include: {
@@ -536,7 +478,6 @@ export async function updateRaffle(
             return { success: false, error: "Raffle not found" };
         }
 
-        // Admin 또는 래플 소유자만 수정 가능
         if (
             user.role !== "admin" &&
             (!user.player?.isArtist ||
@@ -548,46 +489,6 @@ export async function updateRaffle(
             };
         }
 
-        // 래플이 이미 시작된 경우 제한적 수정만 허용 (단, dev 환경에서는 제외)
-        const raffleStatus = calculateRaffleStatus(
-            existingRaffle.startDate,
-            existingRaffle.endDate,
-            existingRaffle.drawDate
-        );
-
-        const isDevelopment = process.env.NODE_ENV === "development";
-
-        if (
-            !isDevelopment &&
-            (raffleStatus === "ACTIVE" || raffleStatus === "COMPLETED")
-        ) {
-            // 활성화/완료된 래플은 제한적 수정만 허용 (프로덕션 환경에서만)
-            const allowedFields = [
-                "description",
-                "imgUrl",
-                "isPublic",
-                "isActive",
-                "allowMultipleEntry",
-                "maxEntriesPerPlayer",
-            ];
-            const attemptedFields = Object.keys(input).filter(
-                (key) => key !== "id"
-            );
-            const restrictedFields = attemptedFields.filter(
-                (field) => !allowedFields.includes(field)
-            );
-
-            if (restrictedFields.length > 0) {
-                return {
-                    success: false,
-                    error: `Cannot modify ${restrictedFields.join(
-                        ", "
-                    )} after raffle has started. Only description, image, visibility, and active status can be changed.`,
-                };
-            }
-        }
-
-        // artistId 유효성 검증 및 변환
         let validatedArtistId: string | undefined =
             existingRaffle.artistId || undefined;
         if (input.artistId !== undefined) {
@@ -609,7 +510,6 @@ export async function updateRaffle(
             }
         }
 
-        // ✅ 기본 입력 검증 (변경된 필드만)
         if (input.title !== undefined && !input.title?.trim()) {
             return { success: false, error: "Title is required" };
         }
@@ -640,26 +540,10 @@ export async function updateRaffle(
             };
         }
 
-        // ✅ 상품 풀 검증 (상품이 변경된 경우만)
         let totalSlots = existingRaffle.totalSlots;
         const prizesToUpdate: any[] = [];
 
         if (input.prizes && input.prizes.length > 0) {
-            // 개발 환경에서는 경고 로그만 출력
-            if (isDevelopment && existingRaffle.participants.length > 0) {
-                console.warn(
-                    `⚠️ DEV MODE: Modifying prizes with ${existingRaffle.participants.length} existing participants`
-                );
-            }
-
-            // 프로덕션에서는 참가자가 있으면 상품 변경 제한
-            if (!isDevelopment && existingRaffle.participants.length > 0) {
-                return {
-                    success: false,
-                    error: "Cannot modify prizes after participants have joined (production mode)",
-                };
-            }
-
             totalSlots = 0;
             for (const [index, prize] of input.prizes.entries()) {
                 if (!prize.title?.trim()) {
@@ -680,7 +564,6 @@ export async function updateRaffle(
 
                 totalSlots += prize.quantity;
 
-                // 상품 타입별 검증
                 if (prize.type === "ASSET") {
                     if (!prize.assetId || !prize.assetAmount) {
                         return {
@@ -700,7 +583,6 @@ export async function updateRaffle(
                         };
                     }
 
-                    // Asset 존재 확인
                     const asset = await prisma.asset.findUnique({
                         where: { id: prize.assetId },
                     });
@@ -733,7 +615,6 @@ export async function updateRaffle(
                         };
                     }
 
-                    // SPG 주소 형식 검증
                     if (!/^0x[a-fA-F0-9]{40}$/.test(prize.spgAddress)) {
                         return {
                             success: false,
@@ -754,7 +635,6 @@ export async function updateRaffle(
                     }
                 }
 
-                // 업데이트할 상품 데이터 준비
                 prizesToUpdate.push({
                     title: prize.title,
                     description: prize.description,
@@ -771,9 +651,7 @@ export async function updateRaffle(
             }
         }
 
-        // 🏗️ 트랜잭션으로 래플과 상품들 업데이트
         await prisma.$transaction(async (tx) => {
-            // 1. Raffle 업데이트 (변경된 필드만)
             const updateData: any = {
                 updatedAt: new Date(),
             };
@@ -815,48 +693,12 @@ export async function updateRaffle(
                 data: updateData,
             });
 
-            // 2. 상품이 변경된 경우 안전하게 업데이트/추가
             if (prizesToUpdate.length > 0) {
-                // 기존 상품들 조회
-                const existingPrizes = await tx.rafflePrize.findMany({
-                    where: { raffleId: input.id },
-                    include: {
-                        participants: true,
-                        winners: true,
-                    },
-                });
-
-                // 참가자나 당첨자가 있는 상품은 수정 제한 (개발 환경에서도 안전성 우선)
-                const prizesWithData = existingPrizes.filter(
-                    (prize) =>
-                        prize.participants.length > 0 ||
-                        prize.winners.length > 0
-                );
-
-                if (prizesWithData.length > 0 && !isDevelopment) {
-                    throw new Error(
-                        `Cannot modify prizes that have participants or winners: ${prizesWithData
-                            .map((p) => p.title)
-                            .join(", ")}`
-                    );
-                }
-
-                // 개발 환경에서는 경고만 로그
-                if (prizesWithData.length > 0 && isDevelopment) {
-                    console.warn(
-                        `⚠️ DEV MODE: Modifying prizes with existing data: ${prizesWithData
-                            .map((p) => p.title)
-                            .join(", ")}`
-                    );
-                }
-
-                // 기존 상품들을 비활성화
                 await tx.rafflePrize.updateMany({
                     where: { raffleId: input.id },
                     data: { isActive: false },
                 });
 
-                // 새 상품들 생성
                 await Promise.all(
                     prizesToUpdate.map(async (prize, index) => {
                         return await tx.rafflePrize.create({
@@ -873,7 +715,6 @@ export async function updateRaffle(
             return updatedRaffle;
         });
 
-        // 완전한 데이터 조회
         const completeRaffle = await prisma.raffle.findUnique({
             where: { id: input.id },
             include: {
@@ -895,7 +736,6 @@ export async function updateRaffle(
             },
         });
 
-        // 상태 계산 추가
         const raffleWithStatus = {
             ...completeRaffle,
             status: calculateRaffleStatus(
@@ -922,8 +762,6 @@ export async function updateRaffle(
         };
     }
 }
-
-// ==================== Get Raffles ====================
 
 export interface GetRafflesInput {
     status?: RaffleStatus[];
@@ -965,7 +803,7 @@ export async function getRaffles(
             include: {
                 artist: { select: { id: true, name: true } },
                 prizes: {
-                    where: { isActive: true }, // 🔧 활성화된 상품만 조회
+                    where: { isActive: true },
                     include: {
                         asset: true,
                         spg: true,
@@ -977,7 +815,7 @@ export async function getRaffles(
                     select: {
                         participants: true,
                         winners: true,
-                        prizes: { where: { isActive: true } }, // 🔧 활성화된 상품만 카운트
+                        prizes: { where: { isActive: true } },
                     },
                 },
             },
@@ -986,7 +824,6 @@ export async function getRaffles(
             skip: input?.offset,
         });
 
-        // 상태 계산 추가
         const rafflesWithStatus = raffles.map((raffle) => ({
             ...raffle,
             status: calculateRaffleStatus(
@@ -996,7 +833,6 @@ export async function getRaffles(
             ),
         })) as RaffleWithDetails[];
 
-        // 🔍 상태 필터링 (계산된 상태 기준)
         const filteredRaffles = input?.status
             ? rafflesWithStatus.filter((raffle) =>
                   input.status!.includes(raffle.status!)
@@ -1013,8 +849,6 @@ export async function getRaffles(
     }
 }
 
-// ==================== Get Raffle Details ====================
-
 export async function getRaffleDetails(
     raffleId: string
 ): Promise<RaffleResult<RaffleWithDetails>> {
@@ -1024,7 +858,7 @@ export async function getRaffleDetails(
             include: {
                 artist: { select: { id: true, name: true } },
                 prizes: {
-                    where: { isActive: true }, // 🔧 활성화된 상품만 조회
+                    where: { isActive: true },
                     include: {
                         asset: true,
                         spg: true,
@@ -1077,7 +911,7 @@ export async function getRaffleDetails(
                     select: {
                         participants: true,
                         winners: true,
-                        prizes: { where: { isActive: true } }, // 🔧 활성화된 상품만 카운트
+                        prizes: { where: { isActive: true } },
                     },
                 },
             },
@@ -1087,7 +921,6 @@ export async function getRaffleDetails(
             return { success: false, error: "Raffle not found" };
         }
 
-        // 상태 계산 추가
         const raffleWithStatus = {
             ...raffle,
             status: calculateRaffleStatus(
@@ -1107,8 +940,6 @@ export async function getRaffleDetails(
     }
 }
 
-// ==================== Participate in Raffle ====================
-
 export interface ParticipateRaffleInput {
     raffleId: string;
     playerId: string;
@@ -1120,13 +951,11 @@ export async function participateInRaffle(
     input: ParticipateRaffleInput
 ): Promise<RaffleResult<RaffleParticipantWithRelations>> {
     try {
-        // 🔒 인증 및 권한 검증
         const session = await requireAuth();
         if (!session?.user?.id) {
             return { success: false, error: "Authentication required" };
         }
 
-        // playerId 소유권 검증
         const player = await prisma.player.findUnique({
             where: { id: input.playerId },
             include: { user: true },
@@ -1139,7 +968,6 @@ export async function participateInRaffle(
             };
         }
 
-        // 1. 래플 기본 검증
         const raffle = (await prisma.raffle.findUnique({
             where: { id: input.raffleId },
             include: {
@@ -1156,7 +984,6 @@ export async function participateInRaffle(
             return { success: false, error: "Raffle not found" };
         }
 
-        // 래플 상태 확인
         const status = calculateRaffleStatus(
             raffle.startDate,
             raffle.endDate,
@@ -1169,9 +996,7 @@ export async function participateInRaffle(
             };
         }
 
-        // 트랜잭션으로 참가 처리
         const result = await prisma.$transaction(async (tx) => {
-            // 🔒 중복 참가 확인
             if (!raffle.allowMultipleEntry) {
                 const existingParticipant =
                     await tx.raffleParticipant.findFirst({
@@ -1185,7 +1010,6 @@ export async function participateInRaffle(
                     throw new Error("Already participated");
                 }
             } else if (raffle.maxEntriesPerPlayer) {
-                // 🔒 플레이어당 최대 참여 횟수 확인
                 const existingParticipantCount =
                     await tx.raffleParticipant.count({
                         where: {
@@ -1201,7 +1025,6 @@ export async function participateInRaffle(
                 }
             }
 
-            // 🔒 참가자 수 원자적 증가 및 검증 (동시성 문제 해결)
             const updatedRaffle = await tx.raffle.update({
                 where: { id: input.raffleId },
                 data: {
@@ -1210,7 +1033,6 @@ export async function participateInRaffle(
                 select: { totalParticipants: true, maxParticipants: true },
             });
 
-            // 최대 참가자 수 초과 시 롤백
             if (
                 updatedRaffle.maxParticipants &&
                 updatedRaffle.totalParticipants > updatedRaffle.maxParticipants
@@ -1220,7 +1042,6 @@ export async function participateInRaffle(
                 );
             }
 
-            // 4. 참가비 처리
             if (raffle.entryFeeAssetId && raffle.entryFeeAmount > 0) {
                 const feeValidation = await validatePlayerAsset(
                     {
@@ -1257,19 +1078,17 @@ export async function participateInRaffle(
                 }
             }
 
-            // 🎲 즉시 공개인 경우 → 즉시 추첨 실행!
             let drawnPrize: RafflePrize | undefined;
             let slotNumber: number | undefined;
             let randomSeed: string | undefined;
 
             if (raffle.instantReveal) {
                 try {
-                    // 🔄 최신 상품 정보 조회 (수량 변경 반영)
                     const currentPrizes = await tx.rafflePrize.findMany({
                         where: {
                             raffleId: input.raffleId,
                             isActive: true,
-                            quantity: { gt: 0 }, // 수량이 0보다 큰 것만
+                            quantity: { gt: 0 },
                         },
                         orderBy: { order: "asc" },
                     });
@@ -1296,14 +1115,13 @@ export async function participateInRaffle(
                 }
             }
 
-            // 5. 참가자 등록
             const participant = await tx.raffleParticipant.create({
                 data: {
                     raffleId: input.raffleId,
                     playerId: input.playerId,
                     prizeId: drawnPrize?.id,
                     drawnAt: drawnPrize ? new Date() : null,
-                    revealedAt: null, // 사용자가 결과 확인 시 업데이트
+                    revealedAt: null,
                     isRevealed: false,
                     slotNumber,
                     randomSeed,
@@ -1321,9 +1139,6 @@ export async function participateInRaffle(
                 },
             });
 
-            // 6. 래플 통계는 이미 위에서 업데이트됨 (동시성 안전성 위해)
-
-            // 7. 즉시 당첨인 경우 → RaffleWinner 생성 및 상품 수량 감소
             if (drawnPrize && drawnPrize.prizeType !== "EMPTY") {
                 await tx.raffleWinner.create({
                     data: {
@@ -1334,7 +1149,6 @@ export async function participateInRaffle(
                     },
                 });
 
-                // 🎯 제한형일 때만 상품 수량 감소 (중요!)
                 if (raffle.isLimited) {
                     await tx.rafflePrize.update({
                         where: { id: drawnPrize.id },
@@ -1348,7 +1162,6 @@ export async function participateInRaffle(
             return participant as RaffleParticipantWithRelations;
         });
 
-        // 🎁 즉시 공개 래플의 경우 트랜잭션 완료 후 자동 배포
         if (raffle.instantReveal && result.prizeId) {
             try {
                 const distributeResult = await distributePrizes({
@@ -1369,7 +1182,6 @@ export async function participateInRaffle(
                 }
             } catch (error) {
                 console.error("❌ Instant prize distribution failed:", error);
-                // 배포 실패해도 참가는 성공으로 처리
             }
         }
 
@@ -1389,12 +1201,10 @@ export async function participateInRaffle(
     }
 }
 
-// ==================== Reveal Result (즉시 공개용) ====================
-
 export interface RevealResultInput {
     raffleId: string;
     playerId: string;
-    participantId?: string; // 특정 참여 기록을 지정할 경우
+    participantId?: string;
 }
 
 export interface RevealAllResultsInput {
@@ -1402,12 +1212,10 @@ export interface RevealAllResultsInput {
     playerId: string;
 }
 
-// 특정 참여 기록의 결과 공개
 export async function revealRaffleResult(
     input: RevealResultInput
 ): Promise<RaffleResult<RaffleParticipantWithRelations>> {
     try {
-        // 🔒 인증 및 권한 검증
         const session = await requireAuth();
         if (!session?.user?.id) {
             return { success: false, error: "Authentication required" };
@@ -1428,7 +1236,6 @@ export async function revealRaffleResult(
         let participant: any;
 
         if (input.participantId) {
-            // 특정 참여 기록 조회
             participant = await prisma.raffleParticipant.findUnique({
                 where: { id: input.participantId },
                 include: {
@@ -1455,13 +1262,12 @@ export async function revealRaffleResult(
                 };
             }
         } else {
-            // 가장 최근 미공개 참여 기록 조회
             participant = await prisma.raffleParticipant.findFirst({
                 where: {
                     raffleId: input.raffleId,
                     playerId: input.playerId,
                     isRevealed: false,
-                    drawnAt: { not: null }, // 추첨된 것만
+                    drawnAt: { not: null },
                 },
                 include: {
                     prize: {
@@ -1474,7 +1280,7 @@ export async function revealRaffleResult(
                         select: { id: true, name: true, nickname: true },
                     },
                 },
-                orderBy: { createdAt: "desc" }, // 가장 최근 것부터
+                orderBy: { createdAt: "desc" },
             });
 
             if (!participant) {
@@ -1492,7 +1298,6 @@ export async function revealRaffleResult(
             };
         }
 
-        // 결과 공개 처리
         const updatedParticipant = await prisma.raffleParticipant.update({
             where: { id: participant.id },
             data: {
@@ -1526,12 +1331,10 @@ export async function revealRaffleResult(
     }
 }
 
-// 모든 참여 기록의 결과 공개
 export async function revealAllRaffleResults(
     input: RevealAllResultsInput
 ): Promise<RaffleResult<RaffleParticipantWithRelations[]>> {
     try {
-        // 🔒 인증 및 권한 검증
         const session = await requireAuth();
         if (!session?.user?.id) {
             return { success: false, error: "Authentication required" };
@@ -1549,13 +1352,12 @@ export async function revealAllRaffleResults(
             };
         }
 
-        // 모든 미공개 참여 기록 조회
         const participants = await prisma.raffleParticipant.findMany({
             where: {
                 raffleId: input.raffleId,
                 playerId: input.playerId,
                 isRevealed: false,
-                drawnAt: { not: null }, // 추첨된 것만
+                drawnAt: { not: null },
             },
             include: {
                 prize: {
@@ -1576,7 +1378,6 @@ export async function revealAllRaffleResults(
             };
         }
 
-        // 모든 참여 기록 일괄 공개
         const updatedParticipants = await prisma.$transaction(async (tx) => {
             const results = [];
             for (const participant of participants) {
@@ -1619,8 +1420,6 @@ export async function revealAllRaffleResults(
     }
 }
 
-// ==================== Draw All Winners (일괄 추첨) ====================
-
 export interface DrawAllWinnersInput {
     raffleId: string;
     drawnBy: string;
@@ -1630,7 +1429,6 @@ export async function drawAllWinners(
     input: DrawAllWinnersInput
 ): Promise<RaffleResult<RaffleWinner[]>> {
     try {
-        // 🔒 인증 및 관리자 권한 검증
         const session = await requireAuth();
         if (!session?.user?.id) {
             return { success: false, error: "Authentication required" };
@@ -1645,7 +1443,6 @@ export async function drawAllWinners(
             return { success: false, error: "User not found" };
         }
 
-        // 래플 소유권 확인
         const raffleData = (await prisma.raffle.findUnique({
             where: { id: input.raffleId },
             include: {
@@ -1653,7 +1450,7 @@ export async function drawAllWinners(
                     where: { isActive: true },
                     orderBy: { order: "asc" },
                 },
-                participants: { where: { drawnAt: null } }, // 아직 추첨되지 않은 참가자들
+                participants: { where: { drawnAt: null } },
             },
         })) as RaffleWithParticipantsAndPrizes | null;
 
@@ -1661,7 +1458,6 @@ export async function drawAllWinners(
             return { success: false, error: "Raffle not found" };
         }
 
-        // Admin이 아니고, 래플 소유자도 아닌 경우 거부
         if (
             user.role !== "admin" &&
             (!user.player?.isArtist ||
@@ -1673,7 +1469,6 @@ export async function drawAllWinners(
             };
         }
 
-        // 즉시 공개 래플은 일괄 추첨 불가
         if (raffleData.instantReveal) {
             return {
                 success: false,
@@ -1681,7 +1476,6 @@ export async function drawAllWinners(
             };
         }
 
-        // 추첨 시간 확인
         const status = calculateRaffleStatus(
             raffleData.startDate,
             raffleData.endDate,
@@ -1698,19 +1492,16 @@ export async function drawAllWinners(
             return { success: false, error: "No participants to draw" };
         }
 
-        // 🎲 일괄 추첨 실행
         const winners = await prisma.$transaction(async (tx) => {
             const allWinners: RaffleWinner[] = [];
 
-            // 각 참가자에게 상품 추첨
             for (const participant of raffleData.participants) {
                 try {
-                    // 🔄 최신 상품 정보 조회 (매번 업데이트된 수량 반영)
                     const currentPrizes = await tx.rafflePrize.findMany({
                         where: {
                             raffleId: input.raffleId,
                             isActive: true,
-                            quantity: { gt: 0 }, // 수량이 0보다 큰 것만
+                            quantity: { gt: 0 },
                         },
                         orderBy: { order: "asc" },
                     });
@@ -1719,7 +1510,7 @@ export async function drawAllWinners(
                         console.error(
                             `All prizes exhausted in batch draw for raffle ${input.raffleId}`
                         );
-                        break; // 남은 참가자들은 상품 없음으로 처리
+                        break;
                     }
 
                     const drawResult = drawPrizeFromPool(
@@ -1728,7 +1519,6 @@ export async function drawAllWinners(
                     );
                     const randomSeed = crypto.randomBytes(16).toString("hex");
 
-                    // 참가자 업데이트
                     await tx.raffleParticipant.update({
                         where: { id: participant.id },
                         data: {
@@ -1739,7 +1529,6 @@ export async function drawAllWinners(
                         },
                     });
 
-                    // 당첨자 생성 (꽝이 아닌 경우만)
                     if (drawResult.prize.prizeType !== "EMPTY") {
                         const winner = await tx.raffleWinner.create({
                             data: {
@@ -1760,7 +1549,6 @@ export async function drawAllWinners(
                             },
                         });
 
-                        // 🎯 제한형일 때만 상품 수량 감소 (일괄 추첨에서도 중요!)
                         if (raffleData.isLimited) {
                             await tx.rafflePrize.update({
                                 where: { id: drawResult.prize.id },
@@ -1777,7 +1565,6 @@ export async function drawAllWinners(
                         `❌ Failed to draw for participant ${participant.id}:`,
                         error
                     );
-                    // 개별 참가자 추첨 실패는 로그만 남기고 계속 진행
                 }
             }
 
@@ -1797,19 +1584,16 @@ export async function drawAllWinners(
     }
 }
 
-// ==================== Distribute Prizes ====================
-
 export interface DistributePrizesInput {
     raffleId: string;
     executedBy?: string;
-    playerId?: string; // 특정 플레이어만 배포할 경우
+    playerId?: string;
 }
 
 export async function distributePrizes(
     input: DistributePrizesInput
 ): Promise<RaffleResult<{ distributed: number; failed: number }>> {
     try {
-        // 🔒 인증 및 관리자 권한 검증
         const session = await requireAuth();
         if (!session?.user?.id) {
             return { success: false, error: "Authentication required" };
@@ -1824,7 +1608,6 @@ export async function distributePrizes(
             return { success: false, error: "User not found" };
         }
 
-        // 래플 및 권한 확인
         const raffle = await prisma.raffle.findUnique({
             where: { id: input.raffleId },
             select: { id: true, artistId: true, instantReveal: true },
@@ -1834,7 +1617,6 @@ export async function distributePrizes(
             return { success: false, error: "Raffle not found" };
         }
 
-        // 권한 체크: Admin, 래플 소유자, 또는 즉시 공개 래플의 참가자
         let hasPermission = false;
 
         if (user.role === "admin") {
@@ -1845,7 +1627,6 @@ export async function distributePrizes(
         ) {
             hasPermission = true;
         } else if (raffle.instantReveal && input.executedBy) {
-            // 즉시 공개 래플의 경우 참가자 본인이 호출하는지 확인
             const participant = await prisma.raffleParticipant.findFirst({
                 where: {
                     raffleId: input.raffleId,
@@ -1866,7 +1647,6 @@ export async function distributePrizes(
             };
         }
 
-        // 당첨자 조회 (특정 플레이어 지정 시 해당 플레이어만)
         const where: any = {
             raffleId: input.raffleId,
             status: "PENDING",
@@ -1907,7 +1687,6 @@ export async function distributePrizes(
         let distributedCount = 0;
         let failedCount = 0;
 
-        // 각 당첨자별로 상품 배포
         const distributionResults = await Promise.allSettled(
             winners.map(async (winner) => {
                 return await prisma.$transaction(async (tx) => {
@@ -1915,7 +1694,6 @@ export async function distributePrizes(
                         let txHash: string | undefined;
 
                         if (winner.prize.prizeType === "ASSET") {
-                            // Asset 상품 배포
                             const result = await updatePlayerAsset(
                                 {
                                     transaction: {
@@ -1935,7 +1713,6 @@ export async function distributePrizes(
                                 );
                             }
                         } else if (winner.prize.prizeType === "NFT") {
-                            // NFT 상품 배포
                             const userWallet =
                                 winner.player.user?.wallets?.find(
                                     (wallet) => wallet.default
@@ -1966,7 +1743,6 @@ export async function distributePrizes(
                             }
                         }
 
-                        // 성공 시 상태 업데이트
                         await tx.raffleWinner.update({
                             where: { id: winner.id },
                             data: {
@@ -1984,7 +1760,6 @@ export async function distributePrizes(
                             txHash,
                         };
                     } catch (error) {
-                        // 실패 시 상태 업데이트
                         await tx.raffleWinner.update({
                             where: { id: winner.id },
                             data: {
@@ -2002,7 +1777,6 @@ export async function distributePrizes(
             })
         );
 
-        // 결과 집계
         distributionResults.forEach((result, index) => {
             if (result.status === "fulfilled") {
                 distributedCount++;
@@ -2037,8 +1811,6 @@ export async function distributePrizes(
     }
 }
 
-// ==================== Player Participation Queries (다중 참여 지원) ====================
-
 export interface GetPlayerParticipationsInput {
     raffleId: string;
     playerId: string;
@@ -2054,12 +1826,10 @@ export interface PlayerParticipationSummary {
     winners: RaffleWinnerWithRelations[];
 }
 
-// 플레이어의 특정 래플 참여 현황 조회 (다중 참여 지원)
 export async function getPlayerParticipations(
     input: GetPlayerParticipationsInput
 ): Promise<RaffleResult<PlayerParticipationSummary>> {
     try {
-        // 🔒 인증 및 권한 검증
         const session = await requireAuth();
         if (!session?.user?.id) {
             return { success: false, error: "Authentication required" };
@@ -2077,7 +1847,6 @@ export async function getPlayerParticipations(
             };
         }
 
-        // 모든 참여 기록 조회
         const where: any = {
             raffleId: input.raffleId,
             playerId: input.playerId,
@@ -2101,7 +1870,6 @@ export async function getPlayerParticipations(
             orderBy: { createdAt: "asc" },
         });
 
-        // 당첨 기록 조회
         const winners = (await prisma.raffleWinner.findMany({
             where: {
                 raffleId: input.raffleId,
@@ -2157,7 +1925,6 @@ export interface GetUnrevealedCountInput {
     playerId: string;
 }
 
-// 플레이어의 미공개 결과 개수 조회
 export async function getUnrevealedCount(
     input: GetUnrevealedCountInput
 ): Promise<RaffleResult<{ count: number }>> {
@@ -2184,7 +1951,7 @@ export async function getUnrevealedCount(
                 raffleId: input.raffleId,
                 playerId: input.playerId,
                 isRevealed: false,
-                drawnAt: { not: null }, // 추첨된 것만
+                drawnAt: { not: null },
             },
         });
 
@@ -2204,10 +1971,9 @@ export async function getUnrevealedCount(
 export interface BulkRevealInput {
     raffleId: string;
     playerId: string;
-    participantIds?: string[]; // 특정 참여 기록들만 공개할 경우
+    participantIds?: string[];
 }
 
-// 여러 참여 기록을 한 번에 공개
 export async function bulkRevealResults(input: BulkRevealInput): Promise<
     RaffleResult<{
         revealed: RaffleParticipantWithRelations[];
@@ -2235,14 +2001,13 @@ export async function bulkRevealResults(input: BulkRevealInput): Promise<
         const where: any = {
             raffleId: input.raffleId,
             playerId: input.playerId,
-            drawnAt: { not: null }, // 추첨된 것만
+            drawnAt: { not: null },
         };
 
         if (input.participantIds && input.participantIds.length > 0) {
             where.id = { in: input.participantIds };
         }
 
-        // 공개 대상 참여 기록들 조회
         const participants = await prisma.raffleParticipant.findMany({
             where,
             include: {
@@ -2261,7 +2026,6 @@ export async function bulkRevealResults(input: BulkRevealInput): Promise<
             return { success: false, error: "No participation records found" };
         }
 
-        // 미공개 기록만 필터링
         const unrevealedParticipants = participants.filter(
             (p) => !p.isRevealed
         );
@@ -2278,7 +2042,6 @@ export async function bulkRevealResults(input: BulkRevealInput): Promise<
             };
         }
 
-        // 일괄 공개 처리
         const revealedParticipants = await prisma.$transaction(async (tx) => {
             const results = [];
             for (const participant of unrevealedParticipants) {
@@ -2324,7 +2087,3 @@ export async function bulkRevealResults(input: BulkRevealInput): Promise<
         };
     }
 }
-
-// ==================== Helper Functions ====================
-
-// Helper functions moved to ./utils.ts to avoid "must be async" server action constraint
