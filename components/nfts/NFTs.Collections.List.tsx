@@ -254,34 +254,6 @@ export default function NFTsCollectionsList({
                     setTargetCameraZ(cameraZ);
                     setConfirmedAlpha(2.5);
                 }
-            } else {
-                const len = sortedSPGsData.length;
-                const diff = index - selected;
-                let nextSelected = selected;
-
-                if (diff > 0) {
-                    // 클릭한 카드가 뒤에 있으므로 앞으로 이동
-                    nextSelected = (selected + 1) % len;
-                } else {
-                    // 클릭한 카드가 앞에 있으므로 뒤로 이동
-                    nextSelected = selected === 0 ? len - 1 : selected - 1;
-                }
-
-                console.log("--------------------------------");
-                console.log("Now we are at", index, "and user is at", selected);
-                console.log("The diff is", diff);
-                console.log("The next selected is", nextSelected);
-                console.log(
-                    "Because the diff is",
-                    diff,
-                    "we are going to",
-                    nextSelected
-                );
-                console.log("--------------------------------");
-
-                setSelected(nextSelected);
-                setConfirmedAlpha(1);
-                setTargetCameraZ(cameraZByWidth);
             }
         },
         [
