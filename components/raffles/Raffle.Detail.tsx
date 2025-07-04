@@ -550,8 +550,15 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
     prize: any;
     getTierInfo: (order: number) => any;
 }) {
-    const tierInfo = getTierInfo(prize.order);
-    const tier = Math.floor(prize.order / 10);
+    const { tierInfo, tier } = useMemo(() => {
+        const tierInfo = getTierInfo(prize.order);
+        const bestTier = Object.keys(tierMap).length - 1;
+        const tierRaw = Math.floor(prize.order / 10);
+        const tier = bestTier - tierRaw;
+
+        return { tierInfo, tier };
+    }, [prize.order, getTierInfo]);
+
     return (
         <div
             className={cn(
@@ -716,7 +723,9 @@ const PrizeCard = memo(function PrizeCard({
 }) {
     const { tierInfo, tier } = useMemo(() => {
         const tierInfo = getTierInfo ? getTierInfo(prize.order) : null;
-        const tier = Math.floor(prize.order / 10);
+        const bestTier = Object.keys(tierMap).length - 1;
+        const tierRaw = Math.floor(prize.order / 10);
+        const tier = bestTier - tierRaw;
 
         return { tierInfo, tier };
     }, [prize.order, getTierInfo]);
@@ -936,8 +945,7 @@ const CountdownCard = memo(function CountdownCard({
             transition={{ delay: 0.2 }}
             className={cn(
                 "bg-gradient-to-br from-[rgba(20,20,30,0.6)] to-[rgba(30,25,40,0.4)]",
-                "backdrop-blur-lg border border-[rgba(160,140,200,0.15)] rounded-2xl",
-                getResponsiveClass(25).paddingClass
+                "backdrop-blur-lg border border-[rgba(160,140,200,0.15)] rounded-[12px] p-4"
             )}
         >
             <div className="text-center">
@@ -1168,23 +1176,6 @@ const ParticipationCard = memo(function ParticipationCard({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => setIsLiked(!isLiked)}
-                            className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-                        >
-                            <Heart
-                                className={cn(
-                                    "transition-colors",
-                                    getResponsiveClass(15).frameClass,
-                                    isLiked
-                                        ? "text-red-400 fill-red-400"
-                                        : "text-white/60"
-                                )}
-                            />
-                        </motion.button>
-
                         <div className="relative">
                             <motion.button
                                 whileHover={{ scale: 1.1 }}
@@ -1458,6 +1449,17 @@ const ParticipationCard = memo(function ParticipationCard({
 
 // Stats Card Component
 const StatsCard = memo(function StatsCard({ raffle }: { raffle: any }) {
+    const { tier } = useMemo(() => {
+        const bestTier = Object.keys(tierMap).length - 1;
+        const bestPrize = raffle.prizes?.reduce(
+            (max: any, p: any) => (p.order > max.order ? p : max),
+            raffle.prizes[0]
+        );
+        const tier = bestTier - Math.floor(bestPrize.order / 10);
+
+        return { tier };
+    }, [raffle]);
+
     return (
         <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -1465,20 +1467,19 @@ const StatsCard = memo(function StatsCard({ raffle }: { raffle: any }) {
             transition={{ delay: 0.4 }}
             className={cn(
                 "bg-gradient-to-br from-[rgba(15,15,25,0.6)] to-[rgba(25,25,35,0.4)]",
-                "backdrop-blur-lg border border-[rgba(255,255,255,0.06)] rounded-3xl",
-                getResponsiveClass(20).paddingClass
+                "backdrop-blur-lg border border-[rgba(255,255,255,0.06)] rounded-[12px] p-4"
             )}
         >
             <h4
                 className={cn(
-                    "font-medium text-[rgba(255,255,255,0.9)] mb-4 text-center",
+                    "font-medium text-[rgba(255,255,255,0.9)] mb-1 text-center",
                     getResponsiveClass(20).textClass
                 )}
             >
                 Statistics
             </h4>
-            <div className="grid grid-cols-2 gap-3">
-                <div className="text-center bg-[rgba(255,255,255,0.03)] rounded-xl p-3">
+            <div className="grid grid-cols-3 gap-1">
+                <div className="text-center bg-[rgba(255,255,255,0.03)] rounded-[12px] p-2">
                     <Users
                         className="w-5 h-5 mx-auto mb-1"
                         style={{ color: "rgba(140,170,200,0.7)" }}
@@ -1497,10 +1498,10 @@ const StatsCard = memo(function StatsCard({ raffle }: { raffle: any }) {
                             getResponsiveClass(10).textClass
                         )}
                     >
-                        Players
+                        Participants
                     </p>
                 </div>
-                <div className="text-center bg-[rgba(255,255,255,0.03)] rounded-xl p-3">
+                <div className="text-center bg-[rgba(255,255,255,0.03)] rounded-[12px] p-2">
                     <Trophy
                         className="w-5 h-5 mx-auto mb-1"
                         style={{ color: "rgba(200,160,100,0.7)" }}
@@ -1522,32 +1523,7 @@ const StatsCard = memo(function StatsCard({ raffle }: { raffle: any }) {
                         Prizes
                     </p>
                 </div>
-                <div className="text-center bg-[rgba(255,255,255,0.03)] rounded-xl p-3">
-                    <Target
-                        className="w-5 h-5 mx-auto mb-1"
-                        style={{ color: "rgba(140,180,160,0.7)" }}
-                    />
-                    <p
-                        className={cn(
-                            "text-[rgba(255,255,255,0.9)] font-bold",
-                            getResponsiveClass(20).textClass
-                        )}
-                    >
-                        {raffle.prizes?.reduce(
-                            (sum: number, p: any) => sum + (p.quantity || 0),
-                            0
-                        ) || 0}
-                    </p>
-                    <p
-                        className={cn(
-                            "text-[rgba(255,255,255,0.5)]",
-                            getResponsiveClass(10).textClass
-                        )}
-                    >
-                        Total Slots
-                    </p>
-                </div>
-                <div className="text-center bg-[rgba(255,255,255,0.03)] rounded-xl p-3">
+                <div className="text-center bg-[rgba(255,255,255,0.03)] rounded-[12px] p-2">
                     <Sparkles
                         className="w-5 h-5 mx-auto mb-1"
                         style={{ color: "rgba(160,140,200,0.7)" }}
@@ -1558,11 +1534,7 @@ const StatsCard = memo(function StatsCard({ raffle }: { raffle: any }) {
                             getResponsiveClass(20).textClass
                         )}
                     >
-                        {Math.max(
-                            ...(raffle.prizes?.map((p: any) =>
-                                Math.floor(p.order / 10)
-                            ) || [0])
-                        )}
+                        {tier}
                     </p>
                     <p
                         className={cn(
@@ -1587,7 +1559,7 @@ const TimeUnit = memo(function TimeUnit({
     label: string;
 }) {
     return (
-        <div className="bg-[rgba(255,255,255,0.06)] rounded-xl p-3 text-center">
+        <div className="bg-[rgba(255,255,255,0.06)] rounded-[12px] p-2 text-center">
             <p
                 className={cn(
                     "text-[rgba(255,255,255,0.95)] font-bold",

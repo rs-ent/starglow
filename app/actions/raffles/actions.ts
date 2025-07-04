@@ -105,6 +105,7 @@ export type RaffleWithDetails = Raffle & {
         asset?: Asset | null;
         spg?: Story_spg | null;
     })[];
+    entryFeeAsset: Asset | null;
     _count?: {
         participants: number;
         winners: number;
@@ -971,6 +972,7 @@ export async function getRaffles(
                     },
                     orderBy: { order: "asc" },
                 },
+                entryFeeAsset: { select: { symbol: true, iconUrl: true } },
                 _count: {
                     select: {
                         participants: true,

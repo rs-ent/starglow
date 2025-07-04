@@ -22,6 +22,10 @@ const nextConfig = {
                 protocol: "https",
                 hostname: "w3s.link",
             },
+            {
+                protocol: "https",
+                hostname: "starglow-six.vercel.app",
+            },
         ],
     },
 

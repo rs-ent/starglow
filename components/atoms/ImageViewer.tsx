@@ -61,15 +61,6 @@ export default function ImageViewer({
         calculateImageDimensions();
     }, [img]);
 
-    const handleImageLoad = () => {
-        // Next.js Image 컴포넌트의 onLoad 핸들러
-    };
-
-    const handleImageError = () => {
-        setIsError(true);
-        setIsLoading(false);
-    };
-
     return (
         <div className={cn("relative", className)}>
             {isLoading && <PartialLoading text="Loading..." />}
@@ -94,7 +85,6 @@ export default function ImageViewer({
                     >
                         <TransformWrapper
                             initialScale={1}
-                            doubleClick={{ mode: "zoomIn" }}
                             panning={{ velocityDisabled: true }}
                             limitToBounds={false}
                             wheel={{ disabled: true }}
@@ -113,7 +103,7 @@ export default function ImageViewer({
                                         width={imageDimensions.width}
                                         height={imageDimensions.height}
                                         style={{
-                                            width: "100%",
+                                            width: "100vw",
                                             height: "auto",
                                             objectFit: "contain",
                                             userSelect: "none",
@@ -121,8 +111,6 @@ export default function ImageViewer({
                                             boxShadow: `0 0 24px 1px ${shadowColor}`,
                                         }}
                                         draggable={false}
-                                        onLoad={handleImageLoad}
-                                        onError={handleImageError}
                                         quality={100}
                                         unoptimized={false}
                                     />

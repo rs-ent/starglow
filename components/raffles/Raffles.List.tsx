@@ -250,8 +250,27 @@ const RaffleCard = memo(function RaffleCard({
         )[0];
     }, [raffle.prizes]);
 
-    const isLive = raffle.calculatedStatus === "ACTIVE";
-    const isUpcoming = raffle.calculatedStatus === "UPCOMING";
+    const { isLive, isUpcoming } = useMemo(() => {
+        const isLive = raffle.calculatedStatus === "ACTIVE";
+        const isUpcoming = raffle.calculatedStatus === "UPCOMING";
+        return { isLive, isUpcoming };
+    }, [raffle.calculatedStatus]);
+
+    const { image, imageSettings } = useMemo(() => {
+        if (raffle.imgUrl)
+            return { image: raffle.imgUrl, imageSettings: "object-cover" };
+        if (topPrize?.spg?.imageUrl)
+            return {
+                image: topPrize.spg.imageUrl,
+                imageSettings: "object-cover",
+            };
+        if (topPrize?.asset?.iconUrl)
+            return {
+                image: topPrize.asset.iconUrl,
+                imageSettings: "object-contain",
+            };
+        return { image: null, imageSettings: "" };
+    }, [raffle, topPrize]);
 
     return (
         <Link href={`/raffles/${raffle.id}`}>
@@ -301,143 +320,176 @@ const RaffleCard = memo(function RaffleCard({
                     </div>
                 )}
 
-                {/* Prize Image */}
-                {topPrize?.asset?.iconUrl ||
-                    (topPrize?.spg?.imageUrl && (
-                        <div className=" relative h-[200px] overflow-hidden">
+                <div className="flex flex-col gap-2 md:flex-row p-2">
+                    {/* Prize Image */}
+                    {image && (
+                        <div className="relative w-full h-[200px] md:w-[400px] md:h-[300px] overflow-hidden rounded-[12px]">
                             <Image
-                                src={
-                                    topPrize.asset?.iconUrl ||
-                                    topPrize.spg?.imageUrl
-                                }
-                                alt={topPrize.title}
+                                src={image}
+                                alt={raffle.title}
                                 fill
+                                sizes="(max-width: 768px) 100vw, 50vw"
                                 className={cn(
                                     "transition-all duration-700 ease-out group-hover:scale-105",
-                                    topPrize?.asset?.iconUrl
-                                        ? "object-contain"
-                                        : "object-cover object-center"
+                                    imageSettings
                                 )}
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
-                            <h1
-                                className={cn(
-                                    "absolute bottom-1 right-3 text-white/80 text-center text-2xl font-bold",
-                                    getResponsiveClass(30).textClass
-                                )}
-                            >
-                                {topPrize.title}
-                            </h1>
-                        </div>
-                    ))}
-
-                {/* Content */}
-                <div
-                    className={cn(
-                        "relative z-10",
-                        getResponsiveClass(25).paddingClass
-                    )}
-                >
-                    {/* Title */}
-                    <h3
-                        className={cn(
-                            "font-bold text-white mb-2 line-clamp-2",
-                            getResponsiveClass(30).textClass
-                        )}
-                    >
-                        {raffle.title}
-                    </h3>
-
-                    {/* Prize Info */}
-                    {topPrize && (
-                        <h3
-                            className={cn(
-                                "text-purple-400 font-medium mb-4",
-                                getResponsiveClass(15).textClass
+                            {topPrize && (
+                                <h1
+                                    className={cn(
+                                        "absolute bottom-1 right-3 text-white/80 text-center text-2xl font-bold",
+                                        getResponsiveClass(30).textClass
+                                    )}
+                                >
+                                    {topPrize.title}
+                                </h1>
                             )}
-                        >
-                            {topPrize.title} • {topPrize.quantity}x Available
-                        </h3>
+                        </div>
                     )}
 
-                    {/* Stats */}
+                    {/* Content */}
                     <div
                         className={cn(
-                            "grid grid-cols-2 mb-4",
-                            getResponsiveClass(10).gapClass
+                            "relative z-10",
+                            getResponsiveClass(25).paddingClass
                         )}
                     >
-                        <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-purple-400" />
-                            <span
-                                className={cn(
-                                    "text-white/80",
-                                    getResponsiveClass(10).textClass
-                                )}
-                            >
-                                {timeUntilEnd}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-violet-400" />
-                            <span
-                                className={cn(
-                                    "text-white/80",
-                                    getResponsiveClass(10).textClass
-                                )}
-                            >
-                                {raffle.totalParticipants || 0} joined
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Gift className="w-4 h-4 text-purple-400" />
-                            <span
-                                className={cn(
-                                    "text-white/80",
-                                    getResponsiveClass(10).textClass
-                                )}
-                            >
-                                {raffle.prizes?.length || 0} prizes
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Target className="w-4 h-4 text-violet-400" />
-                            <span
-                                className={cn(
-                                    "text-white/80",
-                                    getResponsiveClass(10).textClass
-                                )}
-                            >
-                                {(raffle.entryFeeAmount || 0) > 0
-                                    ? `${raffle.entryFeeAmount} tokens`
-                                    : "Free"}
-                            </span>
-                        </div>
-                    </div>
+                        {/* Title */}
+                        <h3
+                            className={cn(
+                                "font-bold text-white mb-2 line-clamp-2",
+                                getResponsiveClass(30).textClass
+                            )}
+                        >
+                            {raffle.title}
+                        </h3>
 
-                    {/* Action Button */}
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className={cn(
-                            "w-full text-white font-bold rounded-lg font-main",
-                            "transition-all duration-500 ease-out inner-shadow",
-                            "flex items-center justify-center gap-2",
-                            isLive
-                                ? "bg-gradient-to-r from-purple-500 to-violet-500"
-                                : isUpcoming
-                                ? "bg-gradient-to-r from-violet-500 to-purple-500"
-                                : "bg-gradient-to-r from-purple-500 to-pink-500",
-                            getResponsiveClass(20).textClass,
-                            getResponsiveClass(15).paddingClass
+                        {/* Prize Info */}
+                        {topPrize && (
+                            <h3
+                                className={cn(
+                                    "text-purple-400 font-medium mb-4",
+                                    getResponsiveClass(15).textClass
+                                )}
+                            >
+                                {topPrize.title} • {topPrize.quantity}x
+                                Available
+                            </h3>
                         )}
-                    >
-                        {isLive
-                            ? "🚀 Enter Now"
-                            : isUpcoming
-                            ? "⏳ Coming Soon"
-                            : "� View Details"}
-                    </motion.button>
+
+                        {/* Stats */}
+                        <div
+                            className={cn(
+                                "grid grid-cols-2 mb-4",
+                                getResponsiveClass(10).gapClass
+                            )}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Clock
+                                    className={cn(
+                                        "text-purple-400",
+                                        getResponsiveClass(10).frameClass
+                                    )}
+                                />
+                                <span
+                                    className={cn(
+                                        "text-white/80",
+                                        getResponsiveClass(10).textClass
+                                    )}
+                                >
+                                    {timeUntilEnd}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Users
+                                    className={cn(
+                                        "text-violet-400",
+                                        getResponsiveClass(10).frameClass
+                                    )}
+                                />
+                                <span
+                                    className={cn(
+                                        "text-white/80",
+                                        getResponsiveClass(10).textClass
+                                    )}
+                                >
+                                    {raffle.totalParticipants || 0} joined
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Gift
+                                    className={cn(
+                                        "text-purple-400",
+                                        getResponsiveClass(10).frameClass
+                                    )}
+                                />
+                                <span
+                                    className={cn(
+                                        "text-white/80",
+                                        getResponsiveClass(10).textClass
+                                    )}
+                                >
+                                    {raffle.prizes?.length || 0} prizes
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Target
+                                    className={cn(
+                                        "text-violet-400",
+                                        getResponsiveClass(10).frameClass
+                                    )}
+                                />
+                                <span
+                                    className={cn(
+                                        "text-white/80 flex items-center gap-1",
+                                        getResponsiveClass(10).textClass
+                                    )}
+                                >
+                                    {(raffle.entryFeeAmount || 0) > 0
+                                        ? `${raffle.entryFeeAmount} ${raffle.entryFeeAsset?.symbol}`
+                                        : "Free"}
+                                    {raffle.entryFeeAsset?.iconUrl && (
+                                        <Image
+                                            src={raffle.entryFeeAsset.iconUrl}
+                                            alt={raffle.entryFeeAsset.symbol}
+                                            width={16}
+                                            height={16}
+                                            className={cn(
+                                                "object-contain",
+                                                getResponsiveClass(10)
+                                                    .frameClass
+                                            )}
+                                        />
+                                    )}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className={cn(
+                                "w-full text-white font-bold rounded-lg font-main",
+                                "transition-all duration-500 ease-out inner-shadow",
+                                "flex items-center justify-center gap-2",
+                                isLive
+                                    ? "bg-gradient-to-r from-purple-500 to-violet-500"
+                                    : isUpcoming
+                                    ? "bg-gradient-to-r from-violet-500 to-purple-500"
+                                    : "bg-gradient-to-r from-purple-500 to-pink-500",
+                                getResponsiveClass(20).textClass,
+                                getResponsiveClass(15).paddingClass
+                            )}
+                        >
+                            {isLive
+                                ? "🚀 Enter Now"
+                                : isUpcoming
+                                ? "⏳ Coming Soon"
+                                : "� View Details"}
+                        </motion.button>
+                    </div>
                 </div>
             </motion.div>
         </Link>
