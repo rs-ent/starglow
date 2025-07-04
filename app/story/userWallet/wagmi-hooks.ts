@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef } from "react";
 
 import { WalletStatus } from "@prisma/client";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import {
     useAccount,
     useConnect,
@@ -197,22 +197,14 @@ export function useWagmiConnection() {
         const handleExternalDisconnect = async () => {
             // 지갑이 연결 해제되었고, 이전에 처리된 주소가 있는 경우
             if (!isConnected && processedAddresses.current.size > 0) {
-                const lastAddress = Array.from(processedAddresses.current)[0];
-
                 try {
-                    // DB에서 지갑 상태를 INACTIVE로 업데이트
-                    if (lastAddress && session?.user?.id) {
-                        await updateWalletAsync({
-                            userId: session.user.id,
-                            walletAddress: lastAddress,
-                            status: WalletStatus.INACTIVE,
-                        });
-                    }
-
-                    // 처리된 주소 목록 초기화
                     processedAddresses.current.clear();
 
-                    toast.info("Wallet disconnected externally");
+                    toast.info(
+                        "Wallet disconnected externally. Signing out..."
+                    );
+
+                    await signOut({ callbackUrl: "/?signedOut=true" });
                 } catch (error) {
                     console.error(
                         "Failed to handle external disconnect:",
@@ -223,7 +215,7 @@ export function useWagmiConnection() {
         };
 
         handleExternalDisconnect();
-    }, [isConnected, session?.user?.id, updateWalletAsync, toast]);
+    }, [isConnected, toast]);
 
     // 체인 전환
     const handleSwitchChain = useCallback(
