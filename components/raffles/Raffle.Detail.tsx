@@ -21,7 +21,6 @@ import {
     CheckCircle2,
     Play,
     Share2,
-    Heart,
     Copy,
     RefreshCcw,
     Loader2,
@@ -1003,7 +1002,6 @@ const ParticipationCard = memo(function ParticipationCard({
 }) {
     const { data: session } = useSession();
     const toast = useToast();
-    const [isLiked, setIsLiked] = useState(false);
     const [showShareMenu, setShowShareMenu] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
 
