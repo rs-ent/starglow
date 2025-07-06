@@ -25,9 +25,6 @@ export default function AdminDataMigrationsPlayer() {
         new Set()
     );
 
-    const [isCreatingReferralLogs, setIsCreatingReferralLogs] = useState(false);
-    const [referralLogProgress, setReferralLogProgress] = useState(0);
-
     const { users } = useUserGet({
         getUsersInput: {
             providers: ["telegram"],
@@ -105,12 +102,28 @@ export default function AdminDataMigrationsPlayer() {
                 return { success: false, error: "Invalid Telegram ID" };
             }
 
+            let referrerCode: string | undefined;
+            if (playerData["recommenderId"] && users) {
+                const referrerTelegramId = playerData["recommenderId"].replace(
+                    "TG_",
+                    ""
+                );
+                const referrerUser = users.find(
+                    (user) => user.telegramId === referrerTelegramId
+                ) as User & { player: Player };
+
+                if (referrerUser?.player?.referralCode) {
+                    referrerCode = referrerUser.player.referralCode;
+                }
+            }
+
             const result = await setUserWithTelegram({
                 user: {
                     id: parseInt(telegramId, 10),
                     username: playerData["Name"],
                     first_name: playerData["Name"],
                 },
+                referrerCode,
                 withoutSessionRefresh: true,
             });
 
@@ -177,95 +190,6 @@ export default function AdminDataMigrationsPlayer() {
         return results;
     };
 
-    const handleCreateReferralLog = async (playerData: any) => {
-        if (!users) {
-            return { success: false, error: "Users not found" };
-        }
-
-        if (!playerData["recommenderId"]) {
-            return { success: false, skipped: true };
-        }
-
-        const referrerTelegramId = playerData["recommenderId"].replace(
-            "TG_",
-            ""
-        );
-        const referrerUser = users.find(
-            (user) => user.telegramId === referrerTelegramId
-        ) as User & { player: Player };
-        if (!referrerUser) {
-            return { success: false, error: "Referrer not found" };
-        }
-
-        const referredTelegramId = playerData["SNS ID"].replace("TG_", "");
-        const referredUser = users.find(
-            (user) => user.telegramId === referredTelegramId
-        );
-        if (!referredUser) {
-            return { success: false, error: "Referred user not found" };
-        }
-
-        try {
-            const result = await invitePlayer({
-                referredUser,
-                referrerCode: referrerUser.player.referralCode,
-                method: "telegram",
-                telegramId: referredTelegramId,
-            });
-
-            return { success: true, result };
-        } catch (error) {
-            console.error("Referral log creation failed:", error);
-            return { success: false, error: (error as Error).message };
-        }
-    };
-
-    const handleCreateAllReferralLogs = async () => {
-        setIsCreatingReferralLogs(true);
-        setReferralLogProgress(0);
-
-        const batchSize = 10;
-        const results = [];
-        let successCount = 0;
-        let failCount = 0;
-        let skipCount = 0;
-
-        try {
-            for (let i = 0; i < csvData.length; i += batchSize) {
-                const batch = csvData.slice(i, i + batchSize);
-
-                const batchResults = await Promise.all(
-                    batch.map((playerData) =>
-                        handleCreateReferralLog(playerData)
-                    )
-                );
-
-                batchResults.forEach((result) => {
-                    if (result.success) successCount++;
-                    else if (result.skipped) skipCount++;
-                    else failCount++;
-                });
-
-                results.push(...batchResults);
-
-                setReferralLogProgress(
-                    Math.floor(((i + batch.length) / csvData.length) * 100)
-                );
-
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-
-            toast.success(
-                `Referral log creation completed: ${successCount} successful, ${skipCount} skipped, ${failCount} failed`
-            );
-        } catch (error) {
-            console.error("Batch referral log creation failed:", error);
-            toast.error("Referral log creation process encountered an error");
-        } finally {
-            setIsCreatingReferralLogs(false);
-        }
-    };
-
     /*
     export interface PlayerAssetTransactionInput {
     playerId: string;
@@ -290,6 +214,30 @@ export default function AdminDataMigrationsPlayer() {
             <h1 className="text-2xl font-bold mb-6">
                 Migrate Player Data from MEME QUEST
             </h1>
+
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    🔧 개선된 마이그레이션 프로세스
+                </h3>
+                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                    <li>
+                        • <strong>자동 Referrer 설정:</strong> Player 생성 시
+                        CSV의 recommenderId를 통해 자동으로 referrer 관계 설정
+                    </li>
+                    <li>
+                        • <strong>중복 방지:</strong> 이미 존재하는 사용자는
+                        자동으로 스킵
+                    </li>
+                    <li>
+                        • <strong>배치 처리:</strong> 10개씩 안전하게 처리하여
+                        안정성 확보
+                    </li>
+                    <li>
+                        • <strong>Referral Log:</strong> 별도 Referral Migration
+                        컴포넌트에서 처리
+                    </li>
+                </ul>
+            </div>
 
             <div className="mb-8">
                 <h2 className="text-xl font-semibold mb-4">Upload CSV File</h2>
@@ -471,42 +419,6 @@ export default function AdminDataMigrationsPlayer() {
                                     </div>
                                     <div className="text-xs mt-1 text-gray-400">
                                         {migrationProgress}% Complete
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 일괄 Referral Log 생성성 */}
-                    <div className="my-6">
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={handleCreateAllReferralLogs}
-                                disabled={isCreatingReferralLogs}
-                                className={cn(
-                                    "py-2 px-4 text-white rounded transition-colors",
-                                    isCreatingReferralLogs
-                                        ? "bg-blue-400 cursor-not-allowed"
-                                        : "bg-blue-600 hover:bg-blue-700"
-                                )}
-                            >
-                                {isCreatingReferralLogs
-                                    ? "Creating Referral Logs..."
-                                    : "Create Referral Logs"}
-                            </button>
-
-                            {isCreatingReferralLogs && (
-                                <div className="flex-1">
-                                    <div className="w-full bg-gray-700 rounded-full h-2.5">
-                                        <div
-                                            className="bg-blue-600 h-2.5 rounded-full"
-                                            style={{
-                                                width: `${referralLogProgress}%`,
-                                            }}
-                                        ></div>
-                                    </div>
-                                    <div className="text-xs mt-1 text-gray-400">
-                                        {referralLogProgress}% Complete
                                     </div>
                                 </div>
                             )}

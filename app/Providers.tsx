@@ -50,7 +50,7 @@ const getConnectors = () => {
                 url: process.env.NEXT_PUBLIC_BASE_URL || "https://starglow.io",
                 iconUrl: `${
                     process.env.NEXT_PUBLIC_BASE_URL || "https://starglow.io"
-                }/logo/l-gradien-purple.svg`,
+                }/favicon.svg`,
             },
         }),
         // WalletConnect
@@ -67,7 +67,7 @@ const getConnectors = () => {
                     `${
                         process.env.NEXT_PUBLIC_BASE_URL ||
                         "https://starglow.io"
-                    }/logo/l-gradien-purple.svg`,
+                    }/favicon.svg`,
                 ],
             },
             showQrModal: true,
@@ -77,7 +77,7 @@ const getConnectors = () => {
             appName: "Starglow",
             appLogoUrl: `${
                 process.env.NEXT_PUBLIC_BASE_URL || "https://starglow.io"
-            }/logo/l-gradien-purple.svg`,
+            }/favicon.svg`,
         }),
     ];
 };

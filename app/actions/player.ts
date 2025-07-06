@@ -348,6 +348,102 @@ export async function invitePlayer(
     }
 }
 
+// 🆕 마이그레이션 전용 referral log 생성 함수
+export interface CreateReferralLogForMigrationParams {
+    referredTelegramId: string;
+    referrerTelegramId: string;
+    method?: string;
+}
+
+export async function createReferralLogForMigration(
+    input: CreateReferralLogForMigrationParams
+): Promise<{ success: boolean; error?: string; result?: any; skipped?: boolean }> {
+    try {
+        // 1. 사용자들 찾기
+        const [referredUser, referrerUser] = await Promise.all([
+            prisma.user.findUnique({
+                where: { telegramId: input.referredTelegramId },
+                include: { player: true },
+            }),
+            prisma.user.findUnique({
+                where: { telegramId: input.referrerTelegramId },
+                include: { player: true },
+            }),
+        ]);
+
+        if (!referredUser?.player) {
+            return { success: false, error: "Referred user not found" };
+        }
+
+        if (!referrerUser?.player) {
+            return { success: false, error: "Referrer user not found" };
+        }
+
+        // 2. 기존 referral log 확인
+        const existingLog = await prisma.referralLog.findUnique({
+            where: {
+                referredPlayerId_referrerPlayerId: {
+                    referredPlayerId: referredUser.player.id,
+                    referrerPlayerId: referrerUser.player.id,
+                },
+            },
+        });
+
+        if (existingLog) {
+            return { success: true, skipped: true };
+        }
+
+        // 3. referral log 생성
+        const result = await prisma.$transaction(async (tx) => {
+            // ReferralLog 생성
+            const referralLog = await tx.referralLog.create({
+                data: {
+                    referredPlayerId: referredUser.player.id,
+                    referrerPlayerId: referrerUser.player.id,
+                    method: input.method || "telegram",
+                },
+            });
+
+            // referredBy 관계 설정 (없는 경우에만)
+            if (!referredUser.player.referredBy) {
+                await tx.player.update({
+                    where: { id: referredUser.player.id },
+                    data: {
+                        referredBy: referrerUser.player.id,
+                        referredMethod: input.method || "telegram",
+                    },
+                });
+            }
+
+            // referrer의 referralCount 증가
+            await tx.player.update({
+                where: { id: referrerUser.player.id },
+                data: { referralCount: { increment: 1 } },
+            });
+
+            return { referralLog };
+        });
+
+        // 4. Referral Quest 자동 완료 처리
+        await setReferralQuestLogs({
+            player: referrerUser.player,
+        }).catch((error) => {
+            console.error(
+                "[createReferralLogForMigration] Failed to set referral quest logs:",
+                error
+            );
+        });
+
+        return { success: true, result };
+    } catch (error) {
+        console.error("createReferralLogForMigration Error:", error);
+        return { 
+            success: false, 
+            error: error instanceof Error ? error.message : "Unknown error" 
+        };
+    }
+}
+
 export interface GetDBUserFromPlayerInput {
     playerId: string;
 }

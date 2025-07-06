@@ -58,7 +58,7 @@ export function useMetaMask(userId?: string): UseMetaMaskReturn {
                     dappMetadata: {
                         name: "Starglow",
                         url: window.location.origin,
-                        iconUrl: `${window.location.origin}/logo/starglow-logo.svg`,
+                        iconUrl: `${window.location.origin}/favicon.svg`,
                     },
                     logging: {
                         developerMode: process.env.NODE_ENV === "development",

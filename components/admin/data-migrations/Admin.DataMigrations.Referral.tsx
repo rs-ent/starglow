@@ -1,53 +1,33 @@
-/// components\admin\data-migrations\Admin.DataMigrations.SGP.tsx
+/// components\admin\data-migrations\Admin.DataMigrations.Referral.tsx
 
 "use client";
 
-import { useState, useMemo } from "react";
-import { usePlayerAssetSet } from "@/app/hooks/usePlayerAssets";
-import { useUserGet } from "@/app/hooks/useUser";
+import { useState } from "react";
+
 import { useToast } from "@/app/hooks/useToast";
+import { useUserGet } from "@/app/hooks/useUser";
+import { createReferralLogForMigration } from "@/app/actions/player";
 import FileUploader from "@/components/atoms/FileUploader";
 import { cn } from "@/lib/utils/tailwind";
 
-import type { UserWithPlayer } from "@/app/actions/user";
+import type { User, Player } from "@prisma/client";
 
-const GAME_MONEY_ASSET_ID = "cmcq98cyn00vpjt0vlxsb9esn";
-
-export default function AdminDataMigrationsSGP() {
+export default function AdminDataMigrationsReferral() {
     const [csvData, setCsvData] = useState<any[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(50);
 
-    const [isMigratingSGP, setIsMigratingSGP] = useState(false);
-    const [sgpMigrationProgress, setSgpMigrationProgress] = useState(0);
-    const [migratedSGP, setMigratedSGP] = useState<Set<number>>(new Set());
+    const [isCreatingReferralLogs, setIsCreatingReferralLogs] = useState(false);
+    const [referralLogProgress, setReferralLogProgress] = useState(0);
     const [migrationLog, setMigrationLog] = useState<string[]>([]);
 
     const { users } = useUserGet({
-        getUsersInput: { providers: ["telegram"] },
+        getUsersInput: {
+            providers: ["telegram"],
+        },
     });
 
-    // 🚀 성능 최적화: 사용자 조회를 Map으로 변환
-    const usersMap = useMemo(() => {
-        if (!users) return new Map();
-        const map = new Map<string, UserWithPlayer>();
-        users.forEach((user: UserWithPlayer) => {
-            if (user.telegramId) {
-                map.set(user.telegramId, user);
-            }
-        });
-        return map;
-    }, [users]);
-
-    const { updatePlayerAsset } = usePlayerAssetSet();
     const toast = useToast();
-
-    // Game Money 변환 함수
-    const convertGameMoney = (gameMoney: string | number): number => {
-        const original = parseInt(String(gameMoney)) || 0;
-        const converted = original / 1000;
-        return Math.ceil(converted);
-    };
 
     // CSV 파일 업로드 처리
     const handleFileUpload = async (files: { id: string; url: string }[]) => {
@@ -68,6 +48,7 @@ export default function AdminDataMigrationsSGP() {
             });
 
             setCsvData(parsedData);
+            setMigrationLog([]);
             toast.success("CSV file loaded successfully");
         } catch (error) {
             console.error("Error parsing CSV:", error);
@@ -75,158 +56,75 @@ export default function AdminDataMigrationsSGP() {
         }
     };
 
-    // 🔄 로그 추가 함수
+    // 로그 추가 함수
     const addLog = (message: string) => {
         const timestamp = new Date().toISOString().slice(11, 19);
         setMigrationLog((prev) => [...prev, `[${timestamp}] ${message}`]);
     };
 
-    // ✅ 개별 SGP 마이그레이션 - 안전성 강화
-    const handleMigrateSGP = async (playerData: any, index?: number) => {
+    // 개별 referral log 생성
+    const handleCreateReferralLogForMigration = async (playerData: any) => {
         const playerName = playerData["Name"] || "Unknown";
-        const snsId = playerData["SNS ID"] || "";
+
+        if (!playerData["recommenderId"]) {
+            addLog(`⏭️ ${playerName}: No recommender ID, skipping`);
+            return { success: false, skipped: true };
+        }
+
+        const referrerTelegramId = playerData["recommenderId"].replace(
+            "TG_",
+            ""
+        );
+        const referredTelegramId = playerData["SNS ID"].replace("TG_", "");
 
         try {
-            // 🔍 기본 데이터 검증
-            if (!snsId || !playerData["Game Money"]) {
-                addLog(`❌ ${playerName}: Missing SNS ID or Game Money`);
-                return {
-                    success: false,
-                    skipped: true,
-                    reason: "Missing required data",
-                };
-            }
+            addLog(`🔄 ${playerName}: Creating referral log...`);
 
-            // 🔍 TelegramId 추출 및 검증
-            if (!snsId.startsWith("TG_")) {
-                addLog(`❌ ${playerName}: Invalid SNS ID format: ${snsId}`);
-                return {
-                    success: false,
-                    skipped: true,
-                    reason: "Invalid SNS ID format",
-                };
-            }
-
-            const telegramId = snsId.replace("TG_", "");
-            const user = usersMap.get(telegramId);
-
-            if (!user?.player?.id) {
-                addLog(
-                    `❌ ${playerName}: User not found for telegramId: ${telegramId}`
-                );
-                return {
-                    success: false,
-                    error: "Player not found",
-                    reason: "User not found",
-                };
-            }
-
-            // 🔍 Game Money 변환 및 검증
-            const originalGameMoney = parseInt(playerData["Game Money"]) || 0;
-            const convertedAmount = convertGameMoney(originalGameMoney);
-
-            if (originalGameMoney < 0) {
-                addLog(
-                    `❌ ${playerName}: Negative Game Money: ${originalGameMoney}`
-                );
-                return {
-                    success: false,
-                    error: "Invalid Game Money",
-                    reason: "Negative amount",
-                };
-            }
-
-            if (convertedAmount <= 0) {
-                addLog(
-                    `⏭️ ${playerName}: Zero SGP (${originalGameMoney} → ${convertedAmount}), skipping`
-                );
-                return { success: true, skipped: true, reason: "Zero amount" };
-            }
-
-            // 🔍 변환 결과 로깅
-            addLog(
-                `🔄 ${playerName}: Converting ${originalGameMoney} → ${convertedAmount} SGP`
-            );
-
-            // 🚨 중요: ADD 연산으로 변경하여 기존 잔액 보존
-            const result = await updatePlayerAsset({
-                transaction: {
-                    playerId: user.player.id,
-                    assetId: GAME_MONEY_ASSET_ID,
-                    amount: convertedAmount,
-                    operation: "SET",
-                    reason: "Migration from MEME QUEST - Game Money conversion (1/1000, rounded up)",
-                    metadata: {
-                        source: "csv_migration",
-                        originalAmount: originalGameMoney,
-                        convertedAmount: convertedAmount,
-                        conversionRate: 0.001,
-                        rounded: true,
-                        playerName: playerName,
-                        telegramId: telegramId,
-                        migrationTimestamp: new Date().toISOString(),
-                    },
-                },
+            const result = await createReferralLogForMigration({
+                referredTelegramId,
+                referrerTelegramId,
+                method: "telegram",
             });
 
             if (result.success) {
-                addLog(
-                    `✅ ${playerName}: Successfully added ${convertedAmount} SGP`
-                );
-
-                if (index !== undefined) {
-                    setMigratedSGP((prev) => {
-                        const newSet = new Set(prev);
-                        newSet.add(index);
-                        return newSet;
-                    });
+                if (result.skipped) {
+                    addLog(`⏭️ ${playerName}: Referral log already exists`);
+                } else {
+                    addLog(
+                        `✅ ${playerName}: Referral log created successfully`
+                    );
                 }
             } else {
                 addLog(
-                    `❌ ${playerName}: Failed to update asset: ${result.error}`
+                    `❌ ${playerName}: Failed to create referral log - ${result.error}`
                 );
             }
 
-            return {
-                success: result.success,
-                result,
-                playerName,
-                originalAmount: originalGameMoney,
-                convertedAmount: convertedAmount,
-            };
+            return result;
         } catch (error) {
             const errorMessage =
                 error instanceof Error ? error.message : String(error);
-            addLog(`💥 ${playerName}: Exception occurred: ${errorMessage}`);
-            console.error("SGP migration failed:", {
-                playerName,
-                snsId,
-                error,
-            });
-            return {
-                success: false,
-                error: errorMessage,
-                playerName,
-                reason: "Exception occurred",
-            };
+            addLog(`💥 ${playerName}: Exception occurred - ${errorMessage}`);
+            console.error("Referral log creation failed:", error);
+            return { success: false, error: errorMessage };
         }
     };
 
-    // 🚀 일괄 SGP 마이그레이션 - 성능 및 안전성 강화
-    const handleMigrateAllSGP = async () => {
-        setIsMigratingSGP(true);
-        setSgpMigrationProgress(0);
-        setMigrationLog([]); // 로그 초기화
+    // 일괄 referral log 생성
+    const handleCreateAllReferralLogs = async () => {
+        setIsCreatingReferralLogs(true);
+        setReferralLogProgress(0);
+        setMigrationLog([]);
 
-        const batchSize = 25; // 🚀 배치 크기 증가 (10 → 25)
+        const batchSize = 25; // SGP 마이그레이션과 동일한 배치 크기
         let successCount = 0;
         let failCount = 0;
         let skipCount = 0;
-        let totalSGPAdded = 0;
-        let totalGameMoneyProcessed = 0;
 
         const startTime = Date.now();
-        addLog(`🚀 Starting SGP migration for ${csvData.length} players...`);
+        addLog(
+            `🚀 Starting referral log creation for ${csvData.length} players...`
+        );
         addLog(
             `📊 Batch size: ${batchSize}, Total batches: ${Math.ceil(
                 csvData.length / batchSize
@@ -244,28 +142,20 @@ export default function AdminDataMigrationsSGP() {
                 );
 
                 const batchResults = await Promise.all(
-                    batch.map((playerData, idx) =>
-                        handleMigrateSGP(playerData, i + idx)
+                    batch.map((playerData) =>
+                        handleCreateReferralLogForMigration(playerData)
                     )
                 );
 
-                // 🔢 배치 결과 집계
+                // 배치 결과 집계
                 let batchSuccess = 0;
                 let batchFail = 0;
                 let batchSkip = 0;
-                let batchSGP = 0;
 
                 batchResults.forEach((result) => {
                     if (result.success && !result.skipped) {
                         batchSuccess++;
                         successCount++;
-                        if (result.convertedAmount) {
-                            batchSGP += result.convertedAmount;
-                            totalSGPAdded += result.convertedAmount;
-                        }
-                        if (result.originalAmount) {
-                            totalGameMoneyProcessed += result.originalAmount;
-                        }
                     } else if (result.skipped) {
                         batchSkip++;
                         skipCount++;
@@ -276,45 +166,41 @@ export default function AdminDataMigrationsSGP() {
                 });
 
                 addLog(
-                    `✅ Batch ${batchNumber} completed: ${batchSuccess} success, ${batchSkip} skipped, ${batchFail} failed, ${batchSGP} SGP added`
+                    `✅ Batch ${batchNumber} completed: ${batchSuccess} success, ${batchSkip} skipped, ${batchFail} failed`
                 );
 
-                // 🔄 진행률 업데이트
+                // 진행률 업데이트
                 const progress = Math.floor(
                     ((i + batch.length) / csvData.length) * 100
                 );
-                setSgpMigrationProgress(progress);
+                setReferralLogProgress(progress);
 
-                // 🚀 지연 시간 최적화 (100ms → 50ms)
+                // 지연 시간
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
 
             const endTime = Date.now();
             const duration = ((endTime - startTime) / 1000).toFixed(2);
 
-            addLog(`🎉 Migration completed in ${duration}s`);
+            addLog(`🎉 Referral log creation completed in ${duration}s`);
             addLog(
                 `📊 Final results: ${successCount} successful, ${skipCount} skipped, ${failCount} failed`
             );
-            addLog(`💰 Total SGP added: ${totalSGPAdded.toLocaleString()}`);
-            addLog(
-                `🎮 Total Game Money processed: ${totalGameMoneyProcessed.toLocaleString()}`
-            );
 
             toast.success(
-                `SGP Migration completed: ${successCount} successful, ${skipCount} skipped, ${failCount} failed. Total SGP added: ${totalSGPAdded.toLocaleString()}`
+                `Referral log creation completed: ${successCount} successful, ${skipCount} skipped, ${failCount} failed`
             );
         } catch (error) {
             const errorMessage =
                 error instanceof Error ? error.message : String(error);
             addLog(`💥 Critical error: ${errorMessage}`);
-            console.error("Batch SGP migration failed:", error);
+            console.error("Batch referral log creation failed:", error);
             toast.error(
-                `SGP migration process encountered an error: ${errorMessage}`
+                `Referral log creation process encountered an error: ${errorMessage}`
             );
         } finally {
-            setIsMigratingSGP(false);
-            addLog(`⏹️ Migration process ended`);
+            setIsCreatingReferralLogs(false);
+            addLog(`⏹️ Referral log creation process ended`);
         }
     };
 
@@ -325,33 +211,8 @@ export default function AdminDataMigrationsSGP() {
     return (
         <div className="container mx-auto py-8 px-4">
             <h1 className="text-2xl font-bold mb-6">
-                💰 SGP Migration from Game Money
+                🔗 Referral Log Migration
             </h1>
-
-            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                    🔐 안전한 변환 규칙
-                </h3>
-                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                    <li>
-                        • <strong>변환 공식:</strong> Game Money ÷ 1000 = SGP
-                        (소숫점 올림)
-                    </li>
-                    <li>
-                        • <strong>예시:</strong> 13,200 → 14 SGP, 800 → 1 SGP
-                    </li>
-                    <li>
-                        • <strong>연산 방식:</strong> ADD (기존 SGP 잔액에 추가)
-                    </li>
-                    <li>
-                        • <strong>중복 방지:</strong> 동일 사용자 재실행 시 중복
-                        추가됨
-                    </li>
-                    <li>
-                        • <strong>Asset ID:</strong> {GAME_MONEY_ASSET_ID}
-                    </li>
-                </ul>
-            </div>
 
             <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
                 <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-2">
@@ -359,14 +220,40 @@ export default function AdminDataMigrationsSGP() {
                 </h3>
                 <ul className="text-sm text-amber-800 dark:text-amber-200 space-y-1">
                     <li>
-                        • 이 마이그레이션은 <strong>한 번만</strong> 실행해야
-                        합니다
+                        • <strong>사전 조건:</strong> Player 마이그레이션이 먼저
+                        완료되어야 합니다
                     </li>
                     <li>
-                        • 재실행 시 SGP가 <strong>중복으로 추가</strong>됩니다
+                        • <strong>중복 방지:</strong> 이미 존재하는 referral
+                        log는 자동으로 스킵됩니다
                     </li>
-                    <li>• 배치 크기: 25개씩 처리하여 성능 최적화</li>
-                    <li>• 실시간 로그로 모든 과정을 추적 가능</li>
+                    <li>
+                        • <strong>Quest 연동:</strong> Referral quest 자동 완료
+                        처리 포함
+                    </li>
+                    <li>
+                        • <strong>배치 처리:</strong> 25개씩 처리하여 안정성
+                        확보
+                    </li>
+                </ul>
+            </div>
+
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    📋 필요한 CSV 컬럼
+                </h3>
+                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                    <li>
+                        • <strong>SNS ID:</strong> 추천받은 사용자의 Telegram ID
+                        (TG_ prefix)
+                    </li>
+                    <li>
+                        • <strong>recommenderId:</strong> 추천인의 Telegram ID
+                        (TG_ prefix)
+                    </li>
+                    <li>
+                        • <strong>Name:</strong> 플레이어 이름 (로그용)
+                    </li>
                 </ul>
             </div>
 
@@ -374,7 +261,7 @@ export default function AdminDataMigrationsSGP() {
                 <h2 className="text-xl font-semibold mb-4">Upload CSV File</h2>
                 <FileUploader
                     bucket="data-migrations"
-                    purpose="sgp-migration"
+                    purpose="referral-migration"
                     onComplete={handleFileUpload}
                     accept={{ "text/csv": [".csv"] }}
                     multiple={false}
@@ -385,38 +272,33 @@ export default function AdminDataMigrationsSGP() {
             {csvData.length > 0 && (
                 <div className="mt-8">
                     <h2 className="text-xl font-semibold mb-4">
-                        SGP Migration Data
+                        Referral Migration Data ({csvData.length} records)
                     </h2>
 
-                    {/* 테이블과 페이지네이션 */}
-                    <div className="overflow-auto max-h-[500px]">
+                    {/* 테이블 */}
+                    <div className="overflow-auto max-h-[400px] mb-6">
                         <table className="min-w-full border border-[rgba(255,255,255,0.5)]">
                             <thead>
                                 <tr className="bg-[rgba(255,255,255,0.3)]">
-                                    <th className="border-b text-center text-sm font-bold">
+                                    <th className="border-b text-center text-sm font-bold py-2 px-4">
                                         Name
                                     </th>
-                                    <th className="border-b text-center text-sm font-bold">
+                                    <th className="border-b text-center text-sm font-bold py-2 px-4">
                                         SNS ID
                                     </th>
-                                    <th className="border-b text-center text-sm font-bold">
-                                        Game Money
+                                    <th className="border-b text-center text-sm font-bold py-2 px-4">
+                                        Recommender ID
                                     </th>
-                                    <th className="border-b text-center text-sm font-bold">
-                                        → SGP
-                                    </th>
-                                    <th className="border-b text-center text-sm font-bold">
+                                    <th className="border-b text-center text-sm font-bold py-2 px-4">
                                         Status
                                     </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {paginatedData.map((row, rowIndex) => {
-                                    const originalGameMoney =
-                                        parseInt(row["Game Money"]) || 0;
-                                    const convertedSGP =
-                                        convertGameMoney(originalGameMoney);
-                                    const realIndex = startIndex + rowIndex;
+                                    const hasRecommender =
+                                        row["recommenderId"] &&
+                                        row["recommenderId"].trim() !== "";
 
                                     return (
                                         <tr
@@ -425,9 +307,7 @@ export default function AdminDataMigrationsSGP() {
                                                 "divide-x divide-[rgba(255,255,255,0.1)]",
                                                 rowIndex % 2 === 0
                                                     ? "bg-[rgba(255,255,255,0.1)]"
-                                                    : "bg-[rgba(255,255,255,0.2)]",
-                                                migratedSGP.has(realIndex) &&
-                                                    "bg-[rgba(0,255,0,0.1)]"
+                                                    : "bg-[rgba(255,255,255,0.2)]"
                                             )}
                                         >
                                             <td className="py-2 px-4 text-xs">
@@ -436,20 +316,17 @@ export default function AdminDataMigrationsSGP() {
                                             <td className="py-2 px-4 text-xs">
                                                 {row["SNS ID"]}
                                             </td>
-                                            <td className="py-2 px-4 text-xs text-right">
-                                                {originalGameMoney.toLocaleString()}
-                                            </td>
-                                            <td className="py-2 px-4 text-xs text-right font-bold text-green-400">
-                                                {convertedSGP}
+                                            <td className="py-2 px-4 text-xs">
+                                                {row["recommenderId"] || "N/A"}
                                             </td>
                                             <td className="py-2 px-4 text-xs text-center">
-                                                {migratedSGP.has(realIndex) ? (
-                                                    <span className="text-green-400">
-                                                        ✓ Migrated
+                                                {hasRecommender ? (
+                                                    <span className="text-blue-400">
+                                                        Ready
                                                     </span>
                                                 ) : (
-                                                    <span className="text-yellow-400">
-                                                        Pending
+                                                    <span className="text-gray-400">
+                                                        No Referrer
                                                     </span>
                                                 )}
                                             </td>
@@ -461,7 +338,7 @@ export default function AdminDataMigrationsSGP() {
                     </div>
 
                     {/* 페이지네이션 */}
-                    <div className="mt-4 flex items-center justify-between">
+                    <div className="mt-4 flex items-center justify-between mb-6">
                         <div>
                             <span className="text-sm text-gray-700">
                                 Showing {startIndex + 1} to{" "}
@@ -536,43 +413,43 @@ export default function AdminDataMigrationsSGP() {
                         </div>
                     </div>
 
-                    {/* 일괄 마이그레이션 버튼 */}
+                    {/* 일괄 referral log 생성 버튼 */}
                     <div className="my-6">
                         <div className="flex items-center gap-4">
                             <button
-                                onClick={handleMigrateAllSGP}
-                                disabled={isMigratingSGP}
+                                onClick={handleCreateAllReferralLogs}
+                                disabled={isCreatingReferralLogs}
                                 className={cn(
                                     "py-2 px-4 text-white rounded transition-colors",
-                                    isMigratingSGP
-                                        ? "bg-green-400 cursor-not-allowed"
-                                        : "bg-green-600 hover:bg-green-700"
+                                    isCreatingReferralLogs
+                                        ? "bg-orange-400 cursor-not-allowed"
+                                        : "bg-orange-600 hover:bg-orange-700"
                                 )}
                             >
-                                {isMigratingSGP
-                                    ? "Migrating SGP..."
-                                    : "Migrate All SGP"}
+                                {isCreatingReferralLogs
+                                    ? "Creating Referral Logs..."
+                                    : "Create All Referral Logs"}
                             </button>
 
-                            {isMigratingSGP && (
+                            {isCreatingReferralLogs && (
                                 <div className="flex-1">
                                     <div className="w-full bg-gray-700 rounded-full h-2.5">
                                         <div
-                                            className="bg-green-600 h-2.5 rounded-full"
+                                            className="bg-orange-600 h-2.5 rounded-full"
                                             style={{
-                                                width: `${sgpMigrationProgress}%`,
+                                                width: `${referralLogProgress}%`,
                                             }}
                                         ></div>
                                     </div>
                                     <div className="text-xs mt-1 text-gray-400">
-                                        {sgpMigrationProgress}% Complete
+                                        {referralLogProgress}% Complete
                                     </div>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* 🔍 실시간 마이그레이션 로그 */}
+                    {/* 실시간 마이그레이션 로그 */}
                     {migrationLog.length > 0 && (
                         <div className="my-6">
                             <h3 className="text-lg font-semibold mb-3">
