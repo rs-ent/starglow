@@ -140,6 +140,10 @@ Table Player {
   isArtist Boolean [not null, default: false]
   artistId String
   artist Artist
+  boardTrustLevel Int [not null, default: 0]
+  boardReputationScore Int [not null, default: 0]
+  committedBoardModeration BoardModerationReport [not null]
+  reportedBoardModeration BoardModerationReport [not null]
 
   indexes {
     (userId, telegramId) [unique]
@@ -1218,6 +1222,61 @@ Table XAuthSession {
   createdAt DateTime [default: `now()`, not null]
 }
 
+Table BoardModerationRule {
+  id String [pk]
+  category String [not null]
+  stopWords String[] [not null]
+  isActive Boolean [not null, default: true]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  reports BoardModerationReport [not null]
+}
+
+Table BoardModerationReport {
+  id String [pk]
+  boardId String [not null]
+  board Board [not null]
+  postId String
+  post BoardPost
+  commentId String
+  comment BoardComment
+  reporterId String
+  reporter Player
+  offenderId String
+  offender Player
+  relatedRuleId String
+  relatedRule BoardModerationRule
+  reason String
+  type BoardModerationReportType [not null, default: 'UNKNOWN']
+  status BoardModerationReportStatus [not null, default: 'PENDING']
+  reviewResult String
+  reviewAt DateTime
+  reviewBy String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (reporterId, boardId, postId, commentId) [unique]
+  }
+}
+
+Table BoardModerationTrustLevelAction {
+  id String [pk]
+  trustLevel Int [unique, not null, default: 0]
+  reputationScore Int [not null, default: 0]
+  postPerDay Int [not null, default: 5]
+  commentPerDay Int [not null, default: 10]
+  syllableLimit Int [not null, default: 1000]
+  linkPerPostLimit Int [not null, default: 0]
+  attachmentPerPostLimit Int [not null, default: 3]
+  isActive Boolean [not null, default: true]
+  increaseReputationScoreByCleanPost Int [not null, default: 3]
+  increaseReputationScoreByCleanComment Int [not null, default: 1]
+  increaseReputationScoreByReportedPost Int [not null, default: 1]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
 Table Board {
   id String [pk]
   name String [not null]
@@ -1254,6 +1313,7 @@ Table Board {
   postCreationRewardAsset Asset
   popularPostRewardAsset Asset
   qualityContentRewardAsset Asset
+  reports BoardModerationReport [not null]
 }
 
 Table BoardPost {
@@ -1286,6 +1346,7 @@ Table BoardPost {
   comments BoardComment [not null]
   reactions BoardReaction [not null]
   rewards BoardPostReward [not null]
+  reports BoardModerationReport [not null]
 }
 
 Table BoardComment {
@@ -1309,6 +1370,7 @@ Table BoardComment {
   parent BoardComment
   replies BoardComment [not null]
   reactions BoardReaction [not null]
+  reports BoardModerationReport [not null]
 }
 
 Table BoardReaction {
@@ -1595,6 +1657,26 @@ Table StakeReward {
 Table StakeRewardLog {
   stakerewardlogsId String [ref: > StakeRewardLog.id]
   stakerewardlogsId String [ref: > StakeRewardLog.id]
+}
+
+Enum BoardModerationReportStatus {
+  PENDING
+  REVIEWING
+  DISMISSED
+  RESOLVED
+  WARNED
+  BANNED
+  HIDDEN
+  DELETED
+}
+
+Enum BoardModerationReportType {
+  UNKNOWN
+  AUTO_RULE
+  SPAM_DETECTION
+  AI_FLAGGED
+  USER_REPORT
+  MODERATOR_REPORT
 }
 
 Enum PlayerAssetStatus {
@@ -2040,6 +2122,18 @@ Ref: TweetMetrics.tweetId > Tweet.tweetId
 Ref: TweetMedia.tweetId > Tweet.tweetId
 
 Ref: TweetResponse.tweetSyncDataId > TweetSyncData.id [delete: Cascade]
+
+Ref: BoardModerationReport.boardId > Board.id
+
+Ref: BoardModerationReport.postId > BoardPost.id
+
+Ref: BoardModerationReport.commentId > BoardComment.id
+
+Ref: BoardModerationReport.reporterId > Player.id
+
+Ref: BoardModerationReport.offenderId > Player.id
+
+Ref: BoardModerationReport.relatedRuleId > BoardModerationRule.id
 
 Ref: Board.artistId > Artist.id
 

@@ -33,6 +33,11 @@ export default function AdminNav() {
         },
         { href: "/admin/x", label: "X", icon: PartyPopperIcon },
         { href: "/admin/boards", label: "Boards", icon: PartyPopperIcon },
+        {
+            href: "/admin/moderation",
+            label: "Moderation",
+            icon: PartyPopperIcon,
+        },
         { href: "/admin/raffles", label: "Raffles", icon: PartyPopperIcon },
         {
             href: "/admin/notifications",

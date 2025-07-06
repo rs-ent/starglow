@@ -5,6 +5,7 @@
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma/client";
+import { validateContentBeforePost } from "../boardModeration/check-actions";
 
 import { updatePlayerAsset } from "../playerAssets";
 
@@ -367,6 +368,30 @@ export async function createBoardPost(
     input: CreateBoardPostInput
 ): Promise<BoardPost> {
     try {
+        // 통합 검증: 제목과 내용을 함께 검증
+        const combinedContent = `${input.title} ${input.content}`;
+
+        // 단일 검증으로 통합 - 보드 모더레이션이 금지어 검증도 포함
+        const contentValidation = await validateContentBeforePost(
+            combinedContent,
+            input.authorId,
+            input.boardId
+        );
+
+        if (contentValidation.blocked) {
+            // 차단된 경우 상세 로그
+            console.warn(`Content blocked for user: ${input.authorId}`, {
+                reason: contentValidation.message,
+                violations: contentValidation.violations,
+                severity: contentValidation.severity,
+            });
+
+            throw new Error(
+                contentValidation.message ||
+                    "Content blocked due to policy violations"
+            );
+        }
+
         const post = await prisma.boardPost.create({
             data: {
                 boardId: input.boardId,
@@ -385,13 +410,16 @@ export async function createBoardPost(
             },
         });
 
-        // 게시글 작성 보상 지급 (Board 설정 참조)
         await handlePostCreationReward(post.id, input.boardId, input.authorId);
 
         return post;
     } catch (error) {
         console.error("Failed to create board post:", error);
-        throw new Error("Failed to create board post");
+        throw new Error(
+            error instanceof Error
+                ? error.message
+                : "Failed to create board post"
+        );
     }
 }
 
@@ -608,6 +636,36 @@ export async function createBoardComment(
     input: CreateBoardCommentInput
 ): Promise<BoardComment> {
     try {
+        const post = await prisma.boardPost.findUnique({
+            where: { id: input.postId },
+            select: { boardId: true },
+        });
+
+        if (!post) {
+            throw new Error("Post not found");
+        }
+
+        // 통합 검증 - 보드 모더레이션이 금지어 검증도 포함
+        const contentValidation = await validateContentBeforePost(
+            input.content,
+            input.authorId,
+            post.boardId
+        );
+
+        if (contentValidation.blocked) {
+            // 차단된 경우 상세 로그
+            console.warn(`Comment blocked for user: ${input.authorId}`, {
+                reason: contentValidation.message,
+                violations: contentValidation.violations,
+                severity: contentValidation.severity,
+            });
+
+            throw new Error(
+                contentValidation.message ||
+                    "Content blocked due to policy violations"
+            );
+        }
+
         const comment = await prisma.boardComment.create({
             data: {
                 postId: input.postId,
@@ -621,13 +679,11 @@ export async function createBoardComment(
             },
         });
 
-        // 게시글 댓글 수 업데이트
         await prisma.boardPost.update({
             where: { id: input.postId },
             data: { commentCount: { increment: 1 } },
         });
 
-        // 대댓글인 경우 부모 댓글의 답글 수 업데이트
         if (input.parentId) {
             await prisma.boardComment.update({
                 where: { id: input.parentId },
@@ -638,7 +694,11 @@ export async function createBoardComment(
         return comment;
     } catch (error) {
         console.error("Failed to create board comment:", error);
-        throw new Error("Failed to create board comment");
+        throw new Error(
+            error instanceof Error
+                ? error.message
+                : "Failed to create board comment"
+        );
     }
 }
 

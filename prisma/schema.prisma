@@ -170,6 +170,10 @@ model Player {
   isArtist               Boolean              @default(false)
   artistId               String?
   artist                 Artist?              @relation("PlayerArtist", fields: [artistId], references: [id])
+  boardTrustLevel        Int                  @default(0)
+  boardReputationScore   Int                  @default(0)
+  committedBoardModeration BoardModerationReport[] @relation("BoardModerationReportOffender")
+  reportedBoardModeration BoardModerationReport[] @relation("BoardModerationReportReporter")
 
   @@unique([userId, telegramId])
   @@index([userId, telegramId])
@@ -1387,6 +1391,96 @@ model XAuthSession {
 }
 
 // Board System Models
+
+model BoardModerationRule {
+  id String @id @default(cuid())
+  category String
+  stopWords String[]
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reports BoardModerationReport[]
+}
+
+enum BoardModerationReportStatus {
+  PENDING
+  REVIEWING
+  DISMISSED
+  RESOLVED
+  WARNED
+  BANNED
+  HIDDEN
+  DELETED
+}
+
+enum BoardModerationReportType {
+  UNKNOWN
+  AUTO_RULE
+  SPAM_DETECTION
+  AI_FLAGGED
+  USER_REPORT
+  MODERATOR_REPORT
+}
+model BoardModerationReport {
+  id String @id @default(cuid())
+  boardId String
+  board Board @relation(fields: [boardId], references: [id])
+  postId String?
+  post BoardPost? @relation(fields: [postId], references: [id])
+  commentId String?
+  comment BoardComment? @relation(fields: [commentId], references: [id])
+  reporterId String?
+  reporter Player? @relation("BoardModerationReportReporter", fields: [reporterId], references: [id])
+  offenderId String?
+  offender Player? @relation("BoardModerationReportOffender", fields: [offenderId], references: [id])
+  relatedRuleId String?
+  relatedRule BoardModerationRule? @relation(fields: [relatedRuleId], references: [id])
+  reason String?
+
+  type BoardModerationReportType @default(UNKNOWN)
+
+  status BoardModerationReportStatus @default(PENDING)
+  reviewResult String?
+  reviewAt DateTime?
+  reviewBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([reporterId, boardId, postId, commentId])
+  @@index([status, createdAt])
+  @@index([type, createdAt])
+  @@index([reporterId, createdAt])
+  @@index([offenderId, createdAt])
+  @@index([relatedRuleId, createdAt])
+  @@index([boardId, createdAt])
+  @@index([postId, createdAt])
+  @@index([commentId, createdAt])
+}
+
+model BoardModerationTrustLevelAction {
+  id String @id @default(cuid())
+  trustLevel Int @unique @default(0)
+  reputationScore Int @default(0)
+  
+  postPerDay Int @default(5)
+  commentPerDay Int @default(10)
+  syllableLimit Int @default(1000)
+  linkPerPostLimit Int @default(0)
+  attachmentPerPostLimit Int @default(3)
+  isActive Boolean @default(true)
+
+  increaseReputationScoreByCleanPost Int @default(3)
+  increaseReputationScoreByCleanComment Int @default(1)
+  increaseReputationScoreByReportedPost Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([trustLevel])
+}
+
 model Board {
   id          String      @id @default(cuid())
   name        String
@@ -1432,6 +1526,7 @@ model Board {
   postCreationRewardAsset  Asset? @relation("BoardPostCreationReward", fields: [postCreationRewardAssetId], references: [id])
   popularPostRewardAsset   Asset? @relation("BoardPopularPostReward", fields: [popularPostRewardAssetId], references: [id])
   qualityContentRewardAsset Asset? @relation("BoardQualityContentReward", fields: [qualityContentRewardAssetId], references: [id])
+  reports BoardModerationReport[]
 
   @@index([artistId, isActive])
   @@index([isPublic, isActive, order])
@@ -1468,7 +1563,7 @@ model BoardPost {
   comments       BoardComment[]
   reactions      BoardReaction[]
   rewards        BoardPostReward[]
-
+  reports        BoardModerationReport[]
   @@index([boardId, isPinned, createdAt])
   @@index([authorId, createdAt])
   @@index([authorType, createdAt])
@@ -1498,7 +1593,7 @@ model BoardComment {
   parent        BoardComment?     @relation("CommentReplies", fields: [parentId], references: [id])
   replies       BoardComment[]    @relation("CommentReplies")
   reactions     BoardReaction[]
-
+  reports       BoardModerationReport[]
   @@index([postId, parentId, createdAt])
   @@index([authorId, createdAt])
   @@index([parentId])

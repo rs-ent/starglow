@@ -837,3 +837,230 @@ export async function handleAssetStatusChange(
 ): Promise<PlayerAssetResult<void>> {
     return updatePlayerAssetsOnAssetChange(event);
 }
+
+export interface BulkUpdateAssetReferencesInput {
+    oldAssetId: string;
+    newAssetId: string;
+}
+
+export interface BulkUpdateAssetReferencesResult {
+    success: boolean;
+    updatedCounts: {
+        playerAssets: number;
+        questRewardAssets: number;
+        questLogRewardAssets: number;
+        pollBettingAssets: number;
+        pollParticipationConsumeAssets: number;
+        pollParticipationRewardAssets: number;
+        pollLogRewardAssets: number;
+        rewardsLogs: number;
+        stakeRewards: number;
+        stakeRewardLogs: number;
+        boardPostRewards: number;
+        boardPostCreationRewards: number;
+        boardPopularPostRewards: number;
+        boardQualityContentRewards: number;
+        rafflePrizes: number;
+        raffleEntryFeeAssets: number;
+        assetTransactions: number;
+    };
+    error?: string;
+}
+
+export async function bulkUpdateAssetReferences(
+    input: BulkUpdateAssetReferencesInput
+): Promise<BulkUpdateAssetReferencesResult> {
+    try {
+        // First, verify both assets exist
+        const [oldAsset, newAsset] = await Promise.all([
+            prisma.asset.findUnique({ where: { id: input.oldAssetId } }),
+            prisma.asset.findUnique({ where: { id: input.newAssetId } }),
+        ]);
+
+        if (!oldAsset) {
+            return {
+                success: false,
+                error: `Old asset with ID ${input.oldAssetId} not found`,
+                updatedCounts: {} as any,
+            };
+        }
+
+        if (!newAsset) {
+            return {
+                success: false,
+                error: `New asset with ID ${input.newAssetId} not found`,
+                updatedCounts: {} as any,
+            };
+        }
+
+        // Perform the bulk update in a transaction
+        const result = await prisma.$transaction(async (tx) => {
+            const updatedCounts = {
+                playerAssets: 0,
+                questRewardAssets: 0,
+                questLogRewardAssets: 0,
+                pollBettingAssets: 0,
+                pollParticipationConsumeAssets: 0,
+                pollParticipationRewardAssets: 0,
+                pollLogRewardAssets: 0,
+                rewardsLogs: 0,
+                stakeRewards: 0,
+                stakeRewardLogs: 0,
+                boardPostRewards: 0,
+                boardPostCreationRewards: 0,
+                boardPopularPostRewards: 0,
+                boardQualityContentRewards: 0,
+                rafflePrizes: 0,
+                raffleEntryFeeAssets: 0,
+                assetTransactions: 0,
+            };
+
+            // Update PlayerAsset
+            const playerAssetUpdate = await tx.playerAsset.updateMany({
+                where: { assetId: input.oldAssetId },
+                data: { assetId: input.newAssetId },
+            });
+            updatedCounts.playerAssets = playerAssetUpdate.count;
+
+            // Update Quest rewardAssetId
+            const questUpdate = await tx.quest.updateMany({
+                where: { rewardAssetId: input.oldAssetId },
+                data: { rewardAssetId: input.newAssetId },
+            });
+            updatedCounts.questRewardAssets = questUpdate.count;
+
+            // Update QuestLog rewardAssetId
+            const questLogUpdate = await tx.questLog.updateMany({
+                where: { rewardAssetId: input.oldAssetId },
+                data: { rewardAssetId: input.newAssetId },
+            });
+            updatedCounts.questLogRewardAssets = questLogUpdate.count;
+
+            // Update Poll bettingAssetId
+            const pollBettingUpdate = await tx.poll.updateMany({
+                where: { bettingAssetId: input.oldAssetId },
+                data: { bettingAssetId: input.newAssetId },
+            });
+            updatedCounts.pollBettingAssets = pollBettingUpdate.count;
+
+            // Update Poll participationConsumeAssetId
+            const pollConsumeUpdate = await tx.poll.updateMany({
+                where: { participationConsumeAssetId: input.oldAssetId },
+                data: { participationConsumeAssetId: input.newAssetId },
+            });
+            updatedCounts.pollParticipationConsumeAssets =
+                pollConsumeUpdate.count;
+
+            // Update Poll participationRewardAssetId
+            const pollRewardUpdate = await tx.poll.updateMany({
+                where: { participationRewardAssetId: input.oldAssetId },
+                data: { participationRewardAssetId: input.newAssetId },
+            });
+            updatedCounts.pollParticipationRewardAssets =
+                pollRewardUpdate.count;
+
+            // Update PollLog rewardAssetId
+            const pollLogUpdate = await tx.pollLog.updateMany({
+                where: { rewardAssetId: input.oldAssetId },
+                data: { rewardAssetId: input.newAssetId },
+            });
+            updatedCounts.pollLogRewardAssets = pollLogUpdate.count;
+
+            // Update RewardsLog assetId
+            const rewardsLogUpdate = await tx.rewardsLog.updateMany({
+                where: { assetId: input.oldAssetId },
+                data: { assetId: input.newAssetId },
+            });
+            updatedCounts.rewardsLogs = rewardsLogUpdate.count;
+
+            // Update StakeReward assetId
+            const stakeRewardUpdate = await tx.stakeReward.updateMany({
+                where: { assetId: input.oldAssetId },
+                data: { assetId: input.newAssetId },
+            });
+            updatedCounts.stakeRewards = stakeRewardUpdate.count;
+
+            // Update StakeRewardLog assetId
+            const stakeRewardLogUpdate = await tx.stakeRewardLog.updateMany({
+                where: { assetId: input.oldAssetId },
+                data: { assetId: input.newAssetId },
+            });
+            updatedCounts.stakeRewardLogs = stakeRewardLogUpdate.count;
+
+            // Update BoardPostReward assetId
+            const boardPostRewardUpdate = await tx.boardPostReward.updateMany({
+                where: { assetId: input.oldAssetId },
+                data: { assetId: input.newAssetId },
+            });
+            updatedCounts.boardPostRewards = boardPostRewardUpdate.count;
+
+            // Update Board postCreationRewardAssetId
+            const boardPostCreationUpdate = await tx.board.updateMany({
+                where: { postCreationRewardAssetId: input.oldAssetId },
+                data: { postCreationRewardAssetId: input.newAssetId },
+            });
+            updatedCounts.boardPostCreationRewards =
+                boardPostCreationUpdate.count;
+
+            // Update Board popularPostRewardAssetId
+            const boardPopularUpdate = await tx.board.updateMany({
+                where: { popularPostRewardAssetId: input.oldAssetId },
+                data: { popularPostRewardAssetId: input.newAssetId },
+            });
+            updatedCounts.boardPopularPostRewards = boardPopularUpdate.count;
+
+            // Update Board qualityContentRewardAssetId
+            const boardQualityUpdate = await tx.board.updateMany({
+                where: { qualityContentRewardAssetId: input.oldAssetId },
+                data: { qualityContentRewardAssetId: input.newAssetId },
+            });
+            updatedCounts.boardQualityContentRewards = boardQualityUpdate.count;
+
+            // Update RafflePrize assetId
+            const rafflePrizeUpdate = await tx.rafflePrize.updateMany({
+                where: { assetId: input.oldAssetId },
+                data: { assetId: input.newAssetId },
+            });
+            updatedCounts.rafflePrizes = rafflePrizeUpdate.count;
+
+            // Update Raffle entryFeeAssetId
+            const raffleEntryUpdate = await tx.raffle.updateMany({
+                where: { entryFeeAssetId: input.oldAssetId },
+                data: { entryFeeAssetId: input.newAssetId },
+            });
+            updatedCounts.raffleEntryFeeAssets = raffleEntryUpdate.count;
+
+            // Update AssetTransaction assetId (if it references Asset.id)
+            const assetTransactionUpdate = await tx.assetTransaction.updateMany(
+                {
+                    where: { assetId: input.oldAssetId },
+                    data: { assetId: input.newAssetId },
+                }
+            );
+            updatedCounts.assetTransactions = assetTransactionUpdate.count;
+
+            return updatedCounts;
+        });
+
+        // Revalidate admin pages that might display this data
+        revalidatePath("/admin/assets");
+        revalidatePath("/admin/rewards");
+        revalidatePath("/admin/polls");
+        revalidatePath("/admin/quests");
+        revalidatePath("/admin/raffles");
+
+        return {
+            success: true,
+            updatedCounts: result,
+        };
+    } catch (error) {
+        console.error("Failed to bulk update asset references:", error);
+        return {
+            success: false,
+            error: `Failed to update asset references: ${
+                error instanceof Error ? error.message : "Unknown error"
+            }`,
+            updatedCounts: {} as any,
+        };
+    }
+}

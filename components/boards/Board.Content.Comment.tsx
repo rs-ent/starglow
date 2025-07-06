@@ -15,7 +15,7 @@ import type { Player, Artist } from "@prisma/client";
 import type { FileData } from "../atoms/FileUploader";
 import { usePlayerGet } from "@/app/hooks/usePlayer";
 import BoardContentCommentItem from "./Board.Content.Comment.Item";
-
+import { useToast } from "@/app/hooks/useToast";
 interface BoardContentCommentProps {
     postId: string;
     player: Player | null;
@@ -27,6 +27,7 @@ export default function BoardContentComment({
     player,
     artist,
 }: BoardContentCommentProps) {
+    const toast = useToast();
     const [newComment, setNewComment] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -79,10 +80,15 @@ export default function BoardContentComment({
             setCommentFiles([]);
         } catch (error) {
             console.error("Failed to create comment:", error);
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Failed to create comment"
+            );
         } finally {
             setIsSubmitting(false);
         }
-    }, [player, newComment, commentFiles, createBoardCommentAsync, postId]);
+    }, [player, newComment, commentFiles, createBoardCommentAsync, postId, toast]);
 
     // 메인 댓글 파일 업로드 핸들러
     const handleCommentFilesSelected = useCallback((files: FileData[]) => {

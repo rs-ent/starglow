@@ -43,6 +43,7 @@ import {
 import type { Player, Artist } from "@prisma/client";
 import type { FileData } from "../atoms/FileUploader";
 import { usePlayerGet } from "@/app/hooks/usePlayer";
+import { useToast } from "@/app/hooks/useToast";
 import ImageVideoPopup from "../atoms/ImageVideoPopup";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
 
@@ -73,6 +74,7 @@ export default React.memo(function BoardContentCommentItem({
     isDeletingComment,
     level = 0,
 }: BoardContentCommentItemProps) {
+    const toast = useToast();
     const [newReply, setNewReply] = useState("");
     const [showReplies, setShowReplies] = useState(true);
 
@@ -130,7 +132,7 @@ export default React.memo(function BoardContentCommentItem({
         if (!player || !newReply.trim()) return;
 
         try {
-            await createBoardCommentAsync({
+            const result = await createBoardCommentAsync({
                 postId: comment.postId,
                 authorId: player.id,
                 authorType: "PLAYER",
@@ -147,11 +149,20 @@ export default React.memo(function BoardContentCommentItem({
                 })),
             });
 
-            setNewReply("");
-            setReplyFiles([]);
-            onCancelReply();
+            if (result?.success) {
+                setNewReply("");
+                setReplyFiles([]);
+                onCancelReply();
+                // 성공 메시지는 표시하지 않음 (자연스러운 UX)
+            } else {
+                // 모더레이션 실패 또는 기타 에러 시 토스트 표시
+                toast.error(
+                    result?.message || "Failed to post reply. Please try again."
+                );
+            }
         } catch (error) {
             console.error("Failed to create reply:", error);
+            toast.error("Failed to post reply. Please try again.");
         }
     }, [
         player,
@@ -161,6 +172,7 @@ export default React.memo(function BoardContentCommentItem({
         comment.postId,
         comment.id,
         onCancelReply,
+        toast,
     ]);
 
     // 대댓글 파일 업로드 핸들러

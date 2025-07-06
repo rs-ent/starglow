@@ -60,11 +60,24 @@ export interface IERC6551Registry$Type {
 
 declare module "@nomicfoundation/hardhat-viem/types" {
   export function deployContract(
+    contractName: "IERC6551Registry",
+    constructorArgs?: [],
+    config?: DeployContractConfig
+  ): Promise<GetContractReturnType<IERC6551Registry$Type["abi"]>>;
+  export function deployContract(
     contractName: "contracts/SPGNFTCollection.sol:IERC6551Registry",
     constructorArgs?: [],
     config?: DeployContractConfig
   ): Promise<GetContractReturnType<IERC6551Registry$Type["abi"]>>;
 
+  export function sendDeploymentTransaction(
+    contractName: "IERC6551Registry",
+    constructorArgs?: [],
+    config?: SendDeploymentTransactionConfig
+  ): Promise<{
+    contract: GetContractReturnType<IERC6551Registry$Type["abi"]>;
+    deploymentTransaction: GetTransactionReturnType;
+  }>;
   export function sendDeploymentTransaction(
     contractName: "contracts/SPGNFTCollection.sol:IERC6551Registry",
     constructorArgs?: [],
@@ -74,6 +87,11 @@ declare module "@nomicfoundation/hardhat-viem/types" {
     deploymentTransaction: GetTransactionReturnType;
   }>;
 
+  export function getContractAt(
+    contractName: "IERC6551Registry",
+    address: Address,
+    config?: GetContractAtConfig
+  ): Promise<GetContractReturnType<IERC6551Registry$Type["abi"]>>;
   export function getContractAt(
     contractName: "contracts/SPGNFTCollection.sol:IERC6551Registry",
     address: Address,

@@ -283,6 +283,9 @@ export default React.memo(function BoardContent({
             localStorage.setItem("lastPostTime", now.toString());
         } catch (error) {
             console.error("Failed to create post:", error);
+            toast.error(
+                error instanceof Error ? error.message : "Failed to create post"
+            );
 
             setNewPostTitle(title);
             setNewPostContent(content);

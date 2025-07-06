@@ -17,8 +17,8 @@ import { prisma } from "@/lib/prisma/client";
 const abi = factoryJson.abi;
 const bytecode = factoryJson.bytecode as `0x${string}`;
 
-import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
-import factoryJson from "@/web3/artifacts/contracts/Factory.sol/CollectionFactory.json";
+import collectionJson from "@/web3/artifacts/contracts/Collection-deprecated.sol/Collection.json";
+import factoryJson from "@/web3/artifacts/contracts/Factory-deprecated.sol/CollectionFactory.json";
 
 import {
     deployContract,

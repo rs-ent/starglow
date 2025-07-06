@@ -12,7 +12,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 
 import { prisma } from "@/lib/prisma/client";
-import collectionJson from "@/web3/artifacts/contracts/Collection.sol/Collection.json";
+import collectionJson from "@/web3/artifacts/contracts/Collection-deprecated.sol/Collection.json";
 
 import {
     estimateGasOptions,

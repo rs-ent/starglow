@@ -100,7 +100,7 @@ export default function ArtistMessage({
                         />
                     </motion.div>
                 )}
-                {message.message && message.message.length > 2 && (
+                {message.message && message.message.length > 5 && (
                     <motion.div
                         initial={ANIMATION_VARIANTS.initial}
                         animate={ANIMATION_VARIANTS.animate}
