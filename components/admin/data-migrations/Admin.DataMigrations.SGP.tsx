@@ -15,7 +15,6 @@ const GAME_MONEY_ASSET_ID = "cmcq98cyn00vpjt0vlxsb9esn";
 
 export default function AdminDataMigrationsSGP() {
     const [csvData, setCsvData] = useState<any[]>([]);
-    const [headers, setHeaders] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(50);
 
@@ -68,7 +67,6 @@ export default function AdminDataMigrationsSGP() {
                 }, {} as Record<string, string>);
             });
 
-            setHeaders(headers);
             setCsvData(parsedData);
             toast.success("CSV file loaded successfully");
         } catch (error) {
@@ -256,7 +254,6 @@ export default function AdminDataMigrationsSGP() {
                 let batchFail = 0;
                 let batchSkip = 0;
                 let batchSGP = 0;
-                let batchGameMoney = 0;
 
                 batchResults.forEach((result) => {
                     if (result.success && !result.skipped) {
@@ -267,7 +264,6 @@ export default function AdminDataMigrationsSGP() {
                             totalSGPAdded += result.convertedAmount;
                         }
                         if (result.originalAmount) {
-                            batchGameMoney += result.originalAmount;
                             totalGameMoneyProcessed += result.originalAmount;
                         }
                     } else if (result.skipped) {
