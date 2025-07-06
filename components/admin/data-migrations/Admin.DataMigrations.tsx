@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/tailwind";
 
 import AdminDataMigrationsPlayer from "./Admin.DataMigrations.Player";
+import AdminDataMigrationsReferral from "./Admin.DataMigrations.Referral";
 import AdminDataMigrationsSGP from "./Admin.DataMigrations.SGP";
 
 export default function AdminDataMigrations() {
@@ -31,6 +32,15 @@ export default function AdminDataMigrations() {
                 >
                     👥 Player Data
                 </Button>
+
+                <Button
+                    onClick={() => setSelectedMigration("referral")}
+                    variant={
+                        selectedMigration === "referral" ? "default" : "outline"
+                    }
+                >
+                    💌 Referral Data
+                </Button>
                 <Button
                     onClick={() => setSelectedMigration("sgp")}
                     variant={
@@ -43,6 +53,9 @@ export default function AdminDataMigrations() {
             <div className="w-full p-6 bg-card rounded-md">
                 {selectedMigration === "player" && (
                     <AdminDataMigrationsPlayer />
+                )}
+                {selectedMigration === "referral" && (
+                    <AdminDataMigrationsReferral />
                 )}
                 {selectedMigration === "sgp" && <AdminDataMigrationsSGP />}
             </div>
