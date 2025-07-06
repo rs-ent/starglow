@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/tailwind";
 
 import AdminDataMigrationsPlayer from "./Admin.DataMigrations.Player";
+import AdminDataMigrationsSGP from "./Admin.DataMigrations.SGP";
 
 export default function AdminDataMigrations() {
     const [selectedMigration, setSelectedMigration] = useState<string | null>(
@@ -28,13 +29,22 @@ export default function AdminDataMigrations() {
                         selectedMigration === "player" ? "default" : "outline"
                     }
                 >
-                    Player Data
+                    👥 Player Data
+                </Button>
+                <Button
+                    onClick={() => setSelectedMigration("sgp")}
+                    variant={
+                        selectedMigration === "sgp" ? "default" : "outline"
+                    }
+                >
+                    💰 SGP Migration
                 </Button>
             </div>
             <div className="w-full p-6 bg-card rounded-md">
                 {selectedMigration === "player" && (
                     <AdminDataMigrationsPlayer />
                 )}
+                {selectedMigration === "sgp" && <AdminDataMigrationsSGP />}
             </div>
         </div>
     );

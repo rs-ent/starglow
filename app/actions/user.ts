@@ -23,9 +23,17 @@ export interface GetUsersInput {
     emails?: string[];
 }
 
-export async function getUsers(input?: GetUsersInput): Promise<User[]> {
+export type UserWithPlayer = User & { player: Player | null };
+
+export async function getUsers(
+    input?: GetUsersInput
+): Promise<UserWithPlayer[]> {
     if (!input) {
-        const users = await prisma.user.findMany();
+        const users = await prisma.user.findMany({
+            include: {
+                player: true,
+            },
+        });
         return users;
     }
 
