@@ -717,7 +717,7 @@ function PollsListCard({
                                     <p
                                         className={cn(
                                             "text-[rgba(255,255,255,0.9)] z-10 leading-0",
-                                            getResponsiveClass(15).textClass,
+                                            getResponsiveClass(20).textClass,
                                             "leading-none"
                                         )}
                                     >

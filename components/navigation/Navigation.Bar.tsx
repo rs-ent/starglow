@@ -1,7 +1,7 @@
 /// components\organisms\NavBar.tsx
 "use client";
 
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useEffect, useState, useMemo } from "react";
 
 import { usePathname } from "next/navigation";
 
@@ -199,6 +199,27 @@ function NavigationBar({ user, player }: NavigationBarProps) {
         (href: string) => pathname === href,
         [pathname]
     );
+
+    const [isUnderConstruction, setIsUnderConstruction] = useState(true);
+
+    useEffect(() => {
+        const currentHost = window.location.host;
+        const isDevelopment =
+            currentHost === "localhost:3000" ||
+            currentHost === "starglow-six.vercel.app";
+
+        if (isDevelopment) {
+            setIsUnderConstruction(false);
+        } else {
+            const envUnderConstruction =
+                process.env.NEXT_PUBLIC_UNDER_CONSTRUCTION === "true";
+            setIsUnderConstruction(envUnderConstruction);
+        }
+    }, []);
+
+    if (isUnderConstruction) {
+        return null;
+    }
 
     return (
         <>
