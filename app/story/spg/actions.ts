@@ -335,7 +335,7 @@ export interface getSPGsInput {
 
 export async function getSPGs(input?: getSPGsInput): Promise<SPG[]> {
     try {
-        if (!input || (!input.walletAddress && !input.networkId)) {
+        if (!input) {
             return await prisma.story_spg.findMany({
                 include: {
                     artist: true,
@@ -353,8 +353,8 @@ export async function getSPGs(input?: getSPGsInput): Promise<SPG[]> {
             where.networkId = input.networkId;
         }
 
-        if (input.isListed) {
-            where.isListed = true;
+        if (input.isListed !== undefined) {
+            where.isListed = input.isListed;
         }
 
         return await prisma.story_spg.findMany({

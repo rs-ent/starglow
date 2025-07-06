@@ -92,6 +92,8 @@ export default function NFTsCollectionsList({
         getSPGsInput: { isListed: true },
     });
 
+    console.log("Get SPGs Data", getSPGsData);
+
     const sortedSPGsData = useMemo(() => {
         if (!getSPGsData) return null;
 
