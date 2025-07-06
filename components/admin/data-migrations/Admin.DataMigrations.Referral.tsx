@@ -5,12 +5,9 @@
 import { useState } from "react";
 
 import { useToast } from "@/app/hooks/useToast";
-import { useUserGet } from "@/app/hooks/useUser";
 import { createReferralLogForMigration } from "@/app/actions/player";
 import FileUploader from "@/components/atoms/FileUploader";
 import { cn } from "@/lib/utils/tailwind";
-
-import type { User, Player } from "@prisma/client";
 
 export default function AdminDataMigrationsReferral() {
     const [csvData, setCsvData] = useState<any[]>([]);
@@ -20,12 +17,6 @@ export default function AdminDataMigrationsReferral() {
     const [isCreatingReferralLogs, setIsCreatingReferralLogs] = useState(false);
     const [referralLogProgress, setReferralLogProgress] = useState(0);
     const [migrationLog, setMigrationLog] = useState<string[]>([]);
-
-    const { users } = useUserGet({
-        getUsersInput: {
-            providers: ["telegram"],
-        },
-    });
 
     const toast = useToast();
 

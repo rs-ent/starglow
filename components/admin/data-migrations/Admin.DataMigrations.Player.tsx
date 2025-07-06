@@ -3,8 +3,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-import { usePlayerSet } from "@/app/hooks/usePlayer";
 import { useToast } from "@/app/hooks/useToast";
 import { useUserGet, useUserSet } from "@/app/hooks/useUser";
 import FileUploader from "@/components/atoms/FileUploader";
@@ -32,7 +30,6 @@ export default function AdminDataMigrationsPlayer() {
     });
 
     const { setUserWithTelegram } = useUserSet();
-    const { invitePlayer } = usePlayerSet();
     const toast = useToast();
 
     useEffect(() => {
