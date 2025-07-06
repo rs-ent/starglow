@@ -77,53 +77,12 @@ export const metadata: Metadata = {
         site: "@starglowP",
     },
 
-    // Icons
     icons: {
-        icon: [
-            {
-                url: "/favicon.ico",
-                sizes: "32x32",
-                type: "image/x-icon",
-            },
-            {
-                url: "/favicon-gradient.svg",
-                sizes: "16x16",
-                type: "image/svg+xml",
-                rel: "icon",
-            },
-            {
-                url: "/favicon-gradient.svg",
-                sizes: "32x32",
-                type: "image/svg+xml",
-            },
-            {
-                url: "/favicon-gradient.svg",
-                sizes: "96x96",
-                type: "image/svg+xml",
-            },
-            {
-                url: "/favicon-gradient.svg",
-                sizes: "192x192",
-                type: "image/svg+xml",
-            },
-            {
-                url: "/favicon-gradient.svg",
-                sizes: "512x512",
-                type: "image/svg+xml",
-            },
-        ],
         apple: [
             {
                 url: "/apple-touch-icon.png",
                 sizes: "180x180",
                 type: "image/png",
-            },
-        ],
-        other: [
-            {
-                rel: "mask-icon",
-                url: "/favicon-gradient.svg",
-                color: "#000000",
             },
         ],
     },
