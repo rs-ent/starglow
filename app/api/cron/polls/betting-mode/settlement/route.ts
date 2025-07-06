@@ -256,7 +256,7 @@ export async function GET(request: NextRequest) {
 
         const now = new Date();
 
-        // 정산 대상 폴 찾기 (날짜 기반 조건만 사용)
+        // 정산 대상 폴 찾기 (강화된 상태 체크)
         const settlementCandidates = await prisma.poll.findMany({
             where: {
                 bettingMode: true,
@@ -269,7 +269,14 @@ export async function GET(request: NextRequest) {
                                 1000
                     ),
                 },
-                answerOptionIds: { equals: null }, // 아직 정산되지 않음
+                // 🔒 강화된 정산 상태 체크 (3중 조건)
+                AND: [
+                    { isSettled: false },
+                    { settledAt: null },
+                    { bettingStatus: { not: "SETTLED" } },
+                    { bettingStatus: { not: "SETTLING" } },
+                    { answerOptionIds: { equals: [] } }, // 빈 배열 또는 null
+                ],
                 isActive: true,
             },
             select: {
@@ -279,6 +286,9 @@ export async function GET(request: NextRequest) {
                 totalVotes: true,
                 uniqueVoters: true,
                 optionBetAmounts: true,
+                bettingStatus: true,
+                isSettled: true,
+                settledAt: true,
             },
         });
 

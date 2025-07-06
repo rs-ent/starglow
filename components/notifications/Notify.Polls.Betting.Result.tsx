@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import type { NotificationWithEntity } from "@/app/actions/notification/actions";
+import { useMarkNotificationAsReadMutation } from "@/app/actions/notification/mutations";
 
 interface NotifyPollsBettingResultProps {
     isOpen: boolean;
@@ -32,6 +33,22 @@ export default function NotifyPollsBettingResult({
     notification,
 }: NotifyPollsBettingResultProps) {
     const [showCelebration, setShowCelebration] = useState(false);
+
+    // 🔔 알림 읽음 처리 뮤테이션
+    const markAsReadMutation = useMarkNotificationAsReadMutation();
+
+    // 🎯 모달 닫기 핸들러 (읽음 처리 포함)
+    const handleClose = () => {
+        // 아직 읽지 않은 알림인 경우에만 읽음 처리
+        if (!notification.isRead) {
+            markAsReadMutation.mutate({
+                notificationId: notification.id,
+                playerId: notification.playerId, // notification에서 playerId 추출
+            });
+        }
+
+        onClose();
+    };
 
     // 알림 타입에 따른 결과 분류
     const resultType = useMemo(() => {
@@ -137,7 +154,7 @@ export default function NotifyPollsBettingResult({
     }, [notification]);
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
+        <Dialog open={isOpen} onOpenChange={handleClose}>
             <DialogTitle> </DialogTitle>
             <DialogContent className="sm:max-w-[600px] bg-gray-900 border-gray-800 p-0 overflow-hidden [&>button]:z-20">
                 <div className="relative">
@@ -621,7 +638,7 @@ export default function NotifyPollsBettingResult({
                         >
                             {/* 메인 액션 버튼 */}
                             <motion.button
-                                onClick={onClose}
+                                onClick={handleClose}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 className={cn(

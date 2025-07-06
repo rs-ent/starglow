@@ -69,6 +69,7 @@ export interface GetNotificationsInput {
 
 export interface NotificationWithEntity {
     id: string;
+    playerId: string;
     type: NotificationType;
     category: NotificationCategory;
     title: string;

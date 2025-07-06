@@ -14,6 +14,9 @@ const customJestConfig = {
         "^@/(.*)$": "<rootDir>/app/$1",
     },
     testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/"],
+    transformIgnorePatterns: [
+        "node_modules/(?!(@web3-storage|@ucanto|@ipld|multiformats)/)",
+    ],
 };
 
 module.exports = createJestConfig(customJestConfig);
