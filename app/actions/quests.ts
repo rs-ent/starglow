@@ -737,14 +737,27 @@ export async function claimQuestReward(
     input: ClaimQuestRewardInput
 ): Promise<ClaimQuestRewardResult> {
     try {
-        if (input.questLog.isClaimed) {
+        const log = await prisma.questLog.findUnique({
+            where: {
+                id: input.questLog.id,
+            },
+        });
+
+        if (!log) {
+            return {
+                success: false,
+                error: "Unexpected error occurred. Please try again later. If the problem persists, please contact support.",
+            };
+        }
+
+        if (log.isClaimed) {
             return {
                 success: false,
                 error: "Quest reward already claimed",
             };
         }
 
-        if (!input.questLog.rewardAssetId || !input.questLog.rewardAmount) {
+        if (!log.rewardAssetId || !log.rewardAmount) {
             return {
                 success: false,
                 error: "Quest reward not found",
@@ -754,12 +767,12 @@ export async function claimQuestReward(
         const updateResult = await updatePlayerAsset({
             transaction: {
                 playerId: input.player.id,
-                assetId: input.questLog.rewardAssetId,
-                amount: input.questLog.rewardAmount,
+                assetId: log.rewardAssetId,
+                amount: log.rewardAmount,
                 operation: "ADD",
                 reason: "Quest Reward",
-                questId: input.questLog.questId,
-                questLogId: input.questLog.id,
+                questId: log.questId,
+                questLogId: log.id,
             },
         });
         if (!updateResult.success) {
@@ -769,11 +782,11 @@ export async function claimQuestReward(
             };
         }
 
-        if (input.questLog.reclaimable) {
-            const claimedDates = input.questLog.claimedDates || [];
+        if (log.reclaimable) {
+            const claimedDates = log.claimedDates || [];
             claimedDates.push(new Date());
             const updatedReclaimableQuestLog = await prisma.questLog.update({
-                where: { id: input.questLog.id },
+                where: { id: log.id },
                 data: {
                     completed: false,
                     completedAt: null,
@@ -790,7 +803,7 @@ export async function claimQuestReward(
         }
 
         const updatedQuestLog = await prisma.questLog.update({
-            where: { id: input.questLog.id },
+            where: { id: log.id },
             data: {
                 isClaimed: true,
                 claimedAt: new Date(),
