@@ -586,6 +586,8 @@ export interface ParticipatePollResult {
 export async function participatePoll(
     input: ParticipatePollInput
 ): Promise<ParticipatePollResult> {
+    const startTime = performance.now();
+
     try {
         const { poll, player, optionId } = input;
         const amount = input.amount || 1;
@@ -599,7 +601,6 @@ export async function participatePoll(
                 error: ERROR_MESSAGES.PLAYER_NOT_FOUND,
             };
 
-        // 🚨 정산 중인 poll 베팅 차단 (중요!)
         if (poll.bettingMode) {
             // 정산 상태 확인을 위해 최신 poll 정보 조회
             const currentPoll = await prisma.poll.findUnique({
@@ -818,219 +819,184 @@ export async function participatePoll(
 
         const targetRecord = safeLogs.find((log) => log.optionId === optionId);
 
-        // 트랜잭션으로 모든 베팅 로직을 안전하게 처리
-        const result = await prisma.$transaction(async (tx) => {
-            // 🔒 트랜잭션 내에서 정산 상태 재확인 (Double-check)
-            if (poll.bettingMode) {
-                const pollInTx = await tx.poll.findUnique({
-                    where: { id: poll.id },
-                    select: {
-                        bettingStatus: true,
-                        isSettled: true,
-                        settledAt: true,
-                    },
-                });
+        // 🔍 성능 모니터링: 트랜잭션 시작 시간
+        const txStartTime = performance.now();
+        console.log(
+            `[PERF] participatePoll: Pre-transaction time: ${
+                txStartTime - startTime
+            }ms`
+        );
 
-                if (pollInTx) {
-                    if (pollInTx.isSettled || pollInTx.settledAt) {
-                        throw new Error(
-                            "Poll has been settled during processing"
-                        );
-                    }
-
-                    if (
-                        pollInTx.bettingStatus === "SETTLING" ||
-                        pollInTx.bettingStatus === "SETTLED"
-                    ) {
-                        throw new Error(
-                            "Poll settlement started during processing"
-                        );
-                    }
-
-                    if (
-                        pollInTx.bettingStatus === "CLOSED" ||
-                        pollInTx.bettingStatus === "CANCELLED"
-                    ) {
-                        throw new Error("Poll betting is closed");
-                    }
-                }
-            }
-
-            // 베팅 모드에서는 먼저 에셋 차감 확인
-            if (poll.bettingMode && poll.bettingAssetId) {
-                // 실시간 잔액 재확인 (Race Condition 방지)
-                const currentPlayerAsset = await tx.playerAsset.findUnique({
-                    where: {
-                        playerId_assetId: {
-                            playerId: player.id,
-                            assetId: poll.bettingAssetId,
+        // 트랜잭션으로 모든 베팅 로직을 안전하게 처리 (타임아웃 15초로 증가)
+        const result = await prisma.$transaction(
+            async (tx) => {
+                // 🔒 트랜잭션 내에서 정산 상태 재확인 (Double-check)
+                let pollInTx = null;
+                if (poll.bettingMode) {
+                    pollInTx = await tx.poll.findUnique({
+                        where: { id: poll.id },
+                        select: {
+                            bettingStatus: true,
+                            isSettled: true,
+                            settledAt: true,
+                            optionBetAmounts: true,
+                            totalCommissionAmount: true,
+                            totalVotes: true,
+                            uniqueVoters: true,
                         },
-                    },
-                });
+                    });
 
-                if (
-                    !currentPlayerAsset ||
-                    currentPlayerAsset.balance < amount
-                ) {
-                    throw new Error("Insufficient balance for betting");
+                    if (pollInTx) {
+                        if (pollInTx.isSettled || pollInTx.settledAt) {
+                            throw new Error(
+                                "Poll has been settled during processing"
+                            );
+                        }
+
+                        if (
+                            pollInTx.bettingStatus === "SETTLING" ||
+                            pollInTx.bettingStatus === "SETTLED"
+                        ) {
+                            throw new Error(
+                                "Poll settlement started during processing"
+                            );
+                        }
+
+                        if (
+                            pollInTx.bettingStatus === "CLOSED" ||
+                            pollInTx.bettingStatus === "CANCELLED"
+                        ) {
+                            throw new Error("Poll betting is closed");
+                        }
+                    }
                 }
-            }
 
-            // 일반 폴 참여 비용 실시간 잔액 재확인 (Race Condition 방지)
-            if (
-                !poll.bettingMode &&
-                poll.participationConsumeAssetId &&
-                poll.participationConsumeAmount
-            ) {
-                const requiredAmount = poll.participationConsumeAmount * amount;
-                const currentPlayerConsumeAsset =
-                    await tx.playerAsset.findUnique({
+                // 베팅 모드에서는 먼저 에셋 차감 확인
+                if (poll.bettingMode && poll.bettingAssetId) {
+                    // 실시간 잔액 재확인 (Race Condition 방지)
+                    const currentPlayerAsset = await tx.playerAsset.findUnique({
                         where: {
                             playerId_assetId: {
                                 playerId: player.id,
-                                assetId: poll.participationConsumeAssetId,
+                                assetId: poll.bettingAssetId,
                             },
                         },
                     });
 
-                if (
-                    !currentPlayerConsumeAsset ||
-                    currentPlayerConsumeAsset.balance < requiredAmount
-                ) {
-                    throw new Error(
-                        "Insufficient balance for participation fee"
-                    );
-                }
-            }
-
-            // PollLog 생성/업데이트
-            const pollLog = await tx.pollLog.upsert({
-                where: {
-                    playerId_pollId_optionId: {
-                        playerId: player.id,
-                        pollId: poll.id,
-                        optionId,
-                    },
-                },
-                update: {
-                    amount: { increment: amount },
-                    record: {
-                        ...(targetRecord?.record as Record<string, string>),
-                        [now.toString()]: optionId,
-                    },
-                },
-                create: {
-                    pollId: poll.id,
-                    playerId: player.id,
-                    optionId,
-                    option: validOption,
-                    ipAddress: input.ipAddress || "",
-                    userAgent: input.userAgent || "",
-                    rewardAssetId: poll.participationRewardAssetId,
-                    rewardAmount: poll.participationRewardAmount,
-                    record: { [now.toString()]: optionId },
-                    amount: amount,
-                },
-            });
-
-            // 베팅 모드 처리
-            if (poll.bettingMode && poll.bettingAssetId) {
-                // 🔄 안전한 베팅 풀 업데이트 (Prisma 방식)
-                const commissionRate = poll.houseCommissionRate || 0.05;
-                const commissionInCents = Math.round(
-                    amount * commissionRate * 100
-                ); // 센트 단위로 정밀 계산
-                const commission = commissionInCents / 100;
-
-                // 현재 Poll 데이터 조회
-                const currentPoll = await tx.poll.findUnique({
-                    where: { id: poll.id },
-                    select: {
-                        optionBetAmounts: true,
-                        totalCommissionAmount: true,
-                        totalVotes: true,
-                        uniqueVoters: true,
-                    },
-                });
-
-                // 베팅 금액 업데이트 (JSON 안전 처리)
-                const currentBetAmounts =
-                    (currentPoll?.optionBetAmounts as any) || {};
-                const updatedBetAmounts = {
-                    ...currentBetAmounts,
-                    [optionId]: (currentBetAmounts[optionId] || 0) + amount,
-                };
-
-                // Poll 업데이트 (단순하고 안전한 방식)
-                await tx.poll.update({
-                    where: { id: poll.id },
-                    data: {
-                        optionBetAmounts: updatedBetAmounts,
-                        totalCommissionAmount: {
-                            increment: commission,
-                        },
-                        totalVotes: {
-                            increment: amount,
-                        },
-                        uniqueVoters: isFirstTimeVote
-                            ? { increment: 1 }
-                            : undefined,
-                        updatedAt: new Date(),
-                    },
-                });
-
-                // 🔒 updatePlayerAsset 함수 사용으로 안전한 에셋 차감
-                const assetUpdateResult = await updatePlayerAsset(
-                    {
-                        transaction: {
-                            playerId: player.id,
-                            assetId: poll.bettingAssetId,
-                            amount: amount,
-                            operation: "SUBTRACT",
-                            reason: `Betting on poll 『${poll.title}』`,
-                            metadata: {
-                                pollId: poll.id,
-                                optionId: optionId,
-                                bettingMode: true,
-                            },
-                            pollId: poll.id,
-                            pollLogId: pollLog.id,
-                        },
-                    },
-                    tx
-                );
-
-                if (!assetUpdateResult.success) {
-                    throw new Error(
-                        assetUpdateResult.error ||
-                            "Failed to deduct betting asset"
-                    );
+                    if (
+                        !currentPlayerAsset ||
+                        currentPlayerAsset.balance < amount
+                    ) {
+                        throw new Error("Insufficient balance for betting");
+                    }
                 }
 
-                playerAssetUpdated = true;
-            } else {
-                // 일반 폴 처리
-
-                // 참여 비용 차감 처리 (매번 차감)
+                // 일반 폴 참여 비용 실시간 잔액 재확인 (Race Condition 방지)
                 if (
+                    !poll.bettingMode &&
                     poll.participationConsumeAssetId &&
                     poll.participationConsumeAmount
                 ) {
-                    const consumeAmount =
+                    const requiredAmount =
                         poll.participationConsumeAmount * amount;
+                    const currentPlayerConsumeAsset =
+                        await tx.playerAsset.findUnique({
+                            where: {
+                                playerId_assetId: {
+                                    playerId: player.id,
+                                    assetId: poll.participationConsumeAssetId,
+                                },
+                            },
+                        });
 
-                    const consumeResult = await updatePlayerAsset(
+                    if (
+                        !currentPlayerConsumeAsset ||
+                        currentPlayerConsumeAsset.balance < requiredAmount
+                    ) {
+                        throw new Error(
+                            "Insufficient balance for participation fee"
+                        );
+                    }
+                }
+
+                // PollLog 생성/업데이트
+                const pollLog = await tx.pollLog.upsert({
+                    where: {
+                        playerId_pollId_optionId: {
+                            playerId: player.id,
+                            pollId: poll.id,
+                            optionId,
+                        },
+                    },
+                    update: {
+                        amount: { increment: amount },
+                        record: {
+                            ...(targetRecord?.record as Record<string, string>),
+                            [now.toString()]: optionId,
+                        },
+                    },
+                    create: {
+                        pollId: poll.id,
+                        playerId: player.id,
+                        optionId,
+                        option: validOption,
+                        ipAddress: input.ipAddress || "",
+                        userAgent: input.userAgent || "",
+                        rewardAssetId: poll.participationRewardAssetId,
+                        rewardAmount: poll.participationRewardAmount,
+                        record: { [now.toString()]: optionId },
+                        amount: amount,
+                    },
+                });
+
+                // 베팅 모드 처리
+                if (poll.bettingMode && poll.bettingAssetId) {
+                    // 🔄 안전한 베팅 풀 업데이트 (Prisma 방식)
+                    const commissionRate = poll.houseCommissionRate || 0.05;
+                    const commissionInCents = Math.round(
+                        amount * commissionRate * 100
+                    ); // 센트 단위로 정밀 계산
+                    const commission = commissionInCents / 100;
+
+                    // 베팅 금액 업데이트 (JSON 안전 처리) - 이미 조회한 데이터 사용
+                    const currentBetAmounts =
+                        (pollInTx?.optionBetAmounts as any) || {};
+                    const updatedBetAmounts = {
+                        ...currentBetAmounts,
+                        [optionId]: (currentBetAmounts[optionId] || 0) + amount,
+                    };
+
+                    // Poll 업데이트 (단순하고 안전한 방식)
+                    await tx.poll.update({
+                        where: { id: poll.id },
+                        data: {
+                            optionBetAmounts: updatedBetAmounts,
+                            totalCommissionAmount: {
+                                increment: commission,
+                            },
+                            totalVotes: {
+                                increment: amount,
+                            },
+                            uniqueVoters: isFirstTimeVote
+                                ? { increment: 1 }
+                                : undefined,
+                            updatedAt: new Date(),
+                        },
+                    });
+
+                    // 🔒 updatePlayerAsset 함수 사용으로 안전한 에셋 차감
+                    const assetUpdateResult = await updatePlayerAsset(
                         {
                             transaction: {
                                 playerId: player.id,
-                                assetId: poll.participationConsumeAssetId,
-                                amount: consumeAmount,
+                                assetId: poll.bettingAssetId,
+                                amount: amount,
                                 operation: "SUBTRACT",
-                                reason: `Participation fee for poll 『${poll.title}』`,
+                                reason: `Betting on poll 『${poll.title}』`,
                                 metadata: {
                                     pollId: poll.id,
-                                    isParticipationFee: true,
-                                    consumeAmount: consumeAmount,
+                                    optionId: optionId,
+                                    bettingMode: true,
                                 },
                                 pollId: poll.id,
                                 pollLogId: pollLog.id,
@@ -1039,36 +1005,37 @@ export async function participatePoll(
                         tx
                     );
 
-                    if (!consumeResult.success) {
+                    if (!assetUpdateResult.success) {
                         throw new Error(
-                            consumeResult.error ||
-                                "Failed to deduct participation fee"
+                            assetUpdateResult.error ||
+                                "Failed to deduct betting asset"
                         );
                     }
 
                     playerAssetUpdated = true;
-                }
+                } else {
+                    // 일반 폴 처리
 
-                if (isFirstTimeVote) {
+                    // 참여 비용 차감 처리 (매번 차감)
                     if (
-                        poll.participationRewardAssetId &&
-                        poll.participationRewardAmount
+                        poll.participationConsumeAssetId &&
+                        poll.participationConsumeAmount
                     ) {
-                        // updatePlayerAsset 함수 사용으로 안전한 보상 지급
-                        const rewardUpdateResult = await updatePlayerAsset(
+                        const consumeAmount =
+                            poll.participationConsumeAmount * amount;
+
+                        const consumeResult = await updatePlayerAsset(
                             {
                                 transaction: {
                                     playerId: player.id,
-                                    assetId: poll.participationRewardAssetId,
-                                    amount:
-                                        poll.participationRewardAmount * amount,
-                                    operation: "ADD",
-                                    reason: `Participation reward for poll 『${poll.title}』`,
+                                    assetId: poll.participationConsumeAssetId,
+                                    amount: consumeAmount,
+                                    operation: "SUBTRACT",
+                                    reason: `Participation fee for poll 『${poll.title}』`,
                                     metadata: {
                                         pollId: poll.id,
-                                        isParticipationReward: true,
-                                        rewardAmount:
-                                            poll.participationRewardAmount,
+                                        isParticipationFee: true,
+                                        consumeAmount: consumeAmount,
                                     },
                                     pollId: poll.id,
                                     pollLogId: pollLog.id,
@@ -1077,33 +1044,83 @@ export async function participatePoll(
                             tx
                         );
 
-                        if (!rewardUpdateResult.success) {
+                        if (!consumeResult.success) {
                             throw new Error(
-                                rewardUpdateResult.error ||
-                                    "Failed to give participation reward"
+                                consumeResult.error ||
+                                    "Failed to deduct participation fee"
                             );
                         }
 
                         playerAssetUpdated = true;
                     }
 
+                    // 보상 지급 및 Poll 업데이트 처리
+                    if (isFirstTimeVote) {
+                        if (
+                            poll.participationRewardAssetId &&
+                            poll.participationRewardAmount
+                        ) {
+                            // updatePlayerAsset 함수 사용으로 안전한 보상 지급
+                            const rewardUpdateResult = await updatePlayerAsset(
+                                {
+                                    transaction: {
+                                        playerId: player.id,
+                                        assetId:
+                                            poll.participationRewardAssetId,
+                                        amount:
+                                            poll.participationRewardAmount *
+                                            amount,
+                                        operation: "ADD",
+                                        reason: `Participation reward for poll 『${poll.title}』`,
+                                        metadata: {
+                                            pollId: poll.id,
+                                            isParticipationReward: true,
+                                            rewardAmount:
+                                                poll.participationRewardAmount,
+                                        },
+                                        pollId: poll.id,
+                                        pollLogId: pollLog.id,
+                                    },
+                                },
+                                tx
+                            );
+
+                            if (!rewardUpdateResult.success) {
+                                throw new Error(
+                                    rewardUpdateResult.error ||
+                                        "Failed to give participation reward"
+                                );
+                            }
+
+                            playerAssetUpdated = true;
+                        }
+                    }
+
+                    // 단일 Poll 업데이트 (성능 최적화)
                     await tx.poll.update({
                         where: { id: poll.id },
                         data: {
-                            uniqueVoters: { increment: 1 },
+                            uniqueVoters: isFirstTimeVote
+                                ? { increment: 1 }
+                                : undefined,
                             totalVotes: { increment: amount },
                         },
                     });
-                } else {
-                    await tx.poll.update({
-                        where: { id: poll.id },
-                        data: { totalVotes: { increment: amount } },
-                    });
                 }
-            }
 
-            return { pollLog };
-        });
+                return { pollLog };
+            },
+            {
+                timeout: 15000, // 15초 타임아웃 설정
+            }
+        );
+
+        const txEndTime = performance.now();
+        console.log(
+            `[PERF] participatePoll: Transaction time: ${
+                txEndTime - txStartTime
+            }ms`
+        );
 
         const { pollLog } = result;
 
@@ -1125,8 +1142,19 @@ export async function participatePoll(
             }
         }
 
+        const endTime = performance.now();
+        console.log(
+            `[PERF] participatePoll: Total time: ${endTime - startTime}ms`
+        );
+
         return { success: true, data: pollLog, playerAssetUpdated };
     } catch (error) {
+        const endTime = performance.now();
+        console.error(
+            `[PERF] participatePoll: Error after ${endTime - startTime}ms:`,
+            error
+        );
+
         console.error("Error creating poll log:", error);
         throw new Error("Failed to create poll log");
     }
