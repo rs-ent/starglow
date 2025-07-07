@@ -235,15 +235,17 @@ export default React.memo(function NFTContentsDetails({
                                 />
                                 <span>Address </span>
                                 {!comingSoon && !hiddenDetails && (
-                                    <span>: {spg.address}</span>
+                                    <>
+                                        <span>: {spg.address}</span>
+                                        <Copy
+                                            className={cn(
+                                                "flex-shrink-0 ml-1",
+                                                getResponsiveClass(20)
+                                                    .frameClass
+                                            )}
+                                        />
+                                    </>
                                 )}
-
-                                <Copy
-                                    className={cn(
-                                        "flex-shrink-0 ml-1",
-                                        getResponsiveClass(20).frameClass
-                                    )}
-                                />
                             </div>
                         </div>
                     </div>
