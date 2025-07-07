@@ -41,9 +41,8 @@ function ProfitDisplay({ stats, asset }: { stats: BettingStats; asset: any }) {
             animate={{ opacity: 1, scale: 1 }}
             className={cn(
                 "text-center rounded-xl p-6",
-                "bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-red-500/20",
-                "border-2",
-                stats.isProfit ? "border-yellow-400/60" : "border-red-400/60"
+                "bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-green-500/20",
+                "border-2 border-yellow-400/60"
             )}
         >
             <h2
@@ -52,9 +51,7 @@ function ProfitDisplay({ stats, asset }: { stats: BettingStats; asset: any }) {
                     getResponsiveClass(20).textClass
                 )}
             >
-                {stats.isProfit
-                    ? "If your prediction wins"
-                    : "If your prediction loses"}
+                If your prediction wins
             </h2>
 
             <div className="bg-black/40 border border-white/10 rounded-lg p-4">
@@ -62,11 +59,10 @@ function ProfitDisplay({ stats, asset }: { stats: BettingStats; asset: any }) {
                     className={cn(
                         "text-3xl font-black",
                         getResponsiveClass(40).textClass,
-                        stats.isProfit ? "text-yellow-300" : "text-red-300"
+                        "text-yellow-300"
                     )}
                 >
-                    {stats.isProfit ? "+" : ""}
-                    {Math.abs(stats.potentialProfit).toLocaleString()}
+                    +{Math.abs(stats.potentialProfit).toLocaleString()}
                 </h3>
                 <div className="flex flex-row items-center justify-center gap-2">
                     {asset.imageUrl && (
@@ -286,28 +282,36 @@ export default function PollBettingRecord({
         const totalCommission = poll.totalCommissionAmount || 0;
         const payoutPool = totalBetAmount - totalCommission;
 
-        let expectedPayout = 0;
+        let bestScenarioPayout = 0;
         let maxWinChance = 0;
 
+        // Calculate the best winning scenario for each option
         Object.entries(myBetsByOption).forEach(([optionId, myBetAmount]) => {
             const optionTotalBets = optionBetAmounts[optionId] || 0;
             if (optionTotalBets > 0) {
+                // Calculate what we would get if THIS specific option wins
                 const potentialPayout =
                     (payoutPool * myBetAmount) / optionTotalBets;
-                expectedPayout += potentialPayout;
+
+                // Keep track of the best scenario
+                bestScenarioPayout = Math.max(
+                    bestScenarioPayout,
+                    potentialPayout
+                );
 
                 const winChance = (myBetAmount / optionTotalBets) * 100;
                 maxWinChance = Math.max(maxWinChance, winChance);
             }
         });
 
-        const potentialProfit = expectedPayout - myTotalBets;
+        // Calculate profit based on the best winning scenario
+        const potentialProfit = bestScenarioPayout - myTotalBets;
 
         return {
             totalBetAmount,
             myTotalBets,
             myBetsByOption,
-            expectedPayout,
+            expectedPayout: bestScenarioPayout,
             potentialProfit,
             winningChance: maxWinChance,
             isProfit: potentialProfit > 0,
