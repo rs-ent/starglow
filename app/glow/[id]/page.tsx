@@ -8,16 +8,16 @@ import { prisma } from "@/lib/prisma/client";
 import type { SPG } from "@/app/story/spg/actions";
 
 interface NFTPageProps {
-    params: Promise<{ address: string }>;
+    params: Promise<{ id: string }>;
 }
 
 export default async function NFTPage(props: NFTPageProps) {
     const params = await props.params;
-    const address = params.address;
+    const id = params.id;
 
     const spg = (await prisma.story_spg.findUnique({
         where: {
-            address: address,
+            id: id,
         },
         include: {
             artist: true,
