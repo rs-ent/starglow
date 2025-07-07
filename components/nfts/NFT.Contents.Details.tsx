@@ -233,9 +233,11 @@ export default React.memo(function NFTContentsDetails({
                                         "mr-2"
                                     )}
                                 />
-                                <span className="flex-1 min-w-0 truncate">
-                                    Address: {spg.address}
-                                </span>
+                                <span>Address </span>
+                                {!comingSoon && !hiddenDetails && (
+                                    <span>: {spg.address}</span>
+                                )}
+
                                 <Copy
                                     className={cn(
                                         "flex-shrink-0 ml-1",
