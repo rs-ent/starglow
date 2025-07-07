@@ -33,7 +33,7 @@ const socialLinks = [
         alt: "X",
     },
     {
-        href: "https://t.me/starglow_redslippers_bot?startapp",
+        href: "https://t.me/starglow_official",
         icon: "/icons/telegram-black-round.svg",
         alt: "Telegram",
     },
