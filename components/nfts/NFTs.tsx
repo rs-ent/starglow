@@ -20,7 +20,7 @@ export default function NFTs() {
         (collection: SPG) => {
             setIsFadingOut(true);
             setTimeout(() => {
-                router.push(`/glow/${collection.address}`);
+                router.push(`/glow/${collection.id}`);
             }, 950);
         },
         [router]

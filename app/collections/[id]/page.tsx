@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma/client";
 
 interface CollectionPageProps {
     params: {
-        address: string;
+        id: string;
     };
 }
 
@@ -25,10 +25,10 @@ function CollectionLoading() {
 }
 
 // 실제 컬렉션 데이터를 가져오는 컴포넌트
-async function CollectionContent({ address }: { address: string }) {
+async function CollectionContent({ id }: { id: string }) {
     try {
         const spg = await prisma.story_spg.findUnique({
-            where: { address },
+            where: { id },
             include: {
                 artist: true,
             },
@@ -50,7 +50,7 @@ async function CollectionContent({ address }: { address: string }) {
 export default function CollectionPage({ params }: CollectionPageProps) {
     return (
         <Suspense fallback={<CollectionLoading />}>
-            <CollectionContent address={params.address} />
+            <CollectionContent id={params.id} />
         </Suspense>
     );
 }
