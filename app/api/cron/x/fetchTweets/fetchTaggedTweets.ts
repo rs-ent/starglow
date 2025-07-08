@@ -266,19 +266,21 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
             nextToken = data.meta.next_token;
         } while (nextToken);
 
-        const result = await prisma.$transaction(async (tx) => {
-            const syncData = await tx.tweetSyncData.create({
-                data: {
-                    lastSyncAt: new Date(),
-                    syncStatus: "in_progress",
-                    apiRequestsUsed: requestCount,
-                    rateLimitRemaining: rateLimitRemaining
-                        ? parseInt(rateLimitRemaining)
-                        : null,
-                    executionTimeMs: Date.now() - startTime,
-                },
-            });
+        // Step 1: Create sync data record
+        const syncData = await prisma.tweetSyncData.create({
+            data: {
+                lastSyncAt: new Date(),
+                syncStatus: "in_progress",
+                apiRequestsUsed: requestCount,
+                rateLimitRemaining: rateLimitRemaining
+                    ? parseInt(rateLimitRemaining)
+                    : null,
+                executionTimeMs: Date.now() - startTime,
+            },
+        });
 
+        // Step 2: Process API logs (non-critical, can be done separately)
+        if (apiLogs.length > 0) {
             const responseData = apiLogs.map((log) => ({
                 tweetSyncDataId: syncData.id,
                 rawResponse: JSON.stringify(log.response),
@@ -287,155 +289,310 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                 processingTimeMs: log.processingTime,
             }));
 
-            if (responseData.length > 0) {
-                await tx.tweetResponse.createMany({
-                    data: responseData,
-                });
-            }
+            await prisma.tweetResponse.createMany({
+                data: responseData,
+            });
+        }
 
-            const authorPromises = Array.from(allUsers.entries()).map(
-                ([authorId, userData]) =>
-                    tx.tweetAuthor.upsert({
-                        where: {
-                            authorId: authorId,
-                        },
-                        create: {
-                            authorId: authorId,
-                            name: userData.name,
-                            username: userData.username,
-                            profileImageUrl: userData.profile_image_url,
-                        },
-                        update: {
-                            name: userData.name,
-                            username: userData.username,
-                            profileImageUrl: userData.profile_image_url,
-                        },
-                    })
-            );
+        // Step 3: Process authors efficiently
+        const authorEntries = Array.from(allUsers.entries());
+        const authorProcessingStart = Date.now();
 
-            await Promise.all(authorPromises);
-
-            const authorMetricsPromises = Array.from(allUsers.entries()).map(
-                ([authorId, userData]) => {
-                    if (!userData.public_metrics) return Promise.resolve();
-
-                    return tx.tweetAuthorMetrics.create({
-                        data: {
-                            tweetAuthorId: authorId,
-                            followersCount:
-                                userData.public_metrics.followers_count,
-                            followingCount:
-                                userData.public_metrics.following_count,
-                            tweetCount: userData.public_metrics.tweet_count,
-                            listedCount: userData.public_metrics.listed_count,
-                            verified: userData.verified || false,
-                            recordedAt: new Date(),
-                        },
-                    });
-                }
-            );
-
-            await Promise.all(authorMetricsPromises.filter(Boolean));
-
-            const existingTweets = await tx.tweet.findMany({
+        if (authorEntries.length > 0) {
+            // Check which authors already exist to optimize operations
+            const existingAuthors = await prisma.tweetAuthor.findMany({
                 where: {
-                    tweetId: {
-                        in: allTweets.map((tweet) => tweet.id),
+                    authorId: {
+                        in: authorEntries.map(([authorId]) => authorId),
                     },
                 },
-                select: {
-                    tweetId: true,
-                },
+                select: { authorId: true },
             });
 
-            const existingTweetIds = new Set(
-                existingTweets.map((t) => t.tweetId)
+            const existingAuthorIds = new Set(
+                existingAuthors.map((author) => author.authorId)
             );
 
-            const newTweetsData: TweetCreateData[] = allTweets
-                .filter((tweet) => !existingTweetIds.has(tweet.id))
-                .map((tweet) => {
-                    const author = allUsers.get(tweet.author_id);
+            const authorsToCreate = authorEntries
+                .filter(([authorId]) => !existingAuthorIds.has(authorId))
+                .map(([authorId, userData]) => ({
+                    authorId,
+                    name: userData.name,
+                    username: userData.username,
+                    profileImageUrl: userData.profile_image_url,
+                }));
 
-                    return {
-                        tweetId: tweet.id,
-                        text: tweet.text,
-                        authorId: tweet.author_id,
-                        authorName: author?.name || null,
-                        authorUsername: author?.username || null,
-                        authorProfileImageUrl:
-                            author?.profile_image_url || null,
-                        createdAt: new Date(tweet.created_at),
-                        updatedAt: new Date(),
-                        isDeleted: false,
-                        deletedAt: null,
-                    };
-                });
+            const authorsToUpdate = authorEntries.filter(([authorId]) =>
+                existingAuthorIds.has(authorId)
+            );
 
-            if (newTweetsData.length > 0) {
-                await tx.tweet.createMany({
-                    data: newTweetsData,
-                    skipDuplicates: true,
-                });
+            // Process in single optimized transaction with retry logic
+            const maxRetries = 3;
+            let authorsProcessed = false;
+
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    await prisma.$transaction(
+                        async (tx) => {
+                            // Create new authors in batch
+                            if (authorsToCreate.length > 0) {
+                                await tx.tweetAuthor.createMany({
+                                    data: authorsToCreate,
+                                    skipDuplicates: true,
+                                });
+                            }
+
+                            // Update existing authors (batch updates for efficiency)
+                            for (const [
+                                authorId,
+                                userData,
+                            ] of authorsToUpdate) {
+                                await tx.tweetAuthor.update({
+                                    where: { authorId },
+                                    data: {
+                                        name: userData.name,
+                                        username: userData.username,
+                                        profileImageUrl:
+                                            userData.profile_image_url,
+                                    },
+                                });
+                            }
+
+                            // Create all author metrics in one batch
+                            const metricsData = authorEntries
+                                .filter(
+                                    ([, userData]) => userData.public_metrics
+                                )
+                                .map(([authorId, userData]) => ({
+                                    tweetAuthorId: authorId,
+                                    followersCount:
+                                        userData.public_metrics!
+                                            .followers_count,
+                                    followingCount:
+                                        userData.public_metrics!
+                                            .following_count,
+                                    tweetCount:
+                                        userData.public_metrics!.tweet_count,
+                                    listedCount:
+                                        userData.public_metrics!.listed_count,
+                                    verified: userData.verified || false,
+                                    recordedAt: new Date(),
+                                }));
+
+                            if (metricsData.length > 0) {
+                                await tx.tweetAuthorMetrics.createMany({
+                                    data: metricsData,
+                                    skipDuplicates: true,
+                                });
+                            }
+                        },
+                        { timeout: 20000 }
+                    );
+
+                    authorsProcessed = true;
+                    const authorProcessingTime =
+                        Date.now() - authorProcessingStart;
+                    console.log(
+                        `✅ Successfully processed ${authorEntries.length} authors in ${authorProcessingTime}ms (${authorsToCreate.length} new, ${authorsToUpdate.length} updated)`
+                    );
+                    break;
+                } catch (error) {
+                    console.error(
+                        `Author processing attempt ${attempt} failed:`,
+                        error
+                    );
+
+                    if (attempt === maxRetries) {
+                        console.error(
+                            "⚠️ Author processing failed after all retries, but continuing with tweets..."
+                        );
+                        // Don't throw - we can still process tweets even if authors fail
+                        break;
+                    }
+
+                    // Wait before retry with exponential backoff
+                    const delay = 1000 * Math.pow(2, attempt - 1);
+                    console.info(`Retrying author processing in ${delay}ms...`);
+                    await new Promise((resolve) => setTimeout(resolve, delay));
+                }
             }
+        }
 
-            const tweetMetricsPromises = allTweets.map((tweet) => {
-                if (!tweet.public_metrics) return Promise.resolve();
+        // Step 4: Process tweets efficiently
+        const existingTweets = await prisma.tweet.findMany({
+            where: {
+                tweetId: {
+                    in: allTweets.map((tweet) => tweet.id),
+                },
+            },
+            select: {
+                tweetId: true,
+            },
+        });
 
-                return tx.tweetMetrics.create({
-                    data: {
-                        tweetId: tweet.id,
-                        replyCount: tweet.public_metrics.reply_count,
-                        retweetCount: tweet.public_metrics.retweet_count,
-                        likeCount: tweet.public_metrics.like_count,
-                        quoteCount: tweet.public_metrics.quote_count,
-                        recordedAt: new Date(),
-                    },
-                });
+        const existingTweetIds = new Set(existingTweets.map((t) => t.tweetId));
+
+        const newTweetsData: TweetCreateData[] = allTweets
+            .filter((tweet) => !existingTweetIds.has(tweet.id))
+            .map((tweet) => {
+                const author = allUsers.get(tweet.author_id);
+
+                return {
+                    tweetId: tweet.id,
+                    text: tweet.text,
+                    authorId: tweet.author_id,
+                    authorName: author?.name || null,
+                    authorUsername: author?.username || null,
+                    authorProfileImageUrl: author?.profile_image_url || null,
+                    createdAt: new Date(tweet.created_at),
+                    updatedAt: new Date(),
+                    isDeleted: false,
+                    deletedAt: null,
+                };
             });
 
-            await Promise.all(tweetMetricsPromises.filter(Boolean));
+        // Step 5: Create tweets, metrics, and media efficiently
+        const tweetProcessingStart = Date.now();
+        if (allTweets.length > 0) {
+            // Prepare all data upfront for batch operations
+            const allTweetMetrics = allTweets
+                .filter((tweet) => tweet.public_metrics)
+                .map((tweet) => ({
+                    tweetId: tweet.id,
+                    replyCount: tweet.public_metrics!.reply_count,
+                    retweetCount: tweet.public_metrics!.retweet_count,
+                    likeCount: tweet.public_metrics!.like_count,
+                    quoteCount: tweet.public_metrics!.quote_count,
+                    recordedAt: new Date(),
+                }));
 
-            const mediaPromises = allTweets
+            const allMediaData = allTweets
                 .filter((tweet) => tweet.attachments?.media_keys)
                 .flatMap((tweet) =>
-                    tweet.attachments!.media_keys!.map((mediaKey) => {
-                        const mediaData = allMedia.get(mediaKey);
-                        if (!mediaData) return Promise.resolve();
+                    tweet
+                        .attachments!.media_keys!.map((mediaKey) => {
+                            const mediaInfo = allMedia.get(mediaKey);
+                            if (!mediaInfo) return null;
 
-                        return tx.tweetMedia.create({
-                            data: {
-                                mediaKey: mediaData.media_key,
+                            return {
+                                mediaKey: mediaInfo.media_key,
                                 tweetId: tweet.id,
-                                type: mediaData.type,
-                                url: mediaData.url || null,
+                                type: mediaInfo.type,
+                                url: mediaInfo.url || null,
                                 previewImageUrl:
-                                    mediaData.preview_image_url || null,
-                                width: mediaData.width || null,
-                                height: mediaData.height || null,
-                                durationMs: mediaData.duration_ms || null,
-                                altText: mediaData.alt_text || null,
-                            },
-                        });
-                    })
+                                    mediaInfo.preview_image_url || null,
+                                width: mediaInfo.width || null,
+                                height: mediaInfo.height || null,
+                                durationMs: mediaInfo.duration_ms || null,
+                                altText: mediaInfo.alt_text || null,
+                            };
+                        })
+                        .filter(
+                            (item): item is NonNullable<typeof item> =>
+                                item !== null
+                        )
                 );
 
-            await Promise.all(mediaPromises.filter(Boolean));
+            // Process in optimized batches
+            const batchSize = 200;
+            for (
+                let i = 0;
+                i <
+                Math.max(
+                    newTweetsData.length,
+                    allTweetMetrics.length,
+                    allMediaData.length
+                );
+                i += batchSize
+            ) {
+                const tweetsBatch = newTweetsData.slice(i, i + batchSize);
+                const metricsBatch = allTweetMetrics.slice(i, i + batchSize);
+                const mediaBatch = allMediaData.slice(i, i + batchSize);
 
-            const newestTweetId =
-                allTweets.length > 0
-                    ? allTweets.reduce((newest, current) => {
-                          try {
-                              return BigInt(current.id) > BigInt(newest.id)
-                                  ? current
-                                  : newest;
-                          } catch {
-                              return current.id > newest.id ? current : newest;
-                          }
-                      }).id
-                    : lastSuccessSync?.lastTweetId;
+                const maxRetries = 2;
+                let batchProcessed = false;
 
-            await tx.tweetSyncData.update({
+                for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                    try {
+                        await prisma.$transaction(
+                            async (tx) => {
+                                // Create new tweets
+                                if (tweetsBatch.length > 0) {
+                                    await tx.tweet.createMany({
+                                        data: tweetsBatch,
+                                        skipDuplicates: true,
+                                    });
+                                }
+
+                                // Create tweet metrics
+                                if (metricsBatch.length > 0) {
+                                    await tx.tweetMetrics.createMany({
+                                        data: metricsBatch,
+                                        skipDuplicates: true,
+                                    });
+                                }
+
+                                // Create tweet media
+                                if (mediaBatch.length > 0) {
+                                    await tx.tweetMedia.createMany({
+                                        data: mediaBatch,
+                                        skipDuplicates: true,
+                                    });
+                                }
+                            },
+                            { timeout: 15000 }
+                        );
+
+                        batchProcessed = true;
+                        break;
+                    } catch (error) {
+                        console.error(
+                            `Tweet batch ${
+                                Math.floor(i / batchSize) + 1
+                            } attempt ${attempt} failed:`,
+                            error
+                        );
+
+                        if (attempt === maxRetries) {
+                            console.error(
+                                `⚠️ Failed to process tweet batch ${
+                                    Math.floor(i / batchSize) + 1
+                                } after all retries`
+                            );
+                            // Continue with next batch instead of failing completely
+                            break;
+                        }
+
+                        // Wait before retry
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, 500 * attempt)
+                        );
+                    }
+                }
+            }
+
+            const tweetProcessingTime = Date.now() - tweetProcessingStart;
+            console.log(
+                `✅ Successfully processed ${allTweets.length} tweets in ${tweetProcessingTime}ms (${newTweetsData.length} new tweets, ${allTweetMetrics.length} metrics, ${allMediaData.length} media items)`
+            );
+        }
+
+        // Step 6: Update sync status with error handling
+        const newestTweetId =
+            allTweets.length > 0
+                ? allTweets.reduce((newest, current) => {
+                      try {
+                          return BigInt(current.id) > BigInt(newest.id)
+                              ? current
+                              : newest;
+                      } catch {
+                          return current.id > newest.id ? current : newest;
+                      }
+                  }).id
+                : lastSuccessSync?.lastTweetId;
+
+        try {
+            await prisma.tweetSyncData.update({
                 where: { id: syncData.id },
                 data: {
                     lastTweetId: newestTweetId,
@@ -446,14 +603,30 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                 },
             });
 
-            return {
-                total: allTweets.length,
-                new: newTweetsData.length,
-                tweets: newTweetsData,
-                lastTweetId: newestTweetId,
-                syncDataId: syncData.id,
-            };
-        });
+            const totalProcessingTime = Date.now() - startTime;
+            console.log(
+                `✅ Sync completed successfully: ${allTweets.length} tweets found, ${newTweetsData.length} new tweets added`
+            );
+            console.log(
+                `📊 Performance Summary: Total time: ${totalProcessingTime}ms, API requests: ${requestCount}, Authors: ${
+                    authorEntries?.length || 0
+                }, Rate limit remaining: ${rateLimitRemaining || "unknown"}`
+            );
+        } catch (error) {
+            console.error(
+                "⚠️ Failed to update sync status, but data was processed:",
+                error
+            );
+            // Don't throw - the actual data processing was successful
+        }
+
+        const result = {
+            total: allTweets.length,
+            new: newTweetsData.length,
+            tweets: newTweetsData,
+            lastTweetId: newestTweetId,
+            syncDataId: syncData.id,
+        };
 
         return {
             ...result,

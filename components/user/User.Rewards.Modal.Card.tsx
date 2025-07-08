@@ -664,7 +664,7 @@ function AssetInstanceCard({ instance }: AssetInstanceCardProps) {
                                     "rounded-[6px] border border-white/10",
                                     "bg-gradient-to-br from-[rgba(0,0,0,0.65)] to-[rgba(0,0,0,0.5)]",
                                     instance.code
-                                        ? getResponsiveClass(20).textClass
+                                        ? getResponsiveClass(30).textClass
                                         : getResponsiveClass(5).textClass,
                                     getResponsiveClass(5).marginYClass,
                                     getResponsiveClass(10).paddingClass
