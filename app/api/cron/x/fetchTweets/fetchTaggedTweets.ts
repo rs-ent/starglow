@@ -328,7 +328,6 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
 
             // Process in single optimized transaction with retry logic
             const maxRetries = 3;
-            let authorsProcessed = false;
 
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
@@ -389,10 +388,9 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                         { timeout: 20000 }
                     );
 
-                    authorsProcessed = true;
                     const authorProcessingTime =
                         Date.now() - authorProcessingStart;
-                    console.log(
+                    console.info(
                         `✅ Successfully processed ${authorEntries.length} authors in ${authorProcessingTime}ms (${authorsToCreate.length} new, ${authorsToUpdate.length} updated)`
                     );
                     break;
@@ -510,7 +508,6 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                 const mediaBatch = allMediaData.slice(i, i + batchSize);
 
                 const maxRetries = 2;
-                let batchProcessed = false;
 
                 for (let attempt = 1; attempt <= maxRetries; attempt++) {
                     try {
@@ -543,7 +540,6 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                             { timeout: 15000 }
                         );
 
-                        batchProcessed = true;
                         break;
                     } catch (error) {
                         console.error(
@@ -572,7 +568,7 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
             }
 
             const tweetProcessingTime = Date.now() - tweetProcessingStart;
-            console.log(
+            console.info(
                 `✅ Successfully processed ${allTweets.length} tweets in ${tweetProcessingTime}ms (${newTweetsData.length} new tweets, ${allTweetMetrics.length} metrics, ${allMediaData.length} media items)`
             );
         }
@@ -604,10 +600,10 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
             });
 
             const totalProcessingTime = Date.now() - startTime;
-            console.log(
+            console.info(
                 `✅ Sync completed successfully: ${allTweets.length} tweets found, ${newTweetsData.length} new tweets added`
             );
-            console.log(
+            console.info(
                 `📊 Performance Summary: Total time: ${totalProcessingTime}ms, API requests: ${requestCount}, Authors: ${
                     authorEntries?.length || 0
                 }, Rate limit remaining: ${rateLimitRemaining || "unknown"}`
