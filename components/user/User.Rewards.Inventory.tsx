@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus } from "lucide-react";
 
-import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
+import { usePlayerAssetsGet } from "@/app/actions/playerAssets/hooks";
 import RewardButton from "@/components/atoms/Reward.Button";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";

@@ -7,7 +7,7 @@ import { PollStatus } from "@prisma/client";
 import { tokenGating } from "@/app/story/nft/actions";
 import { prisma } from "@/lib/prisma/client";
 
-import { updatePlayerAsset } from "./playerAssets";
+import { updatePlayerAsset } from "@/app/actions/playerAssets/actions";
 
 import type { TokenGatingData } from "@/app/story/nft/actions";
 import type {
@@ -119,6 +119,7 @@ export interface CreatePollInput {
     houseCommissionRate?: number;
     totalCommissionAmount?: number;
     optionBetAmounts?: any;
+    test?: boolean;
 }
 
 export async function createPoll(input: CreatePollInput): Promise<Poll> {
@@ -202,6 +203,7 @@ export interface GetPollsInput {
     participationConsumeAssetId?: string;
     artistId?: string | null;
     isActive?: boolean;
+    test?: boolean;
 }
 
 export async function getPolls({
@@ -294,6 +296,9 @@ export async function getPolls({
             where.hasAnswerAnnouncement = input.hasAnswerAnnouncement;
         if (input?.answerAnnouncementDate)
             where.answerAnnouncementDate = input.answerAnnouncementDate;
+
+        if (input?.test !== undefined) where.test = input.test;
+
         const [items, totalItems] = await Promise.all([
             prisma.poll.findMany({
                 where,
@@ -395,6 +400,7 @@ export interface UpdatePollInput {
     houseCommissionRate?: number;
     totalCommissionAmount?: number;
     optionBetAmounts?: any;
+    test?: boolean;
 }
 
 export async function updatePoll(input: UpdatePollInput): Promise<Poll> {

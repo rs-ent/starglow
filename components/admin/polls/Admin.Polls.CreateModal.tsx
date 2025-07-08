@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 import { useArtistsGet } from "@/app/hooks/useArtists";
-import { useAssetsGet } from "@/app/hooks/useAssets";
+import { useAssetsGet } from "@/app/actions/assets/hooks";
 import { useLoading } from "@/app/hooks/useLoading";
 import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
 import { useToast } from "@/app/hooks/useToast";

@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma/client";
 
-import { setDefaultPlayerAsset } from "./playerAssets";
+import { setDefaultPlayerAsset } from "@/app/actions/playerAssets/actions";
 import { setReferralQuestLogs } from "./referral";
 
 import type {
@@ -357,7 +357,12 @@ export interface CreateReferralLogForMigrationParams {
 
 export async function createReferralLogForMigration(
     input: CreateReferralLogForMigrationParams
-): Promise<{ success: boolean; error?: string; result?: any; skipped?: boolean }> {
+): Promise<{
+    success: boolean;
+    error?: string;
+    result?: any;
+    skipped?: boolean;
+}> {
     try {
         // 1. 사용자들 찾기
         const [referredUser, referrerUser] = await Promise.all([
@@ -395,7 +400,10 @@ export async function createReferralLogForMigration(
 
         // 3. referral log 생성
         const result = await prisma.$transaction(async (tx) => {
-            // ReferralLog 생성
+            if (!referredUser.player || !referrerUser.player) {
+                return { referralLog: null };
+            }
+
             const referralLog = await tx.referralLog.create({
                 data: {
                     referredPlayerId: referredUser.player.id,
@@ -437,9 +445,9 @@ export async function createReferralLogForMigration(
         return { success: true, result };
     } catch (error) {
         console.error("createReferralLogForMigration Error:", error);
-        return { 
-            success: false, 
-            error: error instanceof Error ? error.message : "Unknown error" 
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
         };
     }
 }

@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import type { Quest, Artist, Asset } from "@prisma/client";
 
 import { useArtistsGet } from "@/app/hooks/useArtists";
-import { useAssetsGet } from "@/app/hooks/useAssets";
+import { useAssetsGet } from "@/app/actions/assets/hooks";
 import { useQuestGet, useQuestSet } from "@/app/hooks/useQuest";
 import { useToast } from "@/app/hooks/useToast";
 import { Button } from "@/components/ui/button";

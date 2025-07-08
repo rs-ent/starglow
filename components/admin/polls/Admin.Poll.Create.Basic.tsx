@@ -11,11 +11,21 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { Section } from "./shared-components";
 import { POLL_FORM_VALIDATION, type PollFormProps } from "./types";
+import { Switch } from "@/components/ui/switch";
 
 export function BasicInfoTab({ formData, onChange }: PollFormProps) {
     return (
         <Section title="기본 정보" icon={<Settings className="w-5 h-5" />}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <Label className="mb-2 block text-slate-200">
+                        테스트 모드 활성화
+                    </Label>
+                    <Switch
+                        checked={formData.test ?? false}
+                        onCheckedChange={(checked) => onChange("test", checked)}
+                    />
+                </div>
                 <div>
                     <Label className="mb-2 block text-slate-200">ID</Label>
                     <Input

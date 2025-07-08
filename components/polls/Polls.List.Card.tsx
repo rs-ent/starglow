@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import { useLoading } from "@/app/hooks/useLoading";
 import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
 import { useToast } from "@/app/hooks/useToast";
-import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
+import { usePlayerAssetsGet } from "@/app/actions/playerAssets/hooks";
 import PollBar from "@/components/atoms/Polls.Bar";
 import PollThumbnail from "@/components/atoms/Polls.Thumbnail";
 import { formatDate } from "@/lib/utils/format";
@@ -28,7 +28,7 @@ import type { PollsWithArtist, PollOption } from "@/app/actions/polls";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import type { TokenGatingData } from "@/app/story/nft/actions";
 import type { Artist, Player, PollLog } from "@prisma/client";
-import { getPlayerAsset } from "@/app/actions/playerAssets";
+import { getPlayerAsset } from "@/app/actions/playerAssets/actions";
 import Image from "next/image";
 
 interface PollsCardProps {

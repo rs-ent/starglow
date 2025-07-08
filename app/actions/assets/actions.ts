@@ -2,7 +2,13 @@
 
 "use server";
 
-import type { AssetsContract, Asset, AssetType, Prisma } from "@prisma/client";
+import type {
+    AssetsContract,
+    Asset,
+    AssetType,
+    Prisma,
+    AssetInstance,
+} from "@prisma/client";
 
 import { revalidatePath } from "next/cache";
 import {
@@ -12,21 +18,22 @@ import {
     http,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-
-import { prisma } from "@/lib/prisma/client";
-import assetsJson from "@/web3/artifacts/contracts/Assets.sol/Assets.json";
-
+import { randomBytes, randomUUID } from "crypto";
 import {
     deployContract,
     getChain,
     getEscrowWalletWithPrivateKey,
-} from "./blockchain";
+} from "@/app/actions/blockchain";
+
+import { prisma } from "@/lib/prisma/client";
+import assetsJson from "@/web3/artifacts/contracts/Assets.sol/Assets.json";
+
 const abi = assetsJson.abi;
 const bytecode = assetsJson.bytecode as `0x${string}`;
 
-import { updatePlayerAssetsOnAssetChange } from "./playerAssets";
+import { updatePlayerAssetsOnAssetChange } from "@/app/actions/playerAssets/actions";
+import type { PlayerAssetResult } from "@/app/actions/playerAssets/actions";
 
-import type { PlayerAssetResult } from "./playerAssets";
 import type { Address } from "viem";
 
 export interface DeployAssetsContractInput {
@@ -226,6 +233,7 @@ export type CreateAssetInput = {
     selectors?: string[];
     abis?: Record<string, any>;
     createdBy?: string;
+    hasInstance?: boolean;
 };
 
 export async function createAsset(input: CreateAssetInput): Promise<Asset> {
@@ -322,6 +330,7 @@ export async function createAsset(input: CreateAssetInput): Promise<Asset> {
                 isActive: true,
                 assetId: assetId,
                 assetsContractAddress: assetsContract.address,
+                hasInstance: input.hasInstance,
             },
         });
         revalidatePath("/admin/assets");
@@ -447,6 +456,48 @@ export async function getAssets(
             totalItems: 0,
             totalPages: 0,
         };
+    }
+}
+
+export interface UpdateAssetInput {
+    id: string;
+    name?: string;
+    symbol?: string;
+    description?: string;
+    iconUrl?: string;
+    imageUrl?: string;
+    metadata?: any;
+    selectors?: string[];
+    abis?: Record<string, any>;
+    isActive?: boolean;
+    hasInstance?: boolean;
+}
+
+export async function updateAsset(input: UpdateAssetInput): Promise<Asset> {
+    try {
+        const { id, ...updateData } = input;
+
+        // 빈 객체 제거 (undefined 값들 필터링)
+        const filteredData = Object.fromEntries(
+            Object.entries(updateData).filter(
+                ([_, value]) => value !== undefined
+            )
+        );
+
+        if (Object.keys(filteredData).length === 0) {
+            throw new Error("No fields to update");
+        }
+
+        const asset = await prisma.asset.update({
+            where: { id },
+            data: filteredData,
+        });
+
+        revalidatePath("/admin/assets");
+        return asset;
+    } catch (error) {
+        console.error("Failed to update asset:", error);
+        throw new Error("Failed to update asset");
     }
 }
 
@@ -1061,6 +1112,159 @@ export async function bulkUpdateAssetReferences(
                 error instanceof Error ? error.message : "Unknown error"
             }`,
             updatedCounts: {} as any,
+        };
+    }
+}
+
+export interface CreateAssetInstanceInput {
+    playerId?: string;
+    playerAssetId?: string;
+    assetId?: string;
+    asset?: Asset;
+    amount: number;
+    codePrefix?: string;
+    source?: string;
+    trx?: any;
+}
+
+export interface CreateAssetInstanceResult {
+    success: boolean;
+    data?: AssetInstance[];
+    error?: string;
+    count?: number;
+}
+
+export async function createAssetInstance(
+    input: CreateAssetInstanceInput
+): Promise<CreateAssetInstanceResult> {
+    if (!input.assetId && !input.asset) {
+        return { success: false, error: "Asset ID or asset is required" };
+    }
+
+    if (!input.amount || input.amount <= 0) {
+        return { success: false, error: "Amount must be greater than 0" };
+    }
+
+    if (input.amount > 10000) {
+        return {
+            success: false,
+            error: "Amount exceeds maximum batch size (10,000)",
+        };
+    }
+
+    const tx = (input.trx || prisma) as typeof prisma;
+
+    try {
+        const asset =
+            input.asset ||
+            (await tx.asset.findUnique({
+                where: { id: input.assetId, isActive: true },
+            }));
+
+        if (!asset) {
+            return { success: false, error: "Asset not found or not active" };
+        }
+
+        if (!asset.isActive) {
+            return { success: false, error: "Asset is not active" };
+        }
+
+        if (!asset.hasInstance) {
+            return {
+                success: false,
+                error: "Asset does not support instances",
+            };
+        }
+
+        const timestamp = Date.now();
+        const batchId = `batch-${timestamp}`;
+
+        const generateShortCode = (): string => {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            const bytes = randomBytes(4);
+            let result = "";
+            for (let j = 0; j < 6; j++) {
+                result += chars[bytes[j % 4] % chars.length];
+            }
+            return result;
+        };
+
+        const usedCodes = new Set<string>();
+
+        const instancesData = Array.from({ length: input.amount }, (_, i) => {
+            const serialNumber = `${asset.symbol}-${randomUUID()}`;
+
+            let code: string;
+            do {
+                code = input.codePrefix
+                    ? `${input.codePrefix}-${generateShortCode()}`
+                    : generateShortCode();
+            } while (usedCodes.has(code));
+            usedCodes.add(code);
+
+            return {
+                assetId: asset.id,
+                serialNumber,
+                code,
+                status: input.playerId
+                    ? ("RECEIVED" as const)
+                    : ("PENDING" as const),
+                source: input.source || "system_generated",
+                playerId: input.playerId || null,
+                playerAssetId: input.playerAssetId || null,
+                metadata: {
+                    batchId,
+                    sequenceNumber: i + 1,
+                    totalInBatch: input.amount,
+                    generatedAt: new Date().toISOString(),
+                    assetSymbol: asset.symbol,
+                    assetName: asset.name,
+                    ...(input.source && { source: input.source }),
+                },
+            };
+        });
+
+        const createResult = await tx.assetInstance.createMany({
+            data: instancesData,
+            skipDuplicates: true,
+        });
+
+        const createdInstances = await tx.assetInstance.findMany({
+            where: {
+                metadata: {
+                    path: ["batchId"],
+                    equals: batchId,
+                },
+            },
+            include: {
+                asset: true,
+                player: true,
+                playerAsset: true,
+            },
+            orderBy: {
+                createdAt: "asc",
+            },
+        });
+
+        revalidatePath("/admin/assets");
+        revalidatePath("/admin/rewards");
+        revalidatePath("/admin/polls");
+        revalidatePath("/admin/quests");
+        revalidatePath("/admin/raffles");
+
+        return {
+            success: true,
+            data: createdInstances,
+            count: createResult.count,
+        };
+    } catch (error) {
+        console.error("Failed to create asset instance:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to create asset instance",
         };
     }
 }

@@ -106,6 +106,7 @@ Table Player {
   telegramId String [unique]
   tweetAuthorId String [unique]
   tweetVerified Boolean [not null, default: false]
+  tester Boolean [not null, default: false]
   name String
   nickname String
   image String
@@ -144,6 +145,7 @@ Table Player {
   boardReputationScore Int [not null, default: 0]
   committedBoardModeration BoardModerationReport [not null]
   reportedBoardModeration BoardModerationReport [not null]
+  assetInstances AssetInstance [not null]
 
   indexes {
     (userId, telegramId) [unique]
@@ -182,6 +184,7 @@ Table PlayerAsset {
   updatedAt DateTime [not null]
   asset Asset [not null]
   player Player [not null]
+  assetInstances AssetInstance [not null]
 
   indexes {
     (playerId, assetId) [unique]
@@ -215,6 +218,7 @@ Table Quest {
   permanent Boolean [not null, default: false]
   isActive Boolean [not null, default: true]
   order Int [default: 0]
+  test Boolean [not null, default: false]
   effects String
   type String
   artistId String
@@ -302,6 +306,7 @@ Table Poll {
   verificationHash String
   verifiedAt DateTime
   verifiedBy String
+  test Boolean [not null, default: false]
   tags String[] [not null]
   metadata Json
   createdAt DateTime [default: `now()`, not null]
@@ -649,6 +654,37 @@ Table Asset {
   rafflePrizes RafflePrize [not null]
   raffleEntryFeeAssets Raffle [not null]
   pollParticipationConsumeAssets Poll [not null]
+  hasInstance Boolean [not null, default: false]
+  assetInstances AssetInstance [not null]
+}
+
+Table AssetInstance {
+  id String [pk]
+  serialNumber String [not null]
+  code String
+  status AssetInstanceStatus [not null, default: 'PENDING']
+  assetId String [not null]
+  asset Asset [not null]
+  playerId String
+  player Player
+  playerAssetId String
+  playerAsset PlayerAsset
+  expiresAt DateTime
+  validFrom DateTime
+  validUntil DateTime
+  usedAt DateTime
+  usedBy String
+  usedFor String
+  usedLocation String
+  source String
+  metadata Json
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (assetId, serialNumber) [unique]
+    (assetId, code) [unique]
+  }
 }
 
 Table AssetTransaction {
@@ -1670,6 +1706,17 @@ Enum QuestLogStatus {
   DEPRECATED
 }
 
+Enum AssetInstanceStatus {
+  PENDING
+  RECEIVED
+  RECEIVED_EXPIRED
+  USED
+  EXPIRED
+  EXCHANGED
+  CANCELLED
+  DESTROYED
+}
+
 Enum BoardModerationReportStatus {
   PENDING
   REVIEWING
@@ -2061,6 +2108,12 @@ Ref: Asset.assetsContractAddress > AssetsContract.address
 Ref: Asset.networkId > BlockchainNetwork.id
 
 Ref: Asset.artistId > Artist.id
+
+Ref: AssetInstance.assetId > Asset.id
+
+Ref: AssetInstance.playerId > Player.id
+
+Ref: AssetInstance.playerAssetId > PlayerAsset.id
 
 Ref: FactoryContract.networkId > BlockchainNetwork.id
 

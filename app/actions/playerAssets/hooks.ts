@@ -7,24 +7,31 @@ import {
     useBatchUpdatePlayerAsset,
     useDeletePlayerAsset,
     useValidatePlayerAsset,
-} from "../mutations/playerAssetsMutations";
+    useGrantPlayerAssetInstances,
+    useWithdrawPlayerAssetInstances,
+    useAutoExpirePlayerAssetInstances,
+} from "@/app/actions/playerAssets/mutations";
 import {
     useGetPlayerAssets,
     useGetPlayerAsset,
     useGetPlayerAssetBalance,
-} from "../queries/playerAssetsQueries";
+    useGetPlayerAssetInstances,
+} from "@/app/actions/playerAssets/queries";
 
 import type {
     GetPlayerAssetInput,
     GetPlayerAssetsInput,
-} from "../actions/playerAssets";
+    GetPlayerAssetInstancesInput,
+} from "@/app/actions/playerAssets/actions";
 
 export function usePlayerAssetsGet({
     getPlayerAssetsInput,
     getPlayerAssetInput,
+    getPlayerAssetInstancesInput,
 }: {
     getPlayerAssetsInput?: GetPlayerAssetsInput;
     getPlayerAssetInput?: GetPlayerAssetInput;
+    getPlayerAssetInstancesInput?: GetPlayerAssetInstancesInput;
 }) {
     const {
         data: playerAssets,
@@ -50,6 +57,14 @@ export function usePlayerAssetsGet({
         getPlayerAssetInput,
     });
 
+    const {
+        data: playerAssetInstances,
+        isLoading: isPlayerAssetInstancesLoading,
+        error: playerAssetInstancesError,
+    } = useGetPlayerAssetInstances({
+        getPlayerAssetInstancesInput,
+    });
+
     return {
         playerAssets,
         isPlayerAssetsLoading,
@@ -62,6 +77,10 @@ export function usePlayerAssetsGet({
         playerBalance,
         isPlayerBalanceLoading,
         playerBalanceError,
+
+        playerAssetInstances,
+        isPlayerAssetInstancesLoading,
+        playerAssetInstancesError,
     };
 }
 
@@ -90,17 +109,41 @@ export function usePlayerAssetSet() {
         error: validatePlayerAssetError,
     } = useValidatePlayerAsset();
 
+    const {
+        mutateAsync: grantPlayerAssetInstances,
+        isPending: isGrantPlayerAssetInstancesPending,
+        error: grantPlayerAssetInstancesError,
+    } = useGrantPlayerAssetInstances();
+
+    const {
+        mutateAsync: withdrawPlayerAssetInstances,
+        isPending: isWithdrawPlayerAssetInstancesPending,
+        error: withdrawPlayerAssetInstancesError,
+    } = useWithdrawPlayerAssetInstances();
+
+    const {
+        mutateAsync: autoExpirePlayerAssetInstances,
+        isPending: isAutoExpirePlayerAssetInstancesPending,
+        error: autoExpirePlayerAssetInstancesError,
+    } = useAutoExpirePlayerAssetInstances();
+
     const isPending =
         isUpdatePlayerAssetPending ||
         isBatchUpdatePlayerAssetPending ||
         isDeletePlayerAssetPending ||
-        isValidatePlayerAssetPending;
+        isValidatePlayerAssetPending ||
+        isGrantPlayerAssetInstancesPending ||
+        isWithdrawPlayerAssetInstancesPending ||
+        isAutoExpirePlayerAssetInstancesPending;
 
     const error =
         updatePlayerAssetError ||
         batchUpdatePlayerAssetError ||
         deletePlayerAssetError ||
-        validatePlayerAssetError;
+        validatePlayerAssetError ||
+        grantPlayerAssetInstancesError ||
+        withdrawPlayerAssetInstancesError ||
+        autoExpirePlayerAssetInstancesError;
 
     return {
         updatePlayerAsset,
@@ -118,6 +161,18 @@ export function usePlayerAssetSet() {
         validatePlayerAsset,
         isValidatePlayerAssetPending,
         validatePlayerAssetError,
+
+        grantPlayerAssetInstances,
+        isGrantPlayerAssetInstancesPending,
+        grantPlayerAssetInstancesError,
+
+        withdrawPlayerAssetInstances,
+        isWithdrawPlayerAssetInstancesPending,
+        withdrawPlayerAssetInstancesError,
+
+        autoExpirePlayerAssetInstances,
+        isAutoExpirePlayerAssetInstancesPending,
+        autoExpirePlayerAssetInstancesError,
 
         isPending,
         error,

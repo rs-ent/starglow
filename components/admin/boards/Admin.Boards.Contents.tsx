@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 
 import { useBoards } from "@/app/actions/boards/hooks";
-import { useAssetsGet } from "@/app/hooks/useAssets";
+import { useAssetsGet } from "@/app/actions/assets/hooks";
 import { useArtistsGet } from "@/app/hooks/useArtists";
 import type { BoardWithPosts } from "@/app/actions/boards/actions";
 

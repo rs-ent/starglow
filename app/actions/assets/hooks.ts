@@ -5,6 +5,7 @@
 import {
     useActivateAsset,
     useCreateAsset,
+    useUpdateAsset,
     useDeleteAsset,
     useDeactivateAsset,
     useAddAssetFunction,
@@ -12,20 +13,20 @@ import {
     useAirdropAsset,
     useDeployAssetsContract,
     useSetDefaultAsset,
-} from "../mutations/assetsMutations";
+} from "@/app/actions/assets/mutations";
 import {
     useAsset,
     useAssets,
     useAssetsContract,
     useAssetsContracts,
-} from "../queries/assetsQueries";
+} from "@/app/actions/assets/queries";
 
 import type {
     GetAssetInput,
     GetAssetsInput,
     GetAssetsContractInput,
     GetAssetsContractsInput,
-} from "@/app/actions/assets";
+} from "@/app/actions/assets/actions";
 
 export interface UseAssetsGetInput {
     getAssetInput?: GetAssetInput;
@@ -92,6 +93,8 @@ export function useAssetsGet(input?: UseAssetsGetInput) {
 export function useAssetsSet() {
     const { mutateAsync: createAsset, isPending: isCreateAssetPending } =
         useCreateAsset();
+    const { mutateAsync: updateAsset, isPending: isUpdateAssetPending } =
+        useUpdateAsset();
     const {
         mutateAsync: addAssetFunction,
         isPending: isAddAssetFunctionPending,
@@ -122,6 +125,7 @@ export function useAssetsSet() {
 
     return {
         createAsset,
+        updateAsset,
         addAssetFunction,
         executeAssetFunction,
         airdropAsset,
@@ -132,6 +136,7 @@ export function useAssetsSet() {
         setDefaultAsset,
 
         isCreateAssetPending,
+        isUpdateAssetPending,
         isAddAssetFunctionPending,
         isExecuteAssetFunctionPending,
         isAirdropAssetPending,
@@ -143,6 +148,7 @@ export function useAssetsSet() {
 
         isPending:
             isCreateAssetPending ||
+            isUpdateAssetPending ||
             isAddAssetFunctionPending ||
             isExecuteAssetFunctionPending ||
             isAirdropAssetPending ||
@@ -153,6 +159,7 @@ export function useAssetsSet() {
             isSetDefaultAssetPending,
 
         useCreateAsset,
+        useUpdateAsset,
         useAddAssetFunction,
         useExecuteAssetFunction,
         useAirdropAsset,

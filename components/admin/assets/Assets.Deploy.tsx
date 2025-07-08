@@ -6,7 +6,7 @@ import React from "react";
 import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 
-import { useAssetsSet } from "@/app/hooks/useAssets";
+import { useAssetsSet } from "@/app/actions/assets/hooks";
 import {
     useBlockchainNetworksManager,
     useEscrowWalletManager,

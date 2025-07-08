@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRaffles } from "@/app/actions/raffles/hooks";
 import { useArtistsGet } from "@/app/hooks/useArtists";
-import { useAssetsGet } from "@/app/hooks/useAssets";
+import { useAssetsGet } from "@/app/actions/assets/hooks";
 import { useSPG } from "@/app/story/spg/hooks";
 import { useToast } from "@/app/hooks/useToast";
 

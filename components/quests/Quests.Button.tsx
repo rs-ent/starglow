@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
 
-import { useAssetsGet } from "@/app/hooks/useAssets";
+import { useAssetsGet } from "@/app/actions/assets/hooks";
 import { useQuestSet } from "@/app/hooks/useQuest";
 import { useToast } from "@/app/hooks/useToast";
 import Countdown from "@/components/atoms/Countdown";

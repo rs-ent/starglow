@@ -6,7 +6,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Gift, Send, AlertCircle, CheckCircle, RefreshCcw } from "lucide-react";
 
-import { useAssetsGet } from "@/app/hooks/useAssets";
+import { useAssetsGet } from "@/app/actions/assets/hooks";
 import { useTweets } from "@/app/actions/x/hooks";
 import { useToast } from "@/app/hooks/useToast";
 import { formatNumber } from "@/lib/utils/format";

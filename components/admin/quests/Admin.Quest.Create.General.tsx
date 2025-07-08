@@ -31,6 +31,7 @@ import { getYoutubeVideoId } from "@/lib/utils/youtube";
 
 import { Section, Divider } from "./shared-components";
 import { QUEST_ICON_PRESETS, type QuestFormProps } from "./types";
+import { Switch } from "@/components/ui/switch";
 
 export function GeneralQuestForm({
     formData,
@@ -46,6 +47,7 @@ export function GeneralQuestForm({
     createError,
     mode,
     registeredTypes,
+    test,
 }: QuestFormProps) {
     return (
         <form
@@ -57,6 +59,17 @@ export function GeneralQuestForm({
                     title="기본 정보"
                     icon={<Settings className="w-5 h-5" />}
                 >
+                    <div className="flex gap-2">
+                        <Label className="mb-2 block text-slate-200">
+                            테스트 모드 활성화
+                        </Label>
+                        <Switch
+                            checked={test ?? false}
+                            onCheckedChange={(checked) =>
+                                onChange("test", checked)
+                            }
+                        />
+                    </div>
                     <div className="mb-8">
                         <Label className="mb-2 block">퀘스트 제목</Label>
                         <Input

@@ -15,7 +15,7 @@ import {
 import { QuestType } from "@prisma/client";
 
 import { useArtistsGet } from "@/app/hooks/useArtists";
-import { useAssetsGet } from "@/app/hooks/useAssets";
+import { useAssetsGet } from "@/app/actions/assets/hooks";
 import { useQuestSet } from "@/app/hooks/useQuest";
 import { useToast } from "@/app/hooks/useToast";
 import { useSPG } from "@/app/story/spg/hooks";
@@ -137,6 +137,7 @@ export default function AdminQuestCreate({
         intervalHours: 0,
         intervalMinutes: 0,
         intervalSeconds: 0,
+        test: false,
     });
 
     // Memoize onChange function to prevent infinite loops
@@ -274,6 +275,7 @@ export default function AdminQuestCreate({
             createError: createError || updateError,
             mode,
             registeredTypes,
+            test: formData.test ?? false,
         };
 
         if (selectedQuestType === QuestType.URL) {

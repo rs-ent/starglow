@@ -52,6 +52,7 @@ export interface QuestFormProps {
     createError: any;
     mode: "create" | "edit";
     registeredTypes: string[];
+    test?: boolean;
 }
 
 // Tab configuration

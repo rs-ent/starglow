@@ -8,7 +8,7 @@ import { tokenGating } from "@/app/story/nft/actions";
 import { prisma } from "@/lib/prisma/client";
 import { formatWaitTime } from "@/lib/utils/format";
 
-import { updatePlayerAsset } from "./playerAssets";
+import { updatePlayerAsset } from "@/app/actions/playerAssets/actions";
 
 import type { TokenGatingData } from "@/app/story/nft/actions";
 import type {
@@ -52,6 +52,7 @@ export interface CreateQuestInput {
     needTokenAddress?: string | null;
     isReferral?: boolean;
     referralCount?: number | null;
+    test?: boolean;
 }
 
 export async function createQuest(input: CreateQuestInput) {
@@ -114,6 +115,7 @@ export interface GetQuestsInput {
     isPublic?: boolean;
     needToken?: boolean;
     needTokenAddress?: string | null;
+    test?: boolean;
 }
 
 export async function getQuests({
@@ -184,6 +186,8 @@ export async function getQuests({
         if (input.repeatableInterval) {
             where.repeatableInterval = input.repeatableInterval;
         }
+
+        if (input.test !== undefined) where.test = input.test;
 
         // isPublic 조건을 먼저 처리하여 조건 충돌 방지
         if (input.isPublic) {
@@ -300,6 +304,7 @@ export interface UpdateQuestInput {
     needTokenAddress?: string | null;
     isReferral?: boolean;
     referralCount?: number | null;
+    test?: boolean;
 }
 
 export async function updateQuest(
@@ -739,7 +744,6 @@ export async function claimQuestReward(
 ): Promise<ClaimQuestRewardResult> {
     try {
         return await prisma.$transaction(async (tx) => {
-            // Conditional Update: 성능 최적화 + 안전한 동시성 제어
             const log = await tx.questLog.findUnique({
                 where: { id: input.questLog.id },
             });

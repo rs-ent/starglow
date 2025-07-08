@@ -33,7 +33,11 @@ function PollsContentsTotal({
 
     // 전체 데이터를 한 번만 가져오기
     const { pollsList, isLoading, error } = usePollsGet({
-        getPollsInput: { isActive: true, showOnPollPage: true },
+        getPollsInput: {
+            isActive: true,
+            showOnPollPage: true,
+            test: player?.tester ?? false,
+        },
     });
 
     // 클라이언트 사이드 필터링

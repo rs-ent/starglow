@@ -31,6 +31,7 @@ function QuestsTotal({ player, questLogs, referralLogs }: QuestsTotalProps) {
             endDate: now,
             startDateIndicator: "after",
             endDateIndicator: "before",
+            test: player?.tester ?? false,
         },
     });
 

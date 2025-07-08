@@ -9,7 +9,7 @@ import {
     getAssets,
     getAssetsContract,
     getAssetsContracts,
-} from "@/app/actions/assets";
+} from "@/app/actions/assets/actions";
 import { assetKeys } from "@/app/queryKeys";
 
 import type {
@@ -18,7 +18,7 @@ import type {
     GetAssetsContractInput,
     GetAssetsContractsInput,
     Pagination,
-} from "@/app/actions/assets";
+} from "@/app/actions/assets/actions";
 
 export function useAssets(input?: GetAssetsInput) {
     return useQuery({

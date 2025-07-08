@@ -23,6 +23,7 @@ import { getYoutubeVideoId } from "@/lib/utils/youtube";
 
 import { Section, Divider } from "./shared-components";
 import { QUEST_ICON_PRESETS, type QuestFormProps } from "./types";
+import { Switch } from "@/components/ui/switch";
 
 export function ReferralQuestForm({
     formData,
@@ -34,6 +35,7 @@ export function ReferralQuestForm({
     isCreating,
     createError,
     mode,
+    test,
 }: QuestFormProps) {
     useEffect(() => {
         onChange("isReferral", true);
@@ -49,6 +51,17 @@ export function ReferralQuestForm({
                     title="기본 정보"
                     icon={<Settings className="w-5 h-5" />}
                 >
+                    <div className="flex gap-2">
+                        <Label className="mb-2 block text-slate-200">
+                            테스트 모드 활성화
+                        </Label>
+                        <Switch
+                            checked={test ?? false}
+                            onCheckedChange={(checked) =>
+                                onChange("test", checked)
+                            }
+                        />
+                    </div>
                     <div className="mb-8">
                         <Label className="mb-2 block">퀘스트 제목</Label>
                         <Input

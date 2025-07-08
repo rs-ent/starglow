@@ -36,11 +36,11 @@ import RaffleScratchCard from "./Raffle.Reveal.Scratch";
 import EnhancedPortal from "@/components/atoms/Portal.Enhanced";
 
 import type { RaffleStatus } from "@/app/actions/raffles/utils";
-import { useAssetsGet } from "@/app/hooks/useAssets";
+import { useAssetsGet } from "@/app/actions/assets/hooks";
 import Image from "next/image";
 import RaffleRecord from "./Raffle.Record";
 import { tierMap } from "./raffle-tier";
-import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
+import { usePlayerAssetsGet } from "@/app/actions/playerAssets/hooks";
 
 // Utility function to calculate raffle status based on dates
 const getRaffleStatus = (

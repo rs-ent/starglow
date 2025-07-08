@@ -4,7 +4,6 @@
 
 import { useState } from "react";
 
-
 import { useToast } from "@/app/hooks/useToast";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -13,13 +12,14 @@ import PollsListCard from "./Polls.List.Card";
 import QRCodeModal from "../atoms/QRCode";
 
 import type { TokenGatingData } from "@/app/story/nft/actions";
-import type { Player, Poll, Artist, PollLog } from "@prisma/client";
+import type { Player, Artist, PollLog } from "@prisma/client";
+import type { PollsWithArtist } from "@/app/actions/polls";
 
 interface PollProps {
-    poll: Poll;
+    poll: PollsWithArtist;
     player: Player | null;
     artist: Artist | null;
-    pollLogs: PollLog[];
+    pollLogs?: PollLog[];
     tokenGating: TokenGatingData | null;
     bgColorAccentFrom?: string | undefined;
     bgColorAccentTo?: string | undefined;
@@ -38,23 +38,6 @@ export default function PollComponent({
     const [showQrCode, setShowQrCode] = useState(false);
 
     const selection = [];
-    /*
-    const refUrl = useMemo(() => {
-        const code = player?.referralCode || "";
-        if (typeof window !== "undefined") {
-            if (typeof navigator.share === "function") {
-                return code
-                    ? `${window.location.origin}/polls/${poll.id}`
-                    : `${window.location.origin}/polls/${poll.id}`;
-            } else {
-                return code
-                    ? `https://t.me/Waydcloud_bot?startapp=${code}&pollId=${poll.id}`
-                    : `https://t.me/Waydcloud_bot?startapp&pollId=${poll.id}`;
-            }
-        }
-        return "";
-    }, [player?.referralCode]);
-    */
 
     const refUrl = `${window.location.origin}/polls/${poll.id}`;
 

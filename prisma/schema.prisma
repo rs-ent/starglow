@@ -136,6 +136,7 @@ model Player {
   telegramId             String?              @unique
   tweetAuthorId          String?              @unique
   tweetVerified          Boolean              @default(false)
+  tester                 Boolean              @default(false)
   name                   String?
   nickname               String?
   image                  String?
@@ -174,6 +175,7 @@ model Player {
   boardReputationScore   Int                  @default(0)
   committedBoardModeration BoardModerationReport[] @relation("BoardModerationReportOffender")
   reportedBoardModeration BoardModerationReport[] @relation("BoardModerationReportReporter")
+  assetInstances         AssetInstance[]
 
   @@unique([userId, telegramId])
   @@index([userId, telegramId])
@@ -216,6 +218,7 @@ model PlayerAsset {
   updatedAt DateTime          @updatedAt
   asset     Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
   player    Player            @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  assetInstances AssetInstance[]
 
   @@unique([playerId, assetId])
   @@index([playerId])
@@ -250,6 +253,7 @@ model Quest {
   permanent          Boolean      @default(false)
   isActive           Boolean      @default(true)
   order              Int?         @default(0)
+  test               Boolean      @default(false)
   effects            String?
   type               String?
   artistId           String?
@@ -354,6 +358,7 @@ model Poll {
   verificationHash           String?
   verifiedAt                 DateTime?
   verifiedBy                 String?
+  test                       Boolean      @default(false)
   tags                       String[]     @default([])
   metadata                   Json?
   createdAt                  DateTime     @default(now())
@@ -727,7 +732,7 @@ model Asset {
   assetId                       String?
   assetsContractAddress         String?
   networkId                     String?
-  artistId                      String?            // 아티스트 전용 Asset 지원
+  artistId                      String?
   createdAt                     DateTime           @default(now())
   updatedAt                     DateTime           @updatedAt
   assetsContract                AssetsContract?    @relation(fields: [assetsContractAddress], references: [address])
@@ -750,11 +755,65 @@ model Asset {
   raffleEntryFeeAssets          Raffle[]           @relation("RaffleEntryFeeAsset")
   pollParticipationConsumeAssets Poll[]             @relation("PollParticipationConsume")
 
+  hasInstance                   Boolean            @default(false)
+  assetInstances                AssetInstance[]
+
   @@index([isDefault])
   @@index([assetType, isActive])
   @@index([contractAddress])
   @@index([networkId])
   @@index([artistId])
+}
+
+enum AssetInstanceStatus {
+  PENDING
+  RECEIVED
+  RECEIVED_EXPIRED
+  USED
+  EXPIRED
+  EXCHANGED
+  CANCELLED
+  DESTROYED
+}
+
+model AssetInstance {
+  id        String   @id @default(cuid())
+  serialNumber String
+  code String?
+  status AssetInstanceStatus @default(PENDING)
+
+  assetId String
+  asset Asset @relation(fields: [assetId], references: [id])
+
+  playerId String?
+  player Player? @relation(fields: [playerId], references: [id])
+
+  playerAssetId String?
+  playerAsset PlayerAsset? @relation(fields: [playerAssetId], references: [id])
+
+  expiresAt DateTime?
+  validFrom DateTime?
+  validUntil DateTime?
+
+  usedAt DateTime?
+  usedBy String?
+  usedFor String?
+  usedLocation String?
+
+  source String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assetId, serialNumber])
+  @@unique([assetId, code])
+  @@index([assetId])
+  @@index([playerId])
+  @@index([status])
+  @@index([serialNumber])
+  @@index([assetId, playerId])
 }
 
 model AssetTransaction {

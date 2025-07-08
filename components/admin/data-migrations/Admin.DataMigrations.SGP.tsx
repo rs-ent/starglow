@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { usePlayerAssetSet } from "@/app/hooks/usePlayerAssets";
+import { usePlayerAssetSet } from "@/app/actions/playerAssets/hooks";
 import { useUserGet } from "@/app/hooks/useUser";
 import { useToast } from "@/app/hooks/useToast";
 import FileUploader from "@/components/atoms/FileUploader";

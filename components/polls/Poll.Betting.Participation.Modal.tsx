@@ -8,10 +8,10 @@ import { FlameIcon, Minus, Plus, Target, Calculator } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
+import { usePlayerAssetsGet } from "@/app/actions/playerAssets/hooks";
 import type { PollsWithArtist, PollOption } from "@/app/actions/polls";
 import type { Player } from "@prisma/client";
-import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets";
+import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets/actions";
 import Image from "next/image";
 import { useToast } from "@/app/hooks/useToast";
 

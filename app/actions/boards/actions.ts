@@ -1,4 +1,4 @@
-/// app/actions/board/actions.ts
+/// app\actions\boards\actions.ts
 
 "use server";
 
@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
 import { validateContentBeforePost } from "../boardModeration/check-actions";
 
-import { updatePlayerAsset } from "../playerAssets";
+import { updatePlayerAsset } from "@/app/actions/playerAssets/actions";
 
 import type {
     Board,

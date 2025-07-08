@@ -15,7 +15,7 @@ import type {
     RewardsLog,
     Player,
 } from "@prisma/client";
-import { updatePlayerAsset } from "../playerAssets";
+import { updatePlayerAsset } from "@/app/actions/playerAssets/actions";
 
 const CLIENT_ID = process.env.TWITTER_CLIENT_ID;
 const CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;

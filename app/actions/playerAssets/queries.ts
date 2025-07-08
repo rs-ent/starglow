@@ -7,12 +7,15 @@ import { useQuery } from "@tanstack/react-query";
 import {
     getPlayerAssets,
     getPlayerAsset,
-} from "../actions/playerAssets";
-import { playerAssetsKeys } from "../queryKeys";
+    getPlayerAssetInstances,
+} from "@/app/actions/playerAssets/actions";
+import { playerAssetsKeys } from "@/app/queryKeys";
 
 import type {
     GetPlayerAssetsInput,
-    GetPlayerAssetInput} from "../actions/playerAssets";
+    GetPlayerAssetInput,
+    GetPlayerAssetInstancesInput,
+} from "@/app/actions/playerAssets/actions";
 
 export function useGetPlayerAssets({
     getPlayerAssetsInput,
@@ -58,5 +61,19 @@ export function useGetPlayerAssetBalance({
         queryFn: () => getPlayerAsset(getPlayerAssetInput),
         staleTime: 1000 * 60 * 0.5,
         gcTime: 1000 * 60 * 1,
+    });
+}
+
+export function useGetPlayerAssetInstances({
+    getPlayerAssetInstancesInput,
+}: {
+    getPlayerAssetInstancesInput?: GetPlayerAssetInstancesInput;
+}) {
+    return useQuery({
+        queryKey: playerAssetsKeys.instances(getPlayerAssetInstancesInput),
+        queryFn: () => getPlayerAssetInstances(getPlayerAssetInstancesInput),
+        enabled: !!getPlayerAssetInstancesInput,
+        staleTime: 1000 * 60 * 1,
+        gcTime: 1000 * 60 * 3,
     });
 }

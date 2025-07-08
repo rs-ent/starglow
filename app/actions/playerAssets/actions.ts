@@ -3,16 +3,19 @@
 "use server";
 
 import { PlayerAssetStatus } from "@prisma/client";
-
 import { prisma } from "@/lib/prisma/client";
+import { createAssetInstance } from "@/app/actions/assets/actions";
 
-import type { AssetStatusChangeEvent } from "./assets";
+import type { AssetStatusChangeEvent } from "@/app/actions/assets/actions";
 import type {
     Prisma,
     PlayerAsset,
     AssetType,
     Player,
     Asset,
+    AssetInstance,
+    AssetInstanceStatus,
+    RewardsLog,
 } from "@prisma/client";
 
 export interface PlayerAssetResult<T> {
@@ -1040,6 +1043,705 @@ export async function setDefaultPlayerAsset(
             success: false,
             data: false,
             error: "Failed to set default player asset",
+        };
+    }
+}
+
+export interface GrantPlayerAssetInstancesInput {
+    playerId: string;
+    assetId?: string;
+    asset?: Asset;
+    amount: number;
+    codePrefix?: string;
+    source?: string;
+    reason?: string;
+    questId?: string;
+    questLogId?: string;
+    pollId?: string;
+    pollLogId?: string;
+    trx?: any;
+}
+
+export interface GrantPlayerAssetInstancesResult {
+    success: boolean;
+    data?: {
+        assetInstances: AssetInstance[];
+        playerAsset: PlayerAsset;
+        rewardsLog: RewardsLog;
+    };
+    error?: string;
+}
+
+export async function grantPlayerAssetInstances(
+    input: GrantPlayerAssetInstancesInput
+): Promise<GrantPlayerAssetInstancesResult> {
+    if (!input.playerId) {
+        return { success: false, error: "Player ID is required" };
+    }
+
+    if (!input.assetId && !input.asset) {
+        return {
+            success: false,
+            error: "Asset ID or asset object is required",
+        };
+    }
+
+    if (!input.amount || input.amount <= 0) {
+        return { success: false, error: "Amount must be greater than 0" };
+    }
+
+    if (input.amount > Number.MAX_SAFE_INTEGER) {
+        return { success: false, error: "Amount exceeds maximum safe integer" };
+    }
+
+    const executeTransaction = async (tx: any) => {
+        const asset =
+            input.asset ||
+            (await tx.asset.findUnique({
+                where: { id: input.assetId, isActive: true },
+            }));
+
+        if (!asset) {
+            throw new Error("Asset not found or not active");
+        }
+
+        if (!asset.isActive) {
+            throw new Error("Asset is not active");
+        }
+
+        if (!asset.hasInstance) {
+            throw new Error("Asset does not support instances");
+        }
+
+        const existingPlayerAsset = await tx.playerAsset.findUnique({
+            where: {
+                playerId_assetId: {
+                    playerId: input.playerId,
+                    assetId: asset.id,
+                },
+            },
+        });
+
+        const balanceBefore = existingPlayerAsset?.balance || 0;
+
+        const playerAsset = await tx.playerAsset.upsert({
+            where: {
+                playerId_assetId: {
+                    playerId: input.playerId,
+                    assetId: asset.id,
+                },
+            },
+            create: {
+                playerId: input.playerId,
+                assetId: asset.id,
+                balance: 0,
+                status: "ACTIVE",
+            },
+            update: {},
+        });
+
+        if (playerAsset.status !== "ACTIVE") {
+            throw new Error(
+                `PlayerAsset is ${playerAsset.status.toLowerCase()}`
+            );
+        }
+
+        const instanceResult = await createAssetInstance({
+            asset,
+            amount: input.amount,
+            playerId: input.playerId,
+            playerAssetId: playerAsset.id,
+            codePrefix: input.codePrefix,
+            source: input.source || "grant",
+            trx: tx,
+        });
+
+        if (!instanceResult.success || !instanceResult.data) {
+            throw new Error(
+                instanceResult.error || "Failed to create asset instances"
+            );
+        }
+
+        const updatedPlayerAsset = await tx.playerAsset.update({
+            where: { id: playerAsset.id },
+            data: {
+                balance: { increment: input.amount },
+            },
+        });
+
+        const rewardsLog = await tx.rewardsLog.create({
+            data: {
+                playerId: input.playerId,
+                assetId: asset.id,
+                amount: input.amount,
+                balanceBefore: balanceBefore,
+                balanceAfter: balanceBefore + input.amount,
+                reason:
+                    input.reason || `Asset instances granted: ${input.amount}`,
+                questId: input.questId,
+                questLogId: input.questLogId,
+                pollId: input.pollId,
+                pollLogId: input.pollLogId,
+            },
+        });
+
+        return {
+            assetInstances: instanceResult.data,
+            playerAsset: updatedPlayerAsset,
+            rewardsLog,
+        };
+    };
+
+    try {
+        const result = input.trx
+            ? await executeTransaction(input.trx)
+            : await prisma.$transaction(executeTransaction);
+
+        return { success: true, data: result };
+    } catch (error) {
+        console.error("Failed to grant asset instances:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to grant asset instances",
+        };
+    }
+}
+
+export interface WithdrawPlayerAssetInstancesInput {
+    playerId: string;
+    assetId?: string;
+    asset?: Asset;
+    amount: number;
+    withdrawalType:
+        | "USED"
+        | "EXPIRED"
+        | "CANCELLED"
+        | "DESTROYED"
+        | "EXCHANGED";
+    reason?: string;
+    usedFor?: string;
+    usedLocation?: string;
+    usedBy?: string;
+    questId?: string;
+    questLogId?: string;
+    pollId?: string;
+    pollLogId?: string;
+    instanceIds?: string[]; // 특정 인스턴스들만 회수할 경우
+    trx?: any;
+}
+
+export interface WithdrawPlayerAssetInstancesResult {
+    success: boolean;
+    data?: {
+        withdrawnInstances: AssetInstance[];
+        playerAsset: PlayerAsset;
+        rewardsLog: RewardsLog;
+    };
+    error?: string;
+}
+
+export async function withdrawPlayerAssetInstances(
+    input: WithdrawPlayerAssetInstancesInput
+): Promise<WithdrawPlayerAssetInstancesResult> {
+    if (!input.playerId) {
+        return { success: false, error: "Player ID is required" };
+    }
+
+    if (!input.assetId && !input.asset) {
+        return {
+            success: false,
+            error: "Asset ID or asset object is required",
+        };
+    }
+
+    if (!input.amount || input.amount <= 0) {
+        return { success: false, error: "Amount must be greater than 0" };
+    }
+
+    if (input.amount > Number.MAX_SAFE_INTEGER) {
+        return { success: false, error: "Amount exceeds maximum safe integer" };
+    }
+
+    const executeTransaction = async (tx: any) => {
+        const asset =
+            input.asset ||
+            (await tx.asset.findUnique({
+                where: { id: input.assetId, isActive: true },
+            }));
+
+        if (!asset) {
+            throw new Error("Asset not found or not active");
+        }
+
+        if (!asset.hasInstance) {
+            throw new Error("Asset does not support instances");
+        }
+
+        // 🔍 PlayerAsset 확인
+        const playerAsset = await tx.playerAsset.findUnique({
+            where: {
+                playerId_assetId: {
+                    playerId: input.playerId,
+                    assetId: asset.id,
+                },
+            },
+        });
+
+        if (!playerAsset) {
+            throw new Error("PlayerAsset not found");
+        }
+
+        if (playerAsset.status !== "ACTIVE") {
+            throw new Error(
+                `PlayerAsset is ${playerAsset.status.toLowerCase()}`
+            );
+        }
+
+        if (playerAsset.balance < input.amount) {
+            throw new Error(
+                `Insufficient balance. Current: ${playerAsset.balance}, Required: ${input.amount}`
+            );
+        }
+
+        // 🔍 회수할 AssetInstance 조회
+        const whereCondition: any = {
+            assetId: asset.id,
+            playerId: input.playerId,
+            status: {
+                in: ["RECEIVED", "PENDING"], // 회수 가능한 상태만
+            },
+        };
+
+        // 특정 인스턴스들만 회수하는 경우
+        if (input.instanceIds && input.instanceIds.length > 0) {
+            whereCondition.id = { in: input.instanceIds };
+        }
+
+        const availableInstances = await tx.assetInstance.findMany({
+            where: whereCondition,
+            take: input.amount,
+            orderBy: [
+                { expiresAt: "asc" }, // 만료일이 빠른 것부터 (FIFO)
+                { createdAt: "asc" },
+            ],
+        });
+
+        if (availableInstances.length < input.amount) {
+            throw new Error(
+                `Not enough available instances. Available: ${availableInstances.length}, Required: ${input.amount}`
+            );
+        }
+
+        const instanceIds = availableInstances.map(
+            (instance: AssetInstance) => instance.id
+        );
+        const balanceBefore = playerAsset.balance;
+
+        // 🔄 AssetInstance 상태 업데이트
+        const updateData: any = {
+            status: input.withdrawalType,
+            updatedAt: new Date(),
+        };
+
+        if (input.withdrawalType === "USED") {
+            updateData.usedAt = new Date();
+            updateData.usedBy = input.usedBy || input.playerId;
+            updateData.usedFor = input.usedFor;
+            updateData.usedLocation = input.usedLocation;
+        }
+
+        await tx.assetInstance.updateMany({
+            where: { id: { in: instanceIds } },
+            data: updateData,
+        });
+
+        // 🔄 PlayerAsset 잔액 감소
+        const updatedPlayerAsset = await tx.playerAsset.update({
+            where: { id: playerAsset.id },
+            data: {
+                balance: { decrement: input.amount },
+            },
+        });
+
+        // 🔄 RewardsLog 생성 (음수 amount로 소비 기록)
+        const rewardsLog = await tx.rewardsLog.create({
+            data: {
+                playerId: input.playerId,
+                assetId: asset.id,
+                amount: -input.amount, // 음수로 소비 표시
+                balanceBefore: balanceBefore,
+                balanceAfter: balanceBefore - input.amount,
+                reason:
+                    input.reason ||
+                    `Asset instances ${input.withdrawalType.toLowerCase()}: ${
+                        input.amount
+                    }`,
+                questId: input.questId,
+                questLogId: input.questLogId,
+                pollId: input.pollId,
+                pollLogId: input.pollLogId,
+            },
+        });
+
+        // 🔄 업데이트된 AssetInstance 조회
+        const withdrawnInstances = await tx.assetInstance.findMany({
+            where: { id: { in: instanceIds } },
+            include: {
+                asset: true,
+                player: true,
+                playerAsset: true,
+            },
+        });
+
+        return {
+            withdrawnInstances,
+            playerAsset: updatedPlayerAsset,
+            rewardsLog,
+        };
+    };
+
+    try {
+        const result = input.trx
+            ? await executeTransaction(input.trx)
+            : await prisma.$transaction(executeTransaction);
+
+        return { success: true, data: result };
+    } catch (error) {
+        console.error("Failed to withdraw asset instances:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to withdraw asset instances",
+        };
+    }
+}
+
+export interface AutoExpirePlayerAssetInstancesInput {
+    batchSize?: number; // 한 번에 처리할 최대 인스턴스 수
+    dryRun?: boolean; // 실제 처리하지 않고 결과만 확인
+    trx?: any;
+}
+
+export interface AutoExpirePlayerAssetInstancesResult {
+    success: boolean;
+    data?: {
+        expiredCount: number;
+        affectedPlayers: string[];
+        processedInstanceIds: string[];
+    };
+    error?: string;
+}
+
+export async function autoExpirePlayerAssetInstances(
+    input?: AutoExpirePlayerAssetInstancesInput
+): Promise<AutoExpirePlayerAssetInstancesResult> {
+    const batchSize = input?.batchSize || 1000;
+    const dryRun = input?.dryRun || false;
+
+    const executeTransaction = async (tx: any) => {
+        const now = new Date();
+
+        // 🔍 만료된 AssetInstance 조회
+        const expiredInstances = await tx.assetInstance.findMany({
+            where: {
+                status: {
+                    in: ["RECEIVED", "PENDING"], // 활성 상태인 것만
+                },
+                expiresAt: {
+                    lte: now, // 현재 시간보다 이전에 만료
+                },
+            },
+            take: batchSize,
+            include: {
+                asset: true,
+                player: true,
+                playerAsset: true,
+            },
+            orderBy: {
+                expiresAt: "asc", // 가장 오래된 것부터 처리
+            },
+        });
+
+        if (expiredInstances.length === 0) {
+            return {
+                expiredCount: 0,
+                affectedPlayers: [],
+                processedInstanceIds: [],
+            };
+        }
+
+        if (dryRun) {
+            const affectedPlayers = [
+                ...new Set(
+                    expiredInstances.map(
+                        (instance: AssetInstance) => instance.playerId
+                    )
+                ),
+            ].filter((id): id is string => id !== null);
+
+            return {
+                expiredCount: expiredInstances.length,
+                affectedPlayers,
+                processedInstanceIds: expiredInstances.map(
+                    (instance: AssetInstance) => instance.id
+                ),
+            };
+        }
+
+        // 🔄 플레이어별로 그룹화하여 잔액 업데이트
+        const playerAssetUpdates = new Map<
+            string,
+            {
+                playerAssetId: string;
+                amount: number;
+                assetId: string;
+                playerId: string;
+            }
+        >();
+
+        for (const instance of expiredInstances) {
+            if (!instance.playerAssetId || !instance.playerId) continue;
+
+            const key = instance.playerAssetId;
+            const existing = playerAssetUpdates.get(key);
+
+            if (existing) {
+                existing.amount += 1;
+            } else {
+                playerAssetUpdates.set(key, {
+                    playerAssetId: instance.playerAssetId,
+                    amount: 1,
+                    assetId: instance.assetId,
+                    playerId: instance.playerId,
+                });
+            }
+        }
+
+        // 🔄 AssetInstance 상태를 EXPIRED로 변경
+        await tx.assetInstance.updateMany({
+            where: {
+                id: {
+                    in: expiredInstances.map(
+                        (instance: AssetInstance) => instance.id
+                    ),
+                },
+            },
+            data: {
+                status: "EXPIRED",
+                updatedAt: now,
+            },
+        });
+
+        // 🔄 PlayerAsset 잔액 감소 및 RewardsLog 생성
+        for (const update of playerAssetUpdates.values()) {
+            // PlayerAsset 잔액 감소
+            const playerAssetBefore = await tx.playerAsset.findUnique({
+                where: { id: update.playerAssetId },
+            });
+
+            if (
+                playerAssetBefore &&
+                playerAssetBefore.balance >= update.amount
+            ) {
+                await tx.playerAsset.update({
+                    where: { id: update.playerAssetId },
+                    data: {
+                        balance: { decrement: update.amount },
+                    },
+                });
+
+                // RewardsLog 생성
+                await tx.rewardsLog.create({
+                    data: {
+                        playerId: update.playerId,
+                        assetId: update.assetId,
+                        amount: -update.amount, // 음수로 만료 표시
+                        balanceBefore: playerAssetBefore.balance,
+                        balanceAfter: playerAssetBefore.balance - update.amount,
+                        reason: `Asset instances auto-expired: ${update.amount}`,
+                    },
+                });
+            }
+        }
+
+        const affectedPlayers = [
+            ...new Set(
+                Array.from(playerAssetUpdates.values()).map(
+                    (update) => update.playerId
+                )
+            ),
+        ];
+
+        return {
+            expiredCount: expiredInstances.length,
+            affectedPlayers,
+            processedInstanceIds: expiredInstances.map(
+                (instance: AssetInstance) => instance.id
+            ),
+        };
+    };
+
+    try {
+        const result = input?.trx
+            ? await executeTransaction(input.trx)
+            : await prisma.$transaction(executeTransaction);
+
+        return { success: true, data: result };
+    } catch (error) {
+        console.error("Failed to auto-expire asset instances:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to auto-expire asset instances",
+        };
+    }
+}
+
+export interface GetPlayerAssetInstancesInput {
+    playerId: string;
+    assetId?: string;
+    assetIds?: string[];
+    status?: AssetInstanceStatus;
+    statuses?: AssetInstanceStatus[];
+    includeExpired?: boolean;
+    includeUsed?: boolean;
+    search?: string;
+    pagination?: {
+        page: number;
+        limit: number;
+    };
+}
+
+export type AssetInstanceWithRelations = AssetInstance & {
+    asset: Asset;
+    player: Player | null;
+    playerAsset: PlayerAsset | null;
+};
+
+export interface GetPlayerAssetInstancesResult {
+    success: boolean;
+    data?: {
+        instances: AssetInstanceWithRelations[];
+        totalCount: number;
+        currentPage: number;
+        totalPages: number;
+        hasNext: boolean;
+        hasPrevious: boolean;
+    };
+    error?: string;
+}
+
+export async function getPlayerAssetInstances(
+    input?: GetPlayerAssetInstancesInput
+): Promise<GetPlayerAssetInstancesResult> {
+    if (!input) {
+        return {
+            success: false,
+            error: "Input is required",
+        };
+    }
+
+    try {
+        const page = input.pagination?.page || 1;
+        const limit = input.pagination?.limit || 50;
+        const offset = (page - 1) * limit;
+
+        const where: Prisma.AssetInstanceWhereInput = {
+            playerId: input.playerId,
+        };
+
+        // 🔍 자산 ID 필터
+        if (input.assetId) {
+            where.assetId = input.assetId;
+        } else if (input.assetIds && input.assetIds.length > 0) {
+            where.assetId = { in: input.assetIds };
+        }
+
+        // 🔍 상태 필터
+        if (input.status) {
+            where.status = input.status;
+        } else if (input.statuses && input.statuses.length > 0) {
+            where.status = { in: input.statuses };
+        } else {
+            // 기본적으로 활성 상태만 조회
+            const defaultStatuses: AssetInstanceStatus[] = [
+                "PENDING",
+                "RECEIVED",
+            ];
+
+            if (input.includeExpired) {
+                defaultStatuses.push("EXPIRED");
+            }
+
+            if (input.includeUsed) {
+                defaultStatuses.push("USED");
+            }
+
+            where.status = { in: defaultStatuses };
+        }
+
+        // 🔍 검색 조건 (코드 또는 시리얼 번호)
+        if (input.search) {
+            where.OR = [
+                {
+                    code: {
+                        contains: input.search,
+                        mode: "insensitive",
+                    },
+                },
+                {
+                    serialNumber: {
+                        contains: input.search,
+                        mode: "insensitive",
+                    },
+                },
+            ];
+        }
+
+        // 🔍 데이터 조회
+        const [instances, totalCount] = await Promise.all([
+            prisma.assetInstance.findMany({
+                where,
+                include: {
+                    asset: true,
+                    player: true,
+                    playerAsset: true,
+                },
+                orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+                skip: offset,
+                take: limit,
+            }),
+            prisma.assetInstance.count({ where }),
+        ]);
+
+        const totalPages = Math.ceil(totalCount / limit);
+
+        return {
+            success: true,
+            data: {
+                instances: instances as AssetInstanceWithRelations[],
+                totalCount,
+                currentPage: page,
+                totalPages,
+                hasNext: page < totalPages,
+                hasPrevious: page > 1,
+            },
+        };
+    } catch (error) {
+        console.error("Failed to get player asset instances:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to get player asset instances",
         };
     }
 }

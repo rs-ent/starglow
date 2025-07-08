@@ -1,8 +1,6 @@
 /// app\user\rewards\page.tsx
 
 import { Suspense } from "react";
-
-import { getPlayerAssets } from "@/app/actions/playerAssets";
 import { requireAuthUserAndPlayer } from "@/app/auth/authUtils";
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 import UserRewards from "@/components/user/User.Rewards";
@@ -14,14 +12,9 @@ function UserRewardsLoading() {
 
 // 사용자 데이터를 가져오는 컴포넌트
 async function UserRewardsContent() {
-    const { user: _user, player } = await requireAuthUserAndPlayer("/user");
-    const playerAssets = await getPlayerAssets({
-        filter: {
-            playerId: player?.id ?? "",
-        },
-    });
+    const { player } = await requireAuthUserAndPlayer("/user");
 
-    return <UserRewards player={player} playerAssets={playerAssets.data} />;
+    return <UserRewards player={player} />;
 }
 
 export default function UserRewardsEntryPage() {

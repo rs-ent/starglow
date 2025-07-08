@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
 
 import { lockTokens, unlockTokens } from "./collectionContracts";
-import { batchUpdatePlayerAsset } from "./playerAssets";
+import { batchUpdatePlayerAsset } from "@/app/actions/playerAssets/actions";
 
 import type {
     Prisma,

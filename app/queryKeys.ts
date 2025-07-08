@@ -8,7 +8,7 @@ import type {
 } from "./actions/artists";
 import type { TokenGateInput } from "./actions/blockchain";
 import type { GetDBUserFromPlayerInput } from "./actions/player";
-import type { GetPlayerAssetsFilter } from "./actions/playerAssets";
+import type { GetPlayerAssetsFilter } from "@/app/actions/playerAssets/actions";
 import type {
     GetPlayerPollLogsInput,
     GetPollLogsInput,
@@ -163,6 +163,9 @@ export const assetKeys = {
         [...assetKeys.all, "contracts", filters] as const,
     contract: (address: string) =>
         [...assetKeys.all, "contract", address] as const,
+    instances: (filters?: any) =>
+        [...assetKeys.all, "instances", filters] as const,
+    instance: (id: string) => [...assetKeys.all, "instance", id] as const,
 };
 
 export const playerAssetsKeys = {
@@ -184,6 +187,8 @@ export const playerAssetsKeys = {
     details: () => [...playerAssetsKeys.all, "detail"] as const,
     detail: (playerId: string, assetId: string) =>
         [...playerAssetsKeys.details(), playerId, assetId] as const,
+    instances: (filters?: any) =>
+        [...playerAssetsKeys.all, "instances", filters] as const,
 };
 
 export const QUERY_KEYS = {

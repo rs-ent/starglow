@@ -6,7 +6,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 
 import { Loader2 } from "lucide-react";
 
-import { usePlayerAssetsGet } from "@/app/hooks/usePlayerAssets";
+import { usePlayerAssetsGet } from "@/app/actions/playerAssets/hooks";
 import Funds from "@/components/atoms/Funds";
 import { cn } from "@/lib/utils/tailwind";
 
