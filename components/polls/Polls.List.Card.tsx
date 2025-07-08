@@ -1055,6 +1055,7 @@ function PollsListCard({
     // 보상 정보 렌더링 함수
     const renderRewardInfo = useCallback(() => {
         if (
+            (poll.endDate && poll.endDate < new Date()) ||
             !poll.participationRewardAssetId ||
             !poll.participationRewardAmount ||
             !poll.participationRewardAsset ||
