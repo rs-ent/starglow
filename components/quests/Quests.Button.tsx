@@ -263,7 +263,6 @@ function QuestsButton({
                 return;
             }
 
-            // 반복 퀘스트는 최대 반복 횟수에 도달했을 때만 claim 가능
             if (quest.repeatable && quest.repeatableCount) {
                 if (questLog.repeatCount < quest.repeatableCount) {
                     toast.error(
@@ -277,7 +276,6 @@ function QuestsButton({
                     return;
                 }
             } else if (!questLog.completed) {
-                // 일반 퀘스트도 completed 상태여야 함
                 toast.error("You haven't completed this quest yet.");
                 return;
             }
@@ -291,6 +289,13 @@ function QuestsButton({
                 return;
             }
 
+            const targetCount =
+                questLog &&
+                questLog.claimedDates &&
+                questLog.claimedDates.length > 0
+                    ? questLog.claimedDates.length + 1
+                    : 1;
+
             try {
                 setIsCountdownComplete(false);
                 isProcessingRef.current = true;
@@ -299,6 +304,7 @@ function QuestsButton({
                 const result = await claimQuestReward({
                     questLog,
                     player,
+                    targetCount,
                 });
 
                 if (result.success) {

@@ -265,6 +265,16 @@ model Quest {
   @@index([questType, isActive])
 }
 
+enum QuestLogStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  RECLAIMABLE
+  CLAIMED
+  FAILED
+  DEPRECATED
+}
+
 model QuestLog {
   id             String       @id @default(cuid())
   playerId       String
@@ -280,6 +290,7 @@ model QuestLog {
   deprecated     Boolean      @default(false)
   createdAt      DateTime     @default(now())
   isClaimed      Boolean      @default(false)
+  status         QuestLogStatus @default(PENDING)
   claimedAt      DateTime?
   player         Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
   quest          Quest        @relation(fields: [questId], references: [id])
@@ -289,6 +300,7 @@ model QuestLog {
   @@unique([playerId, questId])
   @@index([playerId, questId, deprecated])
   @@index([completedAt])
+  @@index([status])
 }
 
 model Poll {

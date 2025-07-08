@@ -162,7 +162,6 @@ export async function updatePlayerAsset(
         };
     }
 
-    // 🔒 입력값 검증 강화
     if (input.transaction.amount < 0) {
         return {
             success: false,
@@ -292,6 +291,386 @@ export async function updatePlayerAsset(
     }
 
     return { success: true, data: updatedAsset };
+}
+
+// 타입 정의 개선
+interface RewardLogForRollback {
+    id: string;
+    playerId: string;
+    assetId: string | null;
+    amount: number;
+    questLogId?: string | null;
+    pollLogId?: string | null;
+}
+
+interface PlayerAssetForRollback {
+    id: string;
+    playerId: string;
+    assetId: string;
+    balance: number;
+}
+
+interface RollbackCalculation {
+    playerAsset: PlayerAssetForRollback;
+    totalRollbackAmount: number;
+    finalBalance: number;
+}
+
+// 🔄 Helper Functions - 복잡한 로직을 작은 함수로 분리
+
+async function getRewardLogsToRollback(
+    input: RollbackPlayerAssetInput,
+    tx: typeof prisma
+): Promise<RewardLogForRollback[] | { error: string }> {
+    if (input.rewardLogId) {
+        const rewardLog = await tx.rewardsLog.findUnique({
+            where: { id: input.rewardLogId },
+            select: { id: true, playerId: true, assetId: true, amount: true },
+        });
+
+        if (!rewardLog) {
+            return { error: "Reward log not found" };
+        }
+
+        return [rewardLog];
+    }
+
+    if (input.questLogId) {
+        const rewardLogs = await tx.rewardsLog.findMany({
+            where: { questLogId: input.questLogId },
+            select: { id: true, playerId: true, assetId: true, amount: true },
+        });
+
+        return rewardLogs.length > 0
+            ? rewardLogs
+            : { error: "No reward logs found for quest" };
+    }
+
+    if (input.pollLogId) {
+        const rewardLogs = await tx.rewardsLog.findMany({
+            where: { pollLogId: input.pollLogId },
+            select: { id: true, playerId: true, assetId: true, amount: true },
+        });
+
+        return rewardLogs.length > 0
+            ? rewardLogs
+            : { error: "No reward logs found for poll" };
+    }
+
+    if (input.directRollback) {
+        return [
+            {
+                id: "direct-rollback",
+                playerId: input.directRollback.playerId,
+                assetId: input.directRollback.assetId,
+                amount: input.directRollback.amount,
+            },
+        ];
+    }
+
+    return { error: "No rollback criteria specified" };
+}
+
+async function getPlayerAssetsForRollback(
+    rewardLogs: RewardLogForRollback[],
+    tx: typeof prisma
+): Promise<PlayerAssetForRollback[]> {
+    // 🔄 중복 제거를 Map으로 최적화
+    const uniquePlayerAssets = new Map<
+        string,
+        { playerId: string; assetId: string }
+    >();
+
+    for (const log of rewardLogs) {
+        if (!log.assetId) continue; // null/undefined assetId 건너뛰기
+        const key = `${log.playerId}_${log.assetId}`;
+        if (!uniquePlayerAssets.has(key)) {
+            uniquePlayerAssets.set(key, {
+                playerId: log.playerId,
+                assetId: log.assetId,
+            });
+        }
+    }
+
+    if (uniquePlayerAssets.size === 0) {
+        return [];
+    }
+
+    // 🔄 OR 조건 최적화
+    return await tx.playerAsset.findMany({
+        where: {
+            OR: Array.from(uniquePlayerAssets.values()).map(
+                ({ playerId, assetId }) => ({
+                    playerId,
+                    assetId,
+                })
+            ),
+        },
+        select: {
+            id: true,
+            playerId: true,
+            assetId: true,
+            balance: true,
+        },
+    });
+}
+
+function calculateRollbackAmounts(
+    rewardLogs: RewardLogForRollback[],
+    playerAssets: PlayerAssetForRollback[],
+    warnings: string[],
+    directRollback?: { playerId: string; assetId: string; amount: number }
+): Map<string, RollbackCalculation> {
+    const rollbackCalculations = new Map<string, RollbackCalculation>();
+
+    // 🔄 플레이어 자산을 Map으로 인덱싱하여 조회 성능 향상
+    const playerAssetMap = new Map<string, PlayerAssetForRollback>();
+    for (const asset of playerAssets) {
+        playerAssetMap.set(`${asset.playerId}_${asset.assetId}`, asset);
+    }
+
+    for (const rewardLog of rewardLogs) {
+        const key = `${rewardLog.playerId}_${rewardLog.assetId}`;
+        const playerAsset = playerAssetMap.get(key);
+
+        if (!playerAsset) {
+            if (directRollback) {
+                warnings.push(
+                    `Player asset not found for ${rewardLog.playerId}:${rewardLog.assetId}`
+                );
+                continue;
+            } else {
+                // 에러는 호출하는 쪽에서 처리
+                continue;
+            }
+        }
+
+        const existingCalc = rollbackCalculations.get(key);
+        if (existingCalc) {
+            existingCalc.totalRollbackAmount += rewardLog.amount;
+            existingCalc.finalBalance =
+                existingCalc.playerAsset.balance -
+                existingCalc.totalRollbackAmount;
+        } else {
+            rollbackCalculations.set(key, {
+                playerAsset,
+                totalRollbackAmount: rewardLog.amount,
+                finalBalance: playerAsset.balance - rewardLog.amount,
+            });
+        }
+    }
+
+    return rollbackCalculations;
+}
+
+function validateRollbackBalances(
+    rollbackCalculations: Map<string, RollbackCalculation>
+): string | null {
+    for (const [key, calc] of rollbackCalculations) {
+        if (calc.finalBalance < 0) {
+            return `Insufficient balance for ${key}. Current: ${calc.playerAsset.balance}, Rollback: ${calc.totalRollbackAmount}, Final: ${calc.finalBalance}`;
+        }
+    }
+    return null;
+}
+
+function createDryRunResult(
+    rollbackCalculations: Map<string, RollbackCalculation>,
+    rewardLogs: RewardLogForRollback[],
+    warnings: string[]
+): RollbackPlayerAssetResult {
+    const totalRollbackAmount = Array.from(
+        rollbackCalculations.values()
+    ).reduce((sum, calc) => sum + calc.totalRollbackAmount, 0);
+
+    const firstCalc = Array.from(rollbackCalculations.values())[0];
+
+    return {
+        success: true,
+        data: {
+            rolledBackAmount: totalRollbackAmount,
+            finalBalance: firstCalc?.finalBalance || 0,
+            affectedRewardLogIds: rewardLogs
+                .map((log) => log.id)
+                .filter((id) => id !== "direct-rollback"),
+        },
+        warnings: warnings.length > 0 ? warnings : undefined,
+    };
+}
+
+async function executeRollback(
+    rollbackCalculations: Map<string, RollbackCalculation>,
+    rewardLogs: RewardLogForRollback[],
+    options: {
+        deleteRewardLog: boolean;
+        validateBalance: boolean;
+        dryRun: boolean;
+    },
+    tx: typeof prisma,
+    directRollback?: { playerId: string; assetId: string; amount: number }
+) {
+    return await tx.$transaction(async (innerTx) => {
+        const updatePromises = Array.from(rollbackCalculations.values()).map(
+            (calc) =>
+                innerTx.playerAsset.update({
+                    where: { id: calc.playerAsset.id },
+                    data: { balance: calc.finalBalance },
+                })
+        );
+
+        await Promise.all(updatePromises);
+
+        // 🔄 로그 삭제 최적화
+        if (options.deleteRewardLog && !directRollback) {
+            const rewardLogIdsToDelete = rewardLogs
+                .map((log) => log.id)
+                .filter((id) => id !== "direct-rollback");
+
+            if (rewardLogIdsToDelete.length > 0) {
+                await innerTx.rewardsLog.deleteMany({
+                    where: { id: { in: rewardLogIdsToDelete } },
+                });
+            }
+        }
+
+        const totalRollbackAmount = Array.from(
+            rollbackCalculations.values()
+        ).reduce((sum, calc) => sum + calc.totalRollbackAmount, 0);
+
+        const firstCalc = Array.from(rollbackCalculations.values())[0];
+
+        return {
+            rolledBackAmount: totalRollbackAmount,
+            finalBalance: firstCalc?.finalBalance || 0,
+            affectedRewardLogIds: rewardLogs
+                .map((log) => log.id)
+                .filter((id) => id !== "direct-rollback"),
+        };
+    });
+}
+
+export interface RollbackPlayerAssetInput {
+    rewardLogId?: string;
+    questLogId?: string;
+    pollLogId?: string;
+
+    directRollback?: {
+        playerId: string;
+        assetId: string;
+        amount: number;
+    };
+
+    options?: {
+        deleteRewardLog?: boolean;
+        validateBalance?: boolean;
+        dryRun?: boolean;
+    };
+
+    trx?: any;
+}
+
+export interface RollbackPlayerAssetResult {
+    success: boolean;
+    data?: {
+        rolledBackAmount: number;
+        finalBalance: number;
+        affectedRewardLogIds: string[];
+    };
+    error?: string;
+    warnings?: string[];
+}
+
+export async function rollbackPlayerAsset(
+    input: RollbackPlayerAssetInput
+): Promise<RollbackPlayerAssetResult> {
+    const tx = (input.trx || prisma) as typeof prisma;
+    const options = {
+        deleteRewardLog: input.options?.deleteRewardLog ?? true,
+        validateBalance: input.options?.validateBalance ?? true,
+        dryRun: input.options?.dryRun ?? false,
+    };
+
+    try {
+        const warnings: string[] = [];
+
+        // 🔄 Step 1: 롤백할 로그 조회 최적화
+        const rewardLogsToRollback = await getRewardLogsToRollback(input, tx);
+
+        if ("error" in rewardLogsToRollback) {
+            return { success: false, error: rewardLogsToRollback.error };
+        }
+
+        if (rewardLogsToRollback.length === 0) {
+            return {
+                success: false,
+                error: "No reward logs found to rollback",
+            };
+        }
+
+        // 🔄 Step 2: 플레이어 자산 조회 최적화
+        const playerAssets = await getPlayerAssetsForRollback(
+            rewardLogsToRollback,
+            tx
+        );
+
+        // 🔄 Step 3: 롤백 계산 최적화
+        const rollbackCalculations = calculateRollbackAmounts(
+            rewardLogsToRollback,
+            playerAssets,
+            warnings,
+            input.directRollback
+        );
+
+        if (rollbackCalculations.size === 0) {
+            return {
+                success: false,
+                error: "No valid player assets found for rollback",
+                warnings: warnings.length > 0 ? warnings : undefined,
+            };
+        }
+
+        // 🔄 Step 4: 잔액 검증
+        if (options.validateBalance) {
+            const validationError =
+                validateRollbackBalances(rollbackCalculations);
+            if (validationError) {
+                return { success: false, error: validationError };
+            }
+        }
+
+        // 🔄 Step 5: Dry run 처리
+        if (options.dryRun) {
+            return createDryRunResult(
+                rollbackCalculations,
+                rewardLogsToRollback,
+                warnings
+            );
+        }
+
+        // 🔄 Step 6: 실제 롤백 실행
+        const result = await executeRollback(
+            rollbackCalculations,
+            rewardLogsToRollback,
+            options,
+            tx,
+            input.directRollback
+        );
+
+        return {
+            success: true,
+            data: result,
+            warnings: warnings.length > 0 ? warnings : undefined,
+        };
+    } catch (error) {
+        console.error("Universal rollback failed:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Universal rollback failed",
+        };
+    }
 }
 
 export interface BatchUpdatePlayerAssetInput {

@@ -239,6 +239,7 @@ Table QuestLog {
   deprecated Boolean [not null, default: false]
   createdAt DateTime [default: `now()`, not null]
   isClaimed Boolean [not null, default: false]
+  status QuestLogStatus [not null, default: 'PENDING']
   claimedAt DateTime
   player Player [not null]
   quest Quest [not null]
@@ -1657,6 +1658,16 @@ Table StakeReward {
 Table StakeRewardLog {
   stakerewardlogsId String [ref: > StakeRewardLog.id]
   stakerewardlogsId String [ref: > StakeRewardLog.id]
+}
+
+Enum QuestLogStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  RECLAIMABLE
+  CLAIMED
+  FAILED
+  DEPRECATED
 }
 
 Enum BoardModerationReportStatus {

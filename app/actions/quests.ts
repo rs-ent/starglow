@@ -725,6 +725,7 @@ export async function completeQuest(
 export interface ClaimQuestRewardInput {
     questLog: QuestLog;
     player: Player;
+    targetCount?: number;
 }
 
 export interface ClaimQuestRewardResult {
@@ -737,83 +738,146 @@ export async function claimQuestReward(
     input: ClaimQuestRewardInput
 ): Promise<ClaimQuestRewardResult> {
     try {
-        const log = await prisma.questLog.findUnique({
-            where: {
-                id: input.questLog.id,
-            },
-        });
+        return await prisma.$transaction(async (tx) => {
+            // Conditional Update: 성능 최적화 + 안전한 동시성 제어
+            const log = await tx.questLog.findUnique({
+                where: { id: input.questLog.id },
+            });
 
-        if (!log) {
-            return {
-                success: false,
-                error: "Unexpected error occurred. Please try again later. If the problem persists, please contact support.",
-            };
-        }
+            if (!log) {
+                return {
+                    success: false,
+                    error: "Unexpected error occurred. Please try again later. If the problem persists, please contact support.",
+                };
+            }
 
-        if (log.isClaimed) {
-            return {
-                success: false,
-                error: "Quest reward already claimed",
-            };
-        }
+            // 모든 검증을 먼저 수행
+            if (log.isClaimed && !log.reclaimable) {
+                return {
+                    success: false,
+                    error: "Quest reward already claimed",
+                };
+            }
 
-        if (!log.rewardAssetId || !log.rewardAmount) {
-            return {
-                success: false,
-                error: "Quest reward not found",
-            };
-        }
+            if (
+                log.reclaimable &&
+                input.targetCount &&
+                log.claimedDates &&
+                log.claimedDates.length >= input.targetCount
+            ) {
+                return {
+                    success: false,
+                    error: "You have already claimed this quest.",
+                };
+            }
 
-        const updateResult = await updatePlayerAsset({
-            transaction: {
-                playerId: input.player.id,
-                assetId: log.rewardAssetId,
-                amount: log.rewardAmount,
-                operation: "ADD",
-                reason: "Quest Reward",
-                questId: log.questId,
-                questLogId: log.id,
-            },
-        });
-        if (!updateResult.success) {
-            return {
-                success: false,
-                error: `Failed to give participation reward: ${updateResult.error}`,
-            };
-        }
+            const lastClaimedDate =
+                log.claimedDates && log.claimedDates.length > 0
+                    ? log.claimedDates[log.claimedDates.length - 1]
+                    : null;
+            const minimumAwaitTime = new Date(Date.now() - 1000 * 5);
+            if (lastClaimedDate && lastClaimedDate > minimumAwaitTime) {
+                return {
+                    success: false,
+                    error: "You can claim this quest again in 5 seconds.",
+                };
+            }
 
-        if (log.reclaimable) {
-            const claimedDates = log.claimedDates || [];
-            claimedDates.push(new Date());
-            const updatedReclaimableQuestLog = await prisma.questLog.update({
-                where: { id: log.id },
-                data: {
-                    completed: false,
-                    completedAt: null,
-                    isClaimed: false,
-                    claimedAt: null,
-                    claimedDates,
+            if (!log.rewardAssetId || !log.rewardAmount) {
+                return {
+                    success: false,
+                    error: "Quest reward not found",
+                };
+            }
+
+            // 🎯 핵심: 간단하고 확실한 Conditional Update
+            let updateResult;
+
+            if (log.reclaimable) {
+                // reclaimable 퀘스트: 일반 퀘스트와 동일한 방식으로 안전하게 처리
+                // 🔒 핵심: isClaimed: false 조건으로 race condition 완전 방지
+                updateResult = await tx.questLog.updateMany({
+                    where: {
+                        id: log.id,
+                        isClaimed: false, // 동시 요청 방지!
+                    },
+                    data: {
+                        isClaimed: true,
+                        claimedAt: new Date(),
+                    },
+                });
+
+                // 업데이트가 성공했다면 reclaimable 상태로 리셋
+                if (updateResult.count > 0) {
+                    const claimedDates = [
+                        ...(log.claimedDates || []),
+                        new Date(),
+                    ];
+                    await tx.questLog.update({
+                        where: { id: log.id },
+                        data: {
+                            claimedDates,
+                            completed: false,
+                            completedAt: null,
+                            isClaimed: false, // 다시 claim 가능하도록
+                            claimedAt: null,
+                        },
+                    });
+                }
+            } else {
+                updateResult = await tx.questLog.updateMany({
+                    where: {
+                        id: log.id,
+                        isClaimed: false, // 🔒 Race condition 방지
+                    },
+                    data: {
+                        isClaimed: true,
+                        claimedAt: new Date(),
+                    },
+                });
+            }
+
+            // 업데이트 실패 = 다른 요청이 먼저 처리함
+            if (updateResult.count === 0) {
+                return {
+                    success: false,
+                    error: "Quest reward already claimed",
+                };
+            }
+
+            // 플레이어 에셋 업데이트
+            const assetUpdateResult = await updatePlayerAsset(
+                {
+                    transaction: {
+                        playerId: input.player.id,
+                        assetId: log.rewardAssetId,
+                        amount: log.rewardAmount,
+                        operation: "ADD",
+                        reason: "Quest Reward",
+                        questId: log.questId,
+                        questLogId: log.id,
+                    },
                 },
+                tx
+            );
+
+            if (!assetUpdateResult.success) {
+                return {
+                    success: false,
+                    error: `Failed to give participation reward: ${assetUpdateResult.error}`,
+                };
+            }
+
+            // 최종 상태 조회
+            const updatedQuestLog = await tx.questLog.findUnique({
+                where: { id: log.id },
             });
 
             return {
                 success: true,
-                data: updatedReclaimableQuestLog,
+                data: updatedQuestLog!,
             };
-        }
-
-        const updatedQuestLog = await prisma.questLog.update({
-            where: { id: log.id },
-            data: {
-                isClaimed: true,
-                claimedAt: new Date(),
-            },
         });
-
-        return {
-            success: true,
-            data: updatedQuestLog,
-        };
     } catch (error) {
         console.error(error);
         return {
