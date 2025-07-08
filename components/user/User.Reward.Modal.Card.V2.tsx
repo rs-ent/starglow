@@ -11,7 +11,7 @@ import Funds from "../atoms/Funds";
 import PartialLoading from "../atoms/PartialLoading";
 import { Button } from "../ui/button";
 
-import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets";
+import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets/actions";
 
 interface UserRewardModalCardV2Props {
     playerId?: string;

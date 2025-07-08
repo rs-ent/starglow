@@ -735,7 +735,7 @@ export default function UserTweetsDashboard({
                             No GLOWs Yet!
                         </h3>
                         <p className="text-gray-400">
-                            Start posting with @StarglowP to earn rewards
+                            Start posting with @Starglow_world to earn rewards
                         </p>
                     </motion.div>
                 )}

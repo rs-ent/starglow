@@ -183,6 +183,41 @@ export async function updatePlayerAsset(
     }
 
     const tx = (trx || prisma) as typeof prisma;
+
+    // 🔍 Asset 정보 조회 (hasInstance 확인용)
+    const asset = await tx.asset.findUnique({
+        where: { id: input.transaction.assetId },
+    });
+
+    if (!asset) {
+        return {
+            success: false,
+            data: null,
+            error: "Asset not found",
+        };
+    }
+
+    if (!asset.isActive) {
+        return {
+            success: false,
+            data: null,
+            error: "Asset is not active",
+        };
+    }
+
+    // 🔀 hasInstance에 따른 분기 처리
+    if (asset.hasInstance) {
+        return await updatePlayerAssetWithInstances(input, asset, tx);
+    } else {
+        return await updatePlayerAssetBalance(input, tx);
+    }
+}
+
+// 🔧 Instance가 없는 자산 처리 (기존 로직)
+async function updatePlayerAssetBalance(
+    input: UpdatePlayerAssetInput,
+    tx: typeof prisma
+): Promise<PlayerAssetResult<PlayerAsset | null>> {
     const playerAsset = await tx.playerAsset.findUnique({
         where: {
             playerId_assetId: {
@@ -294,6 +329,195 @@ export async function updatePlayerAsset(
     }
 
     return { success: true, data: updatedAsset };
+}
+
+// 🔧 Instance가 있는 자산 처리
+async function updatePlayerAssetWithInstances(
+    input: UpdatePlayerAssetInput,
+    asset: Asset,
+    tx: typeof prisma
+): Promise<PlayerAssetResult<PlayerAsset | null>> {
+    const { transaction } = input;
+
+    // 🔍 PlayerAsset 상태 확인 (일관성을 위해 추가)
+    const existingPlayerAsset = await tx.playerAsset.findUnique({
+        where: {
+            playerId_assetId: {
+                playerId: transaction.playerId,
+                assetId: transaction.assetId,
+            },
+        },
+    });
+
+    if (existingPlayerAsset) {
+        switch (existingPlayerAsset.status) {
+            case PlayerAssetStatus.INACTIVE:
+                return {
+                    success: false,
+                    data: null,
+                    error: "Player asset is inactive",
+                };
+            case PlayerAssetStatus.FROZEN:
+                return {
+                    success: false,
+                    data: null,
+                    error: "Player asset is frozen",
+                };
+            case PlayerAssetStatus.DELETED:
+                return {
+                    success: false,
+                    data: null,
+                    error: "Player asset is deleted",
+                };
+        }
+    }
+
+    switch (transaction.operation) {
+        case "ADD":
+            // 새로운 AssetInstance들 생성 및 지급
+            const grantResult = await grantPlayerAssetInstances({
+                playerId: transaction.playerId,
+                asset: asset,
+                amount: transaction.amount,
+                source: transaction.reason || "balance_update",
+                reason: transaction.reason,
+                questId: transaction.questId,
+                questLogId: transaction.questLogId,
+                pollId: transaction.pollId,
+                pollLogId: transaction.pollLogId,
+                trx: tx,
+            });
+
+            if (!grantResult.success) {
+                return { success: false, data: null, error: grantResult.error };
+            }
+
+            return { success: true, data: grantResult.data!.playerAsset };
+
+        case "SUBTRACT":
+            // 기존 AssetInstance들 소비/회수
+            const withdrawResult = await withdrawPlayerAssetInstances({
+                playerId: transaction.playerId,
+                asset: asset,
+                amount: transaction.amount,
+                withdrawalType: "USED", // 기본값, 필요시 파라미터로 받을 수 있음
+                reason: transaction.reason || "balance_update",
+                questId: transaction.questId,
+                questLogId: transaction.questLogId,
+                pollId: transaction.pollId,
+                pollLogId: transaction.pollLogId,
+                trx: tx,
+            });
+
+            if (!withdrawResult.success) {
+                return {
+                    success: false,
+                    data: null,
+                    error: withdrawResult.error,
+                };
+            }
+
+            return { success: true, data: withdrawResult.data!.playerAsset };
+
+        case "SET":
+            // SET 연산은 복잡하므로 별도 처리 필요
+            return await setPlayerAssetWithInstances(input, asset, tx);
+
+        default:
+            return { success: false, data: null, error: "Invalid operation" };
+    }
+}
+
+// 🔧 Instance가 있는 자산의 SET 연산 처리
+async function setPlayerAssetWithInstances(
+    input: UpdatePlayerAssetInput,
+    asset: Asset,
+    tx: typeof prisma
+): Promise<PlayerAssetResult<PlayerAsset | null>> {
+    const { transaction } = input;
+
+    // 🔍 현재 PlayerAsset 조회
+    const currentPlayerAsset = await tx.playerAsset.findUnique({
+        where: {
+            playerId_assetId: {
+                playerId: transaction.playerId,
+                assetId: transaction.assetId,
+            },
+        },
+    });
+
+    const currentBalance = currentPlayerAsset?.balance || 0;
+    const targetBalance = transaction.amount;
+    const difference = targetBalance - currentBalance;
+
+    // 목표 잔액과 현재 잔액이 같으면 아무것도 하지 않음
+    if (difference === 0) {
+        if (currentPlayerAsset) {
+            return { success: true, data: currentPlayerAsset };
+        } else if (targetBalance === 0) {
+            // 목표가 0이고 PlayerAsset이 없으면 굳이 생성하지 않음
+            return {
+                success: true,
+                data: null,
+                error: "No PlayerAsset needed for zero balance",
+            };
+        } else {
+            // PlayerAsset이 없고 목표 잔액이 0보다 크면 생성
+            const newPlayerAsset = await tx.playerAsset.create({
+                data: {
+                    playerId: transaction.playerId,
+                    assetId: transaction.assetId,
+                    balance: 0,
+                    status: "ACTIVE",
+                },
+            });
+            return { success: true, data: newPlayerAsset };
+        }
+    }
+
+    if (difference > 0) {
+        // 목표 > 현재: 차이만큼 인스턴스 생성
+        const grantResult = await grantPlayerAssetInstances({
+            playerId: transaction.playerId,
+            asset: asset,
+            amount: difference,
+            source: transaction.reason || "balance_set",
+            reason: transaction.reason || `Set balance to ${targetBalance}`,
+            questId: transaction.questId,
+            questLogId: transaction.questLogId,
+            pollId: transaction.pollId,
+            pollLogId: transaction.pollLogId,
+            trx: tx,
+        });
+
+        if (!grantResult.success) {
+            return { success: false, data: null, error: grantResult.error };
+        }
+
+        return { success: true, data: grantResult.data!.playerAsset };
+    } else {
+        // 목표 < 현재: 차이만큼 인스턴스 회수
+        const withdrawAmount = Math.abs(difference);
+
+        const withdrawResult = await withdrawPlayerAssetInstances({
+            playerId: transaction.playerId,
+            asset: asset,
+            amount: withdrawAmount,
+            withdrawalType: "USED",
+            reason: transaction.reason || `Set balance to ${targetBalance}`,
+            questId: transaction.questId,
+            questLogId: transaction.questLogId,
+            pollId: transaction.pollId,
+            pollLogId: transaction.pollLogId,
+            trx: tx,
+        });
+
+        if (!withdrawResult.success) {
+            return { success: false, data: null, error: withdrawResult.error };
+        }
+
+        return { success: true, data: withdrawResult.data!.playerAsset };
+    }
 }
 
 // 타입 정의 개선

@@ -28,7 +28,7 @@ const socialLinks = [
         alt: "Gitbook",
     },
     {
-        href: "https://x.com/StarglowP",
+        href: "https://x.com/Starglow_world",
         icon: "/icons/x-black-round.svg",
         alt: "X",
     },

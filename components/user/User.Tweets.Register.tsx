@@ -32,7 +32,7 @@ interface UserTweetsRegisterProps {
     onXAuthSuccess?: () => void;
 }
 
-const tweetText = `@StarglowP
+const tweetText = `@Starglow_world
         
 🌟 Glow and Grow with Starglow! 🌟
 #Starglow #Web3 #Kpop
@@ -154,7 +154,7 @@ export default function UserTweetsRegister({
             setStep("confirm");
         } else {
             toast.error(
-                "We couldn't find any recent tweets mentioning @StarglowP. Please try again."
+                "We couldn't find any recent tweets mentioning @Starglow_world. Please try again."
             );
         }
     };
@@ -488,7 +488,7 @@ export default function UserTweetsRegister({
                                     getResponsiveClass(15).textClass
                                 )}
                             >
-                                Post a tweet mentioning @StarglowP to verify
+                                Post a tweet mentioning @Starglow_world to verify
                                 your account
                             </p>
 

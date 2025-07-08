@@ -86,7 +86,7 @@ export default function UserTweetsTutorialModal({
                                         getResponsiveClass(20).textClass
                                     )}
                                 >
-                                    Tag @StarglowP (Required)
+                                    Tag @Starglow_world (Required)
                                 </p>
                                 <p
                                     className={cn(
@@ -94,7 +94,7 @@ export default function UserTweetsTutorialModal({
                                         getResponsiveClass(10).textClass
                                     )}
                                 >
-                                    Every tweet must mention @StarglowP to
+                                    Every tweet must mention @Starglow_world to
                                     qualify
                                 </p>
                             </div>

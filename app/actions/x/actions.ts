@@ -470,7 +470,7 @@ export async function checkIsActiveXAuthor(
         const hasMentioned = tweets.some((tweet: UserTweetData) =>
             tweet.entities?.mentions?.some(
                 (mention: TweetMention) =>
-                    mention.username.toLowerCase() === "starglowp"
+                    mention.username.toLowerCase() === "starglow_world"
             )
         );
 
@@ -487,8 +487,8 @@ export async function checkIsActiveXAuthor(
         return {
             isActive: hasMentioned,
             message: hasMentioned
-                ? "Found mention of @StarglowP in recent tweets"
-                : "No mentions of @StarglowP in recent tweets",
+                ? "Found mention of @Starglow_world in recent tweets"
+                : "No mentions of @Starglow_world in recent tweets",
         };
     } catch (error) {
         console.error(
