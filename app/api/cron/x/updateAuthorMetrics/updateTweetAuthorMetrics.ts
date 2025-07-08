@@ -109,6 +109,10 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
             take: 200,
         })) as unknown as AuthorForMetricsUpdate[];
 
+        console.info(
+            `🔄 Starting author metrics update for ${authorsToUpdate.length} authors`
+        );
+
         // 2. 100명씩 배치 처리 (GET /2/users는 최대 100개 ID 지원)
         const batchSize = 100;
         const batches = [];
@@ -120,7 +124,9 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
         // 3. Rate Limit 고려한 배치 처리 (24시간 기준 500회 제한)
         const maxRequestsPerRun = Math.min(8, Math.floor(500 / 48));
 
-        for (const batch of batches) {
+        for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+            const batch = batches[batchIndex];
+
             if (requestCount >= maxRequestsPerRun) {
                 console.warn(
                     `Daily rate limit protection: stopping at ${requestCount} requests`
@@ -129,6 +135,7 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
             }
 
             const authorIds = batch.map((author) => author.authorId);
+            const batchStartTime = Date.now();
 
             try {
                 const response = await fetch(
@@ -161,7 +168,7 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
                     continue;
                 }
 
-                // 4. 메트릭 변화 감지 및 저장
+                // 4. 메트릭 변화 감지 및 저장 데이터 준비
                 const metricsToSave: Array<{
                     tweetAuthorId: string;
                     followersCount: number;
@@ -229,22 +236,77 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
                     }
                 }
 
-                // 5. 데이터베이스 업데이트
-                await prisma.$transaction(async (tx) => {
-                    // 기본 정보 업데이트
-                    for (const update of authorUpdates) {
-                        await tx.tweetAuthor.update(update);
-                    }
+                // 5. 데이터베이스 업데이트 (분리된 트랜잭션과 재시도 로직)
+                const maxRetries = 3;
+                let batchMetricsUpdated = 0;
 
-                    // 변화된 메트릭 저장
-                    if (metricsToSave.length > 0) {
-                        await tx.tweetAuthorMetrics.createMany({
-                            data: metricsToSave,
-                        });
-                    }
-                });
+                for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                    try {
+                        // Step 1: Author 기본 정보 업데이트
+                        await prisma.$transaction(
+                            async (tx) => {
+                                for (const update of authorUpdates) {
+                                    await tx.tweetAuthor.update(update);
+                                }
+                            },
+                            { timeout: 20000 }
+                        );
 
-                totalMetricsUpdated += metricsToSave.length;
+                        // Step 2: 메트릭 데이터 저장 (분리된 트랜잭션)
+                        if (metricsToSave.length > 0) {
+                            await prisma.$transaction(
+                                async (tx) => {
+                                    await tx.tweetAuthorMetrics.createMany({
+                                        data: metricsToSave,
+                                        skipDuplicates: true,
+                                    });
+                                },
+                                { timeout: 15000 }
+                            );
+                        }
+
+                        batchMetricsUpdated = metricsToSave.length;
+                        totalMetricsUpdated += batchMetricsUpdated;
+
+                        const batchProcessingTime = Date.now() - batchStartTime;
+                        console.info(
+                            `✅ Batch ${batchIndex + 1}/${
+                                batches.length
+                            } processed successfully: ${
+                                authorUpdates.length
+                            } authors updated, ${batchMetricsUpdated} metrics changed in ${batchProcessingTime}ms`
+                        );
+                        break;
+                    } catch (error) {
+                        console.error(
+                            `Author batch ${
+                                batchIndex + 1
+                            } attempt ${attempt} failed:`,
+                            error
+                        );
+
+                        if (attempt === maxRetries) {
+                            console.error(
+                                `⚠️ Failed to process author batch ${
+                                    batchIndex + 1
+                                } after all retries`
+                            );
+                            // Continue with next batch instead of failing completely
+                            break;
+                        }
+
+                        // Wait before retry with exponential backoff
+                        const delay = 1000 * Math.pow(2, attempt - 1);
+                        console.info(
+                            `Retrying author batch ${
+                                batchIndex + 1
+                            } in ${delay}ms...`
+                        );
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, delay)
+                        );
+                    }
+                }
 
                 // Rate Limit 체크
                 if (rateLimitRemaining && parseInt(rateLimitRemaining) < 50) {
@@ -258,12 +320,22 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
                 await new Promise((resolve) => setTimeout(resolve, 3000));
             } catch (error) {
                 console.error(
-                    `Error processing author batch ${requestCount}:`,
+                    `Error processing author batch ${batchIndex + 1}:`,
                     error
                 );
                 continue;
             }
         }
+
+        const totalProcessingTime = Date.now() - startTime;
+        console.info(
+            `✅ Author metrics update completed successfully: ${authorsToUpdate.length} authors processed, ${totalMetricsUpdated} metrics updated`
+        );
+        console.info(
+            `📊 Performance Summary: Total time: ${totalProcessingTime}ms, API requests: ${requestCount}, Rate limit remaining: ${
+                rateLimitRemaining || "unknown"
+            }`
+        );
 
         return {
             totalProcessed: authorsToUpdate.length,
@@ -273,7 +345,7 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
                 ? parseInt(rateLimitRemaining)
                 : null,
             timestamp: new Date().toISOString(),
-            processingTimeMs: Date.now() - startTime,
+            processingTimeMs: totalProcessingTime,
         };
     } catch (error) {
         console.error("❌ Author metrics update failed:", error);

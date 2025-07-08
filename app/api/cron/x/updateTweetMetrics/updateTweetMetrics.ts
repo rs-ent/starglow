@@ -89,6 +89,10 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
             take: 1500,
         })) as unknown as TweetForMetricsUpdate[];
 
+        console.info(
+            `🔄 Starting tweet metrics update for ${tweetsToUpdate.length} tweets`
+        );
+
         // 2. 100개씩 배치 처리
         const batchSize = 100;
         const batches = [];
@@ -98,7 +102,9 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
         }
 
         // 3. Rate Limit 고려한 배치 처리
-        for (const batch of batches) {
+        for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+            const batch = batches[batchIndex];
+
             if (requestCount >= 6) {
                 console.warn(
                     `Rate limit protection: stopping at ${requestCount} requests`
@@ -107,6 +113,7 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
             }
 
             const tweetIds = batch.map((tweet) => tweet.tweetId);
+            const batchStartTime = Date.now();
 
             try {
                 const response = await fetch(
@@ -139,7 +146,7 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
                     continue;
                 }
 
-                // 4. 메트릭 변화 감지 및 저장
+                // 4. 메트릭 변화 감지 및 저장 데이터 준비
                 const metricsToSave: Array<{
                     tweetId: string;
                     replyCount: number;
@@ -181,14 +188,67 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
                     }
                 }
 
-                // 5. 변화된 메트릭만 저장
-                if (metricsToSave.length > 0) {
-                    await prisma.tweetMetrics.createMany({
-                        data: metricsToSave,
-                    });
+                // 5. 변화된 메트릭만 저장 (재시도 로직 포함)
+                let batchMetricsUpdated = 0;
 
-                    totalMetricsUpdated += metricsToSave.length;
+                if (metricsToSave.length > 0) {
+                    const maxRetries = 3;
+
+                    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                        try {
+                            await prisma.$transaction(
+                                async (tx) => {
+                                    await tx.tweetMetrics.createMany({
+                                        data: metricsToSave,
+                                        skipDuplicates: true,
+                                    });
+                                },
+                                { timeout: 15000 }
+                            );
+
+                            batchMetricsUpdated = metricsToSave.length;
+                            totalMetricsUpdated += batchMetricsUpdated;
+                            break;
+                        } catch (error) {
+                            console.error(
+                                `Tweet metrics batch ${
+                                    batchIndex + 1
+                                } attempt ${attempt} failed:`,
+                                error
+                            );
+
+                            if (attempt === maxRetries) {
+                                console.error(
+                                    `⚠️ Failed to process tweet metrics batch ${
+                                        batchIndex + 1
+                                    } after all retries`
+                                );
+                                // Continue with next batch instead of failing completely
+                                break;
+                            }
+
+                            // Wait before retry with exponential backoff
+                            const delay = 1000 * Math.pow(2, attempt - 1);
+                            console.info(
+                                `Retrying tweet metrics batch ${
+                                    batchIndex + 1
+                                } in ${delay}ms...`
+                            );
+                            await new Promise((resolve) =>
+                                setTimeout(resolve, delay)
+                            );
+                        }
+                    }
                 }
+
+                const batchProcessingTime = Date.now() - batchStartTime;
+                console.info(
+                    `✅ Batch ${batchIndex + 1}/${
+                        batches.length
+                    } processed successfully: ${
+                        batch.length
+                    } tweets checked, ${batchMetricsUpdated} metrics updated in ${batchProcessingTime}ms`
+                );
 
                 // Rate Limit 체크
                 if (rateLimitRemaining && parseInt(rateLimitRemaining) < 5) {
@@ -201,10 +261,23 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
                 // API 호출 간격 (Rate Limit 보호)
                 await new Promise((resolve) => setTimeout(resolve, 2000));
             } catch (error) {
-                console.error(`Error processing batch ${requestCount}:`, error);
+                console.error(
+                    `Error processing tweet metrics batch ${batchIndex + 1}:`,
+                    error
+                );
                 continue;
             }
         }
+
+        const totalProcessingTime = Date.now() - startTime;
+        console.info(
+            `✅ Tweet metrics update completed successfully: ${tweetsToUpdate.length} tweets processed, ${totalMetricsUpdated} metrics updated`
+        );
+        console.info(
+            `📊 Performance Summary: Total time: ${totalProcessingTime}ms, API requests: ${requestCount}, Rate limit remaining: ${
+                rateLimitRemaining || "unknown"
+            }`
+        );
 
         return {
             totalProcessed: tweetsToUpdate.length,
@@ -214,10 +287,10 @@ export async function updateTweetMetrics(): Promise<MetricsUpdateResult> {
                 ? parseInt(rateLimitRemaining)
                 : null,
             timestamp: new Date().toISOString(),
-            processingTimeMs: Date.now() - startTime,
+            processingTimeMs: totalProcessingTime,
         };
     } catch (error) {
-        console.error("❌ Metrics update failed:", error);
+        console.error("❌ Tweet metrics update failed:", error);
         throw error;
     }
 }
