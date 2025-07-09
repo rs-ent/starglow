@@ -326,7 +326,7 @@ const ArtistCard = memo(function ArtistCard({
                                 getResponsiveClass(10).textClass
                             )}
                         >
-                            Polls
+                            Engages
                         </p>
                         <p
                             className={cn(

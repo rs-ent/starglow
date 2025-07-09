@@ -379,7 +379,7 @@ export default React.memo(function StarContents({
                                                     .marginYClass
                                             )}
                                         >
-                                            Polls
+                                            Engages
                                         </p>
                                         <p
                                             className={cn(
@@ -696,7 +696,7 @@ export default React.memo(function StarContents({
                                                 getResponsiveClass(30).textClass
                                             )}
                                         >
-                                            Quests & Polls
+                                            Quests & Engages
                                         </h2>
                                     </motion.div>
 
