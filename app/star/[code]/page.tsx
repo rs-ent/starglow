@@ -8,7 +8,7 @@ import StarContents from "@/components/star/Star.Contents";
 import { getArtist } from "@/app/actions/artists";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { PolishedArtist } from "@/components/star/Star.List";
+import type { PolishedArtist } from "@/components/star/Star.List";
 
 export async function generateMetadata({
     params,

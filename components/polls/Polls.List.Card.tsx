@@ -1161,6 +1161,7 @@ function PollsListCard({
         poll.participationRewardAssetId,
         poll.participationRewardAmount,
         poll.participationRewardAsset,
+        poll.endDate,
         pollLogs,
     ]);
 
