@@ -1,14 +1,13 @@
 /// components/atoms/Popup.InteractFeedback.tsx
 
-"use client"; // 클라이언트 컴포넌트로 표시
+"use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 
 import { Canvas } from "@react-three/fiber";
 import confetti from "canvas-confetti";
 import { AnimatePresence, motion } from "framer-motion";
 import { XIcon } from "lucide-react";
-import dynamic from "next/dynamic";
 
 import { NumberTicker } from "@/components/magicui/number-ticker";
 import { TextAnimate } from "@/components/magicui/text-animate";
@@ -22,9 +21,6 @@ import NFTsCollectionsCardR3FAcqusition from "../nfts/NFTs.Collections.Card.R3F.
 import type { SPG } from "@/app/story/spg/actions";
 import type { Asset } from "@prisma/client";
 import Image from "next/image";
-
-// 브라우저 전용 모듈을 동적으로 임포트
-const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 interface InteractFeedbackProps {
     open: boolean;
@@ -55,8 +51,6 @@ export default function InteractFeedback({
 }: InteractFeedbackProps) {
     const { pushModal, popModal, setInteracting } = useModalStack();
     const popupId = "interact-feedback-popup";
-
-    const [successLottie, setSuccessLottie] = useState<any>(null);
 
     const handleConfetti = useCallback(() => {
         const defaults = {
@@ -110,23 +104,6 @@ export default function InteractFeedback({
             handleConfetti();
         }
     }, [showConfetti, open, handleConfetti]);
-
-    useEffect(() => {
-        const fetchSuccessLottie = async () => {
-            try {
-                const res = await fetch("/lottie/success.json");
-                const data = await res.json();
-                setSuccessLottie(data);
-            } catch (error) {
-                console.error("Failed to fetch success lottie:", error);
-            }
-        };
-        if (type === "success") {
-            fetchSuccessLottie().catch((error) => {
-                console.error("Failed to fetch success lottie:", error);
-            });
-        }
-    }, [type]);
 
     return (
         <EnhancedPortal layer="popup">
@@ -193,12 +170,31 @@ export default function InteractFeedback({
                                     <XIcon className="w-4 h-4 text-white" />
                                 </button>
                             </div>
-                            {type === "success" && successLottie && (
-                                <Lottie
-                                    animationData={successLottie}
-                                    loop={false}
-                                    style={{ width: 80, height: 80 }}
+                            {reward?.iconUrl ? (
+                                <Image
+                                    src={
+                                        reward?.iconUrl || "/images/reward.png"
+                                    }
+                                    alt={reward?.symbol || "reward"}
+                                    width={100}
+                                    height={100}
+                                    className={cn(
+                                        "rounded-full border border-white/30 bg-white/10",
+                                        "object-contain",
+                                        getResponsiveClass(80).frameClass
+                                    )}
+                                    priority={true}
+                                    unoptimized={false}
                                 />
+                            ) : (
+                                <p
+                                    className={cn(
+                                        "text-xl font-main text-center text-white",
+                                        getResponsiveClass(70).textClass
+                                    )}
+                                >
+                                    🎉
+                                </p>
                             )}
                             <TextAnimate
                                 animation="slideLeft"
@@ -207,7 +203,7 @@ export default function InteractFeedback({
                                 once
                                 className={cn(
                                     "text-xl font-main text-center text-white",
-                                    getResponsiveClass(30).textClass
+                                    getResponsiveClass(40).textClass
                                 )}
                             >
                                 {title}
@@ -241,7 +237,7 @@ export default function InteractFeedback({
                                     once
                                     className={cn(
                                         "text-base text-center text-[rgba(255,255,255,0.85)]",
-                                        getResponsiveClass(15).textClass
+                                        getResponsiveClass(25).textClass
                                     )}
                                 >
                                     {description}
@@ -254,7 +250,7 @@ export default function InteractFeedback({
                                         <span
                                             className={cn(
                                                 "text-sm text-[rgba(255,255,255,0.7)] font-medium",
-                                                getResponsiveClass(10).textClass
+                                                getResponsiveClass(20).textClass
                                             )}
                                         >
                                             You earned:
@@ -269,7 +265,7 @@ export default function InteractFeedback({
                                                     className={cn(
                                                         "rounded-full border border-white/30 bg-white/10",
                                                         "object-contain",
-                                                        getResponsiveClass(10)
+                                                        getResponsiveClass(20)
                                                             .frameClass
                                                     )}
                                                     priority={false}
@@ -286,7 +282,7 @@ export default function InteractFeedback({
                                                 )}
                                                 className={cn(
                                                     "font-digital text-[rgba(255,255,150,0.85)]",
-                                                    getResponsiveClass(15)
+                                                    getResponsiveClass(25)
                                                         .textClass
                                                 )}
                                             />
@@ -294,7 +290,7 @@ export default function InteractFeedback({
                                                 <span
                                                     className={cn(
                                                         "text-[rgba(255,255,150,0.85)]",
-                                                        getResponsiveClass(10)
+                                                        getResponsiveClass(20)
                                                             .textClass
                                                     )}
                                                 >

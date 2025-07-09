@@ -379,7 +379,7 @@ export default React.memo(function StarContents({
                                                     .marginYClass
                                             )}
                                         >
-                                            Engagements
+                                            Polls
                                         </p>
                                         <p
                                             className={cn(
@@ -415,7 +415,7 @@ export default React.memo(function StarContents({
                                                     .marginYClass
                                             )}
                                         >
-                                            Earnings
+                                            Quests
                                         </p>
                                         <p
                                             className={cn(
@@ -600,7 +600,7 @@ export default React.memo(function StarContents({
                                                 getResponsiveClass(30).textClass
                                             )}
                                         >
-                                            Community Hub
+                                            Spotlight
                                         </h2>
                                     </motion.div>
 
@@ -696,7 +696,7 @@ export default React.memo(function StarContents({
                                                 getResponsiveClass(30).textClass
                                             )}
                                         >
-                                            Earn & Engage
+                                            Quests & Polls
                                         </h2>
                                     </motion.div>
 
@@ -820,7 +820,7 @@ export default React.memo(function StarContents({
                                                 getResponsiveClass(30).textClass
                                             )}
                                         >
-                                            Star Store
+                                            {artist.name || "Star"} Store
                                         </h2>
                                         <div
                                             className={cn(

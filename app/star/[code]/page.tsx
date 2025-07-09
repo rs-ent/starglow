@@ -8,14 +8,15 @@ import StarContents from "@/components/star/Star.Contents";
 import { getArtist } from "@/app/actions/artists";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { PolishedArtist } from "@/components/star/Star.List";
 
 export async function generateMetadata({
     params,
 }: {
-    params: Promise<{ id: string }>;
+    params: Promise<{ code: string }>;
 }): Promise<Metadata> {
-    const { id } = await params;
-    const artist = await getArtist({ id });
+    const { code } = await params;
+    const artist = await getArtist({ code });
 
     return {
         title: `Star - ${artist?.name || "Artist"}`,
@@ -48,22 +49,41 @@ function StarLoading() {
     );
 }
 
-async function StarContent({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
+async function StarContent({ params }: { params: Promise<{ code: string }> }) {
+    const { code } = await params;
     const session = await auth();
-    const artist = await getArtist({ id });
+    const artist = await getArtist({ code });
 
     if (!artist) {
         notFound();
     }
 
-    return <StarContents player={session?.player ?? null} artist={artist} />;
+    const polishedArtist: PolishedArtist = {
+        ...artist,
+        totalPosts:
+            artist.boards?.reduce(
+                (sum, board) => sum + board.posts.length,
+                0
+            ) || 0,
+        totalPolls:
+            artist.polls?.filter((poll) => poll.isActive && poll.showOnStarPage)
+                .length || 0,
+        totalQuests:
+            artist.quests?.filter((quest) => quest.isActive).length || 0,
+    };
+
+    return (
+        <StarContents
+            player={session?.player ?? null}
+            artist={polishedArtist}
+        />
+    );
 }
 
 export default async function StarEntryPage({
     params,
 }: {
-    params: Promise<{ id: string }>;
+    params: Promise<{ code: string }>;
 }) {
     return (
         <Suspense fallback={<StarLoading />}>

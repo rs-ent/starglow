@@ -326,7 +326,7 @@ const ArtistCard = memo(function ArtistCard({
                                 getResponsiveClass(10).textClass
                             )}
                         >
-                            Engagements
+                            Polls
                         </p>
                         <p
                             className={cn(
@@ -368,6 +368,6 @@ const ArtistCard = memo(function ArtistCard({
     return isHidden ? (
         CardContent
     ) : (
-        <Link href={`/star/${artist.id}`}>{CardContent}</Link>
+        <Link href={`/star/${artist.code}`}>{CardContent}</Link>
     );
 });

@@ -86,6 +86,7 @@ export type ArtistWithSPG = Artist & {
 };
 export interface GetArtistInput {
     id?: string;
+    code?: string;
     name?: string;
 }
 
@@ -100,6 +101,24 @@ export async function getArtist(
         if (input.id) {
             return (await prisma.artist.findUnique({
                 where: { id: input.id },
+                include: {
+                    story_spg: true,
+                    messages: true,
+                    quests: true,
+                    polls: true,
+                    players: true,
+                    boards: {
+                        include: {
+                            posts: true,
+                        },
+                    },
+                },
+            })) as ArtistWithSPG;
+        }
+
+        if (input.code) {
+            return (await prisma.artist.findUnique({
+                where: { code: input.code },
                 include: {
                     story_spg: true,
                     messages: true,
