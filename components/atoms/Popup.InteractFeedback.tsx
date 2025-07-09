@@ -22,7 +22,7 @@ import type { SPG } from "@/app/story/spg/actions";
 import type { Asset } from "@prisma/client";
 import Image from "next/image";
 
-interface InteractFeedbackProps {
+interface PopupInteractFeedbackProps {
     open: boolean;
     onClose: () => void;
     title: string;
@@ -36,7 +36,7 @@ interface InteractFeedbackProps {
     spg?: SPG | null;
 }
 
-export default function InteractFeedback({
+export default function PopupInteractFeedback({
     open,
     onClose,
     title,
@@ -48,7 +48,7 @@ export default function InteractFeedback({
     reward,
     rewardAmount,
     spg,
-}: InteractFeedbackProps) {
+}: PopupInteractFeedbackProps) {
     const { pushModal, popModal, setInteracting } = useModalStack();
     const popupId = "interact-feedback-popup";
 
@@ -170,22 +170,71 @@ export default function InteractFeedback({
                                     <XIcon className="w-4 h-4 text-white" />
                                 </button>
                             </div>
-                            {reward?.iconUrl ? (
-                                <Image
-                                    src={
-                                        reward?.iconUrl || "/images/reward.png"
-                                    }
-                                    alt={reward?.symbol || "reward"}
-                                    width={100}
-                                    height={100}
+                            {reward ? (
+                                <div
                                     className={cn(
-                                        "rounded-full border border-white/30 bg-white/10",
-                                        "object-contain",
-                                        getResponsiveClass(80).frameClass
+                                        "group relative flex flex-col items-center justify-center gap-1 cursor-pointer",
+                                        "bg-gradient-to-br from-white/10 to-white/5",
+                                        "border border-white/20 backdrop-blur-sm",
+                                        "rounded-[12px] transition-all duration-300 ease-out",
+                                        "overflow-hidden",
+                                        "morp-glass-1",
+                                        "p-3"
                                     )}
-                                    priority={true}
-                                    unoptimized={false}
-                                />
+                                >
+                                    {/* Compact shimmer effect */}
+                                    <div
+                                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -skew-x-12"
+                                        style={{
+                                            animation: "shimmer 2s infinite",
+                                            background:
+                                                "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)",
+                                            transform:
+                                                "translateX(-100%) skewX(-12deg)",
+                                        }}
+                                    />
+                                    {reward?.iconUrl ? (
+                                        <Image
+                                            src={
+                                                reward?.iconUrl ||
+                                                "/images/reward.png"
+                                            }
+                                            alt={reward?.symbol || "reward"}
+                                            width={100}
+                                            height={100}
+                                            className={cn(
+                                                "object-contain",
+                                                getResponsiveClass(80)
+                                                    .frameClass
+                                            )}
+                                            priority={true}
+                                            unoptimized={false}
+                                        />
+                                    ) : (
+                                        <p
+                                            className={cn(
+                                                "text-xl font-main text-center text-white",
+                                                getResponsiveClass(70).textClass
+                                            )}
+                                        >
+                                            🎉
+                                        </p>
+                                    )}
+                                    {reward?.name && (
+                                        <TextAnimate
+                                            animation="slideRight"
+                                            by="character"
+                                            duration={0.6}
+                                            once
+                                            className={cn(
+                                                "text-xl font-main text-center rainbow-text",
+                                                getResponsiveClass(25).textClass
+                                            )}
+                                        >
+                                            {reward.name}
+                                        </TextAnimate>
+                                    )}
+                                </div>
                             ) : (
                                 <p
                                     className={cn(

@@ -1586,7 +1586,7 @@ function PollsListCard({
                         : "Your opinion matters to us. Stay tuned for the results!"
                 }
                 type="success"
-                autoCloseMs={4000}
+                autoCloseMs={6000}
                 showReward={uiState.rewarded}
                 reward={poll.participationRewardAsset || undefined}
                 rewardAmount={poll.participationRewardAmount}

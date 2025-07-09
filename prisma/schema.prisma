@@ -733,6 +733,7 @@ model Asset {
   assetsContractAddress         String?
   networkId                     String?
   artistId                      String?
+  needTutorial                  Boolean            @default(false)
   createdAt                     DateTime           @default(now())
   updatedAt                     DateTime           @updatedAt
   assetsContract                AssetsContract?    @relation(fields: [assetsContractAddress], references: [address])
@@ -754,6 +755,8 @@ model Asset {
   rafflePrizes                  RafflePrize[]      @relation("RafflePrizeAsset")
   raffleEntryFeeAssets          Raffle[]           @relation("RaffleEntryFeeAsset")
   pollParticipationConsumeAssets Poll[]             @relation("PollParticipationConsume")
+  
+  assetTutorial                 AssetTutorial?
 
   hasInstance                   Boolean            @default(false)
   assetInstances                AssetInstance[]
@@ -763,6 +766,17 @@ model Asset {
   @@index([contractAddress])
   @@index([networkId])
   @@index([artistId])
+}
+
+model AssetTutorial {
+  id        String   @id @default(cuid())
+  assetId   String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  asset     Asset    @relation(fields: [assetId], references: [id])
+  steps     Json
+
+  @@index([assetId])
 }
 
 enum AssetInstanceStatus {

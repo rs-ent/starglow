@@ -476,7 +476,7 @@ function QuestsButton({
                 title="Reward Claimed!"
                 description="You've claimed the quest reward. Thank you for your participation!"
                 type="success"
-                autoCloseMs={4000}
+                autoCloseMs={6000}
                 showReward={true}
                 reward={asset || undefined}
                 rewardAmount={quest.rewardAmount}

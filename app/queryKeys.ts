@@ -166,6 +166,14 @@ export const assetKeys = {
     instances: (filters?: any) =>
         [...assetKeys.all, "instances", filters] as const,
     instance: (id: string) => [...assetKeys.all, "instance", id] as const,
+    tutorial: (id: string) => [...assetKeys.all, "tutorial", id] as const,
+    tutorials: () => [...assetKeys.all, "tutorials"] as const,
+    hasTutorial: (assetId: string) =>
+        [...assetKeys.all, "has-tutorial", assetId] as const,
+    analytics: (id: string) => [...assetKeys.all, "analytics", id] as const,
+    customizationPresets: () =>
+        [...assetKeys.all, "customization-presets"] as const,
+    stepTemplates: () => [...assetKeys.all, "step-templates"] as const,
 };
 
 export const playerAssetsKeys = {
