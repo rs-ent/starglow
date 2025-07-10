@@ -1620,7 +1620,7 @@ model Board {
 model BoardPost {
   id             String            @id @default(cuid())
   boardId        String
-  authorId       String
+  authorId       String?
   authorType     BoardAuthorType   @default(PLAYER)
   title          String
   content        String
@@ -1632,6 +1632,9 @@ model BoardPost {
   nftAddress     String?
   nftTokenId     String?
   tags           String[]          @default([])
+  isSandbox      Boolean           @default(false)
+  sandBoxImgUrl  String?
+  isBoardArtist  Boolean           @default(false)
   isPinned       Boolean           @default(false)
   isHidden       Boolean           @default(false)
   viewCount      Int               @default(0)
@@ -1644,7 +1647,7 @@ model BoardPost {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   board          Board             @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  author         Player            @relation("BoardPostAuthor", fields: [authorId], references: [id])
+  author         Player?            @relation("BoardPostAuthor", fields: [authorId], references: [id])
   comments       BoardComment[]
   reactions      BoardReaction[]
   rewards        BoardPostReward[]
@@ -1659,13 +1662,16 @@ model BoardPost {
 model BoardComment {
   id            String            @id @default(cuid())
   postId        String
-  authorId      String
+  authorId      String?
   authorType    BoardAuthorType   @default(PLAYER)
   content       String
   parentId      String?
   imageUrls     String[]          @default([])
   // 파일 메타데이터 (FileData 형태의 JSON 배열)
   files         Json[]            @default([])
+  isSandbox      Boolean           @default(false)
+  sandBoxImgUrl  String?
+  isBoardArtist  Boolean           @default(false)
   isHidden      Boolean           @default(false)
   likeCount     Int               @default(0)
   dislikeCount  Int               @default(0)
@@ -1674,7 +1680,7 @@ model BoardComment {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   post          BoardPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author        Player            @relation("BoardCommentAuthor", fields: [authorId], references: [id])
+  author        Player?            @relation("BoardCommentAuthor", fields: [authorId], references: [id])
   parent        BoardComment?     @relation("CommentReplies", fields: [parentId], references: [id])
   replies       BoardComment[]    @relation("CommentReplies")
   reactions     BoardReaction[]
@@ -1686,12 +1692,12 @@ model BoardComment {
 
 model BoardReaction {
   id        String             @id @default(cuid())
-  playerId  String
+  playerId  String?
   postId    String?
   commentId String?
   type      BoardReactionType
   createdAt DateTime           @default(now())
-  player    Player             @relation("BoardReactionPlayer", fields: [playerId], references: [id])
+  player    Player?             @relation("BoardReactionPlayer", fields: [playerId], references: [id])
   post      BoardPost?         @relation(fields: [postId], references: [id], onDelete: Cascade)
   comment   BoardComment?      @relation(fields: [commentId], references: [id], onDelete: Cascade)
 

@@ -215,9 +215,7 @@ export async function setUserWithWallet(
             throw new Error("Invalid input");
         }
 
-        // 트랜잭션으로 사용자 생성/조회를 원자적으로 처리
         const result = await prisma.$transaction(async (tx) => {
-            // 기존 사용자 확인
             const existingWallet = await tx.wallet.findUnique({
                 where: {
                     address: input.walletAddress,
@@ -231,7 +229,7 @@ export async function setUserWithWallet(
             let user = existingWallet?.user || null;
 
             if (!user) {
-                // 새 사용자 생성
+                console.log("creating user");
                 user = await tx.user.create({
                     data: {
                         name: input.walletAddress,
@@ -240,7 +238,7 @@ export async function setUserWithWallet(
                     },
                 });
             } else {
-                // 기존 사용자 업데이트
+                console.log("updating user");
                 user = await tx.user.update({
                     where: { id: user.id },
                     data: {

@@ -124,13 +124,26 @@ export default memo(function RaffleRecord({
                 <div
                     className={cn(
                         "h-[80vh] w-[95vw] overflow-hidden flex flex-col max-w-[1200px] mx-auto max-h-[800px]",
-                        "p-[50px]",
+                        "p-[10px] sm:p-[20px] md:p-[30px] lg:p-[40px]",
                         "shadow-2xl",
                         "bg-gradient-to-br from-[#040449] to-[#5d0c7b] rounded-xl",
-                        "border border-white/10"
+                        "border border-white/10 relative"
                     )}
                     onClick={(e) => e.stopPropagation()}
                 >
+                    <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={onClose}
+                        className="p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors absolute top-1 right-1"
+                    >
+                        <X
+                            className={cn(
+                                "w-6 h-6 text-white/60",
+                                getResponsiveClass(15).frameClass
+                            )}
+                        />
+                    </motion.button>
                     {/* Header */}
                     <motion.div
                         initial={{ y: -50, opacity: 0 }}
@@ -140,7 +153,7 @@ export default memo(function RaffleRecord({
                             getResponsiveClass(10).paddingClass
                         )}
                     >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 mb-1">
                             <div className="relative">
                                 <motion.div
                                     animate={{ rotate: [0, 360] }}
@@ -151,7 +164,7 @@ export default memo(function RaffleRecord({
                                     }}
                                     className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full blur-lg opacity-20"
                                 />
-                                <div className="relative bg-gradient-to-r from-purple-500 to-pink-500 p-3 rounded-full">
+                                <div className="relative bg-gradient-to-r from-purple-500 to-pink-500 p-2 rounded-full">
                                     <Trophy
                                         className={cn(
                                             "w-6 h-6 text-white",
@@ -163,7 +176,7 @@ export default memo(function RaffleRecord({
                             <div>
                                 <h2
                                     className={cn(
-                                        getResponsiveClass(30).textClass
+                                        getResponsiveClass(20).textClass
                                     )}
                                 >
                                     My Prize Records
@@ -171,7 +184,7 @@ export default memo(function RaffleRecord({
                                 <p
                                     className={cn(
                                         "text-white/60",
-                                        getResponsiveClass(15).textClass
+                                        getResponsiveClass(10).textClass
                                     )}
                                 >
                                     {raffle.title} • {participations.length}{" "}
@@ -179,20 +192,6 @@ export default memo(function RaffleRecord({
                                 </p>
                             </div>
                         </div>
-
-                        <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={onClose}
-                            className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-                        >
-                            <X
-                                className={cn(
-                                    "w-6 h-6 text-white/60",
-                                    getResponsiveClass(20).frameClass
-                                )}
-                            />
-                        </motion.button>
                     </motion.div>
 
                     {/* Stats Section */}
@@ -201,15 +200,16 @@ export default memo(function RaffleRecord({
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.1 }}
                         className={cn(
-                            "grid grid-cols-2 md:grid-cols-4 gap-6 p-6 border-b border-white/10",
-                            getResponsiveClass(30).paddingClass
+                            "grid grid-cols-4 md:grid-cols-4 gap-2 border-b border-white/10",
+                            getResponsiveClass(5).paddingClass,
+                            "py-2"
                         )}
                     >
                         <div className="text-center">
                             <div
                                 className={cn(
-                                    "text-3xl font-bold text-blue-400 mb-1",
-                                    getResponsiveClass(30).textClass
+                                    "text-3xl font-bold text-blue-400",
+                                    getResponsiveClass(25).textClass
                                 )}
                             >
                                 {participations.length}
@@ -217,7 +217,7 @@ export default memo(function RaffleRecord({
                             <div
                                 className={cn(
                                     "text-sm text-white/60",
-                                    getResponsiveClass(15).textClass
+                                    getResponsiveClass(10).textClass
                                 )}
                             >
                                 Total Entries
@@ -226,8 +226,8 @@ export default memo(function RaffleRecord({
                         <div className="text-center">
                             <div
                                 className={cn(
-                                    "text-3xl font-bold text-green-400 mb-1",
-                                    getResponsiveClass(30).textClass
+                                    "text-3xl font-bold text-green-400",
+                                    getResponsiveClass(25).textClass
                                 )}
                             >
                                 {winningRecords.length}
@@ -235,7 +235,7 @@ export default memo(function RaffleRecord({
                             <div
                                 className={cn(
                                     "text-sm text-white/60",
-                                    getResponsiveClass(15).textClass
+                                    getResponsiveClass(10).textClass
                                 )}
                             >
                                 Wins
@@ -244,8 +244,8 @@ export default memo(function RaffleRecord({
                         <div className="text-center">
                             <div
                                 className={cn(
-                                    "text-3xl font-bold text-yellow-400 mb-1",
-                                    getResponsiveClass(30).textClass
+                                    "text-3xl font-bold text-yellow-400",
+                                    getResponsiveClass(25).textClass
                                 )}
                             >
                                 {unrevealed.length}
@@ -253,7 +253,7 @@ export default memo(function RaffleRecord({
                             <div
                                 className={cn(
                                     "text-sm text-white/60",
-                                    getResponsiveClass(15).textClass
+                                    getResponsiveClass(10).textClass
                                 )}
                             >
                                 Unrevealed
@@ -262,8 +262,8 @@ export default memo(function RaffleRecord({
                         <div className="text-center">
                             <div
                                 className={cn(
-                                    "text-3xl font-bold text-purple-400 mb-1",
-                                    getResponsiveClass(30).textClass
+                                    "text-3xl font-bold text-purple-400",
+                                    getResponsiveClass(25).textClass
                                 )}
                             >
                                 {participations.length > 0
@@ -278,7 +278,7 @@ export default memo(function RaffleRecord({
                             <div
                                 className={cn(
                                     "text-sm text-white/60",
-                                    getResponsiveClass(15).textClass
+                                    getResponsiveClass(10).textClass
                                 )}
                             >
                                 Win Rate
@@ -302,14 +302,19 @@ export default memo(function RaffleRecord({
                                 whileTap={{ scale: 0.98 }}
                                 disabled={isRevealAllRaffleResultsPending}
                                 onClick={handleRevealAll}
-                                className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:opacity-50 text-white font-bold rounded-xl py-4 px-6 transition-all duration-300 flex items-center justify-center gap-3"
+                                className={cn(
+                                    "w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:opacity-50 text-white font-bold rounded-[12px] transition-all duration-300 flex items-center justify-center gap-2",
+                                    getResponsiveClass(25).textClass,
+                                    getResponsiveClass(30).paddingClass,
+                                    getResponsiveClass(15).marginYClass
+                                )}
                             >
                                 {isRevealAllRaffleResultsPending ? (
                                     <>
                                         <div
                                             className={cn(
                                                 "animate-spin rounded-full h-5 w-5 border-b-2 border-white",
-                                                getResponsiveClass(20)
+                                                getResponsiveClass(25)
                                                     .frameClass
                                             )}
                                         />
@@ -320,12 +325,11 @@ export default memo(function RaffleRecord({
                                         <Eye
                                             className={cn(
                                                 "w-5 h-5",
-                                                getResponsiveClass(20)
+                                                getResponsiveClass(25)
                                                     .frameClass
                                             )}
                                         />
-                                        🎊 Reveal All {unrevealed.length}{" "}
-                                        Results
+                                        Reveal All {unrevealed.length} Results
                                     </>
                                 )}
                             </motion.button>
@@ -333,12 +337,7 @@ export default memo(function RaffleRecord({
                     )}
 
                     {/* Records List */}
-                    <div
-                        className={cn(
-                            "flex-1 overflow-y-auto p-6",
-                            getResponsiveClass(10).paddingClass
-                        )}
-                    >
+                    <div className={cn("flex-1 overflow-y-auto py-2 px-1")}>
                         {participations.length === 0 ? (
                             <motion.div
                                 initial={{ scale: 0.8, opacity: 0 }}
@@ -363,7 +362,7 @@ export default memo(function RaffleRecord({
                                 </p>
                             </motion.div>
                         ) : (
-                            <div className="space-y-4 max-w-4xl mx-auto">
+                            <div className="space-y-3 w-full max-w-[800px] mx-auto">
                                 {participations.map((record, index) => {
                                     const isDrawn = !!record.drawnAt;
                                     const isRevealed = record.isRevealed;
@@ -376,27 +375,43 @@ export default memo(function RaffleRecord({
                                     const getStatusIcon = () => {
                                         if (!isDrawn)
                                             return (
-                                                <Clock className="w-6 h-6 text-yellow-400" />
+                                                <Clock
+                                                    className={cn(
+                                                        "w-6 h-6 text-yellow-400",
+                                                        getResponsiveClass(30)
+                                                            .frameClass
+                                                    )}
+                                                />
                                             );
                                         if (!isRevealed)
                                             return (
-                                                <EyeOff className="w-6 h-6 text-blue-400" />
+                                                <EyeOff
+                                                    className={cn(
+                                                        "w-6 h-6 text-blue-400",
+                                                        getResponsiveClass(30)
+                                                            .frameClass
+                                                    )}
+                                                />
                                             );
                                         if (hasWon)
                                             return (
-                                                <Trophy className="w-6 h-6 text-green-400" />
+                                                <Trophy
+                                                    className={cn(
+                                                        "w-6 h-6 text-green-400",
+                                                        getResponsiveClass(30)
+                                                            .frameClass
+                                                    )}
+                                                />
                                             );
                                         return (
-                                            <XCircle className="w-6 h-6 text-red-400" />
+                                            <XCircle
+                                                className={cn(
+                                                    "w-6 h-6 text-red-400",
+                                                    getResponsiveClass(30)
+                                                        .frameClass
+                                                )}
+                                            />
                                         );
-                                    };
-
-                                    const getStatusText = () => {
-                                        if (!isDrawn) return "⏳ Pending Draw";
-                                        if (!isRevealed)
-                                            return "🎁 Ready to Reveal";
-                                        if (hasWon) return "🎉 Won Prize!";
-                                        return "😔 No Prize";
                                     };
 
                                     const getCardStyle = () => {
@@ -416,13 +431,13 @@ export default memo(function RaffleRecord({
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: index * 0.05 }}
                                             className={cn(
-                                                "bg-gradient-to-br border rounded-2xl p-6",
+                                                "bg-gradient-to-br border rounded-[12px] p-3",
                                                 "hover:shadow-lg transition-all duration-300",
                                                 getCardStyle()
                                             )}
                                         >
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-4 flex-1">
+                                                <div className="flex items-center gap-3 flex-1">
                                                     {/* Status Icon */}
                                                     <div className="flex-shrink-0">
                                                         <motion.div
@@ -454,7 +469,7 @@ export default memo(function RaffleRecord({
 
                                                     {/* Main Info */}
                                                     <div className="flex-1">
-                                                        <div className="flex flex-col gap-1 mb-2">
+                                                        <div className="flex flex-col gap-0.5 mb-2">
                                                             <span
                                                                 className={cn(
                                                                     "text-lg font-bold text-white",
@@ -480,157 +495,140 @@ export default memo(function RaffleRecord({
                                                                 )}
                                                             </span>
                                                         </div>
-                                                        <div
-                                                            className={cn(
-                                                                "text-white/80",
-                                                                getResponsiveClass(
-                                                                    15
-                                                                ).textClass
-                                                            )}
-                                                        >
-                                                            {getStatusText()}
-                                                        </div>
                                                     </div>
 
                                                     {/* Prize Preview */}
                                                     {isRevealed &&
-                                                        record.prize &&
-                                                        hasWon && (
-                                                            <div className="flex items-center gap-3">
-                                                                {record.prize
-                                                                    .prizeType ===
-                                                                    "NFT" &&
-                                                                    record.prize
-                                                                        .spg
-                                                                        ?.imageUrl && (
-                                                                        <div
+                                                    record.prize &&
+                                                    hasWon ? (
+                                                        <div className="flex items-center gap-1">
+                                                            {record.prize
+                                                                .prizeType ===
+                                                                "NFT" &&
+                                                                record.prize.spg
+                                                                    ?.imageUrl && (
+                                                                    <div
+                                                                        className={cn(
+                                                                            "rounded-[8px] overflow-hidden p-1",
+                                                                            getResponsiveClass(
+                                                                                40
+                                                                            )
+                                                                                .frameClass
+                                                                        )}
+                                                                    >
+                                                                        <Image
+                                                                            src={
+                                                                                record
+                                                                                    .prize
+                                                                                    .spg
+                                                                                    .imageUrl
+                                                                            }
+                                                                            alt={
+                                                                                record
+                                                                                    .prize
+                                                                                    .title
+                                                                            }
+                                                                            width={
+                                                                                48
+                                                                            }
+                                                                            height={
+                                                                                48
+                                                                            }
                                                                             className={cn(
-                                                                                "w-12 h-12 rounded-[10px] overflow-hidden",
-                                                                                getResponsiveClass(
-                                                                                    60
-                                                                                )
-                                                                                    .frameClass
+                                                                                "object-cover"
                                                                             )}
-                                                                        >
-                                                                            <Image
-                                                                                src={
-                                                                                    record
-                                                                                        .prize
-                                                                                        .spg
-                                                                                        .imageUrl
-                                                                                }
-                                                                                alt={
-                                                                                    record
-                                                                                        .prize
-                                                                                        .title
-                                                                                }
-                                                                                width={
-                                                                                    48
-                                                                                }
-                                                                                height={
-                                                                                    48
-                                                                                }
-                                                                                className="object-cover"
-                                                                            />
-                                                                        </div>
-                                                                    )}
-                                                                {record.prize
-                                                                    .prizeType ===
-                                                                    "ASSET" &&
-                                                                    record.prize
-                                                                        .asset
-                                                                        ?.iconUrl && (
-                                                                        <div
-                                                                            className={cn(
-                                                                                "w-12 h-12 overflow-hidden bg-white/10 flex items-center justify-center rounded-[10px]",
-                                                                                getResponsiveClass(
-                                                                                    60
-                                                                                )
-                                                                                    .frameClass
-                                                                            )}
-                                                                        >
-                                                                            <Image
-                                                                                src={
-                                                                                    record
-                                                                                        .prize
-                                                                                        .asset
-                                                                                        .iconUrl
-                                                                                }
-                                                                                alt={
-                                                                                    record
-                                                                                        .prize
-                                                                                        .asset
-                                                                                        .symbol
-                                                                                }
-                                                                                width={
-                                                                                    24
-                                                                                }
-                                                                                height={
-                                                                                    24
-                                                                                }
-                                                                                className={cn(
-                                                                                    "object-contain",
-                                                                                    getResponsiveClass(
-                                                                                        40
-                                                                                    )
-                                                                                        .frameClass
-                                                                                )}
-                                                                            />
-                                                                        </div>
-                                                                    )}
-
-                                                                {record.prize
-                                                                    .prizeType ===
-                                                                    "EMPTY" && (
-                                                                    <div className="text-center">
-                                                                        <div
-                                                                            className={cn(
-                                                                                "text-red-400",
-                                                                                getResponsiveClass(
-                                                                                    30
-                                                                                )
-                                                                                    .textClass
-                                                                            )}
-                                                                        >
-                                                                            💔
-                                                                        </div>
+                                                                        />
                                                                     </div>
                                                                 )}
-                                                                <div className="text-right">
+                                                            {record.prize
+                                                                .prizeType ===
+                                                                "ASSET" &&
+                                                                record.prize
+                                                                    .asset
+                                                                    ?.iconUrl && (
                                                                     <div
                                                                         className={cn(
-                                                                            "font-bold text-green-400 text-lg",
-                                                                            getResponsiveClass(
-                                                                                30
-                                                                            )
-                                                                                .textClass
+                                                                            "overflow-hidden bg-white/10 flex items-center justify-center rounded-[8px] p-1"
                                                                         )}
                                                                     >
-                                                                        {
-                                                                            record
-                                                                                .prize
-                                                                                .title
-                                                                        }
+                                                                        <Image
+                                                                            src={
+                                                                                record
+                                                                                    .prize
+                                                                                    .asset
+                                                                                    .iconUrl
+                                                                            }
+                                                                            alt={
+                                                                                record
+                                                                                    .prize
+                                                                                    .asset
+                                                                                    .symbol
+                                                                            }
+                                                                            width={
+                                                                                24
+                                                                            }
+                                                                            height={
+                                                                                24
+                                                                            }
+                                                                            className={cn(
+                                                                                "object-contain",
+                                                                                getResponsiveClass(
+                                                                                    35
+                                                                                )
+                                                                                    .frameClass
+                                                                            )}
+                                                                        />
                                                                     </div>
-                                                                    <div
-                                                                        className={cn(
-                                                                            "text-sm text-white/60",
-                                                                            getResponsiveClass(
-                                                                                10
-                                                                            )
-                                                                                .textClass
-                                                                        )}
-                                                                    >
-                                                                        {record
+                                                                )}
+
+                                                            <div className="text-right">
+                                                                <div
+                                                                    className={cn(
+                                                                        "font-bold text-green-400 text-lg",
+                                                                        getResponsiveClass(
+                                                                            20
+                                                                        )
+                                                                            .textClass
+                                                                    )}
+                                                                >
+                                                                    {
+                                                                        record
                                                                             .prize
-                                                                            .prizeType ===
-                                                                        "ASSET"
-                                                                            ? `${record.prize.assetAmount} ${record.prize.asset?.symbol}`
-                                                                            : `${record.prize.nftQuantity} NFT(s)`}
-                                                                    </div>
+                                                                            .title
+                                                                    }
+                                                                </div>
+                                                                <div
+                                                                    className={cn(
+                                                                        "text-sm text-white/60",
+                                                                        getResponsiveClass(
+                                                                            10
+                                                                        )
+                                                                            .textClass
+                                                                    )}
+                                                                >
+                                                                    {record
+                                                                        .prize
+                                                                        .prizeType ===
+                                                                    "ASSET"
+                                                                        ? `${record.prize.assetAmount} ${record.prize.asset?.symbol}`
+                                                                        : `${record.prize.nftQuantity} NFT(s)`}
                                                                 </div>
                                                             </div>
-                                                        )}
+                                                        </div>
+                                                    ) : (
+                                                        isRevealed && (
+                                                            <p
+                                                                className={cn(
+                                                                    "text-white/40 text-sm text-center",
+                                                                    getResponsiveClass(
+                                                                        15
+                                                                    ).textClass
+                                                                )}
+                                                            >
+                                                                😔 No Prize
+                                                            </p>
+                                                        )
+                                                    )}
                                                 </div>
 
                                                 {/* Action Button */}

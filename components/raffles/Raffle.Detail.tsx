@@ -1056,6 +1056,8 @@ const ParticipationCard = memo(function ParticipationCard({
         : false;
 
     const canParticipate = useMemo(() => {
+        if (session?.player?.tester) return true;
+
         return (
             isLive &&
             (!hasParticipated ||
@@ -1069,6 +1071,7 @@ const ParticipationCard = memo(function ParticipationCard({
         hasReachedMaxEntries,
         playerAsset?.data?.balance,
         raffle.entryFeeAmount,
+        session?.player?.tester,
     ]);
 
     // 참여 핸들러

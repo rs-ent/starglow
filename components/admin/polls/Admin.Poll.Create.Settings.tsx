@@ -278,11 +278,11 @@ export function SettingsTab({
                                 if (value === "none") {
                                     onChange(
                                         "participationRewardAssetId",
-                                        undefined
+                                        null
                                     );
                                     onChange(
                                         "participationRewardAmount",
-                                        undefined
+                                        null
                                     );
                                 } else {
                                     onChange(
@@ -349,11 +349,11 @@ export function SettingsTab({
                                 if (value === "none") {
                                     onChange(
                                         "participationConsumeAssetId",
-                                        undefined
+                                        null
                                     );
                                     onChange(
                                         "participationConsumeAmount",
-                                        undefined
+                                        null
                                     );
                                 } else {
                                     onChange(

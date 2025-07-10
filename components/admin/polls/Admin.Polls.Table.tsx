@@ -30,6 +30,7 @@ interface PollResult {
         name: string;
         voteCount: number;
         voteRate: number;
+        actualVoteCount?: number;
     }>;
 }
 
@@ -153,7 +154,16 @@ export default function PollsTable({
                                 (r) => r.pollId === poll.id
                             );
                             const pollMode = getPollModeInfo(poll);
-                            const topResult = result?.results?.[0];
+                            // 득표수가 가장 많은 옵션을 찾기 위해 정렬
+                            const topResult = poll.bettingMode
+                                ? result?.results?.sort(
+                                      (a, b) =>
+                                          (b.actualVoteCount || b.voteCount) -
+                                          (a.actualVoteCount || a.voteCount)
+                                  )?.[0]
+                                : result?.results?.sort(
+                                      (a, b) => b.voteCount - a.voteCount
+                                  )?.[0];
 
                             return (
                                 <tr
@@ -242,7 +252,9 @@ export default function PollsTable({
                                                         0}
                                                 </span>
                                                 <span className="text-slate-400">
-                                                    투표
+                                                    {poll.bettingMode
+                                                        ? "베팅"
+                                                        : "투표"}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-1 text-sm">
@@ -294,7 +306,16 @@ export default function PollsTable({
                                                     {topResult.voteRate.toFixed(
                                                         1
                                                     )}
-                                                    % ({topResult.voteCount}표)
+                                                    % (
+                                                    {poll.bettingMode
+                                                        ? `${
+                                                              topResult.actualVoteCount ||
+                                                              topResult.voteCount
+                                                          }표`
+                                                        : `${topResult.voteCount}표`}
+                                                    {poll.bettingMode &&
+                                                        ` • ${topResult.voteCount.toLocaleString()} 베팅`}
+                                                    )
                                                 </div>
                                             </div>
                                         ) : (

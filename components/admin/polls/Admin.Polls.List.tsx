@@ -112,12 +112,22 @@ export default function AdminPollsList({
         const total = polls.length;
         const active = polls.filter((p) => p.isActive).length;
         const betting = polls.filter((p) => p.bettingMode).length;
-        const totalVotes = resultsData.reduce(
-            (sum, result) => sum + result.totalVotes,
-            0
-        );
 
-        return { total, active, betting, totalVotes };
+        // 베팅 모드와 일반 모드를 구분하여 계산
+        let totalVotes = 0;
+        let totalActualVotes = 0;
+
+        resultsData.forEach((result) => {
+            totalVotes += result.totalVotes;
+            // 실제 득표수 계산 (베팅 모드에서는 actualVoteCount 합계)
+            totalActualVotes +=
+                result.results?.reduce(
+                    (sum, r) => sum + (r.actualVoteCount || r.voteCount),
+                    0
+                ) || 0;
+        });
+
+        return { total, active, betting, totalVotes, totalActualVotes };
     }, [polls, resultsData]);
 
     // Handlers
@@ -249,9 +259,16 @@ export default function AdminPollsList({
                     </div>
                     <div className="text-center p-4 bg-blue-500/20 rounded-lg">
                         <div className="text-2xl font-bold text-blue-300">
-                            {stats.totalVotes.toLocaleString()}
+                            {stats.totalActualVotes.toLocaleString()}
                         </div>
-                        <div className="text-sm text-slate-400">총 투표수</div>
+                        <div className="text-sm text-slate-400">
+                            실제 투표수
+                        </div>
+                        {stats.totalVotes !== stats.totalActualVotes && (
+                            <div className="text-xs text-blue-400 mt-1">
+                                베팅: {stats.totalVotes.toLocaleString()}
+                            </div>
+                        )}
                     </div>
                 </div>
             </Card>

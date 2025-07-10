@@ -1255,6 +1255,7 @@ export async function setDefaultPlayerAsset(
                 balance: 0,
                 status: "ACTIVE",
             })),
+            skipDuplicates: true,
         });
 
         return {

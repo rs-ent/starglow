@@ -93,6 +93,7 @@ export default function ArtistMessage({
                         <ImageViewer
                             img={message.bannerUrl}
                             title={message.message}
+                            externalUrl={message.externalUrl ?? undefined}
                             showTitle={false}
                             shadowColor={
                                 artist ? ArtistBG(artist, 0, 100) : undefined

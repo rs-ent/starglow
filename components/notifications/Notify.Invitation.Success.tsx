@@ -23,7 +23,6 @@ export default function NotifyInvitationSuccess({
     onComplete,
     notification,
 }: NotifyInvitationSuccessProps) {
-
     // 초대 관련 데이터 추출
     const invitationData = useMemo(() => {
         const entityData = notification.entityData as any;
@@ -154,11 +153,16 @@ export default function NotifyInvitationSuccess({
                                     </span>
                                     <span
                                         className={cn(
-                                            "text-white font-medium",
+                                            "text-white font-medium truncate",
                                             getResponsiveClass(15).textClass
                                         )}
                                     >
-                                        {invitationData.referrerName}
+                                        {invitationData.referrerName.length > 15
+                                            ? invitationData.referrerName.slice(
+                                                  0,
+                                                  15
+                                              ) + "..."
+                                            : invitationData.referrerName}
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center">
