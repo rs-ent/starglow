@@ -7,16 +7,11 @@ import { motion } from "framer-motion";
 import {
     TrendingUp,
     AlertTriangle,
-    DollarSign,
-    Users,
     BarChart3,
     Settings,
     RefreshCw,
     Target,
-    Trophy,
     CheckCircle,
-    Timer,
-    Calculator,
     Gavel,
     Shield,
     Activity,
@@ -41,15 +36,6 @@ import { formatDate } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/tailwind";
 
 import type { PollsWithArtist, PollOption } from "@/app/actions/polls";
-
-interface BettingStats {
-    activeBettingPolls: number;
-    totalLivePool: number;
-    pendingSettlements: number;
-    todayCommission: number;
-    totalBettors: number;
-    averageOdds: number;
-}
 
 interface BettingPollWithStats extends PollsWithArtist {
     bettingStats: {
@@ -110,62 +96,6 @@ export default function AdminPollsBettingMode() {
     const { data: pollsResults } = usePollsResultsQuery({
         pollIds,
     });
-
-    // 베팅 통계 계산
-    const bettingStats = useMemo((): BettingStats => {
-        if (!bettingPolls || !pollsResults) {
-            return {
-                activeBettingPolls: 0,
-                totalLivePool: 0,
-                pendingSettlements: 0,
-                todayCommission: 0,
-                totalBettors: 0,
-                averageOdds: 0,
-            };
-        }
-
-        let totalLivePool = 0;
-        let pendingSettlements = 0;
-        let todayCommission = 0;
-        let totalBettors = 0;
-        const activeBettingPolls = bettingPolls.filter((poll) => {
-            const now = new Date();
-            return poll.isActive && poll.startDate <= now && poll.endDate > now;
-        }).length;
-
-        bettingPolls.forEach((poll) => {
-            const optionBetAmounts = (poll.optionBetAmounts as any) || {};
-            const poolAmount = Object.values(optionBetAmounts).reduce(
-                (sum: number, amount: any) => sum + (amount || 0),
-                0
-            );
-
-            totalLivePool += poolAmount;
-            todayCommission += poll.totalCommissionAmount || 0;
-            totalBettors += poll.uniqueVoters || 0;
-
-            // 정산이 필요한 폴 (종료되었지만 정답이 설정되지 않은 폴)
-            const now = new Date();
-            if (
-                poll.endDate < now &&
-                (!poll.answerOptionIds || poll.answerOptionIds.length === 0)
-            ) {
-                pendingSettlements++;
-            }
-        });
-
-        return {
-            activeBettingPolls,
-            totalLivePool,
-            pendingSettlements,
-            todayCommission,
-            totalBettors,
-            averageOdds:
-                totalLivePool > 0
-                    ? totalLivePool / Math.max(1, activeBettingPolls)
-                    : 0,
-        };
-    }, [bettingPolls, pollsResults]);
 
     // 베팅 폴 데이터 가공
     const bettingPollsWithStats = useMemo((): BettingPollWithStats[] => {

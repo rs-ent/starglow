@@ -1378,6 +1378,9 @@ Table BoardPost {
   nftAddress String
   nftTokenId String
   tags String[] [not null]
+  isSandbox Boolean [not null, default: false]
+  sandBoxImgUrl String
+  isBoardArtist Boolean [not null, default: false]
   isPinned Boolean [not null, default: false]
   isHidden Boolean [not null, default: false]
   viewCount Int [not null, default: 0]
@@ -1406,6 +1409,9 @@ Table BoardComment {
   parentId String
   imageUrls String[] [not null]
   files Json[] [not null]
+  isSandbox Boolean [not null, default: false]
+  sandBoxImgUrl String
+  isBoardArtist Boolean [not null, default: false]
   isHidden Boolean [not null, default: false]
   likeCount Int [not null, default: 0]
   dislikeCount Int [not null, default: 0]
