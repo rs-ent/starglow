@@ -470,23 +470,29 @@ export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
             data: {
                 ...rest,
                 artistId:
-                    artistId === null || artistId === ""
+                    artistId === null ||
+                    artistId === "" ||
+                    artistId === undefined
                         ? null
-                        : artistId || undefined,
+                        : artistId,
                 bettingAssetId:
-                    bettingAssetId === null || bettingAssetId === ""
+                    bettingAssetId === null ||
+                    bettingAssetId === "" ||
+                    bettingAssetId === undefined
                         ? null
-                        : bettingAssetId || undefined,
+                        : bettingAssetId,
                 participationRewardAssetId:
                     participationRewardAssetId === null ||
-                    participationRewardAssetId === ""
+                    participationRewardAssetId === "" ||
+                    participationRewardAssetId === undefined
                         ? null
-                        : participationRewardAssetId || undefined,
+                        : participationRewardAssetId,
                 participationConsumeAssetId:
                     participationConsumeAssetId === null ||
-                    participationConsumeAssetId === ""
+                    participationConsumeAssetId === "" ||
+                    participationConsumeAssetId === undefined
                         ? null
-                        : participationConsumeAssetId || undefined,
+                        : participationConsumeAssetId,
                 options: options?.map((option) => ({
                     ...option,
                     option: JSON.stringify(option),
