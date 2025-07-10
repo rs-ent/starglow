@@ -1077,6 +1077,7 @@ export interface PollOptionResult {
     youtubeUrl?: string;
     voteCount: number;
     voteRate: number;
+    actualVoteCount?: number; // 실제 득표수 (베팅 모드에서 사용)
 }
 
 export async function getPollResult(
@@ -1128,11 +1129,21 @@ export async function getPollResult(
             }
             return acc;
         }, 0);
+
+        // 실제 득표수 (투표한 사람의 수) 계산
+        const actualVoteCount = pollLogs.reduce((acc, curr) => {
+            if (curr.optionId === option.optionId) {
+                return acc + 1; // 베팅 금액이 아닌 실제 투표한 사람의 수
+            }
+            return acc;
+        }, 0);
+
         const voteRate = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
         return {
             ...option,
             voteCount,
             voteRate,
+            actualVoteCount, // 실제 득표수 추가
         };
     });
 

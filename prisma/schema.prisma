@@ -1632,6 +1632,9 @@ model BoardPost {
   nftAddress     String?
   nftTokenId     String?
   tags           String[]          @default([])
+  isSandbox      Boolean           @default(false)
+  sandBoxImgUrl  String?
+  isBoardArtist  Boolean           @default(false)
   isPinned       Boolean           @default(false)
   isHidden       Boolean           @default(false)
   viewCount      Int               @default(0)
@@ -1666,6 +1669,9 @@ model BoardComment {
   imageUrls     String[]          @default([])
   // 파일 메타데이터 (FileData 형태의 JSON 배열)
   files         Json[]            @default([])
+  isSandbox      Boolean           @default(false)
+  sandBoxImgUrl  String?
+  isBoardArtist  Boolean           @default(false)
   isHidden      Boolean           @default(false)
   likeCount     Int               @default(0)
   dislikeCount  Int               @default(0)

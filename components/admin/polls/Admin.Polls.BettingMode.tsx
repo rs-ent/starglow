@@ -58,7 +58,8 @@ interface BettingPollWithStats extends PollsWithArtist {
             optionId: string;
             name: string;
             betAmount: number;
-            voteCount: number;
+            voteCount: number; // 실제 득표수 (투표한 사람의 수)
+            betAmountFromVotes?: number; // 베팅 금액 합계 (검증용)
             percentage: number;
             currentOdds: number;
         }>;
@@ -184,9 +185,15 @@ export default function AdminPollsBettingMode() {
 
             const optionStats = options.map((option) => {
                 const betAmount = optionBetAmounts[option.optionId] || 0;
-                const voteCount =
-                    result?.results?.find((r) => r.optionId === option.optionId)
-                        ?.voteCount || 0;
+                const resultData = result?.results?.find(
+                    (r) => r.optionId === option.optionId
+                );
+
+                // 실제 득표수 (투표한 사람의 수)
+                const actualVoteCount = resultData?.actualVoteCount || 0;
+                // 베팅 금액 합계 (기존 voteCount)
+                const betAmountFromVotes = resultData?.voteCount || 0;
+
                 const percentage =
                     totalPool > 0 ? (betAmount / totalPool) * 100 : 0;
                 const currentOdds = betAmount > 0 ? totalPool / betAmount : 0;
@@ -195,7 +202,8 @@ export default function AdminPollsBettingMode() {
                     optionId: option.optionId,
                     name: option.name,
                     betAmount,
-                    voteCount,
+                    voteCount: actualVoteCount, // 실제 득표수로 변경
+                    betAmountFromVotes, // 베팅 금액 합계 추가
                     percentage,
                     currentOdds,
                 };
@@ -223,7 +231,7 @@ export default function AdminPollsBettingMode() {
         });
     }, [bettingPolls, pollsResults]);
 
-    // 정산 미리보기 계산
+    // 정산 미리보기 계산 (실제 득표수 기반)
     const calculateSettlementPreview = (
         poll: BettingPollWithStats,
         winningOptionIds: string[]
@@ -234,25 +242,27 @@ export default function AdminPollsBettingMode() {
         const commission = poll.totalCommissionAmount || 0;
         const payoutPool = totalPool - commission;
 
+        // 승리 옵션들의 베팅 금액 합계 (배당 계산용)
         const totalWinningBets = winningOptionIds.reduce((sum, optionId) => {
             const option = optionStats.find((o) => o.optionId === optionId);
             return sum + (option?.betAmount || 0);
+        }, 0);
+
+        // 승리자 수 (실제 득표수 기반)
+        const winnerCount = winningOptionIds.reduce((sum, optionId) => {
+            const option = optionStats.find((o) => o.optionId === optionId);
+            return sum + (option?.voteCount || 0); // 실제 득표수 사용
         }, 0);
 
         if (totalWinningBets === 0) {
             return {
                 winningOptions: winningOptionIds,
                 totalPayout: totalPool, // 전액 환불
-                winnerCount: 0,
+                winnerCount,
                 commission,
                 averageReturn: 1, // 1:1 환불
             };
         }
-
-        const winnerCount = winningOptionIds.reduce((sum, optionId) => {
-            const option = optionStats.find((o) => o.optionId === optionId);
-            return sum + (option?.voteCount || 0);
-        }, 0);
 
         const averageReturn = payoutPool / totalWinningBets;
 
@@ -367,105 +377,6 @@ export default function AdminPollsBettingMode() {
                 </Button>
             </div>
 
-            {/* 실시간 통계 카드 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                <Card className="bg-gradient-to-br from-blue-900/50 to-cyan-900/50 border-blue-500/30">
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <Activity className="w-8 h-8 text-blue-400" />
-                            <div>
-                                <p className="text-sm text-blue-300">
-                                    활성 베팅 폴
-                                </p>
-                                <p className="text-2xl font-bold text-white">
-                                    {bettingStats.activeBettingPolls}
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-green-900/50 to-emerald-900/50 border-green-500/30">
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <DollarSign className="w-8 h-8 text-green-400" />
-                            <div>
-                                <p className="text-sm text-green-300">
-                                    총 베팅 풀
-                                </p>
-                                <p className="text-2xl font-bold text-white">
-                                    {bettingStats.totalLivePool.toLocaleString()}
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-yellow-900/50 to-orange-900/50 border-yellow-500/30">
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <Timer className="w-8 h-8 text-yellow-400" />
-                            <div>
-                                <p className="text-sm text-yellow-300">
-                                    정산 대기
-                                </p>
-                                <p className="text-2xl font-bold text-white">
-                                    {bettingStats.pendingSettlements}
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 border-purple-500/30">
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <Trophy className="w-8 h-8 text-purple-400" />
-                            <div>
-                                <p className="text-sm text-purple-300">
-                                    오늘 수수료
-                                </p>
-                                <p className="text-2xl font-bold text-white">
-                                    {bettingStats.todayCommission.toLocaleString()}
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-indigo-900/50 to-blue-900/50 border-indigo-500/30">
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <Users className="w-8 h-8 text-indigo-400" />
-                            <div>
-                                <p className="text-sm text-indigo-300">
-                                    총 베터 수
-                                </p>
-                                <p className="text-2xl font-bold text-white">
-                                    {bettingStats.totalBettors.toLocaleString()}
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-red-900/50 to-orange-900/50 border-red-500/30">
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <Calculator className="w-8 h-8 text-red-400" />
-                            <div>
-                                <p className="text-sm text-red-300">
-                                    평균 배당률
-                                </p>
-                                <p className="text-2xl font-bold text-white">
-                                    {bettingStats.averageOdds.toFixed(2)}x
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
             {/* 메인 컨텐츠 */}
             <Tabs value={selectedTab} onValueChange={setSelectedTab}>
                 <TabsList className="grid w-full grid-cols-4 bg-slate-800 border-slate-700">
@@ -565,8 +476,14 @@ export default function AdminPollsBettingMode() {
                                                             명
                                                         </span>
                                                         <span className="text-yellow-300">
-                                                            🏆 총 투표:{" "}
-                                                            {poll.totalVotes}표
+                                                            🏆 실제 득표:{" "}
+                                                            {poll.bettingStats.optionStats.reduce(
+                                                                (sum, option) =>
+                                                                    sum +
+                                                                    option.voteCount,
+                                                                0
+                                                            )}
+                                                            표
                                                         </span>
                                                     </div>
                                                 </div>
@@ -616,18 +533,10 @@ export default function AdminPollsBettingMode() {
                                                             <div className="space-y-1 text-xs">
                                                                 <div className="flex justify-between text-slate-300">
                                                                     <span>
-                                                                        베팅
-                                                                        금액:
+                                                                        실제
+                                                                        득표:
                                                                     </span>
-                                                                    <span className="font-medium">
-                                                                        {option.betAmount.toLocaleString()}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex justify-between text-slate-300">
-                                                                    <span>
-                                                                        투표 수:
-                                                                    </span>
-                                                                    <span className="font-medium">
+                                                                    <span className="font-medium text-green-300">
                                                                         {
                                                                             option.voteCount
                                                                         }
@@ -636,6 +545,16 @@ export default function AdminPollsBettingMode() {
                                                                 </div>
                                                                 <div className="flex justify-between text-slate-300">
                                                                     <span>
+                                                                        베팅
+                                                                        금액:
+                                                                    </span>
+                                                                    <span className="font-medium text-blue-300">
+                                                                        {option.betAmount.toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between text-slate-300">
+                                                                    <span>
+                                                                        베팅
                                                                         비율:
                                                                     </span>
                                                                     <span className="font-medium">
@@ -936,22 +855,30 @@ export default function AdminPollsBettingMode() {
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
                                                         <div>
-                                                            베팅:{" "}
-                                                            {option.betAmount.toLocaleString()}
-                                                        </div>
-                                                        <div>
-                                                            투표:{" "}
+                                                            <span className="text-green-400">
+                                                                득표:
+                                                            </span>{" "}
                                                             {option.voteCount}표
                                                         </div>
                                                         <div>
-                                                            비율:{" "}
+                                                            <span className="text-blue-400">
+                                                                베팅:
+                                                            </span>{" "}
+                                                            {option.betAmount.toLocaleString()}
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-purple-400">
+                                                                비율:
+                                                            </span>{" "}
                                                             {option.percentage.toFixed(
                                                                 1
                                                             )}
                                                             %
                                                         </div>
                                                         <div>
-                                                            배당:{" "}
+                                                            <span className="text-yellow-400">
+                                                                배당:
+                                                            </span>{" "}
                                                             {option.currentOdds.toFixed(
                                                                 1
                                                             )}

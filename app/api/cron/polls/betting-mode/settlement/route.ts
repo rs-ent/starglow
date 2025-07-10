@@ -166,11 +166,14 @@ async function determineWinners(
 
     switch (rules.type) {
         case "VOTE_COUNT": {
+            // 베팅 모드에서는 실제 득표수(actualVoteCount)를 사용, 일반 모드에서는 voteCount 사용
             const maxVoteCount = Math.max(
-                ...pollResult.results.map((r) => r.voteCount)
+                ...pollResult.results.map(
+                    (r) => r.actualVoteCount || r.voteCount
+                )
             );
             const winners = pollResult.results.filter(
-                (r) => r.voteCount === maxVoteCount
+                (r) => (r.actualVoteCount || r.voteCount) === maxVoteCount
             );
 
             // 동점 처리

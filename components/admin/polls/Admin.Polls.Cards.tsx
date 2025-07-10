@@ -33,6 +33,7 @@ interface PollResult {
         name: string;
         voteCount: number;
         voteRate: number;
+        actualVoteCount?: number;
     }>;
 }
 
@@ -127,7 +128,15 @@ export default function PollsCards({
                 const result = results.find((r) => r.pollId === poll.id);
                 const pollMode = getPollModeInfo(poll);
                 const status = getStatusInfo(poll);
-                const topResult = result?.results?.[0];
+                const topResult = poll.bettingMode
+                    ? result?.results?.sort(
+                          (a, b) =>
+                              (b.actualVoteCount || b.voteCount) -
+                              (a.actualVoteCount || a.voteCount)
+                      )?.[0]
+                    : result?.results?.sort(
+                          (a, b) => b.voteCount - a.voteCount
+                      )?.[0];
 
                 return (
                     <Card
@@ -252,7 +261,9 @@ export default function PollsCards({
                                     <div className="flex items-center justify-center gap-1 mb-1">
                                         <TrendingUp className="w-4 h-4 text-green-400" />
                                         <span className="text-xs text-slate-400">
-                                            총 투표
+                                            {poll.bettingMode
+                                                ? "총 베팅"
+                                                : "총 투표"}
                                         </span>
                                     </div>
                                     <div className="text-lg font-bold text-white">
@@ -280,7 +291,9 @@ export default function PollsCards({
                                     <div className="flex items-center gap-2 mb-1">
                                         <Trophy className="w-4 h-4 text-yellow-400" />
                                         <span className="text-xs text-slate-400">
-                                            최고 득표
+                                            {poll.bettingMode
+                                                ? "최고 베팅"
+                                                : "최고 득표"}
                                         </span>
                                     </div>
                                     <div className="font-medium text-white text-sm">
@@ -288,7 +301,15 @@ export default function PollsCards({
                                     </div>
                                     <div className="text-xs text-slate-400">
                                         {topResult.voteRate.toFixed(1)}% (
-                                        {topResult.voteCount}표)
+                                        {poll.bettingMode
+                                            ? `${
+                                                  topResult.actualVoteCount ||
+                                                  topResult.voteCount
+                                              }표`
+                                            : `${topResult.voteCount}표`}
+                                        {poll.bettingMode &&
+                                            ` • ${topResult.voteCount.toLocaleString()} 베팅`}
+                                        )
                                     </div>
                                 </div>
                             )}
