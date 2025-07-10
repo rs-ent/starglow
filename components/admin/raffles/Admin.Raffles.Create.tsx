@@ -820,198 +820,211 @@ export default function AdminRafflesCreate({
 
                         {/* 현재 상품 목록 */}
                         <div className="space-y-3 mb-6 max-h-80 overflow-y-auto">
-                            {raffleData.prizes?.map((prize, index) => {
-                                const isEditing = editingPrizeIndex === index;
-                                const tierNumber = Math.floor(
-                                    (prize.order ?? 0) / 10
-                                );
-                                const orderInTier = (prize.order ?? 0) % 10;
-                                const probability =
-                                    totalSlots > 0
-                                        ? (prize.quantity / totalSlots) * 100
-                                        : 0;
+                            {raffleData.prizes
+                                ?.sort(
+                                    (a, b) => (a.order ?? 0) - (b.order ?? 0)
+                                )
+                                .map((prize, index) => {
+                                    const isEditing =
+                                        editingPrizeIndex === index;
+                                    const tierNumber = Math.floor(
+                                        (prize.order ?? 0) / 10
+                                    );
+                                    const orderInTier = (prize.order ?? 0) % 10;
+                                    const probability =
+                                        totalSlots > 0
+                                            ? (prize.quantity / totalSlots) *
+                                              100
+                                            : 0;
 
-                                // 에셋/SPG 정보 가져오기
-                                const assetInfo =
-                                    prize.type === "ASSET" && prize.assetId
-                                        ? assetsData?.find(
-                                              (a) => a.id === prize.assetId
-                                          )
-                                        : null;
-                                const spgInfo =
-                                    prize.type === "NFT" && prize.spgAddress
-                                        ? spgsData?.find(
-                                              (s) =>
-                                                  s.address === prize.spgAddress
-                                          )
-                                        : null;
+                                    // 에셋/SPG 정보 가져오기
+                                    const assetInfo =
+                                        prize.type === "ASSET" && prize.assetId
+                                            ? assetsData?.find(
+                                                  (a) => a.id === prize.assetId
+                                              )
+                                            : null;
+                                    const spgInfo =
+                                        prize.type === "NFT" && prize.spgAddress
+                                            ? spgsData?.find(
+                                                  (s) =>
+                                                      s.address ===
+                                                      prize.spgAddress
+                                              )
+                                            : null;
 
-                                return (
-                                    <div
-                                        key={index}
-                                        className={`bg-gray-700/30 p-4 rounded-lg border transition-all ${
-                                            isEditing
-                                                ? "border-purple-500/50 bg-purple-500/10"
-                                                : "border-gray-600/30 hover:border-gray-500/50"
-                                        }`}
-                                    >
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="font-medium text-white text-lg">
-                                                        {prize.title}
-                                                    </span>
-                                                    <span
-                                                        className={`px-2 py-1 text-xs rounded-full font-medium ${
-                                                            prize.type ===
-                                                            "ASSET"
-                                                                ? "bg-blue-500/20 text-blue-300 border border-blue-400/30"
-                                                                : prize.type ===
-                                                                  "NFT"
-                                                                ? "bg-purple-500/20 text-purple-300 border border-purple-400/30"
-                                                                : "bg-gray-500/20 text-gray-300 border border-gray-400/30"
-                                                        }`}
-                                                    >
-                                                        {prize.type}
-                                                    </span>
-                                                    {isEditing && (
-                                                        <span className="px-2 py-1 text-xs bg-yellow-500/20 text-yellow-300 border border-yellow-400/30 rounded-full">
-                                                            편집 중
+                                    return (
+                                        <div
+                                            key={index}
+                                            className={`bg-gray-700/30 p-4 rounded-lg border transition-all ${
+                                                isEditing
+                                                    ? "border-purple-500/50 bg-purple-500/10"
+                                                    : "border-gray-600/30 hover:border-gray-500/50"
+                                            }`}
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="font-medium text-white text-lg">
+                                                            {prize.title}
                                                         </span>
+                                                        <span
+                                                            className={`px-2 py-1 text-xs rounded-full font-medium ${
+                                                                prize.type ===
+                                                                "ASSET"
+                                                                    ? "bg-blue-500/20 text-blue-300 border border-blue-400/30"
+                                                                    : prize.type ===
+                                                                      "NFT"
+                                                                    ? "bg-purple-500/20 text-purple-300 border border-purple-400/30"
+                                                                    : "bg-gray-500/20 text-gray-300 border border-gray-400/30"
+                                                            }`}
+                                                        >
+                                                            {prize.type}
+                                                        </span>
+                                                        {isEditing && (
+                                                            <span className="px-2 py-1 text-xs bg-yellow-500/20 text-yellow-300 border border-yellow-400/30 rounded-full">
+                                                                편집 중
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {prize.description && (
+                                                        <p className="text-gray-400 text-sm mb-2">
+                                                            {prize.description}
+                                                        </p>
+                                                    )}
+
+                                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                                        <div>
+                                                            <span className="text-gray-400">
+                                                                수량:
+                                                            </span>
+                                                            <span className="text-white font-medium ml-1">
+                                                                {prize.quantity}
+                                                                개
+                                                            </span>
+                                                            <span className="text-green-400 ml-1">
+                                                                (
+                                                                {probability.toFixed(
+                                                                    1
+                                                                )}
+                                                                %)
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-gray-400">
+                                                                티어:
+                                                            </span>
+                                                            <span className="text-purple-400 font-medium ml-1">
+                                                                {tierNumber}
+                                                            </span>
+                                                            <span className="text-gray-400 ml-1">
+                                                                (순서:{" "}
+                                                                {orderInTier})
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* 상품별 상세 정보 */}
+                                                    {prize.type === "ASSET" && (
+                                                        <div className="mt-2 p-2 bg-blue-500/10 rounded border border-blue-400/20">
+                                                            <div className="text-sm">
+                                                                <span className="text-blue-300 font-medium">
+                                                                    💰 에셋:
+                                                                </span>
+                                                                <span className="text-white ml-1">
+                                                                    {assetInfo?.name ||
+                                                                        "Unknown Asset"}
+                                                                    (
+                                                                    {assetInfo?.symbol ||
+                                                                        "?"}
+                                                                    )
+                                                                </span>
+                                                                <span className="text-blue-300 ml-2">
+                                                                    {
+                                                                        prize.assetAmount
+                                                                    }
+                                                                    개
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {prize.type === "NFT" && (
+                                                        <div className="mt-2 p-2 bg-purple-500/10 rounded border border-purple-400/20">
+                                                            <div className="text-sm">
+                                                                <span className="text-purple-300 font-medium">
+                                                                    🎨 NFT:
+                                                                </span>
+                                                                <span className="text-white ml-1">
+                                                                    {spgInfo?.name ||
+                                                                        "Unknown Collection"}
+                                                                    (
+                                                                    {spgInfo?.symbol ||
+                                                                        "?"}
+                                                                    )
+                                                                </span>
+                                                                <span className="text-purple-300 ml-2">
+                                                                    {
+                                                                        prize.nftQuantity
+                                                                    }
+                                                                    개
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-xs text-gray-400 mt-1">
+                                                                {
+                                                                    prize.spgAddress
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {prize.type === "EMPTY" && (
+                                                        <div className="mt-2 p-2 bg-gray-500/10 rounded border border-gray-400/20">
+                                                            <div className="text-sm text-gray-400">
+                                                                💔 꽝 (상품
+                                                                없음)
+                                                            </div>
+                                                        </div>
                                                     )}
                                                 </div>
 
-                                                {prize.description && (
-                                                    <p className="text-gray-400 text-sm mb-2">
-                                                        {prize.description}
-                                                    </p>
-                                                )}
-
-                                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                                    <div>
-                                                        <span className="text-gray-400">
-                                                            수량:
-                                                        </span>
-                                                        <span className="text-white font-medium ml-1">
-                                                            {prize.quantity}개
-                                                        </span>
-                                                        <span className="text-green-400 ml-1">
-                                                            (
-                                                            {probability.toFixed(
-                                                                1
-                                                            )}
-                                                            %)
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-gray-400">
-                                                            티어:
-                                                        </span>
-                                                        <span className="text-purple-400 font-medium ml-1">
-                                                            {tierNumber}
-                                                        </span>
-                                                        <span className="text-gray-400 ml-1">
-                                                            (순서: {orderInTier}
+                                                <div className="flex gap-2 ml-4">
+                                                    <button
+                                                        onClick={() =>
+                                                            startEditPrize(
+                                                                index
                                                             )
-                                                        </span>
-                                                    </div>
+                                                        }
+                                                        disabled={
+                                                            editingPrizeIndex !==
+                                                                null &&
+                                                            editingPrizeIndex !==
+                                                                index
+                                                        }
+                                                        className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        title="상품 편집"
+                                                    >
+                                                        <FaEdit />
+                                                    </button>
+                                                    <button
+                                                        onClick={() =>
+                                                            removePrize(index)
+                                                        }
+                                                        disabled={
+                                                            editingPrizeIndex !==
+                                                            null
+                                                        }
+                                                        className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        title="상품 삭제"
+                                                    >
+                                                        <FaTrash />
+                                                    </button>
                                                 </div>
-
-                                                {/* 상품별 상세 정보 */}
-                                                {prize.type === "ASSET" && (
-                                                    <div className="mt-2 p-2 bg-blue-500/10 rounded border border-blue-400/20">
-                                                        <div className="text-sm">
-                                                            <span className="text-blue-300 font-medium">
-                                                                💰 에셋:
-                                                            </span>
-                                                            <span className="text-white ml-1">
-                                                                {assetInfo?.name ||
-                                                                    "Unknown Asset"}
-                                                                (
-                                                                {assetInfo?.symbol ||
-                                                                    "?"}
-                                                                )
-                                                            </span>
-                                                            <span className="text-blue-300 ml-2">
-                                                                {
-                                                                    prize.assetAmount
-                                                                }
-                                                                개
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {prize.type === "NFT" && (
-                                                    <div className="mt-2 p-2 bg-purple-500/10 rounded border border-purple-400/20">
-                                                        <div className="text-sm">
-                                                            <span className="text-purple-300 font-medium">
-                                                                🎨 NFT:
-                                                            </span>
-                                                            <span className="text-white ml-1">
-                                                                {spgInfo?.name ||
-                                                                    "Unknown Collection"}
-                                                                (
-                                                                {spgInfo?.symbol ||
-                                                                    "?"}
-                                                                )
-                                                            </span>
-                                                            <span className="text-purple-300 ml-2">
-                                                                {
-                                                                    prize.nftQuantity
-                                                                }
-                                                                개
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-xs text-gray-400 mt-1">
-                                                            {prize.spgAddress}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {prize.type === "EMPTY" && (
-                                                    <div className="mt-2 p-2 bg-gray-500/10 rounded border border-gray-400/20">
-                                                        <div className="text-sm text-gray-400">
-                                                            💔 꽝 (상품 없음)
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="flex gap-2 ml-4">
-                                                <button
-                                                    onClick={() =>
-                                                        startEditPrize(index)
-                                                    }
-                                                    disabled={
-                                                        editingPrizeIndex !==
-                                                            null &&
-                                                        editingPrizeIndex !==
-                                                            index
-                                                    }
-                                                    className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    title="상품 편집"
-                                                >
-                                                    <FaEdit />
-                                                </button>
-                                                <button
-                                                    onClick={() =>
-                                                        removePrize(index)
-                                                    }
-                                                    disabled={
-                                                        editingPrizeIndex !==
-                                                        null
-                                                    }
-                                                    className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    title="상품 삭제"
-                                                >
-                                                    <FaTrash />
-                                                </button>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
                         </div>
 
                         {/* 새 상품 추가/편집 폼 */}

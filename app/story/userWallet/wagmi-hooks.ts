@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { WalletStatus } from "@prisma/client";
 import { useSession } from "next-auth/react";
@@ -27,6 +27,7 @@ import type { Connector } from "wagmi";
 
 export function useWagmiConnection() {
     const toast = useToast();
+    const [isSettingUser, setIsSettingUser] = useState(false);
     const { storyNetworks } = useStoryNetwork({
         getStoryNetworksInput: {
             isActive: true,
@@ -152,7 +153,8 @@ export function useWagmiConnection() {
                 processedAddresses.current.add(address);
 
                 let user = session?.user;
-                if (!user) {
+                if (!user && !isSettingUser) {
+                    setIsSettingUser(true);
                     const { user: newUser } = await setUserWithWallet({
                         walletAddress: address,
                         provider: currentConnection.connector.id,
@@ -179,6 +181,7 @@ export function useWagmiConnection() {
                 processedAddresses.current.delete(address);
             } finally {
                 isProcessingConnection.current = false;
+                setIsSettingUser(false);
             }
         };
 
@@ -191,6 +194,7 @@ export function useWagmiConnection() {
         connectWalletAsync,
         session?.user,
         toast,
+        isSettingUser,
     ]);
 
     // 체인 전환

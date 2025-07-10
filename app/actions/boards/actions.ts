@@ -1262,7 +1262,7 @@ export async function handlePopularPostReward(
             const existingReward = await prisma.boardPostReward.findFirst({
                 where: {
                     postId,
-                    playerId: post.authorId,
+                    playerId: post.authorId || "",
                     reason: "POPULAR_POST",
                 },
             });
@@ -1274,7 +1274,7 @@ export async function handlePopularPostReward(
 
             await createPostReward({
                 postId,
-                playerId: post.authorId,
+                playerId: post.authorId || "",
                 grantedBy: reactorPlayerId,
                 grantedByType: "PLAYER",
                 assetId: post.board.popularPostRewardAssetId || undefined,
