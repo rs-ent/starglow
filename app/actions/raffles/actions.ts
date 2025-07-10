@@ -89,7 +89,7 @@ export type RaffleWithDetails = Raffle & {
         asset?: Asset | null;
         spg?: Story_spg | null;
     })[];
-    entryFeeAsset: Asset | null;
+    entryFeeAsset?: { symbol: string; iconUrl: string | null } | null;
     _count?: {
         participants: number;
         winners: number;
@@ -862,51 +862,10 @@ export async function getRaffleDetails(
                     include: {
                         asset: true,
                         spg: true,
-                        participants: {
-                            include: {
-                                player: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        nickname: true,
-                                    },
-                                },
-                            },
-                        },
-                        winners: {
-                            include: {
-                                player: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        nickname: true,
-                                    },
-                                },
-                            },
-                        },
                     },
                     orderBy: { order: "asc" },
                 },
-                participants: {
-                    include: {
-                        player: {
-                            select: { id: true, name: true, nickname: true },
-                        },
-                        prize: {
-                            select: { id: true, title: true, prizeType: true },
-                        },
-                    },
-                    orderBy: { createdAt: "desc" },
-                },
-                winners: {
-                    include: {
-                        player: {
-                            select: { id: true, name: true, nickname: true },
-                        },
-                        prize: true,
-                    },
-                    orderBy: { createdAt: "desc" },
-                },
+                entryFeeAsset: { select: { symbol: true, iconUrl: true } },
                 _count: {
                     select: {
                         participants: true,
@@ -936,6 +895,121 @@ export async function getRaffleDetails(
         return {
             success: false,
             error: "Failed to fetch raffle details",
+        };
+    }
+}
+
+/**
+ * Fetch participants for a raffle with pagination
+ * This prevents the 10MB query size limit by limiting results
+ */
+export async function getRaffleParticipants(
+    input: GetRaffleParticipantsInput
+): Promise<
+    RaffleResult<{
+        participants: RaffleParticipantWithRelations[];
+        totalCount: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }>
+> {
+    try {
+        const page = input.page || 1;
+        const limit = Math.min(input.limit || 50, 100); // Max 100 per page
+        const skip = (page - 1) * limit;
+
+        const where: any = {
+            raffleId: input.raffleId,
+        };
+
+        if (input.playerId) {
+            where.playerId = input.playerId;
+        }
+
+        const [participants, totalCount] = await Promise.all([
+            prisma.raffleParticipant.findMany({
+                where,
+                include: {
+                    player: {
+                        select: { id: true, name: true, nickname: true },
+                    },
+                    prize: {
+                        select: { id: true, title: true, prizeType: true },
+                    },
+                },
+                orderBy: { createdAt: "desc" },
+                skip,
+                take: limit,
+            }),
+            prisma.raffleParticipant.count({ where }),
+        ]);
+
+        const totalPages = Math.ceil(totalCount / limit);
+
+        return {
+            success: true,
+            data: {
+                participants: participants as RaffleParticipantWithRelations[],
+                totalCount,
+                page,
+                limit,
+                totalPages,
+            },
+        };
+    } catch (error) {
+        console.error("Error fetching raffle participants:", error);
+        return {
+            success: false,
+            error: "Failed to fetch raffle participants",
+        };
+    }
+}
+
+/**
+ * Check if a user has participated in a raffle
+ * This is optimized to avoid fetching all participants
+ */
+export async function checkUserParticipation(
+    raffleId: string,
+    playerId: string
+): Promise<
+    RaffleResult<{
+        hasParticipated: boolean;
+        participationCount: number;
+        participants: RaffleParticipantWithRelations[];
+    }>
+> {
+    try {
+        const participants = await prisma.raffleParticipant.findMany({
+            where: {
+                raffleId,
+                playerId,
+            },
+            include: {
+                player: {
+                    select: { id: true, name: true, nickname: true },
+                },
+                prize: {
+                    select: { id: true, title: true, prizeType: true },
+                },
+            },
+            orderBy: { createdAt: "desc" },
+        });
+
+        return {
+            success: true,
+            data: {
+                hasParticipated: participants.length > 0,
+                participationCount: participants.length,
+                participants: participants as RaffleParticipantWithRelations[],
+            },
+        };
+    } catch (error) {
+        console.error("Error checking user participation:", error);
+        return {
+            success: false,
+            error: "Failed to check user participation",
         };
     }
 }
@@ -1809,6 +1883,13 @@ export async function distributePrizes(
                     : "Failed to distribute prizes",
         };
     }
+}
+
+export interface GetRaffleParticipantsInput {
+    raffleId: string;
+    page?: number;
+    limit?: number;
+    playerId?: string; // Filter by specific player
 }
 
 export interface GetPlayerParticipationsInput {

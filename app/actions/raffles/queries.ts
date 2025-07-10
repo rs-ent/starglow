@@ -11,12 +11,15 @@ import {
     getRaffleDetails,
     getPlayerParticipations,
     getUnrevealedCount,
+    getRaffleParticipants,
+    checkUserParticipation,
 } from "./actions";
 
 import type {
     GetRafflesInput,
     GetPlayerParticipationsInput,
     GetUnrevealedCountInput,
+    GetRaffleParticipantsInput,
 } from "./actions";
 
 export function useGetRafflesQuery(input?: GetRafflesInput) {
@@ -79,5 +82,33 @@ export function useGetUnrevealedCountQuery(input?: GetUnrevealedCountInput) {
         refetchOnWindowFocus: true,
         refetchOnMount: true, // 마운트 시 항상 새로 가져오기
         refetchInterval: 1000 * 30, // 30초마다 자동 새로고침 (더 자주)
+    });
+}
+
+export function useGetRaffleParticipantsQuery(
+    input?: GetRaffleParticipantsInput
+) {
+    return useQuery({
+        queryKey: raffleKeys.participants.all(input?.raffleId || ""),
+        queryFn: () => getRaffleParticipants(input!),
+        enabled: Boolean(input?.raffleId),
+        staleTime: 1000 * 60, // 1 minute
+        gcTime: 1000 * 60 * 5, // 5 minutes
+        refetchOnWindowFocus: true,
+    });
+}
+
+export function useCheckUserParticipationQuery(
+    raffleId?: string,
+    playerId?: string
+) {
+    return useQuery({
+        queryKey: raffleKeys.userParticipation(raffleId || "", playerId || ""),
+        queryFn: () => checkUserParticipation(raffleId!, playerId!),
+        enabled: Boolean(raffleId && playerId),
+        staleTime: 1000 * 30, // 30 seconds (faster updates for participation)
+        gcTime: 1000 * 60 * 5, // 5 minutes
+        refetchOnMount: true,
+        refetchOnWindowFocus: true,
     });
 }

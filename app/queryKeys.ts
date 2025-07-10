@@ -737,6 +737,10 @@ type RaffleKeysType = {
         raffleId: string,
         playerId: string
     ) => readonly ["raffles", "unrevealed-count", string, string];
+    userParticipation: (
+        raffleId: string,
+        playerId: string
+    ) => readonly ["raffles", "user-participation", string, string];
     analytics: {
         all: readonly ["raffles", "analytics"];
         general: (
@@ -815,6 +819,8 @@ export const raffleKeys: RaffleKeysType = {
         ] as const,
     unrevealedCount: (raffleId: string, playerId: string) =>
         [...RAFFLE_BASE_KEY, "unrevealed-count", raffleId, playerId] as const,
+    userParticipation: (raffleId: string, playerId: string) =>
+        [...RAFFLE_BASE_KEY, "user-participation", raffleId, playerId] as const,
 
     // Raffle analytics
     analytics: {

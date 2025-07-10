@@ -75,6 +75,8 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
         seconds: number;
     }>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
+    const { data: session } = useSession();
+
     // 반응형 스크래치 카드 크기 상태
     const [scratchCardSize, setScratchCardSize] = useState(() => {
         if (typeof window === "undefined") {
@@ -243,6 +245,9 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
     if (isRaffleLoading) {
         return <RaffleDetailSkeleton />;
     }
+
+    console.log("Raffle Error", raffleError);
+    console.log("Raffle", raffle);
 
     if (raffleError || !raffle) {
         return <RaffleDetailError />;
@@ -1009,7 +1014,11 @@ const ParticipationCard = memo(function ParticipationCard({
         participateInRaffleAsync,
         isParticipateInRafflePending,
         participateInRaffleError,
-    } = useRaffles();
+        userParticipationData,
+    } = useRaffles({
+        checkUserParticipationRaffleId: raffle?.id,
+        checkUserParticipationPlayerId: session?.player?.id || "",
+    });
 
     const isLive = raffleStatus === "ACTIVE";
     const isUpcoming = raffleStatus === "UPCOMING";
@@ -1031,15 +1040,10 @@ const ParticipationCard = memo(function ParticipationCard({
 
     // 사용자 참여 여부 및 횟수 확인
     const userParticipations = useMemo(() => {
-        if (!session?.player?.id || !raffle?.participants) return [];
-
-        const playerId = session.player?.id;
-        const participations = raffle.participants.filter(
-            (participant: any) => participant.playerId === playerId
-        );
-
-        return participations;
-    }, [session?.player?.id, raffle?.participants]);
+        if (!userParticipationData?.success || !userParticipationData.data)
+            return [];
+        return userParticipationData.data.participants || [];
+    }, [userParticipationData]);
 
     // 사용자의 총 참여 횟수 계산
     const userParticipationCount = useMemo(() => {

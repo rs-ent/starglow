@@ -18,12 +18,15 @@ import {
     useGetRaffleDetailsQuery,
     useGetPlayerParticipationsQuery,
     useGetUnrevealedCountQuery,
+    useGetRaffleParticipantsQuery,
+    useCheckUserParticipationQuery,
 } from "./queries";
 
 import type {
     GetRafflesInput,
     GetPlayerParticipationsInput,
     GetUnrevealedCountInput,
+    GetRaffleParticipantsInput,
 } from "./actions";
 
 export interface useRafflesInput {
@@ -33,6 +36,10 @@ export interface useRafflesInput {
     // 다중 참여 지원 쿼리
     getPlayerParticipationsInput?: GetPlayerParticipationsInput;
     getUnrevealedCountInput?: GetUnrevealedCountInput;
+    // New optimized queries
+    getRaffleParticipantsInput?: GetRaffleParticipantsInput;
+    checkUserParticipationRaffleId?: string;
+    checkUserParticipationPlayerId?: string;
 }
 
 export function useRaffles(input?: useRafflesInput) {
@@ -69,6 +76,26 @@ export function useRaffles(input?: useRafflesInput) {
         error: unrevealedCountError,
         refetch: refetchUnrevealedCount,
     } = useGetUnrevealedCountQuery(input?.getUnrevealedCountInput);
+
+    // New optimized queries
+    const {
+        data: raffleParticipantsData,
+        isLoading: isRaffleParticipantsLoading,
+        isError: isRaffleParticipantsError,
+        error: raffleParticipantsError,
+        refetch: refetchRaffleParticipants,
+    } = useGetRaffleParticipantsQuery(input?.getRaffleParticipantsInput);
+
+    const {
+        data: userParticipationData,
+        isLoading: isUserParticipationLoading,
+        isError: isUserParticipationError,
+        error: userParticipationError,
+        refetch: refetchUserParticipation,
+    } = useCheckUserParticipationQuery(
+        input?.checkUserParticipationRaffleId,
+        input?.checkUserParticipationPlayerId
+    );
 
     // Raffle Mutations
     const {
@@ -161,6 +188,19 @@ export function useRaffles(input?: useRafflesInput) {
         isUnrevealedCountError,
         unrevealedCountError,
         refetchUnrevealedCount,
+
+        // New optimized data
+        raffleParticipantsData,
+        isRaffleParticipantsLoading,
+        isRaffleParticipantsError,
+        raffleParticipantsError,
+        refetchRaffleParticipants,
+
+        userParticipationData,
+        isUserParticipationLoading,
+        isUserParticipationError,
+        userParticipationError,
+        refetchUserParticipation,
 
         // Raffle management actions
         createRaffle,
