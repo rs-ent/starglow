@@ -10,10 +10,12 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { cn } from "@/lib/utils/tailwind";
 
 import PartialLoading from "./PartialLoading";
+import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 
 export interface ImageViewerProps {
     img: string;
     title?: string;
+    externalUrl?: string;
     showTitle?: boolean;
     className?: string;
     shadowColor?: string;
@@ -27,6 +29,7 @@ interface ImageDimensions {
 export default function ImageViewer({
     img,
     title,
+    externalUrl,
     showTitle,
     className,
     shadowColor = "rgba(132, 78, 236, 0.2)",
@@ -68,7 +71,7 @@ export default function ImageViewer({
             <div className="w-full">
                 <div
                     className={cn(
-                        "rounded-3xl aspect-video",
+                        "relative rounded-3xl aspect-video",
                         "overflow-hidden"
                     )}
                 >
@@ -118,6 +121,58 @@ export default function ImageViewer({
                             </TransformComponent>
                         </TransformWrapper>
                     </div>
+                    {externalUrl && (
+                        <div
+                            className={cn(
+                                "absolute bottom-0 left-0 right-0 p-4",
+                                "bg-gradient-to-t from-black/30 to-transparent",
+                                "flex items-center justify-end"
+                            )}
+                        >
+                            <button
+                                className={cn(
+                                    "group relative overflow-hidden",
+                                    "text-white text-sm font-medium",
+                                    "bg-white/10 backdrop-blur-md",
+                                    "border border-white/20",
+                                    "rounded-[8px]",
+                                    "px-2 py-2 md:px-4 md:py-4",
+                                    "shadow-lg shadow-black/20",
+                                    "hover:bg-white/20 hover:border-white/30",
+                                    "hover:shadow-xl hover:shadow-black/30",
+                                    "transition-all duration-300 ease-out",
+                                    "hover:scale-105 active:scale-95",
+                                    getResponsiveClass(10).textClass
+                                )}
+                                onClick={() => {
+                                    window.open(externalUrl, "_blank");
+                                }}
+                                aria-label={`external link: ${externalUrl}`}
+                                title="external link"
+                            >
+                                <div className="flex items-center justify-center gap-2">
+                                    <svg
+                                        className={cn(
+                                            "w-4 h-4 transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1",
+                                            getResponsiveClass(25).frameClass
+                                        )}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                        />
+                                    </svg>
+                                </div>
+                                {/* 글래스 리플렉션 효과 */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
             {showTitle && title && (
