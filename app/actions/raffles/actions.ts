@@ -1063,7 +1063,7 @@ export async function participateInRaffle(
             raffle.endDate,
             raffle.drawDate
         );
-        if (status !== "ACTIVE" && !player.tester) {
+        if (status !== "ACTIVE") {
             return {
                 success: false,
                 error: `Raffle is ${status.toLowerCase()}`,

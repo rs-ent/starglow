@@ -229,7 +229,6 @@ export async function setUserWithWallet(
             let user = existingWallet?.user || null;
 
             if (!user) {
-                console.log("creating user");
                 user = await tx.user.create({
                     data: {
                         name: input.walletAddress,
@@ -238,7 +237,6 @@ export async function setUserWithWallet(
                     },
                 });
             } else {
-                console.log("updating user");
                 user = await tx.user.update({
                     where: { id: user.id },
                     data: {

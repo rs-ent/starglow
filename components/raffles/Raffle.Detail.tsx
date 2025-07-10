@@ -75,8 +75,6 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
         seconds: number;
     }>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
-    const { data: session } = useSession();
-
     // 반응형 스크래치 카드 크기 상태
     const [scratchCardSize, setScratchCardSize] = useState(() => {
         if (typeof window === "undefined") {
@@ -245,9 +243,6 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
     if (isRaffleLoading) {
         return <RaffleDetailSkeleton />;
     }
-
-    console.log("Raffle Error", raffleError);
-    console.log("Raffle", raffle);
 
     if (raffleError || !raffle) {
         return <RaffleDetailError />;
@@ -1056,8 +1051,6 @@ const ParticipationCard = memo(function ParticipationCard({
         : false;
 
     const canParticipate = useMemo(() => {
-        if (session?.player?.tester) return true;
-
         return (
             isLive &&
             (!hasParticipated ||
@@ -1071,7 +1064,6 @@ const ParticipationCard = memo(function ParticipationCard({
         hasReachedMaxEntries,
         playerAsset?.data?.balance,
         raffle.entryFeeAmount,
-        session?.player?.tester,
     ]);
 
     // 참여 핸들러
