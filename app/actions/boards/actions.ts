@@ -431,6 +431,7 @@ export interface GetBoardPostsInput {
     search?: string;
     isPinned?: boolean;
     isHidden?: boolean;
+    sortBy?: "newest" | "oldest" | "popularity";
 }
 
 export interface GetBoardPostsOutput extends PaginationOutput {
@@ -461,6 +462,27 @@ export async function getBoardPosts(
             ];
         }
 
+        // 정렬 기준 설정
+        const getOrderBy = (sortBy?: string) => {
+            const baseOrder = [{ isPinned: "desc" as const }];
+
+            switch (sortBy) {
+                case "popularity":
+                    return [
+                        ...baseOrder,
+                        { recommendCount: "desc" as const },
+                        { likeCount: "desc" as const },
+                        { commentCount: "desc" as const },
+                        { createdAt: "desc" as const },
+                    ];
+                case "oldest":
+                    return [...baseOrder, { createdAt: "asc" as const }];
+                case "newest":
+                default:
+                    return [...baseOrder, { createdAt: "desc" as const }];
+            }
+        };
+
         const [posts, totalItems] = await Promise.all([
             prisma.boardPost.findMany({
                 where,
@@ -486,11 +508,7 @@ export async function getBoardPosts(
                 },
                 skip: (currentPage - 1) * itemsPerPage,
                 take: itemsPerPage,
-                orderBy: [
-                    { isPinned: "desc" },
-                    { recommendCount: "desc" },
-                    { createdAt: "desc" },
-                ],
+                orderBy: getOrderBy(input?.sortBy),
             }),
             prisma.boardPost.count({ where }),
         ]);

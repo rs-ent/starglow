@@ -144,44 +144,17 @@ export default React.memo(function BoardContent({
         activeBoard
             ? {
                   boardId: activeBoard.id,
+                  sortBy: sortBy,
               }
             : undefined
     );
 
-    // 모든 게시글을 하나의 배열로 합치기
+    // 모든 게시글을 하나의 배열로 합치기 (서버에서 이미 정렬된 상태)
     const allPosts = useMemo(() => {
         const data = infiniteData as any;
         if (!data?.pages) return [];
         return data.pages.flatMap((page: any) => page.posts);
     }, [infiniteData]);
-
-    // 정렬된 게시글
-    const sortedPosts = useMemo(() => {
-        switch (sortBy) {
-            case "popularity":
-                return [...allPosts].sort((a, b) => {
-                    const scoreA =
-                        a.likeCount + a.recommendCount + a.commentCount;
-                    const scoreB =
-                        b.likeCount + b.recommendCount + b.commentCount;
-                    return scoreB - scoreA;
-                });
-            case "newest":
-                return [...allPosts].sort(
-                    (a, b) =>
-                        new Date(b.createdAt).getTime() -
-                        new Date(a.createdAt).getTime()
-                );
-            case "oldest":
-                return [...allPosts].sort(
-                    (a, b) =>
-                        new Date(a.createdAt).getTime() -
-                        new Date(b.createdAt).getTime()
-                );
-            default:
-                return allPosts;
-        }
-    }, [allPosts, sortBy]);
 
     // Intersection Observer로 무한 스크롤 구현
     useEffect(() => {
@@ -319,7 +292,7 @@ export default React.memo(function BoardContent({
             if (!player) return;
 
             try {
-                const currentPost = sortedPosts.find(
+                const currentPost = allPosts.find(
                     (p: BoardPostWithDetails) => p.id === postId
                 );
                 if (!currentPost) return;
@@ -347,12 +320,7 @@ export default React.memo(function BoardContent({
                 console.error("Failed to react:", error);
             }
         },
-        [
-            player,
-            createBoardReactionAsync,
-            deleteBoardReactionAsync,
-            sortedPosts,
-        ]
+        [player, createBoardReactionAsync, deleteBoardReactionAsync, allPosts]
     );
 
     const handleDeletePost = useCallback(
@@ -884,7 +852,7 @@ export default React.memo(function BoardContent({
                     <div className={cn("flex flex-col")}>
                         {/* Posts Feed */}
                         <div className="space-y-3 md:space-y-4">
-                            {sortedPosts.length === 0 ? (
+                            {allPosts.length === 0 ? (
                                 <motion.div
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
@@ -908,7 +876,7 @@ export default React.memo(function BoardContent({
                                 </motion.div>
                             ) : (
                                 <>
-                                    {sortedPosts.map(
+                                    {allPosts.map(
                                         (
                                             post: BoardPostWithDetails,
                                             index: number
