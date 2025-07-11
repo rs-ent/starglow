@@ -20,7 +20,7 @@ interface Partner {
 const partners: Partner[] = [
     {
         name: "Berachain",
-        image: "/logo/partners/berachain2.png",
+        image: "/logo/partners/berachain3.png",
         title: "Berachain",
         purpose: "Mainnet Partner",
         description:
