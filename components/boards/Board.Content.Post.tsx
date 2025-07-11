@@ -135,15 +135,20 @@ export default React.memo(function BoardContentPost({
                             <div className="flex items-center gap-1 md:gap-2 min-w-0 flex-1">
                                 <Image
                                     src={
-                                        playerProfile?.image ||
-                                        post.author?.image ||
-                                        "/default-avatar.jpg"
+                                        post.isSandbox
+                                            ? post.sandboxImgUrl ||
+                                              "/default-avatar.jpg"
+                                            : playerProfile?.image ||
+                                              post.author?.image ||
+                                              "/default-avatar.jpg"
                                     }
                                     alt={
-                                        playerProfile?.name ||
-                                        post.author?.nickname ||
-                                        post.author?.name ||
-                                        ""
+                                        post.isSandbox
+                                            ? post.sandboxNickname || "User"
+                                            : playerProfile?.name ||
+                                              post.author?.nickname ||
+                                              post.author?.name ||
+                                              ""
                                     }
                                     width={32}
                                     height={32}
@@ -151,18 +156,25 @@ export default React.memo(function BoardContentPost({
                                     unoptimized={true}
                                     className={cn(
                                         "rounded-full flex-shrink-0 w-8 h-8 md:w-10 md:h-10 object-cover",
-                                        isPlayerProfileLoading &&
+                                        !post.isSandbox &&
+                                            isPlayerProfileLoading &&
                                             "animate-pulse blur-sm",
                                         getResponsiveClass(35).frameClass
                                     )}
                                     style={{
-                                        boxShadow:
-                                            post.author?.artistId === artist.id
-                                                ? `0 0 16px 0 rgba(255, 255, 255, 0.3)`
-                                                : "none",
+                                        boxShadow: (
+                                            post.isSandbox
+                                                ? post.isSandboxBoardArtist
+                                                : post.author?.artistId ===
+                                                  artist.id
+                                        )
+                                            ? `0 0 16px 0 rgba(255, 255, 255, 0.3)`
+                                            : "none",
                                     }}
                                 />
-                                {post.author?.artistId === artist.id && (
+                                {(post.isSandbox
+                                    ? post.isSandboxBoardArtist
+                                    : post.author?.artistId === artist.id) && (
                                     <span
                                         className={cn(
                                             "flex flex-row items-center gap-1 rounded-full px-2 py-0.5 flex-shrink-0 font-medium",
@@ -193,24 +205,29 @@ export default React.memo(function BoardContentPost({
                                                     .frameClass
                                             )}
                                         />
-                                        {post.author?.artistId === artist.id
-                                            ? artist.name
-                                            : "Artist"}
+                                        {artist.name}
                                     </span>
                                 )}
                                 <span
                                     className={cn(
                                         "truncate",
-                                        post.author?.artistId === artist.id
+                                        (
+                                            post.isSandbox
+                                                ? post.isSandboxBoardArtist
+                                                : post.author?.artistId ===
+                                                  artist.id
+                                        )
                                             ? "rainbow-text font-bold"
                                             : "text-white/90 ",
                                         getResponsiveClass(15).textClass
                                     )}
                                 >
-                                    {playerProfile?.name ||
-                                        post.author?.nickname ||
-                                        post.author?.name ||
-                                        "Fan"}
+                                    {post.isSandbox
+                                        ? post.sandboxNickname || "User"
+                                        : playerProfile?.name ||
+                                          post.author?.nickname ||
+                                          post.author?.name ||
+                                          "Fan"}
                                 </span>
                                 <span
                                     className={cn(
@@ -222,73 +239,76 @@ export default React.memo(function BoardContentPost({
                                 </span>
                             </div>
 
-                            {/* 작성자만 삭제 가능 */}
-                            {player && post.author?.id === player.id && (
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="p-1 text-white/60 hover:text-white/80 hover:bg-white/10 flex-shrink-0"
+                            {/* 작성자만 삭제 가능 (샌드박스 콘텐츠는 일반 사용자가 삭제 불가) */}
+                            {player &&
+                                !post.isSandbox &&
+                                post.author?.id === player.id && (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="p-1 text-white/60 hover:text-white/80 hover:bg-white/10 flex-shrink-0"
+                                            >
+                                                <MoreHorizontal className="w-4 h-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent
+                                            align="end"
+                                            className="bg-gray-900 border-gray-700"
                                         >
-                                            <MoreHorizontal className="w-4 h-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent
-                                        align="end"
-                                        className="bg-gray-900 border-gray-700"
-                                    >
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <DropdownMenuItem
-                                                    onSelect={(e) =>
-                                                        e.preventDefault()
-                                                    }
-                                                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20 cursor-pointer"
-                                                >
-                                                    <Trash2 className="w-4 h-4 mr-2" />
-                                                    Delete Post
-                                                </DropdownMenuItem>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent className="bg-gray-900 border-gray-700">
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle className="text-white">
-                                                        Delete Post
-                                                    </AlertDialogTitle>
-                                                    <AlertDialogDescription className="text-white/70">
-                                                        Are you sure you want to
-                                                        delete this post? This
-                                                        action cannot be undone.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700">
-                                                        Cancel
-                                                    </AlertDialogCancel>
-                                                    <AlertDialogAction
-                                                        onClick={() =>
-                                                            onDeletePost(
-                                                                post.id
-                                                            )
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <DropdownMenuItem
+                                                        onSelect={(e) =>
+                                                            e.preventDefault()
                                                         }
-                                                        disabled={
-                                                            deletingPostId ===
-                                                                post.id ||
-                                                            isDeleteBoardPostPending
-                                                        }
-                                                        className="bg-red-600 hover:bg-red-700 text-white"
+                                                        className="text-red-400 hover:text-red-300 hover:bg-red-900/20 cursor-pointer"
                                                     >
-                                                        {deletingPostId ===
-                                                        post.id
-                                                            ? "Deleting..."
-                                                            : "Delete"}
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            )}
+                                                        <Trash2 className="w-4 h-4 mr-2" />
+                                                        Delete Post
+                                                    </DropdownMenuItem>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent className="bg-gray-900 border-gray-700">
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle className="text-white">
+                                                            Delete Post
+                                                        </AlertDialogTitle>
+                                                        <AlertDialogDescription className="text-white/70">
+                                                            Are you sure you
+                                                            want to delete this
+                                                            post? This action
+                                                            cannot be undone.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700">
+                                                            Cancel
+                                                        </AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            onClick={() =>
+                                                                onDeletePost(
+                                                                    post.id
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                deletingPostId ===
+                                                                    post.id ||
+                                                                isDeleteBoardPostPending
+                                                            }
+                                                            className="bg-red-600 hover:bg-red-700 text-white"
+                                                        >
+                                                            {deletingPostId ===
+                                                            post.id
+                                                                ? "Deleting..."
+                                                                : "Delete"}
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
                         </div>
 
                         {/* 제목과 확장 버튼 */}

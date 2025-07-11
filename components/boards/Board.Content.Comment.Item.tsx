@@ -255,14 +255,19 @@ export default React.memo(function BoardContentCommentItem({
                             >
                                 <Image
                                     src={
-                                        commentAuthorProfile?.image ||
-                                        comment.author?.image ||
-                                        "/default-avatar.jpg"
+                                        comment.isSandbox
+                                            ? comment.sandboxImgUrl ||
+                                              "/default-avatar.jpg"
+                                            : commentAuthorProfile?.image ||
+                                              comment.author?.image ||
+                                              "/default-avatar.jpg"
                                     }
                                     alt={
-                                        commentAuthorProfile?.name ||
-                                        comment.author?.name ||
-                                        "User"
+                                        comment.isSandbox
+                                            ? comment.sandboxNickname || "User"
+                                            : commentAuthorProfile?.name ||
+                                              comment.author?.name ||
+                                              "User"
                                     }
                                     width={32}
                                     height={32}
@@ -270,14 +275,18 @@ export default React.memo(function BoardContentCommentItem({
                                     unoptimized={true}
                                     className={cn(
                                         "rounded-full flex-shrink-0",
-                                        isCommentAuthorProfileLoading &&
+                                        !comment.isSandbox &&
+                                            isCommentAuthorProfileLoading &&
                                             "animate-pulse blur-sm",
                                         level > 0
                                             ? getResponsiveClass(20).frameClass
                                             : getResponsiveClass(30).frameClass
                                     )}
                                 />
-                                {comment.author?.artistId === artist.id && (
+                                {(comment.isSandbox
+                                    ? comment.isSandboxBoardArtist
+                                    : comment.author?.artistId ===
+                                      artist.id) && (
                                     <span
                                         className={cn(
                                             "flex flex-row items-center gap-1 rounded-full px-2 py-0.5 flex-shrink-0 font-medium",
@@ -315,24 +324,26 @@ export default React.memo(function BoardContentCommentItem({
                                                           .frameClass
                                             )}
                                         />
-                                        {comment.author?.artistId === artist.id
-                                            ? artist.name
-                                            : "Artist"}
+                                        {artist.name}
                                     </span>
                                 )}
                                 <span
                                     className={cn(
                                         "font-medium text-white/50 truncate min-w-0 flex-shrink",
-                                        comment.author?.artistId ===
-                                            artist.id && "rainbow-text",
+                                        (comment.isSandbox
+                                            ? comment.isSandboxBoardArtist
+                                            : comment.author?.artistId ===
+                                              artist.id) && "rainbow-text",
                                         level > 0
                                             ? getResponsiveClass(10).textClass
                                             : getResponsiveClass(15).textClass
                                     )}
                                 >
-                                    {commentAuthorProfile?.name ||
-                                        comment.author?.name ||
-                                        "Fan"}
+                                    {comment.isSandbox
+                                        ? comment.sandboxNickname || "User"
+                                        : commentAuthorProfile?.name ||
+                                          comment.author?.name ||
+                                          "Fan"}
                                 </span>
                                 <span
                                     className={cn(
@@ -344,91 +355,96 @@ export default React.memo(function BoardContentCommentItem({
                                 </span>
                             </div>
 
-                            {/* 작성자만 삭제 가능 */}
-                            {player && comment.author?.id === player.id && (
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <MoreHorizontal
-                                            className={cn(
-                                                "ml-2",
-                                                getResponsiveClass(20)
-                                                    .frameClass
-                                            )}
-                                        />
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent
-                                        align="end"
-                                        className="bg-gray-900 border-gray-700"
-                                    >
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <DropdownMenuItem
-                                                    onSelect={(e) =>
-                                                        e.preventDefault()
-                                                    }
-                                                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20 cursor-pointer"
-                                                >
-                                                    <Trash2 className="w-4 h-4 mr-2" />
-                                                    Delete Comment
-                                                </DropdownMenuItem>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent className="bg-gray-900 border-gray-700">
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle className="text-white">
-                                                        Delete Comment
-                                                    </AlertDialogTitle>
-                                                    <AlertDialogDescription className="text-white/70">
-                                                        Are you sure you want to
-                                                        delete this comment?
-                                                        This action cannot be
-                                                        undone.
-                                                        {comment.replies &&
-                                                            comment.replies
-                                                                .length > 0 && (
-                                                                <span className="block mt-2 text-yellow-400">
-                                                                    ⚠️ This
-                                                                    comment has{" "}
-                                                                    {
-                                                                        comment
-                                                                            .replies
-                                                                            .length
-                                                                    }{" "}
-                                                                    {comment
-                                                                        .replies
-                                                                        .length ===
-                                                                    1
-                                                                        ? "reply"
-                                                                        : "replies"}{" "}
-                                                                    that will
-                                                                    also be
-                                                                    deleted.
-                                                                </span>
-                                                            )}
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700">
-                                                        Cancel
-                                                    </AlertDialogCancel>
-                                                    <AlertDialogAction
-                                                        onClick={
-                                                            handleDeleteComment
+                            {/* 작성자만 삭제 가능 (샌드박스 콘텐츠는 일반 사용자가 삭제 불가) */}
+                            {player &&
+                                !comment.isSandbox &&
+                                comment.author?.id === player.id && (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <MoreHorizontal
+                                                className={cn(
+                                                    "ml-2",
+                                                    getResponsiveClass(20)
+                                                        .frameClass
+                                                )}
+                                            />
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent
+                                            align="end"
+                                            className="bg-gray-900 border-gray-700"
+                                        >
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <DropdownMenuItem
+                                                        onSelect={(e) =>
+                                                            e.preventDefault()
                                                         }
-                                                        disabled={
-                                                            isDeletingComment
-                                                        }
-                                                        className="bg-red-600 hover:bg-red-700 text-white"
+                                                        className="text-red-400 hover:text-red-300 hover:bg-red-900/20 cursor-pointer"
                                                     >
-                                                        {isDeletingComment
-                                                            ? "Deleting..."
-                                                            : "Delete"}
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            )}
+                                                        <Trash2 className="w-4 h-4 mr-2" />
+                                                        Delete Comment
+                                                    </DropdownMenuItem>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent className="bg-gray-900 border-gray-700">
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle className="text-white">
+                                                            Delete Comment
+                                                        </AlertDialogTitle>
+                                                        <AlertDialogDescription className="text-white/70">
+                                                            Are you sure you
+                                                            want to delete this
+                                                            comment? This action
+                                                            cannot be undone.
+                                                            {comment.replies &&
+                                                                comment.replies
+                                                                    .length >
+                                                                    0 && (
+                                                                    <span className="block mt-2 text-yellow-400">
+                                                                        ⚠️ This
+                                                                        comment
+                                                                        has{" "}
+                                                                        {
+                                                                            comment
+                                                                                .replies
+                                                                                .length
+                                                                        }{" "}
+                                                                        {comment
+                                                                            .replies
+                                                                            .length ===
+                                                                        1
+                                                                            ? "reply"
+                                                                            : "replies"}{" "}
+                                                                        that
+                                                                        will
+                                                                        also be
+                                                                        deleted.
+                                                                    </span>
+                                                                )}
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700">
+                                                            Cancel
+                                                        </AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            onClick={
+                                                                handleDeleteComment
+                                                            }
+                                                            disabled={
+                                                                isDeletingComment
+                                                            }
+                                                            className="bg-red-600 hover:bg-red-700 text-white"
+                                                        >
+                                                            {isDeletingComment
+                                                                ? "Deleting..."
+                                                                : "Delete"}
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
                         </div>
                         <p
                             className={cn(
