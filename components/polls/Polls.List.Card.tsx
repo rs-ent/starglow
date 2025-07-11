@@ -194,6 +194,14 @@ function PollsListCard({
             : [];
     }, [pollResult]);
 
+    // 베팅 모드에서 사용할 총 실제 득표수 계산
+    const totalActualVotes = useMemo(() => {
+        if (!poll.bettingMode || !pollResult?.results) return 0;
+        return pollResult.results.reduce((total, result) => {
+            return total + (result.actualVoteCount || 0);
+        }, 0);
+    }, [poll.bettingMode, pollResult?.results]);
+
     // 토큰 게이팅 정보 메모이제이션
     const tokenGatingInfo = useMemo(() => {
         const permission = tokenGating?.hasToken;
@@ -678,6 +686,8 @@ function PollsListCard({
                                             fillContainer={true}
                                             fgColorFrom={fgColorFrom}
                                             fgColorTo={fgColorTo}
+                                            isBettingMode={poll.bettingMode}
+                                            totalActualVotes={totalActualVotes}
                                         />
                                     </div>
                                 </div>
@@ -806,6 +816,8 @@ function PollsListCard({
                                 totalItems={sortedResults.length}
                                 fgColorFrom={fgColorFrom}
                                 fgColorTo={fgColorTo}
+                                isBettingMode={poll.bettingMode}
+                                totalActualVotes={totalActualVotes}
                             />
                         ))}
                         {pollDateInfo.isBlurred && (

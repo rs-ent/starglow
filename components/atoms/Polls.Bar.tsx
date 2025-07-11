@@ -19,6 +19,8 @@ export default function PollBar({
     fillContainer = false,
     fgColorFrom = "rgba(112,74,218,0.1)",
     fgColorTo = "rgba(152,124,258,0.7)",
+    isBettingMode = false,
+    totalActualVotes = 0,
 }: {
     result: PollOptionResult;
     isBlurred: boolean;
@@ -29,10 +31,20 @@ export default function PollBar({
     fillContainer?: boolean;
     fgColorFrom?: string;
     fgColorTo?: string;
+    isBettingMode?: boolean;
+    totalActualVotes?: number;
 }) {
+    // 베팅 모드일 때는 실제 득표수 기반으로 비율 계산
+    const calculateActualVoteRate = () => {
+        if (!isBettingMode || !result.actualVoteCount || totalActualVotes === 0) {
+            return result.voteRate;
+        }
+        return (result.actualVoteCount / totalActualVotes) * 100;
+    };
+
+    const displayValue = isBlurred ? 99 : calculateActualVoteRate();
+    const displayText = isBlurred ? "??%" : `${Math.round(displayValue)}%`;
     const opacity = isBlurred ? 1 : 1 - (0.6 * rank) / totalItems;
-    const displayValue = isBlurred ? 99 : result.voteRate;
-    const displayText = isBlurred ? "??%" : `${Math.round(result.voteRate)}%`;
 
     return (
         <div
@@ -54,9 +66,16 @@ export default function PollBar({
                     </div>
                 )}
                 {showOptionName && (
-                    <h1 className="text-sm text-[rgba(255,255,255,0.85)]">
-                        {result.name}
-                    </h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-sm text-[rgba(255,255,255,0.85)]">
+                            {result.name}
+                        </h1>
+                        {isBettingMode && (
+                            <span className="text-xs text-[rgba(255,255,255,0.6)]">
+                                (실제 득표: {result.actualVoteCount || 0})
+                            </span>
+                        )}
+                    </div>
                 )}
             </div>
             <div
