@@ -20,11 +20,11 @@ interface Partner {
 const partners: Partner[] = [
     {
         name: "Berachain",
-        image: "/logo/partners/berachain.svg",
+        image: "/logo/partners/berachain.png",
         title: "Berachain",
         purpose: "Mainnet Partner",
         description:
-            "Layer-1 blockchain pioneering Proof-of-Liquidity consensus. Backed by $140M+ from top global funds, Berachain fuses lightning-fast Ethereum-compatible tech with a ‘capital-always-earning’ rewards model and a vibrant bear-themed community—making it one of 2025’s most talked-about growth networks.",
+            "Berachain flips staking into yield with Proof-of-Liquidity, keeping capital always earning. Backed by $140 M+ blue-chip funding and a viral Smoking-Bear community, it’s 2025’s most talked-about growth chain.",
     },
     {
         name: "nh",
