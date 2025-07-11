@@ -20,11 +20,11 @@ interface Partner {
 const partners: Partner[] = [
     {
         name: "Berachain",
-        image: "/logo/partners/berachain.png",
+        image: "/logo/partners/berachain.svg",
         title: "Berachain",
-        purpose: "Financial Partnership",
+        purpose: "Mainnet Partner",
         description:
-            "Berachain is a global Web3.0 platform that provides a comprehensive suite of services for the Web3.0 ecosystem",
+            "Layer-1 blockchain pioneering Proof-of-Liquidity consensus. Backed by $140M+ from top global funds, Berachain fuses lightning-fast Ethereum-compatible tech with a ‘capital-always-earning’ rewards model and a vibrant bear-themed community—making it one of 2025’s most talked-about growth networks.",
     },
     {
         name: "nh",
