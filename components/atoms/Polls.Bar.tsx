@@ -36,7 +36,11 @@ export default function PollBar({
 }) {
     // 베팅 모드일 때는 실제 득표수 기반으로 비율 계산
     const calculateActualVoteRate = () => {
-        if (!isBettingMode || !result.actualVoteCount || totalActualVotes === 0) {
+        if (
+            !isBettingMode ||
+            !result.actualVoteCount ||
+            totalActualVotes === 0
+        ) {
             return result.voteRate;
         }
         return (result.actualVoteCount / totalActualVotes) * 100;
@@ -70,11 +74,6 @@ export default function PollBar({
                         <h1 className="text-sm text-[rgba(255,255,255,0.85)]">
                             {result.name}
                         </h1>
-                        {isBettingMode && (
-                            <span className="text-xs text-[rgba(255,255,255,0.6)]">
-                                (실제 득표: {result.actualVoteCount || 0})
-                            </span>
-                        )}
                     </div>
                 )}
             </div>
