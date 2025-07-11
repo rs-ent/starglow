@@ -53,6 +53,10 @@ interface AdminBoardsSandboxCommentItemProps {
     isSubmitting: boolean;
     isDeletingComment: boolean;
     level?: number;
+    // Sandbox 프로필 설정 추가
+    sandboxNickname?: string;
+    sandboxImgUrl?: string;
+    isSandboxBoardArtist?: boolean;
 }
 
 export default function AdminBoardsSandboxCommentItem({
@@ -65,6 +69,9 @@ export default function AdminBoardsSandboxCommentItem({
     isSubmitting,
     isDeletingComment,
     level = 0,
+    sandboxNickname = "Admin User",
+    sandboxImgUrl = "/default-avatar.jpg",
+    isSandboxBoardArtist = false,
 }: AdminBoardsSandboxCommentItemProps) {
     const toast = useToast();
     const [newReply, setNewReply] = useState("");
@@ -110,15 +117,6 @@ export default function AdminBoardsSandboxCommentItem({
         },
     });
 
-    const {
-        playerProfile: currentPlayerProfile,
-        isPlayerProfileLoading: isCurrentPlayerProfileLoading,
-    } = usePlayerGet({
-        getPlayerProfileInput: {
-            playerId: "sandbox",
-        },
-    });
-
     const handleCreateReply = useCallback(async () => {
         if (!newReply.trim()) return;
 
@@ -126,7 +124,7 @@ export default function AdminBoardsSandboxCommentItem({
             const result = await createBoardCommentAsync({
                 postId: comment.postId,
                 authorId: "sandbox",
-                authorType: "PLAYER",
+                authorType: "ADMIN",
                 content: newReply.trim(),
                 parentId: comment.id,
                 files: replyFiles.map((f) => ({
@@ -137,6 +135,11 @@ export default function AdminBoardsSandboxCommentItem({
                     height: f.height,
                     sizeBytes: f.sizeBytes,
                 })),
+                // Sandbox 모드 필드
+                isSandbox: true,
+                sandboxNickname: sandboxNickname,
+                sandboxImgUrl: sandboxImgUrl,
+                isSandboxBoardArtist: isSandboxBoardArtist,
             });
 
             if (result?.success) {
@@ -161,6 +164,9 @@ export default function AdminBoardsSandboxCommentItem({
         comment.id,
         onCancelReply,
         toast,
+        sandboxNickname,
+        sandboxImgUrl,
+        isSandboxBoardArtist,
     ]);
 
     // 대댓글 파일 업로드 핸들러
@@ -217,80 +223,104 @@ export default function AdminBoardsSandboxCommentItem({
         <>
             <div
                 className={cn(
-                    "border rounded-lg p-3 bg-white",
-                    level === 0 && "border-l-4 border-l-blue-200",
-                    level === 1 && "ml-6 border-l-4 border-l-gray-200",
-                    level === 2 && "ml-12 border-l-2 border-l-gray-100",
-                    level === 3 && "ml-18 border-l border-l-gray-100"
+                    "bg-slate-800/50 backdrop-blur-xl rounded-xl border border-slate-700/50 p-4 hover:bg-slate-800/70 transition-all duration-200",
+                    level === 0 && "border-l-4 border-l-purple-500/50",
+                    level === 1 && "ml-6 border-l-4 border-l-blue-500/50",
+                    level === 2 && "ml-12 border-l-2 border-l-slate-600/50",
+                    level === 3 && "ml-18 border-l border-l-slate-600/50"
                 )}
             >
-                <div className="space-y-3">
+                <div className="space-y-4">
                     {/* Author info */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <Image
                                 src={
-                                    commentAuthorProfile?.image ||
-                                    comment.author?.image ||
-                                    "/default-avatar.jpg"
+                                    comment.isSandbox
+                                        ? comment.sandboxImgUrl ||
+                                          "/default-avatar.jpg"
+                                        : commentAuthorProfile?.image ||
+                                          comment.author?.image ||
+                                          "/default-avatar.jpg"
                                 }
                                 alt={
-                                    commentAuthorProfile?.name ||
-                                    comment.author?.name ||
-                                    "User"
+                                    comment.isSandbox
+                                        ? comment.sandboxNickname ||
+                                          "Admin User"
+                                        : commentAuthorProfile?.name ||
+                                          comment.author?.name ||
+                                          "User"
                                 }
-                                width={level > 0 ? 28 : 32}
-                                height={level > 0 ? 28 : 32}
+                                width={level > 0 ? 32 : 36}
+                                height={level > 0 ? 32 : 36}
                                 className={cn(
-                                    "rounded-full object-cover flex-shrink-0",
-                                    isCommentAuthorProfileLoading &&
+                                    "rounded-full object-cover flex-shrink-0 border-2 border-slate-600",
+                                    !comment.isSandbox &&
+                                        isCommentAuthorProfileLoading &&
                                         "animate-pulse blur-sm"
                                 )}
                             />
                             <div className="flex items-center gap-2">
-                                <span className="font-medium text-gray-900 text-sm">
-                                    {commentAuthorProfile?.name ||
-                                        comment.author?.name ||
-                                        "Fan"}
+                                <span className="font-medium text-white text-sm">
+                                    {comment.isSandbox
+                                        ? comment.sandboxNickname ||
+                                          "Admin User"
+                                        : commentAuthorProfile?.name ||
+                                          comment.author?.name ||
+                                          "Fan"}
                                 </span>
-                                {comment.author?.artistId && (
-                                    <span className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5 rounded-full">
+                                {(comment.isSandbox
+                                    ? comment.isSandboxBoardArtist
+                                    : comment.author?.artistId) && (
+                                    <span className="bg-blue-500/20 text-blue-300 text-xs px-2 py-1 rounded-full border border-blue-500/30">
                                         Artist
                                     </span>
                                 )}
-                                <span className="text-xs text-gray-500">
+                                {comment.isSandbox && (
+                                    <span className="bg-purple-500/20 text-purple-300 text-xs px-2 py-1 rounded-full border border-purple-500/30">
+                                        Admin
+                                    </span>
+                                )}
+                                <span className="text-xs text-slate-400">
                                     {formatTimeAgo(comment.createdAt, true)}
                                 </span>
                             </div>
                         </div>
 
                         {/* Delete button for author */}
-                        {comment.author?.id === "sandbox" && (
+                        {comment.isSandbox && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg"
+                                    >
                                         <MoreHorizontal className="w-4 h-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
+                                <DropdownMenuContent
+                                    align="end"
+                                    className="bg-slate-800 border-slate-700"
+                                >
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
                                             <DropdownMenuItem
                                                 onSelect={(e) =>
                                                     e.preventDefault()
                                                 }
-                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                                                className="text-red-400 hover:text-red-300 hover:bg-red-500/20 cursor-pointer"
                                             >
                                                 <Trash2 className="w-4 h-4 mr-2" />
                                                 Delete Comment
                                             </DropdownMenuItem>
                                         </AlertDialogTrigger>
-                                        <AlertDialogContent>
+                                        <AlertDialogContent className="bg-slate-800 border-slate-700">
                                             <AlertDialogHeader>
-                                                <AlertDialogTitle>
+                                                <AlertDialogTitle className="text-white">
                                                     Delete Comment?
                                                 </AlertDialogTitle>
-                                                <AlertDialogDescription>
+                                                <AlertDialogDescription className="text-slate-400">
                                                     This action cannot be
                                                     undone. This will
                                                     permanently delete the
@@ -298,7 +328,7 @@ export default function AdminBoardsSandboxCommentItem({
                                                     {comment.replies &&
                                                         comment.replies.length >
                                                             0 && (
-                                                            <span className="block mt-2 text-yellow-600">
+                                                            <span className="block mt-2 text-yellow-400">
                                                                 ⚠️ This comment
                                                                 has{" "}
                                                                 {
@@ -318,7 +348,7 @@ export default function AdminBoardsSandboxCommentItem({
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogCancel>
+                                                <AlertDialogCancel className="bg-slate-700 text-white hover:bg-slate-600 border-slate-600">
                                                     Cancel
                                                 </AlertDialogCancel>
                                                 <AlertDialogAction
@@ -341,14 +371,14 @@ export default function AdminBoardsSandboxCommentItem({
                     </div>
 
                     {/* Comment content */}
-                    <p className="text-gray-700 text-sm leading-relaxed">
+                    <p className="text-slate-300 text-sm leading-relaxed">
                         {comment.content}
                     </p>
 
                     {/* Attached files */}
                     {comment.files && comment.files.length > 0 && (
                         <div
-                            className="grid gap-2"
+                            className="grid gap-3"
                             style={{
                                 gridTemplateColumns: `repeat(${Math.min(
                                     comment.files.length,
@@ -359,7 +389,7 @@ export default function AdminBoardsSandboxCommentItem({
                             {(comment.files as any[]).map((file, index) => (
                                 <div
                                     key={file.id || index}
-                                    className="relative rounded-lg overflow-hidden bg-gray-100 border"
+                                    className="relative rounded-xl overflow-hidden bg-slate-700/50 border border-slate-600/50"
                                 >
                                     {file.mimeType?.startsWith("image/") ? (
                                         <div className="aspect-video relative">
@@ -384,7 +414,7 @@ export default function AdminBoardsSandboxCommentItem({
                                         </div>
                                     ) : (
                                         <div className="aspect-square relative flex items-center justify-center">
-                                            <ImageIcon className="w-6 h-6 text-gray-400" />
+                                            <ImageIcon className="w-6 h-6 text-slate-400" />
                                         </div>
                                     )}
                                 </div>
@@ -393,10 +423,10 @@ export default function AdminBoardsSandboxCommentItem({
                     )}
 
                     {/* Actions */}
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-4 text-sm text-slate-400">
                         <button
                             onClick={handleCommentReaction}
-                            className="flex items-center gap-1 hover:text-red-600 transition-colors"
+                            className="flex items-center gap-1 hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-slate-700/50"
                         >
                             <Heart
                                 className={cn(
@@ -407,7 +437,7 @@ export default function AdminBoardsSandboxCommentItem({
                                             reaction.type === "LIKE"
                                     )
                                         ? "text-red-500 fill-red-500"
-                                        : "text-gray-400"
+                                        : "text-slate-400"
                                 )}
                             />
                             <span>{comment.likeCount}</span>
@@ -416,7 +446,7 @@ export default function AdminBoardsSandboxCommentItem({
                         {level < 1 && (
                             <button
                                 onClick={() => onReply(comment.id)}
-                                className="hover:text-blue-600 transition-colors"
+                                className="hover:text-blue-400 transition-colors p-2 rounded-lg hover:bg-slate-700/50"
                             >
                                 Reply
                             </button>
@@ -425,7 +455,7 @@ export default function AdminBoardsSandboxCommentItem({
                         {comment.replies && comment.replies.length > 0 && (
                             <button
                                 onClick={() => setShowReplies(!showReplies)}
-                                className="flex items-center gap-1 hover:text-gray-800 transition-colors"
+                                className="flex items-center gap-1 hover:text-slate-200 transition-colors p-2 rounded-lg hover:bg-slate-700/50"
                             >
                                 {showReplies ? (
                                     <ChevronUp className="w-4 h-4" />
@@ -444,21 +474,14 @@ export default function AdminBoardsSandboxCommentItem({
 
                     {/* Reply form */}
                     {replyingTo === comment.id && (
-                        <div className="border-t pt-3 space-y-3">
+                        <div className="border-t border-slate-700/50 pt-4 space-y-4">
                             <div className="flex items-start gap-3">
                                 <Image
-                                    src={
-                                        currentPlayerProfile?.image ||
-                                        "/default-avatar.jpg"
-                                    }
-                                    alt={currentPlayerProfile?.name || "User"}
-                                    width={24}
-                                    height={24}
-                                    className={cn(
-                                        "rounded-full object-cover flex-shrink-0",
-                                        isCurrentPlayerProfileLoading &&
-                                            "animate-pulse blur-sm"
-                                    )}
+                                    src={sandboxImgUrl}
+                                    alt={sandboxNickname}
+                                    width={32}
+                                    height={32}
+                                    className="rounded-full object-cover flex-shrink-0 border-2 border-slate-600"
                                 />
                                 <div className="flex-1 space-y-3">
                                     <textarea
@@ -470,12 +493,12 @@ export default function AdminBoardsSandboxCommentItem({
                                         onChange={(e) =>
                                             setNewReply(e.target.value)
                                         }
-                                        className="w-full p-2 border rounded-lg resize-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full p-3 bg-slate-800/50 border border-slate-600 rounded-lg resize-none text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                                         rows={2}
                                     />
 
                                     {/* Reply file upload */}
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
                                         <button
                                             onClick={() =>
                                                 setShowReplyFileUploader(
@@ -483,10 +506,10 @@ export default function AdminBoardsSandboxCommentItem({
                                                 )
                                             }
                                             className={cn(
-                                                "flex items-center gap-1 px-2 py-1 rounded border transition-colors text-xs",
+                                                "flex items-center gap-1 px-3 py-2 rounded-lg border transition-all duration-200 text-xs",
                                                 showReplyFileUploader
-                                                    ? "bg-blue-50 border-blue-200 text-blue-700"
-                                                    : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                                                    ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 border-blue-500/30 text-blue-300"
+                                                    : "bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50"
                                             )}
                                         >
                                             <ImageIcon className="w-3 h-3" />
@@ -494,7 +517,7 @@ export default function AdminBoardsSandboxCommentItem({
                                         </button>
 
                                         {replyFiles.length > 0 && (
-                                            <span className="text-xs text-gray-600">
+                                            <span className="text-xs text-slate-400 bg-slate-800/50 px-2 py-1 rounded">
                                                 {replyFiles.length} file
                                                 {replyFiles.length > 1
                                                     ? "s"
@@ -505,7 +528,7 @@ export default function AdminBoardsSandboxCommentItem({
 
                                     {/* Reply file uploader */}
                                     {showReplyFileUploader && (
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
                                             <FileUploader
                                                 purpose="board-comment"
                                                 bucket="board-comments"
@@ -529,15 +552,15 @@ export default function AdminBoardsSandboxCommentItem({
                                                 }}
                                                 maxSize={500 * 1024 * 1024}
                                                 multiple={true}
-                                                className="border-dashed"
+                                                className="border-dashed border-purple-500/30 bg-slate-800/30 text-slate-300"
                                             />
 
                                             {replyFiles.length > 0 && (
-                                                <div className="grid grid-cols-4 gap-1">
+                                                <div className="grid grid-cols-4 gap-2">
                                                     {replyFiles.map((file) => (
                                                         <div
                                                             key={file.id}
-                                                            className="relative group rounded overflow-hidden bg-gray-100 border aspect-square"
+                                                            className="relative group rounded-lg overflow-hidden bg-slate-800/50 border border-slate-600/50 aspect-square"
                                                         >
                                                             {file.mimeType?.startsWith(
                                                                 "image/"
@@ -552,7 +575,7 @@ export default function AdminBoardsSandboxCommentItem({
                                                                 />
                                                             ) : (
                                                                 <div className="w-full h-full flex items-center justify-center">
-                                                                    <Video className="w-4 h-4 text-gray-400" />
+                                                                    <Video className="w-4 h-4 text-slate-400" />
                                                                 </div>
                                                             )}
 
@@ -562,9 +585,9 @@ export default function AdminBoardsSandboxCommentItem({
                                                                         file.id
                                                                     )
                                                                 }
-                                                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all duration-200"
                                                             >
-                                                                <X className="w-2 h-2" />
+                                                                <X className="w-3 h-3" />
                                                             </button>
                                                         </div>
                                                     ))}
@@ -582,6 +605,7 @@ export default function AdminBoardsSandboxCommentItem({
                                             size="sm"
                                             variant="outline"
                                             disabled={isSubmitting}
+                                            className="bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50 rounded-lg"
                                         >
                                             Cancel
                                         </Button>
@@ -591,6 +615,7 @@ export default function AdminBoardsSandboxCommentItem({
                                             disabled={
                                                 isSubmitting || !newReply.trim()
                                             }
+                                            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-lg"
                                         >
                                             {isSubmitting
                                                 ? "Replying..."
@@ -606,7 +631,7 @@ export default function AdminBoardsSandboxCommentItem({
 
             {/* Replies */}
             {showReplies && comment.replies && comment.replies.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                     {comment.replies.map((reply: any) => (
                         <AdminBoardsSandboxCommentItem
                             key={reply.id}
@@ -619,6 +644,9 @@ export default function AdminBoardsSandboxCommentItem({
                             isSubmitting={isSubmitting}
                             isDeletingComment={isDeletingComment}
                             level={level + 1}
+                            sandboxNickname={sandboxNickname}
+                            sandboxImgUrl={sandboxImgUrl}
+                            isSandboxBoardArtist={isSandboxBoardArtist}
                         />
                     ))}
                 </div>

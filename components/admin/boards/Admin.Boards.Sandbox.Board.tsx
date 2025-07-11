@@ -30,7 +30,6 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
-import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 
 import type { FileData } from "../../atoms/FileUploader";
 import type {
@@ -56,6 +55,11 @@ export default function AdminBoardsSandboxBoard({
     const [newPostTitle, setNewPostTitle] = useState("");
     const [newPostContent, setNewPostContent] = useState("");
     const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
+
+    // Sandbox 프로필 설정 상태
+    const [sandboxNickname, setSandboxNickname] = useState("Admin User");
+    const [sandboxImgUrl, setSandboxImgUrl] = useState("/default-avatar.jpg");
+    const [isSandboxBoardArtist, setIsSandboxBoardArtist] = useState(false);
 
     // 파일 업로드 관련 상태
     const [uploadedFiles, setUploadedFiles] = useState<FileData[]>([]);
@@ -170,7 +174,7 @@ export default function AdminBoardsSandboxBoard({
             await createBoardPostAsync({
                 boardId: board.id,
                 authorId: "sandbox",
-                authorType: "PLAYER",
+                authorType: "ADMIN",
                 title,
                 content,
                 files: files.map((f) => ({
@@ -181,6 +185,11 @@ export default function AdminBoardsSandboxBoard({
                     height: f.height,
                     sizeBytes: f.sizeBytes,
                 })),
+                // Sandbox 모드 필드
+                isSandbox: true,
+                sandboxNickname: sandboxNickname.trim() || "Admin User",
+                sandboxImgUrl: sandboxImgUrl,
+                isSandboxBoardArtist: isSandboxBoardArtist,
             });
 
             toast.success("Post created successfully!");
@@ -202,6 +211,9 @@ export default function AdminBoardsSandboxBoard({
         createBoardPostAsync,
         board.id,
         toast,
+        sandboxNickname,
+        sandboxImgUrl,
+        isSandboxBoardArtist,
     ]);
 
     // 파일 업로드 핸들러
@@ -212,6 +224,13 @@ export default function AdminBoardsSandboxBoard({
     // 파일 제거 핸들러
     const removeFile = useCallback((fileId: string) => {
         setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId));
+    }, []);
+
+    // Sandbox 프로필 이미지 업로드 핸들러
+    const handleSandboxImageSelected = useCallback((files: FileData[]) => {
+        if (files.length > 0) {
+            setSandboxImgUrl(files[0].url);
+        }
     }, []);
 
     const handleReaction = useCallback(
@@ -292,44 +311,57 @@ export default function AdminBoardsSandboxBoard({
 
     if (isInfiniteLoading) {
         return (
-            <Card>
-                <CardContent className="p-8 text-center">
-                    <div className="animate-spin rounded-full border-b-2 border-blue-600 w-8 h-8 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading board content...</p>
-                </CardContent>
-            </Card>
+            <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-12 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent mx-auto mb-4"></div>
+                <p className="text-slate-400">Loading board content...</p>
+            </div>
         );
     }
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <MessageCircle className="w-5 h-5" />
-                        <span>{board.name}</span>
-                        {board.artist && (
-                            <span className="text-sm text-gray-500">
-                                by {board.artist.name}
-                            </span>
-                        )}
+        <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 overflow-hidden">
+            {/* Modern Header */}
+            <div className="bg-gradient-to-r from-slate-800/80 to-slate-700/80 backdrop-blur-xl border-b border-slate-700/50 p-6">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+                            <MessageCircle className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-white">
+                                {board.name}
+                            </h2>
+                            {board.artist && (
+                                <p className="text-slate-400 text-sm">
+                                    by {board.artist.name}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         {/* 정렬 드롭다운 */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600 rounded-xl"
+                                >
                                     <ArrowUpDown className="w-4 h-4 mr-2" />
                                     {getSortLabel(sortBy)}
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent
+                                align="end"
+                                className="bg-slate-800 border-slate-700"
+                            >
                                 <DropdownMenuItem
                                     onClick={() => setSortBy("popularity")}
                                     className={cn(
-                                        "cursor-pointer",
-                                        sortBy === "popularity" && "bg-gray-100"
+                                        "cursor-pointer text-white hover:bg-slate-700",
+                                        sortBy === "popularity" &&
+                                            "bg-slate-700 text-purple-300"
                                     )}
                                 >
                                     🔥 Popular
@@ -337,8 +369,9 @@ export default function AdminBoardsSandboxBoard({
                                 <DropdownMenuItem
                                     onClick={() => setSortBy("newest")}
                                     className={cn(
-                                        "cursor-pointer",
-                                        sortBy === "newest" && "bg-gray-100"
+                                        "cursor-pointer text-white hover:bg-slate-700",
+                                        sortBy === "newest" &&
+                                            "bg-slate-700 text-purple-300"
                                     )}
                                 >
                                     🕒 Latest
@@ -346,8 +379,9 @@ export default function AdminBoardsSandboxBoard({
                                 <DropdownMenuItem
                                     onClick={() => setSortBy("oldest")}
                                     className={cn(
-                                        "cursor-pointer",
-                                        sortBy === "oldest" && "bg-gray-100"
+                                        "cursor-pointer text-white hover:bg-slate-700",
+                                        sortBy === "oldest" &&
+                                            "bg-slate-700 text-purple-300"
                                     )}
                                 >
                                     📅 Oldest
@@ -359,44 +393,126 @@ export default function AdminBoardsSandboxBoard({
                         <Button
                             onClick={() => setShowPostEditor(!showPostEditor)}
                             size="sm"
+                            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
                         >
                             <Plus className="w-4 h-4 mr-2" />
                             New Post
                         </Button>
                     </div>
-                </CardTitle>
-            </CardHeader>
+                </div>
+            </div>
 
-            <CardContent className="space-y-4">
+            <div className="space-y-6 p-6">
                 {/* Post Editor */}
                 {showPostEditor && (
-                    <div className="border rounded-lg p-4 bg-gray-50 space-y-4">
+                    <div className="bg-slate-700/50 backdrop-blur-xl rounded-2xl border border-slate-600/50 p-6 space-y-6">
+                        {/* Sandbox Profile Settings */}
+                        <div className="bg-gradient-to-r from-purple-500/20 to-pink-600/20 backdrop-blur-xl rounded-xl border border-purple-500/30 p-4 space-y-4">
+                            <h4 className="font-medium text-purple-300 flex items-center gap-2">
+                                👤 Sandbox Profile
+                            </h4>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                                        Display Nickname
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Admin User"
+                                        value={sandboxNickname}
+                                        onChange={(e) =>
+                                            setSandboxNickname(e.target.value)
+                                        }
+                                        className="w-full p-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                                        Profile Image
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <Image
+                                            src={sandboxImgUrl}
+                                            alt="Profile preview"
+                                            width={40}
+                                            height={40}
+                                            className="rounded-full object-cover border-2 border-purple-500/50"
+                                        />
+                                        <div className="flex-1">
+                                            <FileUploader
+                                                purpose="sandbox-profile"
+                                                bucket="profiles"
+                                                onFiles={
+                                                    handleSandboxImageSelected
+                                                }
+                                                accept={{
+                                                    "image/*": [
+                                                        ".png",
+                                                        ".jpg",
+                                                        ".jpeg",
+                                                        ".gif",
+                                                        ".webp",
+                                                    ],
+                                                }}
+                                                maxSize={10 * 1024 * 1024}
+                                                multiple={false}
+                                                className="!p-3 !text-xs border-dashed border-purple-500/30 text-slate-300"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <label className="flex items-center gap-3">
+                                <input
+                                    type="checkbox"
+                                    checked={isSandboxBoardArtist}
+                                    onChange={(e) =>
+                                        setIsSandboxBoardArtist(
+                                            e.target.checked
+                                        )
+                                    }
+                                    className="rounded border-slate-600 bg-slate-800/50 focus:ring-purple-500 focus:ring-2"
+                                />
+                                <span className="text-sm text-slate-300">
+                                    Show as Artist
+                                </span>
+                                {isSandboxBoardArtist && (
+                                    <span className="bg-blue-500/20 text-blue-300 text-xs px-2 py-1 rounded-full border border-blue-500/30">
+                                        Artist
+                                    </span>
+                                )}
+                            </label>
+                        </div>
+
                         <input
                             type="text"
                             placeholder="Post title..."
                             value={newPostTitle}
                             onChange={(e) => setNewPostTitle(e.target.value)}
-                            className="w-full p-3 border rounded-lg"
+                            className="w-full p-4 bg-slate-800/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                         <textarea
                             placeholder="What's on your mind?"
-                            rows={3}
+                            rows={4}
                             value={newPostContent}
                             onChange={(e) => setNewPostContent(e.target.value)}
-                            className="w-full p-3 border rounded-lg resize-none"
+                            className="w-full p-4 bg-slate-800/50 border border-slate-600 rounded-xl resize-none text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
 
                         {/* 파일 업로드 토글 */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-4">
                             <button
                                 onClick={() =>
                                     setShowFileUploader(!showFileUploader)
                                 }
                                 className={cn(
-                                    "flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors",
+                                    "flex items-center gap-2 px-4 py-3 rounded-xl border transition-all duration-200",
                                     showFileUploader
-                                        ? "bg-blue-50 border-blue-200 text-blue-700"
-                                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                                        ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 border-blue-500/30 text-blue-300"
+                                        : "bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50"
                                 )}
                             >
                                 <ImageIcon className="w-4 h-4" />
@@ -405,7 +521,7 @@ export default function AdminBoardsSandboxBoard({
                             </button>
 
                             {uploadedFiles.length > 0 && (
-                                <span className="text-sm text-gray-600">
+                                <span className="text-sm text-slate-400 bg-slate-800/50 px-3 py-2 rounded-lg">
                                     {uploadedFiles.length} file
                                     {uploadedFiles.length > 1 ? "s" : ""}{" "}
                                     attached
@@ -415,7 +531,7 @@ export default function AdminBoardsSandboxBoard({
 
                         {/* 파일 업로더 */}
                         {showFileUploader && (
-                            <div className="space-y-3">
+                            <div className="space-y-4">
                                 <FileUploader
                                     purpose="board-post"
                                     bucket="board-posts"
@@ -437,16 +553,16 @@ export default function AdminBoardsSandboxBoard({
                                     }}
                                     maxSize={500 * 1024 * 1024}
                                     multiple={true}
-                                    className="border-dashed"
+                                    className="border-dashed border-purple-500/30 bg-slate-800/30 text-slate-300"
                                 />
 
                                 {/* 업로드된 파일 미리보기 */}
                                 {uploadedFiles.length > 0 && (
-                                    <div className="grid grid-cols-4 gap-2">
+                                    <div className="grid grid-cols-4 gap-3">
                                         {uploadedFiles.map((file) => (
                                             <div
                                                 key={file.id}
-                                                className="relative group rounded-lg overflow-hidden bg-gray-100 border aspect-square"
+                                                className="relative group rounded-xl overflow-hidden bg-slate-800/50 border border-slate-600/50 aspect-square"
                                             >
                                                 {file.mimeType?.startsWith(
                                                     "image/"
@@ -459,7 +575,7 @@ export default function AdminBoardsSandboxBoard({
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center">
-                                                        <Video className="w-8 h-8 text-gray-400" />
+                                                        <Video className="w-8 h-8 text-slate-400" />
                                                     </div>
                                                 )}
 
@@ -467,7 +583,7 @@ export default function AdminBoardsSandboxBoard({
                                                     onClick={() =>
                                                         removeFile(file.id)
                                                     }
-                                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200"
                                                 >
                                                     <X className="w-3 h-3" />
                                                 </button>
@@ -479,7 +595,7 @@ export default function AdminBoardsSandboxBoard({
                         )}
 
                         {/* 버튼들 */}
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-3">
                             <Button
                                 onClick={() => {
                                     setShowPostEditor(false);
@@ -490,6 +606,7 @@ export default function AdminBoardsSandboxBoard({
                                 variant="outline"
                                 size="sm"
                                 disabled={isCreateBoardPostPending}
+                                className="bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50 rounded-xl"
                             >
                                 Cancel
                             </Button>
@@ -501,6 +618,7 @@ export default function AdminBoardsSandboxBoard({
                                     !newPostTitle.trim() ||
                                     !newPostContent.trim()
                                 }
+                                className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-xl"
                             >
                                 {isCreateBoardPostPending
                                     ? "Posting..."
@@ -511,14 +629,16 @@ export default function AdminBoardsSandboxBoard({
                 )}
 
                 {/* Posts Feed */}
-                <div className="space-y-4">
+                <div className="space-y-6">
                     {allPosts.length === 0 ? (
-                        <div className="text-center py-8">
-                            <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                            <p className="text-gray-600 text-lg">
+                        <div className="text-center py-12">
+                            <div className="w-20 h-20 bg-gradient-to-r from-blue-500/20 to-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <MessageCircle className="w-10 h-10 text-blue-400" />
+                            </div>
+                            <h3 className="text-white text-xl font-semibold mb-2">
                                 No posts yet
-                            </p>
-                            <p className="text-gray-400 text-sm">
+                            </h3>
+                            <p className="text-slate-400">
                                 Be the first to post something!
                             </p>
                         </div>
@@ -543,28 +663,30 @@ export default function AdminBoardsSandboxBoard({
                             ))}
 
                             {/* 무한 스크롤 로딩 */}
-                            <div ref={loadMoreRef} className="py-4 text-center">
+                            <div ref={loadMoreRef} className="py-8 text-center">
                                 {isFetchingNextPage ? (
-                                    <div className="flex items-center justify-center gap-2">
-                                        <div className="animate-spin rounded-full border-b-2 border-blue-600 w-4 h-4"></div>
-                                        <span className="text-gray-600 text-sm">
+                                    <div className="flex items-center justify-center gap-3">
+                                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-purple-500 border-t-transparent"></div>
+                                        <span className="text-slate-400 text-sm">
                                             Loading more posts...
                                         </span>
                                     </div>
                                 ) : hasNextPage ? (
-                                    <span className="text-gray-400 text-sm">
+                                    <span className="text-slate-500 text-sm">
                                         Scroll to load more
                                     </span>
                                 ) : allPosts.length > 5 ? (
-                                    <span className="text-gray-400 text-sm">
-                                        {`🎉 You've reached the end!`}
-                                    </span>
+                                    <div className="flex items-center justify-center gap-2">
+                                        <span className="text-slate-500 text-sm">
+                                            {`🎉 You've reached the end!`}
+                                        </span>
+                                    </div>
                                 ) : null}
                             </div>
                         </>
                     )}
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }

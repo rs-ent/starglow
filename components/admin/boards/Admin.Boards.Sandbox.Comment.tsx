@@ -25,6 +25,11 @@ export default function AdminBoardsSandboxComment({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
+    // Sandbox 프로필 설정 상태
+    const [sandboxNickname, setSandboxNickname] = useState("Admin User");
+    const [sandboxImgUrl, setSandboxImgUrl] = useState("/default-avatar.jpg");
+    const [isSandboxBoardArtist, setIsSandboxBoardArtist] = useState(false);
+
     // 메인 댓글 파일 업로드 상태
     const [commentFiles, setCommentFiles] = useState<FileData[]>([]);
     const [showCommentFileUploader, setShowCommentFileUploader] =
@@ -49,7 +54,7 @@ export default function AdminBoardsSandboxComment({
             await createBoardCommentAsync({
                 postId,
                 authorId: "sandbox",
-                authorType: "PLAYER",
+                authorType: "ADMIN",
                 content: newComment.trim(),
                 files: commentFiles.map((f) => ({
                     id: f.id,
@@ -59,6 +64,11 @@ export default function AdminBoardsSandboxComment({
                     height: f.height,
                     sizeBytes: f.sizeBytes,
                 })),
+                // Sandbox 모드 필드
+                isSandbox: true,
+                sandboxNickname: sandboxNickname.trim() || "Admin User",
+                sandboxImgUrl: sandboxImgUrl,
+                isSandboxBoardArtist: isSandboxBoardArtist,
             });
 
             setNewComment("");
@@ -74,7 +84,16 @@ export default function AdminBoardsSandboxComment({
         } finally {
             setIsSubmitting(false);
         }
-    }, [newComment, commentFiles, createBoardCommentAsync, postId, toast]);
+    }, [
+        newComment,
+        commentFiles,
+        createBoardCommentAsync,
+        postId,
+        toast,
+        sandboxNickname,
+        sandboxImgUrl,
+        isSandboxBoardArtist,
+    ]);
 
     // 메인 댓글 파일 업로드 핸들러
     const handleCommentFilesSelected = useCallback((files: FileData[]) => {
@@ -84,6 +103,13 @@ export default function AdminBoardsSandboxComment({
     // 메인 댓글 파일 제거 핸들러
     const removeCommentFile = useCallback((fileId: string) => {
         setCommentFiles((prev) => prev.filter((f) => f.id !== fileId));
+    }, []);
+
+    // Sandbox 프로필 이미지 업로드 핸들러
+    const handleSandboxImageSelected = useCallback((files: FileData[]) => {
+        if (files.length > 0) {
+            setSandboxImgUrl(files[0].url);
+        }
     }, []);
 
     const handleReply = useCallback((commentId: string) => {
@@ -108,12 +134,12 @@ export default function AdminBoardsSandboxComment({
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             {/* 댓글 수 표시 */}
             {totalComments > 0 && (
                 <div className="flex items-center gap-2">
-                    <MessageCircle className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">
+                    <MessageCircle className="w-4 h-4 text-purple-400" />
+                    <span className="text-sm text-slate-300">
                         {totalComments}{" "}
                         {totalComments === 1 ? "comment" : "comments"}
                     </span>
@@ -122,7 +148,7 @@ export default function AdminBoardsSandboxComment({
 
             {/* 기존 댓글 목록 */}
             {comments.length > 0 && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                     {comments.map((comment: any) => (
                         <AdminBoardsSandboxCommentItem
                             key={comment.id}
@@ -135,32 +161,112 @@ export default function AdminBoardsSandboxComment({
                             isSubmitting={isSubmitting}
                             isDeletingComment={isDeleteBoardCommentPending}
                             level={0}
+                            sandboxNickname={sandboxNickname}
+                            sandboxImgUrl={sandboxImgUrl}
+                            isSandboxBoardArtist={isSandboxBoardArtist}
                         />
                     ))}
                 </div>
             )}
 
             {/* 새 댓글 작성 폼 */}
-            <div className="border-t pt-4 space-y-3">
-                <div className="flex items-start gap-3">
+            <div className="border-t border-slate-700/50 pt-6 space-y-4">
+                {/* Sandbox Profile Settings */}
+                <div className="bg-gradient-to-r from-purple-500/20 to-pink-600/20 backdrop-blur-xl rounded-xl border border-purple-500/30 p-4 space-y-4">
+                    <h4 className="font-medium text-purple-300 flex items-center gap-2">
+                        👤 Comment Profile
+                    </h4>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                Display Nickname
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Admin User"
+                                value={sandboxNickname}
+                                onChange={(e) =>
+                                    setSandboxNickname(e.target.value)
+                                }
+                                className="w-full p-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                Profile Image
+                            </label>
+                            <div className="flex items-center gap-3">
+                                <Image
+                                    src={sandboxImgUrl}
+                                    alt="Profile preview"
+                                    width={40}
+                                    height={40}
+                                    className="rounded-full object-cover border-2 border-purple-500/50"
+                                />
+                                <div className="flex-1">
+                                    <FileUploader
+                                        purpose="sandbox-profile"
+                                        bucket="profiles"
+                                        onFiles={handleSandboxImageSelected}
+                                        accept={{
+                                            "image/*": [
+                                                ".png",
+                                                ".jpg",
+                                                ".jpeg",
+                                                ".gif",
+                                                ".webp",
+                                            ],
+                                        }}
+                                        maxSize={10 * 1024 * 1024}
+                                        multiple={false}
+                                        className="!p-3 !text-xs border-dashed border-purple-500/30 text-slate-300"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <label className="flex items-center gap-3">
+                        <input
+                            type="checkbox"
+                            checked={isSandboxBoardArtist}
+                            onChange={(e) =>
+                                setIsSandboxBoardArtist(e.target.checked)
+                            }
+                            className="rounded border-slate-600 bg-slate-800/50 focus:ring-purple-500 focus:ring-2"
+                        />
+                        <span className="text-sm text-slate-300">
+                            Show as Artist
+                        </span>
+                        {isSandboxBoardArtist && (
+                            <span className="bg-blue-500/20 text-blue-300 text-xs px-2 py-1 rounded-full border border-blue-500/30">
+                                Artist
+                            </span>
+                        )}
+                    </label>
+                </div>
+
+                <div className="flex items-start gap-4">
                     <Image
-                        src={"/default-avatar.jpg"}
-                        alt={"User"}
-                        width={32}
-                        height={32}
-                        className="rounded-full object-cover flex-shrink-0"
+                        src={sandboxImgUrl}
+                        alt={sandboxNickname}
+                        width={40}
+                        height={40}
+                        className="rounded-full object-cover flex-shrink-0 border-2 border-slate-600"
                     />
-                    <div className="flex-1 space-y-3">
+                    <div className="flex-1 space-y-4">
                         <textarea
                             placeholder="Write a comment..."
                             value={newComment}
                             onChange={(e) => setNewComment(e.target.value)}
-                            className="w-full p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full p-4 bg-slate-800/50 border border-slate-600 rounded-xl resize-none text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
                             rows={3}
                         />
 
                         {/* 파일 업로드 토글 버튼 */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-4">
                             <button
                                 onClick={() =>
                                     setShowCommentFileUploader(
@@ -168,10 +274,10 @@ export default function AdminBoardsSandboxComment({
                                     )
                                 }
                                 className={cn(
-                                    "flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-sm",
+                                    "flex items-center gap-2 px-4 py-3 rounded-xl border transition-all duration-200 text-sm",
                                     showCommentFileUploader
-                                        ? "bg-blue-50 border-blue-200 text-blue-700"
-                                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                                        ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 border-blue-500/30 text-blue-300"
+                                        : "bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50"
                                 )}
                             >
                                 <ImageIcon className="w-4 h-4" />
@@ -180,7 +286,7 @@ export default function AdminBoardsSandboxComment({
                             </button>
 
                             {commentFiles.length > 0 && (
-                                <span className="text-sm text-gray-600">
+                                <span className="text-sm text-slate-400 bg-slate-800/50 px-3 py-2 rounded-lg">
                                     {commentFiles.length} file
                                     {commentFiles.length > 1 ? "s" : ""}{" "}
                                     attached
@@ -190,7 +296,7 @@ export default function AdminBoardsSandboxComment({
 
                         {/* 파일 업로더 */}
                         {showCommentFileUploader && (
-                            <div className="space-y-3">
+                            <div className="space-y-4">
                                 <FileUploader
                                     purpose="board-comment"
                                     bucket="board-comments"
@@ -212,16 +318,16 @@ export default function AdminBoardsSandboxComment({
                                     }}
                                     maxSize={500 * 1024 * 1024}
                                     multiple={true}
-                                    className="border-dashed"
+                                    className="border-dashed border-purple-500/30 bg-slate-800/30 text-slate-300"
                                 />
 
                                 {/* 업로드된 파일 미리보기 */}
                                 {commentFiles.length > 0 && (
-                                    <div className="grid grid-cols-4 gap-2">
+                                    <div className="grid grid-cols-4 gap-3">
                                         {commentFiles.map((file) => (
                                             <div
                                                 key={file.id}
-                                                className="relative group rounded-lg overflow-hidden bg-gray-100 border aspect-square"
+                                                className="relative group rounded-xl overflow-hidden bg-slate-800/50 border border-slate-600/50 aspect-square"
                                             >
                                                 {file.mimeType?.startsWith(
                                                     "image/"
@@ -236,11 +342,11 @@ export default function AdminBoardsSandboxComment({
                                                       "video/"
                                                   ) ? (
                                                     <div className="w-full h-full flex items-center justify-center">
-                                                        <Video className="w-8 h-8 text-gray-400" />
+                                                        <Video className="w-8 h-8 text-slate-400" />
                                                     </div>
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center">
-                                                        <ImageIcon className="w-8 h-8 text-gray-400" />
+                                                        <ImageIcon className="w-8 h-8 text-slate-400" />
                                                     </div>
                                                 )}
 
@@ -251,7 +357,7 @@ export default function AdminBoardsSandboxComment({
                                                             file.id
                                                         )
                                                     }
-                                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200"
                                                 >
                                                     <X className="w-3 h-3" />
                                                 </button>
@@ -267,6 +373,7 @@ export default function AdminBoardsSandboxComment({
                                 onClick={handleCreateComment}
                                 size="sm"
                                 disabled={isSubmitting || !newComment.trim()}
+                                className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-xl"
                             >
                                 {isSubmitting ? "Posting..." : "Comment"}
                             </Button>

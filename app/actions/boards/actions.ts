@@ -362,6 +362,12 @@ export interface CreateBoardPostInput {
     nftTokenId?: string;
     tags?: string[];
     metadata?: any;
+
+    // Sandbox 모드 필드
+    isSandbox?: boolean;
+    sandboxImgUrl?: string;
+    sandboxNickname?: string;
+    isSandboxBoardArtist?: boolean;
 }
 
 export async function createBoardPost(
@@ -395,7 +401,7 @@ export async function createBoardPost(
         const post = await prisma.boardPost.create({
             data: {
                 boardId: input.boardId,
-                authorId: input.authorId,
+                authorId: input.isSandbox ? null : input.authorId, // sandbox 모드일 때 authorId를 null로 설정
                 authorType: input.authorType,
                 title: input.title,
                 content: input.content,
@@ -407,10 +413,23 @@ export async function createBoardPost(
                 nftTokenId: input.nftTokenId,
                 tags: input.tags || [],
                 metadata: input.metadata,
+
+                // Sandbox 모드 필드
+                isSandbox: input.isSandbox || false,
+                sandboxImgUrl: input.sandboxImgUrl,
+                sandboxNickname: input.sandboxNickname,
+                isSandboxBoardArtist: input.isSandboxBoardArtist || false,
             },
         });
 
-        await handlePostCreationReward(post.id, input.boardId, input.authorId);
+        // sandbox 포스트는 보상 시스템 적용 안함
+        if (!input.isSandbox) {
+            await handlePostCreationReward(
+                post.id,
+                input.boardId,
+                input.authorId
+            );
+        }
 
         return post;
     } catch (error) {
@@ -648,6 +667,12 @@ export interface CreateBoardCommentInput {
     imageUrls?: string[];
     files?: any[]; // 업로드된 파일 메타데이터 배열
     metadata?: any;
+
+    // Sandbox 모드 필드
+    isSandbox?: boolean;
+    sandboxImgUrl?: string;
+    sandboxNickname?: string;
+    isSandboxBoardArtist?: boolean;
 }
 
 export async function createBoardComment(
@@ -687,13 +712,19 @@ export async function createBoardComment(
         const comment = await prisma.boardComment.create({
             data: {
                 postId: input.postId,
-                authorId: input.authorId,
+                authorId: input.isSandbox ? null : input.authorId, // sandbox 모드일 때 authorId를 null로 설정
                 authorType: input.authorType,
                 content: input.content,
                 parentId: input.parentId,
                 imageUrls: input.imageUrls || [],
                 files: input.files || [],
                 metadata: input.metadata,
+
+                // Sandbox 모드 필드
+                isSandbox: input.isSandbox || false,
+                sandboxImgUrl: input.sandboxImgUrl,
+                sandboxNickname: input.sandboxNickname,
+                isSandboxBoardArtist: input.isSandboxBoardArtist || false,
             },
         });
 

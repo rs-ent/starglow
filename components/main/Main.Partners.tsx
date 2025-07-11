@@ -19,6 +19,14 @@ interface Partner {
 // 파트너 목록
 const partners: Partner[] = [
     {
+        name: "Berachain",
+        image: "/logo/partners/berachain.png",
+        title: "Berachain",
+        purpose: "Financial Partnership",
+        description:
+            "Berachain is a global Web3.0 platform that provides a comprehensive suite of services for the Web3.0 ecosystem",
+    },
+    {
         name: "nh",
         image: "/logo/partners/nh.png",
         title: "NH Bank",

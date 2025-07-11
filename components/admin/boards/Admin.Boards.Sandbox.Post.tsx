@@ -94,70 +94,95 @@ export default function AdminBoardsSandboxPost({
 
     return (
         <>
-            <div className="border rounded-lg p-4 bg-white hover:bg-gray-50 transition-colors">
-                <div className="space-y-3">
+            <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 hover:bg-slate-800/70 transition-all duration-200">
+                <div className="space-y-4">
                     {/* Author info */}
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
                             <Image
                                 src={
-                                    post.author?.image || "/default-avatar.jpg"
+                                    post.isSandbox
+                                        ? post.sandboxImgUrl ||
+                                          "/default-avatar.jpg"
+                                        : post.author?.image ||
+                                          "/default-avatar.jpg"
                                 }
                                 alt={
-                                    post.author?.nickname ||
-                                    post.author?.name ||
-                                    ""
+                                    post.isSandbox
+                                        ? post.sandboxNickname || "Admin User"
+                                        : post.author?.nickname ||
+                                          post.author?.name ||
+                                          "Fan"
                                 }
-                                width={40}
-                                height={40}
-                                className={cn("rounded-full object-cover")}
+                                width={48}
+                                height={48}
+                                className={cn(
+                                    "rounded-full object-cover border-2 border-slate-600"
+                                )}
                             />
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <span className="font-medium text-gray-900">
-                                        {post.author?.nickname ||
-                                            post.author?.name ||
-                                            "Fan"}
+                                    <span className="font-medium text-white">
+                                        {post.isSandbox
+                                            ? post.sandboxNickname ||
+                                              "Admin User"
+                                            : post.author?.nickname ||
+                                              post.author?.name ||
+                                              "Fan"}
                                     </span>
-                                    {post.author?.artistId && (
-                                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                    {(post.isSandbox
+                                        ? post.isSandboxBoardArtist
+                                        : post.author?.artistId) && (
+                                        <span className="bg-blue-500/20 text-blue-300 text-xs px-2 py-1 rounded-full border border-blue-500/30">
                                             Artist
                                         </span>
                                     )}
+                                    {post.isSandbox && (
+                                        <span className="bg-purple-500/20 text-purple-300 text-xs px-2 py-1 rounded-full border border-purple-500/30">
+                                            Admin
+                                        </span>
+                                    )}
                                 </div>
-                                <span className="text-sm text-gray-500">
+                                <span className="text-sm text-slate-400">
                                     {formatTimeAgo(post.createdAt, true)}
                                 </span>
                             </div>
                         </div>
 
                         {/* Actions dropdown */}
-                        {post.author?.id === "sandbox" && (
+                        {post.isSandbox && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg"
+                                    >
                                         <MoreHorizontal className="w-4 h-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
+                                <DropdownMenuContent
+                                    align="end"
+                                    className="bg-slate-800 border-slate-700"
+                                >
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
                                             <DropdownMenuItem
                                                 onSelect={(e) =>
                                                     e.preventDefault()
                                                 }
-                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                                                className="text-red-400 hover:text-red-300 hover:bg-red-500/20 cursor-pointer"
                                             >
                                                 <Trash2 className="w-4 h-4 mr-2" />
                                                 Delete Post
                                             </DropdownMenuItem>
                                         </AlertDialogTrigger>
-                                        <AlertDialogContent>
+                                        <AlertDialogContent className="bg-slate-800 border-slate-700">
                                             <AlertDialogHeader>
-                                                <AlertDialogTitle>
+                                                <AlertDialogTitle className="text-white">
                                                     Delete Post?
                                                 </AlertDialogTitle>
-                                                <AlertDialogDescription>
+                                                <AlertDialogDescription className="text-slate-400">
                                                     This action cannot be
                                                     undone. This will
                                                     permanently delete the post
@@ -165,7 +190,7 @@ export default function AdminBoardsSandboxPost({
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogCancel>
+                                                <AlertDialogCancel className="bg-slate-700 text-white hover:bg-slate-600 border-slate-600">
                                                     Cancel
                                                 </AlertDialogCancel>
                                                 <AlertDialogAction
@@ -193,15 +218,15 @@ export default function AdminBoardsSandboxPost({
 
                     {/* Title and expand button */}
                     <div
-                        className="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-100 rounded-lg"
+                        className="flex items-center justify-between cursor-pointer p-3 hover:bg-slate-700/50 rounded-xl transition-colors"
                         onClick={() => onTogglePostContent(post.id)}
                     >
-                        <h3 className="font-semibold text-gray-900 flex-1">
+                        <h3 className="font-semibold text-white flex-1">
                             {post.title}
                         </h3>
                         <ChevronDown
                             className={cn(
-                                "w-5 h-5 text-gray-400 transition-transform",
+                                "w-5 h-5 text-slate-400 transition-transform",
                                 expandedPostContent.has(post.id) && "rotate-180"
                             )}
                         />
@@ -209,15 +234,15 @@ export default function AdminBoardsSandboxPost({
 
                     {/* Expandable content */}
                     {expandedPostContent.has(post.id) && (
-                        <div className="space-y-3">
-                            <p className="text-gray-700 leading-relaxed">
+                        <div className="space-y-4">
+                            <p className="text-slate-300 leading-relaxed">
                                 {post.content}
                             </p>
 
                             {/* Attached files */}
                             {post.files && post.files.length > 0 && (
                                 <div
-                                    className="grid gap-2"
+                                    className="grid gap-3"
                                     style={{
                                         gridTemplateColumns: `repeat(${Math.min(
                                             post.files.length,
@@ -229,7 +254,7 @@ export default function AdminBoardsSandboxPost({
                                         (file, index) => (
                                             <div
                                                 key={file.id || index}
-                                                className="relative rounded-lg overflow-hidden bg-gray-100 border"
+                                                className="relative rounded-xl overflow-hidden bg-slate-700/50 border border-slate-600/50"
                                             >
                                                 {file.mimeType?.startsWith(
                                                     "image/"
@@ -260,9 +285,9 @@ export default function AdminBoardsSandboxPost({
                                                     </div>
                                                 ) : (
                                                     <div className="aspect-video relative flex items-center justify-center">
-                                                        <ImageIcon className="w-8 h-8 text-gray-400" />
-                                                        <div className="absolute bottom-1 left-1 right-1">
-                                                            <p className="text-gray-600 text-xs truncate">
+                                                        <ImageIcon className="w-8 h-8 text-slate-400" />
+                                                        <div className="absolute bottom-2 left-2 right-2">
+                                                            <p className="text-slate-300 text-xs truncate">
                                                                 {file.url
                                                                     .split("/")
                                                                     .pop()}
@@ -279,10 +304,10 @@ export default function AdminBoardsSandboxPost({
                     )}
 
                     {/* Reaction buttons */}
-                    <div className="flex items-center gap-6 pt-2 border-t">
+                    <div className="flex items-center gap-6 pt-4 border-t border-slate-700/50">
                         <button
                             onClick={() => onReaction(post.id, "LIKE")}
-                            className="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors"
+                            className="flex items-center gap-2 text-slate-400 hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-slate-700/50"
                         >
                             <Heart
                                 className={cn(
@@ -293,7 +318,7 @@ export default function AdminBoardsSandboxPost({
                                             reaction.type === "LIKE"
                                     )
                                         ? "text-red-500 fill-red-500"
-                                        : "text-gray-400"
+                                        : "text-slate-400"
                                 )}
                             />
                             <span className="text-sm">{post.likeCount}</span>
@@ -301,7 +326,7 @@ export default function AdminBoardsSandboxPost({
 
                         <button
                             onClick={() => onReaction(post.id, "RECOMMEND")}
-                            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+                            className="flex items-center gap-2 text-slate-400 hover:text-blue-400 transition-colors p-2 rounded-lg hover:bg-slate-700/50"
                         >
                             <TrendingUp
                                 className={cn(
@@ -312,7 +337,7 @@ export default function AdminBoardsSandboxPost({
                                             reaction.type === "RECOMMEND"
                                     )
                                         ? "text-blue-500 fill-blue-500"
-                                        : "text-gray-400"
+                                        : "text-slate-400"
                                 )}
                             />
                             <span className="text-sm">
@@ -328,16 +353,16 @@ export default function AdminBoardsSandboxPost({
 
                         <button
                             onClick={() => onToggleComments(post.id)}
-                            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+                            className="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors p-2 rounded-lg hover:bg-slate-700/50"
                         >
-                            <MessageSquare className="w-5 h-5 text-gray-400" />
+                            <MessageSquare className="w-5 h-5 text-slate-400" />
                             <span className="text-sm">{post.commentCount}</span>
                         </button>
                     </div>
 
                     {/* Comments section */}
                     {expandedPosts.has(post.id) && (
-                        <div className="border-t pt-4">
+                        <div className="border-t border-slate-700/50 pt-4">
                             <AdminBoardsSandboxComment postId={post.id} />
                         </div>
                     )}

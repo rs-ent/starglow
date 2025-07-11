@@ -127,23 +127,25 @@ export function useCreateBoardPostMutation() {
                 .catch((error) => {
                     console.error(error);
                 });
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.posts.byAuthor(variables.authorId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            if (!variables.isSandbox && variables.authorId) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.posts.byAuthor(variables.authorId),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: playerAssetsKeys.balances(variables.authorId),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
             queryClient
                 .invalidateQueries({
                     queryKey: boardKeys.detail(data.boardId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: playerAssetsKeys.balances(variables.authorId),
                 })
                 .catch((error) => {
                     console.error(error);
@@ -218,13 +220,17 @@ export function useCreateBoardCommentMutation() {
                 .catch((error) => {
                     console.error(error);
                 });
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.comments.byAuthor(variables.authorId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            if (!variables.isSandbox && variables.authorId) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.comments.byAuthor(
+                            variables.authorId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
             // 게시글 목록도 무효화해서 댓글 수 업데이트
             queryClient
                 .invalidateQueries({
