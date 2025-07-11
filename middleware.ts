@@ -17,6 +17,10 @@ const redirects: RedirectRule[] = [
         hostnames: ["miniapp.starglow.io", "mapp.starglow.io"],
         destination: "https://starglow.io/start",
     },
+    {
+        hostnames: ["introduction.starglow.io", "tutorial.starglow.io"],
+        destination: "https://starglow.io/introduction",
+    },
 ];
 
 const PERFORMANCE_THRESHOLD = 1000;
