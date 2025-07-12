@@ -194,7 +194,7 @@ function PollsListCard({
             : [];
     }, [pollResult]);
 
-    // 베팅 모드에서 사용할 총 실제 득표수 계산
+    // Calculate total actual votes for betting mode
     const totalActualVotes = useMemo(() => {
         if (!poll.bettingMode || !pollResult?.results) return 0;
         return pollResult.results.reduce((total, result) => {
@@ -782,6 +782,8 @@ function PollsListCard({
         fgColorTo,
         votingState.selection,
         handleOptionClick,
+        poll.bettingMode,
+        totalActualVotes,
     ]);
 
     // 결과 차트 렌더링 함수
@@ -839,6 +841,8 @@ function PollsListCard({
         pollDateInfo.isBlurred,
         fgColorFrom,
         fgColorTo,
+        poll.bettingMode,
+        totalActualVotes,
     ]);
 
     // 제출 버튼 렌더링 함수

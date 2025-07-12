@@ -34,7 +34,7 @@ export default function PollBar({
     isBettingMode?: boolean;
     totalActualVotes?: number;
 }) {
-    // 베팅 모드일 때는 실제 득표수 기반으로 비율 계산
+    // Calculate rate based on actual votes in betting mode
     const calculateActualVoteRate = () => {
         if (
             !isBettingMode ||

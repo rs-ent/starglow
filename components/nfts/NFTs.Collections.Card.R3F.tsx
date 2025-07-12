@@ -289,7 +289,8 @@ const CardMesh = React.memo(function CardMesh({
         loadedTexture.needsUpdate = true;
     });
 
-    // Then conditionally choose which texture to use
+    // 텍스처 로딩 상태 확인
+    const isTextureLoaded = normalTexture !== null;
     const texture = normalTexture;
 
     const logoTexture = useCachedTexture("/logo/3d.svg", (loadedTexture) => {
@@ -442,7 +443,9 @@ const CardMesh = React.memo(function CardMesh({
 
     useEffect(() => {
         return () => {
-            texture.dispose();
+            if (texture) {
+                texture.dispose();
+            }
         };
     }, [texture]);
 
@@ -524,9 +527,9 @@ const CardMesh = React.memo(function CardMesh({
             {/* 디스플레이(이미지) */}
             <mesh position={[0, 3.3, 0.32]}>
                 <planeGeometry args={[10.56, 7.92]} />
-                {texture && texture.image ? (
+                {isTextureLoaded && texture?.image ? (
                     <meshPhysicalMaterial
-                        map={texture}
+                        map={texture!}
                         transparent={true}
                         metalness={0.1}
                         roughness={0.01}

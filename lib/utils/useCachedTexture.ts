@@ -6,7 +6,13 @@ import { CanvasTexture, LinearFilter, TextureLoader } from "three";
 
 import type { Texture } from "three";
 
-const textureCache = new Map<string, Texture>();
+interface TextureData {
+    texture: Texture;
+    isLoaded: boolean;
+    error?: Error;
+}
+
+const textureCache = new Map<string, TextureData>();
 
 export function useCachedTexture(
     url: string,
@@ -16,16 +22,44 @@ export function useCachedTexture(
 
     if (!textureCache.has(url)) {
         const loader = new TextureLoader();
-        const texture = loader.load(url, (loaded) => {
-            loaded.minFilter = LinearFilter;
-            loaded.magFilter = LinearFilter;
-            loaded.generateMipmaps = false;
-            loaded.needsUpdate = true;
-            if (onLoad) onLoad(loaded);
+        const texture = loader.load(
+            url,
+            (loaded) => {
+                loaded.minFilter = LinearFilter;
+                loaded.magFilter = LinearFilter;
+                loaded.generateMipmaps = false;
+                loaded.needsUpdate = true;
+
+                // 캐시에서 로딩 완료 상태 업데이트
+                const cached = textureCache.get(url);
+                if (cached) {
+                    cached.isLoaded = true;
+                    if (onLoad) onLoad(loaded);
+                }
+            },
+            undefined,
+            (error) => {
+                console.error(`Failed to load texture: ${url}`, error);
+                const cached = textureCache.get(url);
+                if (cached) {
+                    cached.error =
+                        error instanceof Error
+                            ? error
+                            : new Error(String(error));
+                }
+            }
+        );
+
+        // 로딩 중인 텍스처를 캐시에 저장 (isLoaded: false)
+        textureCache.set(url, {
+            texture,
+            isLoaded: false,
         });
-        textureCache.set(url, texture);
     }
-    textureRef.current = textureCache.get(url)!;
+
+    const cached = textureCache.get(url)!;
+    // 로딩이 완료된 텍스처만 반환
+    textureRef.current = cached.isLoaded ? cached.texture : null;
 
     return textureRef.current;
 }
@@ -38,16 +72,41 @@ export function useCachedTexture(
 export function prefetchTextures(urls: string[]): Promise<void> {
     const loader = new TextureLoader();
     const promises = urls.map((url) => {
-        if (textureCache.has(url)) return Promise.resolve();
+        // 이미 로딩 완료된 텍스처는 스킵
+        const cached = textureCache.get(url);
+        if (cached?.isLoaded) return Promise.resolve();
+
         return new Promise<void>((resolve) => {
-            loader.load(url, (texture) => {
-                texture.minFilter = LinearFilter;
-                texture.magFilter = LinearFilter;
-                texture.generateMipmaps = false;
-                texture.needsUpdate = true;
-                textureCache.set(url, texture);
-                resolve();
-            });
+            const texture = loader.load(
+                url,
+                (loaded) => {
+                    loaded.minFilter = LinearFilter;
+                    loaded.magFilter = LinearFilter;
+                    loaded.generateMipmaps = false;
+                    loaded.needsUpdate = true;
+
+                    // 캐시에 로딩 완료된 텍스처 저장
+                    textureCache.set(url, {
+                        texture: loaded,
+                        isLoaded: true,
+                    });
+                    resolve();
+                },
+                undefined,
+                (error) => {
+                    console.error(`Failed to prefetch texture: ${url}`, error);
+                    textureCache.set(url, {
+                        texture: texture,
+                        isLoaded: false,
+                        error:
+                            error instanceof Error
+                                ? error
+                                : new Error(String(error)),
+                    });
+                    // 개별 텍스처 실패해도 전체 프로세스는 계속 진행
+                    resolve();
+                }
+            );
         });
     });
     return Promise.all(promises).then(() => {});
@@ -148,4 +207,43 @@ export function useBlurredTexture(
 export function clearBlurredTextureCache() {
     blurredTextureCache.forEach((texture) => texture.dispose());
     blurredTextureCache.clear();
+}
+
+// 디버깅을 위한 유틸리티 함수들
+export function getTextureLoadingStatus(
+    url: string
+): "loaded" | "loading" | "failed" | "not_found" {
+    const cached = textureCache.get(url);
+    if (!cached) return "not_found";
+    if (cached.error) return "failed";
+    if (cached.isLoaded) return "loaded";
+    return "loading";
+}
+
+export function getTextureCacheStats(): {
+    totalTextures: number;
+    loadedTextures: number;
+    loadingTextures: number;
+    failedTextures: number;
+} {
+    let loaded = 0;
+    let loading = 0;
+    let failed = 0;
+
+    textureCache.forEach((data) => {
+        if (data.error) {
+            failed++;
+        } else if (data.isLoaded) {
+            loaded++;
+        } else {
+            loading++;
+        }
+    });
+
+    return {
+        totalTextures: textureCache.size,
+        loadedTextures: loaded,
+        loadingTextures: loading,
+        failedTextures: failed,
+    };
 }

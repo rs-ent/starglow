@@ -349,8 +349,20 @@ export default function NFTsCollectionsList({
                 setIsPreloaded(true);
                 return;
             }
-            await prefetchTextures(urls);
-            if (!cancelled) setIsPreloaded(true);
+
+            try {
+                // 모든 텍스처가 완전히 로딩될 때까지 기다림
+                await prefetchTextures(urls);
+
+                // prefetchTextures가 성공적으로 완료되면 모든 텍스처가 로딩됨
+                if (!cancelled) {
+                    setIsPreloaded(true);
+                }
+            } catch (error) {
+                console.error("Failed to preload textures:", error);
+                // 오류가 발생해도 UI를 표시하되, 개별 텍스처 로딩에 의존
+                if (!cancelled) setIsPreloaded(true);
+            }
         }
         void preload();
         return () => {
@@ -481,7 +493,7 @@ export default function NFTsCollectionsList({
                     {sortedSPGsData?.map(renderCollection)}
                 </Canvas>
             ) : (
-                <PartialLoading text="Loading..." />
+                <PartialLoading text="Loading textures..." />
             )}
         </div>
     );
