@@ -44,16 +44,6 @@ function formatNumber(value: number): string {
     return value.toLocaleString();
 }
 
-// Chart color palette for consistent branding
-const CHART_COLORS = [
-    "#8b5cf6", // violet - primary brand color
-    "#06b6d4", // cyan
-    "#10b981", // emerald
-    "#f59e0b", // amber
-    "#ef4444", // red
-    "#6366f1", // indigo
-];
-
 // Key Performance Indicators Component
 interface KPIOverviewProps {
     metrics: any;
