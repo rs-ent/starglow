@@ -20,6 +20,9 @@ import {
     useGetUnrevealedCountQuery,
     useGetRaffleParticipantsQuery,
     useCheckUserParticipationQuery,
+    useProbabilityAnalyticsQuery,
+    useRevenueAnalyticsQuery,
+    useParticipantAnalyticsQuery,
 } from "./queries";
 
 import type {
@@ -40,6 +43,10 @@ export interface useRafflesInput {
     getRaffleParticipantsInput?: GetRaffleParticipantsInput;
     checkUserParticipationRaffleId?: string;
     checkUserParticipationPlayerId?: string;
+    // Analytics queries
+    probabilityAnalyticsRaffleIds?: string[];
+    revenueAnalyticsRaffleIds?: string[];
+    participantAnalyticsPlayerIds?: string[];
 }
 
 export function useRaffles(input?: useRafflesInput) {
@@ -96,6 +103,31 @@ export function useRaffles(input?: useRafflesInput) {
         input?.checkUserParticipationRaffleId,
         input?.checkUserParticipationPlayerId
     );
+
+    // 🎯 Analytics Queries
+    const {
+        data: probabilityAnalyticsData,
+        isLoading: isProbabilityAnalyticsLoading,
+        isError: isProbabilityAnalyticsError,
+        error: probabilityAnalyticsError,
+        refetch: refetchProbabilityAnalytics,
+    } = useProbabilityAnalyticsQuery(input?.probabilityAnalyticsRaffleIds);
+
+    const {
+        data: revenueAnalyticsData,
+        isLoading: isRevenueAnalyticsLoading,
+        isError: isRevenueAnalyticsError,
+        error: revenueAnalyticsError,
+        refetch: refetchRevenueAnalytics,
+    } = useRevenueAnalyticsQuery(input?.revenueAnalyticsRaffleIds);
+
+    const {
+        data: participantAnalyticsData,
+        isLoading: isParticipantAnalyticsLoading,
+        isError: isParticipantAnalyticsError,
+        error: participantAnalyticsError,
+        refetch: refetchParticipantAnalytics,
+    } = useParticipantAnalyticsQuery(input?.participantAnalyticsPlayerIds);
 
     // Raffle Mutations
     const {
@@ -201,6 +233,25 @@ export function useRaffles(input?: useRafflesInput) {
         isUserParticipationError,
         userParticipationError,
         refetchUserParticipation,
+
+        // 🎯 Analytics data
+        probabilityAnalyticsData,
+        isProbabilityAnalyticsLoading,
+        isProbabilityAnalyticsError,
+        probabilityAnalyticsError,
+        refetchProbabilityAnalytics,
+
+        revenueAnalyticsData,
+        isRevenueAnalyticsLoading,
+        isRevenueAnalyticsError,
+        revenueAnalyticsError,
+        refetchRevenueAnalytics,
+
+        participantAnalyticsData,
+        isParticipantAnalyticsLoading,
+        isParticipantAnalyticsError,
+        participantAnalyticsError,
+        refetchParticipantAnalytics,
 
         // Raffle management actions
         createRaffle,

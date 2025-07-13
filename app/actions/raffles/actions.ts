@@ -2168,3 +2168,483 @@ export async function bulkRevealResults(input: BulkRevealInput): Promise<
         };
     }
 }
+
+// 🎯 Analytics용 실제 데이터 조회 함수들
+
+export interface ProbabilityAnalyticsData {
+    raffleId: string;
+    raffleName: string;
+    totalSlots: number;
+    totalParticipants: number;
+    totalDraws: number;
+    prizeAnalytics: Array<{
+        prizeId: string;
+        prizeName: string;
+        rarityTier: string;
+        rarityOrder: number;
+        theoreticalProbability: number;
+        quantity: number;
+        actualWins: number;
+        distributedWins: number;
+        actualProbability: number;
+        distributedProbability: number;
+        participantCount: number;
+    }>;
+}
+
+export async function getProbabilityAnalyticsData(
+    raffleIds?: string[]
+): Promise<RaffleResult<ProbabilityAnalyticsData[]>> {
+    try {
+        // 래플 목록 조회 (raffleIds가 없으면 전체 조회)
+        const raffles = await prisma.raffle.findMany({
+            where: raffleIds ? { id: { in: raffleIds } } : undefined,
+            include: {
+                prizes: {
+                    include: {
+                        _count: {
+                            select: {
+                                participants: true,
+                                winners: true,
+                            },
+                        },
+                    },
+                },
+                _count: {
+                    select: {
+                        participants: true,
+                    },
+                },
+            },
+        });
+
+        const analyticsData: ProbabilityAnalyticsData[] = [];
+
+        for (const raffle of raffles) {
+            // 총 슬롯 수 계산
+            const totalSlots = raffle.prizes.reduce(
+                (sum, prize) => sum + prize.quantity,
+                0
+            );
+
+            // 총 참가자 수
+            const totalParticipants = raffle._count.participants;
+
+            // 실제 추첨 완료된 수 (drawnAt이 null이 아닌 경우)
+            const totalDraws = await prisma.raffleParticipant.count({
+                where: {
+                    raffleId: raffle.id,
+                    drawnAt: { not: null },
+                },
+            });
+
+            // 각 상품별 상세 분석
+            const prizeAnalytics = await Promise.all(
+                raffle.prizes.map(async (prize) => {
+                    // 이론적 확률 계산
+                    const theoreticalProbability =
+                        totalSlots > 0
+                            ? (prize.quantity / totalSlots) * 100
+                            : 0;
+
+                    // 실제 당첨 수 (해당 상품을 뽑은 참가자 수)
+                    const actualWins = await prisma.raffleParticipant.count({
+                        where: {
+                            raffleId: raffle.id,
+                            prizeId: prize.id,
+                            drawnAt: { not: null },
+                        },
+                    });
+
+                    // 실제 배포 완료된 당첨 수
+                    const distributedWins = await prisma.raffleWinner.count({
+                        where: {
+                            raffleId: raffle.id,
+                            prizeId: prize.id,
+                            status: "DISTRIBUTED",
+                        },
+                    });
+
+                    // 실제 확률 계산
+                    const actualProbability =
+                        totalDraws > 0 ? (actualWins / totalDraws) * 100 : 0;
+
+                    // 배포 확률 계산
+                    const distributedProbability =
+                        totalDraws > 0
+                            ? (distributedWins / totalDraws) * 100
+                            : 0;
+
+                    // 해당 상품에 참여한 참가자 수
+                    const participantCount = prize._count.participants;
+
+                    return {
+                        prizeId: prize.id,
+                        prizeName: prize.title,
+                        rarityTier: prize.rarityTier || "COMMON",
+                        rarityOrder: prize.rarityOrder || 9,
+                        theoreticalProbability,
+                        quantity: prize.quantity,
+                        actualWins,
+                        distributedWins,
+                        actualProbability,
+                        distributedProbability,
+                        participantCount,
+                    };
+                })
+            );
+
+            analyticsData.push({
+                raffleId: raffle.id,
+                raffleName: raffle.title,
+                totalSlots,
+                totalParticipants,
+                totalDraws,
+                prizeAnalytics,
+            });
+        }
+
+        return { success: true, data: analyticsData };
+    } catch (error) {
+        console.error("Error fetching probability analytics data:", error);
+        return {
+            success: false,
+            error: "Failed to fetch probability analytics data",
+        };
+    }
+}
+
+export interface RevenueAnalyticsData {
+    raffleId: string;
+    raffleName: string;
+    artistName: string;
+    artistId: string;
+    totalParticipants: number;
+    entryFeeAmount: number;
+    totalRevenue: number;
+    totalPrizeCost: number;
+    operatingCost: number;
+    totalCosts: number;
+    netProfit: number;
+    profitMargin: number;
+    roi: number;
+    participationRate: number;
+    maxParticipants: number | null;
+    startDate: Date;
+    endDate: Date;
+    status: string;
+    prizeDistribution: Array<{
+        prizeId: string;
+        prizeName: string;
+        assetAmount: number;
+        quantity: number;
+        totalCost: number;
+    }>;
+}
+
+export async function getRevenueAnalyticsData(
+    raffleIds?: string[]
+): Promise<RaffleResult<RevenueAnalyticsData[]>> {
+    try {
+        const raffles = await prisma.raffle.findMany({
+            where: raffleIds ? { id: { in: raffleIds } } : undefined,
+            include: {
+                artist: true,
+                prizes: {
+                    include: {
+                        asset: true,
+                    },
+                },
+                _count: {
+                    select: {
+                        participants: true,
+                    },
+                },
+            },
+        });
+
+        const analyticsData: RevenueAnalyticsData[] = raffles.map((raffle) => {
+            const totalParticipants = raffle._count.participants;
+            const entryFeeAmount = raffle.entryFeeAmount || 0;
+            const totalRevenue = totalParticipants * entryFeeAmount;
+
+            // 상품 비용 계산
+            const totalPrizeCost = raffle.prizes.reduce((sum, prize) => {
+                const assetAmount = prize.assetAmount || 0;
+                return sum + assetAmount * prize.quantity;
+            }, 0);
+
+            // 운영비 추정 (수익의 10%)
+            const operatingCost = totalRevenue * 0.1;
+            const totalCosts = totalPrizeCost + operatingCost;
+
+            const netProfit = totalRevenue - totalCosts;
+            const profitMargin =
+                totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+            const roi = totalCosts > 0 ? (netProfit / totalCosts) * 100 : 0;
+
+            const participationRate = raffle.maxParticipants
+                ? (totalParticipants / raffle.maxParticipants) * 100
+                : 100;
+
+            const status = calculateRaffleStatus(
+                raffle.startDate,
+                raffle.endDate,
+                raffle.drawDate
+            );
+
+            const prizeDistribution = raffle.prizes.map((prize) => ({
+                prizeId: prize.id,
+                prizeName: prize.title,
+                assetAmount: prize.assetAmount || 0,
+                quantity: prize.quantity,
+                totalCost: (prize.assetAmount || 0) * prize.quantity,
+            }));
+
+            return {
+                raffleId: raffle.id,
+                raffleName: raffle.title,
+                artistName: raffle.artist?.name || "Unknown",
+                artistId: raffle.artistId || "",
+                totalParticipants,
+                entryFeeAmount,
+                totalRevenue,
+                totalPrizeCost,
+                operatingCost,
+                totalCosts,
+                netProfit,
+                profitMargin,
+                roi,
+                participationRate,
+                maxParticipants: raffle.maxParticipants,
+                startDate: raffle.startDate,
+                endDate: raffle.endDate,
+                status,
+                prizeDistribution,
+            };
+        });
+
+        return { success: true, data: analyticsData };
+    } catch (error) {
+        console.error("Error fetching revenue analytics data:", error);
+        return {
+            success: false,
+            error: "Failed to fetch revenue analytics data",
+        };
+    }
+}
+
+export interface ParticipantAnalyticsData {
+    playerId: string;
+    playerName: string;
+    telegramId: string | null;
+    totalParticipations: number;
+    totalSpent: number;
+    totalWins: number;
+    totalWinValue: number;
+    firstParticipation: Date | null;
+    lastParticipation: Date | null;
+    participationHistory: Array<{
+        raffleId: string;
+        raffleName: string;
+        participatedAt: Date;
+        entryFee: number;
+        won: boolean;
+        prizeValue: number;
+        revealed: boolean;
+    }>;
+    favoriteArtists: Array<{
+        artistId: string;
+        artistName: string;
+        participationCount: number;
+    }>;
+    participationPatterns: {
+        hourDistribution: number[];
+        dayOfWeekDistribution: number[];
+        monthlyTrend: Array<{
+            month: string;
+            participations: number;
+            spending: number;
+        }>;
+    };
+}
+
+export async function getParticipantAnalyticsData(
+    playerIds?: string[]
+): Promise<RaffleResult<ParticipantAnalyticsData[]>> {
+    try {
+        // 참가자별 기본 통계 조회
+        const participants = await prisma.raffleParticipant.findMany({
+            where: playerIds ? { playerId: { in: playerIds } } : undefined,
+            include: {
+                player: true,
+                raffle: {
+                    include: {
+                        artist: true,
+                    },
+                },
+                prize: {
+                    include: {
+                        asset: true,
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: "asc",
+            },
+        });
+
+        // 당첨자 정보 조회
+        const winners = await prisma.raffleWinner.findMany({
+            where: playerIds ? { playerId: { in: playerIds } } : undefined,
+            include: {
+                prize: {
+                    include: {
+                        asset: true,
+                    },
+                },
+            },
+        });
+
+        // 플레이어별로 그룹화
+        const playerMap = new Map<string, any[]>();
+        participants.forEach((p) => {
+            if (!playerMap.has(p.playerId)) {
+                playerMap.set(p.playerId, []);
+            }
+            playerMap.get(p.playerId)!.push(p);
+        });
+
+        // 당첨자 정보도 플레이어별로 그룹화
+        const winnerMap = new Map<string, any[]>();
+        winners.forEach((w) => {
+            if (!winnerMap.has(w.playerId)) {
+                winnerMap.set(w.playerId, []);
+            }
+            winnerMap.get(w.playerId)!.push(w);
+        });
+
+        const analyticsData: ParticipantAnalyticsData[] = Array.from(
+            playerMap.entries()
+        ).map(([playerId, participations]) => {
+            const player = participations[0].player;
+            const playerWins = winnerMap.get(playerId) || [];
+
+            // 기본 통계 계산
+            const totalParticipations = participations.length;
+            const totalSpent = participations.reduce(
+                (sum, p) => sum + (p.raffle.entryFeeAmount || 0),
+                0
+            );
+            const totalWins = playerWins.length;
+            const totalWinValue = playerWins.reduce(
+                (sum, w) => sum + (w.prize.assetAmount || 0),
+                0
+            );
+
+            // 참여 이력
+            const participationHistory = participations.map((p) => ({
+                raffleId: p.raffleId,
+                raffleName: p.raffle.title,
+                participatedAt: p.createdAt,
+                entryFee: p.raffle.entryFeeAmount || 0,
+                won: playerWins.some((w) => w.raffleId === p.raffleId),
+                prizeValue: playerWins
+                    .filter((w) => w.raffleId === p.raffleId)
+                    .reduce((sum, w) => sum + (w.prize.assetAmount || 0), 0),
+                revealed: p.isRevealed,
+            }));
+
+            // 선호 아티스트 분석
+            const artistMap = new Map<string, number>();
+            participations.forEach((p) => {
+                if (p.raffle.artistId) {
+                    const count = artistMap.get(p.raffle.artistId) || 0;
+                    artistMap.set(p.raffle.artistId, count + 1);
+                }
+            });
+
+            const favoriteArtists = Array.from(artistMap.entries())
+                .map(([artistId, count]) => {
+                    const artist = participations.find(
+                        (p) => p.raffle.artistId === artistId
+                    )?.raffle.artist;
+                    return {
+                        artistId,
+                        artistName: artist?.name || "Unknown",
+                        participationCount: count,
+                    };
+                })
+                .sort((a, b) => b.participationCount - a.participationCount)
+                .slice(0, 5);
+
+            // 참여 패턴 분석
+            const hourDistribution = new Array(24).fill(0);
+            const dayOfWeekDistribution = new Array(7).fill(0);
+            const monthlyMap = new Map<
+                string,
+                { participations: number; spending: number }
+            >();
+
+            participations.forEach((p) => {
+                const date = new Date(p.createdAt);
+                const hour = date.getHours();
+                const dayOfWeek = date.getDay();
+                const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1)
+                    .toString()
+                    .padStart(2, "0")}`;
+
+                hourDistribution[hour]++;
+                dayOfWeekDistribution[dayOfWeek]++;
+
+                const monthData = monthlyMap.get(monthKey) || {
+                    participations: 0,
+                    spending: 0,
+                };
+                monthData.participations++;
+                monthData.spending += p.raffle.entryFeeAmount || 0;
+                monthlyMap.set(monthKey, monthData);
+            });
+
+            const monthlyTrend = Array.from(monthlyMap.entries())
+                .map(([month, data]) => ({ month, ...data }))
+                .sort((a, b) => a.month.localeCompare(b.month));
+
+            return {
+                playerId,
+                playerName:
+                    player.name ||
+                    player.nickname ||
+                    `Player ${playerId.slice(-6)}`,
+                telegramId: player.telegramId,
+                totalParticipations,
+                totalSpent,
+                totalWins,
+                totalWinValue,
+                firstParticipation:
+                    participations.length > 0
+                        ? participations[0].createdAt
+                        : null,
+                lastParticipation:
+                    participations.length > 0
+                        ? participations[participations.length - 1].createdAt
+                        : null,
+                participationHistory,
+                favoriteArtists,
+                participationPatterns: {
+                    hourDistribution,
+                    dayOfWeekDistribution,
+                    monthlyTrend,
+                },
+            };
+        });
+
+        return { success: true, data: analyticsData };
+    } catch (error) {
+        console.error("Error fetching participant analytics data:", error);
+        return {
+            success: false,
+            error: "Failed to fetch participant analytics data",
+        };
+    }
+}

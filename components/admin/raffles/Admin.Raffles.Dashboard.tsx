@@ -9,7 +9,7 @@ import { SiEthereum } from "react-icons/si";
 import { TbTopologyStar3 } from "react-icons/tb";
 
 import AdminRaffles from "./Admin.Raffles";
-import AdminRafflesAnalytics from "./Admin.Raffles.Analytics";
+import { AdminRafflesAnalytics } from "./Admin.Raffles.Analytics";
 
 export default function AdminRafflesDashboard() {
     const [selection, setSelection] = useState<

@@ -13,6 +13,9 @@ import {
     getUnrevealedCount,
     getRaffleParticipants,
     checkUserParticipation,
+    getProbabilityAnalyticsData,
+    getRevenueAnalyticsData,
+    getParticipantAnalyticsData,
 } from "./actions";
 
 import type {
@@ -106,9 +109,56 @@ export function useCheckUserParticipationQuery(
         queryKey: raffleKeys.userParticipation(raffleId || "", playerId || ""),
         queryFn: () => checkUserParticipation(raffleId!, playerId!),
         enabled: Boolean(raffleId && playerId),
-        staleTime: 1000 * 30, // 30 seconds (faster updates for participation)
+        staleTime: 1000 * 30, // 30초
         gcTime: 1000 * 60 * 5, // 5 minutes
-        refetchOnMount: true,
         refetchOnWindowFocus: true,
+        refetchOnMount: true,
+    });
+}
+
+// 🎯 Analytics 쿼리들
+
+/**
+ * 확률 분석 데이터 조회 쿼리
+ * 실제 당첨 데이터와 이론적 확률을 비교 분석
+ */
+export function useProbabilityAnalyticsQuery(raffleIds?: string[]) {
+    return useQuery({
+        queryKey: raffleKeys.analytics.probability(raffleIds),
+        queryFn: () => getProbabilityAnalyticsData(raffleIds),
+        staleTime: 1000 * 60 * 5, // 5분 (분석 데이터는 자주 변경되지 않음)
+        gcTime: 1000 * 60 * 15, // 15분
+        refetchOnWindowFocus: false, // 포커스 시 자동 새로고침 비활성화
+        refetchOnMount: true,
+    });
+}
+
+/**
+ * 수익성 분석 데이터 조회 쿼리
+ * 래플별 수익성, ROI, 마진 등을 분석
+ */
+export function useRevenueAnalyticsQuery(raffleIds?: string[]) {
+    return useQuery({
+        queryKey: raffleKeys.analytics.revenue(raffleIds),
+        queryFn: () => getRevenueAnalyticsData(raffleIds),
+        staleTime: 1000 * 60 * 5, // 5분
+        gcTime: 1000 * 60 * 15, // 15분
+        refetchOnWindowFocus: false,
+        refetchOnMount: true,
+    });
+}
+
+/**
+ * 참가자 행동 분석 데이터 조회 쿼리
+ * 참가자별 참여 패턴, 세그먼트, 충성도 등을 분석
+ */
+export function useParticipantAnalyticsQuery(playerIds?: string[]) {
+    return useQuery({
+        queryKey: raffleKeys.analytics.participants(playerIds),
+        queryFn: () => getParticipantAnalyticsData(playerIds),
+        staleTime: 1000 * 60 * 10, // 10분 (참가자 데이터는 더 자주 변경될 수 있음)
+        gcTime: 1000 * 60 * 20, // 20분
+        refetchOnWindowFocus: false,
+        refetchOnMount: true,
     });
 }

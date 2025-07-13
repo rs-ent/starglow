@@ -753,8 +753,24 @@ type RaffleKeysType = {
             category: string
         ) => readonly ["raffles", "analytics", "category", string];
         probability: (
-            raffleId: string
-        ) => readonly ["raffles", "analytics", "probability", string];
+            raffleIds?: string[]
+        ) => readonly [
+            "raffles",
+            "analytics",
+            "probability",
+            string[] | undefined
+        ];
+        revenue: (
+            raffleIds?: string[]
+        ) => readonly ["raffles", "analytics", "revenue", string[] | undefined];
+        participants: (
+            playerIds?: string[]
+        ) => readonly [
+            "raffles",
+            "analytics",
+            "participants",
+            string[] | undefined
+        ];
         verification: (
             raffleId: string
         ) => readonly ["raffles", "analytics", "verification", string];
@@ -831,8 +847,22 @@ export const raffleKeys: RaffleKeysType = {
             [...RAFFLE_BASE_KEY, "analytics", "artist", artistId] as const,
         byCategory: (category: string) =>
             [...RAFFLE_BASE_KEY, "analytics", "category", category] as const,
-        probability: (raffleId: string) =>
-            [...RAFFLE_BASE_KEY, "analytics", "probability", raffleId] as const,
+        probability: (raffleIds?: string[]) =>
+            [
+                ...RAFFLE_BASE_KEY,
+                "analytics",
+                "probability",
+                raffleIds,
+            ] as const,
+        revenue: (raffleIds?: string[]) =>
+            [...RAFFLE_BASE_KEY, "analytics", "revenue", raffleIds] as const,
+        participants: (playerIds?: string[]) =>
+            [
+                ...RAFFLE_BASE_KEY,
+                "analytics",
+                "participants",
+                playerIds,
+            ] as const,
         verification: (raffleId: string) =>
             [
                 ...RAFFLE_BASE_KEY,
