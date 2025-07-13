@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import {
     Select,
     SelectContent,
@@ -13,7 +12,6 @@ import {
     Users,
     Wallet,
     DollarSign,
-    Globe,
     Target,
     Star,
     Zap,
@@ -22,9 +20,6 @@ import {
 import {
     AreaChart,
     Area,
-    PieChart as RechartsPieChart,
-    Pie,
-    Cell,
     XAxis,
     YAxis,
     CartesianGrid,
