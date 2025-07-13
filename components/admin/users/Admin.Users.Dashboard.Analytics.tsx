@@ -801,68 +801,6 @@ function Web3EcosystemMetrics({
     );
 }
 
-// Business Intelligence Summary
-function BusinessIntelligence() {
-    return (
-        <ChartCard title="Platform Info">
-            <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-4">
-                    <h4 className="text-lg font-semibold text-white">
-                        Market Position
-                    </h4>
-                    <div className="space-y-3">
-                        <div className="p-3 bg-gradient-to-r from-purple-900/50 to-slate-800/50 rounded-lg border border-purple-700/50">
-                            <h5 className="font-medium text-purple-200 mb-1">
-                                🎯 Target Market Leadership
-                            </h5>
-                            <p className="text-sm text-purple-100">
-                                First-mover advantage in K-pop Web3
-                                entertainment with blockchain-native fan
-                                engagement
-                            </p>
-                        </div>
-                        <div className="p-3 bg-gradient-to-r from-emerald-900/50 to-slate-800/50 rounded-lg border border-emerald-700/50">
-                            <h5 className="font-medium text-emerald-200 mb-1">
-                                📈 Revenue Diversification
-                            </h5>
-                            <p className="text-sm text-emerald-100">
-                                Multiple revenue streams: NFTs, digital assets,
-                                premium features, and artist partnerships
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    <h4 className="text-lg font-semibold text-white">
-                        Growth Drivers
-                    </h4>
-                    <div className="space-y-3">
-                        <div className="p-3 bg-gradient-to-r from-blue-900/50 to-slate-800/50 rounded-lg border border-blue-700/50">
-                            <h5 className="font-medium text-blue-200 mb-1">
-                                🚀 Viral User Acquisition
-                            </h5>
-                            <p className="text-sm text-blue-100">
-                                Community-driven growth through fan referrals
-                                and social sharing mechanisms
-                            </p>
-                        </div>
-                        <div className="p-3 bg-gradient-to-r from-amber-900/50 to-slate-800/50 rounded-lg border border-amber-700/50">
-                            <h5 className="font-medium text-amber-200 mb-1">
-                                🎵 Artist Network Effects
-                            </h5>
-                            <p className="text-sm text-amber-100">
-                                Each new artist brings their fanbase, creating
-                                exponential user growth potential
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </ChartCard>
-    );
-}
-
 // Main Analytics Component
 export function AdminUsersDashboardAnalytics() {
     const [timePeriod, setTimePeriod] = useState<"7" | "30" | "90">("30");
@@ -948,9 +886,6 @@ export function AdminUsersDashboardAnalytics() {
                         assetRankingData={holdingRanking?.data || []}
                     />
                 </div>
-
-                {/* Business Intelligence */}
-                <BusinessIntelligence />
             </div>
         </div>
     );
