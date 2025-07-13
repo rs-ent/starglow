@@ -42,11 +42,12 @@ import {
 
 // 공통 컴포넌트 import
 import { MetricCard, ChartCard } from "./shared/MetricCard";
-import {
-    DashboardLoading,
-    DashboardError,
-    formatNumber,
-} from "./shared/DashboardStates";
+import { DashboardLoading, DashboardError } from "./shared/DashboardStates";
+
+// 정확한 숫자 표시를 위한 함수
+function formatNumber(value: number): string {
+    return value.toLocaleString();
+}
 
 // Chart color palette for consistent branding
 const CHART_COLORS = [
@@ -90,21 +91,18 @@ function KPIOverview({ metrics, dauData, mauData }: KPIOverviewProps) {
     return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <MetricCard
-                title="Daily Active Users"
+                title="DAU"
                 value={formatNumber(latestDAU?.activeUsers || 0)}
-                description="24h active user count"
                 icon={Users}
                 trend={{
                     value: Math.abs(dauGrowth),
                     isPositive: dauGrowth >= 0,
                 }}
-                badge={{ text: "REAL-TIME", variant: "default" }}
             />
 
             <MetricCard
-                title="Monthly Active Users"
+                title="MAU"
                 value={formatNumber(latestMAU?.activeUsers || 0)}
-                description="30-day active users"
                 icon={Calendar}
                 trend={{
                     value: Math.abs(mauGrowth),
@@ -113,22 +111,15 @@ function KPIOverview({ metrics, dauData, mauData }: KPIOverviewProps) {
             />
 
             <MetricCard
-                title="User Stickiness"
+                title="Stickiness"
                 value={`${stickiness.toFixed(1)}%`}
-                description="DAU/MAU ratio"
                 icon={Target}
-                badge={{
-                    text: stickiness > 20 ? "EXCELLENT" : "GOOD",
-                    variant: stickiness > 20 ? "default" : "secondary",
-                }}
             />
 
             <MetricCard
-                title="Web3 Wallets"
+                title="Wallets"
                 value={formatNumber(metrics?.totalWallets || 0)}
-                description="Connected blockchain wallets"
                 icon={Wallet}
-                badge={{ text: "WEB3", variant: "secondary" }}
             />
         </div>
     );
@@ -177,10 +168,7 @@ function GrowthTrends({ dauData }: GrowthTrendsProps) {
     };
 
     return (
-        <ChartCard
-            title="User Growth Trends"
-            description="Daily active users and acquisition patterns over the last 30 days"
-        >
+        <ChartCard title="Growth">
             <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={trendData}>
@@ -204,7 +192,9 @@ function GrowthTrends({ dauData }: GrowthTrendsProps) {
                             stroke="#8b5cf6"
                             fill="#8b5cf6"
                             fillOpacity={0.6}
-                            name="Total DAU"
+                            name="DAU"
+                            dot={{ r: 4, fill: "#8b5cf6" }}
+                            activeDot={{ r: 4, fill: "#8b5cf6" }}
                         />
                         <Area
                             type="monotone"
@@ -214,6 +204,8 @@ function GrowthTrends({ dauData }: GrowthTrendsProps) {
                             fill="#10b981"
                             fillOpacity={0.8}
                             name="New Users"
+                            dot={{ r: 4, fill: "#10b981" }}
+                            activeDot={{ r: 4, fill: "#10b981" }}
                         />
                     </AreaChart>
                 </ResponsiveContainer>
@@ -235,36 +227,29 @@ function Web3EcosystemMetrics({ walletMetrics }: Web3MetricsProps) {
             value: walletMetrics?.totalWalletValue || 0,
             icon: DollarSign,
             color: "text-emerald-400",
-            description: "Combined asset value",
         },
         {
             name: "Asset Holders",
             value: walletMetrics?.walletsWithAssets || 0,
             icon: Star,
             color: "text-purple-400",
-            description: "Wallets with assets",
         },
         {
-            name: "Multi-Wallet Users",
+            name: "Multi-Wallet",
             value: walletMetrics?.multiWalletUsers || 0,
             icon: Wallet,
             color: "text-blue-400",
-            description: "Power users (2+ wallets)",
         },
         {
-            name: "Transaction Volume",
+            name: "Transactions",
             value: walletMetrics?.totalWalletTransactions || 0,
             icon: Zap,
             color: "text-yellow-400",
-            description: "Completed transactions",
         },
     ];
 
     return (
-        <ChartCard
-            title="Web3 Ecosystem Health"
-            description="Blockchain activity and digital asset engagement metrics"
-        >
+        <ChartCard title="Assets">
             <div className="grid gap-4 md:grid-cols-2">
                 {ecosystemData.map((metric) => {
                     const IconComponent = metric.icon;
@@ -283,9 +268,6 @@ function Web3EcosystemMetrics({ walletMetrics }: Web3MetricsProps) {
                                     <h4 className="font-semibold text-white">
                                         {metric.name}
                                     </h4>
-                                    <p className="text-xs text-slate-400">
-                                        {metric.description}
-                                    </p>
                                 </div>
                             </div>
                             <div className="text-2xl font-bold text-white">
@@ -299,132 +281,10 @@ function Web3EcosystemMetrics({ walletMetrics }: Web3MetricsProps) {
     );
 }
 
-// Network Distribution Pie Chart
-interface NetworkDistributionProps {
-    data: Array<{
-        network: string;
-        count: number;
-        percentage: number;
-    }>;
-}
-
-function NetworkDistribution({ data }: NetworkDistributionProps) {
-    if (!data || data.length === 0) {
-        return (
-            <ChartCard
-                title="Blockchain Network Distribution"
-                description="User distribution across different blockchain networks"
-            >
-                <div className="text-center py-8">
-                    <Globe className="h-12 w-12 mx-auto text-slate-500 mb-4" />
-                    <p className="text-sm text-slate-400">
-                        No network data available
-                    </p>
-                </div>
-            </ChartCard>
-        );
-    }
-
-    return (
-        <ChartCard
-            title="Blockchain Network Distribution"
-            description="User distribution across different blockchain networks"
-        >
-            <div className="grid gap-6 md:grid-cols-2">
-                {/* Pie Chart */}
-                <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <RechartsPieChart>
-                            <Pie
-                                data={data}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={60}
-                                outerRadius={90}
-                                paddingAngle={5}
-                                dataKey="count"
-                            >
-                                {data.map((entry, index) => (
-                                    <Cell
-                                        key={`cell-${index}`}
-                                        fill={
-                                            CHART_COLORS[
-                                                index % CHART_COLORS.length
-                                            ]
-                                        }
-                                    />
-                                ))}
-                            </Pie>
-                            <Tooltip
-                                content={({ active, payload }) => {
-                                    if (active && payload && payload.length) {
-                                        const data = payload[0].payload;
-                                        return (
-                                            <div className="bg-slate-900 border border-slate-700 rounded-lg p-3">
-                                                <p className="font-semibold text-white">
-                                                    {data.network}
-                                                </p>
-                                                <p className="text-slate-300">
-                                                    {formatNumber(data.count)}{" "}
-                                                    users ({data.percentage}%)
-                                                </p>
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                }}
-                            />
-                        </RechartsPieChart>
-                    </ResponsiveContainer>
-                </div>
-
-                {/* Network List */}
-                <div className="space-y-3">
-                    {data.map((network, index) => (
-                        <div
-                            key={network.network}
-                            className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div
-                                    className="w-4 h-4 rounded"
-                                    style={{
-                                        backgroundColor:
-                                            CHART_COLORS[
-                                                index % CHART_COLORS.length
-                                            ],
-                                    }}
-                                />
-                                <span className="font-medium text-white">
-                                    {network.network}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-slate-300">
-                                    {formatNumber(network.count)}
-                                </span>
-                                <Badge
-                                    variant="outline"
-                                    className="text-xs border-slate-600 text-slate-300"
-                                >
-                                    {network.percentage}%
-                                </Badge>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </ChartCard>
-    );
-}
-
 // Business Intelligence Summary
 function BusinessIntelligence() {
     return (
-        <ChartCard
-            title="Platform Intelligence"
-            description="Key insights and competitive advantages for stakeholders"
-        >
+        <ChartCard title="Platform Info">
             <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-4">
                     <h4 className="text-lg font-semibold text-white">
@@ -516,52 +376,23 @@ export function AdminUsersDashboardAnalytics() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
             <div className="container mx-auto px-6 py-8 space-y-8">
-                {/* Header */}
-                <div className="border-b border-slate-800 pb-6">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-2">
-                            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent">
-                                Starglow Analytics
-                            </h1>
-                            <p className="text-xl text-slate-300">
-                                Web3 Entertainment Platform Performance
-                                Dashboard
-                            </p>
-                            <p className="text-sm text-slate-400">
-                                Real-time insights for stakeholders and
-                                investors
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <Badge
-                                variant="outline"
-                                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white border-none px-3 py-1"
-                            >
-                                LIVE DATA
-                            </Badge>
-                            <Select
-                                value={timePeriod}
-                                onValueChange={(value: "7" | "30" | "90") =>
-                                    setTimePeriod(value)
-                                }
-                            >
-                                <SelectTrigger className="w-[140px] bg-slate-800 border-slate-700 text-slate-200">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-slate-800 border-slate-700">
-                                    <SelectItem value="7">
-                                        Last 7 days
-                                    </SelectItem>
-                                    <SelectItem value="30">
-                                        Last 30 days
-                                    </SelectItem>
-                                    <SelectItem value="90">
-                                        Last 90 days
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
+                {/* Time Period Selector */}
+                <div className="flex justify-end">
+                    <Select
+                        value={timePeriod}
+                        onValueChange={(value: "7" | "30" | "90") =>
+                            setTimePeriod(value)
+                        }
+                    >
+                        <SelectTrigger className="w-[140px] bg-slate-800 border-slate-700 text-slate-200">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-700">
+                            <SelectItem value="7">Last 7 days</SelectItem>
+                            <SelectItem value="30">Last 30 days</SelectItem>
+                            <SelectItem value="90">Last 90 days</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 {/* Key Performance Indicators */}
@@ -575,32 +406,15 @@ export function AdminUsersDashboardAnalytics() {
                 <GrowthTrends dauData={dauData || []} mauData={mauData || []} />
 
                 {/* Web3 & Network Analytics */}
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div>
                     <Web3EcosystemMetrics
                         walletMetrics={walletMetrics}
                         networkData={network.data}
-                    />
-                    <NetworkDistribution
-                        data={network.data?.networkDistribution || []}
                     />
                 </div>
 
                 {/* Business Intelligence */}
                 <BusinessIntelligence />
-
-                {/* Footer */}
-                <div className="border-t border-slate-800 pt-6">
-                    <div className="flex items-center justify-between text-slate-400">
-                        <p className="text-sm">
-                            Data updated in real-time • Last refresh:{" "}
-                            {new Date().toLocaleTimeString()}
-                        </p>
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                            <span className="text-xs">LIVE</span>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     );
