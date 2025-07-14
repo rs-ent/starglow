@@ -44,264 +44,258 @@ export interface SetReferralQuestLogsInput {
 export async function setReferralQuestLogs(
     input: SetReferralQuestLogsInput
 ): Promise<{ success: boolean; error?: string; data?: QuestLog[] }> {
+    const startTime = Date.now(); // 🚀 성능 모니터링 시작
+
     try {
-        const result = await prisma.$transaction(async (tx) => {
-            // 1. 활성화된 referral 퀘스트 조회 (tx 사용)
-            const referralQuests = await tx.quest.findMany({
-                where: {
-                    isReferral: true,
-                    isActive: true,
-                },
-            });
-
-            if (!referralQuests.length) {
-                return {
-                    success: true,
-                    data: [],
-                };
-            }
-
-            const referralQuestsIds = referralQuests.map((quest) => quest.id);
-
-            // 2. 기존 퀘스트 로그 조회 (tx 사용)
-            const questLogs = await tx.questLog.findMany({
-                where: {
-                    playerId: input.player.id,
-                    questId: { in: referralQuestsIds },
-                },
-                orderBy: {
-                    createdAt: "desc",
-                },
-            });
-
-            // 3. 플레이어의 referral 로그 조회 (tx 사용)
-            // 성능 최적화: count와 데이터를 분리하여 조회
-            const [referralCount, referralLogs] = await Promise.all([
-                tx.referralLog.count({
+        // 🚀 1단계: 트랜잭션 외부에서 데이터 조회 및 계산
+        const queryStartTime = Date.now();
+        const [referralQuests, questLogs, referralCount, referralLogs] =
+            await Promise.all([
+                // 활성화된 referral 퀘스트 조회
+                prisma.quest.findMany({
+                    where: {
+                        isReferral: true,
+                        isActive: true,
+                    },
+                }),
+                // 기존 퀘스트 로그 조회
+                prisma.questLog.findMany({
+                    where: {
+                        playerId: input.player.id,
+                        quest: {
+                            isReferral: true,
+                            isActive: true,
+                        },
+                    },
+                    orderBy: {
+                        createdAt: "desc",
+                    },
+                }),
+                // referral 개수 조회
+                prisma.referralLog.count({
                     where: {
                         referrerPlayerId: input.player.id,
                     },
                 }),
-                tx.referralLog.findMany({
+                // referral 로그 조회
+                prisma.referralLog.findMany({
                     where: {
                         referrerPlayerId: input.player.id,
                     },
                     orderBy: {
-                        createdAt: "desc", // 최신순 정렬
+                        createdAt: "desc",
                     },
-                    take: 100, // 최대 100개만 조회 (대부분의 케이스 커버)
+                    take: 100, // 최대 100개만 조회
                 }),
             ]);
 
-            if (referralCount === 0) {
-                return {
-                    success: true,
-                    data: [],
-                };
-            }
+        const queryTime = Date.now() - queryStartTime;
+        console.log(`[setReferralQuestLogs] Query phase: ${queryTime}ms`);
 
-            if (!referralLogs.length) {
-                return {
-                    success: true,
-                    data: [],
-                };
-            }
+        if (!referralQuests.length || referralCount === 0) {
+            console.log(
+                `[setReferralQuestLogs] Early exit: quests=${referralQuests.length}, referrals=${referralCount}`
+            );
+            return {
+                success: true,
+                data: [],
+            };
+        }
 
-            // 3-1. 필요한 최대 referral 수 계산 (성능 최적화)
-            const maxNeededReferrals = Math.max(
-                ...referralQuests.map((q) => {
-                    const existingLog = questLogs.find(
-                        (log) => log.questId === q.id
-                    );
-                    if (!q.referralCount) return 0;
-
-                    if (q.repeatable && q.repeatableCount && existingLog) {
-                        return q.referralCount * q.repeatableCount;
-                    }
-                    return existingLog?.completed ? 0 : q.referralCount;
-                })
+        // 🚀 2단계: 트랜잭션 외부에서 완료 가능한 퀘스트 계산
+        const calculationStartTime = Date.now();
+        const completableQuests = referralQuests.filter((quest) => {
+            const existingLog = questLogs.find(
+                (log) => log.questId === quest.id
             );
 
-            // 필요 이상의 데이터를 처리하지 않도록 제한
-            const effectiveReferralLogs = referralLogs.slice(
-                0,
-                maxNeededReferrals * 2
-            ); // 여유분 포함
-
-            // 4. 완료 가능한 퀘스트 필터링
-            const completableQuests = referralQuests.filter((quest) => {
-                const existingLog = questLogs.find(
-                    (log) => log.questId === quest.id
-                );
-
-                // 이미 완료되고 반복 불가능한 경우
-                if (existingLog?.completed && !quest.repeatable) {
-                    return false;
-                }
-
-                // referralCount가 설정되지 않은 경우
-                if (!quest.referralCount) {
-                    return false;
-                }
-
-                // 반복 가능한 퀘스트 처리
-                if (quest.repeatable && existingLog) {
-                    // repeatableCount 체크
-                    if (
-                        quest.repeatableCount &&
-                        existingLog.repeatCount >= quest.repeatableCount
-                    ) {
-                        return false;
-                    }
-
-                    // repeatableInterval 체크
-                    if (
-                        quest.repeatableInterval &&
-                        existingLog.completedDates.length > 0
-                    ) {
-                        try {
-                            const lastCompletedAt = Math.max(
-                                ...existingLog.completedDates.map((date) =>
-                                    new Date(date).getTime()
-                                )
-                            );
-                            const now = Date.now();
-                            if (
-                                now - lastCompletedAt <
-                                quest.repeatableInterval
-                            ) {
-                                return false;
-                            }
-                        } catch (error) {
-                            console.error(
-                                "Error parsing completedDates:",
-                                error
-                            );
-                            return false;
-                        }
-                    }
-
-                    // 남은 referral 수 계산
-                    const usedReferrals =
-                        existingLog.repeatCount * quest.referralCount;
-                    const remainingReferrals = referralCount - usedReferrals;
-                    return remainingReferrals >= quest.referralCount;
-                }
-
-                // 첫 완료 가능 여부
-                return referralCount >= quest.referralCount;
-            });
-
-            if (!completableQuests.length) {
-                return {
-                    success: true,
-                    data: [],
-                };
+            // 이미 완료되고 반복 불가능한 경우
+            if (existingLog?.completed && !quest.repeatable) {
+                return false;
             }
 
-            // 5. 퀘스트 로그 생성/업데이트
-            const updatedLogs: QuestLog[] = [];
+            // referralCount가 설정되지 않은 경우
+            if (!quest.referralCount) {
+                return false;
+            }
 
-            for (const quest of completableQuests) {
-                const existingLog = questLogs.find(
-                    (log) => log.questId === quest.id
-                );
-                const now = new Date();
-
-                // 사용할 referral 로그들 선택
-                const usedReferralCount = existingLog
-                    ? existingLog.repeatCount * (quest.referralCount || 0)
-                    : 0;
-
-                // 필요한 referral 로그가 충분한지 확인
-                let relevantReferralLogs: typeof referralLogs;
+            // 반복 가능한 퀘스트 처리
+            if (quest.repeatable && existingLog) {
+                // repeatableCount 체크
                 if (
-                    usedReferralCount + (quest.referralCount || 0) >
-                    referralLogs.length
+                    quest.repeatableCount &&
+                    existingLog.repeatCount >= quest.repeatableCount
                 ) {
-                    // 추가 데이터 필요 시 다시 조회
-                    const additionalLogs = await tx.referralLog.findMany({
-                        where: {
-                            referrerPlayerId: input.player.id,
-                        },
-                        orderBy: {
-                            createdAt: "desc",
-                        },
-                        skip: usedReferralCount,
-                        take: quest.referralCount || 0,
-                    });
-                    relevantReferralLogs = additionalLogs;
-                } else {
-                    relevantReferralLogs = effectiveReferralLogs.slice(
-                        usedReferralCount,
-                        usedReferralCount + (quest.referralCount || 0)
-                    );
+                    return false;
                 }
 
-                // 가장 최근 referral의 시간을 완료 시간으로 사용
-                const completedAt = relevantReferralLogs[0]?.createdAt || now;
-
-                const data = {
-                    playerId: input.player.id,
-                    questId: quest.id,
-                    completed: false,
-                    completedAt: null as Date | null,
-                    rewardAssetId: quest.rewardAssetId,
-                    rewardAmount: quest.rewardAmount,
-                    repeatCount: existingLog ? existingLog.repeatCount + 1 : 1,
-                    isClaimed: !quest.rewardAssetId, // 보상이 없으면 자동 클레임
-                    reclaimable: false,
-                    completedDates: existingLog?.completedDates || [],
-                };
-
-                // completedDates에 새 날짜 추가
-                data.completedDates.push(completedAt);
-
-                // 반복 가능 퀘스트 처리
-                if (quest.repeatable && quest.repeatableCount) {
-                    if (data.repeatCount >= quest.repeatableCount) {
-                        data.completed = true;
-                        data.completedAt = completedAt;
+                // repeatableInterval 체크
+                if (
+                    quest.repeatableInterval &&
+                    existingLog.completedDates.length > 0
+                ) {
+                    try {
+                        const lastCompletedAt = Math.max(
+                            ...existingLog.completedDates.map((date) =>
+                                new Date(date).getTime()
+                            )
+                        );
+                        const now = Date.now();
+                        if (now - lastCompletedAt < quest.repeatableInterval) {
+                            return false;
+                        }
+                    } catch (error) {
+                        console.error("Error parsing completedDates:", error);
+                        return false;
                     }
-                } else {
-                    // 반복 불가능하거나 repeatableCount가 1인 경우
+                }
+
+                // 남은 referral 수 계산
+                const usedReferrals =
+                    existingLog.repeatCount * quest.referralCount;
+                const remainingReferrals = referralCount - usedReferrals;
+                return remainingReferrals >= quest.referralCount;
+            }
+
+            // 첫 완료 가능 여부
+            return referralCount >= quest.referralCount;
+        });
+
+        const calculationTime = Date.now() - calculationStartTime;
+        console.log(
+            `[setReferralQuestLogs] Calculation phase: ${calculationTime}ms, completable=${completableQuests.length}`
+        );
+
+        if (!completableQuests.length) {
+            console.log(`[setReferralQuestLogs] No completable quests found`);
+            return {
+                success: true,
+                data: [],
+            };
+        }
+
+        // 🚀 3단계: 트랜잭션 외부에서 upsert 데이터 준비
+        const preparationStartTime = Date.now();
+        const now = new Date();
+        const upsertData = completableQuests.map((quest) => {
+            const existingLog = questLogs.find(
+                (log) => log.questId === quest.id
+            );
+
+            const usedReferralCount = existingLog
+                ? existingLog.repeatCount * (quest.referralCount || 0)
+                : 0;
+
+            const relevantReferralLogs = referralLogs.slice(
+                usedReferralCount,
+                usedReferralCount + (quest.referralCount || 0)
+            );
+
+            const completedAt = relevantReferralLogs[0]?.createdAt || now;
+
+            const data = {
+                playerId: input.player.id,
+                questId: quest.id,
+                completed: false,
+                completedAt: null as Date | null,
+                rewardAssetId: quest.rewardAssetId,
+                rewardAmount: quest.rewardAmount,
+                repeatCount: existingLog ? existingLog.repeatCount + 1 : 1,
+                isClaimed: !quest.rewardAssetId,
+                reclaimable: false,
+                completedDates: [
+                    ...(existingLog?.completedDates || []),
+                    completedAt,
+                ],
+            };
+
+            // 반복 가능 퀘스트 처리
+            if (quest.repeatable && quest.repeatableCount) {
+                if (data.repeatCount >= quest.repeatableCount) {
                     data.completed = true;
                     data.completedAt = completedAt;
                 }
-
-                // multiClaimable 처리
-                if (quest.multiClaimable) {
-                    if (
-                        !quest.multiClaimLimit ||
-                        data.repeatCount < quest.multiClaimLimit
-                    ) {
-                        data.reclaimable = true;
-                    }
-                }
-
-                const updatedLog = await tx.questLog.upsert({
-                    where: {
-                        playerId_questId: {
-                            playerId: input.player.id,
-                            questId: quest.id,
-                        },
-                    },
-                    update: data,
-                    create: data,
-                });
-
-                updatedLogs.push(updatedLog);
+            } else {
+                data.completed = true;
+                data.completedAt = completedAt;
             }
 
-            return {
-                success: true,
-                data: updatedLogs,
-            };
+            // multiClaimable 처리
+            if (quest.multiClaimable) {
+                if (
+                    !quest.multiClaimLimit ||
+                    data.repeatCount < quest.multiClaimLimit
+                ) {
+                    data.reclaimable = true;
+                }
+            }
+
+            return data;
         });
+
+        const preparationTime = Date.now() - preparationStartTime;
+        console.log(
+            `[setReferralQuestLogs] Preparation phase: ${preparationTime}ms`
+        );
+
+        // 🚀 4단계: 최적화된 트랜잭션 - 타임아웃 증가 및 배치 처리
+        const transactionStartTime = Date.now();
+        const result = await prisma.$transaction(
+            async (tx) => {
+                const updatedLogs: QuestLog[] = [];
+
+                // 배치로 upsert 처리 (Promise.all 사용)
+                const upsertPromises = upsertData.map(async (data) => {
+                    return tx.questLog.upsert({
+                        where: {
+                            playerId_questId: {
+                                playerId: data.playerId,
+                                questId: data.questId,
+                            },
+                        },
+                        update: data,
+                        create: data,
+                    });
+                });
+
+                const results = await Promise.all(upsertPromises);
+                updatedLogs.push(...results);
+
+                return {
+                    success: true,
+                    data: updatedLogs,
+                };
+            },
+            {
+                maxWait: 10000, // 10초 대기
+                timeout: 15000, // 15초 타임아웃 (기존 5초 → 15초)
+            }
+        );
+
+        const transactionTime = Date.now() - transactionStartTime;
+        const totalTime = Date.now() - startTime;
+
+        // 🚀 성능 로깅
+        console.log(
+            `[setReferralQuestLogs] Transaction phase: ${transactionTime}ms`
+        );
+        console.log(`[setReferralQuestLogs] Total execution: ${totalTime}ms`);
+
+        // 🚨 느린 실행 경고
+        if (totalTime > 8000) {
+            console.warn(
+                `[setReferralQuestLogs] SLOW EXECUTION: ${totalTime}ms (>8s)`
+            );
+        }
 
         return result;
     } catch (error) {
-        console.error("Error in setReferralQuestLogs:", error);
+        const totalTime = Date.now() - startTime;
+        console.error(
+            `[setReferralQuestLogs] Error after ${totalTime}ms:`,
+            error
+        );
+
         return {
             success: false,
             error:

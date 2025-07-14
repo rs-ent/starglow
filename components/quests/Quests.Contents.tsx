@@ -6,8 +6,7 @@ import { memo } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
 
-import { useQuestGet } from "@/app/hooks/useQuest";
-import { useReferralGet } from "@/app/hooks/useReferral";
+import { useQuestsPageData } from "@/app/hooks/useQuest";
 import { cn } from "@/lib/utils/tailwind";
 
 import QuestsTotal from "./Quests.Contents.Total";
@@ -25,16 +24,18 @@ const contentVariants = {
 };
 
 function QuestsContents({ player }: QuestsContentsProps) {
-    const { playerQuestLogs } = useQuestGet({
-        getPlayerQuestLogsInput: {
-            playerId: player?.id ?? "",
-        },
-    });
+    const now = new Date();
 
-    // 추천 로그 데이터 가져오기
-    const { referralLogs } = useReferralGet({
-        GetReferralLogsInput: {
-            playerId: player?.id ?? "",
+    // 🚀 통합된 데이터 페칭 - 3개 쿼리를 병렬로 실행
+    const questsPageData = useQuestsPageData({
+        player,
+        questsInput: {
+            isActive: true,
+            startDate: now,
+            endDate: now,
+            startDateIndicator: "after",
+            endDateIndicator: "before",
+            test: player?.tester ?? false,
         },
     });
 
@@ -57,8 +58,7 @@ function QuestsContents({ player }: QuestsContentsProps) {
                 >
                     <QuestsTotal
                         player={player}
-                        questLogs={playerQuestLogs || []}
-                        referralLogs={referralLogs}
+                        questsPageData={questsPageData}
                     />
                 </motion.div>
             </AnimatePresence>
