@@ -177,6 +177,16 @@ model Player {
   reportedBoardModeration BoardModerationReport[] @relation("BoardModerationReportReporter")
   assetInstances         AssetInstance[]
 
+  // 추가된 정보 필드
+  ipAddress              String?
+  locale                 String?  
+  os                     String?
+  device                 String?
+  browser                String?
+  country                String?
+  state                  String?
+  city                   String?
+
   @@unique([userId, telegramId])
   @@index([userId, telegramId])
   @@index([referredBy])

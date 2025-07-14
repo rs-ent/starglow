@@ -2,10 +2,8 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-
 import { useRequireAuth } from "@/app/auth/authUtils.Client";
 import { usePlayerSet } from "@/app/hooks/usePlayer";
 
@@ -14,98 +12,107 @@ export default function InvitePage() {
     const searchParams = useSearchParams();
     const { invitePlayer } = usePlayerSet();
     const [isProcessing, setIsProcessing] = useState(false);
-    const [hasProcessed, setHasProcessed] = useState(false);
+    const processedRef = useRef(false);
 
+    // URL 파라미터 추출
     const ref = searchParams.get("ref");
     const method = searchParams.get("method") || "Unknown";
     const tgId = searchParams.get("tgId");
 
-    // 현재 URL을 callbackUrl로 전달
-    const currentUrl = `/invite?ref=${ref}&method=${method}${
-        tgId ? `&tgId=${tgId}` : ""
-    }`;
+    // 현재 URL을 callbackUrl로 사용
+    const currentUrl = `/invite?${searchParams.toString()}`;
+
     const {
         user,
         loading: isAuthLoading,
         authenticated,
     } = useRequireAuth(currentUrl);
 
-    const handleInvite = useCallback(async () => {
-        // 이미 처리했거나 처리 중이면 중복 실행 방지
-        if (isProcessing || hasProcessed) return;
+    useEffect(() => {
+        // 이미 처리했거나 로딩 중이면 무시
+        if (processedRef.current || isAuthLoading || isProcessing) return;
 
-        // 1. 필수 파라미터 검증
-        if (!ref || ref.trim().length === 0) {
-            router.push(`/?inviteError=INVALID_CODE`);
+        // 필수 파라미터 검증
+        if (!ref) {
+            router.push("/?inviteError=INVALID_CODE");
             return;
         }
 
-        // 2. 인증 체크
-        if (!authenticated || !user) {
+        // 인증 체크
+        if (!authenticated || !user?.id) {
             router.push(
                 `/auth/signin?callbackUrl=${encodeURIComponent(currentUrl)}`
             );
             return;
         }
 
-        // 3. 초대 처리
+        // 초대 처리 시작
+        processedRef.current = true;
         setIsProcessing(true);
-        setHasProcessed(true);
 
-        try {
-            const result = await invitePlayer({
-                referredUser: user,
+        const processInvite = async () => {
+            try {
+                const result = await invitePlayer({
+                    referredUser: user,
+                    referrerCode: ref,
+                    method: method,
+                    telegramId: tgId || undefined,
+                });
+
+                const referrerName =
+                    result?.referrerPlayer?.nickname ||
+                    result?.referrerPlayer?.name ||
+                    result?.referrerPlayer?.email ||
+                    ref;
+
+                router.push(
+                    `/?inviteSuccess=true&referrer=${encodeURIComponent(
+                        referrerName
+                    )}&method=${encodeURIComponent(method)}`
+                );
+            } catch (error: any) {
+                console.error("Invitation error:", {
+                    error: error?.message || error,
+                    referrerCode: ref,
+                    method: method,
+                    telegramId: tgId,
+                    userId: user?.id,
+                    userEmail: user?.email,
+                });
+
+                const errorType = error?.message || "UNKNOWN_ERROR";
+                router.push(
+                    `/?inviteError=${errorType}&referrer=${encodeURIComponent(
+                        ref
+                    )}&method=${encodeURIComponent(method)}`
+                );
+            } finally {
+                setIsProcessing(false);
+            }
+        };
+
+        processInvite().catch((error) => {
+            console.error("Invitation error:", {
+                error: error?.message || error,
                 referrerCode: ref,
                 method: method,
-                telegramId: tgId && tgId.trim().length > 0 ? tgId : undefined,
+                telegramId: tgId,
             });
-
-            const referrerName =
-                result?.referrerPlayer.nickname ||
-                result?.referrerPlayer.name ||
-                result?.referrerPlayer.email ||
-                ref;
-
-            router.push(
-                `/?inviteSuccess=true&referrer=${encodeURIComponent(
-                    referrerName
-                )}&method=${encodeURIComponent(method)}`
-            );
-        } catch (error: any) {
-            console.error("Invitation error:", error);
-
-            // 에러 타입에 따라 메인 페이지로 리다이렉트하면서 에러 params 전달
-            const errorType = error.message || "UNKNOWN_ERROR";
-            router.push(
-                `/?inviteError=${errorType}&referrer=${encodeURIComponent(
-                    ref
-                )}&method=${encodeURIComponent(method)}`
-            );
-        } finally {
-            setIsProcessing(false);
-        }
+        });
     }, [
-        isProcessing,
-        hasProcessed,
-        ref,
-        method,
-        router,
+        isAuthLoading,
         authenticated,
         user,
-        currentUrl,
-        invitePlayer,
+        ref,
+        method,
         tgId,
+        router,
+        invitePlayer,
+        currentUrl,
+        isProcessing,
     ]);
 
-    useEffect(() => {
-        if (!isAuthLoading && !hasProcessed) {
-            handleInvite().catch((error) => {
-                console.error("Failed to handle invite:", error);
-            });
-        }
-    }, [isAuthLoading, hasProcessed, handleInvite]);
-
-    // 로딩 중이거나 처리 중일 때 로딩 UI 표시
+    // 로딩 UI
     if (isAuthLoading || isProcessing) {
         return (
             <div className="relative flex flex-col w-full h-screen overflow-hidden items-center justify-center">

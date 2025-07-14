@@ -53,12 +53,6 @@ export default React.memo(function StarContents({
                 !collection.hiddenDetails
         );
 
-        const totalPosts =
-            artist.boards?.reduce(
-                (sum, board) => sum + board.posts.length,
-                0
-            ) || 0;
-
         const polls = artist.polls?.filter(
             (poll) => poll.isActive && poll.showOnStarPage
         );
@@ -74,7 +68,7 @@ export default React.memo(function StarContents({
             story_spg: collections,
             polls,
             quests,
-            totalPosts,
+            totalPosts: artist.totalPosts,
             totalPolls,
             totalQuests,
         } as PolishedArtist;
@@ -347,11 +341,7 @@ export default React.memo(function StarContents({
                                                 getResponsiveClass(25).textClass
                                             )}
                                         >
-                                            {artist.boards?.reduce(
-                                                (sum, board) =>
-                                                    sum + board.posts.length,
-                                                0
-                                            ) || 0}
+                                            {polishedArtist.totalPosts}
                                         </p>
                                     </div>
                                     <div

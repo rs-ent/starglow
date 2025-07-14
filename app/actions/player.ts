@@ -6,6 +6,8 @@ import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma/client";
+import type { UserDetailData } from "@/lib/utils/user-detail-data";
+import { getUserDetailDataForServerAction } from "@/lib/utils/user-detail-data";
 
 import { setDefaultPlayerAsset } from "@/app/actions/playerAssets/actions";
 import { setReferralQuestLogs } from "./referral";
@@ -108,11 +110,36 @@ export async function updatePlayer(
     }
 
     try {
+        // 🚀 사용자 상세 정보 자동 수집 (백그라운드에서 빠르게)
+        let userDetails: Partial<UserDetailData> = {};
+        try {
+            userDetails = await getUserDetailDataForServerAction();
+            const collectedFields = Object.entries(userDetails).filter(
+                ([_, value]) => value !== null
+            );
+            if (collectedFields.length === 0) {
+                console.warn("[updatePlayer] No valid data collected");
+            }
+        } catch (detailError) {
+            console.error(
+                "[updatePlayer] Failed to collect user details:",
+                detailError instanceof Error ? detailError.message : detailError
+            );
+        }
+
         const player = await prisma.player.update({
             where: { id: input.playerId },
             data: {
                 tweetAuthorId: input.tweetAuthorId,
                 lastConnectedAt: new Date(),
+                // 🎯 사용자 상세 정보 자동 업데이트
+                ...(userDetails.ipAddress && {
+                    ipAddress: userDetails.ipAddress,
+                }),
+                ...(userDetails.locale && { locale: userDetails.locale }),
+                ...(userDetails.os && { os: userDetails.os }),
+                ...(userDetails.device && { device: userDetails.device }),
+                ...(userDetails.browser && { browser: userDetails.browser }),
             },
         });
 
@@ -148,6 +175,24 @@ export async function setPlayer(
     try {
         let error: string | undefined = undefined;
         const referralCode = await generateReferralCode();
+
+        // 🚀 사용자 상세 정보 자동 수집 (백그라운드에서 빠르게)
+        let userDetails: Partial<UserDetailData> = {};
+        try {
+            userDetails = await getUserDetailDataForServerAction();
+            const collectedFields = Object.entries(userDetails).filter(
+                ([_, value]) => value !== null
+            );
+            if (collectedFields.length === 0) {
+                console.warn("[setPlayer] No valid data collected");
+            }
+        } catch (detailError) {
+            console.error(
+                "[setPlayer] Failed to collect user details:",
+                detailError instanceof Error ? detailError.message : detailError
+            );
+        }
+
         const result = await prisma.$transaction(async (tx) => {
             const existingPlayer = await tx.player.findUnique({
                 where: { userId: input.user.id },
@@ -159,6 +204,14 @@ export async function setPlayer(
             const updateData: Prisma.PlayerUpdateInput = {
                 name: input.user.name || "New Player",
                 lastConnectedAt: new Date(),
+                // 🎯 사용자 상세 정보 자동 업데이트
+                ...(userDetails.ipAddress && {
+                    ipAddress: userDetails.ipAddress,
+                }),
+                ...(userDetails.locale && { locale: userDetails.locale }),
+                ...(userDetails.os && { os: userDetails.os }),
+                ...(userDetails.device && { device: userDetails.device }),
+                ...(userDetails.browser && { browser: userDetails.browser }),
             };
 
             if (input.tweetAuthorId && !existingPlayer?.tweetAuthorId) {
@@ -188,19 +241,20 @@ export async function setPlayer(
                     userId: input.user.id,
                     referralCode: referralCode,
                     tweetAuthorId: input.tweetAuthorId,
+                    // 🎯 새 플레이어 생성 시에도 사용자 상세 정보 포함
+                    ...(userDetails.ipAddress && {
+                        ipAddress: userDetails.ipAddress,
+                    }),
+                    ...(userDetails.locale && { locale: userDetails.locale }),
+                    ...(userDetails.os && { os: userDetails.os }),
+                    ...(userDetails.device && { device: userDetails.device }),
+                    ...(userDetails.browser && {
+                        browser: userDetails.browser,
+                    }),
                 },
             });
 
             if (player) {
-                setReferralQuestLogs({
-                    player: player,
-                }).catch((error) => {
-                    console.error(
-                        "[SetReferral] Failed to set referral quest logs:",
-                        error
-                    );
-                });
-
                 await setDefaultPlayerAsset({
                     player: player,
                     trx: tx,
@@ -213,6 +267,18 @@ export async function setPlayer(
                 error: error,
             };
         });
+
+        // Referral Quest를 백그라운드에서 비동기로 처리
+        if (result.player) {
+            setReferralQuestLogs({
+                player: result.player,
+            }).catch((error) => {
+                console.error(
+                    "[setPlayer] Failed to set referral quest logs:",
+                    error
+                );
+            });
+        }
 
         return result;
     } catch (error) {
@@ -329,15 +395,17 @@ export async function invitePlayer(
             };
         });
 
-        // Referral Quest 자동 완료 처리
+        // Referral Quest를 백그라운드에서 비동기로 처리 - 사용자는 기다리지 않음
         if (result && result.referrerPlayer) {
-            await setReferralQuestLogs({
+            // 백그라운드에서 실행하되 에러는 로깅만 함
+            setReferralQuestLogs({
                 player: result.referrerPlayer,
             }).catch((error) => {
                 console.error(
                     "[invitePlayer] Failed to set referral quest logs:",
                     error
                 );
+                // 별도 에러 추적을 위해 Sentry나 다른 모니터링 시스템에 보고 가능
             });
         }
 
@@ -432,15 +500,17 @@ export async function createReferralLogForMigration(
             return { referralLog };
         });
 
-        // 4. Referral Quest 자동 완료 처리
-        await setReferralQuestLogs({
-            player: referrerUser.player,
-        }).catch((error) => {
-            console.error(
-                "[createReferralLogForMigration] Failed to set referral quest logs:",
-                error
-            );
-        });
+        // Referral Quest를 백그라운드에서 비동기로 처리
+        if (referrerUser.player) {
+            setReferralQuestLogs({
+                player: referrerUser.player,
+            }).catch((error) => {
+                console.error(
+                    "[createReferralLogForMigration] Failed to set referral quest logs:",
+                    error
+                );
+            });
+        }
 
         return { success: true, result };
     } catch (error) {
@@ -577,5 +647,103 @@ export async function getPlayerProfile(
     } catch (error) {
         console.error("[getPlayerProfile] Error:", error);
         return null;
+    }
+}
+
+// 사용자 상세 정보 업데이트 관련 인터페이스와 함수들
+
+export interface UpdatePlayerDetailsInput {
+    playerId: string;
+    details: Partial<UserDetailData>;
+}
+
+export interface UpdatePlayerDetailsResult {
+    success: boolean;
+    player?: Player;
+    error?: string;
+}
+
+/**
+ * Player의 상세 정보(IP, 기기 정보, 지역 등)를 업데이트하는 함수
+ * 속도 최적화: 실패해도 에러를 던지지 않고 결과만 반환
+ */
+export async function updatePlayerDetails(
+    input?: UpdatePlayerDetailsInput
+): Promise<UpdatePlayerDetailsResult> {
+    if (!input) {
+        return { success: false, error: "입력값이 없습니다." };
+    }
+
+    const { playerId, details } = input;
+
+    try {
+        // 업데이트할 데이터만 필터링 (null/undefined 제외)
+        const updateData: Record<string, any> = {};
+
+        if (details.ipAddress !== undefined && details.ipAddress !== null) {
+            updateData.ipAddress = details.ipAddress;
+        }
+        if (details.locale !== undefined && details.locale !== null) {
+            updateData.locale = details.locale;
+        }
+        if (details.os !== undefined && details.os !== null) {
+            updateData.os = details.os;
+        }
+        if (details.device !== undefined && details.device !== null) {
+            updateData.device = details.device;
+        }
+        if (details.browser !== undefined && details.browser !== null) {
+            updateData.browser = details.browser;
+        }
+        if (details.country !== undefined && details.country !== null) {
+            updateData.country = details.country;
+        }
+        if (details.state !== undefined && details.state !== null) {
+            updateData.state = details.state;
+        }
+        if (details.city !== undefined && details.city !== null) {
+            updateData.city = details.city;
+        }
+
+        // 업데이트할 데이터가 없으면 성공으로 처리
+        if (Object.keys(updateData).length === 0) {
+            return { success: true, error: "업데이트할 데이터가 없습니다." };
+        }
+
+        // Player 업데이트 (upsert 방식으로 안전하게)
+        const updatedPlayer = await prisma.player.update({
+            where: { id: playerId },
+            data: {
+                ...updateData,
+                lastConnectedAt: new Date(), // 접속 시간도 업데이트
+            },
+        });
+
+        // 관련 캐시 무효화 (필요시)
+        revalidatePath("/user");
+        revalidatePath("/admin");
+
+        return {
+            success: true,
+            player: updatedPlayer,
+        };
+    } catch (error) {
+        console.error("[updatePlayerDetails] Error:", error);
+
+        // 상세한 에러 정보 제공
+        let errorMessage = "사용자 정보 업데이트에 실패했습니다.";
+
+        if (error instanceof Error) {
+            if (error.message.includes("Record to update not found")) {
+                errorMessage = "해당 사용자를 찾을 수 없습니다.";
+            } else if (error.message.includes("Unique constraint")) {
+                errorMessage = "중복된 정보가 있습니다.";
+            }
+        }
+
+        return {
+            success: false,
+            error: errorMessage,
+        };
     }
 }

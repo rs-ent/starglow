@@ -72,30 +72,52 @@ export default function Main() {
     const [inviteErrorModal, setInviteErrorModal] = useState(false);
     const [inviteNotification, setInviteNotification] = useState<any>(null);
 
-    // 초대 관련 URL params 체크
+    // 초대 관련 URL params 체크 - 안전한 파라미터 추출
     const inviteSuccess = searchParams.get("inviteSuccess");
     const inviteError = searchParams.get("inviteError");
     const referrer = searchParams.get("referrer");
     const method = searchParams.get("method");
 
+    // 안전한 파라미터 디코딩 함수
+    const safeDecodeURIComponent = useCallback(
+        (value: string | null, fallback: string = "unknown") => {
+            if (!value) return fallback;
+            try {
+                return decodeURIComponent(value);
+            } catch (error) {
+                console.error("Failed to decode URI component:", error);
+                return fallback;
+            }
+        },
+        []
+    );
+
     // URL 정리 함수
     const cleanUrl = useCallback(() => {
-        const url = new URL(window.location.href);
-        url.searchParams.delete("inviteSuccess");
-        url.searchParams.delete("inviteError");
-        url.searchParams.delete("referrer");
-        url.searchParams.delete("method");
-        router.replace(url.pathname + (url.search || ""));
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("inviteSuccess");
+            url.searchParams.delete("inviteError");
+            url.searchParams.delete("referrer");
+            url.searchParams.delete("method");
+            router.replace(url.pathname + (url.search || ""));
+        } catch (error) {
+            console.error("Failed to clean URL:", error);
+            // 최후의 수단으로 현재 path만 유지
+            router.replace(window.location.pathname);
+        }
     }, [router]);
 
-    // 초대 성공 모달 처리
+    // 초대 알림 통합 처리 - 우선순위: 성공 > 에러
     useEffect(() => {
-        if (
-            inviteSuccess === "true" &&
-            referrer &&
-            method &&
-            !inviteSuccessModal
-        ) {
+        // 이미 모달이 열려있으면 무시
+        if (inviteSuccessModal || inviteErrorModal) return;
+
+        // 성공 케이스 우선 처리
+        if (inviteSuccess === "true") {
+            const safeReferrer = safeDecodeURIComponent(referrer, "A friend");
+            const safeMethod = safeDecodeURIComponent(method, "webapp");
+
             const notification = {
                 id: "invite-success",
                 type: "invite_success",
@@ -103,19 +125,19 @@ export default function Main() {
                 message:
                     "You have successfully joined Starglow through an invitation!",
                 entityData: {
-                    referrerName: decodeURIComponent(referrer),
-                    method: decodeURIComponent(method),
+                    referrerName: safeReferrer,
+                    method: safeMethod,
                 },
                 createdAt: new Date(),
             };
+
             setInviteNotification(notification);
             setInviteSuccessModal(true);
+            return; // 성공 시 에러 처리 무시
         }
-    }, [inviteSuccess, referrer, method, inviteSuccessModal]);
 
-    // 초대 에러 모달 처리
-    useEffect(() => {
-        if (inviteError && !inviteErrorModal) {
+        // 에러 케이스 처리 (성공이 없을 때만)
+        if (inviteError) {
             const errorMessages: Record<string, string> = {
                 ALREADY_INVITED:
                     "You have already been invited by someone else",
@@ -127,28 +149,42 @@ export default function Main() {
                     "This Telegram ID is already linked to another account",
                 INVALID_CODE: "Invalid referral code",
                 INVALID_METHOD: "Invalid invitation method",
+                PROCESSING_ERROR:
+                    "An error occurred while processing your invitation",
                 UNKNOWN_ERROR: "An error occurred during invitation",
             };
+
+            const errorMessage =
+                errorMessages[inviteError] || errorMessages.UNKNOWN_ERROR;
+
+            const safeReferrer = safeDecodeURIComponent(referrer, "Unknown");
+            const safeMethod = safeDecodeURIComponent(method, "unknown");
 
             const notification = {
                 id: "invite-error",
                 type: "invite_error",
                 title: "Invitation Error",
-                message:
-                    errorMessages[inviteError] || errorMessages.UNKNOWN_ERROR,
+                message: errorMessage,
                 entityData: {
                     errorType: inviteError,
-                    referrerName: referrer
-                        ? decodeURIComponent(referrer)
-                        : "Unknown",
-                    method: method ? decodeURIComponent(method) : "unknown",
+                    referrerName: safeReferrer,
+                    method: safeMethod,
                 },
                 createdAt: new Date(),
             };
+
             setInviteNotification(notification);
             setInviteErrorModal(true);
         }
-    }, [inviteError, referrer, method, inviteErrorModal]);
+    }, [
+        inviteSuccess,
+        inviteError,
+        referrer,
+        method,
+        inviteSuccessModal,
+        inviteErrorModal,
+        safeDecodeURIComponent,
+    ]);
 
     // 모달 닫기 핸들러
     const handleCloseInviteModals = useCallback(() => {
@@ -219,8 +255,8 @@ export default function Main() {
                 <Footer followUsVisible={false} />
             </div>
 
-            {/* 초대 성공 모달 */}
-            {inviteNotification && (
+            {/* 초대 성공 모달 - 더 안전한 조건 */}
+            {inviteNotification && inviteSuccessModal && (
                 <NotifyInvitationSuccess
                     isOpen={inviteSuccessModal}
                     onClose={handleCloseInviteModals}
@@ -229,8 +265,8 @@ export default function Main() {
                 />
             )}
 
-            {/* 초대 에러 모달 */}
-            {inviteNotification && (
+            {/* 초대 에러 모달 - 더 안전한 조건 */}
+            {inviteNotification && inviteErrorModal && (
                 <NotifyInvitationError
                     isOpen={inviteErrorModal}
                     onClose={handleCloseInviteModals}

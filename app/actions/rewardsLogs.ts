@@ -30,6 +30,24 @@ export interface GetRewardsLogsInput {
     tweetIds?: string[];
 }
 
+// Pagination interfaces
+export interface Pagination {
+    currentPage: number;
+    itemsPerPage: number;
+}
+
+export interface PaginationOutput {
+    totalItems: number;
+    totalPages: number;
+    currentPage: number;
+    itemsPerPage: number;
+}
+
+export interface GetRewardsLogsOutput extends PaginationOutput {
+    rewardsLogs: RewardLog[];
+}
+
+// 기존 함수 - 하위 호환성 유지
 export async function getRewardsLogs({
     input,
 }: {
@@ -84,5 +102,80 @@ export async function getRewardsLogs({
     } catch (error) {
         console.error(error);
         return [];
+    }
+}
+
+// 새로운 pagination 지원 함수
+export async function getRewardsLogsPaginated(
+    input?: GetRewardsLogsInput,
+    pagination?: Pagination
+): Promise<GetRewardsLogsOutput> {
+    try {
+        const currentPage = pagination?.currentPage || 1;
+        const itemsPerPage = pagination?.itemsPerPage || 15;
+
+        const where: Prisma.RewardsLogWhereInput = {};
+
+        if (input?.playerId) {
+            where.playerId = input.playerId;
+        }
+
+        if (input?.assetId) {
+            where.assetId = input.assetId;
+        }
+
+        if (input?.questId) {
+            where.questId = input.questId;
+        }
+
+        if (input?.pollId) {
+            where.pollId = input.pollId;
+        }
+
+        if (input?.reason) {
+            where.reason = input.reason;
+        }
+
+        if (input?.tweetAuthorId) {
+            where.tweetAuthorId = input.tweetAuthorId;
+        }
+
+        if (input?.tweetIds) {
+            where.tweetIds = {
+                hasSome: input.tweetIds,
+            };
+        }
+
+        const [rewardsLogs, totalItems] = await Promise.all([
+            prisma.rewardsLog.findMany({
+                where,
+                include: {
+                    asset: true,
+                },
+                skip: (currentPage - 1) * itemsPerPage,
+                take: itemsPerPage,
+                orderBy: {
+                    createdAt: "desc",
+                },
+            }),
+            prisma.rewardsLog.count({ where }),
+        ]);
+
+        return {
+            rewardsLogs: rewardsLogs as RewardLog[],
+            totalItems,
+            totalPages: Math.ceil(totalItems / itemsPerPage),
+            currentPage,
+            itemsPerPage,
+        };
+    } catch (error) {
+        console.error("Failed to get rewards logs:", error);
+        return {
+            rewardsLogs: [],
+            totalItems: 0,
+            totalPages: 0,
+            currentPage: 1,
+            itemsPerPage: 15,
+        };
     }
 }

@@ -2,12 +2,12 @@
 
 "use client";
 
-import { memo, useCallback, useState, useMemo } from "react";
+import { memo, useCallback, useState, useMemo, useRef, useEffect } from "react";
 
 import { formatDistanceToNow } from "date-fns";
 import { XIcon } from "lucide-react";
 
-import { useRewardsLogsGet } from "@/app/hooks/useRewardsLogs";
+import { useInfiniteRewardsLogs } from "@/app/hooks/useRewardsLogs";
 import { usePlayerAssetsGet } from "@/app/actions/playerAssets/hooks";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -20,6 +20,7 @@ import type {
     PlayerAssetWithAsset,
     AssetInstanceWithRelations,
 } from "@/app/actions/playerAssets/actions";
+import type { RewardLog } from "@/app/actions/rewardsLogs";
 
 interface UserRewardsModalCardProps {
     playerId?: string;
@@ -37,15 +38,6 @@ function UserRewardsModalCard({
         reward.asset.hasInstance ? "items" : "total"
     );
 
-    const { rewardsLogs, isRewardsLogsLoading, rewardsLogsError } =
-        useRewardsLogsGet({
-            getRewardsLogsInput: {
-                playerId: playerId ?? "",
-                assetId: reward.asset.id,
-            },
-        });
-
-    // AssetInstance 조회 (hasInstance=true인 경우에만)
     const {
         playerAssetInstances,
         isPlayerAssetInstancesLoading,
@@ -277,9 +269,8 @@ function UserRewardsModalCard({
                                 />
                             ) : (
                                 <RewardsHistoryView
-                                    rewardsLogs={rewardsLogs}
-                                    isRewardsLogsLoading={isRewardsLogsLoading}
-                                    rewardsLogsError={rewardsLogsError}
+                                    playerId={playerId}
+                                    assetId={reward.asset.id}
                                     formatDate={formatDate}
                                     getRelativeTime={getRelativeTime}
                                 />
@@ -767,22 +758,77 @@ function AssetInstanceCard({ instance }: AssetInstanceCardProps) {
     );
 }
 
-// RewardsHistoryView 컴포넌트 (기존 로직 분리)
+// RewardsHistoryView 컴포넌트 - 무한 스크롤로 개선
 interface RewardsHistoryViewProps {
-    rewardsLogs: any[] | undefined;
-    isRewardsLogsLoading: boolean;
-    rewardsLogsError: any;
+    playerId?: string;
+    assetId: string;
     formatDate: (date: Date) => string;
     getRelativeTime: (date: Date) => string;
 }
 
 function RewardsHistoryView({
-    rewardsLogs,
-    isRewardsLogsLoading,
-    rewardsLogsError,
+    playerId,
+    assetId,
     formatDate,
     getRelativeTime,
 }: RewardsHistoryViewProps) {
+    // 무한 스크롤을 위한 ref
+    const loadMoreRef = useRef<HTMLDivElement>(null);
+
+    // 무한 스크롤 쿼리
+    const {
+        data: infiniteData,
+        isLoading: isInfiniteLoading,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
+        error: infiniteError,
+    } = useInfiniteRewardsLogs({
+        playerId: playerId ?? "",
+        assetId: assetId,
+    });
+
+    // 모든 보상 로그를 하나의 배열로 합치기
+    const allRewardsLogs = useMemo(() => {
+        const data = infiniteData as any;
+        if (!data?.pages) return [];
+        return data.pages.flatMap((page: any) => page.rewardsLogs);
+    }, [infiniteData]);
+
+    // Intersection Observer로 무한 스크롤 구현
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const target = entries[0];
+                if (
+                    target.isIntersecting &&
+                    hasNextPage &&
+                    !isFetchingNextPage
+                ) {
+                    fetchNextPage().catch((error) => {
+                        console.error("Failed to fetch next page:", error);
+                    });
+                }
+            },
+            {
+                root: null,
+                rootMargin: "50px", // 50px 전에 미리 로딩
+                threshold: 0.1,
+            }
+        );
+
+        const currentRef = loadMoreRef.current;
+        if (currentRef) {
+            observer.observe(currentRef);
+        }
+
+        return () => {
+            if (currentRef) {
+                observer.unobserve(currentRef);
+            }
+        };
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
     return (
         <div
             className={cn(
@@ -791,15 +837,15 @@ function RewardsHistoryView({
                 "pb-6"
             )}
         >
-            {/* 로딩 상태 */}
-            {isRewardsLogsLoading && (
+            {/* 초기 로딩 상태 */}
+            {isInfiniteLoading && allRewardsLogs.length === 0 && (
                 <div className="py-8">
                     <PartialLoading text="Loading reward history..." />
                 </div>
             )}
 
             {/* 에러 상태 */}
-            {rewardsLogsError && (
+            {infiniteError && (
                 <div className="py-8 text-center">
                     <p className="text-red-400">
                         Failed to load reward history
@@ -814,9 +860,9 @@ function RewardsHistoryView({
             )}
 
             {/* 데이터 없음 상태 */}
-            {!isRewardsLogsLoading &&
-                !rewardsLogsError &&
-                (!rewardsLogs || rewardsLogs.length === 0) && (
+            {!isInfiniteLoading &&
+                !infiniteError &&
+                allRewardsLogs.length === 0 && (
                     <div className="py-8 text-center">
                         <p
                             className={cn(
@@ -830,78 +876,89 @@ function RewardsHistoryView({
                 )}
 
             {/* 보상 히스토리 목록 */}
-            {rewardsLogs?.map((log) => {
-                return (
-                    <article
-                        key={log.id}
-                        className={cn(
-                            "rounded-[16px] transition-all duration-300 ease-out",
-                            "bg-gradient-to-br from-white/10 to-white/5",
-                            "border border-white/20 backdrop-blur-sm",
-                            "hover:bg-gradient-to-br hover:from-white/20 hover:to-white/10",
-                            "hover:border-white/30 hover:shadow-lg hover:shadow-white/10",
-                            getResponsiveClass(20).paddingClass
-                        )}
-                    >
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                                <p
-                                    className={cn(
-                                        getResponsiveClass(15).textClass,
-                                        "font-semibold",
-                                        "line-clamp-2"
-                                    )}
-                                >
-                                    {log.reason}
-                                </p>
-                                <div className="flex items-center mt-1">
-                                    <time
-                                        className={cn(
-                                            getResponsiveClass(10).textClass,
-                                            "text-white/50",
-                                            "block"
-                                        )}
-                                        title={formatDate(
-                                            new Date(log.createdAt)
-                                        )}
-                                    >
-                                        {getRelativeTime(
-                                            new Date(log.createdAt)
-                                        )}
-                                    </time>
-                                </div>
-                            </div>
-
-                            <div
+            {allRewardsLogs.map((log: RewardLog) => (
+                <article
+                    key={log.id}
+                    className={cn(
+                        "rounded-[16px] transition-all duration-300 ease-out",
+                        "bg-gradient-to-br from-white/10 to-white/5",
+                        "border border-white/20 backdrop-blur-sm",
+                        "hover:bg-gradient-to-br hover:from-white/20 hover:to-white/10",
+                        "hover:border-white/30 hover:shadow-lg hover:shadow-white/10",
+                        getResponsiveClass(20).paddingClass
+                    )}
+                >
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                            <p
                                 className={cn(
                                     getResponsiveClass(15).textClass,
-                                    "font-main",
-                                    (log.balanceAfter ?? 0) -
-                                        (log.balanceBefore ?? 0) >=
-                                        0
-                                        ? "text-green-400"
-                                        : "text-red-400"
+                                    "font-semibold",
+                                    "line-clamp-2"
                                 )}
                             >
-                                <div
+                                {log.reason}
+                            </p>
+                            <div className="flex items-center mt-1">
+                                <time
                                     className={cn(
-                                        "flex-shrink-0",
-                                        "text-right"
+                                        getResponsiveClass(10).textClass,
+                                        "text-white/50",
+                                        "block"
                                     )}
+                                    title={formatDate(new Date(log.createdAt))}
                                 >
-                                    {(log.balanceAfter ?? 0) -
-                                        (log.balanceBefore ?? 0) >=
-                                    0
-                                        ? "+"
-                                        : "-"}
-                                    {Math.abs(log.amount).toLocaleString()}{" "}
-                                    {log.asset?.symbol}
-                                </div>
+                                    {getRelativeTime(new Date(log.createdAt))}
+                                </time>
                             </div>
                         </div>
-                    </article>
-                );
-            })}
+
+                        <div
+                            className={cn(
+                                getResponsiveClass(15).textClass,
+                                "font-main",
+                                (log.balanceAfter ?? 0) -
+                                    (log.balanceBefore ?? 0) >=
+                                    0
+                                    ? "text-green-400"
+                                    : "text-red-400"
+                            )}
+                        >
+                            <div className={cn("flex-shrink-0", "text-right")}>
+                                {(log.balanceAfter ?? 0) -
+                                    (log.balanceBefore ?? 0) >=
+                                0
+                                    ? "+"
+                                    : "-"}
+                                {Math.abs(log.amount).toLocaleString()}{" "}
+                                {log.asset?.symbol}
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            ))}
+
+            {/* 무한 스크롤 로딩 영역 */}
+            {(isFetchingNextPage || hasNextPage) && (
+                <div ref={loadMoreRef} className="py-4 flex justify-center">
+                    {isFetchingNextPage ? (
+                        <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full border-b-2 border-white/50 w-4 h-4"></div>
+                            <span className="text-white/60 text-sm">
+                                Loading more rewards...
+                            </span>
+                        </div>
+                    ) : hasNextPage ? (
+                        <span className="text-white/40 text-sm">
+                            Scroll to load more
+                        </span>
+                    ) : (
+                        <span className="text-white/40 text-sm">
+                            {`🎉 You've reached the end!`}
+                        </span>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

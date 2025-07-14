@@ -664,7 +664,9 @@ export const blockchainKeys = {
 export const rewardLogsKeys = {
     all: ["reward-logs"] as const,
     list: (input?: GetRewardsLogsInput) =>
-        [...rewardLogsKeys.all, "list", input] as const,
+        ["reward-logs", "list", input] as const,
+    infinite: (input?: GetRewardsLogsInput) =>
+        ["reward-logs", "infinite", input] as const,
 };
 
 export const artistFeedKeys = {

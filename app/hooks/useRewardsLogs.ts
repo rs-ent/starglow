@@ -1,6 +1,9 @@
 /// app/hooks/useRewardsLogs.ts
 
-import { useGetRewardsLogsQuery } from "../queries/rewardsLogsQueries";
+import {
+    useGetRewardsLogsQuery,
+    useInfiniteRewardsLogsQuery,
+} from "../queries/rewardsLogsQueries";
 
 import type { GetRewardsLogsInput } from "../actions/rewardsLogs";
 
@@ -33,4 +36,9 @@ export function useRewardsLogsGet({
 
         useGetRewardsLogsQuery,
     };
+}
+
+// 무한 스크롤을 위한 별도 hook
+export function useInfiniteRewardsLogs(input?: GetRewardsLogsInput) {
+    return useInfiniteRewardsLogsQuery(input);
 }

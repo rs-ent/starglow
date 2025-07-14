@@ -146,6 +146,14 @@ Table Player {
   committedBoardModeration BoardModerationReport [not null]
   reportedBoardModeration BoardModerationReport [not null]
   assetInstances AssetInstance [not null]
+  ipAddress String
+  locale String
+  os String
+  device String
+  browser String
+  country String
+  state String
+  city String
 
   indexes {
     (userId, telegramId) [unique]
