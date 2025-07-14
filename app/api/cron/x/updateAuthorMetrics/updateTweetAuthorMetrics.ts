@@ -249,7 +249,7 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
                                     await tx.tweetAuthor.update(update);
                                 }
                             },
-                            { timeout: 20000 }
+                            { timeout: 60000 } // 20초 → 60초로 증가
                         );
 
                         // Step 2: 메트릭 데이터 저장 (분리된 트랜잭션)
@@ -261,7 +261,7 @@ export async function updateAuthorMetrics(): Promise<AuthorMetricsUpdateResult> 
                                         skipDuplicates: true,
                                     });
                                 },
-                                { timeout: 15000 }
+                                { timeout: 60000 } // 15초 → 60초로 증가
                             );
                         }
 

@@ -16,7 +16,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "deploy": "hardhat run scripts/deploy.ts --network polygon",
-    "verify": "hardhat verify --network polygon"
+    "verify": "hardhat verify --network polygon",
+    "db:diagnose": "tsx scripts/diagnose-db-performance.ts",
+    "db:cleanup-sessions": "tsx scripts/cleanup-expired-sessions.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.1",

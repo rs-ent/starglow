@@ -47,8 +47,6 @@ export async function setReferralQuestLogs(
     const startTime = Date.now(); // 🚀 성능 모니터링 시작
 
     try {
-        // 🚀 1단계: 트랜잭션 외부에서 데이터 조회 및 계산
-        const queryStartTime = Date.now();
         const [referralQuests, questLogs, referralCount, referralLogs] =
             await Promise.all([
                 // 활성화된 referral 퀘스트 조회
@@ -89,21 +87,12 @@ export async function setReferralQuestLogs(
                 }),
             ]);
 
-        const queryTime = Date.now() - queryStartTime;
-        console.log(`[setReferralQuestLogs] Query phase: ${queryTime}ms`);
-
         if (!referralQuests.length || referralCount === 0) {
-            console.log(
-                `[setReferralQuestLogs] Early exit: quests=${referralQuests.length}, referrals=${referralCount}`
-            );
             return {
                 success: true,
                 data: [],
             };
         }
-
-        // 🚀 2단계: 트랜잭션 외부에서 완료 가능한 퀘스트 계산
-        const calculationStartTime = Date.now();
         const completableQuests = referralQuests.filter((quest) => {
             const existingLog = questLogs.find(
                 (log) => log.questId === quest.id
@@ -161,21 +150,12 @@ export async function setReferralQuestLogs(
             return referralCount >= quest.referralCount;
         });
 
-        const calculationTime = Date.now() - calculationStartTime;
-        console.log(
-            `[setReferralQuestLogs] Calculation phase: ${calculationTime}ms, completable=${completableQuests.length}`
-        );
-
         if (!completableQuests.length) {
-            console.log(`[setReferralQuestLogs] No completable quests found`);
             return {
                 success: true,
                 data: [],
             };
         }
-
-        // 🚀 3단계: 트랜잭션 외부에서 upsert 데이터 준비
-        const preparationStartTime = Date.now();
         const now = new Date();
         const upsertData = completableQuests.map((quest) => {
             const existingLog = questLogs.find(
@@ -232,14 +212,6 @@ export async function setReferralQuestLogs(
 
             return data;
         });
-
-        const preparationTime = Date.now() - preparationStartTime;
-        console.log(
-            `[setReferralQuestLogs] Preparation phase: ${preparationTime}ms`
-        );
-
-        // 🚀 4단계: 최적화된 트랜잭션 - 타임아웃 증가 및 배치 처리
-        const transactionStartTime = Date.now();
         const result = await prisma.$transaction(
             async (tx) => {
                 const updatedLogs: QuestLog[] = [];
@@ -267,26 +239,10 @@ export async function setReferralQuestLogs(
                 };
             },
             {
-                maxWait: 10000, // 10초 대기
-                timeout: 15000, // 15초 타임아웃 (기존 5초 → 15초)
+                maxWait: 90000, // 90초 대기 (증가)
+                timeout: 90000, // 90초 타임아웃 (60초 증가)
             }
         );
-
-        const transactionTime = Date.now() - transactionStartTime;
-        const totalTime = Date.now() - startTime;
-
-        // 🚀 성능 로깅
-        console.log(
-            `[setReferralQuestLogs] Transaction phase: ${transactionTime}ms`
-        );
-        console.log(`[setReferralQuestLogs] Total execution: ${totalTime}ms`);
-
-        // 🚨 느린 실행 경고
-        if (totalTime > 8000) {
-            console.warn(
-                `[setReferralQuestLogs] SLOW EXECUTION: ${totalTime}ms (>8s)`
-            );
-        }
 
         return result;
     } catch (error) {

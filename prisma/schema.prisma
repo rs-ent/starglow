@@ -313,6 +313,7 @@ model QuestLog {
 
   @@unique([playerId, questId])
   @@index([playerId, questId, deprecated])
+  @@index([questId, playerId]) // 🚀 새로운 쿼리 패턴 최적화
   @@index([completedAt])
   @@index([status])
 }

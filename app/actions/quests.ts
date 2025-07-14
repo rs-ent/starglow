@@ -5,7 +5,11 @@
 import { QuestType } from "@prisma/client";
 
 import { tokenGating } from "@/app/story/nft/actions";
-import { prisma } from "@/lib/prisma/client";
+import {
+    prisma,
+    createSafePagination,
+    CacheStrategies,
+} from "@/lib/prisma/client";
 import { formatWaitTime } from "@/lib/utils/format";
 
 import { updatePlayerAsset } from "@/app/actions/playerAssets/actions";
@@ -138,6 +142,7 @@ export async function getQuests({
         }
 
         if (!input) {
+            // 🚀 Business 플랜: 정적 콘텐츠로 긴 캐시 적용
             const items = (await prisma.quest.findMany({
                 orderBy: {
                     order: "asc",
@@ -148,6 +153,8 @@ export async function getQuests({
                 },
                 skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
                 take: pagination.itemsPerPage,
+                // 🌟 Business 플랜: 직접 cacheStrategy 사용
+                cacheStrategy: CacheStrategies.staticContent,
             })) as QuestWithArtistAndRewardAsset[];
 
             return {
@@ -198,7 +205,7 @@ export async function getQuests({
             where.artistId = input.artistId;
         }
 
-        // Promise.all로 병렬 처리하여 성능 향상
+        // 🚀 Business 플랜: Promise.all에 각각 캐시 전략 적용
         const [items, totalItems] = await Promise.all([
             (await prisma.quest.findMany({
                 where,
@@ -211,8 +218,15 @@ export async function getQuests({
                     artist: true,
                     rewardAsset: true,
                 },
+                // 🌟 Business 플랜: 필터링된 퀘스트는 중간 캐시
+                cacheStrategy: CacheStrategies.artistData,
             })) as QuestWithArtistAndRewardAsset[],
-            prisma.quest.count({ where }),
+
+            prisma.quest.count({
+                where,
+                // 🌟 Business 플랜: Count 쿼리도 캐시
+                cacheStrategy: CacheStrategies.artistData,
+            }),
         ]);
 
         let filteredItems = items;
@@ -260,12 +274,16 @@ export async function getQuest(input?: GetQuestInput): Promise<Quest | null> {
         if (input.id) {
             return await prisma.quest.findUnique({
                 where: { id: input.id },
+                // 🌟 Business 플랜: 개별 퀘스트는 긴 캐시
+                cacheStrategy: CacheStrategies.staticContent,
             });
         }
 
         if (input.title) {
             return await prisma.quest.findFirst({
                 where: { title: input.title },
+                // 🌟 Business 플랜: 제목으로 검색도 캐시
+                cacheStrategy: CacheStrategies.artistData,
             });
         }
 
@@ -900,6 +918,100 @@ export interface GetQuestLogsInput {
     deprecated?: boolean;
 }
 
+/**
+ * 🚀 Business 플랜: 실시간 QuestLog 관리
+ *
+ * QuestLog는 실시간성이 중요하므로 캐싱을 최소화하고
+ * quest별로 효율적으로 데이터를 가져옵니다.
+ */
+
+// 🌟 새로운 접근: Quest별 QuestLog 조회 (실시간 우선)
+export async function getQuestLogByQuest(
+    questId: string,
+    playerId: string
+): Promise<QuestLog | null> {
+    try {
+        return await prisma.questLog.findUnique({
+            where: {
+                playerId_questId: {
+                    playerId,
+                    questId,
+                },
+            },
+            // 🚨 실시간 데이터: 캐시 없음
+        });
+    } catch (error) {
+        console.error("Error getting quest log by quest:", error);
+        return null;
+    }
+}
+
+// 🌟 플레이어의 활성 퀘스트 로그만 조회 (실시간)
+export async function getActiveQuestLogs(
+    playerId: string
+): Promise<QuestLog[]> {
+    try {
+        return await prisma.questLog.findMany({
+            where: {
+                playerId,
+                OR: [
+                    { completed: false }, // 미완료
+                    { isClaimed: false }, // 미클레임
+                    { reclaimable: true }, // 재클레임 가능
+                ],
+            },
+            include: {
+                quest: {
+                    select: {
+                        id: true,
+                        title: true,
+                        questType: true,
+                        isActive: true,
+                    },
+                },
+            },
+            orderBy: { createdAt: "desc" },
+            // 🚨 실시간 데이터: 캐시 없음 (사용자 액션 직후 조회)
+        });
+    } catch (error) {
+        console.error("Error getting active quest logs:", error);
+        return [];
+    }
+}
+
+// 🌟 완료된 퀘스트 로그만 조회 (캐시 적용 가능)
+export async function getCompletedQuestLogs(
+    playerId: string
+): Promise<QuestLog[]> {
+    try {
+        return await prisma.questLog.findMany({
+            where: {
+                playerId,
+                completed: true,
+                isClaimed: true,
+                reclaimable: false,
+            },
+            include: {
+                quest: {
+                    select: {
+                        id: true,
+                        title: true,
+                        questType: true,
+                    },
+                },
+            },
+            orderBy: { completedAt: "desc" },
+            take: 50, // 최근 50개만
+            // 🌟 완료된 데이터는 변경되지 않으므로 캐시 적용
+            cacheStrategy: CacheStrategies.staticContent,
+        });
+    } catch (error) {
+        console.error("Error getting completed quest logs:", error);
+        return [];
+    }
+}
+
+// 🔄 기존 getQuestLogs 함수 수정 (관리자용으로 축소)
 export async function getQuestLogs({
     input,
     pagination,
@@ -912,67 +1024,85 @@ export async function getQuestLogs({
     totalPages: number;
 }> {
     try {
-        if (!pagination) {
-            pagination = {
-                currentPage: 1,
-                itemsPerPage: Number.MAX_SAFE_INTEGER,
-            };
-        }
+        // 🚨 관리자용 대시보드에서만 사용, 일반 사용자는 위의 함수들 사용
+
+        const safePagination = createSafePagination(
+            pagination?.currentPage || 1,
+            pagination?.itemsPerPage || 50,
+            100
+        );
 
         const where: Prisma.QuestLogWhereInput = {};
 
-        if (input?.questId) {
-            where.questId = input.questId;
-        }
-
-        if (input?.playerId) {
-            where.playerId = input.playerId;
-        }
-
-        if (input?.isClaimed !== undefined) {
-            where.isClaimed = input.isClaimed;
-        }
-
-        if (input?.artistId) {
-            where.quest = {
-                artistId: input.artistId,
-            };
-        }
-
-        if (input?.isPublic) {
-            where.quest = {
-                artistId: null,
-                needToken: false,
-                needTokenAddress: null,
-            };
-        }
-
-        if (input?.deprecated) {
+        if (input?.questId) where.questId = input.questId;
+        if (input?.playerId) where.playerId = input.playerId;
+        if (input?.isClaimed !== undefined) where.isClaimed = input.isClaimed;
+        if (input?.deprecated !== undefined)
             where.deprecated = input.deprecated;
+
+        const needsQuestJoin = input?.artistId || input?.isPublic;
+        if (needsQuestJoin) {
+            if (input?.artistId) {
+                where.quest = { artistId: input.artistId };
+            } else if (input?.isPublic) {
+                where.quest = {
+                    artistId: null,
+                    needToken: false,
+                    needTokenAddress: null,
+                };
+            }
         }
 
-        // Promise.all로 병렬 처리하여 성능 향상
+        // 🚨 관리자 대시보드용이므로 매우 짧은 캐시만 적용
         const [items, totalItems] = await Promise.all([
             prisma.questLog.findMany({
                 where,
-                orderBy: {
-                    completedAt: "desc",
+                select: {
+                    id: true,
+                    questId: true,
+                    playerId: true,
+                    completed: true,
+                    completedAt: true,
+                    isClaimed: true,
+                    claimedAt: true,
+                    rewardAssetId: true,
+                    rewardAmount: true,
+                    repeatCount: true,
+                    reclaimable: true,
+                    deprecated: true,
+                    createdAt: true,
+                    status: true,
+                    ...(needsQuestJoin && {
+                        quest: {
+                            select: {
+                                id: true,
+                                title: true,
+                                artistId: true,
+                            },
+                        },
+                    }),
                 },
-                skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
-                take: pagination.itemsPerPage,
+                orderBy: [{ completedAt: "desc" }, { createdAt: "desc" }],
+                ...safePagination,
+                // 🌟 관리자용: 10초 캐시만 적용
+                cacheStrategy: { ttl: 10 },
             }),
-            prisma.questLog.count({ where }),
+
+            prisma.questLog.count({
+                where,
+                cacheStrategy: { ttl: 10 },
+            }),
         ]);
 
-        const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
+        const totalPages = Math.ceil(totalItems / safePagination.take);
 
         return {
-            items,
+            items: items as QuestLog[],
             totalItems,
             totalPages,
         };
     } catch (error) {
-        console.error("Error in getQuestLogs:", error);
+        console.error("🚨 getQuestLogs error:", error);
         return {
             items: [],
             totalItems: 0,
@@ -985,6 +1115,26 @@ export interface GetPlayerQuestLogsInput {
     playerId?: string;
 }
 
+export interface GetActiveQuestLogsInput {
+    playerId: string;
+}
+
+export interface GetCompletedQuestLogsInput {
+    playerId: string;
+}
+
+export interface GetClaimableQuestLogsInput {
+    playerId: string;
+    artistId?: string;
+}
+
+export interface GetClaimedQuestLogsInput {
+    playerId: string;
+    artistId?: string;
+}
+
+// 🔄 기존 함수들 수정: 실시간 우선으로 변경
+
 export async function getPlayerQuestLogs(
     input?: GetPlayerQuestLogsInput
 ): Promise<QuestLog[]> {
@@ -993,20 +1143,18 @@ export async function getPlayerQuestLogs(
     }
 
     try {
+        // 🚨 실시간 데이터: 캐시 제거
         return await prisma.questLog.findMany({
             where: {
                 playerId: input.playerId,
             },
+            orderBy: { createdAt: "desc" },
+            // 캐시 없음: 사용자가 퀘스트 액션 후 즉시 조회하는 데이터
         });
     } catch (error) {
         console.error(error);
         return [];
     }
-}
-
-export interface GetClaimableQuestLogsInput {
-    playerId: string;
-    artistId?: string;
 }
 
 export async function getClaimableQuestLogs(
@@ -1019,7 +1167,7 @@ export async function getClaimableQuestLogs(
 
         const where: Prisma.QuestLogWhereInput = {
             playerId: input.playerId,
-            isClaimed: false,
+            OR: [{ isClaimed: false }, { reclaimable: true }],
         };
 
         if (input.artistId) {
@@ -1028,21 +1176,25 @@ export async function getClaimableQuestLogs(
             };
         }
 
+        // 🚨 클레임 상태는 실시간성이 가장 중요: 캐시 없음
         return await prisma.questLog.findMany({
-            where: {
-                playerId: input.playerId,
-                isClaimed: false,
+            where,
+            include: {
+                quest: {
+                    select: {
+                        id: true,
+                        title: true,
+                        rewardAssetId: true,
+                        rewardAmount: true,
+                    },
+                },
             },
+            orderBy: { createdAt: "desc" },
         });
     } catch (error) {
         console.error(error);
         return [];
     }
-}
-
-export interface GetClaimedQuestLogsInput {
-    playerId: string;
-    artistId?: string;
 }
 
 export async function getClaimedQuestLogs(
@@ -1056,6 +1208,7 @@ export async function getClaimedQuestLogs(
         const where: Prisma.QuestLogWhereInput = {
             playerId: input.playerId,
             isClaimed: true,
+            reclaimable: false, // 완전히 완료된 것만
         };
 
         if (input.artistId) {
@@ -1064,15 +1217,54 @@ export async function getClaimedQuestLogs(
             };
         }
 
+        // 🌟 완료된 데이터는 변경되지 않으므로 캐시 적용
         return await prisma.questLog.findMany({
-            where: {
-                playerId: input.playerId,
-                isClaimed: true,
+            where,
+            include: {
+                quest: {
+                    select: {
+                        id: true,
+                        title: true,
+                        rewardAssetId: true,
+                        rewardAmount: true,
+                    },
+                },
             },
+            orderBy: { claimedAt: "desc" },
+            take: 100, // 최근 100개만
+            cacheStrategy: CacheStrategies.staticContent,
         });
     } catch (error) {
         console.error(error);
         return [];
+    }
+}
+
+// 🌟 새로운 함수: 퀘스트별 진행 상황 조회 (UI 최적화용)
+export async function getQuestProgressByQuests(
+    questIds: string[],
+    playerId: string
+): Promise<Record<string, QuestLog | null>> {
+    try {
+        const questLogs = await prisma.questLog.findMany({
+            where: {
+                playerId,
+                questId: { in: questIds },
+            },
+            // 🚨 실시간 데이터: 캐시 없음
+        });
+
+        // questId를 키로 하는 맵 생성
+        const progressMap: Record<string, QuestLog | null> = {};
+        questIds.forEach((questId) => {
+            progressMap[questId] =
+                questLogs.find((log) => log.questId === questId) || null;
+        });
+
+        return progressMap;
+    } catch (error) {
+        console.error("Error getting quest progress:", error);
+        return {};
     }
 }
 

@@ -17,10 +17,10 @@ import {
     usePlayerQuestLogsQuery,
     useQuestLogsQuery,
     useQuestsQuery,
-    useInfiniteQuestsQuery,
     useTokenGatingQuestQuery,
+    useActiveQuestLogsQuery,
+    useCompletedQuestLogsQuery,
 } from "@/app/queries/questsQueries";
-import { useReferralLogs } from "@/app/queries/referralQueries";
 
 import type {
     GetClaimableQuestLogsInput,
@@ -28,10 +28,11 @@ import type {
     GetPlayerQuestLogsInput,
     GetQuestLogsInput,
     GetQuestsInput,
+    GetActiveQuestLogsInput,
+    GetCompletedQuestLogsInput,
     TokenGatingQuestInput,
     PaginationInput,
 } from "../actions/quests";
-import type { Player } from "@prisma/client";
 
 export function useQuestGet({
     getQuestsInput,
@@ -39,6 +40,8 @@ export function useQuestGet({
     getClaimableQuestLogsInput,
     getClaimedQuestLogsInput,
     getPlayerQuestLogsInput,
+    getActiveQuestLogsInput,
+    getCompletedQuestLogsInput,
     getTokenGatingQuestInput,
     pagination,
 }: {
@@ -47,6 +50,8 @@ export function useQuestGet({
     getClaimableQuestLogsInput?: GetClaimableQuestLogsInput;
     getClaimedQuestLogsInput?: GetClaimedQuestLogsInput;
     getPlayerQuestLogsInput?: GetPlayerQuestLogsInput;
+    getActiveQuestLogsInput?: GetActiveQuestLogsInput;
+    getCompletedQuestLogsInput?: GetCompletedQuestLogsInput;
     getTokenGatingQuestInput?: TokenGatingQuestInput;
     pagination?: PaginationInput;
 }) {
@@ -81,6 +86,18 @@ export function useQuestGet({
     } = usePlayerQuestLogsQuery({ input: getPlayerQuestLogsInput });
 
     const {
+        data: activeQuestLogs,
+        isLoading: isLoadingActiveQuestLogs,
+        error: activeQuestLogsError,
+    } = useActiveQuestLogsQuery({ input: getActiveQuestLogsInput });
+
+    const {
+        data: completedQuestLogs,
+        isLoading: isLoadingCompletedQuestLogs,
+        error: completedQuestLogsError,
+    } = useCompletedQuestLogsQuery({ input: getCompletedQuestLogsInput });
+
+    const {
         data: tokenGatingQuest,
         isLoading: isLoadingTokenGatingQuest,
         error: tokenGatingQuestError,
@@ -92,6 +109,8 @@ export function useQuestGet({
         isLoadingClaimableQuestLogs ||
         isLoadingClaimedQuestLogs ||
         isLoadingPlayerQuestLogs ||
+        isLoadingActiveQuestLogs ||
+        isLoadingCompletedQuestLogs ||
         isLoadingTokenGatingQuest;
 
     const error =
@@ -100,6 +119,8 @@ export function useQuestGet({
         claimableQuestLogsError ||
         claimedQuestLogsError ||
         playerQuestLogsError ||
+        activeQuestLogsError ||
+        completedQuestLogsError ||
         tokenGatingQuestError;
 
     return {
@@ -118,6 +139,12 @@ export function useQuestGet({
         playerQuestLogs,
         isLoadingPlayerQuestLogs,
         playerQuestLogsError,
+        activeQuestLogs,
+        isLoadingActiveQuestLogs,
+        activeQuestLogsError,
+        completedQuestLogs,
+        isLoadingCompletedQuestLogs,
+        completedQuestLogsError,
         tokenGatingQuest,
         isLoadingTokenGatingQuest,
         tokenGatingQuestError,
@@ -218,67 +245,5 @@ export function useQuestSet() {
 
         isLoading,
         error,
-    };
-}
-
-// 무한 스크롤을 위한 훅 추가
-export function useInfiniteQuest(getQuestsInput?: GetQuestsInput) {
-    return useInfiniteQuestsQuery(getQuestsInput);
-}
-
-// 🚀 NEW: 퀘스트 페이지 전체 데이터를 통합 관리하는 훅
-export function useQuestsPageData({
-    player,
-    questsInput,
-}: {
-    player: Player | null;
-    questsInput?: GetQuestsInput;
-}) {
-    // 병렬로 모든 데이터 페칭
-    const infiniteQuestsQuery = useInfiniteQuestsQuery(questsInput);
-
-    const playerQuestLogsQuery = usePlayerQuestLogsQuery({
-        input: { playerId: player?.id ?? "" },
-    });
-
-    const referralLogsQuery = useReferralLogs({
-        playerId: player?.id ?? "",
-    });
-
-    // 통합된 로딩/에러 상태
-    const isLoading =
-        infiniteQuestsQuery.isLoading ||
-        playerQuestLogsQuery.isLoading ||
-        referralLogsQuery.isLoading;
-
-    const error =
-        infiniteQuestsQuery.error ||
-        playerQuestLogsQuery.error ||
-        referralLogsQuery.error;
-
-    return {
-        // 퀘스트 데이터 (무한 스크롤)
-        infiniteQuests: {
-            data: infiniteQuestsQuery.data,
-            isLoading: infiniteQuestsQuery.isLoading,
-            isFetchingNextPage: infiniteQuestsQuery.isFetchingNextPage,
-            hasNextPage: infiniteQuestsQuery.hasNextPage,
-            fetchNextPage: infiniteQuestsQuery.fetchNextPage,
-            error: infiniteQuestsQuery.error,
-        },
-
-        // 플레이어 퀘스트 로그
-        playerQuestLogs: playerQuestLogsQuery.data || [],
-
-        // 추천 로그
-        referralLogs: referralLogsQuery.data || [],
-
-        // 통합 상태
-        isLoading,
-        error,
-
-        // 개별 쿼리 상태 (필요시 사용)
-        isLoadingPlayerQuestLogs: playerQuestLogsQuery.isLoading,
-        isLoadingReferralLogs: referralLogsQuery.isLoading,
     };
 }

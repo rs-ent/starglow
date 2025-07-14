@@ -537,7 +537,7 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                                     });
                                 }
                             },
-                            { timeout: 15000 }
+                            { timeout: 60000 } // 15초 → 60초로 증가
                         );
 
                         break;

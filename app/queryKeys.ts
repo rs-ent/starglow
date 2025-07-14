@@ -18,8 +18,10 @@ import type {
 } from "./actions/polls";
 import type {
     CompleteQuestInput,
+    GetActiveQuestLogsInput,
     GetClaimableQuestLogsInput,
     GetClaimedQuestLogsInput,
+    GetCompletedQuestLogsInput,
     GetPlayerQuestLogsInput,
     GetQuestInput,
     GetQuestLogsInput,
@@ -624,6 +626,14 @@ export const questKeys = {
 
     claimedLogs: (input?: GetClaimedQuestLogsInput) =>
         [...questKeys.all, "claimed-logs", input?.playerId] as const,
+
+    // 🌟 새로운 키: 활성 퀘스트 로그
+    activeLogs: (input?: GetActiveQuestLogsInput) =>
+        [...questKeys.all, "active-logs", input?.playerId] as const,
+
+    // 🌟 새로운 키: 완료된 퀘스트 로그
+    completedLogs: (input?: GetCompletedQuestLogsInput) =>
+        [...questKeys.all, "completed-logs", input?.playerId] as const,
 } as const;
 
 export const artistKeys = {

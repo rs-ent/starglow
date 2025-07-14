@@ -96,8 +96,8 @@ const authOptions: NextAuthConfig = {
     ],
     session: {
         strategy: "database" as const,
-        maxAge: 7 * 24 * 60 * 60, // 7 days
-        updateAge: 24 * 60 * 60, // 24 hours
+        maxAge: 3 * 24 * 60 * 60, // 3 days (기존 7일에서 단축)
+        updateAge: 12 * 60 * 60, // 12 hours (기존 24시간에서 단축)
     },
     cookies: {
         sessionToken: {
