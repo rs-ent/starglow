@@ -5,11 +5,7 @@
 import { QuestType } from "@prisma/client";
 
 import { tokenGating } from "@/app/story/nft/actions";
-import {
-    prisma,
-    createSafePagination,
-    CacheStrategies,
-} from "@/lib/prisma/client";
+import { prisma, createSafePagination } from "@/lib/prisma/client";
 import { formatWaitTime } from "@/lib/utils/format";
 
 import { updatePlayerAsset } from "@/app/actions/playerAssets/actions";
@@ -153,8 +149,6 @@ export async function getQuests({
                 },
                 skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
                 take: pagination.itemsPerPage,
-                // 🌟 Business 플랜: 직접 cacheStrategy 사용
-                cacheStrategy: CacheStrategies.staticContent,
             })) as QuestWithArtistAndRewardAsset[];
 
             return {
@@ -218,14 +212,10 @@ export async function getQuests({
                     artist: true,
                     rewardAsset: true,
                 },
-                // 🌟 Business 플랜: 필터링된 퀘스트는 중간 캐시
-                cacheStrategy: CacheStrategies.artistData,
             })) as QuestWithArtistAndRewardAsset[],
 
             prisma.quest.count({
                 where,
-                // 🌟 Business 플랜: Count 쿼리도 캐시
-                cacheStrategy: CacheStrategies.artistData,
             }),
         ]);
 
@@ -274,16 +264,12 @@ export async function getQuest(input?: GetQuestInput): Promise<Quest | null> {
         if (input.id) {
             return await prisma.quest.findUnique({
                 where: { id: input.id },
-                // 🌟 Business 플랜: 개별 퀘스트는 긴 캐시
-                cacheStrategy: CacheStrategies.staticContent,
             });
         }
 
         if (input.title) {
             return await prisma.quest.findFirst({
                 where: { title: input.title },
-                // 🌟 Business 플랜: 제목으로 검색도 캐시
-                cacheStrategy: CacheStrategies.artistData,
             });
         }
 
@@ -1001,9 +987,6 @@ export async function getCompletedQuestLogs(
                 },
             },
             orderBy: { completedAt: "desc" },
-            take: 50, // 최근 50개만
-            // 🌟 완료된 데이터는 변경되지 않으므로 캐시 적용
-            cacheStrategy: CacheStrategies.staticContent,
         });
     } catch (error) {
         console.error("Error getting completed quest logs:", error);
@@ -1231,8 +1214,6 @@ export async function getClaimedQuestLogs(
                 },
             },
             orderBy: { claimedAt: "desc" },
-            take: 100, // 최근 100개만
-            cacheStrategy: CacheStrategies.staticContent,
         });
     } catch (error) {
         console.error(error);

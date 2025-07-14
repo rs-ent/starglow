@@ -21,6 +21,8 @@ import type {
     RafflePrizeType,
 } from "@prisma/client";
 
+import { MAX_PRIZES_PER_QUERY } from "@/app/actions/raffles/types";
+
 export interface RafflePrizeInput {
     title: string;
     description?: string;
@@ -185,28 +187,16 @@ export async function createRaffle(
 
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
-            include: { player: true },
         });
 
         if (!user) {
             return { success: false, error: "User not found" };
         }
 
-        if (user.role !== "admin" && !user.player?.isArtist) {
+        if (user.role !== "admin") {
             return {
                 success: false,
                 error: "Insufficient permissions. Admin or Artist role required.",
-            };
-        }
-
-        if (
-            user.role !== "admin" &&
-            input.artistId &&
-            input.artistId !== user.player?.artistId
-        ) {
-            return {
-                success: false,
-                error: "Artists can only create raffles for themselves",
             };
         }
 
@@ -405,9 +395,34 @@ export async function createRaffle(
             include: {
                 artist: { select: { id: true, name: true } },
                 prizes: {
-                    include: {
-                        asset: true,
-                        spg: true,
+                    select: {
+                        id: true,
+                        title: true,
+                        description: true,
+                        imageUrl: true,
+                        order: true,
+                        quantity: true,
+                        prizeType: true,
+                        assetId: true,
+                        assetAmount: true,
+                        spgAddress: true,
+                        nftQuantity: true,
+                        isActive: true,
+                        asset: {
+                            select: {
+                                id: true,
+                                symbol: true,
+                                iconUrl: true,
+                            },
+                        },
+                        spg: {
+                            select: {
+                                id: true,
+                                address: true,
+                                imageUrl: true,
+                                metadata: true,
+                            },
+                        },
                     },
                     orderBy: { order: "asc" },
                 },
@@ -459,7 +474,6 @@ export async function updateRaffle(
 
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
-            include: { player: true },
         });
 
         if (!user) {
@@ -478,11 +492,7 @@ export async function updateRaffle(
             return { success: false, error: "Raffle not found" };
         }
 
-        if (
-            user.role !== "admin" &&
-            (!user.player?.isArtist ||
-                existingRaffle.artistId !== user.player.artistId)
-        ) {
+        if (user.role !== "admin") {
             return {
                 success: false,
                 error: "Insufficient permissions. Admin or raffle owner required.",
@@ -720,9 +730,34 @@ export async function updateRaffle(
             include: {
                 artist: { select: { id: true, name: true } },
                 prizes: {
-                    include: {
-                        asset: true,
-                        spg: true,
+                    select: {
+                        id: true,
+                        title: true,
+                        description: true,
+                        imageUrl: true,
+                        order: true,
+                        quantity: true,
+                        prizeType: true,
+                        assetId: true,
+                        assetAmount: true,
+                        spgAddress: true,
+                        nftQuantity: true,
+                        isActive: true,
+                        asset: {
+                            select: {
+                                id: true,
+                                symbol: true,
+                                iconUrl: true,
+                            },
+                        },
+                        spg: {
+                            select: {
+                                id: true,
+                                address: true,
+                                imageUrl: true,
+                                metadata: true,
+                            },
+                        },
                     },
                     orderBy: { order: "asc" },
                 },
@@ -804,9 +839,34 @@ export async function getRaffles(
                 artist: { select: { id: true, name: true } },
                 prizes: {
                     where: { isActive: true },
-                    include: {
-                        asset: true,
-                        spg: true,
+                    select: {
+                        id: true,
+                        title: true,
+                        description: true,
+                        imageUrl: true,
+                        order: true,
+                        quantity: true,
+                        prizeType: true,
+                        assetId: true,
+                        assetAmount: true,
+                        spgAddress: true,
+                        nftQuantity: true,
+                        isActive: true,
+                        asset: {
+                            select: {
+                                id: true,
+                                symbol: true,
+                                iconUrl: true,
+                            },
+                        },
+                        spg: {
+                            select: {
+                                id: true,
+                                address: true,
+                                imageUrl: true,
+                                metadata: true,
+                            },
+                        },
                     },
                     orderBy: { order: "asc" },
                 },
@@ -859,9 +919,34 @@ export async function getRaffleDetails(
                 artist: { select: { id: true, name: true } },
                 prizes: {
                     where: { isActive: true },
-                    include: {
-                        asset: true,
-                        spg: true,
+                    select: {
+                        id: true,
+                        title: true,
+                        description: true,
+                        imageUrl: true,
+                        order: true,
+                        quantity: true,
+                        prizeType: true,
+                        assetId: true,
+                        assetAmount: true,
+                        spgAddress: true,
+                        nftQuantity: true,
+                        isActive: true,
+                        asset: {
+                            select: {
+                                id: true,
+                                symbol: true,
+                                iconUrl: true,
+                            },
+                        },
+                        spg: {
+                            select: {
+                                id: true,
+                                address: true,
+                                imageUrl: true,
+                                metadata: true,
+                            },
+                        },
                     },
                     orderBy: { order: "asc" },
                 },
@@ -986,7 +1071,15 @@ export async function checkUserParticipation(
                 raffleId,
                 playerId,
             },
-            include: {
+            select: {
+                id: true,
+                raffleId: true,
+                playerId: true,
+                prizeId: true,
+                drawnAt: true,
+                revealedAt: true,
+                isRevealed: true,
+                createdAt: true,
                 player: {
                     select: { id: true, name: true, nickname: true },
                 },
@@ -1165,6 +1258,7 @@ export async function participateInRaffle(
                             quantity: { gt: 0 },
                         },
                         orderBy: { order: "asc" },
+                        take: MAX_PRIZES_PER_QUERY,
                     });
 
                     if (currentPrizes.length === 0) {
@@ -1200,14 +1294,49 @@ export async function participateInRaffle(
                     slotNumber,
                     randomSeed,
                 },
-                include: {
+                select: {
+                    id: true,
+                    raffleId: true,
+                    playerId: true,
+                    prizeId: true,
+                    drawnAt: true,
+                    revealedAt: true,
+                    isRevealed: true,
+                    createdAt: true,
                     player: {
                         select: { id: true, name: true, nickname: true },
                     },
                     prize: {
-                        include: {
-                            asset: true,
-                            spg: { include: { network: true } },
+                        select: {
+                            id: true,
+                            title: true,
+                            prizeType: true,
+                            assetId: true,
+                            assetAmount: true,
+                            spgAddress: true,
+                            nftQuantity: true,
+                            asset: {
+                                select: {
+                                    id: true,
+                                    symbol: true,
+                                    iconUrl: true,
+                                },
+                            },
+                            spg: {
+                                select: {
+                                    id: true,
+                                    address: true,
+                                    imageUrl: true,
+                                    metadata: true,
+                                    network: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            chainId: true,
+                                        },
+                                    },
+                                },
+                            },
                         },
                     },
                 },
@@ -1312,11 +1441,42 @@ export async function revealRaffleResult(
         if (input.participantId) {
             participant = await prisma.raffleParticipant.findUnique({
                 where: { id: input.participantId },
-                include: {
+                select: {
+                    id: true,
+                    raffleId: true,
+                    playerId: true,
+                    prizeId: true,
+                    drawnAt: true,
+                    revealedAt: true,
+                    isRevealed: true,
+                    createdAt: true,
                     prize: {
-                        include: {
-                            asset: true,
-                            spg: { include: { network: true } },
+                        select: {
+                            id: true,
+                            title: true,
+                            prizeType: true,
+                            assetId: true,
+                            assetAmount: true,
+                            spgAddress: true,
+                            nftQuantity: true,
+                            asset: {
+                                select: {
+                                    id: true,
+                                    symbol: true,
+                                    iconUrl: true,
+                                },
+                            },
+                            spg: {
+                                select: {
+                                    address: true,
+                                    network: {
+                                        select: {
+                                            chainId: true,
+                                            name: true,
+                                        },
+                                    },
+                                },
+                            },
                         },
                     },
                     player: {
@@ -1343,11 +1503,42 @@ export async function revealRaffleResult(
                     isRevealed: false,
                     drawnAt: { not: null },
                 },
-                include: {
+                select: {
+                    id: true,
+                    raffleId: true,
+                    playerId: true,
+                    prizeId: true,
+                    drawnAt: true,
+                    revealedAt: true,
+                    isRevealed: true,
+                    createdAt: true,
                     prize: {
-                        include: {
-                            asset: true,
-                            spg: { include: { network: true } },
+                        select: {
+                            id: true,
+                            title: true,
+                            prizeType: true,
+                            assetId: true,
+                            assetAmount: true,
+                            spgAddress: true,
+                            nftQuantity: true,
+                            asset: {
+                                select: {
+                                    id: true,
+                                    symbol: true,
+                                    iconUrl: true,
+                                },
+                            },
+                            spg: {
+                                select: {
+                                    address: true,
+                                    network: {
+                                        select: {
+                                            chainId: true,
+                                            name: true,
+                                        },
+                                    },
+                                },
+                            },
                         },
                     },
                     player: {
@@ -1378,11 +1569,42 @@ export async function revealRaffleResult(
                 isRevealed: true,
                 revealedAt: new Date(),
             },
-            include: {
+            select: {
+                id: true,
+                raffleId: true,
+                playerId: true,
+                prizeId: true,
+                drawnAt: true,
+                revealedAt: true,
+                isRevealed: true,
+                createdAt: true,
                 prize: {
-                    include: {
-                        asset: true,
-                        spg: { include: { network: true } },
+                    select: {
+                        id: true,
+                        title: true,
+                        prizeType: true,
+                        assetId: true,
+                        assetAmount: true,
+                        spgAddress: true,
+                        nftQuantity: true,
+                        asset: {
+                            select: {
+                                id: true,
+                                symbol: true,
+                                iconUrl: true,
+                            },
+                        },
+                        spg: {
+                            select: {
+                                address: true,
+                                network: {
+                                    select: {
+                                        chainId: true,
+                                        name: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
                 player: { select: { id: true, name: true, nickname: true } },
@@ -1433,11 +1655,42 @@ export async function revealAllRaffleResults(
                 isRevealed: false,
                 drawnAt: { not: null },
             },
-            include: {
+            select: {
+                id: true,
+                raffleId: true,
+                playerId: true,
+                prizeId: true,
+                drawnAt: true,
+                revealedAt: true,
+                isRevealed: true,
+                createdAt: true,
                 prize: {
-                    include: {
-                        asset: true,
-                        spg: { include: { network: true } },
+                    select: {
+                        id: true,
+                        title: true,
+                        prizeType: true,
+                        assetId: true,
+                        assetAmount: true,
+                        spgAddress: true,
+                        nftQuantity: true,
+                        asset: {
+                            select: {
+                                id: true,
+                                symbol: true,
+                                iconUrl: true,
+                            },
+                        },
+                        spg: {
+                            select: {
+                                address: true,
+                                network: {
+                                    select: {
+                                        chainId: true,
+                                        name: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
                 player: { select: { id: true, name: true, nickname: true } },
@@ -1461,11 +1714,42 @@ export async function revealAllRaffleResults(
                         isRevealed: true,
                         revealedAt: new Date(),
                     },
-                    include: {
+                    select: {
+                        id: true,
+                        raffleId: true,
+                        playerId: true,
+                        prizeId: true,
+                        drawnAt: true,
+                        revealedAt: true,
+                        isRevealed: true,
+                        createdAt: true,
                         prize: {
-                            include: {
-                                asset: true,
-                                spg: { include: { network: true } },
+                            select: {
+                                id: true,
+                                title: true,
+                                prizeType: true,
+                                assetId: true,
+                                assetAmount: true,
+                                spgAddress: true,
+                                nftQuantity: true,
+                                asset: {
+                                    select: {
+                                        id: true,
+                                        symbol: true,
+                                        iconUrl: true,
+                                    },
+                                },
+                                spg: {
+                                    select: {
+                                        address: true,
+                                        network: {
+                                            select: {
+                                                chainId: true,
+                                                name: true,
+                                            },
+                                        },
+                                    },
+                                },
                             },
                         },
                         player: {
@@ -1578,6 +1862,7 @@ export async function drawAllWinners(
                             quantity: { gt: 0 },
                         },
                         orderBy: { order: "asc" },
+                        take: MAX_PRIZES_PER_QUERY,
                     });
 
                     if (currentPrizes.length === 0) {
@@ -1662,11 +1947,17 @@ export interface DistributePrizesInput {
     raffleId: string;
     executedBy?: string;
     playerId?: string;
+    batchSize?: number;
 }
 
-export async function distributePrizes(
-    input: DistributePrizesInput
-): Promise<RaffleResult<{ distributed: number; failed: number }>> {
+export async function distributePrizes(input: DistributePrizesInput): Promise<
+    RaffleResult<{
+        distributed: number;
+        failed: number;
+        totalProcessed: number;
+        totalBatches: number;
+    }>
+> {
     try {
         const session = await requireAuth();
         if (!session?.user?.id) {
@@ -1706,7 +1997,15 @@ export async function distributePrizes(
                     raffleId: input.raffleId,
                     playerId: input.executedBy,
                 },
-                include: { player: { include: { user: true } } },
+                select: {
+                    id: true,
+                    player: {
+                        select: {
+                            id: true,
+                            userId: true,
+                        },
+                    },
+                },
             });
 
             if (participant && participant.player.userId === session.user.id) {
@@ -1730,147 +2029,232 @@ export async function distributePrizes(
             where.playerId = input.playerId;
         }
 
-        const winners = (await prisma.raffleWinner.findMany({
-            where,
-            include: {
-                player: {
-                    include: {
-                        user: {
-                            include: {
-                                wallets: {
-                                    where: { status: "ACTIVE" },
-                                    orderBy: { default: "desc" },
+        const batchSize = input.batchSize || 50;
+
+        const totalPendingCount = await prisma.raffleWinner.count({ where });
+
+        if (totalPendingCount === 0) {
+            return {
+                success: false,
+                error: "No pending prizes to distribute",
+                data: {
+                    distributed: 0,
+                    failed: 0,
+                    totalProcessed: 0,
+                    totalBatches: 0,
+                },
+            };
+        }
+
+        const totalBatches = Math.ceil(totalPendingCount / batchSize);
+        let totalDistributed = 0;
+        let totalFailed = 0;
+
+        for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+            const skip = batchIndex * batchSize;
+
+            const winners = (await prisma.raffleWinner.findMany({
+                where,
+                select: {
+                    id: true,
+                    playerId: true,
+                    raffleId: true,
+                    prizeId: true,
+                    status: true,
+                    createdAt: true,
+                    player: {
+                        select: {
+                            id: true,
+                            name: true,
+                            nickname: true,
+                            user: {
+                                select: {
+                                    id: true,
+                                    wallets: {
+                                        where: { status: "ACTIVE" },
+                                        select: {
+                                            address: true,
+                                            status: true,
+                                            default: true,
+                                        },
+                                        orderBy: { default: "desc" },
+                                        take: 5,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    prize: {
+                        select: {
+                            id: true,
+                            title: true,
+                            prizeType: true,
+                            assetId: true,
+                            assetAmount: true,
+                            spgAddress: true,
+                            nftQuantity: true,
+                            asset: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    symbol: true,
+                                    isActive: true,
+                                },
+                            },
+                            spg: {
+                                select: {
+                                    id: true,
+                                    address: true,
+                                    name: true,
+                                    network: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            chainId: true,
+                                        },
+                                    },
                                 },
                             },
                         },
                     },
                 },
-                prize: {
-                    include: {
-                        asset: true,
-                        spg: { include: { network: true } },
-                    },
-                },
-            },
-        })) as RaffleWinnerWithRelations[];
+                orderBy: { createdAt: "asc" },
+                skip,
+                take: batchSize,
+            })) as RaffleWinnerWithRelations[];
 
-        if (winners.length === 0) {
-            return { success: false, error: "No pending prizes to distribute" };
-        }
+            if (winners.length === 0) {
+                break;
+            }
 
-        let distributedCount = 0;
-        let failedCount = 0;
+            let batchDistributed = 0;
+            let batchFailed = 0;
 
-        const distributionResults = await Promise.allSettled(
-            winners.map(async (winner) => {
-                return await prisma.$transaction(async (tx) => {
-                    try {
-                        let txHash: string | undefined;
+            const distributionResults = await Promise.allSettled(
+                winners.map(async (winner) => {
+                    return await prisma.$transaction(async (tx) => {
+                        try {
+                            let txHash: string | undefined;
 
-                        if (winner.prize.prizeType === "ASSET") {
-                            const result = await updatePlayerAsset(
-                                {
-                                    transaction: {
-                                        playerId: winner.playerId,
-                                        assetId: winner.prize.assetId!,
-                                        amount: winner.prize.assetAmount!,
-                                        operation: "ADD",
-                                        reason: `Raffle prize: ${winner.prize.title}`,
+                            if (winner.prize.prizeType === "ASSET") {
+                                const result = await updatePlayerAsset(
+                                    {
+                                        transaction: {
+                                            playerId: winner.playerId,
+                                            assetId: winner.prize.assetId!,
+                                            amount: winner.prize.assetAmount!,
+                                            operation: "ADD",
+                                            reason: `Raffle prize: ${winner.prize.title}`,
+                                        },
                                     },
+                                    tx
+                                );
+
+                                if (!result.success) {
+                                    throw new Error(
+                                        `Asset distribution failed: ${result.error}`
+                                    );
+                                }
+                            } else if (winner.prize.prizeType === "NFT") {
+                                const userWallet =
+                                    winner.player.user?.wallets?.find(
+                                        (wallet) => wallet.default
+                                    )?.address;
+
+                                if (!userWallet) {
+                                    throw new Error(
+                                        "User wallet address not found"
+                                    );
+                                }
+
+                                const result = await initialTransfer({
+                                    spgAddress: winner.prize.spgAddress!,
+                                    quantity: winner.prize.nftQuantity!,
+                                    toAddress: userWallet,
+                                });
+
+                                if (!result) {
+                                    throw new Error("NFT transfer failed");
+                                }
+
+                                txHash =
+                                    "txHash" in result
+                                        ? result.txHash
+                                        : result.txHashes[0];
+                                if (!txHash) {
+                                    throw new Error(
+                                        "Transaction hash not found"
+                                    );
+                                }
+                            }
+
+                            await tx.raffleWinner.update({
+                                where: { id: winner.id },
+                                data: {
+                                    status: "DISTRIBUTED",
+                                    distributedAt: new Date(),
+                                    transactionHash: txHash,
                                 },
-                                tx
-                            );
-
-                            if (!result.success) {
-                                throw new Error(
-                                    `Asset distribution failed: ${result.error}`
-                                );
-                            }
-                        } else if (winner.prize.prizeType === "NFT") {
-                            const userWallet =
-                                winner.player.user?.wallets?.find(
-                                    (wallet) => wallet.default
-                                )?.address;
-
-                            if (!userWallet) {
-                                throw new Error(
-                                    "User wallet address not found"
-                                );
-                            }
-
-                            const result = await initialTransfer({
-                                spgAddress: winner.prize.spgAddress!,
-                                quantity: winner.prize.nftQuantity!,
-                                toAddress: userWallet,
                             });
 
-                            if (!result) {
-                                throw new Error("NFT transfer failed");
-                            }
+                            return {
+                                winnerId: winner.id,
+                                playerName:
+                                    winner.player.nickname ||
+                                    winner.player.name,
+                                success: true,
+                                txHash,
+                            };
+                        } catch (error) {
+                            await tx.raffleWinner.update({
+                                where: { id: winner.id },
+                                data: {
+                                    status: "FAILED",
+                                    failureReason:
+                                        error instanceof Error
+                                            ? error.message
+                                            : "Unknown error",
+                                },
+                            });
 
-                            txHash =
-                                "txHash" in result
-                                    ? result.txHash
-                                    : result.txHashes[0];
-                            if (!txHash) {
-                                throw new Error("Transaction hash not found");
-                            }
+                            throw error;
                         }
+                    });
+                })
+            );
 
-                        await tx.raffleWinner.update({
-                            where: { id: winner.id },
-                            data: {
-                                status: "DISTRIBUTED",
-                                distributedAt: new Date(),
-                                transactionHash: txHash,
-                            },
-                        });
+            distributionResults.forEach((result, index) => {
+                if (result.status === "fulfilled") {
+                    batchDistributed++;
+                } else {
+                    batchFailed++;
+                    const winner = winners[index];
+                    console.error(
+                        `❌ Failed to distribute prize to ${
+                            winner.player.nickname || winner.player.name
+                        }:`,
+                        result.reason
+                    );
+                }
+            });
 
-                        return {
-                            winnerId: winner.id,
-                            playerName:
-                                winner.player.nickname || winner.player.name,
-                            success: true,
-                            txHash,
-                        };
-                    } catch (error) {
-                        await tx.raffleWinner.update({
-                            where: { id: winner.id },
-                            data: {
-                                status: "FAILED",
-                                failureReason:
-                                    error instanceof Error
-                                        ? error.message
-                                        : "Unknown error",
-                            },
-                        });
+            totalDistributed += batchDistributed;
+            totalFailed += batchFailed;
 
-                        throw error;
-                    }
-                });
-            })
-        );
-
-        distributionResults.forEach((result, index) => {
-            if (result.status === "fulfilled") {
-                distributedCount++;
-            } else {
-                failedCount++;
-                const winner = winners[index];
-                console.error(
-                    `❌ Failed to distribute prize to ${
-                        winner.player.nickname || winner.player.name
-                    }:`,
-                    result.reason
-                );
-            }
-        });
+            console.log(
+                `Batch ${
+                    batchIndex + 1
+                }/${totalBatches} completed: ${batchDistributed} distributed, ${batchFailed} failed`
+            );
+        }
 
         return {
             success: true,
             data: {
-                distributed: distributedCount,
-                failed: failedCount,
+                distributed: totalDistributed,
+                failed: totalFailed,
+                totalProcessed: totalDistributed + totalFailed,
+                totalBatches,
             },
         };
     } catch (error) {
@@ -1939,11 +2323,42 @@ export async function getPlayerParticipations(
 
         const participations = await prisma.raffleParticipant.findMany({
             where,
-            include: {
+            select: {
+                id: true,
+                raffleId: true,
+                playerId: true,
+                prizeId: true,
+                drawnAt: true,
+                revealedAt: true,
+                isRevealed: true,
+                createdAt: true,
                 prize: {
-                    include: {
-                        asset: true,
-                        spg: { include: { network: true } },
+                    select: {
+                        id: true,
+                        title: true,
+                        prizeType: true,
+                        assetId: true,
+                        assetAmount: true,
+                        spgAddress: true,
+                        nftQuantity: true,
+                        asset: {
+                            select: {
+                                id: true,
+                                symbol: true,
+                                iconUrl: true,
+                            },
+                        },
+                        spg: {
+                            select: {
+                                address: true,
+                                network: {
+                                    select: {
+                                        chainId: true,
+                                        name: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
                 player: { select: { id: true, name: true, nickname: true } },
@@ -1956,13 +2371,30 @@ export async function getPlayerParticipations(
                 raffleId: input.raffleId,
                 playerId: input.playerId,
             },
-            include: {
+            select: {
+                id: true,
+                raffleId: true,
+                playerId: true,
+                prizeId: true,
+                status: true,
+                distributedAt: true,
+                transactionHash: true,
+                failureReason: true,
+                createdAt: true,
                 player: {
-                    include: {
+                    select: {
+                        id: true,
+                        name: true,
+                        nickname: true,
                         user: {
-                            include: {
+                            select: {
                                 wallets: {
                                     where: { status: "ACTIVE" },
+                                    select: {
+                                        address: true,
+                                        status: true,
+                                        default: true,
+                                    },
                                     orderBy: { default: "desc" },
                                 },
                             },
@@ -1970,9 +2402,32 @@ export async function getPlayerParticipations(
                     },
                 },
                 prize: {
-                    include: {
-                        asset: true,
-                        spg: { include: { network: true } },
+                    select: {
+                        id: true,
+                        title: true,
+                        prizeType: true,
+                        assetId: true,
+                        assetAmount: true,
+                        spgAddress: true,
+                        nftQuantity: true,
+                        asset: {
+                            select: {
+                                id: true,
+                                symbol: true,
+                                iconUrl: true,
+                            },
+                        },
+                        spg: {
+                            select: {
+                                address: true,
+                                network: {
+                                    select: {
+                                        chainId: true,
+                                        name: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
             },
@@ -2053,12 +2508,15 @@ export interface BulkRevealInput {
     raffleId: string;
     playerId: string;
     participantIds?: string[];
+    batchSize?: number;
 }
 
 export async function bulkRevealResults(input: BulkRevealInput): Promise<
     RaffleResult<{
         revealed: RaffleParticipantWithRelations[];
         alreadyRevealed: number;
+        totalProcessed: number;
+        totalBatches: number;
     }>
 > {
     try {
@@ -2069,7 +2527,7 @@ export async function bulkRevealResults(input: BulkRevealInput): Promise<
 
         const player = await prisma.player.findUnique({
             where: { id: input.playerId },
-            include: { user: true },
+            select: { id: true, userId: true },
         });
 
         if (!player || player.userId !== session.user.id) {
@@ -2078,6 +2536,8 @@ export async function bulkRevealResults(input: BulkRevealInput): Promise<
                 error: "Invalid player or insufficient permissions",
             };
         }
+
+        const batchSize = Math.min(input.batchSize || 20, 50);
 
         const where: any = {
             raffleId: input.raffleId,
@@ -2089,72 +2549,165 @@ export async function bulkRevealResults(input: BulkRevealInput): Promise<
             where.id = { in: input.participantIds };
         }
 
-        const participants = await prisma.raffleParticipant.findMany({
-            where,
-            include: {
-                prize: {
-                    include: {
-                        asset: true,
-                        spg: { include: { network: true } },
-                    },
-                },
-                player: { select: { id: true, name: true, nickname: true } },
+        const totalUnrevealedCount = await prisma.raffleParticipant.count({
+            where: {
+                ...where,
+                isRevealed: false,
             },
-            orderBy: { createdAt: "asc" },
         });
 
-        if (participants.length === 0) {
-            return { success: false, error: "No participation records found" };
-        }
-
-        const unrevealedParticipants = participants.filter(
-            (p) => !p.isRevealed
-        );
-        const alreadyRevealedCount =
-            participants.length - unrevealedParticipants.length;
-
-        if (unrevealedParticipants.length === 0) {
+        if (totalUnrevealedCount === 0) {
             return {
                 success: true,
                 data: {
                     revealed: [],
-                    alreadyRevealed: alreadyRevealedCount,
+                    alreadyRevealed: 0,
+                    totalProcessed: 0,
+                    totalBatches: 0,
                 },
             };
         }
 
-        const revealedParticipants = await prisma.$transaction(async (tx) => {
-            const results = [];
-            for (const participant of unrevealedParticipants) {
-                const updated = await tx.raffleParticipant.update({
-                    where: { id: participant.id },
-                    data: {
-                        isRevealed: true,
-                        revealedAt: new Date(),
-                    },
-                    include: {
-                        prize: {
-                            include: {
-                                asset: true,
-                                spg: { include: { network: true } },
+        const totalBatches = Math.ceil(totalUnrevealedCount / batchSize);
+        const allRevealedParticipants: any[] = [];
+        let processedCount = 0;
+
+        for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+            const batchParticipants = await prisma.raffleParticipant.findMany({
+                where: {
+                    ...where,
+                    isRevealed: false,
+                },
+                select: {
+                    id: true,
+                    raffleId: true,
+                    playerId: true,
+                    prizeId: true,
+                    drawnAt: true,
+                    revealedAt: true,
+                    isRevealed: true,
+                    createdAt: true,
+                    prize: {
+                        select: {
+                            id: true,
+                            title: true,
+                            prizeType: true,
+                            assetId: true,
+                            assetAmount: true,
+                            spgAddress: true,
+                            nftQuantity: true,
+                            asset: {
+                                select: {
+                                    id: true,
+                                    symbol: true,
+                                    iconUrl: true,
+                                },
+                            },
+                            spg: {
+                                select: {
+                                    address: true,
+                                    network: {
+                                        select: {
+                                            chainId: true,
+                                            name: true,
+                                        },
+                                    },
+                                },
                             },
                         },
-                        player: {
-                            select: { id: true, name: true, nickname: true },
-                        },
                     },
-                });
-                results.push(updated);
+                    player: {
+                        select: { id: true, name: true, nickname: true },
+                    },
+                },
+                orderBy: { createdAt: "asc" },
+                take: batchSize,
+            });
+
+            if (batchParticipants.length === 0) {
+                break;
             }
-            return results;
-        });
+
+            const batchResults = await prisma.$transaction(async (tx) => {
+                const revealPromises = batchParticipants.map(
+                    async (participant) => {
+                        return await tx.raffleParticipant.update({
+                            where: { id: participant.id },
+                            data: {
+                                isRevealed: true,
+                                revealedAt: new Date(),
+                            },
+                            select: {
+                                id: true,
+                                raffleId: true,
+                                playerId: true,
+                                prizeId: true,
+                                drawnAt: true,
+                                revealedAt: true,
+                                isRevealed: true,
+                                createdAt: true,
+                                prize: {
+                                    select: {
+                                        id: true,
+                                        title: true,
+                                        prizeType: true,
+                                        assetId: true,
+                                        assetAmount: true,
+                                        spgAddress: true,
+                                        nftQuantity: true,
+                                        asset: {
+                                            select: {
+                                                id: true,
+                                                symbol: true,
+                                                iconUrl: true,
+                                            },
+                                        },
+                                        spg: {
+                                            select: {
+                                                address: true,
+                                                network: {
+                                                    select: {
+                                                        chainId: true,
+                                                        name: true,
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                                player: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        nickname: true,
+                                    },
+                                },
+                            },
+                        });
+                    }
+                );
+
+                return await Promise.all(revealPromises);
+            });
+
+            allRevealedParticipants.push(...batchResults);
+            processedCount += batchResults.length;
+
+            console.log(
+                `Batch ${batchIndex + 1}/${totalBatches} completed: ${
+                    batchResults.length
+                } participants revealed (${processedCount}/${totalUnrevealedCount} total)`
+            );
+        }
 
         return {
             success: true,
             data: {
                 revealed:
-                    revealedParticipants as RaffleParticipantWithRelations[],
-                alreadyRevealed: alreadyRevealedCount,
+                    allRevealedParticipants as RaffleParticipantWithRelations[],
+                alreadyRevealed: 0,
+                totalProcessed: processedCount,
+                totalBatches,
             },
         };
     } catch (error) {
@@ -2473,19 +3026,62 @@ export async function getParticipantAnalyticsData(
     playerIds?: string[]
 ): Promise<RaffleResult<ParticipantAnalyticsData[]>> {
     try {
-        // 참가자별 기본 통계 조회
+        // Safety check: playerIds가 없으면 빈 배열 반환
+        if (!playerIds || playerIds.length === 0) {
+            return {
+                success: false,
+                error: "Player IDs are required for analytics data. Cannot fetch all participants due to data size limits.",
+            };
+        }
+
+        // 한 번에 최대 100명의 플레이어만 처리
+        if (playerIds.length > 100) {
+            return {
+                success: false,
+                error: "Too many player IDs. Maximum 100 players allowed per request.",
+            };
+        }
+
+        // 참가자별 기본 통계 조회 - 필요한 데이터만 선택적으로 가져오기
         const participants = await prisma.raffleParticipant.findMany({
-            where: playerIds ? { playerId: { in: playerIds } } : undefined,
-            include: {
-                player: true,
+            where: { playerId: { in: playerIds } },
+            select: {
+                id: true,
+                playerId: true,
+                raffleId: true,
+                createdAt: true,
+                player: {
+                    select: {
+                        id: true,
+                        name: true,
+                        nickname: true,
+                        telegramId: true,
+                    },
+                },
                 raffle: {
-                    include: {
-                        artist: true,
+                    select: {
+                        id: true,
+                        title: true,
+                        entryFeeAmount: true,
+                        artist: {
+                            select: {
+                                id: true,
+                                name: true,
+                            },
+                        },
                     },
                 },
                 prize: {
-                    include: {
-                        asset: true,
+                    select: {
+                        id: true,
+                        title: true,
+                        assetAmount: true,
+                        asset: {
+                            select: {
+                                id: true,
+                                symbol: true,
+                            },
+                        },
                     },
                 },
             },
@@ -2494,13 +3090,25 @@ export async function getParticipantAnalyticsData(
             },
         });
 
-        // 당첨자 정보 조회
+        // 당첨자 정보 조회 - 필요한 데이터만 선택적으로 가져오기
         const winners = await prisma.raffleWinner.findMany({
-            where: playerIds ? { playerId: { in: playerIds } } : undefined,
-            include: {
+            where: { playerId: { in: playerIds } },
+            select: {
+                id: true,
+                playerId: true,
+                raffleId: true,
+                createdAt: true,
                 prize: {
-                    include: {
-                        asset: true,
+                    select: {
+                        id: true,
+                        title: true,
+                        assetAmount: true,
+                        asset: {
+                            select: {
+                                id: true,
+                                symbol: true,
+                            },
+                        },
                     },
                 },
             },

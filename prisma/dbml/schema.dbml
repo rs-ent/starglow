@@ -23,7 +23,7 @@ Table User {
   player Player
   sessions Session [not null]
   wallets Wallet [not null]
-  discordId String
+  discordId String [unique]
   discordCode DiscordCode [not null]
 }
 

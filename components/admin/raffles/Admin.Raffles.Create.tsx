@@ -28,6 +28,7 @@ import type {
     RafflePrizeInput,
     RaffleWithDetails,
 } from "@/app/actions/raffles/actions";
+import { MAX_PRIZES_PER_QUERY } from "@/app/actions/raffles/types";
 import type { RafflePrizeType } from "@prisma/client";
 
 interface AdminRafflesCreateProps {
@@ -168,13 +169,18 @@ export default function AdminRafflesCreate({
 
     // 🎯 상품 추가/수정
     const addOrUpdatePrize = () => {
-        // 편집 모드인 경우 저장 함수 호출
         if (editingPrizeIndex !== null) {
             saveEditPrize();
             return;
         }
 
-        // 새 상품 추가 로직
+        if ((raffleData.prizes?.length || 0) >= MAX_PRIZES_PER_QUERY) {
+            toast.error(
+                `최대 ${MAX_PRIZES_PER_QUERY}개의 상품만 추가할 수 있습니다.`
+            );
+            return;
+        }
+
         if (!currentPrize.title?.trim()) {
             toast.error("상품 이름은 필수입니다.");
             return;
@@ -806,7 +812,8 @@ export default function AdminRafflesCreate({
                     <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
                         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                             <FaGift className="text-pink-400" />
-                            상품 풀 ({totalSlots} 총 슬롯)
+                            상품 풀 ({raffleData.prizes?.length || 0}/
+                            {MAX_PRIZES_PER_QUERY} 상품, {totalSlots} 총 슬롯)
                         </h2>
                         <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                             <p className="text-sm text-blue-300">
@@ -817,6 +824,19 @@ export default function AdminRafflesCreate({
                                 티어 5, 오더 3)
                             </p>
                         </div>
+
+                        {(raffleData.prizes?.length || 0) >=
+                            MAX_PRIZES_PER_QUERY && (
+                            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                                <p className="text-sm text-red-300">
+                                    ⚠️ <strong>상품 수 제한:</strong> 최대{" "}
+                                    {MAX_PRIZES_PER_QUERY}개의 상품만 추가할 수
+                                    있습니다.
+                                    <br />
+                                    성능 최적화를 위해 상품 수가 제한됩니다.
+                                </p>
+                            </div>
+                        )}
 
                         {/* 현재 상품 목록 */}
                         <div className="space-y-3 mb-6 max-h-80 overflow-y-auto">
@@ -1251,7 +1271,12 @@ export default function AdminRafflesCreate({
                             <div className="flex gap-2">
                                 <button
                                     onClick={addOrUpdatePrize}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
+                                    disabled={
+                                        editingPrizeIndex === null &&
+                                        (raffleData.prizes?.length || 0) >=
+                                            MAX_PRIZES_PER_QUERY
+                                    }
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-purple-600 disabled:hover:to-pink-600"
                                 >
                                     {editingPrizeIndex !== null ? (
                                         <>
@@ -1262,6 +1287,9 @@ export default function AdminRafflesCreate({
                                         <>
                                             <FaPlus />
                                             상품 추가
+                                            {(raffleData.prizes?.length || 0) >=
+                                                MAX_PRIZES_PER_QUERY &&
+                                                " (최대 도달)"}
                                         </>
                                     )}
                                 </button>

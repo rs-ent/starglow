@@ -12,9 +12,7 @@ import { cn } from "@/lib/utils/tailwind";
 
 import UserRewardsModal from "../user/User.Rewards.Modal";
 
-import type { Asset, PlayerAsset } from "@prisma/client";
-
-export type PlayerAssetWithAsset = PlayerAsset & { asset: Asset };
+import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets/actions";
 
 interface RewardPanelProps {
     playerId: string;
@@ -33,7 +31,7 @@ function RewardPanel({ playerId, assetNames, className }: RewardPanelProps) {
 
     // SGP는 항상 표시되도록 보장
     const displayAssetNames = useMemo(
-        () => Array.from(new Set([...assetNames, "SGP"])),
+        () => Array.from(new Set([...assetNames])),
         [assetNames]
     );
 
@@ -43,6 +41,7 @@ function RewardPanel({ playerId, assetNames, className }: RewardPanelProps) {
             getPlayerAssetsInput: {
                 filter: {
                     playerId,
+                    includeDefaultAsset: true,
                 },
             },
         });
@@ -50,20 +49,18 @@ function RewardPanel({ playerId, assetNames, className }: RewardPanelProps) {
     // 표시할 플레이어 자산 필터링
     const displayPlayerAssets = useMemo(() => {
         if (!playerAssets?.data) return [];
+        if (displayAssetNames.length === 0) return playerAssets.data.assets;
 
-        return (
-            playerAssets.data as Array<PlayerAsset & { asset: Asset }>
-        ).filter((pa) => displayAssetNames.includes(pa.asset.name));
+        return playerAssets.data.assets.filter((pa) =>
+            displayAssetNames.includes(pa.asset.name)
+        );
     }, [playerAssets, displayAssetNames]);
 
     // 보상 클릭 핸들러
-    const handleRewardClick = useCallback(
-        (asset: PlayerAsset & { asset: Asset }) => {
-            setSelectedReward(asset);
-            setShowRewardModal(true);
-        },
-        []
-    );
+    const handleRewardClick = useCallback((asset: PlayerAssetWithAsset) => {
+        setSelectedReward(asset);
+        setShowRewardModal(true);
+    }, []);
 
     // 모달 닫기 핸들러
     const handleCloseModal = useCallback(() => {

@@ -3,10 +3,6 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-
-import { getOwners } from "../story/nft/actions";
-
-import type { AdvancedTokenGateResult } from "./blockchain";
 import type {
     Artist,
     ArtistMessage,
@@ -671,127 +667,6 @@ export async function deleteArtistMessage(
     } catch (error) {
         console.error(error);
         return false;
-    }
-}
-
-export interface TokenGatingInput {
-    artist: Artist | null;
-    userId: string | null;
-}
-
-interface TokenGatingResult {
-    hasToken: Record<string, boolean>;
-    tokenCount: Record<string, number>;
-    ownerWallets: Record<string, string[]>;
-}
-
-export async function tokenGating(
-    input?: TokenGatingInput
-): Promise<AdvancedTokenGateResult> {
-    try {
-        const { artist, userId } = input || {};
-        if (!artist?.id || !userId) {
-            return {
-                success: false,
-                data: {
-                    hasToken: {},
-                    tokenCount: {},
-                    ownerWallets: {},
-                },
-            };
-        }
-
-        const [spgs, user] = await Promise.all([
-            prisma.story_spg.findMany({
-                where: { artistId: artist.id },
-                select: { address: true },
-            }),
-            prisma.user.findUnique({
-                where: { id: userId },
-                select: {
-                    wallets: {
-                        where: { status: "ACTIVE" },
-                        select: { address: true },
-                    },
-                },
-            }) as Promise<{ wallets: { address: string }[] } | null>,
-        ]);
-
-        if (!spgs.length) {
-            return {
-                success: true,
-                data: {
-                    hasToken: {},
-                    tokenCount: {},
-                    ownerWallets: {},
-                },
-            };
-        }
-
-        if (!user?.wallets || !user.wallets.length) {
-            return {
-                success: false,
-                error: user ? "User has no active wallets" : "User not found",
-                data: {
-                    hasToken: {},
-                    tokenCount: {},
-                    ownerWallets: {},
-                },
-            };
-        }
-
-        const walletAddresses = new Set(user.wallets.map((w) => w.address));
-
-        const results = await Promise.all(
-            spgs.map(async (spg) => {
-                const owners = await getOwners({ spgAddress: spg.address });
-                const userOwnedTokens = owners.filter((owner) =>
-                    walletAddresses.has(owner.owner)
-                );
-
-                return {
-                    hasToken: { [spg.address]: userOwnedTokens.length > 0 },
-                    tokenCount: { [spg.address]: userOwnedTokens.length },
-                    ownerWallets: {
-                        [spg.address]: userOwnedTokens.map(
-                            (owner) => owner.owner
-                        ),
-                    },
-                } as TokenGatingResult;
-            })
-        );
-
-        const mergedResult = results.reduce<TokenGatingResult>(
-            (acc, curr) => ({
-                hasToken: { ...acc.hasToken, ...curr.hasToken },
-                tokenCount: { ...acc.tokenCount, ...curr.tokenCount },
-                ownerWallets: { ...acc.ownerWallets, ...curr.ownerWallets },
-            }),
-            {
-                hasToken: {},
-                tokenCount: {},
-                ownerWallets: {},
-            }
-        );
-
-        return {
-            success: true,
-            data: mergedResult,
-        };
-    } catch (error) {
-        console.error("Error in token gating:", error);
-        return {
-            success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to check token ownership",
-            data: {
-                hasToken: {},
-                tokenCount: {},
-                ownerWallets: {},
-            },
-        };
     }
 }
 

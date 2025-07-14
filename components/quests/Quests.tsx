@@ -36,8 +36,8 @@ function Quests({ player }: QuestsProps) {
                 <Image
                     src="/elements/bg-quest-blur.svg"
                     alt="Background"
-                    width={1920}
-                    height={1080}
+                    width={400}
+                    height={800}
                     className="opacity-90 w-full h-full object-cover scale-125 lg:scale-100 bg-blend-overlay transition-all duration-1000"
                     loading="eager"
                     fetchPriority="high"

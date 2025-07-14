@@ -1,0 +1,1 @@
+export const MAX_PRIZES_PER_QUERY = 90;

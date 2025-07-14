@@ -33,10 +33,9 @@ model User {
   player                 Player?
   sessions               Session[]
   wallets                Wallet[]
-  discordId              String?
+  discordId              String?                 @unique
   discordCode            DiscordCode[]
 
-  @@index([telegramId])
   @@index([email, active])
   @@index([role, active])
   @@index([lastLoginAt])
@@ -69,7 +68,6 @@ model DiscordAccount {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  @@index([discordId])
   @@index([userIds])
   @@index([createdAt])
   @@index([updatedAt])
@@ -83,7 +81,6 @@ model DiscordCode {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   
 
-  @@index([code])
   @@index([expiresAt])
   @@index([userId])
 }
@@ -190,7 +187,6 @@ model Player {
   @@unique([userId, telegramId])
   @@index([userId, telegramId])
   @@index([referredBy])
-  @@index([referralCode])
   @@index([createdAt])
   @@index([lastConnectedAt])
   @@index([isArtist])
@@ -231,7 +227,6 @@ model PlayerAsset {
   assetInstances AssetInstance[]
 
   @@unique([playerId, assetId])
-  @@index([playerId])
   @@index([assetId])
   @@index([status])
 }
@@ -313,7 +308,7 @@ model QuestLog {
 
   @@unique([playerId, questId])
   @@index([playerId, questId, deprecated])
-  @@index([questId, playerId]) // 🚀 새로운 쿼리 패턴 최적화
+  @@index([questId, playerId])
   @@index([completedAt])
   @@index([status])
 }
@@ -460,7 +455,6 @@ model RewardsLog {
   @@index([playerId, raffleId])
   @@index([questId, pollId])
   @@index([raffleId])
-  @@index([tweetAuthorId])
   @@index([tweetAuthorId, reason])
   @@index([tweetIds])
 }
@@ -517,19 +511,19 @@ model Events {
 
 model StoredFiles {
   id        String    @id @default(cuid())
-  name      String?   @db.VarChar(255)
-  url       String    @unique @db.VarChar(2048)
-  type      String?   @db.VarChar(50)
-  sourceUrl String?   @db.VarChar(2048)
-  alt       String?   @db.VarChar(255)
+  name      String?
+  url       String    @unique
+  type      String?
+  sourceUrl String?
+  alt       String?
   width     Int?
   height    Int?
-  mimeType  String?   @db.VarChar(50)
+  mimeType  String?
   sizeBytes Int?
   metadata  Json?
   order     Int?      @default(0)
-  purpose   String?   @db.VarChar(50)
-  bucket    String    @db.VarChar(50)
+  purpose   String?
+  bucket    String
   focusX    Float     @default(0.5)
   focusY    Float     @default(0.5)
   expiresAt DateTime?
@@ -539,7 +533,6 @@ model StoredFiles {
   @@unique([sourceUrl, type])
   @@index([bucket, purpose])
   @@index([url, type])
-  @@index([url])
 }
 
 model LoginAttemptLog {
@@ -618,7 +611,6 @@ model Payment {
   virtualAccount         VirtualAccount?
   webhookEvents          WebhookEvent[]
 
-  @@index([userId])
   @@index([userId, status])
   @@index([status, createdAt])
   @@index([productTable, productId])
@@ -703,7 +695,6 @@ model BlockchainNetwork {
   story_spg_contracts Story_spgContract[]
   tbaContracts        TBAContract[]
 
-  @@index([isTestnet, isActive])
   @@index([isStoryNetwork])
   @@index([isTestnet, isActive, isStoryNetwork])
 }
@@ -786,8 +777,6 @@ model AssetTutorial {
   updatedAt DateTime @updatedAt
   asset     Asset    @relation(fields: [assetId], references: [id])
   steps     Json
-
-  @@index([assetId])
 }
 
 enum AssetInstanceStatus {
@@ -834,7 +823,6 @@ model AssetInstance {
 
   @@unique([assetId, serialNumber])
   @@unique([assetId, code])
-  @@index([assetId])
   @@index([playerId])
   @@index([status])
   @@index([serialNumber])
@@ -853,7 +841,6 @@ model AssetTransaction {
   createdAt       DateTime @default(now())
 
   @@index([assetId, success])
-  @@index([transactionHash])
 }
 
 model FactoryContract {
@@ -919,9 +906,6 @@ model Metadata {
   collectionContract CollectionContract? @relation("CollectionContractMetadata", fields: [collectionAddress], references: [address])
 
   @@unique([collectionAddress, tokenId])
-  @@index([collectionAddress, tokenId])
-  @@index([collectionAddress])
-  @@index([url])
 }
 
 model CollectionContract {
@@ -1015,7 +999,6 @@ model NFT {
 
   @@unique([collectionId, tokenId])
   @@index([collectionId, tokenId])
-  @@index([collectionId])
   @@index([tokenId])
   @@index([currentOwnerAddress])
   @@index([ownerAddress])
@@ -1227,7 +1210,6 @@ model TBAContract {
   network    BlockchainNetwork @relation(fields: [networkId], references: [id])
 
   @@unique([networkId, type, address])
-  @@index([networkId, type])
   @@index([networkId, type, isActive])
 }
 
@@ -1271,11 +1253,7 @@ model Story_spg {
   rafflePrizes             RafflePrize[]      @relation("RafflePrizeSPG")
 
   @@index([networkId])
-  @@index([ownerAddress])
   @@index([ownerAddress, networkId])
-  @@index([address])
-  @@index([name])
-  @@index([symbol])
   @@index([artistId])
   @@index([tbaRegistryAddress])
   @@index([tbaImplementationAddress])
@@ -1298,7 +1276,6 @@ model Story_nft {
   network         BlockchainNetwork @relation(fields: [networkId], references: [id])
 
   @@unique([contractAddress, tokenId])
-  @@index([contractAddress])
   @@index([ownerAddress])
   @@index([networkId])
   @@index([ipId])
@@ -1324,7 +1301,6 @@ model Story_ipAsset {
   nfts               Story_nft[]
 
   @@unique([chainId, tokenContract, tokenId])
-  @@index([ipId])
   @@index([networkId])
 }
 
@@ -1349,7 +1325,6 @@ model TweetAuthor {
 
   rewardsLogs RewardsLog[]
 
-  @@index([authorId])
   @@index([isBlacklisted])
 }
 
@@ -1406,7 +1381,6 @@ model Tweet {
   metricsHistory        TweetMetrics[]
 
   @@index([authorId])
-  @@index([tweetId])
   @@index([createdAt])
   @@index([isDeleted])
 }
@@ -1440,7 +1414,6 @@ model TweetMedia {
   tweet           Tweet    @relation(fields: [tweetId], references: [tweetId])
 
   @@index([tweetId])
-  @@index([mediaKey])
 }
 
 model TweetSyncData {
@@ -1573,8 +1546,6 @@ model BoardModerationTrustLevelAction {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([trustLevel])
 }
 
 model Board {
@@ -1998,7 +1969,6 @@ model RaffleParticipant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  @@index([raffleId])
   @@index([playerId])
   @@index([raffleId, playerId])
   @@index([drawnAt])
@@ -2328,7 +2298,6 @@ model NotificationStats {
   updatedAt   DateTime @updatedAt
   
   @@unique([date])
-  @@index([date])
   @@map("notification_stats")
 }
 

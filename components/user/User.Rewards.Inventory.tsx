@@ -2,45 +2,102 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 
-import { usePlayerAssetsGet } from "@/app/actions/playerAssets/hooks";
+import { useInfinitePlayerAssetsQuery } from "@/app/actions/playerAssets/queries";
 import RewardButton from "@/components/atoms/Reward.Button";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 
 import UserRewardsModal from "./User.Rewards.Modal";
 
-import type { Player, PlayerAsset, Asset } from "@prisma/client";
+import type { Player } from "@prisma/client";
+import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets/actions";
 
 interface UserRewardsProps {
     player: Player | null;
 }
 
-export type PlayerAssetWithAsset = PlayerAsset & { asset: Asset };
+const ITEMS_PER_PAGE = 9;
 
 export default function UserRewards({ player }: UserRewardsProps) {
-    const { playerAssets, isPlayerAssetsLoading } = usePlayerAssetsGet({
-        getPlayerAssetsInput: {
-            filter: {
-                playerId: player?.id ?? "",
-            },
-        },
-    });
+    const triggerRef = useRef<HTMLDivElement>(null);
 
-    const { playerAssetList, slots } = useMemo(() => {
-        const playerAssetList = (playerAssets?.data ??
-            []) as Array<PlayerAssetWithAsset>;
-        const length = playerAssetList.length;
-        const rest = length % 3 === 0 ? 0 : 3 - (length % 3);
-        const slots = Array.from({ length: length + rest }).map((_, idx) =>
-            idx < length ? playerAssetList[idx] : null
+    // 무한 스크롤 쿼리 - 다른 컴포넌트와 동일한 패턴
+    const {
+        data: infiniteData,
+        isLoading,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
+        error,
+    } = useInfinitePlayerAssetsQuery(
+        player?.id
+            ? {
+                  filter: {
+                      playerId: player.id,
+                  },
+                  pagination: {
+                      limit: ITEMS_PER_PAGE,
+                  },
+              }
+            : undefined
+    );
+
+    // 모든 자산을 하나의 배열로 합치기 (다른 컴포넌트와 동일한 패턴)
+    const allAssets = useMemo(() => {
+        const data = infiniteData as any;
+        if (!data?.pages) return [];
+        return data.pages.flatMap((page: any) =>
+            page.success ? page.data?.assets || [] : []
+        );
+    }, [infiniteData]);
+
+    // Intersection Observer로 무한 스크롤 구현 (다른 컴포넌트와 동일한 패턴)
+    React.useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const target = entries[0];
+                if (
+                    target.isIntersecting &&
+                    hasNextPage &&
+                    !isFetchingNextPage
+                ) {
+                    fetchNextPage().catch((error) => {
+                        console.error("Failed to fetch next page:", error);
+                    });
+                }
+            },
+            {
+                root: null,
+                rootMargin: "100px",
+                threshold: 0.1,
+            }
         );
 
-        return { playerAssetList, slots };
-    }, [playerAssets]);
+        const currentRef = triggerRef.current;
+        if (currentRef) {
+            observer.observe(currentRef);
+        }
+
+        return () => {
+            if (currentRef) {
+                observer.unobserve(currentRef);
+            }
+        };
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+    const { playerAssetList, slots } = useMemo(() => {
+        const length = allAssets.length;
+        const rest = length % 3 === 0 ? 0 : 3 - (length % 3);
+        const slots = Array.from({ length: length + rest }).map((_, idx) =>
+            idx < length ? allAssets[idx] : null
+        );
+
+        return { playerAssetList: allAssets, slots };
+    }, [allAssets]);
 
     const [selectedReward, setSelectedReward] =
         useState<PlayerAssetWithAsset | null>(null);
@@ -50,6 +107,8 @@ export default function UserRewards({ player }: UserRewardsProps) {
         setSelectedReward(asset);
         setShowModal(true);
     };
+
+    const isInitialLoading = isLoading && allAssets.length === 0;
 
     return (
         <>
@@ -64,11 +123,15 @@ export default function UserRewards({ player }: UserRewardsProps) {
             <div
                 className={cn(
                     "w-full max-w-[1000px] mx-auto",
-                    "px-4 sm:px-6 lg:px-8"
+                    "px-4 sm:px-6 lg:px-8",
+                    "max-h-[500px] sm:max-h-[600px] md:max-h-[700px] lg:max-h-[800px]",
+                    "overflow-y-auto overflow-x-hidden",
+                    "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/30",
+                    "scroll-smooth"
                 )}
             >
-                {/* Loading State */}
-                {isPlayerAssetsLoading && (
+                {/* Initial Loading State */}
+                {isInitialLoading && (
                     <div className="grid grid-cols-3 gap-1 md:gap-2 lg:gap-4 my-[50px]">
                         {Array.from({ length: 6 }).map((_, idx) => (
                             <motion.div
@@ -93,8 +156,21 @@ export default function UserRewards({ player }: UserRewardsProps) {
                     </div>
                 )}
 
+                {/* Error State */}
+                {error && (
+                    <div className="text-center py-8">
+                        <p className="text-red-400">Failed to load rewards</p>
+                        <button
+                            className="mt-2 text-sm text-white/60 underline underline-offset-2"
+                            onClick={() => window.location.reload()}
+                        >
+                            Try again
+                        </button>
+                    </div>
+                )}
+
                 {/* Inventory Grid */}
-                {!isPlayerAssetsLoading && (
+                {!isInitialLoading && !error && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -123,25 +199,27 @@ export default function UserRewards({ player }: UserRewardsProps) {
                     </motion.div>
                 )}
 
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className={cn("text-center mb-[100px] md:mb-[50px]")}
-                >
-                    <p
-                        className={cn(
-                            getResponsiveClass(15).textClass,
-                            "text-white/60"
-                        )}
-                    >
-                        {playerAssetList.length > 0
-                            ? `${playerAssetList.length} reward${
-                                  playerAssetList.length > 1 ? "s" : ""
-                              } collected`
-                            : "No rewards yet - start completing missions!"}
-                    </p>
-                </motion.div>
+                {/* Infinite Scroll Trigger */}
+                <div ref={triggerRef} className="w-full h-4" />
+
+                {/* Loading More State */}
+                {isFetchingNextPage && (
+                    <div className="flex justify-center items-center py-8">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            className="flex items-center space-x-2 text-white/60"
+                        >
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span
+                                className={cn(getResponsiveClass(14).textClass)}
+                            >
+                                Loading more rewards...
+                            </span>
+                        </motion.div>
+                    </div>
+                )}
             </div>
         </>
     );

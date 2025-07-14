@@ -371,7 +371,9 @@ export async function getAllFiles(params?: GetAllFilesParams): Promise<{
             take: limit,
             skip: offset,
         }),
-        prisma.storedFiles.count({ where }),
+        prisma.storedFiles.count({
+            where,
+        }),
     ]);
 
     return {

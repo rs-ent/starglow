@@ -3,12 +3,13 @@ import type {
     GetArtistInput,
     GetArtistMessagesInput,
     GetArtistsInput,
-    TokenGatingInput as ArtistTokenGatingInput,
     GetPlayersInput,
 } from "./actions/artists";
-import type { TokenGateInput } from "./actions/blockchain";
 import type { GetDBUserFromPlayerInput } from "./actions/player";
-import type { GetPlayerAssetsFilter } from "@/app/actions/playerAssets/actions";
+import type {
+    GetPlayerAssetsFilter,
+    GetPlayerAssetsInput,
+} from "@/app/actions/playerAssets/actions";
 import type {
     GetPlayerPollLogsInput,
     GetPollLogsInput,
@@ -194,6 +195,8 @@ export const playerAssetsKeys = {
     lists: () => [...playerAssetsKeys.all, "list"] as const,
     list: (filters: GetPlayerAssetsFilter) =>
         [...playerAssetsKeys.lists(), filters] as const,
+    infinite: (input?: GetPlayerAssetsInput) =>
+        [...playerAssetsKeys.all, "infinite", input] as const,
     details: () => [...playerAssetsKeys.all, "detail"] as const,
     detail: (playerId: string, assetId: string) =>
         [...playerAssetsKeys.details(), playerId, assetId] as const,
@@ -648,8 +651,6 @@ export const artistKeys = {
         [...artistKeys.all, "star", input] as const,
     messages: (input?: GetArtistMessagesInput) =>
         [...artistKeys.all, "messages", input] as const,
-    tokenGating: (input?: ArtistTokenGatingInput) =>
-        [...artistKeys.all, "token-gating", input] as const,
     players: (input?: GetPlayersInput) =>
         [...artistKeys.all, "players", input] as const,
 };
@@ -666,13 +667,6 @@ export const stakingKeys = {
 
 export const blockchainKeys = {
     all: ["blockchain"] as const,
-    tokenGate: (input?: TokenGateInput) =>
-        [
-            ...blockchainKeys.all,
-            "token-gate",
-            input?.tokenAddress,
-            input?.userId,
-        ] as const,
 };
 
 export const rewardLogsKeys = {

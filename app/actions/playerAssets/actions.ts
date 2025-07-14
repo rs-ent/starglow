@@ -52,26 +52,72 @@ export interface GetPlayerAssetsFilter {
     assetIds?: string[];
     assetType?: AssetType;
     isActive?: boolean;
+    includeDefaultAsset?: boolean;
 }
 
 export interface GetPlayerAssetsInput {
     filter: GetPlayerAssetsFilter;
+    pagination?: {
+        page?: number;
+        limit?: number;
+    };
 }
 
-export type PlayerAssetWithAsset = PlayerAsset & {
-    asset: Asset;
+export type PlayerAssetWithAsset = {
+    id: string;
+    playerId: string;
+    assetId: string;
+    balance: number;
+    status: string;
+    updatedAt: Date;
+    asset: {
+        id: string;
+        name: string;
+        symbol: string;
+        iconUrl: string | null;
+        description: string | null;
+        assetType: string;
+        isActive: boolean;
+        hasInstance: boolean;
+        imageUrl: string | null;
+        metadata: any;
+    };
 };
+
+export interface GetPlayerAssetsResult {
+    success: boolean;
+    data?: {
+        assets: PlayerAssetWithAsset[];
+        totalCount: number;
+        currentPage: number;
+        totalPages: number;
+        hasNext: boolean;
+        hasPrevious: boolean;
+    };
+    error?: string;
+}
 
 export async function getPlayerAssets(
     input?: GetPlayerAssetsInput
-): Promise<PlayerAssetResult<PlayerAssetWithAsset[]>> {
+): Promise<GetPlayerAssetsResult> {
     if (!input) {
         return {
             success: false,
-            data: [],
+            data: {
+                assets: [],
+                totalCount: 0,
+                currentPage: 1,
+                totalPages: 0,
+                hasNext: false,
+                hasPrevious: false,
+            },
             error: "No input",
         };
     }
+
+    const page = input.pagination?.page || 1;
+    const limit = input.pagination?.limit || 50;
+    const offset = (page - 1) * limit;
 
     const where: Prisma.PlayerAssetWhereInput = {};
     const assetWhere: Prisma.AssetWhereInput = {};
@@ -96,21 +142,58 @@ export async function getPlayerAssets(
         assetWhere.isActive = input.filter.isActive;
     }
 
+    if (input?.filter.includeDefaultAsset !== undefined) {
+        assetWhere.isDefault = input.filter.includeDefaultAsset;
+    }
+
     if (Object.keys(assetWhere).length > 0) {
         where.asset = assetWhere;
     }
 
-    const playerAssets = await prisma.playerAsset.findMany({
-        where,
-        include: {
-            asset: true,
-            player: true,
-        },
-    });
+    const [playerAssets, totalCount] = await Promise.all([
+        prisma.playerAsset.findMany({
+            where,
+            select: {
+                id: true,
+                playerId: true,
+                assetId: true,
+                balance: true,
+                status: true,
+                updatedAt: true,
+                asset: {
+                    select: {
+                        id: true,
+                        name: true,
+                        symbol: true,
+                        iconUrl: true,
+                        description: true,
+                        assetType: true,
+                        isActive: true,
+                        hasInstance: true,
+                        imageUrl: true,
+                        metadata: true,
+                    },
+                },
+            },
+            orderBy: { id: "asc" },
+            skip: offset,
+            take: limit,
+        }),
+        prisma.playerAsset.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
 
     return {
         success: true,
-        data: playerAssets as PlayerAssetWithAsset[],
+        data: {
+            assets: playerAssets as PlayerAssetWithAsset[],
+            totalCount,
+            currentPage: page,
+            totalPages,
+            hasNext: page < totalPages,
+            hasPrevious: page > 1,
+        },
     };
 }
 
@@ -137,9 +220,25 @@ export async function getPlayerAsset(
                 assetId: input.assetId,
             },
         },
-        include: {
-            asset: true,
-            player: true,
+        select: {
+            id: true,
+            playerId: true,
+            assetId: true,
+            balance: true,
+            status: true,
+            updatedAt: true,
+            asset: {
+                select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    assetType: true,
+                    isActive: true,
+                    hasInstance: true,
+                    imageUrl: true,
+                    metadata: true,
+                },
+            },
         },
     });
 
@@ -225,6 +324,10 @@ async function updatePlayerAssetBalance(
                 assetId: input.transaction.assetId,
             },
         },
+        select: {
+            status: true,
+            balance: true,
+        },
     });
 
     if (playerAsset) {
@@ -304,6 +407,14 @@ async function updatePlayerAssetBalance(
         update: {
             balance: newBalance,
         },
+        select: {
+            id: true,
+            playerId: true,
+            assetId: true,
+            balance: true,
+            status: true,
+            updatedAt: true,
+        },
     });
 
     if (
@@ -324,6 +435,9 @@ async function updatePlayerAssetBalance(
                 tweetAuthorId: input.transaction.tweetAuthorId,
                 tweetIds: input.transaction.tweetIds,
                 reason: input.transaction.reason,
+            },
+            select: {
+                id: true,
             },
         });
     }
@@ -346,6 +460,9 @@ async function updatePlayerAssetWithInstances(
                 playerId: transaction.playerId,
                 assetId: transaction.assetId,
             },
+        },
+        select: {
+            status: true,
         },
     });
 
@@ -443,6 +560,14 @@ async function setPlayerAssetWithInstances(
                 playerId: transaction.playerId,
                 assetId: transaction.assetId,
             },
+        },
+        select: {
+            id: true,
+            playerId: true,
+            assetId: true,
+            balance: true,
+            status: true,
+            updatedAt: true,
         },
     });
 
@@ -1023,7 +1148,21 @@ export async function updatePlayerAssetsOnAssetChange(
                 assetId,
                 status: PlayerAssetStatus.ACTIVE,
             },
-            include: { asset: true },
+            select: {
+                id: true,
+                playerId: true,
+                assetId: true,
+                balance: true,
+                status: true,
+                asset: {
+                    select: {
+                        id: true,
+                        assetType: true,
+                        isActive: true,
+                    },
+                },
+            },
+            take: 1000,
         });
 
         if (affectedPlayerAssets.length === 0) {
@@ -1066,6 +1205,9 @@ export async function updatePlayerAssetsOnAssetChange(
                         reason: !newStatus.isActive
                             ? "Asset deactivated"
                             : "Asset type changed",
+                    },
+                    select: {
+                        id: true,
                     },
                 });
             }
@@ -1155,8 +1297,22 @@ export async function validatePlayerAsset(
                 status: PlayerAssetStatus.ACTIVE,
             },
             update: {},
-            include: {
-                asset: true,
+            select: {
+                id: true,
+                playerId: true,
+                assetId: true,
+                balance: true,
+                status: true,
+                updatedAt: true,
+                asset: {
+                    select: {
+                        id: true,
+                        name: true,
+                        assetType: true,
+                        isActive: true,
+                        hasInstance: true,
+                    },
+                },
             },
         });
 
@@ -1345,6 +1501,9 @@ export async function grantPlayerAssetInstances(
                     assetId: asset.id,
                 },
             },
+            select: {
+                balance: true,
+            },
         });
 
         const balanceBefore = existingPlayerAsset?.balance || 0;
@@ -1363,6 +1522,14 @@ export async function grantPlayerAssetInstances(
                 status: "ACTIVE",
             },
             update: {},
+            select: {
+                id: true,
+                playerId: true,
+                assetId: true,
+                balance: true,
+                status: true,
+                updatedAt: true,
+            },
         });
 
         if (playerAsset.status !== "ACTIVE") {
@@ -1407,6 +1574,20 @@ export async function grantPlayerAssetInstances(
                 questLogId: input.questLogId,
                 pollId: input.pollId,
                 pollLogId: input.pollLogId,
+            },
+            select: {
+                id: true,
+                playerId: true,
+                assetId: true,
+                amount: true,
+                balanceBefore: true,
+                balanceAfter: true,
+                reason: true,
+                createdAt: true,
+                questId: true,
+                questLogId: true,
+                pollId: true,
+                pollLogId: true,
             },
         });
 
@@ -1513,6 +1694,11 @@ export async function withdrawPlayerAssetInstances(
                     assetId: asset.id,
                 },
             },
+            select: {
+                id: true,
+                balance: true,
+                status: true,
+            },
         });
 
         if (!playerAsset) {
@@ -1608,6 +1794,20 @@ export async function withdrawPlayerAssetInstances(
                 questLogId: input.questLogId,
                 pollId: input.pollId,
                 pollLogId: input.pollLogId,
+            },
+            select: {
+                id: true,
+                playerId: true,
+                assetId: true,
+                amount: true,
+                balanceBefore: true,
+                balanceAfter: true,
+                reason: true,
+                createdAt: true,
+                questId: true,
+                questLogId: true,
+                pollId: true,
+                pollLogId: true,
             },
         });
 
@@ -1767,6 +1967,9 @@ export async function autoExpirePlayerAssetInstances(
             // PlayerAsset 잔액 감소
             const playerAssetBefore = await tx.playerAsset.findUnique({
                 where: { id: update.playerAssetId },
+                select: {
+                    balance: true,
+                },
             });
 
             if (
@@ -1789,6 +1992,9 @@ export async function autoExpirePlayerAssetInstances(
                         balanceBefore: playerAssetBefore.balance,
                         balanceAfter: playerAssetBefore.balance - update.amount,
                         reason: `Asset instances auto-expired: ${update.amount}`,
+                    },
+                    select: {
+                        id: true,
                     },
                 });
             }
@@ -1844,10 +2050,40 @@ export interface GetPlayerAssetInstancesInput {
     };
 }
 
-export type AssetInstanceWithRelations = AssetInstance & {
-    asset: Asset;
-    player: Player | null;
-    playerAsset: PlayerAsset | null;
+export type AssetInstanceWithRelations = {
+    id: string;
+    code: string;
+    serialNumber: string | null;
+    assetId: string;
+    playerId: string | null;
+    playerAssetId: string | null;
+    status: string;
+    createdAt: Date;
+    updatedAt: Date;
+    expiresAt: Date | null;
+    usedAt: Date | null;
+    usedBy: string | null;
+    usedFor: string | null;
+    usedLocation: string | null;
+    asset: {
+        id: string;
+        name: string;
+        description: string | null;
+        assetType: string;
+        isActive: boolean;
+        hasInstance: boolean;
+        imageUrl: string | null;
+    };
+    player: {
+        id: string;
+        userId: string;
+        artistId: string | null;
+    } | null;
+    playerAsset: {
+        id: string;
+        balance: number;
+        status: string;
+    } | null;
 };
 
 export interface GetPlayerAssetInstancesResult {
@@ -1934,10 +2170,46 @@ export async function getPlayerAssetInstances(
         const [instances, totalCount] = await Promise.all([
             prisma.assetInstance.findMany({
                 where,
-                include: {
-                    asset: true,
-                    player: true,
-                    playerAsset: true,
+                select: {
+                    id: true,
+                    code: true,
+                    serialNumber: true,
+                    assetId: true,
+                    playerId: true,
+                    playerAssetId: true,
+                    status: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    expiresAt: true,
+                    usedAt: true,
+                    usedBy: true,
+                    usedFor: true,
+                    usedLocation: true,
+                    asset: {
+                        select: {
+                            id: true,
+                            name: true,
+                            description: true,
+                            assetType: true,
+                            isActive: true,
+                            hasInstance: true,
+                            imageUrl: true,
+                        },
+                    },
+                    player: {
+                        select: {
+                            id: true,
+                            userId: true,
+                            artistId: true,
+                        },
+                    },
+                    playerAsset: {
+                        select: {
+                            id: true,
+                            balance: true,
+                            status: true,
+                        },
+                    },
                 },
                 orderBy: [{ createdAt: "desc" }, { id: "asc" }],
                 skip: offset,
@@ -1951,7 +2223,7 @@ export async function getPlayerAssetInstances(
         return {
             success: true,
             data: {
-                instances: instances as AssetInstanceWithRelations[],
+                instances: instances as any as AssetInstanceWithRelations[],
                 totalCount,
                 currentPage: page,
                 totalPages,

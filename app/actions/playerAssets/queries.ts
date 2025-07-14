@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 
 import {
     getPlayerAssets,
@@ -15,6 +15,7 @@ import type {
     GetPlayerAssetsInput,
     GetPlayerAssetInput,
     GetPlayerAssetInstancesInput,
+    GetPlayerAssetsResult,
 } from "@/app/actions/playerAssets/actions";
 
 export function useGetPlayerAssets({
@@ -30,6 +31,44 @@ export function useGetPlayerAssets({
         queryFn: () => getPlayerAssets(getPlayerAssetsInput),
         staleTime: 1000 * 60 * 1,
         gcTime: 1000 * 60 * 5,
+    });
+}
+
+export function useInfinitePlayerAssetsQuery(input?: GetPlayerAssetsInput) {
+    return useInfiniteQuery<
+        GetPlayerAssetsResult,
+        Error,
+        GetPlayerAssetsResult,
+        readonly ["playerAssets", "infinite", any],
+        number
+    >({
+        queryKey: playerAssetsKeys.infinite(input),
+        queryFn: ({ pageParam }: { pageParam: number }) =>
+            getPlayerAssets({
+                ...input,
+                pagination: {
+                    ...input?.pagination,
+                    page: pageParam,
+                    limit: input?.pagination?.limit || 12,
+                },
+            }),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage: GetPlayerAssetsResult) => {
+            if (lastPage.success && lastPage.data?.hasNext) {
+                return lastPage.data.currentPage + 1;
+            }
+            return undefined;
+        },
+        getPreviousPageParam: (firstPage: GetPlayerAssetsResult) => {
+            if (firstPage.success && firstPage.data?.hasPrevious) {
+                return firstPage.data.currentPage - 1;
+            }
+            return undefined;
+        },
+        enabled: !!input?.filter?.playerId,
+        staleTime: 1000 * 60 * 1,
+        gcTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
     });
 }
 
