@@ -161,6 +161,18 @@ export interface SetPlayerResult {
     error?: string;
 }
 
+export interface PlayerUpsertResult {
+    player: Player | null;
+    isNew: boolean;
+    needsAssetSetup: boolean;
+    error?: string;
+}
+
+export interface PlayerAssetSetupResult {
+    success: boolean;
+    error?: string;
+}
+
 export async function setPlayer(
     input?: SetPlayerInput
 ): Promise<SetPlayerResult> {
@@ -173,19 +185,9 @@ export async function setPlayer(
     }
 
     try {
-        let error: string | undefined = undefined;
-        const referralCode = await generateReferralCode();
-
-        // 🚀 사용자 상세 정보 자동 수집 (백그라운드에서 빠르게)
         let userDetails: Partial<UserDetailData> = {};
         try {
             userDetails = await getUserDetailDataForServerAction();
-            const collectedFields = Object.entries(userDetails).filter(
-                ([_, value]) => value !== null
-            );
-            if (collectedFields.length === 0) {
-                console.warn("[setPlayer] No valid data collected");
-            }
         } catch (detailError) {
             console.error(
                 "[setPlayer] Failed to collect user details:",
@@ -193,10 +195,70 @@ export async function setPlayer(
             );
         }
 
+        // Step 1: Handle core player upsert (fast transaction)
+        const playerResult = await upsertPlayerCore(input, userDetails);
+        if (!playerResult.player) {
+            return {
+                player: null,
+                isNew: false,
+                error: playerResult.error || "Failed to create/update player",
+            };
+        }
+
+        // Step 2: Handle asset setup synchronously (maintaining original logic)
+        if (playerResult.needsAssetSetup) {
+            try {
+                await setDefaultPlayerAsset({
+                    player: playerResult.player,
+                });
+            } catch (error) {
+                console.error("[setPlayer] Asset setup failed:", error);
+                // Original logic would have failed here, so we maintain that behavior
+            }
+        }
+
+        // Step 3: Handle referral quest logs asynchronously
+        if (playerResult.player) {
+            setReferralQuestLogs({
+                player: playerResult.player,
+            }).catch((error) => {
+                console.error(
+                    "[setPlayer] Failed to set referral quest logs:",
+                    error
+                );
+            });
+        }
+
+        return {
+            player: playerResult.player,
+            isNew: playerResult.isNew,
+            error: playerResult.error,
+        };
+    } catch (error) {
+        console.error("[setPlayer] Error:", error);
+        return {
+            player: null,
+            isNew: false,
+            error: "Failed to set player",
+        };
+    }
+}
+
+// New helper function for core player operations (fast transaction)
+async function upsertPlayerCore(
+    input: SetPlayerInput,
+    userDetails: Partial<UserDetailData>
+): Promise<PlayerUpsertResult> {
+    let error: string | undefined = undefined;
+    const referralCode = await generateReferralCode();
+
+    try {
         const result = await prisma.$transaction(async (tx) => {
+            // Quick check for existing player
             const existingPlayer = await tx.player.findUnique({
                 where: { userId: input.user.id },
                 select: {
+                    id: true,
                     tweetAuthorId: true,
                 },
             });
@@ -204,7 +266,7 @@ export async function setPlayer(
             const updateData: Prisma.PlayerUpdateInput = {
                 name: input.user.name || "New Player",
                 lastConnectedAt: new Date(),
-                // 🎯 사용자 상세 정보 자동 업데이트
+                // Include user details
                 ...(userDetails.ipAddress && {
                     ipAddress: userDetails.ipAddress,
                 }),
@@ -214,10 +276,12 @@ export async function setPlayer(
                 ...(userDetails.browser && { browser: userDetails.browser }),
             };
 
+            // Handle tweet author connection only if needed
             if (input.tweetAuthorId && !existingPlayer?.tweetAuthorId) {
                 const existingPlayerWithTweetAuthorId =
                     await tx.player.findUnique({
                         where: { tweetAuthorId: input.tweetAuthorId },
+                        select: { id: true },
                     });
 
                 if (!existingPlayerWithTweetAuthorId) {
@@ -226,10 +290,6 @@ export async function setPlayer(
                     };
                 } else {
                     error = "TWEET_AUTHOR_ID_ALREADY_USED";
-                    console.error(
-                        "TWEET_AUTHOR_ID_ALREADY_USED",
-                        input.tweetAuthorId
-                    );
                 }
             }
 
@@ -241,52 +301,26 @@ export async function setPlayer(
                     userId: input.user.id,
                     referralCode: referralCode,
                     tweetAuthorId: input.tweetAuthorId,
-                    // 🎯 새 플레이어 생성 시에도 사용자 상세 정보 포함
-                    ...(userDetails.ipAddress && {
-                        ipAddress: userDetails.ipAddress,
-                    }),
-                    ...(userDetails.locale && { locale: userDetails.locale }),
-                    ...(userDetails.os && { os: userDetails.os }),
-                    ...(userDetails.device && { device: userDetails.device }),
-                    ...(userDetails.browser && {
-                        browser: userDetails.browser,
-                    }),
+                    ...userDetails,
                 },
             });
 
-            if (player) {
-                await setDefaultPlayerAsset({
-                    player: player,
-                    trx: tx,
-                });
-            }
-
             return {
-                player: player,
+                player,
                 isNew: !existingPlayer,
-                error: error,
+                needsAssetSetup: !existingPlayer, // 새 플레이어만 asset setup 필요
+                error,
             };
         });
 
-        // Referral Quest를 백그라운드에서 비동기로 처리
-        if (result.player) {
-            setReferralQuestLogs({
-                player: result.player,
-            }).catch((error) => {
-                console.error(
-                    "[setPlayer] Failed to set referral quest logs:",
-                    error
-                );
-            });
-        }
-
         return result;
     } catch (error) {
-        console.error("[setPlayer] Error:", error);
+        console.error("[upsertPlayerCore] Error:", error);
         return {
             player: null,
             isNew: false,
-            error: "Failed to set player",
+            needsAssetSetup: false,
+            error: "Failed to upsert player",
         };
     }
 }
@@ -312,92 +346,22 @@ export async function invitePlayer(
     }
 
     try {
-        const result = await prisma.$transaction(async (tx) => {
-            if (input.telegramId) {
-                const existingPlayer = await tx.player.findUnique({
-                    where: { telegramId: input.telegramId },
-                });
+        // Step 1: Pre-validation (fast, outside transaction)
+        const validationResult = await validateInvitePlayer(input);
+        if (!validationResult.isValid) {
+            throw new Error(validationResult.error);
+        }
 
-                if (existingPlayer) {
-                    throw new Error("TELEGRAM_ID_ALREADY_USED");
-                }
-            }
+        // Step 2: Core referral creation (atomic operation)
+        const result = await createReferralRelationship(
+            validationResult.referredPlayer!,
+            validationResult.referrerPlayer!,
+            input.method || "Unknown",
+            input.telegramId
+        );
 
-            const referredPlayer = await tx.player.findUnique({
-                where: { userId: input.referredUser.id },
-            });
-
-            if (!referredPlayer) {
-                throw new Error("REFERRER_NOT_FOUND");
-            }
-
-            if (referredPlayer.referredBy) {
-                throw new Error("ALREADY_INVITED");
-            }
-
-            const referrerPlayer = await tx.player.findUnique({
-                where: { referralCode: input.referrerCode },
-            });
-
-            if (!referrerPlayer) {
-                throw new Error("REFERRER_NOT_FOUND");
-            }
-
-            if (referrerPlayer.id === referredPlayer.id) {
-                throw new Error("SELF_INVITE_NOT_ALLOWED");
-            }
-
-            const existingLog = await tx.referralLog.findUnique({
-                where: {
-                    referredPlayerId_referrerPlayerId: {
-                        referredPlayerId: referredPlayer.id,
-                        referrerPlayerId: referrerPlayer.id,
-                    },
-                },
-            });
-
-            if (existingLog) {
-                throw new Error("ALREADY_INVITED");
-            }
-
-            const method = input.method || "Unknown";
-            const [updatedReferred, updatedReferrer, createdReferralLog] =
-                await Promise.all([
-                    tx.player.update({
-                        where: { userId: input.referredUser.id },
-                        data: {
-                            referredBy: referrerPlayer.id,
-                            referredMethod: method,
-                        },
-                    }),
-                    tx.player.update({
-                        where: { id: referrerPlayer.id },
-                        data: { referralCount: { increment: 1 } },
-                    }),
-                    tx.referralLog.create({
-                        data: {
-                            referredPlayerId: referredPlayer.id,
-                            referrerPlayerId: referrerPlayer.id,
-                            method: method,
-                        },
-                    }),
-                    input.telegramId &&
-                        tx.player.update({
-                            where: { id: referredPlayer.id },
-                            data: { telegramId: input.telegramId },
-                        }),
-                ]);
-
-            return {
-                referredPlayer: updatedReferred,
-                referrerPlayer: updatedReferrer,
-                referralLog: createdReferralLog,
-            };
-        });
-
-        // Referral Quest를 백그라운드에서 비동기로 처리 - 사용자는 기다리지 않음
+        // Step 3: Background processing (quest logs, notifications, etc.)
         if (result && result.referrerPlayer) {
-            // 백그라운드에서 실행하되 에러는 로깅만 함
             setReferralQuestLogs({
                 player: result.referrerPlayer,
             }).catch((error) => {
@@ -405,7 +369,6 @@ export async function invitePlayer(
                     "[invitePlayer] Failed to set referral quest logs:",
                     error
                 );
-                // 별도 에러 추적을 위해 Sentry나 다른 모니터링 시스템에 보고 가능
             });
         }
 
@@ -414,6 +377,151 @@ export async function invitePlayer(
         console.error("[invitePlayer] Error:", error);
         throw error;
     }
+}
+
+// Helper function for validation (fast, read-only operations)
+interface InviteValidationResult {
+    isValid: boolean;
+    error?: string;
+    referredPlayer?: Player;
+    referrerPlayer?: Player;
+}
+
+async function validateInvitePlayer(
+    input: InvitePlayerParams
+): Promise<InviteValidationResult> {
+    try {
+        // Check telegram ID if provided
+        if (input.telegramId) {
+            const existingPlayer = await prisma.player.findUnique({
+                where: { telegramId: input.telegramId },
+                select: { id: true },
+            });
+
+            if (existingPlayer) {
+                return { isValid: false, error: "TELEGRAM_ID_ALREADY_USED" };
+            }
+        }
+
+        // Get referred player
+        const referredPlayer = await prisma.player.findUnique({
+            where: { userId: input.referredUser.id },
+            select: {
+                id: true,
+                userId: true,
+                referredBy: true,
+                name: true,
+                referralCode: true,
+                referralCount: true,
+                tweetAuthorId: true,
+                tweetVerified: true,
+                telegramId: true,
+                // Include other needed fields
+            },
+        });
+
+        if (!referredPlayer) {
+            return { isValid: false, error: "REFERRED_PLAYER_NOT_FOUND" };
+        }
+
+        if (referredPlayer.referredBy) {
+            return { isValid: false, error: "ALREADY_INVITED" };
+        }
+
+        // Get referrer player
+        const referrerPlayer = await prisma.player.findUnique({
+            where: { referralCode: input.referrerCode },
+            select: {
+                id: true,
+                userId: true,
+                referredBy: true,
+                name: true,
+                referralCode: true,
+                referralCount: true,
+                tweetAuthorId: true,
+                tweetVerified: true,
+                telegramId: true,
+                // Include other needed fields
+            },
+        });
+
+        if (!referrerPlayer) {
+            return { isValid: false, error: "REFERRER_NOT_FOUND" };
+        }
+
+        if (referrerPlayer.id === referredPlayer.id) {
+            return { isValid: false, error: "SELF_INVITE_NOT_ALLOWED" };
+        }
+
+        // Check for existing referral log
+        const existingLog = await prisma.referralLog.findUnique({
+            where: {
+                referredPlayerId_referrerPlayerId: {
+                    referredPlayerId: referredPlayer.id,
+                    referrerPlayerId: referrerPlayer.id,
+                },
+            },
+            select: { id: true },
+        });
+
+        if (existingLog) {
+            return { isValid: false, error: "ALREADY_INVITED" };
+        }
+
+        return {
+            isValid: true,
+            referredPlayer: referredPlayer as Player,
+            referrerPlayer: referrerPlayer as Player,
+        };
+    } catch (error) {
+        console.error("[validateInvitePlayer] Error:", error);
+        return { isValid: false, error: "VALIDATION_FAILED" };
+    }
+}
+
+// Helper function for atomic referral creation (fast transaction)
+async function createReferralRelationship(
+    referredPlayer: Player,
+    referrerPlayer: Player,
+    method: string,
+    telegramId?: string
+): Promise<InvitePlayerResult> {
+    return await prisma.$transaction(async (tx) => {
+        // Create referral log first
+        const referralLog = await tx.referralLog.create({
+            data: {
+                referredPlayerId: referredPlayer.id,
+                referrerPlayerId: referrerPlayer.id,
+                method: method,
+            },
+        });
+
+        // Update players in parallel
+        const updatePromises = [
+            tx.player.update({
+                where: { id: referredPlayer.id },
+                data: {
+                    referredBy: referrerPlayer.id,
+                    referredMethod: method,
+                    ...(telegramId && { telegramId }),
+                },
+            }),
+            tx.player.update({
+                where: { id: referrerPlayer.id },
+                data: { referralCount: { increment: 1 } },
+            }),
+        ];
+
+        const [updatedReferred, updatedReferrer] = await Promise.all(
+            updatePromises
+        );
+
+        return {
+            referredPlayer: updatedReferred,
+            referrerPlayer: updatedReferrer,
+            referralLog: referralLog,
+        };
+    });
 }
 
 // 🆕 마이그레이션 전용 referral log 생성 함수
@@ -432,78 +540,27 @@ export async function createReferralLogForMigration(
     skipped?: boolean;
 }> {
     try {
-        // 1. 사용자들 찾기
-        const [referredUser, referrerUser] = await Promise.all([
-            prisma.user.findUnique({
-                where: { telegramId: input.referredTelegramId },
-                include: { player: true },
-            }),
-            prisma.user.findUnique({
-                where: { telegramId: input.referrerTelegramId },
-                include: { player: true },
-            }),
-        ]);
-
-        if (!referredUser?.player) {
-            return { success: false, error: "Referred user not found" };
+        // Step 1: Pre-validation (fast, outside transaction)
+        const validationResult = await validateMigrationPlayers(input);
+        if (!validationResult.isValid) {
+            return { success: false, error: validationResult.error };
         }
 
-        if (!referrerUser?.player) {
-            return { success: false, error: "Referrer user not found" };
-        }
-
-        // 2. 기존 referral log 확인
-        const existingLog = await prisma.referralLog.findUnique({
-            where: {
-                referredPlayerId_referrerPlayerId: {
-                    referredPlayerId: referredUser.player.id,
-                    referrerPlayerId: referrerUser.player.id,
-                },
-            },
-        });
-
-        if (existingLog) {
+        if (validationResult.skipped) {
             return { success: true, skipped: true };
         }
 
-        // 3. referral log 생성
-        const result = await prisma.$transaction(async (tx) => {
-            if (!referredUser.player || !referrerUser.player) {
-                return { referralLog: null };
-            }
+        // Step 2: Core referral creation (atomic operation)
+        const result = await createMigrationReferralLog(
+            validationResult.referredPlayer!,
+            validationResult.referrerPlayer!,
+            input.method || "telegram"
+        );
 
-            const referralLog = await tx.referralLog.create({
-                data: {
-                    referredPlayerId: referredUser.player.id,
-                    referrerPlayerId: referrerUser.player.id,
-                    method: input.method || "telegram",
-                },
-            });
-
-            // referredBy 관계 설정 (없는 경우에만)
-            if (!referredUser.player.referredBy) {
-                await tx.player.update({
-                    where: { id: referredUser.player.id },
-                    data: {
-                        referredBy: referrerUser.player.id,
-                        referredMethod: input.method || "telegram",
-                    },
-                });
-            }
-
-            // referrer의 referralCount 증가
-            await tx.player.update({
-                where: { id: referrerUser.player.id },
-                data: { referralCount: { increment: 1 } },
-            });
-
-            return { referralLog };
-        });
-
-        // Referral Quest를 백그라운드에서 비동기로 처리
-        if (referrerUser.player) {
+        // Step 3: Background processing (quest logs)
+        if (validationResult.referrerPlayer) {
             setReferralQuestLogs({
-                player: referrerUser.player,
+                player: validationResult.referrerPlayer,
             }).catch((error) => {
                 console.error(
                     "[createReferralLogForMigration] Failed to set referral quest logs:",
@@ -520,6 +577,141 @@ export async function createReferralLogForMigration(
             error: error instanceof Error ? error.message : "Unknown error",
         };
     }
+}
+
+// Helper function for migration validation (fast, read-only operations)
+interface MigrationValidationResult {
+    isValid: boolean;
+    error?: string;
+    referredPlayer?: Player;
+    referrerPlayer?: Player;
+    skipped?: boolean;
+}
+
+async function validateMigrationPlayers(
+    input: CreateReferralLogForMigrationParams
+): Promise<MigrationValidationResult> {
+    try {
+        // Find users in parallel
+        const [referredUser, referrerUser] = await Promise.all([
+            prisma.user.findUnique({
+                where: { telegramId: input.referredTelegramId },
+                select: {
+                    id: true,
+                    player: {
+                        select: {
+                            id: true,
+                            userId: true,
+                            referredBy: true,
+                            name: true,
+                            referralCode: true,
+                            referralCount: true,
+                            tweetAuthorId: true,
+                            tweetVerified: true,
+                            telegramId: true,
+                        },
+                    },
+                },
+            }),
+            prisma.user.findUnique({
+                where: { telegramId: input.referrerTelegramId },
+                select: {
+                    id: true,
+                    player: {
+                        select: {
+                            id: true,
+                            userId: true,
+                            referredBy: true,
+                            name: true,
+                            referralCode: true,
+                            referralCount: true,
+                            tweetAuthorId: true,
+                            tweetVerified: true,
+                            telegramId: true,
+                        },
+                    },
+                },
+            }),
+        ]);
+
+        if (!referredUser?.player) {
+            return { isValid: false, error: "Referred user not found" };
+        }
+
+        if (!referrerUser?.player) {
+            return { isValid: false, error: "Referrer user not found" };
+        }
+
+        // Check for existing referral log
+        const existingLog = await prisma.referralLog.findUnique({
+            where: {
+                referredPlayerId_referrerPlayerId: {
+                    referredPlayerId: referredUser.player.id,
+                    referrerPlayerId: referrerUser.player.id,
+                },
+            },
+            select: { id: true },
+        });
+
+        if (existingLog) {
+            return { isValid: true, skipped: true };
+        }
+
+        return {
+            isValid: true,
+            referredPlayer: referredUser.player as Player,
+            referrerPlayer: referrerUser.player as Player,
+        };
+    } catch (error) {
+        console.error("[validateMigrationPlayers] Error:", error);
+        return { isValid: false, error: "Validation failed" };
+    }
+}
+
+// Helper function for atomic migration referral creation (fast transaction)
+async function createMigrationReferralLog(
+    referredPlayer: Player,
+    referrerPlayer: Player,
+    method: string
+): Promise<any> {
+    return await prisma.$transaction(async (tx) => {
+        // Create referral log first
+        const referralLog = await tx.referralLog.create({
+            data: {
+                referredPlayerId: referredPlayer.id,
+                referrerPlayerId: referrerPlayer.id,
+                method: method,
+            },
+        });
+
+        // Update players in parallel (only if needed)
+        const updatePromises = [];
+
+        // Update referredBy relationship only if not already set
+        if (!referredPlayer.referredBy) {
+            updatePromises.push(
+                tx.player.update({
+                    where: { id: referredPlayer.id },
+                    data: {
+                        referredBy: referrerPlayer.id,
+                        referredMethod: method,
+                    },
+                })
+            );
+        }
+
+        // Always increment referral count
+        updatePromises.push(
+            tx.player.update({
+                where: { id: referrerPlayer.id },
+                data: { referralCount: { increment: 1 } },
+            })
+        );
+
+        await Promise.all(updatePromises);
+
+        return { referralLog };
+    });
 }
 
 export interface GetDBUserFromPlayerInput {

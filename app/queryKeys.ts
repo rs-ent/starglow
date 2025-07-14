@@ -747,6 +747,10 @@ type RaffleKeysType = {
         raffleId: string,
         playerId: string
     ) => readonly ["raffles", "player-participations", string, string];
+    playerParticipationsInfinite: (
+        raffleId: string,
+        playerId: string
+    ) => readonly ["raffles", "player-participations-infinite", string, string];
     unrevealedCount: (
         raffleId: string,
         playerId: string
@@ -844,6 +848,13 @@ export const raffleKeys: RaffleKeysType = {
         [
             ...RAFFLE_BASE_KEY,
             "player-participations",
+            raffleId,
+            playerId,
+        ] as const,
+    playerParticipationsInfinite: (raffleId: string, playerId: string) =>
+        [
+            ...RAFFLE_BASE_KEY,
+            "player-participations-infinite",
             raffleId,
             playerId,
         ] as const,

@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 
 import { raffleKeys } from "@/app/queryKeys";
 
@@ -10,6 +10,7 @@ import {
     getRaffles,
     getRaffleDetails,
     getPlayerParticipations,
+    getPlayerParticipationsInfinite,
     getUnrevealedCount,
     getRaffleParticipants,
     checkUserParticipation,
@@ -21,6 +22,7 @@ import {
 import type {
     GetRafflesInput,
     GetPlayerParticipationsInput,
+    GetPlayerParticipationsInfiniteInput,
     GetUnrevealedCountInput,
     GetRaffleParticipantsInput,
 } from "./actions";
@@ -61,6 +63,44 @@ export function useGetPlayerParticipationsQuery(
         ),
         queryFn: () => getPlayerParticipations(input!),
         enabled: Boolean(input?.raffleId && input?.playerId),
+        staleTime: 1000 * 30, // 30초 (즉시 반영을 위해 단축)
+        gcTime: 1000 * 60 * 5, // 5 minutes
+        refetchOnWindowFocus: true,
+        refetchOnMount: true, // 마운트 시 항상 새로 가져오기
+    });
+}
+
+/**
+ * 플레이어 참여 현황 무한 스크롤 쿼리
+ * 🎯 대용량 참여 기록을 효율적으로 로딩하기 위한 무한 스크롤 지원
+ */
+export function useGetPlayerParticipationsInfiniteQuery(
+    input?: GetPlayerParticipationsInfiniteInput
+) {
+    return useInfiniteQuery<
+        any,
+        Error,
+        any,
+        readonly ["raffles", "player-participations-infinite", string, string],
+        string | undefined
+    >({
+        queryKey: raffleKeys.playerParticipationsInfinite(
+            input?.raffleId || "",
+            input?.playerId || ""
+        ),
+        queryFn: ({ pageParam }) =>
+            getPlayerParticipationsInfinite({
+                ...input!,
+                cursor: pageParam,
+            }),
+        enabled: Boolean(input?.raffleId && input?.playerId),
+        initialPageParam: undefined,
+        getNextPageParam: (lastPage) => {
+            if (!lastPage.success || !lastPage.data?.hasMore) {
+                return undefined;
+            }
+            return lastPage.data.nextCursor;
+        },
         staleTime: 1000 * 30, // 30초 (즉시 반영을 위해 단축)
         gcTime: 1000 * 60 * 5, // 5 minutes
         refetchOnWindowFocus: true,

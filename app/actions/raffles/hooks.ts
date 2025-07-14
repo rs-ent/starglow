@@ -17,6 +17,7 @@ import {
     useGetRafflesQuery,
     useGetRaffleDetailsQuery,
     useGetPlayerParticipationsQuery,
+    useGetPlayerParticipationsInfiniteQuery,
     useGetUnrevealedCountQuery,
     useGetRaffleParticipantsQuery,
     useCheckUserParticipationQuery,
@@ -28,6 +29,7 @@ import {
 import type {
     GetRafflesInput,
     GetPlayerParticipationsInput,
+    GetPlayerParticipationsInfiniteInput,
     GetUnrevealedCountInput,
     GetRaffleParticipantsInput,
 } from "./actions";
@@ -38,6 +40,7 @@ export interface useRafflesInput {
     getRaffleId?: string;
     // 다중 참여 지원 쿼리
     getPlayerParticipationsInput?: GetPlayerParticipationsInput;
+    getPlayerParticipationsInfiniteInput?: GetPlayerParticipationsInfiniteInput;
     getUnrevealedCountInput?: GetUnrevealedCountInput;
     // New optimized queries
     getRaffleParticipantsInput?: GetRaffleParticipantsInput;
@@ -75,6 +78,20 @@ export function useRaffles(input?: useRafflesInput) {
         error: playerParticipationsError,
         refetch: refetchPlayerParticipations,
     } = useGetPlayerParticipationsQuery(input?.getPlayerParticipationsInput);
+
+    const {
+        data: playerParticipationsInfiniteData,
+        isLoading: isPlayerParticipationsInfiniteLoading,
+        isError: isPlayerParticipationsInfiniteError,
+        error: playerParticipationsInfiniteError,
+        refetch: refetchPlayerParticipationsInfinite,
+        fetchNextPage: playerParticipationsInfiniteFetchNextPage,
+        hasNextPage: playerParticipationsInfiniteHasNextPage,
+        isFetchingNextPage: playerParticipationsInfiniteIsFetchingNextPage,
+        isFetching: playerParticipationsInfiniteIsFetching,
+    } = useGetPlayerParticipationsInfiniteQuery(
+        input?.getPlayerParticipationsInfiniteInput
+    );
 
     const {
         data: unrevealedCountData,
@@ -214,6 +231,16 @@ export function useRaffles(input?: useRafflesInput) {
         isPlayerParticipationsError,
         playerParticipationsError,
         refetchPlayerParticipations,
+
+        playerParticipationsInfiniteData,
+        isPlayerParticipationsInfiniteLoading,
+        isPlayerParticipationsInfiniteError,
+        playerParticipationsInfiniteError,
+        refetchPlayerParticipationsInfinite,
+        playerParticipationsInfiniteFetchNextPage,
+        playerParticipationsInfiniteHasNextPage,
+        playerParticipationsInfiniteIsFetchingNextPage,
+        playerParticipationsInfiniteIsFetching,
 
         unrevealedCountData,
         isUnrevealedCountLoading,

@@ -2,7 +2,7 @@
 
 "use client";
 
-import { memo, useState, useMemo } from "react";
+import { memo, useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Clock, Trophy, Eye, EyeOff, XCircle } from "lucide-react";
 import Image from "next/image";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils/tailwind";
 
 import { useRaffles } from "@/app/actions/raffles/hooks";
 import { useToast } from "@/app/hooks/useToast";
+import PartialLoading from "@/components/atoms/PartialLoading";
 
 import type { RaffleWithDetails } from "@/app/actions/raffles/actions";
 
@@ -30,64 +31,179 @@ export default memo(function RaffleRecord({
     const { data: session } = useSession();
     const toast = useToast();
     const [selectedRecord, setSelectedRecord] = useState<string | null>(null);
+    const loadMoreRef = useRef<HTMLDivElement>(null);
 
     const {
-        playerParticipationsData,
+        playerParticipationsInfiniteData,
+        isPlayerParticipationsInfiniteLoading,
+        playerParticipationsInfiniteError,
+        playerParticipationsInfiniteFetchNextPage,
+        playerParticipationsInfiniteHasNextPage,
+        playerParticipationsInfiniteIsFetchingNextPage,
         revealAllRaffleResultsAsync,
         revealRaffleResultAsync,
         isRevealAllRaffleResultsPending,
     } = useRaffles({
-        getPlayerParticipationsInput: {
+        getPlayerParticipationsInfiniteInput: {
             raffleId: raffle.id,
             playerId: session?.player?.id || "",
             includeUnrevealed: true,
         },
     });
 
-    const participationSummary = useMemo(() => {
-        if (!playerParticipationsData?.success) return null;
-        return playerParticipationsData.data;
-    }, [playerParticipationsData]);
+    const {
+        allParticipations,
+        participationSummary,
+        unrevealed,
+        hasNextPage,
+        isFetchingNextPage,
+        isInfiniteLoading,
+        infiniteError,
+    } = useMemo(() => {
+        const infiniteData = playerParticipationsInfiniteData;
+        const isLoading = isPlayerParticipationsInfiniteLoading;
+        const isFetching = playerParticipationsInfiniteIsFetchingNextPage;
+        const hasNext = playerParticipationsInfiniteHasNextPage;
+        const error = playerParticipationsInfiniteError;
 
-    const participations = useMemo(() => {
-        if (!participationSummary?.participations) return [];
-        return participationSummary.participations.sort(
-            (a, b) =>
+        const allData =
+            infiniteData?.pages?.flatMap((page: any) => {
+                return page.success && page.data?.participations
+                    ? page.data.participations
+                    : [];
+            }) || [];
+
+        const sortedData = allData.sort(
+            (a: any, b: any) =>
                 new Date(b.createdAt).getTime() -
                 new Date(a.createdAt).getTime()
         );
-    }, [participationSummary]);
 
-    const unrevealed = participations.filter((p) => !p.isRevealed && p.drawnAt);
-    const winningRecords = participations.filter(
-        (p) => p.isRevealed && p.prize && p.prize.prizeType !== "EMPTY"
+        const summary =
+            infiniteData?.pages?.[0]?.success && infiniteData.pages[0].data
+                ? {
+                      totalParticipations:
+                          infiniteData.pages[0].data.totalParticipations || 0,
+                      revealedCount:
+                          infiniteData.pages[0].data.revealedCount || 0,
+                      unrevealedCount:
+                          infiniteData.pages[0].data.unrevealedCount || 0,
+                      totalWins: infiniteData.pages[0].data.totalWins || 0,
+                      winners: infiniteData.pages[0].data.winners || [],
+                  }
+                : {
+                      totalParticipations: 0,
+                      revealedCount: 0,
+                      unrevealedCount: 0,
+                      totalWins: 0,
+                      winners: [],
+                  };
+
+        const unrevealedData = sortedData.filter(
+            (p: any) => !p.isRevealed && p.drawnAt
+        );
+
+        return {
+            allParticipations: sortedData,
+            participationSummary: summary,
+            unrevealed: unrevealedData,
+            hasNextPage: hasNext,
+            isFetchingNextPage: isFetching,
+            isInfiniteLoading: isLoading,
+            infiniteError: error,
+        };
+    }, [
+        playerParticipationsInfiniteData,
+        isPlayerParticipationsInfiniteLoading,
+        playerParticipationsInfiniteIsFetchingNextPage,
+        playerParticipationsInfiniteHasNextPage,
+        playerParticipationsInfiniteError,
+    ]);
+
+    const stateRef = useRef({
+        sessionPlayerId: session?.player?.id,
+        raffleId: raffle.id,
+        hasNextPage,
+        isFetchingNextPage,
+        isInfiniteLoading,
+        fetchNextPage: playerParticipationsInfiniteFetchNextPage,
+    });
+
+    useEffect(() => {
+        stateRef.current = {
+            sessionPlayerId: session?.player?.id,
+            raffleId: raffle.id,
+            hasNextPage,
+            isFetchingNextPage,
+            isInfiniteLoading,
+            fetchNextPage: playerParticipationsInfiniteFetchNextPage,
+        };
+    });
+
+    useEffect(() => {
+        const currentRef = loadMoreRef.current;
+        if (!currentRef) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const target = entries[0];
+                if (target.isIntersecting) {
+                    const state = stateRef.current;
+                    if (
+                        state.sessionPlayerId &&
+                        state.raffleId &&
+                        state.hasNextPage &&
+                        !state.isFetchingNextPage &&
+                        !state.isInfiniteLoading
+                    ) {
+                        state.fetchNextPage().catch((error: any) => {
+                            console.error("Failed to fetch next page:", error);
+                        });
+                    }
+                }
+            },
+            {
+                root: null,
+                rootMargin: "50px", // 마진 줄여서 더 정확한 트리거
+                threshold: 0.1,
+            }
+        );
+
+        observer.observe(currentRef);
+
+        return () => {
+            observer.unobserve(currentRef);
+        };
+    }, []);
+
+    const handleRevealSingle = useCallback(
+        async (participantId: string) => {
+            if (!session?.player?.id) return;
+
+            try {
+                setSelectedRecord(participantId);
+                const result = await revealRaffleResultAsync({
+                    raffleId: raffle.id,
+                    playerId: session.player.id,
+                    participantId,
+                });
+
+                if (result.success) {
+                    toast.success("🎊 Result revealed!");
+                } else {
+                    toast.error(result.error || "Failed to reveal result");
+                }
+            } catch (error) {
+                console.error("Reveal error:", error);
+                toast.error("An error occurred while revealing result");
+            } finally {
+                setSelectedRecord(null);
+            }
+        },
+        [session?.player?.id, raffle.id, revealRaffleResultAsync, toast]
     );
 
-    const handleRevealSingle = async (participantId: string) => {
-        if (!session?.player?.id) return;
-
-        try {
-            setSelectedRecord(participantId);
-            const result = await revealRaffleResultAsync({
-                raffleId: raffle.id,
-                playerId: session.player.id,
-                participantId,
-            });
-
-            if (result.success) {
-                toast.success("🎊 Result revealed!");
-            } else {
-                toast.error(result.error || "Failed to reveal result");
-            }
-        } catch (error) {
-            console.error("Reveal error:", error);
-            toast.error("An error occurred while revealing result");
-        } finally {
-            setSelectedRecord(null);
-        }
-    };
-
-    const handleRevealAll = async () => {
+    const handleRevealAll = useCallback(async () => {
         if (!session?.player?.id || unrevealed.length === 0) return;
 
         try {
@@ -107,7 +223,67 @@ export default memo(function RaffleRecord({
             console.error("Reveal all error:", error);
             toast.error("An error occurred while revealing results");
         }
-    };
+    }, [
+        session?.player?.id,
+        unrevealed.length,
+        raffle.id,
+        revealAllRaffleResultsAsync,
+        toast,
+    ]);
+
+    const getStatusIcon = useCallback(
+        (isDrawn: boolean, isRevealed: boolean, hasWon: boolean) => {
+            if (!isDrawn)
+                return (
+                    <Clock
+                        className={cn(
+                            "w-6 h-6 text-yellow-400",
+                            getResponsiveClass(30).frameClass
+                        )}
+                    />
+                );
+            if (!isRevealed)
+                return (
+                    <EyeOff
+                        className={cn(
+                            "w-6 h-6 text-blue-400",
+                            getResponsiveClass(30).frameClass
+                        )}
+                    />
+                );
+            if (hasWon)
+                return (
+                    <Trophy
+                        className={cn(
+                            "w-6 h-6 text-green-400",
+                            getResponsiveClass(30).frameClass
+                        )}
+                    />
+                );
+            return (
+                <XCircle
+                    className={cn(
+                        "w-6 h-6 text-red-400",
+                        getResponsiveClass(30).frameClass
+                    )}
+                />
+            );
+        },
+        []
+    );
+
+    const getCardStyle = useCallback(
+        (isDrawn: boolean, isRevealed: boolean, hasWon: boolean) => {
+            if (!isDrawn)
+                return "from-yellow-500/10 to-orange-500/10 border-yellow-400/30";
+            if (!isRevealed)
+                return "from-blue-500/10 to-cyan-500/10 border-blue-400/30";
+            if (hasWon)
+                return "from-green-500/10 to-emerald-500/10 border-green-400/30";
+            return "from-gray-500/10 to-gray-600/10 border-gray-400/30";
+        },
+        []
+    );
 
     if (!isOpen) return null;
 
@@ -144,6 +320,7 @@ export default memo(function RaffleRecord({
                             )}
                         />
                     </motion.button>
+
                     {/* Header */}
                     <motion.div
                         initial={{ y: -50, opacity: 0 }}
@@ -187,7 +364,8 @@ export default memo(function RaffleRecord({
                                         getResponsiveClass(10).textClass
                                     )}
                                 >
-                                    {raffle.title} • {participations.length}{" "}
+                                    {raffle.title} •{" "}
+                                    {participationSummary.totalParticipations}{" "}
                                     entries
                                 </p>
                             </div>
@@ -212,7 +390,7 @@ export default memo(function RaffleRecord({
                                     getResponsiveClass(25).textClass
                                 )}
                             >
-                                {participations.length}
+                                {participationSummary.totalParticipations}
                             </div>
                             <div
                                 className={cn(
@@ -230,7 +408,7 @@ export default memo(function RaffleRecord({
                                     getResponsiveClass(25).textClass
                                 )}
                             >
-                                {winningRecords.length}
+                                {participationSummary.totalWins}
                             </div>
                             <div
                                 className={cn(
@@ -248,7 +426,7 @@ export default memo(function RaffleRecord({
                                     getResponsiveClass(25).textClass
                                 )}
                             >
-                                {unrevealed.length}
+                                {participationSummary.unrevealedCount}
                             </div>
                             <div
                                 className={cn(
@@ -266,10 +444,10 @@ export default memo(function RaffleRecord({
                                     getResponsiveClass(25).textClass
                                 )}
                             >
-                                {participations.length > 0
+                                {participationSummary.totalParticipations > 0
                                     ? Math.round(
-                                          (winningRecords.length /
-                                              participations.length) *
+                                          (participationSummary.totalWins /
+                                              participationSummary.totalParticipations) *
                                               100
                                       )
                                     : 0}
@@ -338,330 +516,344 @@ export default memo(function RaffleRecord({
 
                     {/* Records List */}
                     <div className={cn("flex-1 overflow-y-auto py-2 px-1")}>
-                        {participations.length === 0 ? (
-                            <motion.div
-                                initial={{ scale: 0.8, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                className="text-center py-20"
-                            >
-                                <h3
-                                    className={cn(
-                                        "text-2xl font-bold text-white mb-4",
-                                        getResponsiveClass(30).textClass
-                                    )}
-                                >
-                                    No Records Yet
-                                </h3>
-                                <p
-                                    className={cn(
-                                        "text-white/60 text-lg",
-                                        getResponsiveClass(10).textClass
-                                    )}
-                                >
-                                    {`You haven't participated in this raffle yet.`}
+                        {/* 초기 로딩 상태 */}
+                        {isInfiniteLoading &&
+                            allParticipations.length === 0 && (
+                                <div className="py-8">
+                                    <PartialLoading text="Loading participation records..." />
+                                </div>
+                            )}
+
+                        {/* 에러 상태 */}
+                        {infiniteError && (
+                            <div className="py-8 text-center">
+                                <p className="text-red-400">
+                                    Failed to load participation records
                                 </p>
-                            </motion.div>
-                        ) : (
+                                <button
+                                    className="mt-2 text-sm text-white/60 underline underline-offset-2"
+                                    onClick={() => window.location.reload()}
+                                >
+                                    Try again
+                                </button>
+                            </div>
+                        )}
+
+                        {/* 데이터 없음 상태 */}
+                        {!isInfiniteLoading &&
+                            !infiniteError &&
+                            allParticipations.length === 0 && (
+                                <motion.div
+                                    initial={{ scale: 0.8, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    className="text-center py-20"
+                                >
+                                    <h3
+                                        className={cn(
+                                            "text-2xl font-bold text-white mb-4",
+                                            getResponsiveClass(30).textClass
+                                        )}
+                                    >
+                                        No Records Yet
+                                    </h3>
+                                    <p
+                                        className={cn(
+                                            "text-white/60 text-lg",
+                                            getResponsiveClass(10).textClass
+                                        )}
+                                    >
+                                        {`You haven't participated in this raffle yet.`}
+                                    </p>
+                                </motion.div>
+                            )}
+
+                        {/* 참여 기록 목록 */}
+                        {allParticipations.length > 0 && (
                             <div className="space-y-3 w-full max-w-[800px] mx-auto">
-                                {participations.map((record, index) => {
-                                    const isDrawn = !!record.drawnAt;
-                                    const isRevealed = record.isRevealed;
-                                    const hasWon =
-                                        record.prize &&
-                                        record.prize.prizeType !== "EMPTY";
-                                    const isRevealing =
-                                        selectedRecord === record.id;
+                                {allParticipations.map(
+                                    (record: any, index: number) => {
+                                        const isDrawn = !!record.drawnAt;
+                                        const isRevealed = record.isRevealed;
+                                        const hasWon =
+                                            record.prize &&
+                                            record.prize.prizeType !== "EMPTY";
+                                        const isRevealing =
+                                            selectedRecord === record.id;
 
-                                    const getStatusIcon = () => {
-                                        if (!isDrawn)
-                                            return (
-                                                <Clock
-                                                    className={cn(
-                                                        "w-6 h-6 text-yellow-400",
-                                                        getResponsiveClass(30)
-                                                            .frameClass
-                                                    )}
-                                                />
-                                            );
-                                        if (!isRevealed)
-                                            return (
-                                                <EyeOff
-                                                    className={cn(
-                                                        "w-6 h-6 text-blue-400",
-                                                        getResponsiveClass(30)
-                                                            .frameClass
-                                                    )}
-                                                />
-                                            );
-                                        if (hasWon)
-                                            return (
-                                                <Trophy
-                                                    className={cn(
-                                                        "w-6 h-6 text-green-400",
-                                                        getResponsiveClass(30)
-                                                            .frameClass
-                                                    )}
-                                                />
-                                            );
                                         return (
-                                            <XCircle
+                                            <motion.div
+                                                key={record.id}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{
+                                                    delay: index * 0.02,
+                                                }}
                                                 className={cn(
-                                                    "w-6 h-6 text-red-400",
-                                                    getResponsiveClass(30)
-                                                        .frameClass
+                                                    "bg-gradient-to-br border rounded-[12px] p-3",
+                                                    "hover:shadow-lg transition-all duration-300",
+                                                    getCardStyle(
+                                                        isDrawn,
+                                                        isRevealed,
+                                                        hasWon
+                                                    )
                                                 )}
-                                            />
-                                        );
-                                    };
-
-                                    const getCardStyle = () => {
-                                        if (!isDrawn)
-                                            return "from-yellow-500/10 to-orange-500/10 border-yellow-400/30";
-                                        if (!isRevealed)
-                                            return "from-blue-500/10 to-cyan-500/10 border-blue-400/30";
-                                        if (hasWon)
-                                            return "from-green-500/10 to-emerald-500/10 border-green-400/30";
-                                        return "from-gray-500/10 to-gray-600/10 border-gray-400/30";
-                                    };
-
-                                    return (
-                                        <motion.div
-                                            key={record.id}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: index * 0.05 }}
-                                            className={cn(
-                                                "bg-gradient-to-br border rounded-[12px] p-3",
-                                                "hover:shadow-lg transition-all duration-300",
-                                                getCardStyle()
-                                            )}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3 flex-1">
-                                                    {/* Status Icon */}
-                                                    <div className="flex-shrink-0">
-                                                        <motion.div
-                                                            animate={
-                                                                !isRevealed &&
-                                                                isDrawn
-                                                                    ? {
-                                                                          scale: [
-                                                                              1,
-                                                                              1.1,
-                                                                              1,
-                                                                          ],
-                                                                      }
-                                                                    : {}
-                                                            }
-                                                            transition={{
-                                                                duration: 2,
-                                                                repeat: Infinity,
-                                                            }}
-                                                            className="relative"
-                                                        >
-                                                            {getStatusIcon()}
-                                                            {!isRevealed &&
-                                                                isDrawn && (
-                                                                    <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-20" />
-                                                                )}
-                                                        </motion.div>
-                                                    </div>
-
-                                                    {/* Main Info */}
-                                                    <div className="flex-1">
-                                                        <div className="flex flex-col gap-0.5 mb-2">
-                                                            <span
-                                                                className={cn(
-                                                                    "text-lg font-bold text-white",
-                                                                    getResponsiveClass(
-                                                                        20
-                                                                    ).textClass
-                                                                )}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3 flex-1">
+                                                        {/* Status Icon */}
+                                                        <div className="flex-shrink-0">
+                                                            <motion.div
+                                                                animate={
+                                                                    !isRevealed &&
+                                                                    isDrawn
+                                                                        ? {
+                                                                              scale: [
+                                                                                  1,
+                                                                                  1.1,
+                                                                                  1,
+                                                                              ],
+                                                                          }
+                                                                        : {}
+                                                                }
+                                                                transition={{
+                                                                    duration: 2,
+                                                                    repeat: Infinity,
+                                                                }}
+                                                                className="relative"
                                                             >
-                                                                Entry #
-                                                                {participations.length -
-                                                                    index}
-                                                            </span>
-                                                            <span
-                                                                className={cn(
-                                                                    "text-white/50 text-sm",
-                                                                    getResponsiveClass(
-                                                                        10
-                                                                    ).textClass
+                                                                {getStatusIcon(
+                                                                    isDrawn,
+                                                                    isRevealed,
+                                                                    hasWon
                                                                 )}
-                                                            >
-                                                                {formatDate(
-                                                                    record.createdAt
-                                                                )}
-                                                            </span>
+                                                                {!isRevealed &&
+                                                                    isDrawn && (
+                                                                        <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-20" />
+                                                                    )}
+                                                            </motion.div>
                                                         </div>
-                                                    </div>
 
-                                                    {/* Prize Preview */}
-                                                    {isRevealed &&
-                                                    record.prize &&
-                                                    hasWon ? (
-                                                        <div className="flex items-center gap-1">
-                                                            {record.prize
-                                                                .prizeType ===
-                                                                "NFT" &&
-                                                                record.prize.spg
-                                                                    ?.imageUrl && (
-                                                                    <div
-                                                                        className={cn(
-                                                                            "rounded-[8px] overflow-hidden p-1",
-                                                                            getResponsiveClass(
-                                                                                40
-                                                                            )
-                                                                                .frameClass
-                                                                        )}
-                                                                    >
-                                                                        <Image
-                                                                            src={
-                                                                                record
-                                                                                    .prize
-                                                                                    .spg
-                                                                                    .imageUrl
-                                                                            }
-                                                                            alt={
-                                                                                record
-                                                                                    .prize
-                                                                                    .title
-                                                                            }
-                                                                            width={
-                                                                                48
-                                                                            }
-                                                                            height={
-                                                                                48
-                                                                            }
-                                                                            className={cn(
-                                                                                "object-cover"
-                                                                            )}
-                                                                        />
-                                                                    </div>
-                                                                )}
-                                                            {record.prize
-                                                                .prizeType ===
-                                                                "ASSET" &&
-                                                                record.prize
-                                                                    .asset
-                                                                    ?.iconUrl && (
-                                                                    <div
-                                                                        className={cn(
-                                                                            "overflow-hidden bg-white/10 flex items-center justify-center rounded-[8px] p-1"
-                                                                        )}
-                                                                    >
-                                                                        <Image
-                                                                            src={
-                                                                                record
-                                                                                    .prize
-                                                                                    .asset
-                                                                                    .iconUrl
-                                                                            }
-                                                                            alt={
-                                                                                record
-                                                                                    .prize
-                                                                                    .asset
-                                                                                    .symbol
-                                                                            }
-                                                                            width={
-                                                                                24
-                                                                            }
-                                                                            height={
-                                                                                24
-                                                                            }
-                                                                            className={cn(
-                                                                                "object-contain",
-                                                                                getResponsiveClass(
-                                                                                    35
-                                                                                )
-                                                                                    .frameClass
-                                                                            )}
-                                                                        />
-                                                                    </div>
-                                                                )}
-
-                                                            <div className="text-right">
-                                                                <div
+                                                        {/* Main Info */}
+                                                        <div className="flex-1">
+                                                            <div className="flex flex-col gap-0.5 mb-2">
+                                                                <span
                                                                     className={cn(
-                                                                        "font-bold text-green-400 text-lg",
+                                                                        "text-lg font-bold text-white",
                                                                         getResponsiveClass(
                                                                             20
                                                                         )
                                                                             .textClass
                                                                     )}
                                                                 >
-                                                                    {
-                                                                        record
-                                                                            .prize
-                                                                            .title
-                                                                    }
-                                                                </div>
-                                                                <div
+                                                                    Entry #
+                                                                    {participationSummary.totalParticipations -
+                                                                        index}
+                                                                </span>
+                                                                <span
                                                                     className={cn(
-                                                                        "text-sm text-white/60",
+                                                                        "text-white/50 text-sm",
                                                                         getResponsiveClass(
                                                                             10
                                                                         )
                                                                             .textClass
                                                                     )}
                                                                 >
-                                                                    {record
-                                                                        .prize
-                                                                        .prizeType ===
-                                                                    "ASSET"
-                                                                        ? `${record.prize.assetAmount} ${record.prize.asset?.symbol}`
-                                                                        : `${record.prize.nftQuantity} NFT(s)`}
-                                                                </div>
+                                                                    {formatDate(
+                                                                        record.createdAt
+                                                                    )}
+                                                                </span>
                                                             </div>
                                                         </div>
-                                                    ) : (
-                                                        isRevealed && (
-                                                            <p
-                                                                className={cn(
-                                                                    "text-white/40 text-sm text-center",
-                                                                    getResponsiveClass(
-                                                                        15
-                                                                    ).textClass
-                                                                )}
-                                                            >
-                                                                😔 No Prize
-                                                            </p>
-                                                        )
+
+                                                        {/* Prize Preview */}
+                                                        {isRevealed &&
+                                                        record.prize &&
+                                                        hasWon ? (
+                                                            <div className="flex items-center gap-1">
+                                                                {record.prize
+                                                                    .prizeType ===
+                                                                    "NFT" &&
+                                                                    record.prize
+                                                                        .spg
+                                                                        ?.imageUrl && (
+                                                                        <div
+                                                                            className={cn(
+                                                                                "rounded-[8px] overflow-hidden p-1",
+                                                                                getResponsiveClass(
+                                                                                    40
+                                                                                )
+                                                                                    .frameClass
+                                                                            )}
+                                                                        >
+                                                                            <Image
+                                                                                src={
+                                                                                    record
+                                                                                        .prize
+                                                                                        .spg
+                                                                                        .imageUrl
+                                                                                }
+                                                                                alt={
+                                                                                    record
+                                                                                        .prize
+                                                                                        .title
+                                                                                }
+                                                                                width={
+                                                                                    48
+                                                                                }
+                                                                                height={
+                                                                                    48
+                                                                                }
+                                                                                className="object-cover"
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                {record.prize
+                                                                    .prizeType ===
+                                                                    "ASSET" &&
+                                                                    record.prize
+                                                                        .asset
+                                                                        ?.iconUrl && (
+                                                                        <div className="overflow-hidden bg-white/10 flex items-center justify-center rounded-[8px] p-1">
+                                                                            <Image
+                                                                                src={
+                                                                                    record
+                                                                                        .prize
+                                                                                        .asset
+                                                                                        .iconUrl
+                                                                                }
+                                                                                alt={
+                                                                                    record
+                                                                                        .prize
+                                                                                        .asset
+                                                                                        .symbol
+                                                                                }
+                                                                                width={
+                                                                                    24
+                                                                                }
+                                                                                height={
+                                                                                    24
+                                                                                }
+                                                                                className={cn(
+                                                                                    "object-contain",
+                                                                                    getResponsiveClass(
+                                                                                        35
+                                                                                    )
+                                                                                        .frameClass
+                                                                                )}
+                                                                            />
+                                                                        </div>
+                                                                    )}
+
+                                                                <div className="text-right">
+                                                                    <div
+                                                                        className={cn(
+                                                                            "font-bold text-green-400 text-lg",
+                                                                            getResponsiveClass(
+                                                                                20
+                                                                            )
+                                                                                .textClass
+                                                                        )}
+                                                                    >
+                                                                        {
+                                                                            record
+                                                                                .prize
+                                                                                .title
+                                                                        }
+                                                                    </div>
+                                                                    <div
+                                                                        className={cn(
+                                                                            "text-sm text-white/60",
+                                                                            getResponsiveClass(
+                                                                                10
+                                                                            )
+                                                                                .textClass
+                                                                        )}
+                                                                    >
+                                                                        {record
+                                                                            .prize
+                                                                            .prizeType ===
+                                                                        "ASSET"
+                                                                            ? `${record.prize.assetAmount} ${record.prize.asset?.symbol}`
+                                                                            : `${record.prize.nftQuantity} NFT(s)`}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            isRevealed && (
+                                                                <p
+                                                                    className={cn(
+                                                                        "text-white/40 text-sm text-center",
+                                                                        getResponsiveClass(
+                                                                            15
+                                                                        )
+                                                                            .textClass
+                                                                    )}
+                                                                >
+                                                                    😔 No Prize
+                                                                </p>
+                                                            )
+                                                        )}
+                                                    </div>
+
+                                                    {/* Action Button */}
+                                                    {!isRevealed && isDrawn && (
+                                                        <motion.button
+                                                            whileHover={{
+                                                                scale: 1.05,
+                                                            }}
+                                                            whileTap={{
+                                                                scale: 0.95,
+                                                            }}
+                                                            disabled={
+                                                                isRevealing
+                                                            }
+                                                            onClick={() =>
+                                                                handleRevealSingle(
+                                                                    record.id
+                                                                )
+                                                            }
+                                                            className="ml-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:opacity-50 text-white font-bold rounded-xl transition-all duration-300 flex items-center gap-2"
+                                                        >
+                                                            {isRevealing ? (
+                                                                <div className="animate-spin rounded-full h-4 w-4 border-b border-white" />
+                                                            ) : (
+                                                                <Eye className="w-4 h-4" />
+                                                            )}
+                                                            {isRevealing
+                                                                ? "..."
+                                                                : "Reveal"}
+                                                        </motion.button>
                                                     )}
                                                 </div>
+                                            </motion.div>
+                                        );
+                                    }
+                                )}
 
-                                                {/* Action Button */}
-                                                {!isRevealed && isDrawn && (
-                                                    <motion.button
-                                                        whileHover={{
-                                                            scale: 1.05,
-                                                        }}
-                                                        whileTap={{
-                                                            scale: 0.95,
-                                                        }}
-                                                        disabled={isRevealing}
-                                                        onClick={() =>
-                                                            handleRevealSingle(
-                                                                record.id
-                                                            )
-                                                        }
-                                                        className="ml-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:opacity-50 text-white font-bold rounded-xl transition-all duration-300 flex items-center gap-2"
-                                                    >
-                                                        {isRevealing ? (
-                                                            <div className="animate-spin rounded-full h-4 w-4 border-b border-white" />
-                                                        ) : (
-                                                            <Eye className="w-4 h-4" />
-                                                        )}
-                                                        {isRevealing
-                                                            ? "..."
-                                                            : "Reveal"}
-                                                    </motion.button>
-                                                )}
+                                {/* 무한 스크롤 로딩 영역 */}
+                                {(isFetchingNextPage || hasNextPage) && (
+                                    <div
+                                        ref={loadMoreRef}
+                                        className="py-4 flex justify-center"
+                                    >
+                                        {isFetchingNextPage ? (
+                                            <div className="flex items-center gap-2">
+                                                <div className="animate-spin rounded-full border-b-2 border-white/50 w-4 h-4"></div>
+                                                <span className="text-white/60 text-sm">
+                                                    Loading more records...
+                                                </span>
                                             </div>
-                                        </motion.div>
-                                    );
-                                })}
+                                        ) : hasNextPage ? (
+                                            <span className="text-white/40 text-sm">
+                                                Scroll to load more
+                                            </span>
+                                        ) : (
+                                            <span className="text-white/40 text-sm">
+                                                🎉 All records loaded!
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

@@ -628,7 +628,19 @@ export async function addAssetFunction(
     try {
         const asset = await prisma.asset.findUnique({
             where: { id: input.assetId },
-            include: { assetsContract: { include: { network: true } } },
+            select: {
+                id: true,
+                assetType: true,
+                assetId: true,
+                assetsContractAddress: true,
+                selectors: true,
+                abis: true,
+                assetsContract: {
+                    select: {
+                        network: true,
+                    },
+                },
+            },
         });
 
         if (!asset || !asset.assetsContract) {
@@ -712,7 +724,17 @@ export async function executeAssetFunction(
     try {
         const asset = await prisma.asset.findUnique({
             where: { id: input.assetId },
-            include: { assetsContract: { include: { network: true } } },
+            select: {
+                id: true,
+                assetId: true,
+                assetsContractAddress: true,
+                name: true,
+                assetsContract: {
+                    select: {
+                        network: true,
+                    },
+                },
+            },
         });
 
         if (!asset || !asset.assetsContract) {
@@ -798,7 +820,17 @@ export async function airdropAsset(input: AirdropAssetInput): Promise<boolean> {
     try {
         const asset = await prisma.asset.findUnique({
             where: { id: input.assetId },
-            include: { assetsContract: { include: { network: true } } },
+            select: {
+                id: true,
+                assetId: true,
+                assetsContractAddress: true,
+                name: true,
+                assetsContract: {
+                    select: {
+                        network: true,
+                    },
+                },
+            },
         });
 
         if (!asset || !asset.assetsContract) {
@@ -924,8 +956,14 @@ export async function bulkUpdateAssetReferences(
     try {
         // First, verify both assets exist
         const [oldAsset, newAsset] = await Promise.all([
-            prisma.asset.findUnique({ where: { id: input.oldAssetId } }),
-            prisma.asset.findUnique({ where: { id: input.newAssetId } }),
+            prisma.asset.findUnique({
+                where: { id: input.oldAssetId },
+                select: { id: true },
+            }),
+            prisma.asset.findUnique({
+                where: { id: input.newAssetId },
+                select: { id: true },
+            }),
         ]);
 
         if (!oldAsset) {
@@ -1159,6 +1197,13 @@ export async function createAssetInstance(
             input.asset ||
             (await tx.asset.findUnique({
                 where: { id: input.assetId, isActive: true },
+                select: {
+                    id: true,
+                    isActive: true,
+                    hasInstance: true,
+                    symbol: true,
+                    name: true,
+                },
             }));
 
         if (!asset) {

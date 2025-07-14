@@ -1814,10 +1814,46 @@ export async function withdrawPlayerAssetInstances(
         // 🔄 업데이트된 AssetInstance 조회
         const withdrawnInstances = await tx.assetInstance.findMany({
             where: { id: { in: instanceIds } },
-            include: {
-                asset: true,
-                player: true,
-                playerAsset: true,
+            select: {
+                id: true,
+                code: true,
+                serialNumber: true,
+                assetId: true,
+                playerId: true,
+                playerAssetId: true,
+                status: true,
+                createdAt: true,
+                updatedAt: true,
+                expiresAt: true,
+                usedAt: true,
+                usedBy: true,
+                usedFor: true,
+                usedLocation: true,
+                asset: {
+                    select: {
+                        id: true,
+                        name: true,
+                        description: true,
+                        assetType: true,
+                        isActive: true,
+                        hasInstance: true,
+                        imageUrl: true,
+                    },
+                },
+                player: {
+                    select: {
+                        id: true,
+                        userId: true,
+                        artistId: true,
+                    },
+                },
+                playerAsset: {
+                    select: {
+                        id: true,
+                        balance: true,
+                        status: true,
+                    },
+                },
             },
         });
 
@@ -1882,10 +1918,12 @@ export async function autoExpirePlayerAssetInstances(
                 },
             },
             take: batchSize,
-            include: {
-                asset: true,
-                player: true,
-                playerAsset: true,
+            select: {
+                id: true,
+                assetId: true,
+                playerId: true,
+                playerAssetId: true,
+                expiresAt: true,
             },
             orderBy: {
                 expiresAt: "asc", // 가장 오래된 것부터 처리

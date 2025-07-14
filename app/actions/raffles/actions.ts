@@ -23,6 +23,32 @@ import type {
 
 import { MAX_PRIZES_PER_QUERY } from "@/app/actions/raffles/types";
 
+// 🎯 Optimized field selectors to avoid overfetching
+const RAFFLE_CORE_FIELDS = {
+    id: true,
+    title: true,
+    description: true,
+    imgUrl: true,
+    artistId: true,
+    startDate: true,
+    endDate: true,
+    drawDate: true,
+    instantReveal: true,
+    isLimited: true,
+    displayType: true,
+    maxParticipants: true,
+    entryFeeAssetId: true,
+    entryFeeAmount: true,
+    allowMultipleEntry: true,
+    maxEntriesPerPlayer: true,
+    isPublic: true,
+    isActive: true,
+    totalSlots: true,
+    totalParticipants: true,
+    createdAt: true,
+    updatedAt: true,
+} as const;
+
 export interface RafflePrizeInput {
     title: string;
     description?: string;
@@ -392,9 +418,11 @@ export async function createRaffle(
 
         const completeRaffle = await prisma.raffle.findUnique({
             where: { id: raffleResult.raffle.id },
-            include: {
+            select: {
+                ...RAFFLE_CORE_FIELDS,
                 artist: { select: { id: true, name: true } },
                 prizes: {
+                    where: { isActive: true },
                     select: {
                         id: true,
                         title: true,
@@ -727,9 +755,11 @@ export async function updateRaffle(
 
         const completeRaffle = await prisma.raffle.findUnique({
             where: { id: input.id },
-            include: {
+            select: {
+                ...RAFFLE_CORE_FIELDS,
                 artist: { select: { id: true, name: true } },
                 prizes: {
+                    where: { isActive: true },
                     select: {
                         id: true,
                         title: true,
@@ -835,7 +865,8 @@ export async function getRaffles(
 
         const raffles = await prisma.raffle.findMany({
             where,
-            include: {
+            select: {
+                ...RAFFLE_CORE_FIELDS,
                 artist: { select: { id: true, name: true } },
                 prizes: {
                     where: { isActive: true },
@@ -915,7 +946,8 @@ export async function getRaffleDetails(
     try {
         const raffle = await prisma.raffle.findUnique({
             where: { id: raffleId },
-            include: {
+            select: {
+                ...RAFFLE_CORE_FIELDS,
                 artist: { select: { id: true, name: true } },
                 prizes: {
                     where: { isActive: true },
@@ -1137,10 +1169,42 @@ export async function participateInRaffle(
 
         const raffle = (await prisma.raffle.findUnique({
             where: { id: input.raffleId },
-            include: {
-                entryFeeAsset: true,
+            select: {
+                // Only select fields needed for participation validation
+                id: true,
+                title: true,
+                startDate: true,
+                endDate: true,
+                drawDate: true,
+                instantReveal: true,
+                isLimited: true,
+                maxParticipants: true,
+                entryFeeAssetId: true,
+                entryFeeAmount: true,
+                allowMultipleEntry: true,
+                maxEntriesPerPlayer: true,
+                isActive: true,
+                entryFeeAsset: {
+                    select: {
+                        id: true,
+                        symbol: true,
+                        iconUrl: true,
+                    },
+                },
                 prizes: {
                     where: { isActive: true },
+                    select: {
+                        id: true,
+                        title: true,
+                        order: true,
+                        quantity: true,
+                        prizeType: true,
+                        assetId: true,
+                        assetAmount: true,
+                        spgAddress: true,
+                        nftQuantity: true,
+                        isActive: true,
+                    },
                     orderBy: { order: "asc" },
                 },
                 _count: { select: { participants: true } },
@@ -2752,9 +2816,17 @@ export async function getProbabilityAnalyticsData(
         // 래플 목록 조회 (raffleIds가 없으면 전체 조회)
         const raffles = await prisma.raffle.findMany({
             where: raffleIds ? { id: { in: raffleIds } } : undefined,
-            include: {
+            select: {
+                // Only select fields needed for probability analytics
+                id: true,
+                title: true,
                 prizes: {
-                    include: {
+                    select: {
+                        id: true,
+                        title: true,
+                        quantity: true,
+                        rarityTier: true,
+                        rarityOrder: true,
                         _count: {
                             select: {
                                 participants: true,
@@ -2901,11 +2973,34 @@ export async function getRevenueAnalyticsData(
     try {
         const raffles = await prisma.raffle.findMany({
             where: raffleIds ? { id: { in: raffleIds } } : undefined,
-            include: {
-                artist: true,
+            select: {
+                // Only select fields needed for revenue analytics
+                id: true,
+                title: true,
+                artistId: true,
+                entryFeeAmount: true,
+                maxParticipants: true,
+                startDate: true,
+                endDate: true,
+                drawDate: true,
+                artist: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
                 prizes: {
-                    include: {
-                        asset: true,
+                    select: {
+                        id: true,
+                        title: true,
+                        assetAmount: true,
+                        quantity: true,
+                        asset: {
+                            select: {
+                                id: true,
+                                symbol: true,
+                            },
+                        },
                     },
                 },
                 _count: {
@@ -3253,6 +3348,263 @@ export async function getParticipantAnalyticsData(
         return {
             success: false,
             error: "Failed to fetch participant analytics data",
+        };
+    }
+}
+
+export interface GetPlayerParticipationsInfiniteInput {
+    raffleId: string;
+    playerId: string;
+    includeUnrevealed?: boolean;
+    cursor?: string; // createdAt cursor for pagination
+    limit?: number;
+}
+
+export interface PlayerParticipationsInfiniteResult {
+    participations: RaffleParticipantWithRelations[];
+    winners: RaffleWinnerWithRelations[];
+    totalParticipations: number;
+    revealedCount: number;
+    unrevealedCount: number;
+    totalWins: number;
+    nextCursor?: string;
+    hasMore: boolean;
+}
+
+export async function getPlayerParticipationsInfinite(
+    input: GetPlayerParticipationsInfiniteInput
+): Promise<RaffleResult<PlayerParticipationsInfiniteResult>> {
+    try {
+        const session = await requireAuth();
+        if (!session?.user?.id) {
+            return { success: false, error: "Authentication required" };
+        }
+
+        const player = await prisma.player.findUnique({
+            where: { id: input.playerId },
+            include: { user: true },
+        });
+
+        if (!player || player.userId !== session.user.id) {
+            return {
+                success: false,
+                error: "Invalid player or insufficient permissions",
+            };
+        }
+
+        const limit = Math.min(input.limit || 15, 50); // 최대 50개까지
+
+        // 기본 where 조건
+        const where: any = {
+            raffleId: input.raffleId,
+            playerId: input.playerId,
+        };
+
+        if (input.includeUnrevealed === false) {
+            where.isRevealed = true;
+        }
+
+        // 커서 기반 페이지네이션 (createdAt 기준)
+        if (input.cursor) {
+            where.createdAt = {
+                lt: new Date(input.cursor),
+            };
+        }
+
+        // 페이지네이션된 참여 기록 조회
+        const participations = await prisma.raffleParticipant.findMany({
+            where,
+            select: {
+                id: true,
+                raffleId: true,
+                playerId: true,
+                prizeId: true,
+                drawnAt: true,
+                revealedAt: true,
+                isRevealed: true,
+                createdAt: true,
+                prize: {
+                    select: {
+                        id: true,
+                        title: true,
+                        prizeType: true,
+                        assetId: true,
+                        assetAmount: true,
+                        spgAddress: true,
+                        nftQuantity: true,
+                        asset: {
+                            select: {
+                                id: true,
+                                symbol: true,
+                                iconUrl: true,
+                            },
+                        },
+                        spg: {
+                            select: {
+                                address: true,
+                                network: {
+                                    select: {
+                                        chainId: true,
+                                        name: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                player: { select: { id: true, name: true, nickname: true } },
+            },
+            orderBy: { createdAt: "desc" },
+            take: limit + 1, // 다음 페이지 존재 여부 확인을 위해 +1
+        });
+
+        // 다음 페이지 존재 여부 확인
+        const hasMore = participations.length > limit;
+        const paginatedParticipations = hasMore
+            ? participations.slice(0, limit)
+            : participations;
+
+        const nextCursor =
+            hasMore && paginatedParticipations.length > 0
+                ? paginatedParticipations[
+                      paginatedParticipations.length - 1
+                  ].createdAt.toISOString()
+                : undefined;
+
+        // 전체 통계는 첫 번째 페이지에서만 계산 (성능 최적화)
+        let totalCounts = {
+            totalParticipations: 0,
+            revealedCount: 0,
+            unrevealedCount: 0,
+        };
+
+        if (!input.cursor) {
+            const [totalCount, revealedCount, unrevealedCount] =
+                await Promise.all([
+                    prisma.raffleParticipant.count({
+                        where: {
+                            raffleId: input.raffleId,
+                            playerId: input.playerId,
+                        },
+                    }),
+                    prisma.raffleParticipant.count({
+                        where: {
+                            raffleId: input.raffleId,
+                            playerId: input.playerId,
+                            isRevealed: true,
+                        },
+                    }),
+                    prisma.raffleParticipant.count({
+                        where: {
+                            raffleId: input.raffleId,
+                            playerId: input.playerId,
+                            isRevealed: false,
+                        },
+                    }),
+                ]);
+
+            totalCounts = {
+                totalParticipations: totalCount,
+                revealedCount,
+                unrevealedCount,
+            };
+        }
+
+        // 당첨자 정보는 첫 번째 페이지에서만 조회 (성능 최적화)
+        const winners = !input.cursor
+            ? ((await prisma.raffleWinner.findMany({
+                  where: {
+                      raffleId: input.raffleId,
+                      playerId: input.playerId,
+                  },
+                  select: {
+                      id: true,
+                      raffleId: true,
+                      playerId: true,
+                      prizeId: true,
+                      status: true,
+                      distributedAt: true,
+                      transactionHash: true,
+                      failureReason: true,
+                      createdAt: true,
+                      player: {
+                          select: {
+                              id: true,
+                              name: true,
+                              nickname: true,
+                              user: {
+                                  select: {
+                                      wallets: {
+                                          where: { status: "ACTIVE" },
+                                          select: {
+                                              address: true,
+                                              status: true,
+                                              default: true,
+                                          },
+                                          orderBy: { default: "desc" },
+                                      },
+                                  },
+                              },
+                          },
+                      },
+                      prize: {
+                          select: {
+                              id: true,
+                              title: true,
+                              prizeType: true,
+                              assetId: true,
+                              assetAmount: true,
+                              spgAddress: true,
+                              nftQuantity: true,
+                              asset: {
+                                  select: {
+                                      id: true,
+                                      symbol: true,
+                                      iconUrl: true,
+                                  },
+                              },
+                              spg: {
+                                  select: {
+                                      address: true,
+                                      network: {
+                                          select: {
+                                              chainId: true,
+                                              name: true,
+                                          },
+                                      },
+                                  },
+                              },
+                          },
+                      },
+                  },
+                  orderBy: { createdAt: "desc" },
+              })) as RaffleWinnerWithRelations[])
+            : [];
+
+        const result: PlayerParticipationsInfiniteResult = {
+            participations:
+                paginatedParticipations as RaffleParticipantWithRelations[],
+            winners,
+            totalParticipations: totalCounts.totalParticipations,
+            revealedCount: totalCounts.revealedCount,
+            unrevealedCount: totalCounts.unrevealedCount,
+            totalWins: winners.length,
+            nextCursor,
+            hasMore,
+        };
+
+        return { success: true, data: result };
+    } catch (error) {
+        console.error(
+            "❌ Error getting player participations infinite:",
+            error
+        );
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to get player participations infinite",
         };
     }
 }
