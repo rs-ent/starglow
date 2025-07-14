@@ -17,7 +17,7 @@ export default function InvitePage() {
     const [hasProcessed, setHasProcessed] = useState(false);
 
     const ref = searchParams.get("ref");
-    const method = searchParams.get("method");
+    const method = searchParams.get("method") || "Unknown";
     const tgId = searchParams.get("tgId");
 
     // 현재 URL을 callbackUrl로 전달
@@ -37,11 +37,6 @@ export default function InvitePage() {
         // 1. 필수 파라미터 검증
         if (!ref || ref.trim().length === 0) {
             router.push(`/?inviteError=INVALID_CODE`);
-            return;
-        }
-
-        if (!method || method.trim().length === 0) {
-            router.push(`/?inviteError=INVALID_METHOD`);
             return;
         }
 
