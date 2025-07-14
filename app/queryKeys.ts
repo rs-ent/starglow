@@ -586,6 +586,10 @@ export const questKeys = {
     list: (input?: GetQuestsInput, pagination?: PaginationInput) =>
         [...questKeys.all, "list", { input, pagination }] as const,
 
+    // 무한 스크롤 키
+    infinite: (input?: GetQuestsInput) =>
+        [...questKeys.all, "infinite", input] as const,
+
     // 상세 조회 키
     detail: (input?: GetQuestInput) =>
         [...questKeys.all, "detail", input?.id] as const,

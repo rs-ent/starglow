@@ -2,9 +2,9 @@
 
 "use client";
 
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState, useRef, useEffect } from "react";
 
-import { useQuestGet } from "@/app/hooks/useQuest";
+import { useInfiniteQuest } from "@/app/hooks/useQuest";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
@@ -24,21 +24,37 @@ interface QuestsTotalProps {
 const now = new Date();
 
 function QuestsTotal({ player, questLogs, referralLogs }: QuestsTotalProps) {
-    const { quests, isLoading, error } = useQuestGet({
-        getQuestsInput: {
-            isActive: true,
-            startDate: now,
-            endDate: now,
-            startDateIndicator: "after",
-            endDateIndicator: "before",
-            test: player?.tester ?? false,
-        },
-    });
-
     const [selectedType, setSelectedType] = useState<string>("All");
 
+    // 무한 스크롤을 위한 ref
+    const loadMoreRef = useRef<HTMLDivElement>(null);
+
+    // 무한 스크롤 쿼리
+    const {
+        data: infiniteData,
+        isLoading,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
+        error,
+    } = useInfiniteQuest({
+        isActive: true,
+        startDate: now,
+        endDate: now,
+        startDateIndicator: "after",
+        endDateIndicator: "before",
+        test: player?.tester ?? false,
+    });
+
+    // 모든 퀘스트를 하나의 배열로 합치기
+    const allQuests = useMemo(() => {
+        const data = infiniteData as any;
+        if (!data?.pages) return [];
+        return data.pages.flatMap((page: any) => page.items);
+    }, [infiniteData]);
+
     const { types, artistsMap } = useMemo(() => {
-        if (!quests?.items || quests.items.length === 0) {
+        if (!allQuests || allQuests.length === 0) {
             return {
                 types: ["All"],
                 artistsMap: new Map<string, Artist>(),
@@ -48,7 +64,7 @@ function QuestsTotal({ player, questLogs, referralLogs }: QuestsTotalProps) {
         const uniqueTypesSet = new Set<string>();
         const uniqueArtistsMap = new Map<string, Artist>();
 
-        quests.items.forEach((quest: QuestWithArtistAndRewardAsset) => {
+        allQuests.forEach((quest: QuestWithArtistAndRewardAsset) => {
             if (quest.type) uniqueTypesSet.add(quest.type);
             if (quest.artist) {
                 uniqueArtistsMap.set(quest.artist.name, quest.artist);
@@ -62,19 +78,53 @@ function QuestsTotal({ player, questLogs, referralLogs }: QuestsTotalProps) {
             types: ["All", ...questTypes, ...artistNames],
             artistsMap: uniqueArtistsMap,
         };
-    }, [quests?.items]);
+    }, [allQuests]);
 
     const filteredQuests = useMemo(() => {
-        if (!quests?.items) return [];
+        if (!allQuests) return [];
 
         return selectedType === "All"
-            ? quests.items
-            : quests.items.filter(
-                  (quest) =>
+            ? allQuests
+            : allQuests.filter(
+                  (quest: QuestWithArtistAndRewardAsset) =>
                       quest.type === selectedType ||
                       quest.artist?.name === selectedType
               );
-    }, [quests?.items, selectedType]);
+    }, [allQuests, selectedType]);
+
+    // Intersection Observer로 무한 스크롤 구현
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const target = entries[0];
+                if (
+                    target.isIntersecting &&
+                    hasNextPage &&
+                    !isFetchingNextPage
+                ) {
+                    fetchNextPage().catch((error) => {
+                        console.error("Failed to fetch next page:", error);
+                    });
+                }
+            },
+            {
+                root: null,
+                rootMargin: "100px", // 100px 전에 미리 로딩
+                threshold: 0.1,
+            }
+        );
+
+        const currentRef = loadMoreRef.current;
+        if (currentRef) {
+            observer.observe(currentRef);
+        }
+
+        return () => {
+            if (currentRef) {
+                observer.unobserve(currentRef);
+            }
+        };
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
     const handleTypeClick = useCallback((type: string) => {
         setSelectedType(type);
@@ -110,7 +160,7 @@ function QuestsTotal({ player, questLogs, referralLogs }: QuestsTotalProps) {
                         key={selectedType}
                         className={cn("mb-[100px] lg:mb-[0px]")}
                     >
-                        {quests && questLogs && (
+                        {allQuests && questLogs && (
                             <QuestsMissions
                                 player={player}
                                 quests={filteredQuests}
@@ -121,6 +171,31 @@ function QuestsTotal({ player, questLogs, referralLogs }: QuestsTotalProps) {
                                 tokenGating={null}
                                 referralLogs={referralLogs || []}
                             />
+                        )}
+
+                        {/* 무한 스크롤 로딩 영역 */}
+                        {(isFetchingNextPage || hasNextPage) && (
+                            <div
+                                ref={loadMoreRef}
+                                className="py-6 md:py-8 flex justify-center"
+                            >
+                                {isFetchingNextPage ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="animate-spin rounded-full border-b-2 border-white/50 w-4 h-4 md:w-5 md:h-5"></div>
+                                        <span className="text-white/60 text-xs md:text-sm">
+                                            Loading more quests...
+                                        </span>
+                                    </div>
+                                ) : hasNextPage ? (
+                                    <span className="text-white/40 text-xs md:text-sm">
+                                        Scroll to load more
+                                    </span>
+                                ) : (
+                                    <span className="text-white/40 text-xs md:text-sm">
+                                        🎉 You've reached the end!
+                                    </span>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>

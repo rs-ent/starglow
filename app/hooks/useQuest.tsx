@@ -17,6 +17,7 @@ import {
     usePlayerQuestLogsQuery,
     useQuestLogsQuery,
     useQuestsQuery,
+    useInfiniteQuestsQuery,
     useTokenGatingQuestQuery,
 } from "@/app/queries/questsQueries";
 
@@ -216,4 +217,9 @@ export function useQuestSet() {
         isLoading,
         error,
     };
+}
+
+// 무한 스크롤을 위한 훅 추가
+export function useInfiniteQuest(getQuestsInput?: GetQuestsInput) {
+    return useInfiniteQuestsQuery(getQuestsInput);
 }
