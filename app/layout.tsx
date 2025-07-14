@@ -114,6 +114,7 @@ export default function RootLayout({
 }: {
     children: React.ReactNode;
 }) {
+    const maintenanceMode = process.env.MAINTENANCE_MODE;
     return (
         <html lang="en" suppressHydrationWarning>
             <body suppressHydrationWarning>
@@ -122,8 +123,8 @@ export default function RootLayout({
                     <Toast />
                     <SpeedInsights />
                     <Analytics />
-                    <Navigation />
-                    <GlobalNotificationManager />
+                    {!maintenanceMode && <Navigation />}
+                    {!maintenanceMode && <GlobalNotificationManager />}
                     {children}
                 </Providers>
             </body>

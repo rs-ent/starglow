@@ -375,28 +375,6 @@ export async function createBoardPost(
     input: CreateBoardPostInput
 ): Promise<BoardPost> {
     try {
-        // 단일 검증으로 통합 - 보드 모더레이션이 금지어 검증도 포함
-        // TODO: 임시로 비활성화 - 불안정한 검증 로직으로 인한 문제 발생
-        // const contentValidation = await validateContentBeforePost(
-        //     combinedContent,
-        //     input.authorId,
-        //     input.boardId
-        // );
-
-        // if (contentValidation.blocked) {
-        //     // 차단된 경우 상세 로그
-        //     console.warn(`Content blocked for user: ${input.authorId}`, {
-        //         reason: contentValidation.message,
-        //         violations: contentValidation.violations,
-        //         severity: contentValidation.severity,
-        //     });
-
-        //     throw new Error(
-        //         contentValidation.message ||
-        //             "Content blocked due to policy violations"
-        //     );
-        // }
-
         const post = await prisma.boardPost.create({
             data: {
                 boardId: input.boardId,
