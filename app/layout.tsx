@@ -13,6 +13,7 @@ import Providers from "./Providers";
 import Loading from "@/components/atoms/Loading";
 import Navigation from "@/components/navigation/Navigation";
 import GlobalNotificationManager from "@/components/notifications/GlobalNotificationManager";
+import MaintenancePage from "./maintenance/page";
 
 export const metadata: Metadata = {
     // 기본 메타데이터
@@ -115,6 +116,15 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     const maintenanceMode = process.env.MAINTENANCE_MODE;
+    if (maintenanceMode === "true") {
+        return (
+            <html lang="en" suppressHydrationWarning>
+                <body suppressHydrationWarning>
+                    <MaintenancePage />
+                </body>
+            </html>
+        );
+    }
     return (
         <html lang="en" suppressHydrationWarning>
             <body suppressHydrationWarning>
@@ -123,8 +133,8 @@ export default function RootLayout({
                     <Toast />
                     <SpeedInsights />
                     <Analytics />
-                    {!maintenanceMode && <Navigation />}
-                    {!maintenanceMode && <GlobalNotificationManager />}
+                    <Navigation />
+                    <GlobalNotificationManager />
                     {children}
                 </Providers>
             </body>

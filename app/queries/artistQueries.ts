@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import {
     getArtist,
+    getArtistForMetadata,
+    getArtistForStar,
     getArtistMessages,
     getArtists,
     tokenGating,
@@ -37,6 +39,26 @@ export function useArtist(input?: GetArtistInput) {
         enabled: Boolean(input?.id),
         staleTime: 1000 * 60 * 60 * 6,
         gcTime: 1000 * 60 * 60 * 12,
+    });
+}
+
+export function useArtistForMetadata(input?: GetArtistInput) {
+    return useQuery({
+        queryKey: artistKeys.metadata(input),
+        queryFn: () => getArtistForMetadata(input),
+        enabled: Boolean(input?.id || input?.code || input?.name),
+        staleTime: 1000 * 60 * 60 * 12, // 메타데이터는 더 길게 캐시
+        gcTime: 1000 * 60 * 60 * 24,
+    });
+}
+
+export function useArtistForStar(input?: GetArtistInput) {
+    return useQuery({
+        queryKey: artistKeys.star(input),
+        queryFn: () => getArtistForStar(input),
+        enabled: Boolean(input?.id || input?.code || input?.name),
+        staleTime: 1000 * 60 * 60 * 1, // Star 페이지는 더 자주 업데이트
+        gcTime: 1000 * 60 * 60 * 6,
     });
 }
 

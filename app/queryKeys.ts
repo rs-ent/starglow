@@ -628,6 +628,10 @@ export const artistKeys = {
         [...artistKeys.all, "list", input] as const,
     detail: (input?: GetArtistInput) =>
         [...artistKeys.all, "detail", input] as const,
+    metadata: (input?: GetArtistInput) =>
+        [...artistKeys.all, "metadata", input] as const,
+    star: (input?: GetArtistInput) =>
+        [...artistKeys.all, "star", input] as const,
     messages: (input?: GetArtistMessagesInput) =>
         [...artistKeys.all, "messages", input] as const,
     tokenGating: (input?: ArtistTokenGatingInput) =>

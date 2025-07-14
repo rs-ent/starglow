@@ -159,6 +159,204 @@ export async function getArtist(
     }
 }
 
+// 메타데이터 생성용 경량 함수
+export async function getArtistForMetadata(
+    input?: GetArtistInput
+): Promise<Pick<
+    Artist,
+    "id" | "name" | "description" | "imageUrl" | "logoUrl" | "code"
+> | null> {
+    try {
+        if (!input) {
+            return null;
+        }
+
+        const select = {
+            id: true,
+            name: true,
+            description: true,
+            imageUrl: true,
+            logoUrl: true,
+            code: true,
+        };
+
+        if (input.id) {
+            return await prisma.artist.findUnique({
+                where: { id: input.id },
+                select,
+            });
+        }
+
+        if (input.code) {
+            return await prisma.artist.findUnique({
+                where: { code: input.code },
+                select,
+            });
+        }
+
+        if (input.name) {
+            return await prisma.artist.findFirst({
+                where: { name: input.name },
+                select,
+            });
+        }
+
+        return null;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to get artist for metadata");
+    }
+}
+
+// Star 페이지 전용 최적화 함수
+export type ArtistForStar = Artist & {
+    story_spg: Story_spg[];
+    polls: Poll[];
+    quests: Quest[];
+    messages: ArtistMessage[];
+    players: Player[];
+    boards: (Board & { posts: BoardPost[] })[];
+    totalPosts: number;
+    totalPolls: number;
+    totalQuests: number;
+    _count: {
+        boards: number;
+    };
+};
+
+export async function getArtistForStar(
+    input?: GetArtistInput
+): Promise<ArtistForStar | null> {
+    try {
+        if (!input) {
+            return null;
+        }
+
+        let artist;
+
+        // 1. 기본 아티스트 정보와 필터링된 관련 데이터 가져오기
+        if (input.id) {
+            artist = await prisma.artist.findUnique({
+                where: { id: input.id },
+                include: {
+                    story_spg: {
+                        where: {
+                            isListed: true,
+                            comingSoon: false,
+                            hiddenDetails: false,
+                        },
+                    },
+                    polls: {
+                        where: {
+                            isActive: true,
+                            showOnStarPage: true,
+                        },
+                    },
+                    quests: {
+                        where: {
+                            isActive: true,
+                        },
+                    },
+                    _count: {
+                        select: {
+                            boards: true,
+                        },
+                    },
+                },
+            });
+        } else if (input.code) {
+            artist = await prisma.artist.findUnique({
+                where: { code: input.code },
+                include: {
+                    story_spg: {
+                        where: {
+                            isListed: true,
+                            comingSoon: false,
+                            hiddenDetails: false,
+                        },
+                    },
+                    polls: {
+                        where: {
+                            isActive: true,
+                            showOnStarPage: true,
+                        },
+                    },
+                    quests: {
+                        where: {
+                            isActive: true,
+                        },
+                    },
+                    _count: {
+                        select: {
+                            boards: true,
+                        },
+                    },
+                },
+            });
+        } else if (input.name) {
+            artist = await prisma.artist.findFirst({
+                where: { name: input.name },
+                include: {
+                    story_spg: {
+                        where: {
+                            isListed: true,
+                            comingSoon: false,
+                            hiddenDetails: false,
+                        },
+                    },
+                    polls: {
+                        where: {
+                            isActive: true,
+                            showOnStarPage: true,
+                        },
+                    },
+                    quests: {
+                        where: {
+                            isActive: true,
+                        },
+                    },
+                    _count: {
+                        select: {
+                            boards: true,
+                        },
+                    },
+                },
+            });
+        } else {
+            return null;
+        }
+
+        if (!artist) {
+            return null;
+        }
+
+        // 2. 총 포스트 개수 계산 (boards의 posts 개수 합산)
+        const totalPostsResult = await prisma.boardPost.count({
+            where: {
+                board: {
+                    artistId: artist.id,
+                },
+            },
+        });
+
+        // 3. 결과 조합 (Star 페이지에서 사용하지 않는 속성들은 빈 배열로 초기화)
+        const result: ArtistForStar = {
+            ...artist,
+            messages: [], // Star 페이지에서 사용하지 않음
+            players: [], // Star 페이지에서 사용하지 않음
+            boards: [], // Star 페이지에서 사용하지 않음 (개수만 계산)
+            totalPosts: totalPostsResult,
+            totalPolls: artist.polls.length,
+            totalQuests: artist.quests.length,
+        };
+
+        return result;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to get artist for star page");
+    }
+}
+
 export interface GetArtistsInput {
     id?: string;
     name?: string;

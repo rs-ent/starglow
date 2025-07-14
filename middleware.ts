@@ -79,21 +79,19 @@ function shouldShowMaintenancePage(request: NextRequest): boolean {
     }
 
     // 정적 파일들은 제외
-    if (request.nextUrl.pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|js|css|woff|woff2|ttf|eot)$/)) {
+    if (
+        request.nextUrl.pathname.match(
+            /\.(ico|png|jpg|jpeg|gif|svg|js|css|woff|woff2|ttf|eot)$/
+        )
+    ) {
         return false;
     }
 
     // 바이패스 시크릿 쿼리 파라미터 체크
-    if (MAINTENANCE_BYPASS_SECRET && request.nextUrl.searchParams.get("bypass") === MAINTENANCE_BYPASS_SECRET) {
-        return false;
-    }
-
-    // IP 바이패스 체크
-    const clientIP = request.headers.get("x-forwarded-for") || 
-                    request.headers.get("x-real-ip") || 
-                    request.ip;
-    
-    if (clientIP && MAINTENANCE_BYPASS_IPS.includes(clientIP)) {
+    if (
+        MAINTENANCE_BYPASS_SECRET &&
+        request.nextUrl.searchParams.get("bypass") === MAINTENANCE_BYPASS_SECRET
+    ) {
         return false;
     }
 
