@@ -47,7 +47,7 @@ export default function InviteFriends({
                     Invite Friends!
                 </H3>
                 <Image
-                    src="/ui/letter.svg"
+                    src="/ui/letter-1.webp"
                     alt="Invite Friends Letter"
                     className="absolute -top-5 right-2"
                     style={{

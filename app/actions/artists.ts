@@ -238,7 +238,9 @@ export async function getArtistsForStarList(): Promise<
                 backgroundColors: true,
                 foregroundColors: true,
             },
-            orderBy: [{ hidden: "asc" }, { name: "asc" }],
+            orderBy: {
+                order: "asc",
+            },
             take: 12,
         });
 

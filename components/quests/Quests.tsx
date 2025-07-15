@@ -19,7 +19,32 @@ function Quests({ player }: QuestsProps) {
     return (
         <div className="relative flex flex-col w-full h-full overflow-hidden">
             <div className="fixed inset-0 -z-20">
+                {/* Base gradient background */}
                 <div className="absolute inset-0 bg-gradient-to-b from-[#09011b] to-[#311473]" />
+
+                {/* CSS-based blur background effects */}
+                <div className="absolute inset-0 opacity-60">
+                    {/* Multiple radial gradients to create blur-like effect */}
+                    <div
+                        className="absolute inset-0 bg-gradient-radial from-purple-500/30 via-transparent to-transparent blur-xl animate-pulse-slow"
+                        style={{
+                            background: `
+                                 radial-gradient(circle at 20% 30%, rgba(80, 47, 112, 0.4) 0%, transparent 60%),
+                                 radial-gradient(circle at 80% 70%, rgba(174, 173, 202, 0.3) 0%, transparent 50%),
+                                 radial-gradient(circle at 60% 20%, rgba(236, 72, 173, 0.3) 0%, transparent 40%),
+                                 radial-gradient(circle at 40% 80%, rgba(209, 201, 240, 0.33) 0%, transparent 45%)
+                             `,
+                        }}
+                    />
+
+                    {/* Animated floating orbs */}
+                    <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl animate-float-slow" />
+                    <div className="absolute top-3/4 right-1/4 w-80 h-80 bg-pink-400/15 rounded-full blur-2xl animate-float-slow-reverse" />
+                    <div className="absolute top-1/2 left-3/4 w-72 h-72 bg-indigo-400/20 rounded-full blur-3xl animate-float-medium" />
+
+                    {/* Overlay blur effect */}
+                    <div className="absolute inset-0 backdrop-blur-sm bg-black/10" />
+                </div>
 
                 <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
                     <Image
@@ -32,16 +57,6 @@ function Quests({ player }: QuestsProps) {
                         unoptimized={false}
                     />
                 </div>
-
-                <Image
-                    src="/elements/bg-quest-blur.svg"
-                    alt="Background"
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    className="opacity-90 w-full h-full object-cover scale-125 lg:scale-100 bg-blend-overlay transition-all duration-1000"
-                    priority={false}
-                    unoptimized={false}
-                />
             </div>
 
             <div className="relative z-10">

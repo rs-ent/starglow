@@ -27,6 +27,10 @@ const redirects: RedirectRule[] = [
         hostnames: ["introduction.starglow.io", "tutorial.starglow.io"],
         destination: "https://starglow.io/introduction",
     },
+    {
+        hostnames: ["intro.starglow.io"],
+        destination: "https://starglow.io/introduction/s",
+    },
 ];
 
 const PERFORMANCE_THRESHOLD = 1000;
