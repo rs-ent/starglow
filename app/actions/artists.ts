@@ -239,6 +239,7 @@ export async function getArtistsForStarList(): Promise<
                 foregroundColors: true,
             },
             orderBy: [{ hidden: "asc" }, { name: "asc" }],
+            take: 12,
         });
 
         return artists as ArtistsForStarList[];
@@ -276,6 +277,7 @@ export async function getArtists(
                 orderBy: {
                     name: "asc",
                 },
+                take: 12,
             })) as ArtistWithSPG[];
         }
 
@@ -311,6 +313,7 @@ export async function getArtists(
             orderBy: {
                 name: "asc",
             },
+            take: 12,
         });
         return artists as ArtistWithSPG[];
     } catch (error) {

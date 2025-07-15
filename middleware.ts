@@ -34,8 +34,34 @@ const PERFORMANCE_THRESHOLD = 1000;
 export async function middleware(request: NextRequest) {
     const start = Date.now();
 
-    // 점검 모드 체크 (가장 먼저 처리)
+    if (process.env.NODE_ENV === "development") {
+        console.log(`[MIDDLEWARE] MAINTENANCE_MODE: ${MAINTENANCE_MODE}`);
+        console.log(
+            `[MIDDLEWARE] MAINTENANCE_BYPASS_SECRET exists: ${!!MAINTENANCE_BYPASS_SECRET}`
+        );
+        console.log(`[MIDDLEWARE] URL: ${request.url}`);
+    }
+
+    const bypassParam = request.nextUrl.searchParams.get("bypass");
+    if (MAINTENANCE_MODE && bypassParam === MAINTENANCE_BYPASS_SECRET) {
+        console.log(`[BYPASS] Setting bypass cookie and redirecting`);
+        const url = new URL(request.url);
+        url.searchParams.delete("bypass");
+
+        const response = NextResponse.redirect(url);
+        response.cookies.set("maintenance-bypass", MAINTENANCE_BYPASS_SECRET, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 60 * 60 * 24,
+        });
+        return response;
+    }
+
     if (MAINTENANCE_MODE && shouldShowMaintenancePage(request)) {
+        console.log(
+            `[MAINTENANCE] Redirecting to maintenance page: ${request.url}`
+        );
         return NextResponse.redirect(new URL("/maintenance", request.url));
     }
 
@@ -63,22 +89,18 @@ export async function middleware(request: NextRequest) {
 }
 
 function shouldShowMaintenancePage(request: NextRequest): boolean {
-    // 점검 페이지 자체는 제외
     if (request.nextUrl.pathname === "/maintenance") {
         return false;
     }
 
-    // 관리자 페이지는 항상 접근 가능
     if (request.nextUrl.pathname.startsWith("/admin")) {
         return false;
     }
 
-    // API 라우트는 제외 (필요시 조정)
     if (request.nextUrl.pathname.startsWith("/api")) {
         return false;
     }
 
-    // 정적 파일들은 제외
     if (
         request.nextUrl.pathname.match(
             /\.(ico|png|jpg|jpeg|gif|svg|js|css|woff|woff2|ttf|eot)$/
@@ -87,12 +109,37 @@ function shouldShowMaintenancePage(request: NextRequest): boolean {
         return false;
     }
 
-    // 바이패스 시크릿 쿼리 파라미터 체크
-    if (
-        MAINTENANCE_BYPASS_SECRET &&
-        request.nextUrl.searchParams.get("bypass") === MAINTENANCE_BYPASS_SECRET
-    ) {
+    const clientIP =
+        request.headers.get("x-forwarded-for") ||
+        request.headers.get("x-real-ip") ||
+        "unknown";
+
+    if (MAINTENANCE_BYPASS_IPS.includes(clientIP)) {
+        console.log(`[BYPASS] ✅ IP bypass successful for ${clientIP}`);
         return false;
+    }
+
+    const bypassCookie = request.cookies.get("maintenance-bypass");
+    if (bypassCookie && bypassCookie.value === MAINTENANCE_BYPASS_SECRET) {
+        console.log(`[BYPASS] ✅ Cookie bypass successful`);
+        return false;
+    }
+
+    const bypassParam = request.nextUrl.searchParams.get("bypass");
+
+    if (MAINTENANCE_BYPASS_SECRET && bypassParam) {
+        console.log(`[BYPASS] Secret exists: ${!!MAINTENANCE_BYPASS_SECRET}`);
+        console.log(`[BYPASS] Param value: ${bypassParam}`);
+        console.log(
+            `[BYPASS] Match: ${bypassParam === MAINTENANCE_BYPASS_SECRET}`
+        );
+
+        if (bypassParam === MAINTENANCE_BYPASS_SECRET) {
+            console.log(
+                `[BYPASS] ✅ Bypass successful for ${request.nextUrl.pathname}`
+            );
+            return false;
+        }
     }
 
     return true;

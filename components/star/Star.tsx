@@ -1,11 +1,11 @@
 /// components/star/Star.tsx
 
-import type { ArtistWithSPG } from "@/app/actions/artists";
+import type { ArtistsForStarList } from "@/app/actions/artists";
 
 import StarList from "./Star.List";
 
 interface StarProps {
-    artists: ArtistWithSPG[];
+    artists: ArtistsForStarList[] | null;
 }
 
 export default async function Star({ artists }: StarProps) {

@@ -21,26 +21,32 @@ export function useUpdatePlayerAsset() {
     return useMutation({
         mutationFn: updatePlayerAsset,
         onSuccess: (_data, variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: playerAssetsKeys.list({
-                        playerId: variables?.transaction?.playerId || "",
-                        assetId: variables?.transaction?.assetId || "",
-                    }),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: playerAssetsKeys.balances(
-                        variables?.transaction?.playerId || "",
-                        [variables?.transaction?.assetId || ""]
-                    ),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            if (
+                variables?.transaction?.playerId &&
+                variables?.transaction?.assetId
+            ) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: playerAssetsKeys.balances(
+                            variables.transaction.playerId,
+                            [variables.transaction.assetId]
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+
+                queryClient
+                    .invalidateQueries({
+                        queryKey: playerAssetsKeys.detail(
+                            variables.transaction.playerId,
+                            variables.transaction.assetId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
         },
     });
 }
@@ -50,14 +56,29 @@ export function useBatchUpdatePlayerAsset() {
 
     return useMutation({
         mutationFn: batchUpdatePlayerAsset,
-        onSuccess: (_data, _variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: playerAssetsKeys.lists(),
-                })
-                .catch((error) => {
-                    console.error(error);
+        onSuccess: (_data, variables) => {
+            if (variables?.txs && variables.txs.length > 0) {
+                const affectedPlayers = new Set<string>();
+                const affectedAssets = new Set<string>();
+
+                variables.txs.forEach((tx) => {
+                    if (tx.playerId) affectedPlayers.add(tx.playerId);
+                    if (tx.assetId) affectedAssets.add(tx.assetId);
                 });
+
+                affectedPlayers.forEach((playerId) => {
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: playerAssetsKeys.balances(
+                                playerId,
+                                Array.from(affectedAssets)
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        });
+                });
+            }
         },
     });
 }
@@ -117,13 +138,29 @@ export function useGrantPlayerAssetInstances() {
     return useMutation({
         mutationFn: grantPlayerAssetInstances,
         onSuccess: (_data, variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: playerAssetsKeys.instances(variables),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            if (variables?.playerId) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: playerAssetsKeys.instances(variables),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+
+                if (variables.assetId || variables.asset?.id) {
+                    const assetId = variables.assetId || variables.asset?.id;
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: playerAssetsKeys.balances(
+                                variables.playerId,
+                                [assetId!]
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        });
+                }
+            }
         },
     });
 }
@@ -134,13 +171,29 @@ export function useWithdrawPlayerAssetInstances() {
     return useMutation({
         mutationFn: withdrawPlayerAssetInstances,
         onSuccess: (_data, variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: playerAssetsKeys.instances(variables),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            if (variables?.playerId) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: playerAssetsKeys.instances(variables),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+
+                if (variables.assetId || variables.asset?.id) {
+                    const assetId = variables.assetId || variables.asset?.id;
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: playerAssetsKeys.balances(
+                                variables.playerId,
+                                [assetId!]
+                            ),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        });
+                }
+            }
         },
     });
 }
@@ -150,14 +203,35 @@ export function useAutoExpirePlayerAssetInstances() {
 
     return useMutation({
         mutationFn: autoExpirePlayerAssetInstances,
-        onSuccess: (_data, variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: playerAssetsKeys.instances(variables),
-                })
-                .catch((error) => {
-                    console.error(error);
+        onSuccess: (data, variables) => {
+            if (data?.success && data.data?.affectedPlayers) {
+                data.data.affectedPlayers.forEach(playerId => {
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: playerAssetsKeys.instances({ playerId }),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        });
+                    
+                    queryClient
+                        .invalidateQueries({
+                            queryKey: playerAssetsKeys.balances(playerId, []),
+                        })
+                        .catch((error) => {
+                            console.error(error);
+                        });
                 });
+            } else if (variables?.playerId) {
+                // fallback for specific player
+                queryClient
+                    .invalidateQueries({
+                        queryKey: playerAssetsKeys.instances(variables),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
         },
     });
 }

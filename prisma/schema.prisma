@@ -1686,7 +1686,6 @@ model BoardReaction {
   @@unique([playerId, commentId, type])
   @@index([postId, type])
   @@index([commentId, type])
-  @@index([playerId])
 }
 
 model BoardPostReward {
@@ -1967,7 +1966,6 @@ model RaffleParticipant {
   updatedAt DateTime @updatedAt
   
   @@index([playerId])
-  @@index([raffleId, playerId])
   @@index([drawnAt])
   @@index([revealedAt])
   @@index([raffleId, playerId, createdAt])

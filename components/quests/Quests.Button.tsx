@@ -21,6 +21,7 @@ import type { Player, Quest, ReferralLog } from "@prisma/client";
 import Image from "next/image";
 
 import { useQuestGet } from "@/app/hooks/useQuest";
+import PartialLoading from "../atoms/PartialLoading";
 
 // 디바운스 지연 시간 (밀리초)
 const DEBOUNCE_DELAY = 500;
@@ -96,7 +97,6 @@ function QuestsButton({
     const [buttonStyle, setButtonStyle] = useState<string>(
         "gradient-border morp-glass-1"
     );
-    const [isReady, setIsReady] = useState<boolean>(false);
     const [isCountdownComplete, setIsCountdownComplete] =
         useState<boolean>(false);
 
@@ -442,10 +442,6 @@ function QuestsButton({
         }
     }, [quest, playerQuestLog]);
 
-    useEffect(() => {
-        setIsReady(!isLoadingAsset && !isLoadingPlayerQuestLog);
-    }, [isLoadingAsset, isLoadingPlayerQuestLog]);
-
     // 반응형 클래스 계산
     const frameClass = getResponsiveClass(frameSize).frameClass;
     const textClass = getResponsiveClass(textSize).textClass;
@@ -499,239 +495,278 @@ function QuestsButton({
             )}
 
             <AnimatePresence>
-                {isReady && (
-                    <motion.div
-                        initial={{ opacity: 0, x: 100 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -100 }}
-                        transition={{
-                            duration: 0.7,
-                            ease: [0.2, 1, 0.4, 1],
-                            delay: index * 0.1,
-                        }}
+                <motion.div
+                    initial={{ opacity: 0, x: 100 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -100 }}
+                    transition={{
+                        duration: 0.7,
+                        ease: [0.2, 1, 0.4, 1],
+                        delay: index * 0.1,
+                    }}
+                >
+                    <div
+                        onClick={
+                            !buttonState.disabled
+                                ? () => void handleCompleteQuest()
+                                : undefined
+                        }
+                        className={cn(
+                            buttonState.style,
+                            "flex flex-row items-center justify-between rounded-3xl",
+                            "cursor-pointer backdrop-blur-xs",
+                            buttonState.disabled && "cursor-not-allowed",
+                            paddingClass
+                        )}
+                        aria-disabled={buttonState.disabled}
                     >
+                        {!singlePermission && (
+                            <Doorman iconSize={40} textSize={15} row={true} />
+                        )}
                         <div
-                            onClick={
-                                !buttonState.disabled
-                                    ? () => void handleCompleteQuest()
-                                    : undefined
-                            }
                             className={cn(
-                                buttonState.style,
-                                "flex flex-row items-center justify-between rounded-3xl",
-                                "cursor-pointer backdrop-blur-xs",
-                                buttonState.disabled && "cursor-not-allowed",
-                                paddingClass
+                                "flex flex-row items-center",
+                                gapClass,
+                                !singlePermission && "blur-sm"
                             )}
-                            aria-disabled={buttonState.disabled}
                         >
-                            {!singlePermission && (
-                                <Doorman
-                                    iconSize={40}
-                                    textSize={15}
-                                    row={true}
-                                />
-                            )}
-                            <div
-                                className={cn(
-                                    "flex flex-row items-center",
-                                    gapClass,
-                                    !singlePermission && "blur-sm"
-                                )}
-                            >
-                                {/* 퀘스트 아이콘 - 최적화된 이미지 로딩 */}
-                                <Image
-                                    src={quest.icon || "/icons/quests/link.svg"}
-                                    alt={quest.title}
-                                    width={frameSize * 2}
-                                    height={frameSize * 2}
-                                    className={cn(frameClass)}
-                                    priority={false}
-                                    unoptimized={false}
-                                />
+                            {/* 퀘스트 아이콘 - 최적화된 이미지 로딩 */}
+                            <Image
+                                src={quest.icon || "/icons/quests/link.svg"}
+                                alt={quest.title}
+                                width={frameSize * 2}
+                                height={frameSize * 2}
+                                className={cn(frameClass)}
+                                priority={false}
+                                unoptimized={false}
+                            />
 
-                                <div className="flex flex-col items-start gap-[3px] pr-[10px]">
-                                    <div
-                                        className={cn(textClass, "break-words")}
-                                    >
-                                        {quest.title}
-                                    </div>
-                                    <div className="flex flex-row justify-center items-center gap-1 opacity-70">
-                                        <Image
-                                            src={
-                                                asset?.iconUrl ||
-                                                "/ui/assets.svg"
-                                            }
-                                            alt={asset?.name || ""}
-                                            width={assetSize}
-                                            height={assetSize}
-                                            className={cn(
-                                                "object-contain",
-                                                assetFrameClass
+                            <div className="flex flex-col items-start gap-[3px] pr-[10px]">
+                                <div className={cn(textClass, "break-words")}>
+                                    {quest.title}
+                                </div>
+                                <div className="flex flex-row justify-center items-center gap-1 opacity-70">
+                                    {isLoadingAsset ? (
+                                        <PartialLoading
+                                            loadingSize={10}
+                                            className="p-1"
+                                        />
+                                    ) : (
+                                        <>
+                                            <Image
+                                                src={
+                                                    asset?.iconUrl ||
+                                                    "/ui/assets.svg"
+                                                }
+                                                alt={asset?.name || ""}
+                                                width={assetSize}
+                                                height={assetSize}
+                                                className={cn(
+                                                    "object-contain",
+                                                    assetFrameClass
+                                                )}
+                                                priority={false}
+                                                unoptimized={false}
+                                            />
+                                            <div
+                                                className={cn(
+                                                    assetTextClass,
+                                                    "font-bold"
+                                                )}
+                                            >
+                                                {quest.rewardAmount}{" "}
+                                                {asset?.name || ""}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-row items-center gap-2">
+                            {isLoadingPlayerQuestLog ? (
+                                <PartialLoading
+                                    loadingSize={20}
+                                    className="p-2"
+                                />
+                            ) : (
+                                <>
+                                    {/* 레퍼럴 퀘스트 정보 */}
+                                    {quest.isReferral && (
+                                        <div className="flex flex-col items-end text-right gap-[2px]">
+                                            {quest.referralCount && (
+                                                <div
+                                                    className={cn(
+                                                        getResponsiveClass(
+                                                            infoTextSize
+                                                        ).textClass,
+                                                        "opacity-85"
+                                                    )}
+                                                >
+                                                    {Math.min(
+                                                        referralLogs.length ||
+                                                            0,
+                                                        quest.referralCount
+                                                    )}
+                                                    /{quest.referralCount}
+                                                </div>
                                             )}
+                                        </div>
+                                    )}
+
+                                    {/* 반복 가능한 퀘스트 정보 */}
+                                    {!quest.isReferral && quest.repeatable && (
+                                        <div className="flex flex-col items-end text-right gap-[2px]">
+                                            {quest.repeatableCount && (
+                                                <div
+                                                    className={cn(
+                                                        getResponsiveClass(
+                                                            infoTextSize
+                                                        ).textClass,
+                                                        "opacity-85"
+                                                    )}
+                                                >
+                                                    {playerQuestLog?.repeatCount ||
+                                                        0}
+                                                    /{quest.repeatableCount}
+                                                </div>
+                                            )}
+                                            {waitDate &&
+                                                quest.repeatableCount &&
+                                                quest.repeatableCount >
+                                                    (playerQuestLog?.repeatCount ||
+                                                        0) &&
+                                                waitDate.getTime() >
+                                                    new Date().getTime() &&
+                                                !isCountdownComplete && (
+                                                    <Countdown
+                                                        size={15}
+                                                        endDate={waitDate}
+                                                        className="font-digital text-[rgba(255,255,255,0.8)]"
+                                                        onComplete={() =>
+                                                            setIsCountdownComplete(
+                                                                true
+                                                            )
+                                                        }
+                                                    />
+                                                )}
+                                        </div>
+                                    )}
+
+                                    {/* 반복 가능한 퀘스트 정보 */}
+                                    {!quest.isReferral &&
+                                        quest.multiClaimable && (
+                                            <div className="flex flex-col items-end text-right gap-[2px]">
+                                                {Number(quest.multiClaimLimit) >
+                                                    0 && (
+                                                    <div
+                                                        className={cn(
+                                                            getResponsiveClass(
+                                                                infoTextSize
+                                                            ).textClass,
+                                                            "opacity-85"
+                                                        )}
+                                                    >
+                                                        {playerQuestLog?.repeatCount ||
+                                                            0}
+                                                        /{quest.multiClaimLimit}
+                                                    </div>
+                                                )}
+                                                {quest.multiClaimLimit ===
+                                                    0 && (
+                                                    <div
+                                                        className={cn(
+                                                            getResponsiveClass(
+                                                                infoTextSize
+                                                            ).textClass,
+                                                            "opacity-85"
+                                                        )}
+                                                    >
+                                                        {playerQuestLog?.repeatCount ||
+                                                            0}
+                                                    </div>
+                                                )}
+                                                {waitDate &&
+                                                    (Number(
+                                                        quest.multiClaimLimit
+                                                    ) === 0 ||
+                                                        Number(
+                                                            quest.multiClaimLimit
+                                                        ) >
+                                                            (playerQuestLog?.repeatCount ||
+                                                                0)) &&
+                                                    waitDate.getTime() >
+                                                        new Date().getTime() &&
+                                                    !isCountdownComplete && (
+                                                        <Countdown
+                                                            size={15}
+                                                            endDate={waitDate}
+                                                            className="font-digital text-[rgba(255,255,255,0.8)]"
+                                                            onComplete={() =>
+                                                                setIsCountdownComplete(
+                                                                    true
+                                                                )
+                                                            }
+                                                        />
+                                                    )}
+                                            </div>
+                                        )}
+
+                                    {/* 퀘스트 상태에 따른 버튼 또는 아이콘 */}
+                                    {status === "completed" ? (
+                                        !quest.repeatable ||
+                                        !quest.repeatableCount ||
+                                        (playerQuestLog &&
+                                            playerQuestLog.repeatCount >=
+                                                quest.repeatableCount) ? (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    void handleClaimQuestReward(
+                                                        e
+                                                    );
+                                                }}
+                                                disabled={buttonState.disabled}
+                                                className={cn(
+                                                    getResponsiveClass(20)
+                                                        .textClass,
+                                                    getResponsiveClass(20)
+                                                        .paddingClass,
+                                                    "bg-[rgba(139,92,246,0.9)]",
+                                                    "rounded-[8px]",
+                                                    "cursor-pointer",
+                                                    "backdrop-blur-xs",
+                                                    "hover:bg-[rgba(139,92,246,1)] hover:scale-105",
+                                                    "transition-all duration-300",
+                                                    buttonState.disabled &&
+                                                        "opacity-50 cursor-not-allowed hover:scale-100"
+                                                )}
+                                            >
+                                                Claim
+                                            </button>
+                                        ) : (
+                                            // 반복 퀘스트이고 최대 반복 횟수에 도달하지 않았으면 화살표 아이콘 표시
+                                            <Image
+                                                src="/ui/arrow-right.svg"
+                                                alt="arrow-right"
+                                                width={arrowSize}
+                                                height={arrowSize}
+                                                className={cn(arrowClass)}
+                                                priority={false}
+                                                unoptimized={false}
+                                            />
+                                        )
+                                    ) : status === "claimed" ? (
+                                        <Image
+                                            src="/ui/checked.svg"
+                                            alt="checked"
+                                            width={arrowSize}
+                                            height={arrowSize}
+                                            className={cn(arrowClass)}
                                             priority={false}
                                             unoptimized={false}
                                         />
-                                        <div
-                                            className={cn(
-                                                assetTextClass,
-                                                "font-bold"
-                                            )}
-                                        >
-                                            {quest.rewardAmount}{" "}
-                                            {asset?.name || ""}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-row items-center gap-2">
-                                {/* 레퍼럴 퀘스트 정보 */}
-                                {quest.isReferral && (
-                                    <div className="flex flex-col items-end text-right gap-[2px]">
-                                        {quest.referralCount && (
-                                            <div
-                                                className={cn(
-                                                    getResponsiveClass(
-                                                        infoTextSize
-                                                    ).textClass,
-                                                    "opacity-85"
-                                                )}
-                                            >
-                                                {Math.min(
-                                                    referralLogs.length || 0,
-                                                    quest.referralCount
-                                                )}
-                                                /{quest.referralCount}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* 반복 가능한 퀘스트 정보 */}
-                                {!quest.isReferral && quest.repeatable && (
-                                    <div className="flex flex-col items-end text-right gap-[2px]">
-                                        {quest.repeatableCount && (
-                                            <div
-                                                className={cn(
-                                                    getResponsiveClass(
-                                                        infoTextSize
-                                                    ).textClass,
-                                                    "opacity-85"
-                                                )}
-                                            >
-                                                {playerQuestLog?.repeatCount ||
-                                                    0}
-                                                /{quest.repeatableCount}
-                                            </div>
-                                        )}
-                                        {waitDate &&
-                                            quest.repeatableCount &&
-                                            quest.repeatableCount >
-                                                (playerQuestLog?.repeatCount ||
-                                                    0) &&
-                                            waitDate.getTime() >
-                                                new Date().getTime() &&
-                                            !isCountdownComplete && (
-                                                <Countdown
-                                                    size={15}
-                                                    endDate={waitDate}
-                                                    className="font-digital text-[rgba(255,255,255,0.8)]"
-                                                    onComplete={() =>
-                                                        setIsCountdownComplete(
-                                                            true
-                                                        )
-                                                    }
-                                                />
-                                            )}
-                                    </div>
-                                )}
-
-                                {/* 반복 가능한 퀘스트 정보 */}
-                                {!quest.isReferral && quest.multiClaimable && (
-                                    <div className="flex flex-col items-end text-right gap-[2px]">
-                                        {Number(quest.multiClaimLimit) > 0 && (
-                                            <div
-                                                className={cn(
-                                                    getResponsiveClass(
-                                                        infoTextSize
-                                                    ).textClass,
-                                                    "opacity-85"
-                                                )}
-                                            >
-                                                {playerQuestLog?.repeatCount ||
-                                                    0}
-                                                /{quest.multiClaimLimit}
-                                            </div>
-                                        )}
-                                        {quest.multiClaimLimit === 0 && (
-                                            <div
-                                                className={cn(
-                                                    getResponsiveClass(
-                                                        infoTextSize
-                                                    ).textClass,
-                                                    "opacity-85"
-                                                )}
-                                            >
-                                                {playerQuestLog?.repeatCount ||
-                                                    0}
-                                            </div>
-                                        )}
-                                        {waitDate &&
-                                            (Number(quest.multiClaimLimit) ===
-                                                0 ||
-                                                Number(quest.multiClaimLimit) >
-                                                    (playerQuestLog?.repeatCount ||
-                                                        0)) &&
-                                            waitDate.getTime() >
-                                                new Date().getTime() &&
-                                            !isCountdownComplete && (
-                                                <Countdown
-                                                    size={15}
-                                                    endDate={waitDate}
-                                                    className="font-digital text-[rgba(255,255,255,0.8)]"
-                                                    onComplete={() =>
-                                                        setIsCountdownComplete(
-                                                            true
-                                                        )
-                                                    }
-                                                />
-                                            )}
-                                    </div>
-                                )}
-
-                                {/* 퀘스트 상태에 따른 버튼 또는 아이콘 */}
-                                {status === "completed" ? (
-                                    !quest.repeatable ||
-                                    !quest.repeatableCount ||
-                                    (playerQuestLog &&
-                                        playerQuestLog.repeatCount >=
-                                            quest.repeatableCount) ? (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                void handleClaimQuestReward(e);
-                                            }}
-                                            disabled={buttonState.disabled}
-                                            className={cn(
-                                                getResponsiveClass(20)
-                                                    .textClass,
-                                                getResponsiveClass(20)
-                                                    .paddingClass,
-                                                "bg-[rgba(139,92,246,0.9)]",
-                                                "rounded-[8px]",
-                                                "cursor-pointer",
-                                                "backdrop-blur-xs",
-                                                "hover:bg-[rgba(139,92,246,1)] hover:scale-105",
-                                                "transition-all duration-300",
-                                                buttonState.disabled &&
-                                                    "opacity-50 cursor-not-allowed hover:scale-100"
-                                            )}
-                                        >
-                                            Claim
-                                        </button>
                                     ) : (
-                                        // 반복 퀘스트이고 최대 반복 횟수에 도달하지 않았으면 화살표 아이콘 표시
                                         <Image
                                             src="/ui/arrow-right.svg"
                                             alt="arrow-right"
@@ -741,32 +776,12 @@ function QuestsButton({
                                             priority={false}
                                             unoptimized={false}
                                         />
-                                    )
-                                ) : status === "claimed" ? (
-                                    <Image
-                                        src="/ui/checked.svg"
-                                        alt="checked"
-                                        width={arrowSize}
-                                        height={arrowSize}
-                                        className={cn(arrowClass)}
-                                        priority={false}
-                                        unoptimized={false}
-                                    />
-                                ) : (
-                                    <Image
-                                        src="/ui/arrow-right.svg"
-                                        alt="arrow-right"
-                                        width={arrowSize}
-                                        height={arrowSize}
-                                        className={cn(arrowClass)}
-                                        priority={false}
-                                        unoptimized={false}
-                                    />
-                                )}
-                            </div>
+                                    )}
+                                </>
+                            )}
                         </div>
-                    </motion.div>
-                )}
+                    </div>
+                </motion.div>
             </AnimatePresence>
         </>
     );

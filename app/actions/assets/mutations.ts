@@ -54,9 +54,17 @@ export function useUpdateAsset() {
 
     return useMutation({
         mutationFn: (input: UpdateAssetInput) => updateAsset(input),
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             queryClient
                 .invalidateQueries({ queryKey: assetKeys.all })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            queryClient
+                .invalidateQueries({
+                    queryKey: assetKeys.byId(variables.id),
+                })
                 .catch((error) => {
                     console.error(error);
                 });
@@ -156,11 +164,6 @@ export function useAddAssetFunction() {
         mutationFn: (input: AddAssetFunctionInput) => addAssetFunction(input),
         onSuccess: (_data, variables) => {
             queryClient
-                .invalidateQueries({ queryKey: assetKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
                 .invalidateQueries({
                     queryKey: assetKeys.byId(variables.assetId),
                 })
@@ -178,11 +181,6 @@ export function useExecuteAssetFunction() {
             executeAssetFunction(input),
         onSuccess: (_data, variables) => {
             queryClient
-                .invalidateQueries({ queryKey: assetKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
                 .invalidateQueries({
                     queryKey: assetKeys.byId(variables.assetId),
                 })
@@ -198,11 +196,6 @@ export function useAirdropAsset() {
     return useMutation({
         mutationFn: (input: AirdropAssetInput) => airdropAsset(input),
         onSuccess: (_data, variables) => {
-            queryClient
-                .invalidateQueries({ queryKey: assetKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
             queryClient
                 .invalidateQueries({
                     queryKey: assetKeys.byId(variables.assetId),
@@ -221,17 +214,22 @@ export function useDeployAssetsContract() {
             deployAssetsContract(input),
         onSuccess: (data, _variables) => {
             queryClient
-                .invalidateQueries({ queryKey: assetKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
                 .invalidateQueries({
-                    queryKey: assetKeys.contract(data.data?.address || ""),
+                    queryKey: assetKeys.all,
                 })
                 .catch((error) => {
                     console.error(error);
                 });
+
+            if (data.data?.address) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: assetKeys.contract(data.data.address),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
         },
     });
 }
@@ -242,23 +240,20 @@ export function useCreateAssetInstance() {
         mutationFn: (input: CreateAssetInstanceInput) =>
             createAssetInstance(input),
         onSuccess: (data, variables) => {
-            queryClient
-                .invalidateQueries({ queryKey: assetKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
-
-            queryClient
-                .invalidateQueries({
-                    queryKey: assetKeys.instances({
-                        filter: {
-                            assetId: variables.assetId,
-                        },
-                    }),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            if (variables.assetId || variables.asset?.id) {
+                const assetId = variables.assetId || variables.asset?.id;
+                queryClient
+                    .invalidateQueries({
+                        queryKey: assetKeys.instances({
+                            filter: {
+                                assetId: assetId,
+                            },
+                        }),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
         },
     });
 }

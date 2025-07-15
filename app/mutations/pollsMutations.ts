@@ -21,17 +21,13 @@ export function useCreatePollMutation() {
         mutationFn: createPoll,
         onSuccess: (_data, variables) => {
             queryClient
-                .invalidateQueries({ queryKey: pollKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
                 .invalidateQueries({
                     queryKey: pollKeys.list(),
                 })
                 .catch((error) => {
                     console.error(error);
                 });
+
             queryClient
                 .invalidateQueries({
                     queryKey: pollKeys.lists(),
@@ -40,15 +36,17 @@ export function useCreatePollMutation() {
                     console.error(error);
                 });
 
-            queryClient
-                .invalidateQueries({
-                    queryKey: pollKeys.artistAllActivePollCount(
-                        variables.artistId
-                    ),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            if (variables.artistId) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: pollKeys.artistAllActivePollCount(
+                            variables.artistId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
         },
         onError: (error) => {
             console.error("Error creating poll:", error);
@@ -61,12 +59,7 @@ export function useUpdatePollMutation() {
 
     return useMutation({
         mutationFn: updatePoll,
-        onSuccess: (updatePoll) => {
-            queryClient
-                .invalidateQueries({ queryKey: pollKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
+        onSuccess: (updatePoll, variables) => {
             queryClient
                 .invalidateQueries({
                     queryKey: pollKeys.detail(updatePoll.id),
@@ -74,20 +67,48 @@ export function useUpdatePollMutation() {
                 .catch((error) => {
                     console.error(error);
                 });
-            queryClient
-                .invalidateQueries({
-                    queryKey: pollKeys.list(),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: pollKeys.lists(),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+
+            const shouldInvalidateList =
+                variables.title !== undefined ||
+                variables.status !== undefined ||
+                variables.isActive !== undefined ||
+                variables.category !== undefined ||
+                variables.startDate !== undefined ||
+                variables.endDate !== undefined ||
+                variables.showOnPollPage !== undefined ||
+                variables.showOnStarPage !== undefined ||
+                variables.exposeInScheduleTab !== undefined ||
+                variables.artistId !== undefined;
+
+            if (shouldInvalidateList) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: pollKeys.list(),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+
+                queryClient
+                    .invalidateQueries({
+                        queryKey: pollKeys.lists(),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
+
+            if (variables.isActive !== undefined && variables.artistId) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: pollKeys.artistAllActivePollCount(
+                            variables.artistId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
         },
         onError: (error) => {
             console.error("Error updating poll:", error);
@@ -102,17 +123,13 @@ export function useDeletePollMutation() {
         mutationFn: deletePoll,
         onSuccess: (deletedPoll) => {
             queryClient
-                .invalidateQueries({ queryKey: pollKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
                 .invalidateQueries({
                     queryKey: pollKeys.detail(deletedPoll.id),
                 })
                 .catch((error) => {
                     console.error(error);
                 });
+
             queryClient
                 .invalidateQueries({
                     queryKey: pollKeys.list(),
@@ -120,6 +137,7 @@ export function useDeletePollMutation() {
                 .catch((error) => {
                     console.error(error);
                 });
+
             queryClient
                 .invalidateQueries({
                     queryKey: pollKeys.lists(),
@@ -127,6 +145,18 @@ export function useDeletePollMutation() {
                 .catch((error) => {
                     console.error(error);
                 });
+
+            if (deletedPoll.artistId) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: pollKeys.artistAllActivePollCount(
+                            deletedPoll.artistId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
         },
         onError: (error) => {
             console.error("Error deleting poll:", error);
@@ -255,18 +285,12 @@ export function useUpdateActivePollMutation() {
         onSuccess: (_data, variables) => {
             queryClient
                 .invalidateQueries({
-                    queryKey: pollKeys.all,
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
                     queryKey: pollKeys.detail(variables.pollId),
                 })
                 .catch((error) => {
                     console.error(error);
                 });
+
             queryClient
                 .invalidateQueries({
                     queryKey: pollKeys.list(),
@@ -274,6 +298,7 @@ export function useUpdateActivePollMutation() {
                 .catch((error) => {
                     console.error(error);
                 });
+
             queryClient
                 .invalidateQueries({
                     queryKey: pollKeys.lists(),

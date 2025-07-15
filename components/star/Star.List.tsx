@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createArtistGradients } from "@/lib/utils/artist-styles";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import { useArtistsGet } from "@/app/hooks/useArtists";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import Link from "next/link";
 import Image from "next/image";
@@ -16,9 +15,12 @@ import { useBoards } from "@/app/actions/boards/hooks";
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { useQuestGet } from "@/app/hooks/useQuest";
 
-export default memo(function StarList() {
+interface StarListProps {
+    artists: ArtistsForStarList[] | null;
+}
+
+export default memo(function StarList({ artists }: StarListProps) {
     const [hoveredArtist, setHoveredArtist] = useState<string | null>(null);
-    const { artistsForStarList } = useArtistsGet();
 
     return (
         <div
@@ -39,7 +41,7 @@ export default memo(function StarList() {
 
             {/* Artists Grid */}
             <AnimatePresence mode="wait">
-                {artistsForStarList && artistsForStarList.length > 0 ? (
+                {artists && artists.length > 0 ? (
                     <motion.div
                         key="artists"
                         initial={{ opacity: 0 }}
@@ -51,7 +53,7 @@ export default memo(function StarList() {
                             getResponsiveClass(70).gapClass
                         )}
                     >
-                        {artistsForStarList.map((artist, index) => (
+                        {artists.map((artist, index) => (
                             <ArtistCard
                                 key={artist.id}
                                 artist={artist}

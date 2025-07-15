@@ -26,8 +26,8 @@ export function useCreateQuestMutation() {
     return useMutation({
         mutationFn: createQuest,
         onMutate: async (_variables) => {
-            await queryClient.cancelQueries({ queryKey: questKeys.all });
             await queryClient.cancelQueries({ queryKey: questKeys.list() });
+            await queryClient.cancelQueries({ queryKey: questKeys.infinite() });
 
             const previousQuests = queryClient.getQueryData(questKeys.list());
 
@@ -35,25 +35,28 @@ export function useCreateQuestMutation() {
         },
         onSuccess: (data, variables, _context) => {
             queryClient
-                .invalidateQueries({ queryKey: questKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
                 .invalidateQueries({ queryKey: questKeys.list() })
                 .catch((error) => {
                     console.error(error);
                 });
 
             queryClient
-                .invalidateQueries({
-                    queryKey: questKeys.artistAllActiveQuestCount(
-                        variables.artistId ?? ""
-                    ),
-                })
+                .invalidateQueries({ queryKey: questKeys.infinite() })
                 .catch((error) => {
                     console.error(error);
                 });
+
+            if (variables.artistId) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: questKeys.artistAllActiveQuestCount(
+                            variables.artistId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
 
             if (data?.id) {
                 queryClient
@@ -87,7 +90,6 @@ export function useUpdateQuestMutation() {
     return useMutation({
         mutationFn: updateQuest,
         onMutate: async (variables) => {
-            await queryClient.cancelQueries({ queryKey: questKeys.all });
             await queryClient.cancelQueries({ queryKey: questKeys.list() });
             await queryClient.cancelQueries({
                 queryKey: questKeys.detail({ id: variables.id }),
@@ -112,22 +114,48 @@ export function useUpdateQuestMutation() {
         },
         onSuccess: (_data, variables, _context) => {
             queryClient
-                .invalidateQueries({ queryKey: questKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({ queryKey: questKeys.list() })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
                 .invalidateQueries({
                     queryKey: questKeys.detail({ id: variables.id }),
                 })
                 .catch((error) => {
                     console.error(error);
                 });
+
+            const shouldInvalidateList =
+                variables.title !== undefined ||
+                variables.isActive !== undefined ||
+                variables.order !== undefined ||
+                variables.startDate !== undefined ||
+                variables.endDate !== undefined ||
+                variables.permanent !== undefined ||
+                variables.artistId !== undefined ||
+                variables.type !== undefined;
+
+            if (shouldInvalidateList) {
+                queryClient
+                    .invalidateQueries({ queryKey: questKeys.list() })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+
+                queryClient
+                    .invalidateQueries({ queryKey: questKeys.infinite() })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
+
+            if (variables.isActive !== undefined && variables.artistId) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: questKeys.artistAllActiveQuestCount(
+                            variables.artistId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
         },
         onError: (error, variables, context) => {
             console.error("Error updating quest:", error);
@@ -148,8 +176,8 @@ export function useUpdateQuestOrderMutation() {
     return useMutation({
         mutationFn: updateQuestOrder,
         onMutate: async (_variables) => {
-            await queryClient.cancelQueries({ queryKey: questKeys.all });
             await queryClient.cancelQueries({ queryKey: questKeys.list() });
+            await queryClient.cancelQueries({ queryKey: questKeys.infinite() });
 
             const previousQuests = queryClient.getQueryData(questKeys.list());
 
@@ -157,12 +185,13 @@ export function useUpdateQuestOrderMutation() {
         },
         onSuccess: (_data, _variables, _context) => {
             queryClient
-                .invalidateQueries({ queryKey: questKeys.all })
+                .invalidateQueries({ queryKey: questKeys.list() })
                 .catch((error) => {
                     console.error(error);
                 });
+
             queryClient
-                .invalidateQueries({ queryKey: questKeys.list() })
+                .invalidateQueries({ queryKey: questKeys.infinite() })
                 .catch((error) => {
                     console.error(error);
                 });
@@ -189,8 +218,8 @@ export function useDeleteQuestMutation() {
     return useMutation({
         mutationFn: deleteQuest,
         onMutate: async (variables) => {
-            await queryClient.cancelQueries({ queryKey: questKeys.all });
             await queryClient.cancelQueries({ queryKey: questKeys.list() });
+            await queryClient.cancelQueries({ queryKey: questKeys.infinite() });
             await queryClient.cancelQueries({
                 queryKey: questKeys.detail({ id: variables.id }),
             });
@@ -218,22 +247,35 @@ export function useDeleteQuestMutation() {
 
             return { previousQuests, previousQuest };
         },
-        onSuccess: (_data, _variables, _context) => {
-            queryClient
-                .invalidateQueries({ queryKey: questKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
+        onSuccess: (_data, variables, _context) => {
             queryClient
                 .invalidateQueries({ queryKey: questKeys.list() })
                 .catch((error) => {
                     console.error(error);
                 });
+
+            queryClient
+                .invalidateQueries({ queryKey: questKeys.infinite() })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            const previousQuest = _context?.previousQuest as Quest | null;
+            if (previousQuest?.artistId) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: questKeys.artistAllActiveQuestCount(
+                            previousQuest.artistId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
         },
         onError: (error, variables, context) => {
             console.error("Error deleting quest:", error);
 
-            // 오류 발생 시 이전 상태로 롤백
             if (context?.previousQuests) {
                 queryClient.setQueryData(
                     questKeys.list(),
@@ -283,16 +325,9 @@ export function useCompleteQuestMutation() {
         onSuccess: (_data, variables, _context) => {
             if (!variables?.quest?.id || !variables?.player?.id) return;
 
-            queryClient
-                .invalidateQueries({ queryKey: questKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({ queryKey: questKeys.list() })
-                .catch((error) => {
-                    console.error(error);
-                });
+            // 🎯 최적화: 특정 퀘스트와 플레이어에 대해서만 무효화
+
+            // 1. 특정 퀘스트 상세 정보만 무효화
             queryClient
                 .invalidateQueries({
                     queryKey: questKeys.detail({
@@ -302,6 +337,8 @@ export function useCompleteQuestMutation() {
                 .catch((error) => {
                     console.error(error);
                 });
+
+            // 2. 특정 퀘스트 완료 상태만 무효화
             queryClient
                 .invalidateQueries({
                     queryKey: questKeys.complete({
@@ -312,6 +349,79 @@ export function useCompleteQuestMutation() {
                 .catch((error) => {
                     console.error(error);
                 });
+
+            // 3. 특정 플레이어의 특정 퀘스트 로그만 무효화 (Quest Button용)
+            queryClient
+                .invalidateQueries({
+                    queryKey: questKeys.playerQuestLog({
+                        questId: variables?.quest?.id,
+                        playerId: variables?.player?.id,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            // 4. 특정 플레이어의 로그들만 무효화 (대시보드용)
+            queryClient
+                .invalidateQueries({
+                    queryKey: questKeys.playerLogs({
+                        playerId: variables?.player?.id,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            queryClient
+                .invalidateQueries({
+                    queryKey: questKeys.activeLogs({
+                        playerId: variables?.player?.id,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            queryClient
+                .invalidateQueries({
+                    queryKey: questKeys.completedLogs({
+                        playerId: variables?.player?.id,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            // 5. 필요한 경우에만 리스트 무효화 (반복 퀘스트인 경우)
+            if (
+                variables?.quest?.repeatable ||
+                variables?.quest?.multiClaimable
+            ) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: questKeys.list(),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
+
+            // 6. 필요한 경우에만 무한 스크롤 무효화 (퀘스트 순서가 변경될 수 있는 경우)
+            if (
+                variables?.quest?.repeatable ||
+                variables?.quest?.multiClaimable
+            ) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: questKeys.infinite(),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
+
+            // 7. 완료 - 모든 필요한 쿼리 무효화 완료
         },
         onError: (error, variables, context) => {
             console.error("Error completing quest:", error);
@@ -336,18 +446,9 @@ export function useClaimQuestRewardMutation() {
     return useMutation({
         mutationFn: claimQuestReward,
         onSuccess: (_data, variables) => {
-            queryClient
-                .invalidateQueries({ queryKey: questKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: questKeys.list(),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            if (!variables?.questLog?.questId || !variables?.questLog?.playerId)
+                return;
+
             queryClient
                 .invalidateQueries({
                     queryKey: questKeys.detail({
@@ -357,6 +458,7 @@ export function useClaimQuestRewardMutation() {
                 .catch((error) => {
                     console.error(error);
                 });
+
             queryClient
                 .invalidateQueries({
                     queryKey: questKeys.complete({
@@ -367,6 +469,48 @@ export function useClaimQuestRewardMutation() {
                 .catch((error) => {
                     console.error(error);
                 });
+
+            queryClient
+                .invalidateQueries({
+                    queryKey: questKeys.playerQuestLog({
+                        questId: variables?.questLog?.questId,
+                        playerId: variables?.questLog?.playerId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            queryClient
+                .invalidateQueries({
+                    queryKey: questKeys.claimableLogs({
+                        playerId: variables?.questLog?.playerId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            queryClient
+                .invalidateQueries({
+                    queryKey: questKeys.claimedLogs({
+                        playerId: variables?.questLog?.playerId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            queryClient
+                .invalidateQueries({
+                    queryKey: questKeys.playerLogs({
+                        playerId: variables?.questLog?.playerId,
+                    }),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
             queryClient
                 .invalidateQueries({
                     queryKey: playerAssetsKeys.balances(
@@ -387,13 +531,16 @@ export function useUpdateQuestActiveMutation() {
         mutationFn: updateQuestActive,
         onSuccess: (_data, _variables) => {
             queryClient
-                .invalidateQueries({ queryKey: questKeys.all })
+                .invalidateQueries({
+                    queryKey: questKeys.list(),
+                })
                 .catch((error) => {
                     console.error(error);
                 });
+
             queryClient
                 .invalidateQueries({
-                    queryKey: questKeys.list(),
+                    queryKey: questKeys.infinite(),
                 })
                 .catch((error) => {
                     console.error(error);

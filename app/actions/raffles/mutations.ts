@@ -26,8 +26,8 @@ export function useCreateRaffleMutation() {
     return useMutation({
         mutationFn: createRaffle,
         onMutate: async (_variables) => {
-            await queryClient.cancelQueries({ queryKey: raffleKeys.all });
             await queryClient.cancelQueries({ queryKey: raffleKeys.lists() });
+            await queryClient.cancelQueries({ queryKey: raffleKeys.list() });
 
             const previousRaffles = queryClient.getQueryData(
                 raffleKeys.lists()
@@ -35,14 +35,15 @@ export function useCreateRaffleMutation() {
 
             return { previousRaffles };
         },
-        onSuccess: (data, _variables, _context) => {
+        onSuccess: (data, variables, _context) => {
             queryClient
-                .invalidateQueries({ queryKey: raffleKeys.all })
+                .invalidateQueries({ queryKey: raffleKeys.lists() })
                 .catch((error) => {
                     console.error(error);
                 });
+
             queryClient
-                .invalidateQueries({ queryKey: raffleKeys.lists() })
+                .invalidateQueries({ queryKey: raffleKeys.list() })
                 .catch((error) => {
                     console.error(error);
                 });
@@ -51,6 +52,16 @@ export function useCreateRaffleMutation() {
                 queryClient
                     .invalidateQueries({
                         queryKey: raffleKeys.detail(data.data.id),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
+
+            if (variables.artistId) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: raffleKeys.byArtist(variables.artistId),
                     })
                     .catch((error) => {
                         console.error(error);
@@ -79,8 +90,8 @@ export function useUpdateRaffleMutation() {
     return useMutation({
         mutationFn: updateRaffle,
         onMutate: async (variables) => {
-            await queryClient.cancelQueries({ queryKey: raffleKeys.all });
             await queryClient.cancelQueries({ queryKey: raffleKeys.lists() });
+            await queryClient.cancelQueries({ queryKey: raffleKeys.list() });
             await queryClient.cancelQueries({
                 queryKey: raffleKeys.detail(variables.id),
             });
@@ -100,22 +111,45 @@ export function useUpdateRaffleMutation() {
             }
 
             queryClient
-                .invalidateQueries({ queryKey: raffleKeys.all })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({ queryKey: raffleKeys.lists() })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.detail(variables.id),
                 })
                 .catch((error) => {
                     console.error(error);
                 });
+
+            const shouldInvalidateList =
+                variables.title !== undefined ||
+                variables.startDate !== undefined ||
+                variables.endDate !== undefined ||
+                variables.drawDate !== undefined ||
+                variables.isPublic !== undefined ||
+                variables.displayType !== undefined ||
+                variables.artistId !== undefined;
+
+            if (shouldInvalidateList) {
+                queryClient
+                    .invalidateQueries({ queryKey: raffleKeys.lists() })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+
+                queryClient
+                    .invalidateQueries({ queryKey: raffleKeys.list() })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
+
+            if (variables.artistId !== undefined) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: raffleKeys.byArtist(variables.artistId),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
         },
         onError: (error, variables, context) => {
             console.error("Error updating raffle:", error);
@@ -169,7 +203,6 @@ export function useParticipateRaffleMutation() {
                 throw new Error(data.error || "Error participating in raffle");
             }
 
-            // 래플 상세 정보 갱신
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.detail(variables.raffleId),
@@ -178,7 +211,6 @@ export function useParticipateRaffleMutation() {
                     console.error(error);
                 });
 
-            // 참가자 목록 갱신
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.participants.all(variables.raffleId),
@@ -187,7 +219,6 @@ export function useParticipateRaffleMutation() {
                     console.error(error);
                 });
 
-            // 🎯 핵심: 플레이어별 참가 목록 갱신 (Record 페이지용)
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.playerParticipations(
@@ -199,7 +230,17 @@ export function useParticipateRaffleMutation() {
                     console.error(error);
                 });
 
-            // 🎯 핵심: 미공개 결과 개수 갱신 (Record 페이지용)
+            queryClient
+                .invalidateQueries({
+                    queryKey: raffleKeys.playerParticipationsInfinite(
+                        variables.raffleId,
+                        variables.playerId
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.unrevealedCount(
@@ -211,7 +252,17 @@ export function useParticipateRaffleMutation() {
                     console.error(error);
                 });
 
-            // 플레이어 에셋 잔액 갱신 (참가비 차감 반영)
+            queryClient
+                .invalidateQueries({
+                    queryKey: raffleKeys.userParticipation(
+                        variables.raffleId,
+                        variables.playerId
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
             queryClient
                 .invalidateQueries({
                     queryKey: playerAssetsKeys.balances(variables.playerId),
@@ -220,23 +271,25 @@ export function useParticipateRaffleMutation() {
                     console.error(error);
                 });
 
-            // 즉시 공개 래플인 경우 당첨자 목록도 갱신
-            queryClient
-                .invalidateQueries({
-                    queryKey: raffleKeys.winners.all(variables.raffleId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            if (data.data?.prizeId) {
+                queryClient
+                    .invalidateQueries({
+                        queryKey: raffleKeys.winners.all(variables.raffleId),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
 
-            // 🎯 즉시 공개 래플인 경우 플레이어별 당첨자 목록도 갱신
-            queryClient
-                .invalidateQueries({
-                    queryKey: raffleKeys.winners.byPlayer(variables.playerId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: raffleKeys.winners.byPlayer(
+                            variables.playerId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
         },
         onError: (error, variables, context) => {
             console.error("Error participating in raffle:", error);
@@ -274,7 +327,6 @@ export function useRevealRaffleResultMutation() {
                 throw new Error(data.error || "Error revealing raffle result");
             }
 
-            // 참가자 정보 갱신
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.participants.all(variables.raffleId),
@@ -283,7 +335,6 @@ export function useRevealRaffleResultMutation() {
                     console.error(error);
                 });
 
-            // 플레이어별 참가 목록 갱신 (올바른 키 사용)
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.playerParticipations(
@@ -295,7 +346,17 @@ export function useRevealRaffleResultMutation() {
                     console.error(error);
                 });
 
-            // 미공개 결과 개수도 갱신
+            queryClient
+                .invalidateQueries({
+                    queryKey: raffleKeys.playerParticipationsInfinite(
+                        variables.raffleId,
+                        variables.playerId
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.unrevealedCount(
@@ -344,7 +405,6 @@ export function useDrawAllWinnersMutation() {
                 throw new Error(data.error || "Error drawing winners");
             }
 
-            // 래플 상세 정보 갱신
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.detail(variables.raffleId),
@@ -353,7 +413,6 @@ export function useDrawAllWinnersMutation() {
                     console.error(error);
                 });
 
-            // 당첨자 목록 갱신
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.winners.all(variables.raffleId),
@@ -362,7 +421,6 @@ export function useDrawAllWinnersMutation() {
                     console.error(error);
                 });
 
-            // 참가자 목록 갱신 (추첨 결과 반영)
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.participants.all(variables.raffleId),
@@ -371,10 +429,17 @@ export function useDrawAllWinnersMutation() {
                     console.error(error);
                 });
 
-            // 래플 목록 갱신 (상태 변경 반영)
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.lists(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            queryClient
+                .invalidateQueries({
+                    queryKey: raffleKeys.list(),
                 })
                 .catch((error) => {
                     console.error(error);
@@ -427,7 +492,6 @@ export function useDistributePrizesMutation() {
                 throw new Error(data.error || "Error distributing prizes");
             }
 
-            // 당첨자 목록 갱신 (배포 상태 반영)
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.winners.all(variables.raffleId),
@@ -436,7 +500,14 @@ export function useDistributePrizesMutation() {
                     console.error(error);
                 });
 
-            // 특정 플레이어 대상 배포인 경우 해당 플레이어의 에셋 잔액 갱신
+            queryClient
+                .invalidateQueries({
+                    queryKey: raffleKeys.detail(variables.raffleId),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
             if (variables.playerId) {
                 queryClient
                     .invalidateQueries({
@@ -456,7 +527,6 @@ export function useDistributePrizesMutation() {
                         console.error(error);
                     });
 
-                // 🎯 상품 배포 후 Record 페이지 갱신 (배포 상태 반영)
                 queryClient
                     .invalidateQueries({
                         queryKey: raffleKeys.playerParticipations(
@@ -467,16 +537,18 @@ export function useDistributePrizesMutation() {
                     .catch((error) => {
                         console.error(error);
                     });
-            }
 
-            // 래플 상세 정보 갱신
-            queryClient
-                .invalidateQueries({
-                    queryKey: raffleKeys.detail(variables.raffleId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: raffleKeys.playerParticipationsInfinite(
+                            variables.raffleId,
+                            variables.playerId
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }
         },
         onError: (error, variables, context) => {
             console.error("Error distributing prizes:", error);
@@ -509,7 +581,6 @@ export function useRevealAllRaffleResultsMutation() {
                 );
             }
 
-            // 참가자 정보 갱신
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.participants.all(variables.raffleId),
@@ -518,7 +589,6 @@ export function useRevealAllRaffleResultsMutation() {
                     console.error(error);
                 });
 
-            // 플레이어별 참가 목록 갱신 (올바른 키 사용)
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.playerParticipations(
@@ -530,7 +600,17 @@ export function useRevealAllRaffleResultsMutation() {
                     console.error(error);
                 });
 
-            // 미공개 결과 개수도 갱신
+            queryClient
+                .invalidateQueries({
+                    queryKey: raffleKeys.playerParticipationsInfinite(
+                        variables.raffleId,
+                        variables.playerId
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.unrevealedCount(
@@ -562,7 +642,6 @@ export function useBulkRevealResultsMutation() {
                 throw new Error(data.error || "Error bulk revealing results");
             }
 
-            // 참가자 정보 갱신
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.participants.all(variables.raffleId),
@@ -571,7 +650,6 @@ export function useBulkRevealResultsMutation() {
                     console.error(error);
                 });
 
-            // 플레이어별 참가 목록 갱신 (올바른 키 사용)
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.playerParticipations(
@@ -583,7 +661,17 @@ export function useBulkRevealResultsMutation() {
                     console.error(error);
                 });
 
-            // 미공개 결과 개수도 갱신
+            queryClient
+                .invalidateQueries({
+                    queryKey: raffleKeys.playerParticipationsInfinite(
+                        variables.raffleId,
+                        variables.playerId
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
             queryClient
                 .invalidateQueries({
                     queryKey: raffleKeys.unrevealedCount(

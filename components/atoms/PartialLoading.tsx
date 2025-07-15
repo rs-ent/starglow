@@ -8,19 +8,24 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
 interface PartialLoadingProps {
-    text: string;
+    text?: string;
     loadingSize?: number;
     textSize?: number;
+    className?: string;
 }
 
 function PartialLoading({
-    text = "Loading...",
+    text,
     loadingSize = 40,
     textSize = 5,
+    className,
 }: PartialLoadingProps) {
     return (
         <div
-            className="flex flex-col items-center justify-center w-full h-full"
+            className={cn(
+                "flex flex-col items-center justify-center w-full h-full",
+                className
+            )}
             role="status"
             aria-label={text}
             aria-live="polite"
@@ -32,14 +37,16 @@ function PartialLoading({
                     getResponsiveClass(loadingSize).frameClass
                 )}
             />
-            <p
-                className={cn(
-                    "mt-1 text-muted-foreground animate-pulse text-center",
-                    getResponsiveClass(textSize).textClass
-                )}
-            >
-                {text}
-            </p>
+            {text && (
+                <p
+                    className={cn(
+                        "mt-1 text-muted-foreground animate-pulse text-center",
+                        getResponsiveClass(textSize).textClass
+                    )}
+                >
+                    {text}
+                </p>
+            )}
         </div>
     );
 }

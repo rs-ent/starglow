@@ -25,9 +25,13 @@ import type { NextAuthConfig } from "next-auth";
 
 const isProd = process.env.NODE_ENV === "production";
 const isVercelPreview = process.env.VERCEL_ENV === "preview";
+const isLocalhost =
+    process.env.NEXTAUTH_URL?.includes("localhost") ||
+    process.env.VERCEL_URL?.includes("localhost") ||
+    (!process.env.NEXTAUTH_URL && !process.env.VERCEL_URL);
 
 const getCookieDomain = () => {
-    if (!isProd || isVercelPreview) return undefined;
+    if (!isProd || isVercelPreview || isLocalhost) return undefined;
     if (process.env.VERCEL_URL) {
         const domain = process.env.VERCEL_URL.replace(/^https?:\/\//, "").split(
             ":"
@@ -56,7 +60,15 @@ const cookieOptions = {
     sameSite: "lax" as const,
     path: "/",
     domain: getCookieDomain(),
-    secure: isProd,
+    secure: isProd && !isLocalhost,
+};
+
+const csrfTokenOptions = {
+    httpOnly: false,
+    sameSite: "lax" as const,
+    path: "/",
+    domain: getCookieDomain(),
+    secure: isProd && !isLocalhost,
 };
 
 const authOptions: NextAuthConfig = {
@@ -199,39 +211,40 @@ const authOptions: NextAuthConfig = {
     },
     cookies: {
         sessionToken: {
-            name: isProd
-                ? "__Secure-next-auth.session-token"
-                : "next-auth.session-token",
+            name:
+                isProd && !isLocalhost
+                    ? "__Secure-next-auth.session-token"
+                    : "next-auth.session-token",
             options: {
                 ...cookieOptions,
-                secure: isProd,
+                secure: isProd && !isLocalhost,
             },
         },
         callbackUrl: {
-            name: isProd
-                ? "__Secure-next-auth.callback-url"
-                : "next-auth.callback-url",
+            name:
+                isProd && !isLocalhost
+                    ? "__Secure-next-auth.callback-url"
+                    : "next-auth.callback-url",
             options: {
                 ...cookieOptions,
-                secure: isProd,
+                secure: isProd && !isLocalhost,
             },
         },
         csrfToken: {
-            name: isProd
-                ? "__Secure-next-auth.csrf-token"
-                : "next-auth.csrf-token",
-            options: {
-                ...cookieOptions,
-                secure: isProd,
-            },
+            name:
+                isProd && !isLocalhost
+                    ? "__Secure-next-auth.csrf-token"
+                    : "next-auth.csrf-token",
+            options: csrfTokenOptions,
         },
         pkceCodeVerifier: {
-            name: isProd
-                ? "__Secure-next-auth.pkce.code_verifier"
-                : "next-auth.pkce.code_verifier",
+            name:
+                isProd && !isLocalhost
+                    ? "__Secure-next-auth.pkce.code_verifier"
+                    : "next-auth.pkce.code_verifier",
             options: {
                 ...cookieOptions,
-                secure: isProd,
+                secure: isProd && !isLocalhost,
             },
         },
     },
@@ -368,7 +381,7 @@ const authOptions: NextAuthConfig = {
     },
     debug: false,
     trustHost: true,
-    useSecureCookies: isProd,
+    useSecureCookies: isProd && !isLocalhost,
     experimental: {
         enableWebAuthn: false,
     },

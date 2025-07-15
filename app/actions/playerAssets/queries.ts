@@ -29,8 +29,9 @@ export function useGetPlayerAssets({
             getPlayerAssetsInput?.filter?.assetIds || []
         ),
         queryFn: () => getPlayerAssets(getPlayerAssetsInput),
-        staleTime: 1000 * 60 * 1,
-        gcTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 2,
+        gcTime: 1000 * 60 * 10,
+        refetchOnWindowFocus: false,
     });
 }
 
@@ -66,9 +67,10 @@ export function useInfinitePlayerAssetsQuery(input?: GetPlayerAssetsInput) {
             return undefined;
         },
         enabled: !!input?.filter?.playerId,
-        staleTime: 1000 * 60 * 1,
-        gcTime: 1000 * 60 * 5,
+        staleTime: 1000 * 60 * 2,
+        gcTime: 1000 * 60 * 10,
         refetchOnWindowFocus: false,
+        refetchInterval: false as const,
     });
 }
 
@@ -83,7 +85,9 @@ export function useGetPlayerAsset({
             getPlayerAssetInput?.assetId || ""
         ),
         queryFn: () => getPlayerAsset(getPlayerAssetInput),
-        staleTime: 2000,
+        staleTime: 1000 * 60 * 1,
+        gcTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
     });
 }
 
@@ -98,8 +102,9 @@ export function useGetPlayerAssetBalance({
             getPlayerAssetInput?.assetId || ""
         ),
         queryFn: () => getPlayerAsset(getPlayerAssetInput),
-        staleTime: 1000 * 60 * 0.5,
-        gcTime: 1000 * 60 * 1,
+        staleTime: 1000 * 30,
+        gcTime: 1000 * 60 * 3,
+        refetchOnWindowFocus: true,
     });
 }
 
@@ -113,6 +118,7 @@ export function useGetPlayerAssetInstances({
         queryFn: () => getPlayerAssetInstances(getPlayerAssetInstancesInput),
         enabled: !!getPlayerAssetInstancesInput,
         staleTime: 1000 * 60 * 1,
-        gcTime: 1000 * 60 * 3,
+        gcTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
     });
 }

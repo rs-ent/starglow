@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 import Star from "@/components/star/Star";
-import { getArtists } from "@/app/actions/artists";
+import { getArtistsForStarList } from "@/app/actions/artists";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -31,7 +31,7 @@ function StarLoading() {
 }
 
 async function StarContent() {
-    const artists = await getArtists();
+    const artists = await getArtistsForStarList();
 
     return <Star artists={artists} />;
 }

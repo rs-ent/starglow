@@ -27,16 +27,16 @@ import type {
 
 // 실시간 캐시 설정
 const REALTIME_CACHE_CONFIG = {
-    staleTime: 0, // 즉시 stale 처리
+    staleTime: 1000 * 30, // 30초
     gcTime: 1000 * 60 * 5, // 5분 후 가비지 컬렉션
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    refetchInterval: 30000, // 30초마다 백그라운드 새로고침
+    refetchInterval: false as const, // 자동 새로고침 비활성화
 };
 
 const SEMI_REALTIME_CACHE_CONFIG = {
-    staleTime: 1000 * 10, // 10초
-    gcTime: 1000 * 60 * 3, // 3분
+    staleTime: 1000 * 60, // 1분
+    gcTime: 1000 * 60 * 5, // 5분
     refetchOnWindowFocus: true,
     refetchOnMount: true,
 };
@@ -110,7 +110,7 @@ export function useInfiniteBoardPostsQuery(input?: GetBoardPostsInput) {
             return undefined;
         },
         ...REALTIME_CACHE_CONFIG,
-        refetchInterval: 60000, // 1분마다 새로고침
+        refetchInterval: false as const, // 무한 스크롤에서는 자동 새로고침 비활성화
     });
 }
 

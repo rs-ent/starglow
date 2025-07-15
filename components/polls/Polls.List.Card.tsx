@@ -31,6 +31,8 @@ import { getPlayerAsset } from "@/app/actions/playerAssets/actions";
 import Image from "next/image";
 import type { TokenGatingData } from "@/app/story/nft/actions";
 
+import PartialLoading from "../atoms/PartialLoading";
+
 interface PollsCardProps {
     index?: number;
     poll: PollsWithArtist;
@@ -1758,23 +1760,34 @@ function PollsListCard({
                             </div>
                         )}
 
-                        {/* 옵션 섹션 */}
-                        {renderOptions()}
+                        {isLoading ? (
+                            <div className="flex justify-center items-center h-full">
+                                <PartialLoading
+                                    loadingSize={40}
+                                    className="p-6"
+                                />
+                            </div>
+                        ) : (
+                            <>
+                                {/* 옵션 섹션 */}
+                                {renderOptions()}
 
-                        {/* 보상 정보 - options 바로 아래 배치 */}
-                        {renderRewardInfo()}
+                                {/* 보상 정보 - options 바로 아래 배치 */}
+                                {renderRewardInfo()}
 
-                        {/* 차트 섹션 */}
-                        {renderResults()}
+                                {/* 차트 섹션 */}
+                                {renderResults()}
 
-                        {/* Submit Button */}
-                        {renderSubmitButton()}
+                                {/* Submit Button */}
+                                {renderSubmitButton()}
 
-                        {/* 토큰 게이팅이 필요한 폴의 경우 몇 개의 폴을 추가로 참여할 수 있는지 */}
-                        {renderTokenGatingInfo()}
+                                {/* 토큰 게이팅이 필요한 폴의 경우 몇 개의 폴을 추가로 참여할 수 있는지 */}
+                                {renderTokenGatingInfo()}
 
-                        {/* Footer - How it works & Results toggle buttons */}
-                        {renderFooter()}
+                                {/* Footer - How it works & Results toggle buttons */}
+                                {renderFooter()}
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

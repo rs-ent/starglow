@@ -26,9 +26,247 @@ import type {
     BoardCommentWithDetails,
 } from "./actions";
 
-// 현재 사용자 정보 가져오기 헬퍼 함수
+async function invalidateBoardQueries(
+    queryClient: ReturnType<typeof useQueryClient>,
+    operations: {
+        lists?: boolean;
+        detail?: string;
+        byArtist?: string;
+        posts?: {
+            all?: boolean;
+            byBoard?: string;
+            byAuthor?: string;
+            detail?: string;
+            infinite?: any;
+        };
+        comments?: {
+            all?: boolean;
+            byPost?: string;
+            byAuthor?: string;
+        };
+        reactions?: {
+            byPost?: string;
+            byComment?: string;
+            byPlayer?: string;
+        };
+        rewards?: {
+            byPost?: string;
+            byPlayer?: string;
+        };
+        playerAssets?: {
+            all?: boolean;
+            balances?: string;
+        };
+    }
+) {
+    try {
+        const invalidationPromises = [];
+
+        if (operations.lists) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({ queryKey: boardKeys.lists() })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.detail) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.detail(operations.detail),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.byArtist) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.byArtist(operations.byArtist),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.posts?.byBoard) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.posts.byBoard(
+                            operations.posts.byBoard
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.posts?.byAuthor) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.posts.byAuthor(
+                            operations.posts.byAuthor
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.posts?.detail) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.posts.detail(
+                            operations.posts.detail
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.posts?.infinite) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.posts.infinite(
+                            operations.posts.infinite
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.comments?.byPost) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.comments.byPost(
+                            operations.comments.byPost
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.comments?.byAuthor) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.comments.byAuthor(
+                            operations.comments.byAuthor
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.reactions?.byPost) {
+            invalidationPromises.push(
+                queryClient.invalidateQueries({
+                    queryKey: boardKeys.reactions.byPost(
+                        operations.reactions.byPost
+                    ),
+                })
+            );
+        }
+
+        if (operations.reactions?.byComment) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.reactions.byComment(
+                            operations.reactions.byComment
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.reactions?.byPlayer) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.reactions.byPlayer(
+                            operations.reactions.byPlayer
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.rewards?.byPost) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.rewards.byPost(
+                            operations.rewards.byPost
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.rewards?.byPlayer) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: boardKeys.rewards.byPlayer(
+                            operations.rewards.byPlayer
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        if (operations.playerAssets?.balances) {
+            invalidationPromises.push(
+                queryClient
+                    .invalidateQueries({
+                        queryKey: playerAssetsKeys.balances(
+                            operations.playerAssets.balances
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    })
+            );
+        }
+
+        await Promise.all(invalidationPromises);
+    } catch (error) {
+        console.error("[Board Query Invalidation]", error);
+    }
+}
+
 const getCurrentUserInfo = (queryClient: any, userId: string) => {
-    // 사용자 프로필 정보 가져오기
     const userProfile = queryClient.getQueryData([
         "players",
         "profile",
@@ -53,29 +291,13 @@ export function useCreateBoardMutation() {
     return useMutation({
         mutationFn: createBoard,
         onSuccess: (data, _variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.lists(),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.detail(data.id),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            if (data.artistId) {
-                queryClient
-                    .invalidateQueries({
-                        queryKey: boardKeys.byArtist(data.artistId),
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
-            }
+            invalidateBoardQueries(queryClient, {
+                lists: true,
+                detail: data.id,
+                byArtist: data.artistId || undefined,
+            }).catch((error) => {
+                console.error(error);
+            });
         },
     });
 }
@@ -85,29 +307,13 @@ export function useUpdateBoardMutation() {
     return useMutation({
         mutationFn: updateBoard,
         onSuccess: (data, _variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.lists(),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.detail(data.id),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            if (data.artistId) {
-                queryClient
-                    .invalidateQueries({
-                        queryKey: boardKeys.byArtist(data.artistId),
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
-            }
+            invalidateBoardQueries(queryClient, {
+                lists: true,
+                detail: data.id,
+                byArtist: data.artistId || undefined,
+            }).catch((error) => {
+                console.error(error);
+            });
         },
     });
 }
@@ -117,20 +323,12 @@ export function useDeleteBoardMutation() {
     return useMutation({
         mutationFn: deleteBoard,
         onSuccess: (_data, variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.lists(),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.detail(variables),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            invalidateBoardQueries(queryClient, {
+                lists: true,
+                detail: variables,
+            }).catch((error) => {
+                console.error(error);
+            });
         },
     });
 }
@@ -141,25 +339,21 @@ export function useCreateBoardPostMutation() {
     return useMutation({
         mutationFn: createBoardPost,
         onMutate: async (variables: CreateBoardPostInput) => {
-            // 관련 쿼리들을 취소하여 optimistic update와 충돌 방지
             await queryClient.cancelQueries({
                 queryKey: boardKeys.posts.byBoard(variables.boardId),
             });
 
-            // 이전 데이터 백업
             const previousData = queryClient.getQueryData(
                 boardKeys.posts.byBoard(variables.boardId)
             );
 
-            // 현재 사용자 정보 가져오기
             const currentUser = getCurrentUserInfo(
                 queryClient,
                 variables.authorId
             );
 
-            // 임시 게시물 생성 (optimistic update)
             const tempPost: Partial<BoardPostWithDetails> = {
-                id: `temp-${Date.now()}`, // 임시 ID
+                id: `temp-${Date.now()}`,
                 boardId: variables.boardId,
                 authorId: variables.authorId,
                 authorType: variables.authorType,
@@ -180,12 +374,10 @@ export function useCreateBoardPostMutation() {
                 comments: [],
                 rewards: [],
                 _count: { comments: 0, reactions: 0 },
-                // 실제 사용자 정보 사용
                 author: currentUser as any,
                 board: {} as any,
             };
 
-            // 무한 스크롤 데이터 업데이트
             queryClient.setQueryData(
                 boardKeys.posts.infinite({ boardId: variables.boardId }),
                 (old: any) => {
@@ -209,7 +401,6 @@ export function useCreateBoardPostMutation() {
             return { previousData, tempPost };
         },
         onError: (error, variables, context) => {
-            // 에러 발생 시 이전 데이터로 롤백
             if (context?.previousData) {
                 queryClient.setQueryData(
                     boardKeys.posts.byBoard(variables.boardId),
@@ -218,7 +409,6 @@ export function useCreateBoardPostMutation() {
             }
         },
         onSuccess: (data, variables, context) => {
-            // 성공 시 실제 데이터로 교체
             queryClient.setQueryData(
                 boardKeys.posts.infinite({ boardId: variables.boardId }),
                 (old: any) => {
@@ -243,51 +433,23 @@ export function useCreateBoardPostMutation() {
                 }
             );
 
-            // 기존 invalidation 로직 유지
-            queryClient
-                .invalidateQueries({ queryKey: boardKeys.posts.all() })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.posts.byBoard(data.boardId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-
-            if (!variables.isSandbox && variables.authorId) {
-                queryClient
-                    .invalidateQueries({
-                        queryKey: boardKeys.posts.byAuthor(variables.authorId),
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
-                queryClient
-                    .invalidateQueries({
-                        queryKey: playerAssetsKeys.balances(variables.authorId),
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
-            }
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.detail(data.boardId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-        },
-        onSettled: () => {
-            // 완료 후 관련 쿼리 다시 가져오기
-            queryClient
-                .invalidateQueries({ queryKey: boardKeys.posts.all() })
-                .catch((error) => {
-                    console.error(error);
-                });
+            invalidateBoardQueries(queryClient, {
+                posts: {
+                    byBoard: data.boardId,
+                    infinite: { boardId: data.boardId },
+                    byAuthor: !variables.isSandbox
+                        ? variables.authorId
+                        : undefined,
+                },
+                detail: data.boardId,
+                playerAssets: !variables.isSandbox
+                    ? {
+                          balances: variables.authorId,
+                      }
+                    : undefined,
+            }).catch((error) => {
+                console.error(error);
+            });
         },
     });
 }
@@ -297,20 +459,14 @@ export function useUpdateBoardPostMutation() {
     return useMutation({
         mutationFn: updateBoardPost,
         onSuccess: (data, _variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.posts.detail(data.id),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.posts.byBoard(data.boardId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            invalidateBoardQueries(queryClient, {
+                posts: {
+                    detail: data.id,
+                    byBoard: data.boardId,
+                },
+            }).catch((error) => {
+                console.error(error);
+            });
         },
     });
 }
@@ -320,20 +476,14 @@ export function useDeleteBoardPostMutation() {
     return useMutation({
         mutationFn: deleteBoardPost,
         onSuccess: (_data, variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.posts.all(),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.posts.detail(variables),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            invalidateBoardQueries(queryClient, {
+                posts: {
+                    all: true,
+                    detail: variables,
+                },
+            }).catch((error) => {
+                console.error(error);
+            });
         },
     });
 }
@@ -344,23 +494,19 @@ export function useCreateBoardCommentMutation() {
     return useMutation({
         mutationFn: createBoardComment,
         onMutate: async (variables: CreateBoardCommentInput) => {
-            // 관련 쿼리들을 취소
             await queryClient.cancelQueries({
                 queryKey: boardKeys.comments.byPost(variables.postId),
             });
 
-            // 이전 데이터 백업
             const previousComments = queryClient.getQueryData(
                 boardKeys.comments.byPost(variables.postId)
             );
 
-            // 현재 사용자 정보 가져오기
             const currentUser = getCurrentUserInfo(
                 queryClient,
                 variables.authorId
             );
 
-            // 임시 댓글 생성 (optimistic update)
             const tempComment: Partial<BoardCommentWithDetails> = {
                 id: `temp-comment-${Date.now()}`,
                 postId: variables.postId,
@@ -378,19 +524,16 @@ export function useCreateBoardCommentMutation() {
                 updatedAt: new Date(),
                 reactions: [],
                 replies: [],
-                // 실제 사용자 정보 사용
                 author: currentUser as any,
                 post: {} as any,
             };
 
-            // 댓글 데이터 업데이트
             queryClient.setQueryData(
                 boardKeys.comments.byPost(variables.postId),
                 (old: any) => {
                     if (!old) return [tempComment];
 
                     if (variables.parentId) {
-                        // 대댓글인 경우
                         return old.map((comment: any) => {
                             if (comment.id === variables.parentId) {
                                 return {
@@ -404,13 +547,11 @@ export function useCreateBoardCommentMutation() {
                             return comment;
                         });
                     } else {
-                        // 최상위 댓글인 경우
                         return [tempComment, ...old];
                     }
                 }
             );
 
-            // 게시물의 댓글 수 즉시 업데이트
             queryClient.setQueryData(
                 boardKeys.posts.detail(variables.postId),
                 (old: any) => {
@@ -424,8 +565,7 @@ export function useCreateBoardCommentMutation() {
 
             return { previousComments, tempComment };
         },
-        onError: (error, variables, context) => {
-            // 에러 발생 시 롤백
+        onError: (_error, variables, context) => {
             if (context?.previousComments) {
                 queryClient.setQueryData(
                     boardKeys.comments.byPost(variables.postId),
@@ -434,7 +574,6 @@ export function useCreateBoardCommentMutation() {
             }
         },
         onSuccess: (data, variables, context) => {
-            // 성공 시 실제 데이터로 교체
             queryClient.setQueryData(
                 boardKeys.comments.byPost(variables.postId),
                 (old: any) => {
@@ -443,7 +582,6 @@ export function useCreateBoardCommentMutation() {
                     const tempId = context?.tempComment?.id;
 
                     if (variables.parentId) {
-                        // 대댓글인 경우
                         return old.map((comment: any) => {
                             if (comment.id === variables.parentId) {
                                 const updatedReplies =
@@ -458,7 +596,6 @@ export function useCreateBoardCommentMutation() {
                             return comment;
                         });
                     } else {
-                        // 최상위 댓글인 경우
                         return old.map((comment: any) =>
                             comment.id === tempId ? data : comment
                         );
@@ -466,48 +603,19 @@ export function useCreateBoardCommentMutation() {
                 }
             );
 
-            // 기존 invalidation 로직 유지
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.comments.byPost(variables.postId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.posts.detail(variables.postId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-
-            if (!variables.isSandbox && variables.authorId) {
-                queryClient
-                    .invalidateQueries({
-                        queryKey: boardKeys.comments.byAuthor(
-                            variables.authorId
-                        ),
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
-            }
-            queryClient
-                .invalidateQueries({ queryKey: boardKeys.posts.all() })
-                .catch((error) => {
-                    console.error(error);
-                });
-        },
-        onSettled: () => {
-            // 완료 후 관련 쿼리 다시 가져오기
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.comments.all(),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            invalidateBoardQueries(queryClient, {
+                comments: {
+                    byPost: variables.postId,
+                    byAuthor: !variables.isSandbox
+                        ? variables.authorId
+                        : undefined,
+                },
+                posts: {
+                    detail: variables.postId,
+                },
+            }).catch((error) => {
+                console.error(error);
+            });
         },
     });
 }
@@ -516,22 +624,24 @@ export function useDeleteBoardCommentMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: deleteBoardComment,
-        onSuccess: (_data, _variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.comments.all(),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+        onMutate: async (commentId) => {
+            const commentData = queryClient.getQueryData(
+                boardKeys.comments.byPost(commentId)
+            );
+            return { commentData };
+        },
+        onSuccess: (_data, _variables, _context) => {
+            const allCommentQueries = queryClient.getQueryCache().findAll({
+                queryKey: ["boards", "comments"],
+            });
 
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.posts.all(),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            allCommentQueries.forEach((query) => {
+                queryClient
+                    .invalidateQueries({ queryKey: query.queryKey })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            });
         },
     });
 }
@@ -542,12 +652,10 @@ export function useCreateBoardReactionMutation() {
     return useMutation({
         mutationFn: createBoardReaction,
         onMutate: async (variables) => {
-            // 관련 쿼리 취소
             if (variables.postId) {
                 await queryClient.cancelQueries({
                     queryKey: boardKeys.posts.detail(variables.postId),
                 });
-                // 모든 무한 스크롤 쿼리 취소
                 await queryClient.cancelQueries({
                     queryKey: ["boards", "posts", "infinite"],
                 });
@@ -559,7 +667,6 @@ export function useCreateBoardReactionMutation() {
                 });
             }
 
-            // 이전 데이터 백업
             const previousPostData = variables.postId
                 ? queryClient.getQueryData(
                       boardKeys.posts.detail(variables.postId)
@@ -572,9 +679,7 @@ export function useCreateBoardReactionMutation() {
                 "infinite",
             ]);
 
-            // 게시물 반응 optimistic update
             if (variables.postId) {
-                // 상세 게시물 데이터 업데이트
                 queryClient.setQueryData(
                     boardKeys.posts.detail(variables.postId),
                     (old: any) => {
@@ -596,7 +701,6 @@ export function useCreateBoardReactionMutation() {
                             reactions: newReactions,
                         };
 
-                        // 카운트 업데이트
                         switch (variables.type) {
                             case "LIKE":
                                 updatedPost.likeCount =
@@ -756,7 +860,7 @@ export function useCreateBoardReactionMutation() {
 
             return { previousPostData, previousInfiniteData };
         },
-        onError: (error, variables, context) => {
+        onError: (_error, variables, context) => {
             // 에러 시 롤백
             if (variables.postId && context?.previousPostData) {
                 queryClient.setQueryData(
@@ -772,77 +876,23 @@ export function useCreateBoardReactionMutation() {
                 );
             }
         },
-        onSuccess: (data, variables) => {
-            // 성공 시 기존 invalidation 로직 유지
-            if (variables.postId) {
+        onSuccess: (_data, variables) => {
+            if (variables.postId && variables.type === "RECOMMEND") {
                 queryClient
                     .invalidateQueries({
-                        queryKey: boardKeys.reactions.byPost(variables.postId),
+                        queryKey: boardKeys.rewards.byPost(variables.postId),
                     })
                     .catch((error) => {
                         console.error(error);
                     });
                 queryClient
                     .invalidateQueries({
-                        queryKey: boardKeys.posts.detail(variables.postId),
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
-                queryClient
-                    .invalidateQueries({
-                        queryKey: boardKeys.posts.all(),
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
-
-                if (variables.type === "RECOMMEND") {
-                    queryClient
-                        .invalidateQueries({
-                            queryKey: boardKeys.rewards.byPost(
-                                variables.postId
-                            ),
-                        })
-                        .catch((error) => {
-                            console.error(error);
-                        });
-                    queryClient
-                        .invalidateQueries({
-                            queryKey: playerAssetsKeys.all,
-                        })
-                        .catch((error) => {
-                            console.error(error);
-                        });
-                }
-            }
-
-            if (variables.commentId) {
-                queryClient
-                    .invalidateQueries({
-                        queryKey: boardKeys.reactions.byComment(
-                            variables.commentId
-                        ),
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
-                queryClient
-                    .invalidateQueries({
-                        queryKey: boardKeys.comments.all(),
+                        queryKey: playerAssetsKeys.balances(variables.playerId),
                     })
                     .catch((error) => {
                         console.error(error);
                     });
             }
-
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.reactions.byPlayer(variables.playerId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
         },
     });
 }
@@ -1080,7 +1130,7 @@ export function useDeleteBoardReactionMutation() {
 
             return { previousPostData, previousInfiniteData };
         },
-        onError: (error, variables, context) => {
+        onError: (_error, variables, context) => {
             // 에러 시 롤백
             if (variables.postId && context?.previousPostData) {
                 queryClient.setQueryData(
@@ -1158,27 +1208,17 @@ export function useCreatePostRewardMutation() {
     return useMutation({
         mutationFn: createPostReward,
         onSuccess: (data, variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.rewards.byPost(variables.postId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: boardKeys.rewards.byPlayer(variables.playerId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-            queryClient
-                .invalidateQueries({
-                    queryKey: playerAssetsKeys.balances(variables.playerId),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
+            invalidateBoardQueries(queryClient, {
+                rewards: {
+                    byPost: variables.postId,
+                    byPlayer: variables.playerId,
+                },
+                playerAssets: {
+                    balances: variables.playerId,
+                },
+            }).catch((error) => {
+                console.error(error);
+            });
         },
     });
 }
@@ -1189,29 +1229,17 @@ export function useGiveManualRewardMutation() {
         mutationFn: giveManualReward,
         onSuccess: (data, variables) => {
             if (data) {
-                queryClient
-                    .invalidateQueries({
-                        queryKey: boardKeys.rewards.byPost(variables.postId),
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
-                queryClient
-                    .invalidateQueries({
-                        queryKey: boardKeys.rewards.byPlayer(
-                            variables.playerId
-                        ),
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
-                queryClient
-                    .invalidateQueries({
-                        queryKey: playerAssetsKeys.balances(variables.playerId),
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
+                invalidateBoardQueries(queryClient, {
+                    rewards: {
+                        byPost: variables.postId,
+                        byPlayer: variables.playerId,
+                    },
+                    playerAssets: {
+                        balances: variables.playerId,
+                    },
+                }).catch((error) => {
+                    console.error(error);
+                });
             }
         },
     });
