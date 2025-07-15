@@ -7,7 +7,6 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils/tailwind";
-import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 
 import NFTsCollections from "./NFTs.Collections";
 
