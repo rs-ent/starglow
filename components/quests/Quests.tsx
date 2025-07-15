@@ -29,10 +29,10 @@ function Quests({ player }: QuestsProps) {
                         className="absolute inset-0 bg-gradient-radial from-purple-500/30 via-transparent to-transparent blur-xl animate-pulse-slow"
                         style={{
                             background: `
-                                 radial-gradient(circle at 20% 30%, rgba(80, 47, 112, 0.4) 0%, transparent 60%),
-                                 radial-gradient(circle at 80% 70%, rgba(174, 173, 202, 0.3) 0%, transparent 50%),
-                                 radial-gradient(circle at 60% 20%, rgba(236, 72, 173, 0.3) 0%, transparent 40%),
-                                 radial-gradient(circle at 40% 80%, rgba(209, 201, 240, 0.33) 0%, transparent 45%)
+                                 radial-gradient(circle at 20% 30%, rgba(197, 149, 245, 0.61) 0%, transparent 60%),
+                                 radial-gradient(circle at 80% 70%, rgba(143, 140, 226, 0.5) 0%, transparent 50%),
+                                 radial-gradient(circle at 60% 20%, rgba(193, 92, 243, 0.55) 0%, transparent 40%),
+                                 radial-gradient(circle at 40% 80%, rgba(186, 199, 246, 0.55) 0%, transparent 45%)
                              `,
                         }}
                     />
