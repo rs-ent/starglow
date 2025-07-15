@@ -59,7 +59,12 @@ export default function WalletAuthButton({
 
         try {
             startLoading();
-            await connect(connector, callbackUrl);
+
+            // 1. 지갑 연결
+            await connect(connector);
+
+            // 2. NextAuth signIn은 wagmi-hooks의 useEffect에서 자동으로 처리됨
+            // 연결 성공 시 콜백 URL로 이동
         } catch (error) {
             console.error("Failed to connect wallet:", error);
         } finally {

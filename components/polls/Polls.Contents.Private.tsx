@@ -12,12 +12,11 @@ import PollsContentsPrivateArtistList from "./Polls.Contents.Private.ArtistList"
 import ArtistSlideSelector from "../artists/ArtistSlideSelector";
 
 import type { VerifiedSPG } from "@/app/story/interaction/actions";
-import type { Artist, Player, PollLog } from "@prisma/client";
+import type { Artist, Player } from "@prisma/client";
 
 interface PollsContentsPrivateProps {
     player: Player | null;
     privateTabClicked: boolean;
-    pollLogs?: PollLog[];
     verifiedSPGs?: VerifiedSPG[];
 }
 
@@ -27,7 +26,6 @@ const defaultBackgroundStyle = {
 
 function PollsContentsPrivate({
     player,
-    pollLogs,
     verifiedSPGs,
 }: PollsContentsPrivateProps) {
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
@@ -76,9 +74,8 @@ function PollsContentsPrivate({
             <div className="relative w-full h-full" key={selectedArtist.id}>
                 <div className="w-screen max-w-[1400px] mx-auto z-0 relative">
                     <PollsContentsPrivateArtistList
-                        artist={selectedArtist}
+                        artistId={selectedArtist.id}
                         player={player}
-                        pollLogs={pollLogs}
                         bgColorFrom={ArtistBG(selectedArtist, 0, 60)}
                         bgColorTo={ArtistBG(selectedArtist, 1, 30)}
                         bgColorAccentFrom={ArtistBG(selectedArtist, 2, 100)}
@@ -89,7 +86,7 @@ function PollsContentsPrivate({
                 </div>
             </div>
         );
-    }, [selectedArtist, player, pollLogs]);
+    }, [selectedArtist, player]);
 
     return (
         <div className="w-full flex flex-col items-center justify-center">

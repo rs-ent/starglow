@@ -37,7 +37,6 @@ import {
     DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 
-import type { ArtistWithSPG } from "@/app/actions/artists";
 import type { Player } from "@prisma/client";
 import type { BoardPostWithDetails } from "@/app/actions/boards/actions";
 
@@ -48,7 +47,11 @@ import ImageVideoPopup from "../atoms/ImageVideoPopup";
 
 interface BoardContentPostProps {
     post: BoardPostWithDetails;
-    artist: ArtistWithSPG;
+    artistId: string;
+    artistName: string;
+    artistLogoUrl: string;
+    backgroundColors: string[];
+    foregroundColors: string[];
     player: Player | null;
     index: number;
     activeBoard: any;
@@ -64,7 +67,11 @@ interface BoardContentPostProps {
 
 export default React.memo(function BoardContentPost({
     post,
-    artist,
+    artistId,
+    artistName,
+    artistLogoUrl,
+    backgroundColors,
+    foregroundColors,
     player,
     index,
     activeBoard,
@@ -166,7 +173,7 @@ export default React.memo(function BoardContentPost({
                                             post.isSandbox
                                                 ? post.isSandboxBoardArtist
                                                 : post.author?.artistId ===
-                                                  artist.id
+                                                  artistId
                                         )
                                             ? `0 0 16px 0 rgba(255, 255, 255, 0.3)`
                                             : "none",
@@ -174,7 +181,7 @@ export default React.memo(function BoardContentPost({
                                 />
                                 {(post.isSandbox
                                     ? post.isSandboxBoardArtist
-                                    : post.author?.artistId === artist.id) && (
+                                    : post.author?.artistId === artistId) && (
                                     <span
                                         className={cn(
                                             "flex flex-row items-center gap-1 rounded-full px-2 py-0.5 flex-shrink-0 font-medium",
@@ -182,12 +189,16 @@ export default React.memo(function BoardContentPost({
                                         )}
                                         style={{
                                             background: `linear-gradient(to right, ${ArtistBG(
-                                                artist,
+                                                { backgroundColors },
                                                 3,
                                                 20
-                                            )}, ${ArtistBG(artist, 2, 20)})`,
+                                            )}, ${ArtistBG(
+                                                { backgroundColors },
+                                                2,
+                                                20
+                                            )})`,
                                             border: `1px solid ${ArtistFG(
-                                                artist,
+                                                { foregroundColors },
                                                 0,
                                                 40
                                             )}`,
@@ -195,8 +206,8 @@ export default React.memo(function BoardContentPost({
                                         }}
                                     >
                                         <Image
-                                            src={artist.logoUrl || ""}
-                                            alt={artist.name}
+                                            src={artistLogoUrl || ""}
+                                            alt={artistName}
                                             width={20}
                                             height={20}
                                             className={cn(
@@ -205,7 +216,7 @@ export default React.memo(function BoardContentPost({
                                                     .frameClass
                                             )}
                                         />
-                                        {artist.name}
+                                        {artistName}
                                     </span>
                                 )}
                                 <span
@@ -215,7 +226,7 @@ export default React.memo(function BoardContentPost({
                                             post.isSandbox
                                                 ? post.isSandboxBoardArtist
                                                 : post.author?.artistId ===
-                                                  artist.id
+                                                  artistId
                                         )
                                             ? "rainbow-text font-bold"
                                             : "text-white/90 ",
@@ -557,7 +568,11 @@ export default React.memo(function BoardContentPost({
                             <BoardContentComment
                                 postId={post.id}
                                 player={player}
-                                artist={artist}
+                                artistId={artistId}
+                                artistName={artistName}
+                                artistLogoUrl={artistLogoUrl}
+                                backgroundColors={backgroundColors}
+                                foregroundColors={foregroundColors}
                             />
                         )}
                     </div>

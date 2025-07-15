@@ -2,6 +2,7 @@
 
 "use server";
 
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 import { prisma } from "@/lib/prisma/client";
 
 import type { Player, QuestLog, ReferralLog } from "@prisma/client";
@@ -18,11 +19,7 @@ export async function getReferralLogs(
     }
     try {
         const referralLogs = await prisma.referralLog.findMany({
-            cacheStrategy: {
-                swr: 60 * 1,
-                ttl: 60 * 1,
-                tags: ["referralLogs", input.playerId],
-            },
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: {
                 referrerPlayerId: input.playerId,
             },
@@ -48,12 +45,14 @@ export async function setReferralQuestLogs(
         // Step 1: Fetch all required data in parallel (outside transaction)
         const [referralQuests, questLogs, referralCount] = await Promise.all([
             prisma.quest.findMany({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     isReferral: true,
                     isActive: true,
                 },
             }),
             prisma.questLog.findMany({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: {
                     playerId: input.player.id,
                     quest: {

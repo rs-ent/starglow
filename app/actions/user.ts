@@ -2,14 +2,11 @@
 
 "use server";
 
-import crypto from "crypto";
-
-import { cookies } from "next/headers";
-
 import { prisma } from "@/lib/prisma/client";
 
 import { setPlayer, invitePlayer } from "./player";
 import { createWallet } from "../story/userWallet/actions";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 import type { Prisma, Player, User } from "@prisma/client";
 
@@ -30,6 +27,7 @@ export async function getUsers(
 ): Promise<UserWithPlayer[]> {
     if (!input) {
         const users = await prisma.user.findMany({
+            cacheStrategy: getCacheStrategy("tenMinutes"),
             include: {
                 player: true,
             },
@@ -69,6 +67,7 @@ export async function getUsers(
         }
 
         const users = await prisma.user.findMany({
+            cacheStrategy: getCacheStrategy("oneDay"),
             where,
             include: {
                 player: true,
@@ -94,6 +93,7 @@ export async function getUserByEmail(
         }
 
         const user = await prisma.user.findUnique({
+            cacheStrategy: getCacheStrategy("tenMinutes"),
             where: { email: input.email },
         });
         return user;
@@ -128,6 +128,7 @@ export async function setUserWithTelegram(
         const telegramId = input.user.id.toString();
 
         let user = await prisma.user.findUnique({
+            cacheStrategy: getCacheStrategy("oneDay"),
             where: {
                 telegramId,
             },
@@ -170,30 +171,6 @@ export async function setUserWithTelegram(
             });
         }
 
-        if (input.withoutSessionRefresh) {
-            return { user, player: player.player };
-        }
-
-        const sessionToken = crypto.randomUUID();
-        const expires = new Date();
-        expires.setDate(expires.getDate() + 30);
-
-        await prisma.session.create({
-            data: {
-                sessionToken,
-                userId: user.id,
-                expires,
-            },
-        });
-
-        (await cookies()).set("next-auth.session-token", sessionToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            expires,
-            path: "/",
-            sameSite: "lax",
-        });
-
         return { user, player: player.player };
     } catch (error) {
         console.error("Failed to set user with telegram", error);
@@ -217,6 +194,7 @@ export async function setUserWithWallet(
 
         const result = await prisma.$transaction(async (tx) => {
             const existingWallet = await tx.wallet.findUnique({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: {
                     address: input.walletAddress,
                 },
@@ -263,28 +241,6 @@ export async function setUserWithWallet(
                 method: "webapp",
             });
         }
-
-        // 세션 생성
-        const sessionToken = crypto.randomUUID();
-        const expires = new Date();
-        expires.setDate(expires.getDate() + 30);
-
-        await prisma.session.create({
-            data: {
-                sessionToken,
-                userId: result.id,
-                expires,
-            },
-        });
-
-        // 쿠키 설정
-        (await cookies()).set("next-auth.session-token", sessionToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            expires,
-            path: "/",
-            sameSite: "lax",
-        });
 
         return { user: result, player: player.player };
     } catch (error) {

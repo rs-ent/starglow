@@ -17,8 +17,10 @@ import InviteFriendsModal from "../atoms/InviteFriends.Modal";
 import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
 
 import type { TokenGatingData } from "@/app/story/nft/actions";
-import type { Player, Quest, QuestLog, ReferralLog } from "@prisma/client";
+import type { Player, Quest, ReferralLog } from "@prisma/client";
 import Image from "next/image";
+
+import { useQuestGet } from "@/app/hooks/useQuest";
 
 // 디바운스 지연 시간 (밀리초)
 const DEBOUNCE_DELAY = 500;
@@ -26,7 +28,6 @@ const DEBOUNCE_DELAY = 500;
 interface QuestsButtonProps {
     player: Player | null;
     quest: Quest;
-    questLog?: QuestLog | null;
     frameSize?: number;
     assetSize?: number;
     textSize?: number;
@@ -44,7 +45,6 @@ interface QuestsButtonProps {
 function QuestsButton({
     player,
     quest,
-    questLog,
     frameSize = 45,
     textSize = 25,
     infoTextSize = 15,
@@ -67,6 +67,13 @@ function QuestsButton({
     const { asset, isLoading: isLoadingAsset } = useAssetsGet({
         getAssetInput: {
             id: quest.rewardAssetId || "",
+        },
+    });
+
+    const { playerQuestLog, isLoading: isLoadingPlayerQuestLog } = useQuestGet({
+        getPlayerQuestLogInput: {
+            questId: quest.id,
+            playerId: player?.id || "",
         },
     });
 
@@ -154,9 +161,9 @@ function QuestsButton({
         }
         if (
             quest.multiClaimable &&
-            questLog?.repeatCount &&
+            playerQuestLog?.repeatCount &&
             Number(quest.multiClaimLimit) > 0 &&
-            questLog.repeatCount >= Number(quest.multiClaimLimit)
+            playerQuestLog.repeatCount >= Number(quest.multiClaimLimit)
         ) {
             toast.error("You reached the maximum number of claims.");
             return;
@@ -179,7 +186,7 @@ function QuestsButton({
             isProcessingRef.current = true;
             setBlockFunction(true);
             if (quest.multiClaimable && quest.urls && quest.urls.length > 0) {
-                const url = quest.urls[questLog?.repeatCount || 0];
+                const url = quest.urls[playerQuestLog?.repeatCount || 0];
                 if (url) {
                     window.open(url, "_blank");
                 }
@@ -201,7 +208,8 @@ function QuestsButton({
                 if (
                     quest.repeatable &&
                     quest.repeatableCount &&
-                    quest.repeatableCount > (questLog?.repeatCount || 0) + 1
+                    quest.repeatableCount >
+                        (playerQuestLog?.repeatCount || 0) + 1
                 ) {
                     toast.success(
                         "Quest completed! Please wait for the next completion."
@@ -233,7 +241,7 @@ function QuestsButton({
         completeQuest,
         toast,
         preventRapidClicks,
-        questLog?.repeatCount,
+        playerQuestLog?.repeatCount,
     ]);
 
     // 퀘스트 보상 청구 핸들러
@@ -258,24 +266,24 @@ function QuestsButton({
                 toast.error("You don't have permission to claim this quest.");
                 return;
             }
-            if (!questLog) {
+            if (!playerQuestLog) {
                 toast.error("You haven't completed this quest yet.");
                 return;
             }
 
             if (quest.repeatable && quest.repeatableCount) {
-                if (questLog.repeatCount < quest.repeatableCount) {
+                if (playerQuestLog.repeatCount < quest.repeatableCount) {
                     toast.error(
                         `You need to complete this quest ${quest.repeatableCount} times before claiming the reward.`
                     );
                     return;
                 }
 
-                if (!questLog.completed) {
+                if (!playerQuestLog.completed) {
                     toast.error("You haven't completed this quest yet.");
                     return;
                 }
-            } else if (!questLog.completed) {
+            } else if (!playerQuestLog.completed) {
                 toast.error("You haven't completed this quest yet.");
                 return;
             }
@@ -290,10 +298,10 @@ function QuestsButton({
             }
 
             const targetCount =
-                questLog &&
-                questLog.claimedDates &&
-                questLog.claimedDates.length > 0
-                    ? questLog.claimedDates.length + 1
+                playerQuestLog &&
+                playerQuestLog.claimedDates &&
+                playerQuestLog.claimedDates.length > 0
+                    ? playerQuestLog.claimedDates.length + 1
                     : 1;
 
             try {
@@ -302,7 +310,7 @@ function QuestsButton({
                 setBlockFunction(true);
 
                 const result = await claimQuestReward({
-                    questLog,
+                    questLog: playerQuestLog,
                     player,
                     targetCount,
                 });
@@ -330,7 +338,7 @@ function QuestsButton({
             player,
             blockFunction,
             permission,
-            questLog,
+            playerQuestLog,
             status,
             quest,
             isClaimingQuestReward,
@@ -342,7 +350,7 @@ function QuestsButton({
 
     // 퀘스트 상태 업데이트
     useEffect(() => {
-        if (!questLog) {
+        if (!playerQuestLog) {
             setStatus("default");
             setButtonStyle("gradient-border morp-glass-1");
             return;
@@ -350,14 +358,14 @@ function QuestsButton({
 
         // 반복 퀘스트 처리
         if (quest.repeatable && quest.repeatableCount) {
-            if (questLog.isClaimed) {
+            if (playerQuestLog.isClaimed) {
                 setStatus("claimed");
                 setButtonStyle(
                     "opacity-40 bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)]"
                 );
             } else if (
-                questLog.repeatCount >= quest.repeatableCount &&
-                questLog.completed
+                playerQuestLog.repeatCount >= quest.repeatableCount &&
+                playerQuestLog.completed
             ) {
                 // 최대 반복 횟수에 도달하고 completed 상태일 때만 completed 상태로 설정
                 setStatus("completed");
@@ -371,12 +379,12 @@ function QuestsButton({
             }
         } else {
             // 일반 퀘스트 처리
-            if (questLog.isClaimed) {
+            if (playerQuestLog.isClaimed) {
                 setStatus("claimed");
                 setButtonStyle(
                     "opacity-40 bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)]"
                 );
-            } else if (questLog.completed) {
+            } else if (playerQuestLog.completed) {
                 setStatus("completed");
                 setButtonStyle(
                     "border-2 border-[rgba(139,92,246,0.9)] animate-pulse"
@@ -394,9 +402,10 @@ function QuestsButton({
             quest.repeatableInterval > 0
         ) {
             const lastCompletedAt =
-                questLog?.completedDates && questLog.completedDates.length > 0
+                playerQuestLog?.completedDates &&
+                playerQuestLog.completedDates.length > 0
                     ? Math.max(
-                          ...questLog.completedDates.map((date) =>
+                          ...playerQuestLog.completedDates.map((date) =>
                               new Date(date).getTime()
                           )
                       )
@@ -415,9 +424,10 @@ function QuestsButton({
             quest.multiClaimInterval > 0
         ) {
             const lastClaimedAt =
-                questLog?.claimedDates && questLog.claimedDates.length > 0
+                playerQuestLog?.claimedDates &&
+                playerQuestLog.claimedDates.length > 0
                     ? Math.max(
-                          ...questLog.claimedDates.map((date) =>
+                          ...playerQuestLog.claimedDates.map((date) =>
                               new Date(date).getTime()
                           )
                       )
@@ -430,12 +440,11 @@ function QuestsButton({
                 setWaitDate(waitDate);
             }
         }
-    }, [quest, questLog]);
+    }, [quest, playerQuestLog]);
 
-    // 에셋 로딩 상태 처리
     useEffect(() => {
-        setIsReady(!isLoadingAsset);
-    }, [isLoadingAsset]);
+        setIsReady(!isLoadingAsset && !isLoadingPlayerQuestLog);
+    }, [isLoadingAsset, isLoadingPlayerQuestLog]);
 
     // 반응형 클래스 계산
     const frameClass = getResponsiveClass(frameSize).frameClass;
@@ -611,14 +620,16 @@ function QuestsButton({
                                                     "opacity-85"
                                                 )}
                                             >
-                                                {questLog?.repeatCount || 0}/
-                                                {quest.repeatableCount}
+                                                {playerQuestLog?.repeatCount ||
+                                                    0}
+                                                /{quest.repeatableCount}
                                             </div>
                                         )}
                                         {waitDate &&
                                             quest.repeatableCount &&
                                             quest.repeatableCount >
-                                                (questLog?.repeatCount || 0) &&
+                                                (playerQuestLog?.repeatCount ||
+                                                    0) &&
                                             waitDate.getTime() >
                                                 new Date().getTime() &&
                                             !isCountdownComplete && (
@@ -648,8 +659,9 @@ function QuestsButton({
                                                     "opacity-85"
                                                 )}
                                             >
-                                                {questLog?.repeatCount || 0}/
-                                                {quest.multiClaimLimit}
+                                                {playerQuestLog?.repeatCount ||
+                                                    0}
+                                                /{quest.multiClaimLimit}
                                             </div>
                                         )}
                                         {quest.multiClaimLimit === 0 && (
@@ -661,14 +673,15 @@ function QuestsButton({
                                                     "opacity-85"
                                                 )}
                                             >
-                                                {questLog?.repeatCount || 0}
+                                                {playerQuestLog?.repeatCount ||
+                                                    0}
                                             </div>
                                         )}
                                         {waitDate &&
                                             (Number(quest.multiClaimLimit) ===
                                                 0 ||
                                                 Number(quest.multiClaimLimit) >
-                                                    (questLog?.repeatCount ||
+                                                    (playerQuestLog?.repeatCount ||
                                                         0)) &&
                                             waitDate.getTime() >
                                                 new Date().getTime() &&
@@ -691,8 +704,8 @@ function QuestsButton({
                                 {status === "completed" ? (
                                     !quest.repeatable ||
                                     !quest.repeatableCount ||
-                                    (questLog &&
-                                        questLog.repeatCount >=
+                                    (playerQuestLog &&
+                                        playerQuestLog.repeatCount >=
                                             quest.repeatableCount) ? (
                                         <button
                                             onClick={(e) => {

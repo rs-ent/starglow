@@ -3,10 +3,9 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 
 import { useSearchParams } from "next/navigation";
-import { getProviders } from "next-auth/react";
+import { getProviders, useSession, signIn } from "next-auth/react";
 
 import { useToast } from "@/app/hooks/useToast";
-import { useUserSet } from "@/app/hooks/useUser";
 import { WALLET_PROVIDERS } from "@/app/types/auth";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import SocialAuthButton from "@/components/atoms/SocialAuthButton";
@@ -14,6 +13,7 @@ import TelegramLoginButton from "@/components/atoms/TelegramLoginButton";
 import WalletAuthButton from "@/components/atoms/WalletAuthButton";
 
 import type { Provider } from "@/app/types/auth";
+import { redirect } from "next/navigation";
 
 function SignInButtons() {
     const toast = useToast();
@@ -24,7 +24,13 @@ function SignInButtons() {
     const callbackUrl = params.get("callbackUrl") || "/";
     const error = params.get("error");
 
-    const { setUserWithTelegram } = useUserSet();
+    const { data: session } = useSession();
+
+    useEffect(() => {
+        if (session?.user?.id) {
+            redirect(callbackUrl || "/");
+        }
+    }, [session?.user?.id, callbackUrl]);
 
     useEffect(() => {
         if (error) {
@@ -56,8 +62,15 @@ function SignInButtons() {
 
     async function handleTelegramAuth(user: any) {
         if (user) {
-            await setUserWithTelegram({
-                user: user,
+            await signIn("telegram", {
+                telegramId: user.id?.toString(),
+                firstName: user.first_name,
+                lastName: user.last_name,
+                username: user.username,
+                photoUrl: user.photo_url,
+                languageCode: user.language_code,
+                isPremium: user.is_premium?.toString(),
+                redirect: false,
             });
 
             window.location.href = callbackUrl;
@@ -68,7 +81,14 @@ function SignInButtons() {
         return <PartialLoading text="Loading..." />;
     }
 
-    const DONOT_SHOW_PROVIDERS = ["spotify", "coinbase", "discord", "kakao"];
+    const DONOT_SHOW_PROVIDERS = [
+        "spotify",
+        "coinbase",
+        "discord",
+        "kakao",
+        "wallet",
+        "telegram",
+    ];
     const DONOT_SHOW_WALLET_PROVIDERS = ["starglow"];
 
     return (

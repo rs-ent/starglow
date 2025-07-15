@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import { prisma } from "@/lib/prisma/client";
 
 import { requireAuth } from "../auth/authUtils";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 export interface StoredFile {
     id: string;
@@ -120,6 +121,7 @@ export async function deleteFile(id: string): Promise<boolean> {
     await requireAuth();
 
     const file = await prisma.storedFiles.findUnique({
+        cacheStrategy: getCacheStrategy("fiveMinutes"),
         where: { id },
     });
 
@@ -153,6 +155,7 @@ export async function deleteFiles(ids: string[]): Promise<boolean> {
 
     // DB에서 파일 정보 조회
     const files = await prisma.storedFiles.findMany({
+        cacheStrategy: getCacheStrategy("fiveMinutes"),
         where: { id: { in: ids } },
         select: { id: true, url: true },
     });
@@ -197,6 +200,7 @@ export async function uploadFiles(
     }
 
     const currentFiles = await prisma.storedFiles.findMany({
+        cacheStrategy: getCacheStrategy("realtime"),
         where: { purpose },
         orderBy: { order: "desc" },
         take: 1,
@@ -276,6 +280,7 @@ export async function getFilesByPurposeAndBucket(
     await requireAuth();
 
     const files = await prisma.storedFiles.findMany({
+        cacheStrategy: getCacheStrategy("tenSeconds"),
         where: {
             purpose,
             bucket,
@@ -366,12 +371,14 @@ export async function getAllFiles(params?: GetAllFilesParams): Promise<{
     // 파일 조회 및 총 개수 조회
     const [files, total] = await Promise.all([
         prisma.storedFiles.findMany({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where,
             orderBy,
             take: limit,
             skip: offset,
         }),
         prisma.storedFiles.count({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where,
         }),
     ]);
@@ -396,6 +403,7 @@ export async function getFileById(id?: string): Promise<StoredFile | null> {
     await requireAuth();
 
     const file = await prisma.storedFiles.findUnique({
+        cacheStrategy: getCacheStrategy("forever"),
         where: { id },
     });
 
@@ -672,6 +680,7 @@ export async function getFilesMetadataByUrls(
             // 각 URL에 대해 캐시된 메타데이터 가져오기
             const batchPromises = batchUrls.map(async (url) => {
                 const file = await prisma.storedFiles.findUnique({
+                    cacheStrategy: getCacheStrategy("oneMonth"),
                     where: { url },
                     select: {
                         width: true,

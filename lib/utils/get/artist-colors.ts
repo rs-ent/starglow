@@ -20,7 +20,7 @@ const defaultFGColors = [
 const colorCache = new Map<string, [number, number, number]>();
 
 export const ArtistBG = (
-    artist: Artist,
+    artist: Pick<Artist, "backgroundColors">,
     importance: number,
     opacity?: number
 ) => {
@@ -34,7 +34,7 @@ export const ArtistBG = (
 };
 
 export const ArtistFG = (
-    artist: Artist,
+    artist: Pick<Artist, "foregroundColors">,
     importance: number,
     opacity?: number
 ) => {

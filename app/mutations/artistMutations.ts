@@ -12,7 +12,6 @@ import {
     createArtistMessage,
     updateArtistMessage,
     deleteArtistMessage,
-    tokenGating,
 } from "../actions/artists";
 import { artistKeys } from "../queryKeys";
 
@@ -230,22 +229,6 @@ export function useDeleteArtistMessage() {
             queryClient
                 .invalidateQueries({
                     queryKey: artistKeys.detail({ id: variables.artistId }),
-                })
-                .catch((error) => {
-                    console.error(error);
-                });
-        },
-    });
-}
-
-export function useTokenGating() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: tokenGating,
-        onSuccess: (_data, variables) => {
-            queryClient
-                .invalidateQueries({
-                    queryKey: artistKeys.tokenGating(variables),
                 })
                 .catch((error) => {
                     console.error(error);

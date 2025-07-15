@@ -40,7 +40,7 @@ import {
     DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 
-import type { Player, Artist } from "@prisma/client";
+import type { Player } from "@prisma/client";
 import type { FileData } from "../atoms/FileUploader";
 import { usePlayerGet } from "@/app/hooks/usePlayer";
 import { useToast } from "@/app/hooks/useToast";
@@ -48,7 +48,11 @@ import ImageVideoPopup from "../atoms/ImageVideoPopup";
 import { ArtistBG, ArtistFG } from "@/lib/utils/get/artist-colors";
 
 interface BoardContentCommentItemProps {
-    artist: Artist;
+    artistId: string;
+    artistName: string;
+    artistLogoUrl: string;
+    backgroundColors: string[];
+    foregroundColors: string[];
     comment: any;
     player: Player | null;
     onReply: (commentId: string) => void;
@@ -62,7 +66,11 @@ interface BoardContentCommentItemProps {
 }
 
 export default React.memo(function BoardContentCommentItem({
-    artist,
+    artistId,
+    artistName,
+    artistLogoUrl,
+    backgroundColors,
+    foregroundColors,
     comment,
     player,
     onReply,
@@ -286,7 +294,7 @@ export default React.memo(function BoardContentCommentItem({
                                 {(comment.isSandbox
                                     ? comment.isSandboxBoardArtist
                                     : comment.author?.artistId ===
-                                      artist.id) && (
+                                      artistId) && (
                                     <span
                                         className={cn(
                                             "flex flex-row items-center gap-1 rounded-full px-2 py-0.5 flex-shrink-0 font-medium",
@@ -298,12 +306,16 @@ export default React.memo(function BoardContentCommentItem({
                                         )}
                                         style={{
                                             background: `linear-gradient(to right, ${ArtistBG(
-                                                artist,
+                                                { backgroundColors },
                                                 3,
                                                 20
-                                            )}, ${ArtistBG(artist, 2, 20)})`,
+                                            )}, ${ArtistBG(
+                                                { backgroundColors },
+                                                2,
+                                                20
+                                            )})`,
                                             border: `1px solid ${ArtistFG(
-                                                artist,
+                                                { foregroundColors },
                                                 0,
                                                 40
                                             )}`,
@@ -311,8 +323,8 @@ export default React.memo(function BoardContentCommentItem({
                                         }}
                                     >
                                         <Image
-                                            src={artist.logoUrl || ""}
-                                            alt={artist.name}
+                                            src={artistLogoUrl || ""}
+                                            alt={artistName}
                                             width={20}
                                             height={20}
                                             className={cn(
@@ -324,7 +336,7 @@ export default React.memo(function BoardContentCommentItem({
                                                           .frameClass
                                             )}
                                         />
-                                        {artist.name}
+                                        {artistName}
                                     </span>
                                 )}
                                 <span
@@ -333,7 +345,7 @@ export default React.memo(function BoardContentCommentItem({
                                         (comment.isSandbox
                                             ? comment.isSandboxBoardArtist
                                             : comment.author?.artistId ===
-                                              artist.id) && "rainbow-text",
+                                              artistId) && "rainbow-text",
                                         level > 0
                                             ? getResponsiveClass(10).textClass
                                             : getResponsiveClass(15).textClass
@@ -858,7 +870,11 @@ export default React.memo(function BoardContentCommentItem({
                                 {comment.replies.map((reply: any) => (
                                     <BoardContentCommentItem
                                         key={reply.id}
-                                        artist={artist}
+                                        artistId={artistId}
+                                        artistName={artistName}
+                                        artistLogoUrl={artistLogoUrl}
+                                        backgroundColors={backgroundColors}
+                                        foregroundColors={foregroundColors}
                                         comment={reply}
                                         player={player}
                                         onReply={onReply}

@@ -6,6 +6,7 @@ import { PaymentStatus, PaymentPromotionDiscountType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma/client";
 import { PRODUCT_MAP } from "@/lib/types/payment";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 import { getExchangeRateInfo, convertAmount } from "./exchangeRate";
 
@@ -216,6 +217,7 @@ async function getTotalPrice({
     if (promotionCode) {
         const client = tx ?? prisma;
         promotion = await client.paymentPromotion.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: {
                 code: promotionCode,
             },
@@ -287,6 +289,7 @@ async function checkRecentPayment({
         cooldownTime.setSeconds(cooldownTime.getSeconds() - cooldownSeconds);
 
         const recentPayment = await prisma.payment.findFirst({
+            cacheStrategy: getCacheStrategy("tenSeconds"),
             where: {
                 userId: input.userId,
                 productTable: input.productTable,
@@ -1406,6 +1409,7 @@ export async function getPaymentsByUserId({
 }): Promise<Payment[]> {
     try {
         const results = await prisma.payment.findMany({
+            cacheStrategy: getCacheStrategy("tenSeconds"),
             where: {
                 userId,
             },

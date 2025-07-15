@@ -4,6 +4,7 @@
 
 import { prisma } from "@/lib/prisma/client";
 import { revalidatePath } from "next/cache";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 export async function createModerationRule(data: {
     category: string;
@@ -30,6 +31,7 @@ export async function createModerationRule(data: {
 export async function getModerationRules(category?: string) {
     try {
         const rules = await prisma.boardModerationRule.findMany({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: category ? { category } : {},
             orderBy: { createdAt: "desc" },
         });
@@ -88,6 +90,7 @@ export async function addStopWords(ruleId: string, newWords: string[]) {
         }
 
         const rule = await prisma.boardModerationRule.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: ruleId },
             select: { stopWords: true },
         });
@@ -142,6 +145,7 @@ export async function addStopWordsBulk(
         }
 
         const rule = await prisma.boardModerationRule.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: ruleId },
             select: { stopWords: true },
         });
@@ -195,6 +199,7 @@ export async function addStopWordsBulk(
 export async function removeStopWords(ruleId: string, wordsToRemove: string[]) {
     try {
         const rule = await prisma.boardModerationRule.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: ruleId },
             select: { stopWords: true },
         });

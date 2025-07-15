@@ -13,19 +13,14 @@ import PollsFilter, {
 } from "./Polls.Contents.Total.Filter";
 import type { ClientPollFilters } from "./Polls.Contents.Total.Filter";
 
-import type { Player, PollLog } from "@prisma/client";
+import type { Player } from "@prisma/client";
 
 interface PollsContentsTotalProps {
     player: Player | null;
-    pollLogs?: PollLog[];
     className?: string;
 }
 
-function PollsContentsTotal({
-    player,
-    pollLogs,
-    className,
-}: PollsContentsTotalProps) {
+function PollsContentsTotal({ player, className }: PollsContentsTotalProps) {
     // 필터 상태 관리
     const [filters, setFilters] = useState<ClientPollFilters>({
         isActive: true,
@@ -117,18 +112,7 @@ function PollsContentsTotal({
                 ) : (
                     <div key="public-polls">
                         {filteredPolls && filteredPolls.length > 0 ? (
-                            <PollsList
-                                polls={filteredPolls}
-                                player={player}
-                                pollLogs={
-                                    pollLogs &&
-                                    pollLogs.filter((log) =>
-                                        filteredPolls.some(
-                                            (poll) => poll.id === log.pollId
-                                        )
-                                    )
-                                }
-                            />
+                            <PollsList polls={filteredPolls} player={player} />
                         ) : (
                             <div className="text-center text-2xl py-10">
                                 {isLoading ? "Loading..." : "No polls found"}

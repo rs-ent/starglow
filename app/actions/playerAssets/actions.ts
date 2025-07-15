@@ -5,6 +5,7 @@
 import { PlayerAssetStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 import { createAssetInstance } from "@/app/actions/assets/actions";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 import type { AssetStatusChangeEvent } from "@/app/actions/assets/actions";
 import type {
@@ -21,6 +22,11 @@ import type {
 export interface PlayerAssetResult<T> {
     success: boolean;
     data: T;
+    error?: string;
+}
+
+export interface PlayerAssetUpdateResult {
+    success: boolean;
     error?: string;
 }
 
@@ -56,7 +62,7 @@ export interface GetPlayerAssetsFilter {
 }
 
 export interface GetPlayerAssetsInput {
-    filter: GetPlayerAssetsFilter;
+    filter?: GetPlayerAssetsFilter;
     pagination?: {
         page?: number;
         limit?: number;
@@ -75,12 +81,8 @@ export type PlayerAssetWithAsset = {
         name: string;
         symbol: string;
         iconUrl: string | null;
-        description: string | null;
-        assetType: string;
         isActive: boolean;
         hasInstance: boolean;
-        imageUrl: string | null;
-        metadata: any;
     };
 };
 
@@ -121,29 +123,30 @@ export async function getPlayerAssets(
 
     const where: Prisma.PlayerAssetWhereInput = {};
     const assetWhere: Prisma.AssetWhereInput = {};
+    const filter = input?.filter;
 
-    if (input?.filter.playerId) {
-        where.playerId = input.filter.playerId;
+    if (filter?.playerId) {
+        where.playerId = filter.playerId;
     }
 
-    if (input?.filter.assetId) {
-        where.assetId = input.filter.assetId;
+    if (filter?.assetId) {
+        where.assetId = filter.assetId;
     }
 
-    if (input?.filter.assetIds && input.filter.assetIds.length > 0) {
-        where.assetId = { in: input.filter.assetIds };
+    if (filter?.assetIds && filter.assetIds.length > 0) {
+        where.assetId = { in: filter.assetIds };
     }
 
-    if (input?.filter.assetType) {
-        assetWhere.assetType = input.filter.assetType;
+    if (filter?.assetType) {
+        assetWhere.assetType = filter.assetType;
     }
 
-    if (input?.filter.isActive !== undefined) {
-        assetWhere.isActive = input.filter.isActive;
+    if (filter?.isActive !== undefined) {
+        assetWhere.isActive = filter.isActive;
     }
 
-    if (input?.filter.includeDefaultAsset !== undefined) {
-        assetWhere.isDefault = input.filter.includeDefaultAsset;
+    if (filter?.includeDefaultAsset !== undefined) {
+        assetWhere.isDefault = filter.includeDefaultAsset;
     }
 
     if (Object.keys(assetWhere).length > 0) {
@@ -152,6 +155,7 @@ export async function getPlayerAssets(
 
     const [playerAssets, totalCount] = await Promise.all([
         prisma.playerAsset.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where,
             select: {
                 id: true,
@@ -179,7 +183,10 @@ export async function getPlayerAssets(
             skip: offset,
             take: limit,
         }),
-        prisma.playerAsset.count({ where }),
+        prisma.playerAsset.count({
+            cacheStrategy: getCacheStrategy("realtime"),
+            where,
+        }),
     ]);
 
     const totalPages = Math.ceil(totalCount / limit);
@@ -204,7 +211,7 @@ export interface GetPlayerAssetInput {
 
 export async function getPlayerAsset(
     input?: GetPlayerAssetInput
-): Promise<PlayerAssetResult<PlayerAsset | null>> {
+): Promise<PlayerAssetResult<PlayerAssetWithAsset | null>> {
     if (!input) {
         return {
             success: false,
@@ -214,6 +221,7 @@ export async function getPlayerAsset(
     }
 
     const playerAsset = await prisma.playerAsset.findUnique({
+        cacheStrategy: getCacheStrategy("realtime"),
         where: {
             playerId_assetId: {
                 playerId: input.playerId,
@@ -231,12 +239,10 @@ export async function getPlayerAsset(
                 select: {
                     id: true,
                     name: true,
-                    description: true,
-                    assetType: true,
+                    symbol: true,
                     isActive: true,
                     hasInstance: true,
-                    imageUrl: true,
-                    metadata: true,
+                    iconUrl: true,
                 },
             },
         },
@@ -255,11 +261,10 @@ export interface UpdatePlayerAssetInput {
 export async function updatePlayerAsset(
     input?: UpdatePlayerAssetInput,
     trx?: any // Prisma v6 트랜잭션 타입 호환성을 위한 변경
-): Promise<PlayerAssetResult<PlayerAsset | null>> {
+): Promise<PlayerAssetUpdateResult> {
     if (!input) {
         return {
             success: false,
-            data: null,
             error: "No input",
         };
     }
@@ -267,31 +272,27 @@ export async function updatePlayerAsset(
     if (input.transaction.amount < 0) {
         return {
             success: false,
-            data: null,
             error: "Amount cannot be negative",
         };
     }
 
-    // 🔒 Integer overflow 방지 (JavaScript Number.MAX_SAFE_INTEGER)
     if (input.transaction.amount > Number.MAX_SAFE_INTEGER) {
         return {
             success: false,
-            data: null,
             error: "Amount exceeds maximum safe integer",
         };
     }
 
     const tx = (trx || prisma) as typeof prisma;
 
-    // 🔍 Asset 정보 조회 (hasInstance 확인용)
     const asset = await tx.asset.findUnique({
+        cacheStrategy: getCacheStrategy("realtime"),
         where: { id: input.transaction.assetId },
     });
 
     if (!asset) {
         return {
             success: false,
-            data: null,
             error: "Asset not found",
         };
     }
@@ -299,7 +300,6 @@ export async function updatePlayerAsset(
     if (!asset.isActive) {
         return {
             success: false,
-            data: null,
             error: "Asset is not active",
         };
     }
@@ -316,8 +316,9 @@ export async function updatePlayerAsset(
 async function updatePlayerAssetBalance(
     input: UpdatePlayerAssetInput,
     tx: typeof prisma
-): Promise<PlayerAssetResult<PlayerAsset | null>> {
+): Promise<PlayerAssetUpdateResult> {
     const playerAsset = await tx.playerAsset.findUnique({
+        cacheStrategy: getCacheStrategy("realtime"),
         where: {
             playerId_assetId: {
                 playerId: input.transaction.playerId,
@@ -335,15 +336,13 @@ async function updatePlayerAssetBalance(
             case PlayerAssetStatus.INACTIVE:
                 return {
                     success: false,
-                    data: null,
                     error: "Asset is inactive",
                 };
             case PlayerAssetStatus.FROZEN:
-                return { success: false, data: null, error: "Asset is frozen" };
+                return { success: false, error: "Asset is frozen" };
             case PlayerAssetStatus.DELETED:
                 return {
                     success: false,
-                    data: null,
                     error: "Asset is deleted",
                 };
         }
@@ -363,7 +362,6 @@ async function updatePlayerAssetBalance(
             ) {
                 return {
                     success: false,
-                    data: null,
                     error: "Balance overflow detected",
                 };
             }
@@ -373,7 +371,6 @@ async function updatePlayerAssetBalance(
             if (newBalance < 0) {
                 return {
                     success: false,
-                    data: null,
                     error: "Insufficient balance",
                 };
             }
@@ -385,14 +382,14 @@ async function updatePlayerAssetBalance(
             if (newBalance > Number.MAX_SAFE_INTEGER) {
                 return {
                     success: false,
-                    data: null,
                     error: "Balance exceeds maximum safe integer",
                 };
             }
             break;
     }
 
-    const updatedAsset = await tx.playerAsset.upsert({
+    // 🎯 Performance optimization: Remove unnecessary select - data is not used by callers
+    await tx.playerAsset.upsert({
         where: {
             playerId_assetId: {
                 playerId: input.transaction.playerId,
@@ -406,14 +403,6 @@ async function updatePlayerAssetBalance(
         },
         update: {
             balance: newBalance,
-        },
-        select: {
-            id: true,
-            playerId: true,
-            assetId: true,
-            balance: true,
-            status: true,
-            updatedAt: true,
         },
     });
 
@@ -442,7 +431,7 @@ async function updatePlayerAssetBalance(
         });
     }
 
-    return { success: true, data: updatedAsset };
+    return { success: true };
 }
 
 // 🔧 Instance가 있는 자산 처리
@@ -450,11 +439,12 @@ async function updatePlayerAssetWithInstances(
     input: UpdatePlayerAssetInput,
     asset: Asset,
     tx: typeof prisma
-): Promise<PlayerAssetResult<PlayerAsset | null>> {
+): Promise<PlayerAssetUpdateResult> {
     const { transaction } = input;
 
     // 🔍 PlayerAsset 상태 확인 (일관성을 위해 추가)
     const existingPlayerAsset = await tx.playerAsset.findUnique({
+        cacheStrategy: getCacheStrategy("realtime"),
         where: {
             playerId_assetId: {
                 playerId: transaction.playerId,
@@ -471,19 +461,16 @@ async function updatePlayerAssetWithInstances(
             case PlayerAssetStatus.INACTIVE:
                 return {
                     success: false,
-                    data: null,
                     error: "Player asset is inactive",
                 };
             case PlayerAssetStatus.FROZEN:
                 return {
                     success: false,
-                    data: null,
                     error: "Player asset is frozen",
                 };
             case PlayerAssetStatus.DELETED:
                 return {
                     success: false,
-                    data: null,
                     error: "Player asset is deleted",
                 };
         }
@@ -506,10 +493,10 @@ async function updatePlayerAssetWithInstances(
             });
 
             if (!grantResult.success) {
-                return { success: false, data: null, error: grantResult.error };
+                return { success: false, error: grantResult.error };
             }
 
-            return { success: true, data: grantResult.data!.playerAsset };
+            return { success: true };
 
         case "SUBTRACT":
             // 기존 AssetInstance들 소비/회수
@@ -529,19 +516,18 @@ async function updatePlayerAssetWithInstances(
             if (!withdrawResult.success) {
                 return {
                     success: false,
-                    data: null,
                     error: withdrawResult.error,
                 };
             }
 
-            return { success: true, data: withdrawResult.data!.playerAsset };
+            return { success: true };
 
         case "SET":
             // SET 연산은 복잡하므로 별도 처리 필요
             return await setPlayerAssetWithInstances(input, asset, tx);
 
         default:
-            return { success: false, data: null, error: "Invalid operation" };
+            return { success: false, error: "Invalid operation" };
     }
 }
 
@@ -550,11 +536,12 @@ async function setPlayerAssetWithInstances(
     input: UpdatePlayerAssetInput,
     asset: Asset,
     tx: typeof prisma
-): Promise<PlayerAssetResult<PlayerAsset | null>> {
+): Promise<PlayerAssetUpdateResult> {
     const { transaction } = input;
 
     // 🔍 현재 PlayerAsset 조회
     const currentPlayerAsset = await tx.playerAsset.findUnique({
+        cacheStrategy: getCacheStrategy("realtime"),
         where: {
             playerId_assetId: {
                 playerId: transaction.playerId,
@@ -578,17 +565,16 @@ async function setPlayerAssetWithInstances(
     // 목표 잔액과 현재 잔액이 같으면 아무것도 하지 않음
     if (difference === 0) {
         if (currentPlayerAsset) {
-            return { success: true, data: currentPlayerAsset };
+            return { success: true };
         } else if (targetBalance === 0) {
             // 목표가 0이고 PlayerAsset이 없으면 굳이 생성하지 않음
             return {
                 success: true,
-                data: null,
                 error: "No PlayerAsset needed for zero balance",
             };
         } else {
             // PlayerAsset이 없고 목표 잔액이 0보다 크면 생성
-            const newPlayerAsset = await tx.playerAsset.create({
+            await tx.playerAsset.create({
                 data: {
                     playerId: transaction.playerId,
                     assetId: transaction.assetId,
@@ -596,7 +582,7 @@ async function setPlayerAssetWithInstances(
                     status: "ACTIVE",
                 },
             });
-            return { success: true, data: newPlayerAsset };
+            return { success: true };
         }
     }
 
@@ -616,10 +602,10 @@ async function setPlayerAssetWithInstances(
         });
 
         if (!grantResult.success) {
-            return { success: false, data: null, error: grantResult.error };
+            return { success: false, error: grantResult.error };
         }
 
-        return { success: true, data: grantResult.data!.playerAsset };
+        return { success: true };
     } else {
         // 목표 < 현재: 차이만큼 인스턴스 회수
         const withdrawAmount = Math.abs(difference);
@@ -638,10 +624,10 @@ async function setPlayerAssetWithInstances(
         });
 
         if (!withdrawResult.success) {
-            return { success: false, data: null, error: withdrawResult.error };
+            return { success: false, error: withdrawResult.error };
         }
 
-        return { success: true, data: withdrawResult.data!.playerAsset };
+        return { success: true };
     }
 }
 
@@ -676,6 +662,7 @@ async function getRewardLogsToRollback(
 ): Promise<RewardLogForRollback[] | { error: string }> {
     if (input.rewardLogId) {
         const rewardLog = await tx.rewardsLog.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: input.rewardLogId },
             select: { id: true, playerId: true, assetId: true, amount: true },
         });
@@ -689,6 +676,7 @@ async function getRewardLogsToRollback(
 
     if (input.questLogId) {
         const rewardLogs = await tx.rewardsLog.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { questLogId: input.questLogId },
             select: { id: true, playerId: true, assetId: true, amount: true },
         });
@@ -750,6 +738,7 @@ async function getPlayerAssetsForRollback(
 
     // 🔄 OR 조건 최적화
     return await tx.playerAsset.findMany({
+        cacheStrategy: getCacheStrategy("realtime"),
         where: {
             OR: Array.from(uniquePlayerAssets.values()).map(
                 ({ playerId, assetId }) => ({
@@ -1029,65 +1018,44 @@ export interface BatchUpdatePlayerAssetInput {
     txs: PlayerAssetTransactionInput[];
 }
 
+export interface BatchUpdatePlayerAssetResult {
+    success: boolean;
+    error?: string;
+    processedCount?: number;
+}
+
 export async function batchUpdatePlayerAsset(
     inputs?: BatchUpdatePlayerAssetInput
-): Promise<
-    PlayerAssetResult<{
-        results: PlayerAsset[];
-        failed: PlayerAssetTransactionInput[];
-    }>
-> {
+): Promise<BatchUpdatePlayerAssetResult> {
     if (!inputs) {
         return {
             success: false,
-            data: {
-                results: [],
-                failed: [],
-            },
             error: "No input",
         };
     }
 
     // 🔒 배치 처리를 트랜잭션으로 감싸서 원자성 보장
     try {
-        const result = await prisma.$transaction(async (tx) => {
-            const results: PlayerAsset[] = [];
-            const failed: PlayerAssetTransactionInput[] = [];
-
+        await prisma.$transaction(async (tx) => {
             for (const input of inputs.txs) {
-                try {
-                    const result = await updatePlayerAsset(
-                        { transaction: input },
-                        tx
-                    );
-                    if (result.success && result.data) {
-                        results.push(result.data);
-                    } else {
-                        failed.push(input);
-                        // 🔒 배치 처리에서 하나라도 실패하면 전체 롤백
-                        throw new Error(`Asset update failed: ${result.error}`);
-                    }
-                } catch (error) {
-                    failed.push(input);
-                    throw error; // 트랜잭션 롤백을 위해 에러를 다시 던짐
+                const result = await updatePlayerAsset(
+                    { transaction: input },
+                    tx
+                );
+                if (!result.success) {
+                    throw new Error(`Asset update failed: ${result.error}`);
                 }
             }
-
-            return { results, failed };
         });
 
         return {
             success: true,
-            data: result,
+            processedCount: inputs.txs.length,
         };
     } catch (error) {
         console.error("Batch update failed:", error);
         return {
             success: false,
-            data: {
-                results: [],
-                failed: inputs.txs, // 모든 트랜잭션이 실패로 처리
-            },
             error:
                 error instanceof Error ? error.message : "Batch update failed",
         };
@@ -1144,6 +1112,7 @@ export async function updatePlayerAssetsOnAssetChange(
         const { assetId, newStatus } = event;
 
         const affectedPlayerAssets = await prisma.playerAsset.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 assetId,
                 status: PlayerAssetStatus.ACTIVE,
@@ -1256,6 +1225,7 @@ export async function validatePlayerAsset(
     try {
         const tx = (externalTx || prisma) as typeof prisma;
         const asset = await tx.asset.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: input.assetId },
         });
 
@@ -1283,18 +1253,20 @@ export async function validatePlayerAsset(
             };
         }
 
+        // 🎯 Performance optimization: Select only necessary fields to avoid overfetching
+        // All fields are required as this returns a full PlayerAsset object and uses .id and .status
         const playerAsset = await tx.playerAsset.upsert({
             where: {
                 playerId_assetId: {
                     playerId: input.playerId,
-                    assetId: input.assetId,
+                    assetId: asset.id,
                 },
             },
             create: {
                 playerId: input.playerId,
-                assetId: input.assetId,
+                assetId: asset.id,
                 balance: 0,
-                status: PlayerAssetStatus.ACTIVE,
+                status: "ACTIVE",
             },
             update: {},
             select: {
@@ -1304,15 +1276,6 @@ export async function validatePlayerAsset(
                 balance: true,
                 status: true,
                 updatedAt: true,
-                asset: {
-                    select: {
-                        id: true,
-                        name: true,
-                        assetType: true,
-                        isActive: true,
-                        hasInstance: true,
-                    },
-                },
             },
         });
 
@@ -1381,6 +1344,7 @@ export async function setDefaultPlayerAsset(
         }
 
         const defaultAssets = await tx.asset.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 isDefault: true,
                 isActive: true,
@@ -1508,6 +1472,8 @@ export async function grantPlayerAssetInstances(
 
         const balanceBefore = existingPlayerAsset?.balance || 0;
 
+        // 🎯 Performance optimization: Select only necessary fields to avoid overfetching
+        // All fields are required as this returns a full PlayerAsset object and uses .id and .status
         const playerAsset = await tx.playerAsset.upsert({
             where: {
                 playerId_assetId: {
@@ -1675,6 +1641,7 @@ export async function withdrawPlayerAssetInstances(
         const asset =
             input.asset ||
             (await tx.asset.findUnique({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: { id: input.assetId, isActive: true },
             }));
 
@@ -1688,6 +1655,7 @@ export async function withdrawPlayerAssetInstances(
 
         // 🔍 PlayerAsset 확인
         const playerAsset = await tx.playerAsset.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 playerId_assetId: {
                     playerId: input.playerId,
@@ -1732,6 +1700,7 @@ export async function withdrawPlayerAssetInstances(
         }
 
         const availableInstances = await tx.assetInstance.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: whereCondition,
             take: input.amount,
             orderBy: [
@@ -1813,6 +1782,7 @@ export async function withdrawPlayerAssetInstances(
 
         // 🔄 업데이트된 AssetInstance 조회
         const withdrawnInstances = await tx.assetInstance.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: { in: instanceIds } },
             select: {
                 id: true,
@@ -1909,6 +1879,7 @@ export async function autoExpirePlayerAssetInstances(
 
         // 🔍 만료된 AssetInstance 조회
         const expiredInstances = await tx.assetInstance.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 status: {
                     in: ["RECEIVED", "PENDING"], // 활성 상태인 것만
@@ -2004,6 +1975,7 @@ export async function autoExpirePlayerAssetInstances(
         for (const update of playerAssetUpdates.values()) {
             // PlayerAsset 잔액 감소
             const playerAssetBefore = await tx.playerAsset.findUnique({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: { id: update.playerAssetId },
                 select: {
                     balance: true,
@@ -2207,6 +2179,7 @@ export async function getPlayerAssetInstances(
         // 🔍 데이터 조회
         const [instances, totalCount] = await Promise.all([
             prisma.assetInstance.findMany({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where,
                 select: {
                     id: true,
@@ -2253,7 +2226,10 @@ export async function getPlayerAssetInstances(
                 skip: offset,
                 take: limit,
             }),
-            prisma.assetInstance.count({ where }),
+            prisma.assetInstance.count({
+                cacheStrategy: getCacheStrategy("realtime"),
+                where,
+            }),
         ]);
 
         const totalPages = Math.ceil(totalCount / limit);

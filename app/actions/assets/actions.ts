@@ -36,6 +36,8 @@ import type { PlayerAssetResult } from "@/app/actions/playerAssets/actions";
 
 import type { Address } from "viem";
 
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
+
 export interface DeployAssetsContractInput {
     walletId: string;
     networkId: string;
@@ -151,11 +153,13 @@ export async function getAssetsContract(
         if (input.networkId) where.networkId = input.networkId;
 
         const contract = await prisma.assetsContract.findFirst({
+            cacheStrategy: getCacheStrategy("forever"),
             where,
             include: {
                 network: true,
             },
         });
+
         return contract;
     } catch (error) {
         console.error("Failed to get assets contract:", error);
@@ -190,6 +194,7 @@ export async function getAssetsContracts(
         if (input?.creatorAddress) where.creatorAddress = input.creatorAddress;
 
         const contracts = await prisma.assetsContract.findMany({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where,
             include: {
                 network: true,
@@ -201,7 +206,10 @@ export async function getAssetsContracts(
             },
         });
 
-        const totalItems = await prisma.assetsContract.count({ where });
+        const totalItems = await prisma.assetsContract.count({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
+            where,
+        });
         const totalPages = Math.ceil(totalItems / itemsPerPage);
 
         return {
@@ -248,6 +256,7 @@ export async function createAsset(input: CreateAssetInput): Promise<Asset> {
 
     try {
         const assetsContract = await prisma.assetsContract.findUnique({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where: {
                 address: input.assetsContractAddress,
             },
@@ -369,6 +378,7 @@ export async function getAsset(input?: GetAssetInput): Promise<Asset | null> {
         }
 
         const asset = await prisma.asset.findFirst({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where,
             include: {
                 network: true,
@@ -433,12 +443,14 @@ export async function getAssets(
         }
 
         const assets = await prisma.asset.findMany({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where,
             skip: (currentPage - 1) * itemsPerPage,
             take: itemsPerPage,
         });
 
         const totalItems = await prisma.asset.count({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where,
         });
 

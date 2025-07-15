@@ -9,7 +9,8 @@ import Script from "next/script";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 
-import { useUserSet } from "@/app/hooks/useUser";
+import { signIn } from "next-auth/react";
+
 import Footer from "@/components/main/Footer";
 import MainFollowUs from "@/components/main/Main.FollowUs";
 import MainGitbook from "@/components/main/Main.Gitbook";
@@ -61,7 +62,6 @@ export default function Main() {
     const router = useRouter();
     const signedOut = searchParams.get("signedOut");
     const { data: session } = useSession();
-    const { setUserWithTelegram } = useUserSet();
 
     const [isLoading, setIsLoading] = useState(true);
     const [telegram, setTelegram] = useState<any>(null);
@@ -207,9 +207,16 @@ export default function Main() {
             if (user) {
                 const refParam = telegram.initDataUnsafe?.start_param;
 
-                await setUserWithTelegram({
-                    user,
+                await signIn("telegram", {
+                    telegramId: user.id?.toString(),
+                    firstName: user.first_name,
+                    lastName: user.last_name,
+                    username: user.username,
+                    photoUrl: user.photo_url,
+                    languageCode: user.language_code,
+                    isPremium: user.is_premium?.toString(),
                     referrerCode: refParam,
+                    redirect: false,
                 });
 
                 setAuthProcessed(true);
@@ -219,7 +226,7 @@ export default function Main() {
         } finally {
             setIsLoading(false);
         }
-    }, [telegram, authProcessed, session, signedOut, setUserWithTelegram]);
+    }, [telegram, authProcessed, session, signedOut]);
 
     // 스크립트 로드 핸들러
     const handleScriptLoad = useCallback(() => {

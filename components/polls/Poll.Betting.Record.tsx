@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils/tailwind";
 import type { PollsWithArtist, PollOption } from "@/app/actions/polls";
 import type { Player, PollLog } from "@prisma/client";
-import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets";
+import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets/actions";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import Countdown from "../atoms/Countdown";
 

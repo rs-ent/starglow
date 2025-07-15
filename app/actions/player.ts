@@ -12,6 +12,8 @@ import { getUserDetailDataForServerAction } from "@/lib/utils/user-detail-data";
 import { setDefaultPlayerAsset } from "@/app/actions/playerAssets/actions";
 import { setReferralQuestLogs } from "./referral";
 
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
+
 import type {
     Prisma,
     User as DBUser,
@@ -32,6 +34,7 @@ export async function getPlayer(
     }
 
     const player = await prisma.player.findUnique({
+        cacheStrategy: getCacheStrategy("realtime"),
         where: { id: input.playerId },
     });
 
@@ -47,6 +50,7 @@ export async function getPlayerByUserId(
 ): Promise<Player | null> {
     try {
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: { userId: userId },
         });
 
@@ -57,6 +61,38 @@ export async function getPlayerByUserId(
         return player;
     } catch (error) {
         console.error("[getPlayerByUserId] Error:", error);
+        return null;
+    }
+}
+
+export async function getPlayerByUserIdForSession(
+    userId: string
+): Promise<Player | null> {
+    try {
+        const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("oneDay"),
+            where: { userId: userId },
+            select: {
+                id: true,
+                userId: true,
+                name: true,
+                nickname: true,
+                image: true,
+                referralCode: true,
+                isArtist: true,
+                artistId: true,
+                createdAt: true,
+                lastConnectedAt: true,
+            },
+        });
+
+        if (!player) {
+            return null;
+        }
+
+        return player as Player;
+    } catch (error) {
+        console.error("[getPlayerByUserIdForSession] Error:", error);
         return null;
     }
 }
@@ -78,9 +114,11 @@ export async function createPlayer(
         const player = await prisma.player.create({
             data: {
                 name: input.user.name || "New Player",
-                userId: input.user.id,
+                user: { connect: { id: input.user.id } },
                 referralCode: referralCode,
-                tweetAuthorId: input.tweetAuthorId,
+                ...(input.tweetAuthorId && {
+                    tweetAuthor: { connect: { authorId: input.tweetAuthorId } },
+                }),
             },
         });
 
@@ -110,7 +148,6 @@ export async function updatePlayer(
     }
 
     try {
-        // 🚀 사용자 상세 정보 자동 수집 (백그라운드에서 빠르게)
         let userDetails: Partial<UserDetailData> = {};
         try {
             userDetails = await getUserDetailDataForServerAction();
@@ -256,6 +293,7 @@ async function upsertPlayerCore(
         const result = await prisma.$transaction(async (tx) => {
             // Quick check for existing player
             const existingPlayer = await tx.player.findUnique({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: { userId: input.user.id },
                 select: {
                     id: true,
@@ -298,9 +336,13 @@ async function upsertPlayerCore(
                 update: updateData,
                 create: {
                     name: input.user.name || "New Player",
-                    userId: input.user.id,
+                    user: { connect: { id: input.user.id } },
                     referralCode: referralCode,
-                    tweetAuthorId: input.tweetAuthorId,
+                    ...(input.tweetAuthorId && {
+                        tweetAuthor: {
+                            connect: { authorId: input.tweetAuthorId },
+                        },
+                    }),
                     ...userDetails,
                 },
             });
@@ -394,6 +436,7 @@ async function validateInvitePlayer(
         // Check telegram ID if provided
         if (input.telegramId) {
             const existingPlayer = await prisma.player.findUnique({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: { telegramId: input.telegramId },
                 select: { id: true },
             });
@@ -405,6 +448,7 @@ async function validateInvitePlayer(
 
         // Get referred player
         const referredPlayer = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { userId: input.referredUser.id },
             select: {
                 id: true,
@@ -430,6 +474,7 @@ async function validateInvitePlayer(
 
         // Get referrer player
         const referrerPlayer = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { referralCode: input.referrerCode },
             select: {
                 id: true,
@@ -455,6 +500,7 @@ async function validateInvitePlayer(
 
         // Check for existing referral log
         const existingLog = await prisma.referralLog.findUnique({
+            cacheStrategy: getCacheStrategy("forever"),
             where: {
                 referredPlayerId_referrerPlayerId: {
                     referredPlayerId: referredPlayer.id,
@@ -644,6 +690,7 @@ async function validateMigrationPlayers(
 
         // Check for existing referral log
         const existingLog = await prisma.referralLog.findUnique({
+            cacheStrategy: getCacheStrategy("forever"),
             where: {
                 referredPlayerId_referrerPlayerId: {
                     referredPlayerId: referredUser.player.id,
@@ -747,6 +794,7 @@ export async function generateReferralCode(): Promise<string> {
     do {
         code = nanoid(6);
         const existingPlayer = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("forever"),
             where: { referralCode: code },
             select: { referralCode: true },
         });
@@ -811,6 +859,7 @@ export async function getPlayerProfile(
 
     try {
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("tenSeconds"),
             where: { id: input.playerId },
             select: {
                 nickname: true,

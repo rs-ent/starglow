@@ -1,5 +1,6 @@
 "use server";
 
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 import { prisma } from "@/lib/prisma/client";
 
 // 🔗 Wallet 중심 대시보드 핵심 메트릭 조회
@@ -19,11 +20,13 @@ export async function getWalletDashboardMetrics() {
         ] = await Promise.all([
             // 총 활성 지갑 수
             prisma.wallet.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: { status: "ACTIVE" },
             }),
 
             // 최근 30일 내 활동한 지갑 수 (지갑 기준 활성도)
             prisma.wallet.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     status: "ACTIVE",
                     lastAccessedAt: {
@@ -34,6 +37,7 @@ export async function getWalletDashboardMetrics() {
 
             // 자산을 보유한 지갑 수
             prisma.wallet.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     status: "ACTIVE",
                     user: {
@@ -46,6 +50,7 @@ export async function getWalletDashboardMetrics() {
 
             // 2개 이상의 서로 다른 자산을 보유한 지갑 수
             prisma.wallet.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     status: "ACTIVE",
                     user: {
@@ -60,6 +65,7 @@ export async function getWalletDashboardMetrics() {
 
             // 고유 지갑 소유자 수 (실제 사용자 수)
             prisma.user.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     active: true,
                     wallets: { some: { status: "ACTIVE" } },
@@ -71,6 +77,7 @@ export async function getWalletDashboardMetrics() {
 
             // 사용자당 평균 지갑 수 계산용
             prisma.user.findMany({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     active: true,
                     wallets: { some: { status: "ACTIVE" } },
@@ -86,6 +93,7 @@ export async function getWalletDashboardMetrics() {
 
             // 지갑 기반 트랜잭션 수 (결제 완료 기준)
             prisma.payment.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     status: "COMPLETED",
                     receiverWallet: { status: "ACTIVE" },
@@ -94,6 +102,7 @@ export async function getWalletDashboardMetrics() {
 
             // 결제 활동이 있는 지갑 수
             prisma.wallet.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     status: "ACTIVE",
                     payments: { some: { status: "COMPLETED" } },
@@ -102,6 +111,7 @@ export async function getWalletDashboardMetrics() {
 
             // 총 지갑 자산 가치 (대략적 계산)
             prisma.playerAsset.aggregate({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     balance: { gt: 0 },
                     player: {
@@ -177,6 +187,7 @@ export async function getWalletNetworkAnalysis() {
         const [networkDistribution, networkActivity] = await Promise.all([
             // 네트워크별 지갑 분포
             prisma.wallet.groupBy({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 by: ["network"],
                 where: { status: "ACTIVE" },
                 _count: { id: true },
@@ -184,6 +195,7 @@ export async function getWalletNetworkAnalysis() {
 
             // 네트워크별 활동 분석 (최근 30일)
             prisma.wallet.groupBy({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 by: ["network"],
                 where: {
                     status: "ACTIVE",
@@ -245,6 +257,7 @@ export async function getWalletGrowthData(days: number = 30) {
         const [createdWallets, activeWallets] = await Promise.all([
             // 일별 지갑 생성 추이 - 타입 안전한 방식
             prisma.wallet.findMany({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     createdAt: {
                         gte: startDate,
@@ -261,6 +274,7 @@ export async function getWalletGrowthData(days: number = 30) {
 
             // 일별 지갑 활동 추이 - 타입 안전한 방식
             prisma.wallet.findMany({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     lastAccessedAt: {
                         gte: startDate,
@@ -336,6 +350,7 @@ export async function getWalletAssetAnalysis() {
             await Promise.all([
                 // 자산별 보유 지갑 수 (에셋 정보 포함)
                 prisma.playerAsset.groupBy({
+                    cacheStrategy: getCacheStrategy("thirtyMinutes"),
                     by: ["assetId"],
                     where: { balance: { gt: 0 } },
                     _count: { playerId: true },
@@ -344,6 +359,7 @@ export async function getWalletAssetAnalysis() {
 
                 // 자산을 가장 많이 보유한 지갑들
                 prisma.player.findMany({
+                    cacheStrategy: getCacheStrategy("thirtyMinutes"),
                     where: {
                         playerAssets: { some: { balance: { gt: 0 } } },
                         user: {
@@ -387,6 +403,7 @@ export async function getWalletAssetAnalysis() {
 
                 // 자산 타입별 분포
                 prisma.asset.groupBy({
+                    cacheStrategy: getCacheStrategy("tenMinutes"),
                     by: ["assetType"],
                     where: {
                         playerAssets: { some: { balance: { gt: 0 } } },
@@ -398,6 +415,7 @@ export async function getWalletAssetAnalysis() {
         // 에셋 정보를 가져와서 매핑
         const assetIds = assetDistribution.map((item: any) => item.assetId);
         const assetInfos = await prisma.asset.findMany({
+            cacheStrategy: getCacheStrategy("tenMinutes"),
             where: { id: { in: assetIds } },
             select: {
                 id: true,
@@ -451,6 +469,7 @@ export async function getAssetHoldingRanking() {
     try {
         // 모든 활성 에셋 가져오기
         const assets = await prisma.asset.findMany({
+            cacheStrategy: getCacheStrategy("thirtyMinutes"),
             where: {
                 isActive: true,
                 playerAssets: { some: { balance: { gt: 0 } } },
@@ -468,6 +487,7 @@ export async function getAssetHoldingRanking() {
             assets.map(async (asset) => {
                 // 해당 에셋의 보유자들 (상위 10명)
                 const topHolders = await prisma.playerAsset.findMany({
+                    cacheStrategy: getCacheStrategy("tenMinutes"),
                     where: {
                         assetId: asset.id,
                         balance: { gt: 0 },
@@ -496,12 +516,14 @@ export async function getAssetHoldingRanking() {
                 // 총 보유자 수와 총 발행량
                 const [totalHolders, totalBalanceResult] = await Promise.all([
                     prisma.playerAsset.count({
+                        cacheStrategy: getCacheStrategy("tenMinutes"),
                         where: {
                             assetId: asset.id,
                             balance: { gt: 0 },
                         },
                     }),
                     prisma.playerAsset.aggregate({
+                        cacheStrategy: getCacheStrategy("tenMinutes"),
                         where: {
                             assetId: asset.id,
                             balance: { gt: 0 },
@@ -553,6 +575,7 @@ export async function getAssetHoldingRankingPaginated(
 
         // 에셋 정보 가져오기
         const asset = await prisma.asset.findUnique({
+            cacheStrategy: getCacheStrategy("tenMinutes"),
             where: { id: assetId },
             select: {
                 id: true,
@@ -570,6 +593,7 @@ export async function getAssetHoldingRankingPaginated(
         // 해당 에셋의 보유자들 (페이지네이션)
         const [holders, totalHolders, totalBalanceResult] = await Promise.all([
             prisma.playerAsset.findMany({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     assetId: asset.id,
                     balance: { gt: 0 },
@@ -597,6 +621,7 @@ export async function getAssetHoldingRankingPaginated(
             }),
             // 총 보유자 수
             prisma.playerAsset.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     assetId: asset.id,
                     balance: { gt: 0 },
@@ -604,6 +629,7 @@ export async function getAssetHoldingRankingPaginated(
             }),
             // 총 발행량
             prisma.playerAsset.aggregate({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     assetId: asset.id,
                     balance: { gt: 0 },
@@ -657,6 +683,7 @@ export async function getAssetAcquisitionPath() {
     try {
         // 모든 활성 에셋 가져오기
         const assets = await prisma.asset.findMany({
+            cacheStrategy: getCacheStrategy("tenMinutes"),
             where: {
                 isActive: true,
                 rewardsLogs: { some: { amount: { gt: 0 } } },
@@ -674,6 +701,7 @@ export async function getAssetAcquisitionPath() {
             assets.map(async (asset) => {
                 // 해당 에셋의 모든 보상 로그 가져오기
                 const rewardLogs = await prisma.rewardsLog.findMany({
+                    cacheStrategy: getCacheStrategy("tenMinutes"),
                     where: {
                         assetId: asset.id,
                         amount: { gt: 0 },
@@ -760,6 +788,7 @@ export async function getAssetConcentration() {
     try {
         // 모든 활성 에셋 가져오기
         const assets = await prisma.asset.findMany({
+            cacheStrategy: getCacheStrategy("thirtyMinutes"),
             where: {
                 isActive: true,
                 playerAssets: { some: { balance: { gt: 0 } } },
@@ -777,6 +806,7 @@ export async function getAssetConcentration() {
             assets.map(async (asset) => {
                 // 해당 에셋의 모든 보유자 데이터
                 const holders = await prisma.playerAsset.findMany({
+                    cacheStrategy: getCacheStrategy("thirtyMinutes"),
                     where: {
                         assetId: asset.id,
                         balance: { gt: 0 },
@@ -981,6 +1011,7 @@ export async function getWalletUserTableData(
 
         const [users, totalCount] = await Promise.all([
             prisma.user.findMany({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 skip,
                 take: pageSize,
                 where: whereConditions,
@@ -1032,7 +1063,10 @@ export async function getWalletUserTableData(
                     },
                 },
             }),
-            prisma.user.count({ where: whereConditions }),
+            prisma.user.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
+                where: whereConditions,
+            }),
         ]);
 
         // 데이터 가공 및 멀티 지갑 필터링
@@ -1125,6 +1159,7 @@ export async function getWalletActivityPatterns(days: number = 30) {
         const [recentActiveWallets, allActiveWallets] = await Promise.all([
             // 최근 활동한 지갑들 (시간대별, 요일별 분석용)
             prisma.wallet.findMany({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     lastAccessedAt: {
                         gte: startDate,
@@ -1138,6 +1173,7 @@ export async function getWalletActivityPatterns(days: number = 30) {
 
             // 모든 활성 지갑들 (연령대별 분포용)
             prisma.wallet.findMany({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     status: "ACTIVE",
                 },
@@ -1236,6 +1272,7 @@ export async function getWalletRiskAnalysis() {
             await Promise.all([
                 // 의심스러운 활동 패턴 - 최근 24시간 내 지갑 생성한 사용자들
                 prisma.user.findMany({
+                    cacheStrategy: getCacheStrategy("tenMinutes"),
                     where: {
                         active: true,
                         wallets: {
@@ -1274,6 +1311,7 @@ export async function getWalletRiskAnalysis() {
 
                 // 고액 자산 보유 지갑
                 prisma.player.findMany({
+                    cacheStrategy: getCacheStrategy("tenMinutes"),
                     where: {
                         playerAssets: {
                             some: { balance: { gt: 100000 } }, // 임계값 설정
@@ -1310,6 +1348,7 @@ export async function getWalletRiskAnalysis() {
 
                 // 빈번한 거래 활동
                 prisma.payment.groupBy({
+                    cacheStrategy: getCacheStrategy("tenMinutes"),
                     by: ["userId"],
                     where: {
                         status: "COMPLETED",
@@ -1364,8 +1403,12 @@ export async function getUserDashboardMetrics() {
         const walletMetrics = await getWalletDashboardMetrics();
 
         const [totalUsers, activeUsers, paymentUsers] = await Promise.all([
-            prisma.user.count({ where: { active: true } }),
             prisma.user.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
+                where: { active: true },
+            }),
+            prisma.user.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     active: true,
                     lastLoginAt: {
@@ -1374,6 +1417,7 @@ export async function getUserDashboardMetrics() {
                 },
             }),
             prisma.user.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: {
                     active: true,
                     payments: { some: { status: "COMPLETED" } },
@@ -1429,6 +1473,7 @@ export async function getDAUMAUAnalysis(days: number = 30) {
 
         // 📊 DAU 데이터 계산 (일별 활성 지갑 수)
         const activeWalletsByDay = await prisma.wallet.findMany({
+            cacheStrategy: getCacheStrategy("tenMinutes"),
             where: {
                 status: "ACTIVE",
                 lastAccessedAt: {
@@ -1462,6 +1507,7 @@ export async function getDAUMAUAnalysis(days: number = 30) {
                 [
                     // 해당 월에 활동한 지갑들
                     prisma.wallet.findMany({
+                        cacheStrategy: getCacheStrategy("tenMinutes"),
                         where: {
                             status: "ACTIVE",
                             lastAccessedAt: {
@@ -1478,6 +1524,7 @@ export async function getDAUMAUAnalysis(days: number = 30) {
 
                     // 해당 월에 새로 생성된 지갑들
                     prisma.wallet.findMany({
+                        cacheStrategy: getCacheStrategy("tenMinutes"),
                         where: {
                             status: "ACTIVE",
                             createdAt: {
@@ -1589,6 +1636,7 @@ export async function getReferralAnalysis() {
     try {
         const [topReferrers, referralGrowth] = await Promise.all([
             prisma.player.findMany({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: { referralCount: { gt: 0 } },
                 orderBy: { referralCount: "desc" },
                 take: 10,
@@ -1601,6 +1649,7 @@ export async function getReferralAnalysis() {
             }),
 
             prisma.referralLog.groupBy({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 by: ["method"],
                 _count: { id: true },
             }),

@@ -4,27 +4,20 @@
 
 import { memo, useMemo } from "react";
 
-
 import { usePollsGet } from "@/app/hooks/usePolls";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
 
 import PollsList from "./Polls.List";
 
-import type { Player, PollLog } from "@prisma/client";
-
+import type { Player } from "@prisma/client";
 
 interface PollsContentsPublicProps {
     player: Player | null;
-    pollLogs?: PollLog[];
     className?: string;
 }
 
-function PollsContentsPublic({
-    player,
-    pollLogs,
-    className,
-}: PollsContentsPublicProps) {
+function PollsContentsPublic({ player, className }: PollsContentsPublicProps) {
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
             category: "PUBLIC",
@@ -54,18 +47,7 @@ function PollsContentsPublic({
                 ) : (
                     <div key="public-polls">
                         {polls && polls.length > 0 ? (
-                            <PollsList
-                                polls={polls}
-                                player={player}
-                                pollLogs={
-                                    pollLogs &&
-                                    pollLogs.filter((log) =>
-                                        polls.some(
-                                            (poll) => poll.id === log.pollId
-                                        )
-                                    )
-                                }
-                            />
+                            <PollsList polls={polls} player={player} />
                         ) : (
                             <div className="text-center text-2xl py-10">
                                 No polls found

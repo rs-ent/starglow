@@ -14,23 +14,15 @@ import ArtistMessage from "../artists/ArtistMessage";
 import ArtistSlideSelector from "../artists/ArtistSlideSelector";
 
 import type { VerifiedSPG } from "@/app/story/interaction/actions";
-import type { TokenGatingResult } from "@/app/story/nft/actions";
-import type { Artist, Player, QuestLog, ReferralLog } from "@prisma/client";
+import type { Artist, Player } from "@prisma/client";
 
 interface QuestsPrivateProps {
     player: Player | null;
-    questLogs: QuestLog[];
     privateTabClicked: boolean;
-    referralLogs?: ReferralLog[];
     verifiedSPGs?: VerifiedSPG[];
 }
 
-function QuestsPrivate({
-    player,
-    questLogs,
-    referralLogs,
-    verifiedSPGs,
-}: QuestsPrivateProps) {
+function QuestsPrivate({ player, verifiedSPGs }: QuestsPrivateProps) {
     const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
     const [previousArtist, setPreviousArtist] = useState<Artist | null>(null);
     const [activeBackground, setActiveBackground] = useState<
@@ -76,29 +68,6 @@ function QuestsPrivate({
             )}, ${ArtistBG(previousArtist, 1, 100)})`,
         };
     }, [previousArtist, defaultBackgroundStyle]);
-
-    const tokenGatingResult: TokenGatingResult = useMemo(() => {
-        const result: TokenGatingResult = {
-            success: true,
-            data: {},
-        };
-
-        if (!verifiedSPGs || !selectedArtist) return result;
-
-        verifiedSPGs
-            .filter((spg) => spg.artistId === selectedArtist.id)
-            .forEach((spg) => {
-                result.data[spg.address] = {
-                    hasToken: spg.verifiedTokens.length > 0,
-                    detail: spg.verifiedTokens.map((token) => ({
-                        tokenId: token.toString(),
-                        owner: spg.ownerAddress,
-                    })),
-                };
-            });
-
-        return result;
-    }, [verifiedSPGs, selectedArtist]);
 
     return (
         <div className="w-full flex flex-col items-center justify-center">
@@ -168,7 +137,9 @@ function QuestsPrivate({
                         >
                             <ArtistMessage
                                 artistId={selectedArtist.id}
-                                artist={selectedArtist}
+                                backgroundColors={
+                                    selectedArtist.backgroundColors
+                                }
                             />
                         </div>
 
@@ -179,13 +150,8 @@ function QuestsPrivate({
                             )}
                         >
                             <QuestsArtistMissions
-                                artist={selectedArtist}
+                                artistId={selectedArtist.id}
                                 player={player}
-                                questLogs={questLogs}
-                                tokenGating={tokenGatingResult || null}
-                                referralLogs={referralLogs || []}
-                                bgColorFrom={ArtistBG(selectedArtist, 2, 100)}
-                                bgColorTo={ArtistBG(selectedArtist, 0, 100)}
                                 showInviteFriends={true}
                                 bgColorFromInviteFriends={ArtistBG(
                                     selectedArtist,

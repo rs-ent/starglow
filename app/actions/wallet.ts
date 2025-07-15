@@ -7,6 +7,7 @@ import { WalletStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 
 import type { Wallet } from "@prisma/client";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 export interface WalletResponse {
     success: boolean;
@@ -19,6 +20,7 @@ export async function getWalletsByUserId(
 ): Promise<WalletResponse> {
     try {
         const wallets = await prisma.wallet.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 userId,
                 status: WalletStatus.ACTIVE,

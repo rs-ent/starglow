@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma/client";
 import { BoardModerationReportType } from "@prisma/client";
 import { checkContentForBadWords } from "../boards/LDNOOBW";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 export async function autoCheckContent(
     contentType: "post" | "comment",
@@ -159,6 +160,7 @@ export async function detectSpamPatterns(content: string, authorId: string) {
         }
 
         const recentPosts = await prisma.boardPost.count({
+            cacheStrategy: getCacheStrategy("tenSeconds"),
             where: {
                 authorId,
                 createdAt: {

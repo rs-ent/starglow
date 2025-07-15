@@ -23,10 +23,8 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 
-import type { ArtistWithSPG } from "@/app/actions/artists";
-
 interface StarStoreProps {
-    artist: ArtistWithSPG;
+    backgroundColors: string[];
 }
 
 interface StoreItem {
@@ -45,7 +43,9 @@ interface StoreItem {
     delay: number;
 }
 
-export default React.memo(function StarStore({ artist }: StarStoreProps) {
+export default React.memo(function StarStore({
+    backgroundColors,
+}: StarStoreProps) {
     const mockupItems: StoreItem[] = [
         {
             title: "Merch",
@@ -166,11 +166,11 @@ export default React.memo(function StarStore({ artist }: StarStoreProps) {
                         )}
                         style={{
                             background: `linear-gradient(135deg, ${ArtistBG(
-                                artist,
+                                { backgroundColors },
                                 item.backgroundIndex[0],
                                 10
                             )}, ${ArtistBG(
-                                artist,
+                                { backgroundColors },
                                 item.backgroundIndex[1],
                                 15
                             )})`,

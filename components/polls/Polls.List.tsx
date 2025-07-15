@@ -19,14 +19,12 @@ import { cn } from "@/lib/utils/tailwind";
 
 import PartialLoading from "../atoms/PartialLoading";
 
-import type { Artist, Player, PollLog } from "@prisma/client";
+import type { Player } from "@prisma/client";
 import type { PollsWithArtist } from "@/app/actions/polls";
 
 interface PollsListProps {
     polls: PollsWithArtist[];
     player: Player | null;
-    pollLogs?: PollLog[];
-    artist?: Artist | null;
     isLoading?: boolean;
     tokenGating?: TokenGatingResult | null;
     forceSlidesToShow?: number;
@@ -42,8 +40,6 @@ interface PollsListProps {
 function PollsList({
     polls,
     player,
-    pollLogs,
-    artist,
     isLoading,
     tokenGating,
     forceSlidesToShow = 3,
@@ -127,20 +123,6 @@ function PollsList({
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, [polls.length, forceSlidesToShow]);
-
-    // 폴 로그 맵 메모이제이션
-    const pollIdToLogs = useMemo(() => {
-        const pollMap: { [pollId: string]: PollLog[] } = {};
-
-        if (pollLogs && polls) {
-            pollLogs.forEach((log) => {
-                pollMap[log.pollId] = pollMap[log.pollId] || [];
-                pollMap[log.pollId].push(log);
-            });
-        }
-
-        return pollMap;
-    }, [pollLogs, polls]);
 
     // 슬라이더 네비게이션 핸들러
     const handlePrev = useCallback(() => {
@@ -259,8 +241,6 @@ function PollsList({
                                 index={index}
                                 poll={poll}
                                 player={player}
-                                pollLogs={pollIdToLogs[poll.id] || []}
-                                artist={artist}
                                 tokenGating={specificTokenGatingData}
                                 isSelected={isCenter}
                                 bgColorFrom={bgColorFrom}

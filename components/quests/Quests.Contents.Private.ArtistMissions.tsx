@@ -2,40 +2,69 @@
 
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo, useEffect } from "react";
+import { useInView } from "react-intersection-observer";
 import { useQuestGet } from "@/app/hooks/useQuest";
 import { cn } from "@/lib/utils/tailwind";
 
 import QuestsMissions from "./Quests.Missions";
 import InviteFriends from "../atoms/InviteFriends";
 
-import type { Artist, Player, QuestLog, ReferralLog } from "@prisma/client";
+import type { Player } from "@prisma/client";
 
 interface QuestsArtistMissionsProps {
-    artist: Artist;
+    artistId: string;
     player: Player | null;
-    questLogs: QuestLog[];
-    referralLogs: ReferralLog[];
     showInviteFriends?: boolean;
     bgColorFromInviteFriends?: string;
     bgColorToInviteFriends?: string;
+    useInfiniteScroll?: boolean;
 }
 
 function QuestsArtistMissions({
-    artist,
+    artistId,
     player,
-    questLogs,
-    referralLogs,
     showInviteFriends = true,
     bgColorFromInviteFriends = "#A5D7FB",
     bgColorToInviteFriends = "#8E76FA",
+    useInfiniteScroll = false,
 }: QuestsArtistMissionsProps) {
-    const { quests, isLoading, error } = useQuestGet({
+    const { quests, isLoading, error, questsInfiniteQuery } = useQuestGet({
         getQuestsInput: {
-            artistId: artist.id,
+            artistId: artistId,
             isActive: true,
         },
+        useInfiniteScroll,
+        pageSize: 10,
     });
+
+    const { ref, inView } = useInView({
+        threshold: 0.1,
+        triggerOnce: false,
+    });
+
+    const allQuests = useMemo(() => {
+        if (!quests) return [];
+
+        if (useInfiniteScroll && questsInfiniteQuery?.data) {
+            return questsInfiniteQuery.data.pages.flatMap((page) => page.items);
+        }
+
+        return "items" in quests ? quests.items : [];
+    }, [quests, questsInfiniteQuery?.data, useInfiniteScroll]);
+
+    useEffect(() => {
+        if (
+            inView &&
+            useInfiniteScroll &&
+            questsInfiniteQuery?.hasNextPage &&
+            !questsInfiniteQuery?.isFetchingNextPage
+        ) {
+            questsInfiniteQuery.fetchNextPage().catch((error) => {
+                console.error(error);
+            });
+        }
+    }, [inView, useInfiniteScroll, questsInfiniteQuery, allQuests.length]);
 
     const renderLoading = useCallback(
         () => (
@@ -66,7 +95,7 @@ function QuestsArtistMissions({
 
     const renderQuestsList = useCallback(
         () => (
-            <div key={artist.id} className="relative">
+            <div key={artistId} className="relative">
                 <div
                     className={cn(
                         "duration-1000 transition-all",
@@ -74,19 +103,47 @@ function QuestsArtistMissions({
                         "py-1 px-2 sm:py-1 sm:px-3 md:py-2 md:px-4 lg:py-3 lg:px-5"
                     )}
                 >
-                    {quests?.items && questLogs && (
-                        <div>
-                            <QuestsMissions
-                                player={player}
-                                quests={quests.items}
-                                questLogs={questLogs}
-                                isLoading={isLoading}
-                                error={error}
-                                permission={true}
-                                referralLogs={referralLogs || []}
-                            />
-                        </div>
-                    )}
+                    <div
+                        className={cn(
+                            useInfiniteScroll ? "overflow-y-auto" : "",
+                            useInfiniteScroll
+                                ? "max-h-[calc(100vh-300px)]"
+                                : "",
+                            useInfiniteScroll ? "scroll-smooth" : ""
+                        )}
+                    >
+                        {allQuests && (
+                            <div>
+                                <QuestsMissions
+                                    player={player}
+                                    quests={allQuests}
+                                    isLoading={isLoading}
+                                    error={error}
+                                    permission={true}
+                                />
+
+                                {useInfiniteScroll && (
+                                    <div
+                                        ref={ref}
+                                        className="h-10 flex items-center justify-center"
+                                    >
+                                        {questsInfiniteQuery?.isFetchingNextPage && (
+                                            <div className="text-sm text-white/60">
+                                                Loading more quests...
+                                            </div>
+                                        )}
+                                        {questsInfiniteQuery?.hasNextPage ===
+                                            false &&
+                                            allQuests.length > 0 && (
+                                                <div className="text-sm text-white/40">
+                                                    No more quests to load
+                                                </div>
+                                            )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                     {showInviteFriends && (
                         <div className="mt-[70px] md:mt-[80px] lg:mt-[90px] mb-[100px] lg:mb-[0px]">
                             <InviteFriends
@@ -100,16 +157,17 @@ function QuestsArtistMissions({
             </div>
         ),
         [
-            artist.id,
-            quests?.items,
-            questLogs,
+            artistId,
+            allQuests,
             isLoading,
             error,
-            referralLogs,
             showInviteFriends,
             bgColorFromInviteFriends,
             bgColorToInviteFriends,
             player,
+            useInfiniteScroll,
+            questsInfiniteQuery,
+            ref,
         ]
     );
 
@@ -120,14 +178,14 @@ function QuestsArtistMissions({
         if (error) {
             return renderError();
         }
-        if (!quests?.items || quests.items.length === 0) {
+        if (!allQuests || allQuests.length === 0) {
             return renderNoQuests();
         }
         return renderQuestsList();
     }, [
         isLoading,
         error,
-        quests?.items,
+        allQuests,
         renderLoading,
         renderError,
         renderNoQuests,

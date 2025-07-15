@@ -5,7 +5,7 @@
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma/client";
-// TODO: 임시로 비활성화 - 불안정한 검증 로직으로 인한 문제 발생
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 // import { validateContentBeforePost } from "../boardModeration/check-actions";
 
 import { updatePlayerAsset } from "@/app/actions/playerAssets/actions";
@@ -187,6 +187,7 @@ export async function getBoards(
 
         const [boards, totalItems] = await Promise.all([
             prisma.board.findMany({
+                cacheStrategy: getCacheStrategy("oneHour"),
                 where,
                 include: {
                     posts: {
@@ -202,7 +203,10 @@ export async function getBoards(
                 take: itemsPerPage,
                 orderBy: [{ order: "asc" }, { createdAt: "desc" }],
             }),
-            prisma.board.count({ where }),
+            prisma.board.count({
+                cacheStrategy: getCacheStrategy("oneHour"),
+                where,
+            }),
         ]);
 
         return {
@@ -229,6 +233,7 @@ export async function getBoard(
 ): Promise<BoardWithPosts | null> {
     try {
         const board = await prisma.board.findUnique({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: { id: boardId },
             include: {
                 posts: {
@@ -481,6 +486,7 @@ export async function getBoardPosts(
 
         const [posts, totalItems] = await Promise.all([
             prisma.boardPost.findMany({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where,
                 include: {
                     author: {
@@ -506,7 +512,10 @@ export async function getBoardPosts(
                 take: itemsPerPage,
                 orderBy: getOrderBy(input?.sortBy),
             }),
-            prisma.boardPost.count({ where }),
+            prisma.boardPost.count({
+                cacheStrategy: getCacheStrategy("tenSeconds"),
+                where,
+            }),
         ]);
 
         return {
@@ -539,6 +548,7 @@ export async function getBoardPost(
         });
 
         const post = await prisma.boardPost.findUnique({
+            cacheStrategy: getCacheStrategy("tenSeconds"),
             where: { id: postId },
             include: {
                 author: {
@@ -734,6 +744,7 @@ export async function getBoardComments(
 ): Promise<BoardCommentWithDetails[]> {
     try {
         const comments = await prisma.boardComment.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 postId,
                 parentId: null,
@@ -771,6 +782,7 @@ export async function getBoardComments(
 export async function deleteBoardComment(commentId: string): Promise<boolean> {
     try {
         const comment = await prisma.boardComment.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: commentId },
             select: { postId: true, parentId: true },
         });
@@ -1021,6 +1033,7 @@ export async function createPostReward(
 // 기본 에셋 ID를 찾는 헬퍼 함수
 async function getDefaultAssetId(): Promise<string | null> {
     const defaultAsset = await prisma.asset.findFirst({
+        cacheStrategy: getCacheStrategy("fiveMinutes"),
         where: { isDefault: true, isActive: true },
         select: { id: true, name: true },
     });
@@ -1046,6 +1059,7 @@ export async function getPostRewards(
         if (input?.status) where.status = input.status;
 
         const rewards = await prisma.boardPostReward.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where,
             include: {
                 post: true,
@@ -1090,6 +1104,7 @@ async function checkPostRewardLimits(
         const [dailyRewardCount, weeklyRewardCount] = await Promise.all([
             // 일일 게시글 작성 보상 수 (POST_CREATION 보상만 카운트)
             prisma.boardPostReward.count({
+                cacheStrategy: getCacheStrategy("oneHour"),
                 where: {
                     playerId,
                     reason: "POST_CREATION",
@@ -1102,6 +1117,7 @@ async function checkPostRewardLimits(
             }),
             // 주간 게시글 작성 보상 수 (POST_CREATION 보상만 카운트)
             prisma.boardPostReward.count({
+                cacheStrategy: getCacheStrategy("oneHour"),
                 where: {
                     playerId,
                     reason: "POST_CREATION",
@@ -1396,5 +1412,33 @@ function checkRewardPermission(
             return boardSettings.allowAdminRewards;
         default:
             return false;
+    }
+}
+
+export interface GetArtistAllBoardPostCountInput {
+    artistId: string;
+}
+
+export async function getArtistAllBoardPostCount(
+    input?: GetArtistAllBoardPostCountInput
+): Promise<number> {
+    if (!input) {
+        return 0;
+    }
+
+    try {
+        const posts = await prisma.boardPost.count({
+            cacheStrategy: getCacheStrategy("oneMinute"),
+            where: {
+                board: {
+                    artistId: input.artistId,
+                },
+            },
+        });
+
+        return posts;
+    } catch (error) {
+        console.error("Error getting artist all board post count:", error);
+        return 0;
     }
 }

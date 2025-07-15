@@ -11,7 +11,7 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import FileUploader from "../atoms/FileUploader";
 import { Button } from "../ui/button";
-import type { Player, Artist } from "@prisma/client";
+import type { Player } from "@prisma/client";
 import type { FileData } from "../atoms/FileUploader";
 import { usePlayerGet } from "@/app/hooks/usePlayer";
 import BoardContentCommentItem from "./Board.Content.Comment.Item";
@@ -19,13 +19,21 @@ import { useToast } from "@/app/hooks/useToast";
 interface BoardContentCommentProps {
     postId: string;
     player: Player | null;
-    artist: Artist;
+    artistId: string;
+    artistName: string;
+    artistLogoUrl: string;
+    backgroundColors: string[];
+    foregroundColors: string[];
 }
 
 export default function BoardContentComment({
     postId,
     player,
-    artist,
+    artistId,
+    artistName,
+    artistLogoUrl,
+    backgroundColors,
+    foregroundColors,
 }: BoardContentCommentProps) {
     const toast = useToast();
     const [newComment, setNewComment] = useState("");
@@ -88,7 +96,14 @@ export default function BoardContentComment({
         } finally {
             setIsSubmitting(false);
         }
-    }, [player, newComment, commentFiles, createBoardCommentAsync, postId, toast]);
+    }, [
+        player,
+        newComment,
+        commentFiles,
+        createBoardCommentAsync,
+        postId,
+        toast,
+    ]);
 
     // 메인 댓글 파일 업로드 핸들러
     const handleCommentFilesSelected = useCallback((files: FileData[]) => {
@@ -182,7 +197,11 @@ export default function BoardContentComment({
                     {comments.map((comment: any) => (
                         <BoardContentCommentItem
                             key={comment.id}
-                            artist={artist}
+                            artistId={artistId}
+                            artistName={artistName}
+                            artistLogoUrl={artistLogoUrl}
+                            backgroundColors={backgroundColors}
+                            foregroundColors={foregroundColors}
                             comment={comment}
                             player={player}
                             onReply={handleReply}

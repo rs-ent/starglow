@@ -7,6 +7,8 @@ import { z } from "zod";
 import { auth } from "@/app/auth/authSettings";
 import { prisma } from "@/lib/prisma/client";
 
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
+
 const TutorialStepSchema = z.object({
     id: z.string(),
     title: z.string().min(1, "Title is required"),
@@ -123,6 +125,7 @@ async function checkAdminPermission() {
 
     // Check if user is admin (you might need to adjust this based on your user role system)
     const user = await prisma.user.findUnique({
+        cacheStrategy: getCacheStrategy("oneMinute"),
         where: { id: session.user.id },
         select: { role: true },
     });
@@ -153,6 +156,7 @@ export async function createAssetTutorial(input: CreateAssetTutorialInput) {
 
         // Asset 존재 확인
         const asset = await prisma.asset.findUnique({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where: { id: validatedData.assetId },
             select: { id: true, name: true },
         });
@@ -163,6 +167,7 @@ export async function createAssetTutorial(input: CreateAssetTutorialInput) {
 
         // 이미 Tutorial이 있는지 확인
         const existingTutorial = await prisma.assetTutorial.findUnique({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where: { assetId: validatedData.assetId },
         });
 
@@ -230,6 +235,7 @@ export async function getAssetTutorial(input?: GetAssetTutorialInput) {
     }
     try {
         const tutorial = await prisma.assetTutorial.findUnique({
+            cacheStrategy: getCacheStrategy("thirtyMinutes"),
             where: { assetId: input.assetId },
             include: {
                 asset: {
@@ -267,6 +273,7 @@ export async function getAssetTutorial(input?: GetAssetTutorialInput) {
 export async function getAssetTutorials() {
     try {
         const tutorials = await prisma.assetTutorial.findMany({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             include: {
                 asset: {
                     select: {
@@ -310,6 +317,7 @@ export async function updateAssetTutorial(input: UpdateAssetTutorialInput) {
 
         // Tutorial 존재 확인
         const existingTutorial = await prisma.assetTutorial.findUnique({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where: { id: validatedData.id },
             include: {
                 asset: { select: { id: true, name: true } },
@@ -389,6 +397,7 @@ export async function deleteAssetTutorial(input?: DeleteAssetTutorialInput) {
 
         // Tutorial 존재 확인
         const existingTutorial = await prisma.assetTutorial.findUnique({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where: { id: input.tutorialId },
             include: {
                 asset: { select: { id: true, name: true } },
@@ -437,6 +446,7 @@ export async function checkAssetHasTutorial(
     }
     try {
         const tutorial = await prisma.assetTutorial.findUnique({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where: { assetId: input.assetId },
             select: { id: true, assetId: true },
         });
@@ -580,6 +590,7 @@ export async function getTutorialAnalytics(input?: GetTutorialAnalyticsInput) {
         const whereClause = input?.assetId ? { assetId: input.assetId } : {};
 
         const stats = await prisma.assetTutorial.findMany({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: whereClause,
             select: {
                 id: true,

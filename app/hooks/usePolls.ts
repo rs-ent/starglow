@@ -18,6 +18,7 @@ import {
     useUserSelectionQuery,
     usePlayerPollLogsQuery,
     usePollLogsQuery,
+    useArtistAllActivePollCountQuery,
 } from "../queries/pollsQueries";
 
 import type {
@@ -28,6 +29,7 @@ import type {
     PaginationInput,
     GetPollLogsInput,
     GetPlayerPollLogsInput,
+    GetArtistAllActivePollCountInput,
 } from "../actions/polls";
 
 export function usePollsGet({
@@ -38,6 +40,7 @@ export function usePollsGet({
     getPollLogsInput,
     getPlayerPollLogsInput,
     pagination,
+    getArtistAllActivePollCountInput,
 }: {
     getPollsInput?: GetPollsInput;
     pollResultInput?: GetPollResultInput;
@@ -46,6 +49,7 @@ export function usePollsGet({
     getPollLogsInput?: GetPollLogsInput;
     getPlayerPollLogsInput?: GetPlayerPollLogsInput;
     pagination?: PaginationInput;
+    getArtistAllActivePollCountInput?: GetArtistAllActivePollCountInput;
 }) {
     const {
         data: pollsList,
@@ -89,6 +93,14 @@ export function usePollsGet({
         error: userSelectionError,
     } = useUserSelectionQuery(userSelectionInput);
 
+    const {
+        data: artistAllActivePollCount,
+        isLoading: isLoadingArtistAllActivePollCount,
+        error: artistAllActivePollCountError,
+    } = useArtistAllActivePollCountQuery({
+        input: getArtistAllActivePollCountInput,
+    });
+
     const isLoading =
         isLoadingPolls ||
         isLoadingPoll ||
@@ -96,7 +108,8 @@ export function usePollsGet({
         isLoadingPollsResults ||
         isLoadingUserSelection ||
         isLoadingPollLogs ||
-        isLoadingPlayerPollLogs;
+        isLoadingPlayerPollLogs ||
+        isLoadingArtistAllActivePollCount;
     const error =
         pollsError ||
         pollError ||
@@ -104,7 +117,8 @@ export function usePollsGet({
         pollsResultsError ||
         userSelectionError ||
         pollLogsError ||
-        playerPollLogsError;
+        playerPollLogsError ||
+        artistAllActivePollCountError;
 
     return {
         pollsList,
@@ -132,6 +146,10 @@ export function usePollsGet({
         userSelectionError,
         pollLogsError,
         playerPollLogsError,
+
+        artistAllActivePollCount,
+        isLoadingArtistAllActivePollCount,
+        artistAllActivePollCountError,
     };
 }
 

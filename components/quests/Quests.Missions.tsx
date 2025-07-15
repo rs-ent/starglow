@@ -2,7 +2,7 @@
 
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo } from "react";
 
 import { cn } from "@/lib/utils/tailwind";
 
@@ -14,36 +14,31 @@ import type {
     TokenGatingData,
     TokenGatingResult,
 } from "@/app/story/nft/actions";
-import type { Player, Quest, QuestLog, ReferralLog } from "@prisma/client";
+import type { Player, Quest } from "@prisma/client";
+import { useReferralGet } from "@/app/hooks/useReferral";
 
 interface QuestsMissionsProps {
     player: Player | null;
     quests: Quest[];
-    questLogs: QuestLog[];
     isLoading: boolean;
     error: Error | null;
     permission: boolean;
     tokenGating?: TokenGatingResult | null;
-    referralLogs: ReferralLog[];
 }
 
 function QuestsMissions({
     player,
     quests,
-    questLogs,
     isLoading = true,
     error = null,
     permission = false,
     tokenGating,
-    referralLogs,
 }: QuestsMissionsProps) {
-    const questLogMap = useMemo(() => {
-        const map = new Map<string, QuestLog>();
-        questLogs.forEach((log) => {
-            map.set(log.questId, log);
-        });
-        return map;
-    }, [questLogs]);
+    const { referralLogs } = useReferralGet({
+        GetReferralLogsInput: {
+            playerId: player?.id ?? "",
+        },
+    });
 
     if (isLoading) {
         return <PartialLoading text="Quest lists are loading..." />;
@@ -79,11 +74,10 @@ function QuestsMissions({
                             <QuestsButton
                                 player={player}
                                 quest={quest}
-                                questLog={questLogMap.get(quest.id) || null}
                                 tokenGating={specificTokenGatingData}
                                 permission={permission}
                                 index={index}
-                                referralLogs={referralLogs}
+                                referralLogs={referralLogs || []}
                             />
                         </div>
                     );

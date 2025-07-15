@@ -23,6 +23,7 @@ import type {
     GetClaimableQuestLogsInput,
     GetClaimedQuestLogsInput,
     GetCompletedQuestLogsInput,
+    GetPlayerQuestLogInput,
     GetPlayerQuestLogsInput,
     GetQuestInput,
     GetQuestLogsInput,
@@ -575,13 +576,17 @@ export const pollKeys = {
     log: (pollLogId: string) => [...pollKeys.all, "log", pollLogId] as const,
     logByUser: (pollId: string, playerId: string) =>
         [...pollKeys.all, "logs", pollId, playerId] as const,
-    playerLogs: (playerId: string) =>
-        [...pollKeys.all, "player-logs", playerId] as const,
+    playerLogs: (playerId: string, pollId?: string) =>
+        pollId
+            ? ([...pollKeys.all, "player-logs", playerId, pollId] as const)
+            : ([...pollKeys.all, "player-logs", playerId] as const),
     result: (pollId: string) => [...pollKeys.all, "result", pollId] as const,
     results: (pollIds: string[]) =>
         [...pollKeys.all, "results", pollIds] as const,
     selection: (pollId: string) =>
         [...pollKeys.all, "selection", pollId] as const,
+    artistAllActivePollCount: (input?: string) =>
+        [...pollKeys.all, "artist-all-active-poll-count", input] as const,
 } as const;
 
 export const questKeys = {
@@ -637,6 +642,16 @@ export const questKeys = {
     // 🌟 새로운 키: 완료된 퀘스트 로그
     completedLogs: (input?: GetCompletedQuestLogsInput) =>
         [...questKeys.all, "completed-logs", input?.playerId] as const,
+
+    playerQuestLog: (input?: GetPlayerQuestLogInput) =>
+        [
+            ...questKeys.all,
+            "player-quest-log",
+            input?.questId,
+            input?.playerId,
+        ] as const,
+    artistAllActiveQuestCount: (input?: string) =>
+        [...questKeys.all, "artist-all-active-quest-count", input] as const,
 } as const;
 
 export const artistKeys = {
@@ -989,6 +1004,9 @@ type BoardKeysType = {
             reason: string
         ) => readonly ["boards", "rewards", "reason", string];
     };
+    artistAllBoardPostCount: (
+        input?: string
+    ) => readonly ["boards", "artist-all-board-post-count", string];
 };
 
 // Board query keys
@@ -1055,6 +1073,12 @@ export const boardKeys: BoardKeysType = {
         byReason: (reason: string) =>
             [...BOARD_BASE_KEY, "rewards", "reason", reason] as const,
     },
+    artistAllBoardPostCount: (input?: string) =>
+        [
+            ...BOARD_BASE_KEY,
+            "artist-all-board-post-count",
+            input ?? "",
+        ] as const,
 } as const;
 
 // Notification query keys 기본 배열 정의

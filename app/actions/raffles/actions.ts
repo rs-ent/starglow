@@ -22,8 +22,17 @@ import type {
 } from "@prisma/client";
 
 import { MAX_PRIZES_PER_QUERY } from "@/app/actions/raffles/types";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 // 🎯 Optimized field selectors to avoid overfetching
+const RAFFLE_PRIZE_DRAW_FIELDS = {
+    id: true,
+    isActive: true,
+    quantity: true,
+    order: true,
+    prizeType: true,
+} as const;
+
 const RAFFLE_CORE_FIELDS = {
     id: true,
     title: true,
@@ -166,11 +175,19 @@ export type RaffleWinnerWithRelations = RaffleWinner & {
     };
 };
 
+type RafflePrizeDrawFields = {
+    id: string;
+    isActive: boolean;
+    quantity: number;
+    order: number;
+    prizeType: string;
+};
+
 function drawPrizeFromPool(
-    prizes: RafflePrize[],
+    prizes: RafflePrizeDrawFields[],
     isLimited: boolean = true
 ): {
-    prize: RafflePrize;
+    prize: RafflePrizeDrawFields;
     slotNumber: number;
 } {
     const activePrizes = isLimited
@@ -308,6 +325,7 @@ export async function createRaffle(
                 }
 
                 const asset = await prisma.asset.findUnique({
+                    cacheStrategy: getCacheStrategy("fiveMinutes"),
                     where: { id: prize.assetId },
                 });
                 if (!asset || !asset.isActive) {
@@ -345,6 +363,7 @@ export async function createRaffle(
                 }
 
                 const spg = await prisma.story_spg.findUnique({
+                    cacheStrategy: getCacheStrategy("fiveMinutes"),
                     where: { address: prize.spgAddress },
                 });
                 if (!spg) {
@@ -622,6 +641,7 @@ export async function updateRaffle(
                     }
 
                     const asset = await prisma.asset.findUnique({
+                        cacheStrategy: getCacheStrategy("fiveMinutes"),
                         where: { id: prize.assetId },
                     });
                     if (!asset || !asset.isActive) {
@@ -754,6 +774,7 @@ export async function updateRaffle(
         });
 
         const completeRaffle = await prisma.raffle.findUnique({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where: { id: input.id },
             select: {
                 ...RAFFLE_CORE_FIELDS,
@@ -864,6 +885,7 @@ export async function getRaffles(
         }
 
         const raffles = await prisma.raffle.findMany({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where,
             select: {
                 ...RAFFLE_CORE_FIELDS,
@@ -945,6 +967,7 @@ export async function getRaffleDetails(
 ): Promise<RaffleResult<RaffleWithDetails>> {
     try {
         const raffle = await prisma.raffle.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: { id: raffleId },
             select: {
                 ...RAFFLE_CORE_FIELDS,
@@ -1046,6 +1069,7 @@ export async function getRaffleParticipants(
 
         const [participants, totalCount] = await Promise.all([
             prisma.raffleParticipant.findMany({
+                cacheStrategy: getCacheStrategy("oneMinute"),
                 where,
                 include: {
                     player: {
@@ -1059,7 +1083,10 @@ export async function getRaffleParticipants(
                 skip,
                 take: limit,
             }),
-            prisma.raffleParticipant.count({ where }),
+            prisma.raffleParticipant.count({
+                cacheStrategy: getCacheStrategy("oneMinute"),
+                where,
+            }),
         ]);
 
         const totalPages = Math.ceil(totalCount / limit);
@@ -1099,6 +1126,7 @@ export async function checkUserParticipation(
 > {
     try {
         const participants = await prisma.raffleParticipant.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 raffleId,
                 playerId,
@@ -1156,8 +1184,11 @@ export async function participateInRaffle(
         }
 
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("sevenDays"),
             where: { id: input.playerId },
-            include: { user: true },
+            select: {
+                userId: true,
+            },
         });
 
         if (!player || player.userId !== session.user.id) {
@@ -1168,6 +1199,7 @@ export async function participateInRaffle(
         }
 
         const raffle = (await prisma.raffle.findUnique({
+            cacheStrategy: getCacheStrategy("tenSeconds"),
             where: { id: input.raffleId },
             select: {
                 // Only select fields needed for participation validation
@@ -1231,6 +1263,7 @@ export async function participateInRaffle(
             if (!raffle.allowMultipleEntry) {
                 const existingParticipant =
                     await tx.raffleParticipant.findFirst({
+                        cacheStrategy: getCacheStrategy("realtime"),
                         where: {
                             raffleId: input.raffleId,
                             playerId: input.playerId,
@@ -1243,6 +1276,7 @@ export async function participateInRaffle(
             } else if (raffle.maxEntriesPerPlayer) {
                 const existingParticipantCount =
                     await tx.raffleParticipant.count({
+                        cacheStrategy: getCacheStrategy("realtime"),
                         where: {
                             raffleId: input.raffleId,
                             playerId: input.playerId,
@@ -1309,7 +1343,7 @@ export async function participateInRaffle(
                 }
             }
 
-            let drawnPrize: RafflePrize | undefined;
+            let drawnPrize: RafflePrizeDrawFields | undefined;
             let slotNumber: number | undefined;
             let randomSeed: string | undefined;
 
@@ -1321,6 +1355,7 @@ export async function participateInRaffle(
                             isActive: true,
                             quantity: { gt: 0 },
                         },
+                        select: RAFFLE_PRIZE_DRAW_FIELDS,
                         orderBy: { order: "asc" },
                         take: MAX_PRIZES_PER_QUERY,
                     });
@@ -1489,8 +1524,11 @@ export async function revealRaffleResult(
         }
 
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("sevenDays"),
             where: { id: input.playerId },
-            include: { user: true },
+            select: {
+                userId: true,
+            },
         });
 
         if (!player || player.userId !== session.user.id) {
@@ -1504,6 +1542,7 @@ export async function revealRaffleResult(
 
         if (input.participantId) {
             participant = await prisma.raffleParticipant.findUnique({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: { id: input.participantId },
                 select: {
                     id: true,
@@ -1561,6 +1600,7 @@ export async function revealRaffleResult(
             }
         } else {
             participant = await prisma.raffleParticipant.findFirst({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: {
                     raffleId: input.raffleId,
                     playerId: input.playerId,
@@ -1701,8 +1741,11 @@ export async function revealAllRaffleResults(
         }
 
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("sevenDays"),
             where: { id: input.playerId },
-            include: { user: true },
+            select: {
+                userId: true,
+            },
         });
 
         if (!player || player.userId !== session.user.id) {
@@ -1713,6 +1756,7 @@ export async function revealAllRaffleResults(
         }
 
         const participants = await prisma.raffleParticipant.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 raffleId: input.raffleId,
                 playerId: input.playerId,
@@ -1857,6 +1901,7 @@ export async function drawAllWinners(
         }
 
         const user = await prisma.user.findUnique({
+            cacheStrategy: getCacheStrategy("sevenDays"),
             where: { id: session.user.id },
             include: { player: true },
         });
@@ -1866,6 +1911,7 @@ export async function drawAllWinners(
         }
 
         const raffleData = (await prisma.raffle.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: input.raffleId },
             include: {
                 prizes: {
@@ -1920,11 +1966,13 @@ export async function drawAllWinners(
             for (const participant of raffleData.participants) {
                 try {
                     const currentPrizes = await tx.rafflePrize.findMany({
+                        cacheStrategy: getCacheStrategy("realtime"),
                         where: {
                             raffleId: input.raffleId,
                             isActive: true,
                             quantity: { gt: 0 },
                         },
+                        select: RAFFLE_PRIZE_DRAW_FIELDS,
                         orderBy: { order: "asc" },
                         take: MAX_PRIZES_PER_QUERY,
                     });
@@ -2029,6 +2077,7 @@ export async function distributePrizes(input: DistributePrizesInput): Promise<
         }
 
         const user = await prisma.user.findUnique({
+            cacheStrategy: getCacheStrategy("sevenDays"),
             where: { id: session.user.id },
             include: { player: true },
         });
@@ -2038,6 +2087,7 @@ export async function distributePrizes(input: DistributePrizesInput): Promise<
         }
 
         const raffle = await prisma.raffle.findUnique({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where: { id: input.raffleId },
             select: { id: true, artistId: true, instantReveal: true },
         });
@@ -2057,6 +2107,7 @@ export async function distributePrizes(input: DistributePrizesInput): Promise<
             hasPermission = true;
         } else if (raffle.instantReveal && input.executedBy) {
             const participant = await prisma.raffleParticipant.findFirst({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: {
                     raffleId: input.raffleId,
                     playerId: input.executedBy,
@@ -2095,7 +2146,10 @@ export async function distributePrizes(input: DistributePrizesInput): Promise<
 
         const batchSize = input.batchSize || 50;
 
-        const totalPendingCount = await prisma.raffleWinner.count({ where });
+        const totalPendingCount = await prisma.raffleWinner.count({
+            cacheStrategy: getCacheStrategy("realtime"),
+            where,
+        });
 
         if (totalPendingCount === 0) {
             return {
@@ -2118,6 +2172,7 @@ export async function distributePrizes(input: DistributePrizesInput): Promise<
             const skip = batchIndex * batchSize;
 
             const winners = (await prisma.raffleWinner.findMany({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where,
                 select: {
                     id: true,
@@ -2304,12 +2359,6 @@ export async function distributePrizes(input: DistributePrizesInput): Promise<
 
             totalDistributed += batchDistributed;
             totalFailed += batchFailed;
-
-            console.log(
-                `Batch ${
-                    batchIndex + 1
-                }/${totalBatches} completed: ${batchDistributed} distributed, ${batchFailed} failed`
-            );
         }
 
         return {
@@ -2365,6 +2414,7 @@ export async function getPlayerParticipations(
         }
 
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("sevenDays"),
             where: { id: input.playerId },
             include: { user: true },
         });
@@ -2386,6 +2436,7 @@ export async function getPlayerParticipations(
         }
 
         const participations = await prisma.raffleParticipant.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where,
             select: {
                 id: true,
@@ -2431,6 +2482,7 @@ export async function getPlayerParticipations(
         });
 
         const winners = (await prisma.raffleWinner.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 raffleId: input.raffleId,
                 playerId: input.playerId,
@@ -2535,8 +2587,11 @@ export async function getUnrevealedCount(
         }
 
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("sevenDays"),
             where: { id: input.playerId },
-            include: { user: true },
+            select: {
+                userId: true,
+            },
         });
 
         if (!player || player.userId !== session.user.id) {
@@ -2590,8 +2645,11 @@ export async function bulkRevealResults(input: BulkRevealInput): Promise<
         }
 
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("sevenDays"),
             where: { id: input.playerId },
-            select: { id: true, userId: true },
+            select: {
+                userId: true,
+            },
         });
 
         if (!player || player.userId !== session.user.id) {
@@ -2614,6 +2672,7 @@ export async function bulkRevealResults(input: BulkRevealInput): Promise<
         }
 
         const totalUnrevealedCount = await prisma.raffleParticipant.count({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 ...where,
                 isRevealed: false,
@@ -2638,6 +2697,7 @@ export async function bulkRevealResults(input: BulkRevealInput): Promise<
 
         for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
             const batchParticipants = await prisma.raffleParticipant.findMany({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: {
                     ...where,
                     isRevealed: false,
@@ -2756,12 +2816,6 @@ export async function bulkRevealResults(input: BulkRevealInput): Promise<
 
             allRevealedParticipants.push(...batchResults);
             processedCount += batchResults.length;
-
-            console.log(
-                `Batch ${batchIndex + 1}/${totalBatches} completed: ${
-                    batchResults.length
-                } participants revealed (${processedCount}/${totalUnrevealedCount} total)`
-            );
         }
 
         return {
@@ -2815,6 +2869,7 @@ export async function getProbabilityAnalyticsData(
     try {
         // 래플 목록 조회 (raffleIds가 없으면 전체 조회)
         const raffles = await prisma.raffle.findMany({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: raffleIds ? { id: { in: raffleIds } } : undefined,
             select: {
                 // Only select fields needed for probability analytics
@@ -2857,6 +2912,7 @@ export async function getProbabilityAnalyticsData(
 
             // 실제 추첨 완료된 수 (drawnAt이 null이 아닌 경우)
             const totalDraws = await prisma.raffleParticipant.count({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
                 where: {
                     raffleId: raffle.id,
                     drawnAt: { not: null },
@@ -2874,6 +2930,7 @@ export async function getProbabilityAnalyticsData(
 
                     // 실제 당첨 수 (해당 상품을 뽑은 참가자 수)
                     const actualWins = await prisma.raffleParticipant.count({
+                        cacheStrategy: getCacheStrategy("fiveMinutes"),
                         where: {
                             raffleId: raffle.id,
                             prizeId: prize.id,
@@ -2883,6 +2940,7 @@ export async function getProbabilityAnalyticsData(
 
                     // 실제 배포 완료된 당첨 수
                     const distributedWins = await prisma.raffleWinner.count({
+                        cacheStrategy: getCacheStrategy("fiveMinutes"),
                         where: {
                             raffleId: raffle.id,
                             prizeId: prize.id,
@@ -2972,6 +3030,7 @@ export async function getRevenueAnalyticsData(
 ): Promise<RaffleResult<RevenueAnalyticsData[]>> {
     try {
         const raffles = await prisma.raffle.findMany({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: raffleIds ? { id: { in: raffleIds } } : undefined,
             select: {
                 // Only select fields needed for revenue analytics
@@ -3139,6 +3198,7 @@ export async function getParticipantAnalyticsData(
 
         // 참가자별 기본 통계 조회 - 필요한 데이터만 선택적으로 가져오기
         const participants = await prisma.raffleParticipant.findMany({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: { playerId: { in: playerIds } },
             select: {
                 id: true,
@@ -3187,6 +3247,7 @@ export async function getParticipantAnalyticsData(
 
         // 당첨자 정보 조회 - 필요한 데이터만 선택적으로 가져오기
         const winners = await prisma.raffleWinner.findMany({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: { playerId: { in: playerIds } },
             select: {
                 id: true,
@@ -3381,8 +3442,11 @@ export async function getPlayerParticipationsInfinite(
         }
 
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("sevenDays"),
             where: { id: input.playerId },
-            include: { user: true },
+            select: {
+                userId: true,
+            },
         });
 
         if (!player || player.userId !== session.user.id) {
@@ -3413,6 +3477,7 @@ export async function getPlayerParticipationsInfinite(
 
         // 페이지네이션된 참여 기록 조회
         const participations = await prisma.raffleParticipant.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where,
             select: {
                 id: true,
@@ -3482,12 +3547,14 @@ export async function getPlayerParticipationsInfinite(
             const [totalCount, revealedCount, unrevealedCount] =
                 await Promise.all([
                     prisma.raffleParticipant.count({
+                        cacheStrategy: getCacheStrategy("realtime"),
                         where: {
                             raffleId: input.raffleId,
                             playerId: input.playerId,
                         },
                     }),
                     prisma.raffleParticipant.count({
+                        cacheStrategy: getCacheStrategy("realtime"),
                         where: {
                             raffleId: input.raffleId,
                             playerId: input.playerId,
@@ -3495,6 +3562,7 @@ export async function getPlayerParticipationsInfinite(
                         },
                     }),
                     prisma.raffleParticipant.count({
+                        cacheStrategy: getCacheStrategy("realtime"),
                         where: {
                             raffleId: input.raffleId,
                             playerId: input.playerId,
@@ -3513,6 +3581,7 @@ export async function getPlayerParticipationsInfinite(
         // 당첨자 정보는 첫 번째 페이지에서만 조회 (성능 최적화)
         const winners = !input.cursor
             ? ((await prisma.raffleWinner.findMany({
+                  cacheStrategy: getCacheStrategy("realtime"),
                   where: {
                       raffleId: input.raffleId,
                       playerId: input.playerId,

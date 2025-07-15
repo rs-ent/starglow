@@ -13,6 +13,7 @@ import {
     getBoardPost,
     getBoardComments,
     getPostRewards,
+    getArtistAllBoardPostCount,
 } from "./actions";
 
 import type {
@@ -21,7 +22,31 @@ import type {
     GetPostRewardsInput,
     GetBoardPostsOutput,
     Pagination,
+    GetArtistAllBoardPostCountInput,
 } from "./actions";
+
+// 실시간 캐시 설정
+const REALTIME_CACHE_CONFIG = {
+    staleTime: 0, // 즉시 stale 처리
+    gcTime: 1000 * 60 * 5, // 5분 후 가비지 컬렉션
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchInterval: 30000, // 30초마다 백그라운드 새로고침
+};
+
+const SEMI_REALTIME_CACHE_CONFIG = {
+    staleTime: 1000 * 10, // 10초
+    gcTime: 1000 * 60 * 3, // 3분
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+};
+
+const STATIC_CACHE_CONFIG = {
+    staleTime: 1000 * 60 * 5, // 5분
+    gcTime: 1000 * 60 * 10, // 10분
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+};
 
 // Board Queries
 export function useGetBoardsQuery(
@@ -31,9 +56,7 @@ export function useGetBoardsQuery(
     return useQuery({
         queryKey: boardKeys.list(input, pagination),
         queryFn: () => getBoards(input, pagination),
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        gcTime: 1000 * 60 * 10, // 10 minutes
-        refetchOnWindowFocus: false,
+        ...STATIC_CACHE_CONFIG,
     });
 }
 
@@ -42,13 +65,11 @@ export function useGetBoardQuery(boardId?: string) {
         queryKey: boardKeys.detail(boardId || ""),
         queryFn: () => getBoard(boardId!),
         enabled: Boolean(boardId),
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        gcTime: 1000 * 60 * 10, // 10 minutes
-        refetchOnWindowFocus: false,
+        ...STATIC_CACHE_CONFIG,
     });
 }
 
-// Board Post Queries
+// Board Post Queries - 실시간 캐시 적용
 export function useGetBoardPostsQuery(
     input?: GetBoardPostsInput,
     pagination?: Pagination
@@ -56,13 +77,11 @@ export function useGetBoardPostsQuery(
     return useQuery({
         queryKey: boardKeys.posts.list(input, pagination),
         queryFn: () => getBoardPosts(input, pagination),
-        staleTime: 1000 * 60 * 3, // 3 minutes
-        gcTime: 1000 * 60 * 5, // 5 minutes
-        refetchOnWindowFocus: false,
+        ...SEMI_REALTIME_CACHE_CONFIG,
     });
 }
 
-// 무한 스크롤을 위한 쿼리 추가
+// 무한 스크롤을 위한 쿼리 - 실시간 캐시 적용
 export function useInfiniteBoardPostsQuery(input?: GetBoardPostsInput) {
     return useInfiniteQuery<
         GetBoardPostsOutput,
@@ -90,9 +109,8 @@ export function useInfiniteBoardPostsQuery(input?: GetBoardPostsInput) {
             }
             return undefined;
         },
-        staleTime: 1000 * 60 * 3, // 3 minutes
-        gcTime: 1000 * 60 * 5, // 5 minutes
-        refetchOnWindowFocus: false,
+        ...REALTIME_CACHE_CONFIG,
+        refetchInterval: 60000, // 1분마다 새로고침
     });
 }
 
@@ -101,21 +119,17 @@ export function useGetBoardPostQuery(postId?: string) {
         queryKey: boardKeys.posts.detail(postId || ""),
         queryFn: () => getBoardPost(postId!),
         enabled: Boolean(postId),
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        gcTime: 1000 * 60 * 10, // 10 minutes
-        refetchOnWindowFocus: false,
+        ...SEMI_REALTIME_CACHE_CONFIG,
     });
 }
 
-// Board Comment Queries
+// Board Comment Queries - 실시간 캐시 적용
 export function useGetBoardCommentsQuery(postId?: string) {
     return useQuery({
         queryKey: boardKeys.comments.byPost(postId || ""),
         queryFn: () => getBoardComments(postId!),
         enabled: Boolean(postId),
-        staleTime: 1000 * 60 * 2, // 2 minutes
-        gcTime: 1000 * 60 * 5, // 5 minutes
-        refetchOnWindowFocus: false,
+        ...REALTIME_CACHE_CONFIG,
     });
 }
 
@@ -124,8 +138,17 @@ export function useGetPostRewardsQuery(input?: GetPostRewardsInput) {
     return useQuery({
         queryKey: boardKeys.rewards.list(input),
         queryFn: () => getPostRewards(input),
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        gcTime: 1000 * 60 * 10, // 10 minutes
-        refetchOnWindowFocus: false,
+        ...STATIC_CACHE_CONFIG,
+    });
+}
+
+export function useGetArtistAllBoardPostCountQuery(
+    input?: GetArtistAllBoardPostCountInput
+) {
+    return useQuery({
+        queryKey: boardKeys.artistAllBoardPostCount(input?.artistId),
+        queryFn: () => getArtistAllBoardPostCount(input),
+        ...STATIC_CACHE_CONFIG,
+        enabled: !!input?.artistId,
     });
 }

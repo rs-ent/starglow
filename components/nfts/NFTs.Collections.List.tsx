@@ -17,7 +17,6 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
 import NFTsCollectionsCard3DR3F from "./NFTs.Collections.Card.R3F";
-import PartialLoading from "../atoms/PartialLoading";
 
 import type { SPG } from "@/app/story/spg/actions";
 import type { WebKitGestureEvent } from "@use-gesture/react";
@@ -39,13 +38,23 @@ const Arrow = React.memo(function Arrow({
     confirmedAlpha: number;
 }) {
     const arrowRef = useRef<Mesh>(null);
+    const glowRef = useRef<Mesh>(null);
 
-    useFrame(() => {
+    useFrame((state) => {
+        const t = state.clock.getElapsedTime();
+
         if (arrowRef.current) {
             arrowRef.current.position.y =
-                Math.sin(Date.now() * 0.005 * confirmedAlpha) * 0.2 +
-                (9 + positionY);
-            arrowRef.current.rotation.y = Date.now() * 0.005 * confirmedAlpha;
+                Math.sin(t * 2 * confirmedAlpha) * 0.3 + (9 + positionY);
+            arrowRef.current.rotation.y = t * 0.8 * confirmedAlpha;
+            arrowRef.current.rotation.z = Math.sin(t * 3) * 0.1;
+        }
+
+        if (glowRef.current) {
+            glowRef.current.position.y =
+                Math.sin(t * 2 * confirmedAlpha) * 0.3 + (9 + positionY);
+            glowRef.current.rotation.y = t * 0.8 * confirmedAlpha;
+            glowRef.current.scale.setScalar(1 + Math.sin(t * 4) * 0.1);
         }
     });
 
@@ -54,20 +63,39 @@ const Arrow = React.memo(function Arrow({
     }, [positionY]);
 
     return (
-        <mesh ref={arrowRef} position={position} rotation={[Math.PI, 0, 0]}>
-            <coneGeometry args={[0.6, 1.4, 4]} />
-            <meshPhysicalMaterial
-                color="rgb(97, 59, 150)"
-                metalness={0.5}
-                roughness={0.6}
-                transparent
-                opacity={1}
-                reflectivity={0.3}
-                envMapIntensity={1.5}
-                emissive="rgb(107, 69, 170)"
-                emissiveIntensity={0.25}
-            />
-        </mesh>
+        <group position={position}>
+            {/* 메인 화살표 */}
+            <mesh ref={arrowRef} rotation={[Math.PI, 0, 0]}>
+                <coneGeometry args={[0.6, 1.4, 6]} />
+                <meshPhysicalMaterial
+                    color="rgb(147, 99, 200)"
+                    metalness={0.8}
+                    roughness={0.2}
+                    transparent
+                    opacity={1}
+                    reflectivity={0.6}
+                    envMapIntensity={1.8}
+                    emissive="rgb(127, 79, 180)"
+                    emissiveIntensity={0.4}
+                    clearcoat={1}
+                    clearcoatRoughness={0.1}
+                />
+            </mesh>
+
+            {/* 글로우 효과 */}
+            <mesh ref={glowRef} rotation={[Math.PI, 0, 0]}>
+                <coneGeometry args={[0.8, 1.6, 6]} />
+                <meshPhysicalMaterial
+                    color="rgb(167, 119, 220)"
+                    metalness={0.1}
+                    roughness={0.8}
+                    transparent
+                    opacity={0.3}
+                    emissive="rgb(147, 99, 200)"
+                    emissiveIntensity={0.6}
+                />
+            </mesh>
+        </group>
     );
 });
 
@@ -95,27 +123,23 @@ export default function NFTsCollectionsList({
     const sortedSPGsData = useMemo(() => {
         if (!getSPGsData) return null;
 
-        return getSPGsData.sort((a, b) => {
-            const aIsNormal = !a.comingSoon && !a.hiddenDetails;
-            const bIsNormal = !b.comingSoon && !b.hiddenDetails;
+        return [...getSPGsData].sort((a, b) => {
+            // 상태 우선순위: normal > comingSoon > hidden
+            const getPriority = (item: SPG) => {
+                if (!item.comingSoon && !item.hiddenDetails) return 0; // normal
+                if (item.comingSoon && !item.hiddenDetails) return 1; // comingSoon
+                if (item.hiddenDetails) return 2; // hidden
+                return 3; // fallback
+            };
 
-            const aIsComingSoon = a.comingSoon && !a.hiddenDetails;
-            const bIsComingSoon = b.comingSoon && !b.hiddenDetails;
+            const aPriority = getPriority(a);
+            const bPriority = getPriority(b);
 
-            const aIsHidden = a.hiddenDetails;
-            const bIsHidden = b.hiddenDetails;
+            if (aPriority !== bPriority) {
+                return aPriority - bPriority;
+            }
 
-            if (aIsNormal && !bIsNormal) return -1;
-            if (!aIsNormal && bIsNormal) return 1;
-
-            if (aIsComingSoon && !bIsComingSoon && !bIsNormal) return -1;
-            if (!aIsComingSoon && bIsComingSoon && !aIsNormal) return 1;
-
-            if (aIsHidden && !bIsHidden && !bIsNormal && !bIsComingSoon)
-                return -1;
-            if (!aIsHidden && bIsHidden && !aIsNormal && !aIsComingSoon)
-                return 1;
-
+            // 같은 우선순위 내에서는 이름순 정렬
             return a.name.localeCompare(b.name);
         });
     }, [getSPGsData]);
@@ -326,44 +350,81 @@ export default function NFTsCollectionsList({
 
     useEffect(() => {
         let cancelled = false;
+
         async function preload() {
             if (!sortedSPGsData) {
                 setIsPreloaded(true);
                 return;
             }
 
+            // 우선순위 기반 로딩: normal > comingSoon > hidden
+            const prioritizedData = sortedSPGsData.slice().sort((a, b) => {
+                const getPriority = (item: SPG) => {
+                    if (!item.comingSoon && !item.hiddenDetails) return 0;
+                    if (item.comingSoon && !item.hiddenDetails) return 1;
+                    return 2;
+                };
+                return getPriority(a) - getPriority(b);
+            });
+
             const urls = (
                 await Promise.all(
-                    sortedSPGsData.map(async (c) => {
+                    prioritizedData.map(async (c) => {
                         if (c.imageUrl) return c.imageUrl;
                         if (!c.contractURI) return null;
 
-                        const contractURI = c.contractURI;
-                        const metadata = await fetchURI({ uri: contractURI });
-                        return metadata?.image || null;
+                        try {
+                            const contractURI = c.contractURI;
+                            const metadata = await fetchURI({
+                                uri: contractURI,
+                            });
+                            return metadata?.image || null;
+                        } catch (error) {
+                            console.warn(
+                                `Failed to fetch metadata for ${c.name}:`,
+                                error
+                            );
+                            return null;
+                        }
                     })
                 )
             ).filter(Boolean) as string[];
+
             if (cancelled) return;
+
             if (urls.length === 0) {
                 setIsPreloaded(true);
                 return;
             }
 
             try {
-                // 모든 텍스처가 완전히 로딩될 때까지 기다림
-                await prefetchTextures(urls);
+                // 중요한 텍스처 먼저 로딩 (처음 5개)
+                const priorityUrls = urls.slice(0, 5);
+                const remainingUrls = urls.slice(5);
 
-                // prefetchTextures가 성공적으로 완료되면 모든 텍스처가 로딩됨
+                // 우선순위 텍스처 로딩
+                await prefetchTextures(priorityUrls);
+
                 if (!cancelled) {
                     setIsPreloaded(true);
+
+                    // 나머지 텍스처는 백그라운드에서 로딩
+                    if (remainingUrls.length > 0) {
+                        prefetchTextures(remainingUrls).catch((error) => {
+                            console.warn(
+                                "Background texture loading failed:",
+                                error
+                            );
+                        });
+                    }
                 }
             } catch (error) {
-                console.error("Failed to preload textures:", error);
+                console.error("Failed to preload priority textures:", error);
                 // 오류가 발생해도 UI를 표시하되, 개별 텍스처 로딩에 의존
                 if (!cancelled) setIsPreloaded(true);
             }
         }
+
         void preload();
         return () => {
             cancelled = true;
@@ -404,86 +465,85 @@ export default function NFTsCollectionsList({
                 >
                     <Environment preset="city" />
                     <CameraLerp targetCameraZ={targetCameraZ} />
-                    <ambientLight intensity={0.1} color="#ffffab" />
+
+                    {/* 전체 조명 */}
+                    <ambientLight intensity={0.15} color="#f0f0ff" />
+
+                    {/* 메인 조명 */}
                     <directionalLight
-                        position={[-4, 4.4, 12]}
-                        intensity={1.2}
+                        position={[-6, 8, 15]}
+                        intensity={1.8}
                         color="#ffffff"
-                    />
-                    <directionalLight
-                        position={[4, -4.4, 12]}
-                        intensity={0.3}
-                        color="#ffffff"
-                    />
-                    <pointLight
-                        position={[-1.5, 20, 10]}
-                        intensity={35}
-                        color="#aa00ff"
-                        distance={50}
-                        decay={2}
-                    />
-
-                    <spotLight
-                        position={[-5, -15, 10]}
-                        intensity={1}
-                        color="#aa00ff"
-                        decay={0.1}
-                    />
-
-                    <spotLight
-                        position={[0, -15, 10]}
-                        intensity={1}
-                        color="#00ffbb"
-                        decay={0.1}
-                    />
-                    <spotLight
-                        position={[5, -15, 10]}
-                        intensity={1}
-                        color="#ff00aa"
-                        decay={0.1}
-                    />
-
-                    <spotLight
-                        position={[20, 0, 10]}
-                        intensity={1}
-                        color="#ff00aa"
-                        decay={0.1}
-                    />
-
-                    <spotLight
-                        position={[20, 10, 10]}
-                        intensity={1}
-                        color="#00ffbb"
                         castShadow={true}
-                        decay={0.1}
+                    />
+                    <directionalLight
+                        position={[6, -6, 15]}
+                        intensity={0.6}
+                        color="#e0e0ff"
                     />
 
-                    <spotLight
-                        position={[20, -10, 10]}
-                        intensity={1}
-                        color="#aa00ff"
-                        decay={0.1}
+                    {/* 키 포인트 라이트 */}
+                    <pointLight
+                        position={[0, 25, 12]}
+                        intensity={40}
+                        color="#9d4edd"
+                        distance={60}
+                        decay={1.5}
                     />
 
+                    {/* 하단 스포트라이트 - 더 조화로운 색상 */}
                     <spotLight
-                        position={[-20, 0, 10]}
-                        intensity={1}
-                        color="#aa00ff"
-                        decay={0.1}
+                        position={[-8, -18, 12]}
+                        intensity={1.2}
+                        color="#c77dff"
+                        decay={0.08}
+                        angle={Math.PI / 6}
+                    />
+                    <spotLight
+                        position={[0, -18, 12]}
+                        intensity={1.2}
+                        color="#7209b7"
+                        decay={0.08}
+                        angle={Math.PI / 6}
+                    />
+                    <spotLight
+                        position={[8, -18, 12]}
+                        intensity={1.2}
+                        color="#480ca8"
+                        decay={0.08}
+                        angle={Math.PI / 6}
                     />
 
+                    {/* 사이드 라이트 */}
                     <spotLight
-                        position={[-20, 10, 10]}
-                        intensity={1}
-                        color="#aa00ff"
-                        decay={0.1}
+                        position={[25, 0, 12]}
+                        intensity={0.8}
+                        color="#b388ff"
+                        decay={0.06}
+                        angle={Math.PI / 4}
+                    />
+                    <spotLight
+                        position={[-25, 0, 12]}
+                        intensity={0.8}
+                        color="#e1bee7"
+                        decay={0.06}
+                        angle={Math.PI / 4}
                     />
 
+                    {/* 상단 액센트 라이트 */}
                     <spotLight
-                        position={[-20, -10, 10]}
-                        intensity={1}
-                        color="#ff00bb"
-                        decay={0.1}
+                        position={[15, 15, 12]}
+                        intensity={0.6}
+                        color="#ce93d8"
+                        decay={0.05}
+                        angle={Math.PI / 3}
+                    />
+                    <spotLight
+                        position={[-15, 15, 12]}
+                        intensity={0.6}
+                        color="#ba68c8"
+                        decay={0.05}
+                        angle={Math.PI / 3}
                     />
                     <Arrow
                         positionY={positionY}
@@ -493,7 +553,24 @@ export default function NFTsCollectionsList({
                     {sortedSPGsData?.map(renderCollection)}
                 </Canvas>
             ) : (
-                <PartialLoading text="Loading textures..." />
+                <div
+                    className="flex flex-col items-center justify-center"
+                    style={{ height: height }}
+                >
+                    <div className="relative">
+                        <div className="w-24 h-24 border-4 border-purple-500/20 rounded-full animate-pulse"></div>
+                        <div className="absolute inset-0 w-24 h-24 border-4 border-purple-500 rounded-full animate-spin border-t-transparent"></div>
+                        <div className="absolute inset-2 w-20 h-20 border-2 border-cyan-400/40 rounded-full animate-ping"></div>
+                    </div>
+                    <div className="mt-8 text-center">
+                        <h3 className="text-xl font-bold text-white mb-2">
+                            Loading Glows
+                        </h3>
+                        <p className="text-gray-400 text-sm">
+                            Preparing your stellar experience...
+                        </p>
+                    </div>
+                </div>
             )}
         </div>
     );

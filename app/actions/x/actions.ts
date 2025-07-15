@@ -17,6 +17,8 @@ import type {
 } from "@prisma/client";
 import { updatePlayerAsset } from "@/app/actions/playerAssets/actions";
 
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
+
 const CLIENT_ID = process.env.TWITTER_CLIENT_ID;
 const CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;
 
@@ -119,6 +121,7 @@ export type Author = TweetAuthor & {
 
 export async function getTweetAuthors(): Promise<Author[]> {
     return (await prisma.tweetAuthor.findMany({
+        cacheStrategy: getCacheStrategy("fiveMinutes"),
         include: {
             player: true,
             tweets: {
@@ -158,6 +161,7 @@ export async function getAuthorMetricsHistory(
     }
 
     return await prisma.tweetAuthorMetrics.findMany({
+        cacheStrategy: getCacheStrategy("fiveMinutes"),
         where: {
             tweetAuthorId: input.authorId,
         },
@@ -179,6 +183,7 @@ export async function getTweetMetricsHistory(
     }
 
     return await prisma.tweetMetrics.findMany({
+        cacheStrategy: getCacheStrategy("fiveMinutes"),
         where: {
             tweetId: input.tweetId,
         },
@@ -189,7 +194,9 @@ export async function getTweetMetricsHistory(
 }
 
 export async function getTweets() {
-    return await prisma.tweet.findMany();
+    return await prisma.tweet.findMany({
+        cacheStrategy: getCacheStrategy("fiveMinutes"),
+    });
 }
 
 export interface FetchAuthorMetricsFromXInput {
@@ -233,6 +240,7 @@ export async function fetchAuthorMetricsFromX(
         }
 
         const currentAuthor = (await prisma.tweetAuthor.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: { authorId: input.authorId },
             include: {
                 metrics: {
@@ -315,10 +323,11 @@ export async function getAuthorByPlayerId(
         }
 
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 id: input.playerId,
             },
-            include: {
+            select: {
                 tweetAuthor: {
                     include: {
                         rewardsLogs: true,
@@ -363,6 +372,7 @@ export async function validateRegisterXAuthor(
         }
 
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 id: input.playerId,
             },
@@ -380,6 +390,7 @@ export async function validateRegisterXAuthor(
         }
 
         const existingAuthor = await prisma.tweetAuthor.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 authorId: input.tweetAuthorId,
             },
@@ -526,6 +537,7 @@ export async function confirmRegisterXAuthor(
         }
 
         const tweetAuthor = await prisma.tweetAuthor.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { authorId: input.tweetAuthorId },
             select: {
                 validated: true,

@@ -3,6 +3,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 import type {
     Prisma,
@@ -89,6 +90,7 @@ export async function getRewardsLogs({
         }
 
         const result = await prisma.rewardsLog.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where,
             include: {
                 asset: true,
@@ -148,6 +150,7 @@ export async function getRewardsLogsPaginated(
 
         const [rewardsLogs, totalItems] = await Promise.all([
             prisma.rewardsLog.findMany({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where,
                 include: {
                     asset: true,
@@ -158,7 +161,10 @@ export async function getRewardsLogsPaginated(
                     createdAt: "desc",
                 },
             }),
-            prisma.rewardsLog.count({ where }),
+            prisma.rewardsLog.count({
+                cacheStrategy: getCacheStrategy("realtime"),
+                where,
+            }),
         ]);
 
         return {

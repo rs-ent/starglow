@@ -14,6 +14,7 @@ import type {
     Board,
     BoardPost,
 } from "@prisma/client";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 export interface CreateArtistInput {
     name: string;
@@ -96,6 +97,7 @@ export async function getArtist(
 
         if (input.id) {
             return (await prisma.artist.findUnique({
+                cacheStrategy: getCacheStrategy("oneMinute"),
                 where: { id: input.id },
                 include: {
                     story_spg: true,
@@ -114,6 +116,7 @@ export async function getArtist(
 
         if (input.code) {
             return (await prisma.artist.findUnique({
+                cacheStrategy: getCacheStrategy("oneMinute"),
                 where: { code: input.code },
                 include: {
                     story_spg: true,
@@ -132,6 +135,7 @@ export async function getArtist(
 
         if (input.name) {
             return (await prisma.artist.findFirst({
+                cacheStrategy: getCacheStrategy("oneMinute"),
                 where: { name: input.name },
                 include: {
                     story_spg: true,
@@ -178,6 +182,7 @@ export async function getArtistForMetadata(
 
         if (input.id) {
             return await prisma.artist.findUnique({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
                 where: { id: input.id },
                 select,
             });
@@ -185,6 +190,7 @@ export async function getArtistForMetadata(
 
         if (input.code) {
             return await prisma.artist.findUnique({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
                 where: { code: input.code },
                 select,
             });
@@ -192,6 +198,7 @@ export async function getArtistForMetadata(
 
         if (input.name) {
             return await prisma.artist.findFirst({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
                 where: { name: input.name },
                 select,
             });
@@ -204,149 +211,37 @@ export async function getArtistForMetadata(
     }
 }
 
-// Star 페이지 전용 최적화 함수
-export type ArtistForStar = Artist & {
-    story_spg: Story_spg[];
-    polls: Poll[];
-    quests: Quest[];
-    messages: ArtistMessage[];
-    players: Player[];
-    boards: (Board & { posts: BoardPost[] })[];
-    totalPosts: number;
-    totalPolls: number;
-    totalQuests: number;
-    _count: {
-        boards: number;
-    };
+export type ArtistsForStarList = {
+    id: string;
+    name: string;
+    imageUrl: string;
+    logoUrl: string;
+    code?: string;
+    hidden: boolean;
+    backgroundColors: string[];
+    foregroundColors: string[];
 };
 
-export async function getArtistForStar(
-    input?: GetArtistInput
-): Promise<ArtistForStar | null> {
+export async function getArtistsForStarList(): Promise<
+    ArtistsForStarList[] | null
+> {
     try {
-        if (!input) {
-            return null;
-        }
-
-        let artist;
-
-        // 1. 기본 아티스트 정보와 필터링된 관련 데이터 가져오기
-        if (input.id) {
-            artist = await prisma.artist.findUnique({
-                where: { id: input.id },
-                include: {
-                    story_spg: {
-                        where: {
-                            isListed: true,
-                            comingSoon: false,
-                            hiddenDetails: false,
-                        },
-                    },
-                    polls: {
-                        where: {
-                            isActive: true,
-                            showOnStarPage: true,
-                        },
-                    },
-                    quests: {
-                        where: {
-                            isActive: true,
-                        },
-                    },
-                    _count: {
-                        select: {
-                            boards: true,
-                        },
-                    },
-                },
-            });
-        } else if (input.code) {
-            artist = await prisma.artist.findUnique({
-                where: { code: input.code },
-                include: {
-                    story_spg: {
-                        where: {
-                            isListed: true,
-                            comingSoon: false,
-                            hiddenDetails: false,
-                        },
-                    },
-                    polls: {
-                        where: {
-                            isActive: true,
-                            showOnStarPage: true,
-                        },
-                    },
-                    quests: {
-                        where: {
-                            isActive: true,
-                        },
-                    },
-                    _count: {
-                        select: {
-                            boards: true,
-                        },
-                    },
-                },
-            });
-        } else if (input.name) {
-            artist = await prisma.artist.findFirst({
-                where: { name: input.name },
-                include: {
-                    story_spg: {
-                        where: {
-                            isListed: true,
-                            comingSoon: false,
-                            hiddenDetails: false,
-                        },
-                    },
-                    polls: {
-                        where: {
-                            isActive: true,
-                            showOnStarPage: true,
-                        },
-                    },
-                    quests: {
-                        where: {
-                            isActive: true,
-                        },
-                    },
-                    _count: {
-                        select: {
-                            boards: true,
-                        },
-                    },
-                },
-            });
-        } else {
-            return null;
-        }
-
-        if (!artist) {
-            return null;
-        }
-
-        // 2. 총 포스트 개수 계산 (boards의 posts 개수 합산)
-        const totalPostsResult = await prisma.boardPost.count({
-            where: {
-                board: {
-                    artistId: artist.id,
-                },
+        const artists = await prisma.artist.findMany({
+            cacheStrategy: getCacheStrategy("oneMinute"),
+            select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                logoUrl: true,
+                code: true,
+                hidden: true,
+                backgroundColors: true,
+                foregroundColors: true,
             },
+            orderBy: [{ hidden: "asc" }, { name: "asc" }],
         });
 
-        // 3. 결과 조합 (Star 페이지에서 사용하지 않는 속성들은 빈 배열로 초기화)
-        const result: ArtistForStar = {
-            ...artist,
-            messages: [], // Star 페이지에서 사용하지 않음
-            players: [], // Star 페이지에서 사용하지 않음
-            boards: [], // Star 페이지에서 사용하지 않음 (개수만 계산)
-            totalPosts: totalPostsResult,
-            totalPolls: artist.polls.length,
-            totalQuests: artist.quests.length,
-        };
-
-        return result;
+        return artists as ArtistsForStarList[];
     } catch (error) {
         console.error(error);
         throw new Error("Failed to get artist for star page");
@@ -365,6 +260,7 @@ export async function getArtists(
     try {
         if (!input) {
             return (await prisma.artist.findMany({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
                 include: {
                     story_spg: true,
                     messages: true,
@@ -398,6 +294,7 @@ export async function getArtists(
             };
         }
         const artists = await prisma.artist.findMany({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where,
             include: {
                 story_spg: true,
@@ -617,6 +514,7 @@ export async function getArtistMessages(
             }
         }
         const artistMessages = await prisma.artistMessage.findMany({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where,
             orderBy: { startDate: "desc" },
         });
@@ -695,6 +593,7 @@ export async function getPlayers(input?: GetPlayersInput): Promise<Player[]> {
         }
 
         const players = await prisma.player.findMany({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where,
             take: input?.limit || 50,
             skip: input?.offset || 0,
@@ -718,5 +617,47 @@ export async function getPlayers(input?: GetPlayersInput): Promise<Player[]> {
     } catch (error) {
         console.error(error);
         throw new Error("Failed to get players");
+    }
+}
+
+export type ArtistForStarPage = {
+    id: string;
+    name: string;
+    imageUrl?: string;
+    logoUrl?: string;
+    code?: string;
+    hidden: boolean;
+    backgroundColors: string[];
+    foregroundColors: string[];
+};
+
+export interface GetArtistForStarPageInput {
+    code: string;
+}
+
+export async function getArtistForStarPage(
+    input?: GetArtistForStarPageInput
+): Promise<ArtistForStarPage | null> {
+    if (!input) {
+        return null;
+    }
+    try {
+        return (await prisma.artist.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
+            where: { code: input.code },
+            select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                logoUrl: true,
+                code: true,
+                hidden: true,
+                backgroundColors: true,
+                foregroundColors: true,
+            },
+        })) as ArtistForStarPage;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to get artist for star page");
     }
 }

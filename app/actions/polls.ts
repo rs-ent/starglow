@@ -27,6 +27,7 @@ import {
     createBettingRefundNotification,
     createSettlementCompleteNotification,
 } from "./notification/actions";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 // 에러 메시지 상수 (향후 국제화 대응)
 const ERROR_MESSAGES = {
@@ -301,6 +302,7 @@ export async function getPolls({
 
         const [items, totalItems] = await Promise.all([
             prisma.poll.findMany({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where,
                 orderBy: {
                     id: "desc",
@@ -313,7 +315,10 @@ export async function getPolls({
                     participationConsumeAsset: true,
                 },
             }),
-            prisma.poll.count({ where }),
+            prisma.poll.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
+                where,
+            }),
         ]);
         const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
         return {
@@ -341,6 +346,7 @@ export async function getPoll(id: string): Promise<
 > {
     try {
         const poll = await prisma.poll.findUnique({
+            cacheStrategy: getCacheStrategy("tenMinutes"),
             where: { id },
             include: {
                 participationRewardAsset: true,
@@ -671,6 +677,7 @@ export async function participatePoll(
 
             // 사용자 에셋 잔액 확인
             const playerAsset = await prisma.playerAsset.findUnique({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: {
                     playerId_assetId: {
                         playerId: player.id,
@@ -689,6 +696,7 @@ export async function participatePoll(
             // 사용자별 누적 베팅 한도 검증 (선택적 기능)
             if (poll.maximumBet) {
                 const userBetLogs = await prisma.pollLog.findMany({
+                    cacheStrategy: getCacheStrategy("realtime"),
                     where: {
                         pollId: poll.id,
                         playerId: player.id,
@@ -720,6 +728,7 @@ export async function participatePoll(
         ) {
             // 참여 비용 에셋 잔액 확인
             const playerConsumeAsset = await prisma.playerAsset.findUnique({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: {
                     playerId_assetId: {
                         playerId: player.id,
@@ -763,6 +772,7 @@ export async function participatePoll(
         }
 
         const existingLogs = await prisma.pollLog.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { pollId: poll.id, playerId: player.id },
             select: {
                 optionId: true,
@@ -792,6 +802,7 @@ export async function participatePoll(
             if (poll.bettingMode && poll.bettingAssetId) {
                 // 실시간 잔액 재확인 (Race Condition 방지)
                 const currentPlayerAsset = await tx.playerAsset.findUnique({
+                    cacheStrategy: getCacheStrategy("realtime"),
                     where: {
                         playerId_assetId: {
                             playerId: player.id,
@@ -817,6 +828,7 @@ export async function participatePoll(
                 const requiredAmount = poll.participationConsumeAmount * amount;
                 const currentPlayerConsumeAsset =
                     await tx.playerAsset.findUnique({
+                        cacheStrategy: getCacheStrategy("realtime"),
                         where: {
                             playerId_assetId: {
                                 playerId: player.id,
@@ -1094,6 +1106,7 @@ export async function getPollResult(
     }
 
     const poll = await prisma.poll.findUnique({
+        cacheStrategy: getCacheStrategy("tenMinutes"),
         where: { id: pollId },
         select: {
             options: true,
@@ -1109,6 +1122,7 @@ export async function getPollResult(
     }
 
     const pollLogs = await prisma.pollLog.findMany({
+        cacheStrategy: getCacheStrategy("tenSeconds"),
         where: {
             pollId,
         },
@@ -1198,6 +1212,7 @@ export async function getPollLogs(
 
     try {
         return await prisma.pollLog.findMany({
+            cacheStrategy: getCacheStrategy("tenSeconds"),
             where: {
                 playerId: input.playerId,
             },
@@ -1226,6 +1241,7 @@ export async function getPlayerPollLogs(
         if (input.playerId) where.playerId = input.playerId;
 
         return await prisma.pollLog.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where,
         });
     } catch (error) {
@@ -1258,6 +1274,7 @@ export async function getUserSelection(
     }
     const result = await prisma.$transaction(async (tx) => {
         const poll = await tx.poll.findUnique({
+            cacheStrategy: getCacheStrategy("tenMinutes"),
             where: { id: pollId },
             select: {
                 options: true,
@@ -1272,6 +1289,7 @@ export async function getUserSelection(
         }
 
         const player = await tx.player.findUnique({
+            cacheStrategy: getCacheStrategy("sevenDays"),
             where: { userId },
             select: {
                 id: true,
@@ -1286,6 +1304,7 @@ export async function getUserSelection(
         }
 
         const pollLogs = await tx.pollLog.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 pollId,
                 playerId: player.id,
@@ -1345,6 +1364,7 @@ export async function updateUserSelection(
 
     const result = await prisma.$transaction(async (tx) => {
         const pollLog = await tx.pollLog.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: pollLogId },
         });
 
@@ -1356,6 +1376,7 @@ export async function updateUserSelection(
         }
 
         const poll = await tx.poll.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: pollLog.pollId },
             select: {
                 endDate: true,
@@ -1465,6 +1486,7 @@ export async function settleBettingPoll(
             async (tx) => {
                 // 🔒 원자적 정산 락 설정 (중복 정산 방지)
                 const poll = await tx.poll.findUnique({
+                    cacheStrategy: getCacheStrategy("realtime"),
                     where: { id: pollId },
                     select: {
                         title: true,
@@ -1539,6 +1561,7 @@ export async function settleBettingPoll(
                 if (totalWinningBets === 0) {
                     // 승리자가 없는 경우 - 모든 베팅 금액 환불
                     const allBettors = await tx.pollLog.findMany({
+                        cacheStrategy: getCacheStrategy("realtime"),
                         where: { pollId },
                         select: {
                             id: true,
@@ -1604,6 +1627,7 @@ export async function settleBettingPoll(
 
                 // 승리자들에게 배당 지급
                 const winners = await tx.pollLog.findMany({
+                    cacheStrategy: getCacheStrategy("realtime"),
                     where: {
                         pollId,
                         optionId: { in: winningOptionIds },
@@ -1740,6 +1764,7 @@ export async function settleBettingPoll(
         if (result.success) {
             try {
                 const poll = await prisma.poll.findUnique({
+                    cacheStrategy: getCacheStrategy("realtime"),
                     where: { id: pollId },
                     select: { title: true, bettingAssetId: true },
                 });
@@ -1751,6 +1776,7 @@ export async function settleBettingPoll(
 
                 // 모든 베팅 참가자 조회
                 const allBettors = await prisma.pollLog.findMany({
+                    cacheStrategy: getCacheStrategy("realtime"),
                     where: { pollId },
                     select: {
                         playerId: true,
@@ -1873,5 +1899,38 @@ export async function settleBettingPoll(
             success: false,
             error: error instanceof Error ? error.message : "Settlement failed",
         };
+    }
+}
+
+export interface GetArtistAllActivePollCountInput {
+    artistId: string;
+}
+
+export async function getArtistAllActivePollCount(
+    input?: GetArtistAllActivePollCountInput
+): Promise<number> {
+    if (!input) {
+        return 0;
+    }
+
+    try {
+        const count = await prisma.poll.count({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
+            where: {
+                artistId: input.artistId,
+                isActive: true,
+                startDate: {
+                    lte: new Date(),
+                },
+                endDate: {
+                    gte: new Date(),
+                },
+            },
+        });
+
+        return count;
+    } catch (error) {
+        console.error("Error getting artist all poll count:", error);
+        return 0;
     }
 }

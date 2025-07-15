@@ -11,6 +11,7 @@ import type {
     NotificationStatus,
     Prisma,
 } from "@prisma/client";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 // 🔔 ===== TYPES & INTERFACES =====
 
@@ -140,7 +141,11 @@ export async function createNotification(
 
         // 플레이어 존재 확인
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("sevenDays"),
             where: { id: playerId },
+            select: {
+                id: true,
+            },
         });
 
         if (!player) {
@@ -221,12 +226,16 @@ export async function getNotifications(input: GetNotificationsInput): Promise<{
 
         const [notifications, total] = await Promise.all([
             prisma.userNotification.findMany({
+                cacheStrategy: getCacheStrategy("tenSeconds"),
                 where,
                 orderBy: { [orderBy]: orderDirection },
                 take: limit,
                 skip: offset,
             }),
-            prisma.userNotification.count({ where }),
+            prisma.userNotification.count({
+                cacheStrategy: getCacheStrategy("tenSeconds"),
+                where,
+            }),
         ]);
 
         return {
@@ -255,6 +264,7 @@ export async function markNotificationAsRead(
         if (playerId) {
             const existingNotification =
                 await prisma.userNotification.findFirst({
+                    cacheStrategy: getCacheStrategy("realtime"),
                     where: {
                         id: notificationId,
                         playerId,
@@ -301,6 +311,7 @@ export async function updateNotification(
         if (playerId) {
             const existingNotification =
                 await prisma.userNotification.findFirst({
+                    cacheStrategy: getCacheStrategy("realtime"),
                     where: {
                         id: notificationId,
                         playerId,
@@ -430,6 +441,7 @@ export async function deleteNotification(
         if (playerId) {
             const existingNotification =
                 await prisma.userNotification.findFirst({
+                    cacheStrategy: getCacheStrategy("realtime"),
                     where: {
                         id: notificationId,
                         playerId,
@@ -478,7 +490,10 @@ export async function getUnreadNotificationCount(
             OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         };
 
-        const count = await prisma.userNotification.count({ where });
+        const count = await prisma.userNotification.count({
+            cacheStrategy: getCacheStrategy("tenSeconds"),
+            where,
+        });
 
         return { success: true, count };
     } catch (error) {
@@ -504,6 +519,7 @@ export async function getNotificationsByEntity(
 }> {
     try {
         const notifications = await prisma.userNotification.findMany({
+            cacheStrategy: getCacheStrategy("tenSeconds"),
             where: {
                 playerId,
                 entityType,

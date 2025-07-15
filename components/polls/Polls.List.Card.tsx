@@ -26,17 +26,15 @@ import PollBettingParticipationModal from "./Poll.Betting.Participation.Modal";
 import PollBettingRecord from "./Poll.Betting.Record";
 import type { PollsWithArtist, PollOption } from "@/app/actions/polls";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
-import type { TokenGatingData } from "@/app/story/nft/actions";
-import type { Artist, Player, PollLog } from "@prisma/client";
+import type { Player } from "@prisma/client";
 import { getPlayerAsset } from "@/app/actions/playerAssets/actions";
 import Image from "next/image";
+import type { TokenGatingData } from "@/app/story/nft/actions";
 
 interface PollsCardProps {
     index?: number;
     poll: PollsWithArtist;
     player: Player | null;
-    pollLogs?: PollLog[];
-    artist?: Artist | null;
     tokenGating?: TokenGatingData | null;
     isSelected?: boolean;
     fgColorFrom?: string;
@@ -69,7 +67,6 @@ interface UIState {
 function PollsListCard({
     poll,
     player,
-    pollLogs,
     tokenGating,
     isSelected,
     fgColorFrom,
@@ -159,7 +156,11 @@ function PollsListCard({
     }, [poll.startDate, poll.endDate]);
 
     // 투표 결과 가져오기
-    const { pollResult, isLoading, error } = usePollsGet({
+    const { playerPollLogs, pollResult, isLoading, error } = usePollsGet({
+        getPlayerPollLogsInput: {
+            pollId: poll.id,
+            playerId: player?.id,
+        },
         pollResultInput: {
             pollId: poll.id,
         },
@@ -169,16 +170,11 @@ function PollsListCard({
     const { participatePoll } = usePollsSet();
 
     // 베팅 에셋 정보 가져오기 (베팅 모드인 경우에만)
-    const { playerAssets: bettingAssets } = usePlayerAssetsGet({
-        getPlayerAssetsInput:
-            poll.bettingMode && player && poll.bettingAssetId
-                ? {
-                      filter: {
-                          playerId: player.id,
-                          assetId: poll.bettingAssetId,
-                      },
-                  }
-                : undefined,
+    const { playerAsset } = usePlayerAssetsGet({
+        getPlayerAssetInput: {
+            assetId: poll.bettingAssetId || "",
+            playerId: player?.id || "",
+        },
     });
 
     // 옵션 파싱
@@ -206,7 +202,7 @@ function PollsListCard({
     const tokenGatingInfo = useMemo(() => {
         const permission = tokenGating?.hasToken;
         const alreadyVotedAmount =
-            pollLogs?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
+            playerPollLogs?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
 
         let maxVoteAmount = 0;
         if (poll.needToken && tokenGating) {
@@ -221,7 +217,7 @@ function PollsListCard({
             maxVoteAmount,
             permission,
         };
-    }, [tokenGating, poll.needToken, pollLogs]);
+    }, [tokenGating, poll.needToken, playerPollLogs]);
 
     // 베팅 정보 메모이제이션
     const bettingInfo = useMemo(() => {
@@ -235,31 +231,21 @@ function PollsListCard({
 
         // 내 베팅 기록 확인
         const myBetLogs =
-            pollLogs?.filter(
+            playerPollLogs?.filter(
                 (log) => log.pollId === poll.id && log.playerId === player.id
             ) || [];
 
         const hasBet = myBetLogs.length > 0;
 
         // 베팅 에셋 정보
-        const bettingAsset =
-            bettingAssets?.data?.find(
-                (asset) => asset.assetId === poll.bettingAssetId
-            ) || null;
+        const bettingAsset = playerAsset?.data || null;
 
         return {
             hasBet,
             bettingAsset,
             myBetLogs,
         };
-    }, [
-        poll.bettingMode,
-        poll.id,
-        poll.bettingAssetId,
-        player,
-        pollLogs,
-        bettingAssets,
-    ]);
+    }, [poll.bettingMode, poll.id, player, playerPollLogs, playerAsset]);
 
     // 옵션 클릭 핸들러
     const handleOptionClick = useCallback(
@@ -640,7 +626,7 @@ function PollsListCard({
                     );
 
                     const votedCount =
-                        pollLogs?.reduce((acc, curr) => {
+                        playerPollLogs?.reduce((acc, curr) => {
                             if (curr.optionId === option.optionId) {
                                 return acc + curr.amount;
                             }
@@ -775,7 +761,7 @@ function PollsListCard({
         pollDateInfo.showOptions,
         options,
         sortedResults,
-        pollLogs,
+        playerPollLogs,
         uiState.showOngoingResults,
         pollDateInfo.isBlurred,
         fgColorFrom,
@@ -1075,8 +1061,9 @@ function PollsListCard({
             !poll.participationRewardAssetId ||
             !poll.participationRewardAmount ||
             !poll.participationRewardAsset ||
-            (pollLogs &&
-                pollLogs.filter((log) => log.pollId === poll.id).length > 0)
+            (playerPollLogs &&
+                playerPollLogs.filter((log) => log.pollId === poll.id).length >
+                    0)
         ) {
             return null;
         }
@@ -1178,7 +1165,7 @@ function PollsListCard({
         poll.participationRewardAmount,
         poll.participationRewardAsset,
         poll.endDate,
-        pollLogs,
+        playerPollLogs,
     ]);
 
     // Poll 특성 태그들 렌더링 함수
@@ -1389,13 +1376,13 @@ function PollsListCard({
         const showBettingRecordButton = poll.bettingMode && bettingInfo.hasBet;
         const showResultsButton =
             pollDateInfo.status === "ONGOING" &&
-            pollLogs &&
-            pollLogs.filter((log) => log.pollId === poll.id).length > 0 &&
+            playerPollLogs &&
+            playerPollLogs.filter((log) => log.pollId === poll.id).length > 0 &&
             !(
                 poll.hasAnswer &&
-                (!pollLogs ||
-                    pollLogs.filter((log) => log.pollId === poll.id).length ===
-                        0)
+                (!playerPollLogs ||
+                    playerPollLogs.filter((log) => log.pollId === poll.id)
+                        .length === 0)
             ) &&
             !poll.bettingMode;
 
@@ -1578,7 +1565,7 @@ function PollsListCard({
         bettingInfo.hasBet,
         pollDateInfo.status,
         poll.hasAnswer,
-        pollLogs,
+        playerPollLogs,
         poll.id,
         uiState.showOngoingResults,
     ]);

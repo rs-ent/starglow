@@ -19,7 +19,7 @@ export function useCreatePollMutation() {
 
     return useMutation({
         mutationFn: createPoll,
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
             queryClient
                 .invalidateQueries({ queryKey: pollKeys.all })
                 .catch((error) => {
@@ -35,6 +35,16 @@ export function useCreatePollMutation() {
             queryClient
                 .invalidateQueries({
                     queryKey: pollKeys.lists(),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.artistAllActivePollCount(
+                        variables.artistId
+                    ),
                 })
                 .catch((error) => {
                     console.error(error);
@@ -166,7 +176,24 @@ export function useParticipatePollMutation() {
                 });
             queryClient
                 .invalidateQueries({
+                    queryKey: pollKeys.playerLogs(
+                        variables.player.id,
+                        variables.poll.id
+                    ),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
                     queryKey: pollKeys.playerLogs(variables.player.id),
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            queryClient
+                .invalidateQueries({
+                    queryKey: pollKeys.lists(),
                 })
                 .catch((error) => {
                     console.error(error);

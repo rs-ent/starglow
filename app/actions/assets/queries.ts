@@ -24,7 +24,8 @@ export function useAssets(input?: GetAssetsInput) {
     return useQuery({
         queryKey: assetKeys.all,
         queryFn: () => getAssets(input),
-        staleTime: 1000 * 60 * 60 * 1,
+        staleTime: 1000 * 60,
+        gcTime: 1000 * 60,
     });
 }
 
@@ -33,6 +34,8 @@ export function useAsset(input?: GetAssetInput) {
         queryKey: assetKeys.byId(input?.id || ""),
         queryFn: () => getAsset(input),
         enabled: Boolean(input?.id),
+        staleTime: 1000 * 60 * 60,
+        gcTime: 1000 * 60 * 60,
     });
 }
 
@@ -41,6 +44,8 @@ export function useAssetByName(input?: GetAssetInput) {
         queryKey: assetKeys.byName(input?.name || ""),
         queryFn: () => getAsset(input),
         enabled: Boolean(input?.name),
+        staleTime: 1000 * 60 * 60,
+        gcTime: 1000 * 60 * 60,
     });
 }
 
@@ -49,6 +54,8 @@ export function useAssetBySymbol(input?: GetAssetInput) {
         queryKey: assetKeys.bySymbol(input?.symbol || ""),
         queryFn: () => getAsset(input),
         enabled: Boolean(input?.symbol),
+        staleTime: 1000 * 60 * 60,
+        gcTime: 1000 * 60 * 60,
     });
 }
 
@@ -57,6 +64,8 @@ export function useAssetByContractAddress(input?: GetAssetInput) {
         queryKey: assetKeys.byContractAddress(input?.contractAddress || ""),
         queryFn: () => getAsset(input),
         enabled: Boolean(input?.contractAddress),
+        staleTime: 1000 * 60 * 60,
+        gcTime: 1000 * 60 * 60,
     });
 }
 
@@ -65,6 +74,8 @@ export function useAssetsContract(input?: GetAssetsContractInput) {
         queryKey: assetKeys.contract(input?.address || ""),
         queryFn: () => getAssetsContract(input),
         enabled: !!input,
+        staleTime: 1000 * 60 * 60,
+        gcTime: 1000 * 60 * 60,
     });
 }
 
@@ -76,5 +87,7 @@ export function useAssetsContracts(
         queryKey: assetKeys.contracts(input),
         queryFn: () => getAssetsContracts(input, pagination),
         enabled: !!input,
+        staleTime: 1000 * 60 * 60,
+        gcTime: 1000 * 60 * 60,
     });
 }

@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth from "next-auth";
 import Coinbase from "next-auth/providers/coinbase";
+import Credentials from "next-auth/providers/credentials";
 import Discord from "next-auth/providers/discord";
 import Google from "next-auth/providers/google";
 import Kakao from "next-auth/providers/kakao";
@@ -15,9 +16,10 @@ import Twitter from "next-auth/providers/twitter";
 import { prisma } from "@/lib/prisma/client";
 
 import { sendVerificationRequest } from "./authSendRequest";
-import { getPlayerByUserId, setPlayer } from "../actions/player";
+import { getPlayerByUserIdForSession, setPlayer } from "../actions/player";
 import { fetchAuthorMetricsFromX } from "../actions/x/actions";
 import { createWallet } from "../story/userWallet/actions";
+import { setUserWithWallet, setUserWithTelegram } from "../actions/user";
 
 import type { NextAuthConfig } from "next-auth";
 
@@ -35,6 +37,20 @@ const getCookieDomain = () => {
     return ".starglow.io";
 };
 
+const getAuthSecret = () => {
+    return (
+        process.env.AUTH_SECRET ||
+        process.env.NEXTAUTH_SECRET ||
+        (isProd ? undefined : "dev-secret-key-for-local-development")
+    );
+};
+
+if (!getAuthSecret()) {
+    throw new Error(
+        "AUTH_SECRET or NEXTAUTH_SECRET environment variable is required"
+    );
+}
+
 const cookieOptions = {
     httpOnly: true,
     sameSite: "lax" as const,
@@ -45,6 +61,7 @@ const cookieOptions = {
 
 const authOptions: NextAuthConfig = {
     adapter: PrismaAdapter(prisma),
+    secret: getAuthSecret(),
     providers: [
         Google({
             clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -80,7 +97,7 @@ const authOptions: NextAuthConfig = {
         Resend({
             from: "no-reply@starglow.io",
             apiKey: process.env.RESEND_API!,
-            maxAge: 24 * 60 * 60, // 24 hours
+            maxAge: 24 * 60 * 60,
             async generateVerificationToken() {
                 return crypto.randomUUID();
             },
@@ -93,35 +110,177 @@ const authOptions: NextAuthConfig = {
                 }
             },
         }),
+        Credentials({
+            id: "wallet",
+            name: "Wallet",
+            credentials: {
+                walletAddress: {},
+                provider: {},
+            },
+            async authorize(credentials) {
+                if (!credentials?.walletAddress || !credentials?.provider) {
+                    return null;
+                }
+
+                try {
+                    const result = await setUserWithWallet({
+                        walletAddress: credentials.walletAddress as string,
+                        provider: credentials.provider as string,
+                    });
+
+                    return {
+                        id: result.user.id,
+                        name: result.user.name || result.user.id,
+                        email: result.user.email,
+                        image: result.user.image,
+                    };
+                } catch (error) {
+                    console.error("Wallet authorization failed:", error);
+                    return null;
+                }
+            },
+        }),
+        Credentials({
+            id: "telegram",
+            name: "Telegram",
+            credentials: {
+                telegramId: {},
+                firstName: {},
+                lastName: {},
+                username: {},
+                photoUrl: {},
+                languageCode: {},
+                isPremium: {},
+                referrerCode: {},
+            },
+            async authorize(credentials) {
+                if (!credentials?.telegramId || !credentials?.firstName) {
+                    return null;
+                }
+
+                try {
+                    const telegramUser = {
+                        id: parseInt(credentials.telegramId as string),
+                        first_name: credentials.firstName as string,
+                        last_name: credentials.lastName as string,
+                        username: credentials.username as string,
+                        language_code: credentials.languageCode as string,
+                        is_premium: credentials.isPremium === "true",
+                        photo_url: credentials.photoUrl as string,
+                    };
+
+                    const result = await setUserWithTelegram({
+                        user: telegramUser,
+                        referrerCode: credentials.referrerCode as string,
+                        withoutSessionRefresh: true,
+                    });
+
+                    return {
+                        id: result.user.id,
+                        name: result.user.name || result.user.id,
+                        email: result.user.email,
+                        image: result.user.image,
+                    };
+                } catch (error) {
+                    console.error("Telegram authorization failed:", error);
+                    return null;
+                }
+            },
+        }),
     ],
     session: {
-        strategy: "database" as const,
-        maxAge: 3 * 24 * 60 * 60, // 3 days (기존 7일에서 단축)
-        updateAge: 12 * 60 * 60, // 12 hours (기존 24시간에서 단축)
+        strategy: "jwt" as const,
+        maxAge: 7 * 24 * 60 * 60,
+        updateAge: 24 * 60 * 60,
+        generateSessionToken: () => crypto.randomUUID(),
+    },
+    jwt: {
+        maxAge: 7 * 24 * 60 * 60,
     },
     cookies: {
         sessionToken: {
-            name: "next-auth.session-token",
-            options: cookieOptions,
+            name: isProd
+                ? "__Secure-next-auth.session-token"
+                : "next-auth.session-token",
+            options: {
+                ...cookieOptions,
+                secure: isProd,
+            },
         },
         callbackUrl: {
-            name: "next-auth.callback-url",
-            options: cookieOptions,
+            name: isProd
+                ? "__Secure-next-auth.callback-url"
+                : "next-auth.callback-url",
+            options: {
+                ...cookieOptions,
+                secure: isProd,
+            },
         },
         csrfToken: {
-            name: "next-auth.csrf-token",
-            options: cookieOptions,
+            name: isProd
+                ? "__Secure-next-auth.csrf-token"
+                : "next-auth.csrf-token",
+            options: {
+                ...cookieOptions,
+                secure: isProd,
+            },
         },
         pkceCodeVerifier: {
-            name: "next-auth.pkce.code_verifier",
-            options: cookieOptions,
+            name: isProd
+                ? "__Secure-next-auth.pkce.code_verifier"
+                : "next-auth.pkce.code_verifier",
+            options: {
+                ...cookieOptions,
+                secure: isProd,
+            },
         },
     },
     callbacks: {
-        async session({ session, user }: { session: any; user: any }) {
-            if (session.user) {
-                session.user.id = user.id;
-                session.player = await getPlayerByUserId(session.user.id);
+        async jwt({
+            token,
+            user,
+            trigger,
+        }: {
+            token: any;
+            user?: any;
+            trigger?: any;
+        }) {
+            if (user) {
+                token.id = user.id;
+
+                try {
+                    const player = await getPlayerByUserIdForSession(user.id);
+                    if (player) {
+                        token.player = player;
+                    }
+                } catch (error) {
+                    console.error(
+                        "Failed to get player in JWT callback:",
+                        error
+                    );
+                }
+            }
+
+            if (trigger === "update" && token.id) {
+                try {
+                    const player = await getPlayerByUserIdForSession(token.id);
+                    if (player) {
+                        token.player = player;
+                    }
+                } catch (error) {
+                    console.error(
+                        "Failed to update player in JWT callback:",
+                        error
+                    );
+                }
+            }
+
+            return token;
+        },
+        async session({ session, token }: { session: any; token: any }) {
+            if (token) {
+                session.user.id = token.id;
+                session.player = token.player;
             }
             return session;
         },
@@ -146,23 +305,28 @@ const authOptions: NextAuthConfig = {
                     }
 
                     let tweetAuthorId: string | undefined;
+                    const backgroundTasks: Promise<any>[] = [];
+
                     if (
                         account?.provider === "twitter" &&
                         account.providerAccountId
                     ) {
                         tweetAuthorId = account.providerAccountId;
 
-                        await fetchAuthorMetricsFromX({
-                            authorId: account.providerAccountId,
-                        }).catch((error) => {
-                            console.error(
-                                "Failed to fetch Twitter metrics:",
-                                error
-                            );
-                        });
+                        backgroundTasks.push(
+                            fetchAuthorMetricsFromX({
+                                authorId: account.providerAccountId,
+                            }).catch((error) => {
+                                console.error(
+                                    "Failed to fetch Twitter metrics:",
+                                    error
+                                );
+                                return null;
+                            })
+                        );
                     }
 
-                    const promises = [
+                    const corePromises = [
                         prisma.user
                             .update({
                                 where: { id: user.id },
@@ -187,21 +351,11 @@ const authOptions: NextAuthConfig = {
                         }),
                     ];
 
-                    const results = await Promise.allSettled(promises);
+                    await Promise.allSettled(corePromises);
 
-                    results.forEach((result, index) => {
-                        if (result.status === "rejected") {
-                            const operations = [
-                                "user update",
-                                "player setup",
-                                "wallet creation",
-                            ];
-                            console.error(
-                                `SignIn ${operations[index]} failed:`,
-                                result.reason
-                            );
-                        }
-                    });
+                    if (backgroundTasks.length > 0) {
+                        Promise.allSettled(backgroundTasks).catch(() => {});
+                    }
                 }
             } catch (error) {
                 console.error("Error in signIn callback:", error);
@@ -215,6 +369,9 @@ const authOptions: NextAuthConfig = {
     debug: false,
     trustHost: true,
     useSecureCookies: isProd,
+    experimental: {
+        enableWebAuthn: false,
+    },
 };
 
 export const { handlers, auth, signIn, signOut } = NextAuth(authOptions);

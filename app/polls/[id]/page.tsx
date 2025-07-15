@@ -4,18 +4,13 @@ import { Suspense } from "react";
 
 import { notFound } from "next/navigation";
 
-import {
-    getPoll,
-    getPlayerPollLogs,
-    tokenGatingPoll,
-} from "@/app/actions/polls";
+import { getPoll, tokenGatingPoll } from "@/app/actions/polls";
 import { auth } from "@/app/auth/authSettings";
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 import PollComponent from "@/components/polls/Poll";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 
 import type { TokenGatingData } from "@/app/story/nft/actions";
-import type { PollLog } from "@prisma/client";
 import type { Metadata } from "next";
 
 function PollsLoading() {
@@ -79,14 +74,8 @@ async function PollContent({ id }: { id: string }) {
         return notFound();
     }
 
-    let pollLogs: PollLog[] = [];
     let tokenGating: TokenGatingData | null = null;
     if (session?.player && session?.user) {
-        pollLogs = await getPlayerPollLogs({
-            playerId: session.player.id,
-            pollId: id,
-        });
-
         tokenGating = await tokenGatingPoll({
             pollId: id,
             userId: session.user.id,
@@ -111,8 +100,6 @@ async function PollContent({ id }: { id: string }) {
             <PollComponent
                 poll={poll}
                 player={session?.player || null}
-                artist={poll.artist || null}
-                pollLogs={pollLogs}
                 tokenGating={tokenGating}
                 bgColorAccentFrom={
                     poll.artist ? ArtistBG(poll.artist, 2, 100) : undefined

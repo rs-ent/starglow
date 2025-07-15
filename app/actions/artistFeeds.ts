@@ -2,6 +2,7 @@
 
 "use server";
 
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 import { prisma } from "@/lib/prisma/client";
 
 import type { ArtistFeed, ArtistFeedReaction } from "@prisma/client";
@@ -53,6 +54,7 @@ export async function getArtistFeeds({
     }
     try {
         const artistFeeds = await prisma.artistFeed.findMany({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: {
                 artistId: input.artistId,
                 ...(input.pagination?.cursor
@@ -214,6 +216,7 @@ export async function getArtistFeedReactions({
     }
     try {
         const artistFeedReactions = await prisma.artistFeedReaction.findMany({
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where: {
                 artistFeedId: input.artistFeedId,
                 playerId: input.playerId,

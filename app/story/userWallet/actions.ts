@@ -13,6 +13,7 @@ import { createNotification } from "@/app/actions/notification/actions";
 import type { Prisma, Wallet } from "@prisma/client";
 import type { Hex } from "viem";
 import { auth } from "@/app/auth/authSettings";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 export async function createWallet(userId: string) {
     try {
@@ -25,6 +26,7 @@ export async function createWallet(userId: string) {
             const networkName = defaultNetwork?.name || "EVM";
 
             const existingWallet = await tx.wallet.findFirst({
+                cacheStrategy: getCacheStrategy("tenSeconds"),
                 where: {
                     userId,
                 },
@@ -38,7 +40,11 @@ export async function createWallet(userId: string) {
             }
 
             const hasDefaultWallet = await tx.wallet.findFirst({
-                where: { userId, default: true },
+                cacheStrategy: getCacheStrategy("tenSeconds"),
+                where: {
+                    userId,
+                    default: true,
+                },
             });
 
             const wallet = ethers.Wallet.createRandom();
@@ -87,6 +93,7 @@ export async function getPrivateKey(address: string) {
     try {
         const session = await auth();
         const wallet = await prisma.wallet.findUnique({
+            cacheStrategy: getCacheStrategy("tenSeconds"),
             where: { address },
             select: {
                 userId: true,
@@ -136,6 +143,7 @@ export async function connectWallet(
     try {
         const result = await prisma.$transaction(async (tx) => {
             const existingWallet = await tx.wallet.findUnique({
+                cacheStrategy: getCacheStrategy("tenSeconds"),
                 where: {
                     address: input.address,
                 },
@@ -226,6 +234,7 @@ export async function updateWallet(
 
             if (rest.default) {
                 const wallet = await tx.wallet.findUnique({
+                    cacheStrategy: getCacheStrategy("tenSeconds"),
                     where: { address: walletAddress },
                     select: { userId: true },
                 });
@@ -291,11 +300,7 @@ export async function getWallets(
         }
 
         const wallets = await prisma.wallet.findMany({
-            cacheStrategy: {
-                swr: 60 * 10,
-                ttl: 60 * 30,
-                tags: ["wallets", input.userId],
-            },
+            cacheStrategy: getCacheStrategy("tenSeconds"),
             where,
             orderBy: {
                 default: "desc",
@@ -355,11 +360,13 @@ export async function getDefaultUserWallet(
 
     try {
         const wallet = await prisma.wallet.findFirst({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: { userId: input.userId, default: true },
         });
 
         if (!wallet) {
             const wallets = await prisma.wallet.findMany({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
                 where: { userId: input.userId },
                 orderBy: {
                     lastAccessedAt: "desc",
@@ -395,6 +402,7 @@ export async function needToBackupWallet(input: needToBackupWalletInput) {
         // 이미 백업 알림을 생성했다면, 백업 알림을 업데이트
 
         const needBackupWallets = await prisma.wallet.findMany({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: {
                 userId: input.userId,
                 // privateKey가 null이 아닌 지갑들만
@@ -417,6 +425,7 @@ export async function needToBackupWallet(input: needToBackupWalletInput) {
 
         // Player 정보 가져오기 (createNotification에 필요)
         const player = await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("sevenDays"),
             where: { userId: input.userId },
             select: { id: true },
         });
@@ -436,6 +445,7 @@ export async function needToBackupWallet(input: needToBackupWalletInput) {
                 // 이미 해당 지갑에 대한 백업 알림이 있는지 확인
                 const existingNotification =
                     await prisma.userNotification.findFirst({
+                        cacheStrategy: getCacheStrategy("tenSeconds"),
                         where: {
                             playerId: player.id,
                             entityType: "wallet",

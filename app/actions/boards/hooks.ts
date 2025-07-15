@@ -25,6 +25,7 @@ import {
     useGetBoardCommentsQuery,
     useGetPostRewardsQuery,
     useInfiniteBoardPostsQuery,
+    useGetArtistAllBoardPostCountQuery,
 } from "./queries";
 
 import type {
@@ -32,6 +33,7 @@ import type {
     GetBoardPostsInput,
     GetPostRewardsInput,
     Pagination,
+    GetArtistAllBoardPostCountInput,
 } from "./actions";
 
 export interface useBoardsInput {
@@ -50,6 +52,9 @@ export interface useBoardsInput {
 
     // Board reward queries
     getPostRewardsInput?: GetPostRewardsInput;
+
+    // Artist all board post count queries
+    getArtistAllBoardPostCountInput?: GetArtistAllBoardPostCountInput;
 }
 
 export function useBoards(input?: useBoardsInput) {
@@ -107,6 +112,17 @@ export function useBoards(input?: useBoardsInput) {
         error: postRewardsError,
         refetch: refetchPostRewards,
     } = useGetPostRewardsQuery(input?.getPostRewardsInput);
+
+    // Artist all board post count queries
+
+    const {
+        data: artistAllBoardPostCountData,
+        isLoading: isArtistAllBoardPostCountLoading,
+        isError: isArtistAllBoardPostCountError,
+        error: artistAllBoardPostCountError,
+    } = useGetArtistAllBoardPostCountQuery(
+        input?.getArtistAllBoardPostCountInput
+    );
 
     // Board Mutations
     const {
@@ -322,6 +338,11 @@ export function useBoards(input?: useBoardsInput) {
         isGiveManualRewardPending,
         isGiveManualRewardError,
         giveManualRewardError,
+
+        artistAllBoardPostCountData,
+        isArtistAllBoardPostCountLoading,
+        isArtistAllBoardPostCountError,
+        artistAllBoardPostCountError,
     };
 }
 

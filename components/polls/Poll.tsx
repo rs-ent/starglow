@@ -12,14 +12,12 @@ import PollsListCard from "./Polls.List.Card";
 import QRCodeModal from "../atoms/QRCode";
 
 import type { TokenGatingData } from "@/app/story/nft/actions";
-import type { Player, Artist, PollLog } from "@prisma/client";
+import type { Player } from "@prisma/client";
 import type { PollsWithArtist } from "@/app/actions/polls";
 
 interface PollProps {
     poll: PollsWithArtist;
     player: Player | null;
-    artist: Artist | null;
-    pollLogs?: PollLog[];
     tokenGating: TokenGatingData | null;
     bgColorAccentFrom?: string | undefined;
     bgColorAccentTo?: string | undefined;
@@ -28,8 +26,6 @@ interface PollProps {
 export default function PollComponent({
     poll,
     player,
-    artist,
-    pollLogs,
     tokenGating,
     bgColorAccentFrom,
     bgColorAccentTo,
@@ -89,8 +85,6 @@ export default function PollComponent({
             <PollsListCard
                 poll={poll}
                 player={player || null}
-                artist={artist || null}
-                pollLogs={pollLogs}
                 tokenGating={tokenGating}
                 isSelected={true}
                 bgColorAccentFrom={bgColorAccentFrom}

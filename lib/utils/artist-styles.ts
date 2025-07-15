@@ -1,7 +1,9 @@
 import { ArtistBG } from "./get/artist-colors";
 import type { Artist } from "@prisma/client";
 
-export const createArtistGradients = (artist: Artist) => ({
+export const createArtistGradients = (
+    artist: Pick<Artist, "backgroundColors">
+) => ({
     primary: `linear-gradient(135deg, ${ArtistBG(artist, 1, 95)}, ${ArtistBG(
         artist,
         0,
@@ -30,7 +32,9 @@ export const createArtistGradients = (artist: Artist) => ({
     transparent 360deg)`,
 });
 
-export const createArtistShadows = (artist: Artist) => ({
+export const createArtistShadows = (
+    artist: Pick<Artist, "backgroundColors">
+) => ({
     glow: `0px 0px 16px 1px ${ArtistBG(artist, 2, 50)}`,
     inset: `0 0 40px ${ArtistBG(artist, 0, 20)}, inset 0 0 30px ${ArtistBG(
         artist,

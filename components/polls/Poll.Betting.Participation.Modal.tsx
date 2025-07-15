@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils/tailwind";
 import { usePlayerAssetsGet } from "@/app/actions/playerAssets/hooks";
 import type { PollsWithArtist, PollOption } from "@/app/actions/polls";
 import type { Player } from "@prisma/client";
-import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets/actions";
 import Image from "next/image";
 import { useToast } from "@/app/hooks/useToast";
 
@@ -42,33 +41,17 @@ export default function PollBettingParticipationModal({
     const [isConfirming, setIsConfirming] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
-    // 베팅 에셋 정보 가져오기
-    const { playerAssets } = usePlayerAssetsGet({
-        getPlayerAssetsInput: {
-            filter: {
-                playerId: player.id,
-            },
+    const { playerAsset } = usePlayerAssetsGet({
+        getPlayerAssetInput: {
+            assetId: poll.bettingAssetId || "",
+            playerId: player.id,
         },
     });
 
-    // 베팅 에셋 찾기
-    const bettingAsset = useMemo(() => {
-        if (!poll.bettingAssetId || !playerAssets) return null;
-        const bettingAsset = playerAssets.data.find(
-            (asset) => asset.assetId === poll.bettingAssetId
-        ) as PlayerAssetWithAsset | undefined;
-        return bettingAsset;
-    }, [poll.bettingAssetId, playerAssets]);
-
-    // 베팅 에셋 상세 정보
-    const bettingAssetInfo = useMemo(() => {
-        return bettingAsset || null;
-    }, [bettingAsset]);
-
     // 사용자 잔액
     const userBalance = useMemo(() => {
-        return bettingAsset?.balance || 0;
-    }, [bettingAsset]);
+        return playerAsset?.data?.balance || 0;
+    }, [playerAsset]);
 
     // 베팅 한도 계산
     const bettingLimits = useMemo(() => {
@@ -157,7 +140,11 @@ export default function PollBettingParticipationModal({
         }
     }, [isOpen, poll.minimumBet]);
 
-    if (!bettingAssetInfo) {
+    if (
+        !playerAsset?.data ||
+        playerAsset.success === false ||
+        playerAsset.error
+    ) {
         return null;
     }
 
@@ -455,7 +442,7 @@ export default function PollBettingParticipationModal({
                                             )}
                                         >
                                             {betAmount.toLocaleString()}{" "}
-                                            {bettingAssetInfo.asset.symbol}
+                                            {playerAsset.data?.asset?.symbol}
                                         </p>
                                     </div>
                                 </motion.div>
@@ -923,8 +910,8 @@ export default function PollBettingParticipationModal({
                                                 getResponsiveClass(15).gapClass
                                             )}
                                         >
-                                            {bettingAssetInfo.asset
-                                                .imageUrl && (
+                                            {playerAsset.data?.asset
+                                                ?.iconUrl && (
                                                 <motion.div
                                                     animate={{
                                                         y: [0, -3, 0],
@@ -938,12 +925,12 @@ export default function PollBettingParticipationModal({
                                                 >
                                                     <Image
                                                         src={
-                                                            bettingAssetInfo
-                                                                .asset.imageUrl
+                                                            playerAsset.data
+                                                                ?.asset?.iconUrl
                                                         }
                                                         alt={
-                                                            bettingAssetInfo
-                                                                .asset.name
+                                                            playerAsset.data
+                                                                ?.asset?.name
                                                         }
                                                         width={48}
                                                         height={48}
@@ -965,8 +952,8 @@ export default function PollBettingParticipationModal({
                                                     )}
                                                 >
                                                     {
-                                                        bettingAssetInfo.asset
-                                                            .name
+                                                        playerAsset.data?.asset
+                                                            ?.name
                                                     }
                                                 </h3>
                                                 <p
@@ -977,8 +964,8 @@ export default function PollBettingParticipationModal({
                                                     )}
                                                 >
                                                     {
-                                                        bettingAssetInfo.asset
-                                                            .symbol
+                                                        playerAsset.data?.asset
+                                                            ?.symbol
                                                     }
                                                 </p>
                                             </div>
@@ -1008,7 +995,10 @@ export default function PollBettingParticipationModal({
                                                 )}
                                             >
                                                 {userBalance.toLocaleString()}{" "}
-                                                {bettingAssetInfo.asset.symbol}
+                                                {
+                                                    playerAsset.data?.asset
+                                                        ?.symbol
+                                                }
                                             </p>
                                         </div>
                                     </div>
@@ -1133,8 +1123,8 @@ export default function PollBettingParticipationModal({
                                                     )}
                                                 >
                                                     {
-                                                        bettingAssetInfo.asset
-                                                            .symbol
+                                                        playerAsset.data?.asset
+                                                            ?.symbol
                                                     }
                                                 </div>
                                             </div>
@@ -1208,12 +1198,18 @@ export default function PollBettingParticipationModal({
                                             <span className="text-gray-400">
                                                 Min:{" "}
                                                 {bettingLimits.min.toLocaleString()}{" "}
-                                                {bettingAssetInfo.asset.symbol}
+                                                {
+                                                    playerAsset.data?.asset
+                                                        ?.symbol
+                                                }
                                             </span>
                                             <span className="text-gray-400">
                                                 Max:{" "}
                                                 {bettingLimits.max.toLocaleString()}{" "}
-                                                {bettingAssetInfo.asset.symbol}
+                                                {
+                                                    playerAsset.data?.asset
+                                                        ?.symbol
+                                                }
                                             </span>
                                         </div>
                                     </div>
@@ -1235,9 +1231,9 @@ export default function PollBettingParticipationModal({
                                             )}
                                         >
                                             {betAmount < bettingLimits.min
-                                                ? `Minimum bet is ${bettingLimits.min} ${bettingAssetInfo.asset.symbol}`
+                                                ? `Minimum bet is ${bettingLimits.min} ${playerAsset.data?.asset?.symbol}`
                                                 : betAmount > bettingLimits.max
-                                                ? `Maximum bet is ${bettingLimits.max} ${bettingAssetInfo.asset.symbol}`
+                                                ? `Maximum bet is ${bettingLimits.max} ${playerAsset.data?.asset?.symbol}`
                                                 : betAmount > userBalance
                                                 ? "Insufficient balance"
                                                 : "Invalid bet amount"}
@@ -1331,8 +1327,8 @@ export default function PollBettingParticipationModal({
                                                     (
                                                     {betAmount.toLocaleString()}{" "}
                                                     {
-                                                        bettingAssetInfo.asset
-                                                            .symbol
+                                                        playerAsset.data?.asset
+                                                            ?.symbol
                                                     }
                                                     )
                                                 </span>

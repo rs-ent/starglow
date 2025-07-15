@@ -9,82 +9,76 @@ import {
     useCreateArtistMessage,
     useUpdateArtistMessage,
     useUpdateArtistOrder,
-    useTokenGating,
     useDeleteArtistMessage,
 } from "@/app/mutations/artistMutations";
 import {
     useArtists,
     useArtist,
     useArtistMessages,
-    useTokenGatingQuery,
     usePlayers,
+    useGetArtistsForStarListQuery,
 } from "@/app/queries/artistQueries";
 
 import type {
     GetArtistsInput,
     GetArtistInput,
     GetArtistMessagesInput,
-    TokenGatingInput,
     GetPlayersInput,
 } from "@/app/actions/artists";
 
-export function useArtistsGet({
-    getArtistsInput,
-    getArtistInput,
-    getArtistMessagesInput,
-    getTokenGatingInput,
-    getPlayersInput,
-}: {
+export interface UseArtistsGetInput {
     getArtistsInput?: GetArtistsInput;
     getArtistInput?: GetArtistInput;
     getArtistMessagesInput?: GetArtistMessagesInput;
-    getTokenGatingInput?: TokenGatingInput;
     getPlayersInput?: GetPlayersInput;
-}) {
+}
+
+export function useArtistsGet(input?: UseArtistsGetInput) {
     const {
         data: artists,
         isLoading: isArtistsLoading,
         error: artistsError,
-    } = useArtists(getArtistsInput);
+    } = useArtists(input?.getArtistsInput);
 
     const {
         data: artist,
         isLoading: isArtistLoading,
         error: artistError,
-    } = useArtist(getArtistInput);
+    } = useArtist(input?.getArtistInput);
 
     const {
         data: artistMessages,
         isLoading: isArtistMessagesLoading,
         error: artistMessagesError,
         refetch: refetchArtistMessages,
-    } = useArtistMessages(getArtistMessagesInput);
-
-    const {
-        data: tokenGatingResult,
-        isLoading: isTokenGatingLoading,
-        error: tokenGatingError,
-    } = useTokenGatingQuery(getTokenGatingInput);
+    } = useArtistMessages(input?.getArtistMessagesInput);
 
     const {
         data: players,
         isLoading: isPlayersLoading,
         error: playersError,
         refetch: refetchPlayers,
-    } = usePlayers(getPlayersInput);
+    } = usePlayers(input?.getPlayersInput);
+
+    const {
+        data: artistsForStarList,
+        isLoading: isArtistsForStarListLoading,
+        error: artistsForStarListError,
+        refetch: refetchArtistsForStarList,
+    } = useGetArtistsForStarListQuery();
 
     const isLoading =
         isArtistsLoading ||
         isArtistLoading ||
         isArtistMessagesLoading ||
-        isTokenGatingLoading ||
-        isPlayersLoading;
+        isPlayersLoading ||
+        isArtistsForStarListLoading;
     const error =
         artistsError ||
         artistError ||
         artistMessagesError ||
-        tokenGatingError ||
-        playersError;
+        playersError ||
+        artistsForStarListError;
 
     return {
         artists,
@@ -100,14 +94,15 @@ export function useArtistsGet({
         artistMessagesError,
         refetchArtistMessages,
 
-        tokenGatingResult,
-        isTokenGatingLoading,
-        tokenGatingError,
-
         players,
         isPlayersLoading,
         playersError,
         refetchPlayers,
+
+        artistsForStarList,
+        isArtistsForStarListLoading,
+        artistsForStarListError,
+        refetchArtistsForStarList,
 
         isLoading,
         error,
@@ -157,28 +152,21 @@ export function useArtistSet() {
         error: updateArtistOrderError,
     } = useUpdateArtistOrder();
 
-    const {
-        mutateAsync: tokenGating,
-        isPending: isTokenGating,
-        error: tokenGatingError,
-    } = useTokenGating();
-
     const isLoading =
         isCreating ||
         isUpdating ||
         isDeleting ||
         isCreatingArtistMessage ||
         isUpdatingArtistMessage ||
-        isUpdatingArtistOrder ||
-        isTokenGating;
+        isUpdatingArtistOrder;
+
     const error =
         createArtistError ||
         updateArtistError ||
         deleteArtistError ||
         createArtistMessageError ||
         updateArtistMessageError ||
-        updateArtistOrderError ||
-        tokenGatingError;
+        updateArtistOrderError;
 
     return {
         createArtist,
@@ -208,10 +196,6 @@ export function useArtistSet() {
         updateArtistOrder,
         isUpdatingArtistOrder,
         updateArtistOrderError,
-
-        tokenGating,
-        isTokenGating,
-        tokenGatingError,
 
         isLoading,
         error,

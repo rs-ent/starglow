@@ -15,15 +15,12 @@ import { cn } from "@/lib/utils/tailwind";
 
 import ImageViewer from "../atoms/ImageViewer";
 
-import type {
-    Artist,
-    ArtistMessage as ArtistMessageType,
-} from "@prisma/client";
+import type { ArtistMessage as ArtistMessageType } from "@prisma/client";
 
 interface ArtistMessageProps {
     artistId: string;
     className?: string;
-    artist?: Artist | null;
+    backgroundColors: string[];
 }
 
 // 애니메이션 설정을 상수로 분리하여 재사용
@@ -40,23 +37,17 @@ const ANIMATION_TRANSITION = {
 
 export default function ArtistMessage({
     artistId,
+    backgroundColors,
     className,
-    artist,
 }: ArtistMessageProps) {
     const [message, setMessage] = useState<ArtistMessageType | null>(null);
 
-    // 메모이제이션된 쿼리 입력값
-    const queryInput = useMemo(
-        () => ({
-            getArtistMessagesInput: {
-                artistId: artist?.id ?? artistId,
-            },
-        }),
-        [artist, artistId]
-    );
-
     // 아티스트 메시지 데이터 가져오기
-    const { artistMessages, isLoading, error } = useArtistsGet(queryInput);
+    const { artistMessages, isLoading, error } = useArtistsGet({
+        getArtistMessagesInput: {
+            artistId: artistId,
+        },
+    });
 
     // 메시지 설정 로직 최적화
     useEffect(() => {
@@ -96,7 +87,15 @@ export default function ArtistMessage({
                             externalUrl={message.externalUrl ?? undefined}
                             showTitle={false}
                             shadowColor={
-                                artist ? ArtistBG(artist, 0, 100) : undefined
+                                backgroundColors
+                                    ? ArtistBG(
+                                          {
+                                              backgroundColors,
+                                          },
+                                          0,
+                                          100
+                                      )
+                                    : undefined
                             }
                         />
                     </motion.div>
@@ -114,7 +113,7 @@ export default function ArtistMessage({
                 )}
             </div>
         );
-    }, [message, containerClasses, artist]);
+    }, [message, containerClasses, backgroundColors]);
 
     // 로딩 상태 메모이제이션
     const loadingElement = useMemo(

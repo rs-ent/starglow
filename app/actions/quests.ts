@@ -19,6 +19,7 @@ import type {
     Quest,
     QuestLog,
 } from "@prisma/client";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 export type PaginationInput = {
     currentPage: number;
@@ -138,23 +139,44 @@ export async function getQuests({
         }
 
         if (!input) {
-            // 🚀 Business 플랜: 정적 콘텐츠로 긴 캐시 적용
-            const items = (await prisma.quest.findMany({
-                orderBy: {
-                    order: "asc",
-                },
-                include: {
-                    artist: true,
-                    rewardAsset: true,
-                },
-                skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
-                take: pagination.itemsPerPage,
-            })) as QuestWithArtistAndRewardAsset[];
+            const [items, totalItems] = await Promise.all([
+                (await prisma.quest.findMany({
+                    cacheStrategy: getCacheStrategy("tenMinutes"),
+                    orderBy: {
+                        order: "asc",
+                    },
+                    include: {
+                        artist: {
+                            select: {
+                                id: true,
+                                name: true,
+                                imageUrl: true,
+                                code: true,
+                            },
+                        },
+                        rewardAsset: {
+                            select: {
+                                id: true,
+                                name: true,
+                                symbol: true,
+                                iconUrl: true,
+                            },
+                        },
+                    },
+                    skip:
+                        (pagination.currentPage - 1) * pagination.itemsPerPage,
+                    take: pagination.itemsPerPage,
+                })) as QuestWithArtistAndRewardAsset[],
+
+                prisma.quest.count({
+                    cacheStrategy: getCacheStrategy("tenMinutes"),
+                }),
+            ]);
 
             return {
                 items,
-                totalItems: items.length,
-                totalPages: Math.ceil(items.length / pagination.itemsPerPage),
+                totalItems,
+                totalPages: Math.ceil(totalItems / pagination.itemsPerPage),
             };
         }
 
@@ -199,9 +221,9 @@ export async function getQuests({
             where.artistId = input.artistId;
         }
 
-        // 🚀 Business 플랜: Promise.all에 각각 캐시 전략 적용
         const [items, totalItems] = await Promise.all([
             (await prisma.quest.findMany({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where,
                 orderBy: {
                     order: "asc",
@@ -209,12 +231,27 @@ export async function getQuests({
                 skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
                 take: pagination.itemsPerPage,
                 include: {
-                    artist: true,
-                    rewardAsset: true,
+                    artist: {
+                        select: {
+                            id: true,
+                            name: true,
+                            imageUrl: true,
+                            code: true,
+                        },
+                    },
+                    rewardAsset: {
+                        select: {
+                            id: true,
+                            name: true,
+                            symbol: true,
+                            iconUrl: true,
+                        },
+                    },
                 },
             })) as QuestWithArtistAndRewardAsset[],
 
             prisma.quest.count({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where,
             }),
         ]);
@@ -263,12 +300,14 @@ export async function getQuest(input?: GetQuestInput): Promise<Quest | null> {
     try {
         if (input.id) {
             return await prisma.quest.findUnique({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: { id: input.id },
             });
         }
 
         if (input.title) {
             return await prisma.quest.findFirst({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
                 where: { title: input.title },
             });
         }
@@ -541,6 +580,7 @@ export async function completeQuest(
 
         const questLog = await prisma.$transaction(async (tx) => {
             const log = await tx.questLog.findUnique({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: {
                     playerId_questId: {
                         playerId: input.player.id,
@@ -749,6 +789,7 @@ export async function claimQuestReward(
     try {
         return await prisma.$transaction(async (tx) => {
             const log = await tx.questLog.findUnique({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: { id: input.questLog.id },
             });
 
@@ -878,6 +919,7 @@ export async function claimQuestReward(
 
             // 최종 상태 조회
             const updatedQuestLog = await tx.questLog.findUnique({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where: { id: log.id },
             });
 
@@ -904,27 +946,19 @@ export interface GetQuestLogsInput {
     deprecated?: boolean;
 }
 
-/**
- * 🚀 Business 플랜: 실시간 QuestLog 관리
- *
- * QuestLog는 실시간성이 중요하므로 캐싱을 최소화하고
- * quest별로 효율적으로 데이터를 가져옵니다.
- */
-
-// 🌟 새로운 접근: Quest별 QuestLog 조회 (실시간 우선)
 export async function getQuestLogByQuest(
     questId: string,
     playerId: string
 ): Promise<QuestLog | null> {
     try {
         return await prisma.questLog.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 playerId_questId: {
                     playerId,
                     questId,
                 },
             },
-            // 🚨 실시간 데이터: 캐시 없음
         });
     } catch (error) {
         console.error("Error getting quest log by quest:", error);
@@ -932,12 +966,12 @@ export async function getQuestLogByQuest(
     }
 }
 
-// 🌟 플레이어의 활성 퀘스트 로그만 조회 (실시간)
 export async function getActiveQuestLogs(
     playerId: string
 ): Promise<QuestLog[]> {
     try {
         return await prisma.questLog.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 playerId,
                 OR: [
@@ -957,7 +991,6 @@ export async function getActiveQuestLogs(
                 },
             },
             orderBy: { createdAt: "desc" },
-            // 🚨 실시간 데이터: 캐시 없음 (사용자 액션 직후 조회)
         });
     } catch (error) {
         console.error("Error getting active quest logs:", error);
@@ -965,12 +998,12 @@ export async function getActiveQuestLogs(
     }
 }
 
-// 🌟 완료된 퀘스트 로그만 조회 (캐시 적용 가능)
 export async function getCompletedQuestLogs(
     playerId: string
 ): Promise<QuestLog[]> {
     try {
         return await prisma.questLog.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 playerId,
                 completed: true,
@@ -994,7 +1027,6 @@ export async function getCompletedQuestLogs(
     }
 }
 
-// 🔄 기존 getQuestLogs 함수 수정 (관리자용으로 축소)
 export async function getQuestLogs({
     input,
     pagination,
@@ -1007,8 +1039,6 @@ export async function getQuestLogs({
     totalPages: number;
 }> {
     try {
-        // 🚨 관리자용 대시보드에서만 사용, 일반 사용자는 위의 함수들 사용
-
         const safePagination = createSafePagination(
             pagination?.currentPage || 1,
             pagination?.itemsPerPage || 50,
@@ -1036,9 +1066,9 @@ export async function getQuestLogs({
             }
         }
 
-        // 🚨 관리자 대시보드용이므로 매우 짧은 캐시만 적용
         const [items, totalItems] = await Promise.all([
             prisma.questLog.findMany({
+                cacheStrategy: getCacheStrategy("realtime"),
                 where,
                 select: {
                     id: true,
@@ -1067,13 +1097,11 @@ export async function getQuestLogs({
                 },
                 orderBy: [{ completedAt: "desc" }, { createdAt: "desc" }],
                 ...safePagination,
-                // 🌟 관리자용: 10초 캐시만 적용
-                cacheStrategy: { ttl: 10 },
             }),
 
             prisma.questLog.count({
                 where,
-                cacheStrategy: { ttl: 10 },
+                cacheStrategy: getCacheStrategy("realtime"),
             }),
         ]);
 
@@ -1116,7 +1144,33 @@ export interface GetClaimedQuestLogsInput {
     artistId?: string;
 }
 
-// 🔄 기존 함수들 수정: 실시간 우선으로 변경
+export interface GetPlayerQuestLogInput {
+    questId: string;
+    playerId?: string;
+}
+
+export async function getPlayerQuestLog(
+    input?: GetPlayerQuestLogInput
+): Promise<QuestLog | null> {
+    if (!input || !input.questId || !input.playerId) {
+        return null;
+    }
+
+    try {
+        return await prisma.questLog.findUnique({
+            cacheStrategy: getCacheStrategy("realtime"),
+            where: {
+                playerId_questId: {
+                    playerId: input.playerId,
+                    questId: input.questId,
+                },
+            },
+        });
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
+}
 
 export async function getPlayerQuestLogs(
     input?: GetPlayerQuestLogsInput
@@ -1126,13 +1180,12 @@ export async function getPlayerQuestLogs(
     }
 
     try {
-        // 🚨 실시간 데이터: 캐시 제거
         return await prisma.questLog.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 playerId: input.playerId,
             },
             orderBy: { createdAt: "desc" },
-            // 캐시 없음: 사용자가 퀘스트 액션 후 즉시 조회하는 데이터
         });
     } catch (error) {
         console.error(error);
@@ -1159,8 +1212,8 @@ export async function getClaimableQuestLogs(
             };
         }
 
-        // 🚨 클레임 상태는 실시간성이 가장 중요: 캐시 없음
         return await prisma.questLog.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where,
             include: {
                 quest: {
@@ -1200,8 +1253,8 @@ export async function getClaimedQuestLogs(
             };
         }
 
-        // 🌟 완료된 데이터는 변경되지 않으므로 캐시 적용
         return await prisma.questLog.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where,
             include: {
                 quest: {
@@ -1221,21 +1274,19 @@ export async function getClaimedQuestLogs(
     }
 }
 
-// 🌟 새로운 함수: 퀘스트별 진행 상황 조회 (UI 최적화용)
 export async function getQuestProgressByQuests(
     questIds: string[],
     playerId: string
 ): Promise<Record<string, QuestLog | null>> {
     try {
         const questLogs = await prisma.questLog.findMany({
+            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 playerId,
                 questId: { in: questIds },
             },
-            // 🚨 실시간 데이터: 캐시 없음
         });
 
-        // questId를 키로 하는 맵 생성
         const progressMap: Record<string, QuestLog | null> = {};
         questIds.forEach((questId) => {
             progressMap[questId] =
@@ -1267,5 +1318,32 @@ export async function updateQuestActive(
     } catch (error) {
         console.error(error);
         return false;
+    }
+}
+
+export interface GetArtistAllActiveQuestCountInput {
+    artistId: string;
+}
+
+export async function getArtistAllActiveQuestCount(
+    input?: GetArtistAllActiveQuestCountInput
+): Promise<number> {
+    if (!input) {
+        return 0;
+    }
+
+    try {
+        const count = await prisma.quest.count({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
+            where: {
+                artistId: input.artistId,
+                isActive: true,
+            },
+        });
+
+        return count;
+    } catch (error) {
+        console.error("Error getting artist all active quest count:", error);
+        return 0;
     }
 }

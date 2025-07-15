@@ -7,10 +7,9 @@ import { useQuery } from "@tanstack/react-query";
 import {
     getArtist,
     getArtistForMetadata,
-    getArtistForStar,
     getArtistMessages,
     getArtists,
-    tokenGating,
+    getArtistsForStarList,
     getPlayers,
 } from "../actions/artists";
 import { artistKeys } from "../queryKeys";
@@ -19,7 +18,6 @@ import type {
     GetArtistInput,
     GetArtistMessagesInput,
     GetArtistsInput,
-    TokenGatingInput,
     GetPlayersInput,
 } from "../actions/artists";
 
@@ -52,13 +50,12 @@ export function useArtistForMetadata(input?: GetArtistInput) {
     });
 }
 
-export function useArtistForStar(input?: GetArtistInput) {
+export function useGetArtistsForStarListQuery() {
     return useQuery({
-        queryKey: artistKeys.star(input),
-        queryFn: () => getArtistForStar(input),
-        enabled: Boolean(input?.id || input?.code || input?.name),
-        staleTime: 1000 * 60 * 60 * 1, // Star 페이지는 더 자주 업데이트
-        gcTime: 1000 * 60 * 60 * 6,
+        queryKey: artistKeys.star(),
+        queryFn: () => getArtistsForStarList(),
+        staleTime: 1000 * 60,
+        gcTime: 1000 * 60 * 3,
     });
 }
 
@@ -69,15 +66,6 @@ export function useArtistMessages(input?: GetArtistMessagesInput) {
         enabled: Boolean(input?.artistId),
         staleTime: 1000 * 60 * 60 * 12,
         gcTime: 1000 * 60 * 60 * 24,
-    });
-}
-
-export function useTokenGatingQuery(input?: TokenGatingInput) {
-    return useQuery({
-        queryKey: artistKeys.tokenGating(input),
-        queryFn: () => tokenGating(input),
-        staleTime: 1000 * 60 * 10,
-        gcTime: 1000 * 60 * 30,
     });
 }
 

@@ -5,8 +5,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import Script from "next/script";
+import { signIn } from "next-auth/react";
 
-import { useUserSet } from "@/app/hooks/useUser";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/tailwind";
 
@@ -22,7 +22,6 @@ export default function TelegramLoginButton({
     const telegramWrapperRef = useRef<HTMLDivElement>(null);
     const [telegram, setTelegram] = useState<any>(null);
     const [telegramUser, setTelegramUser] = useState<any>(null);
-    const { setUserWithTelegram } = useUserSet();
 
     useEffect(() => {
         if (telegram && telegram.initDataUnsafe?.user) {
@@ -64,8 +63,17 @@ export default function TelegramLoginButton({
     }, [onAuth, size]);
 
     const handleContinueWithTelegram = async () => {
-        await setUserWithTelegram({
-            user: telegramUser,
+        if (!telegramUser) return;
+
+        await signIn("telegram", {
+            telegramId: telegramUser.id?.toString(),
+            firstName: telegramUser.first_name,
+            lastName: telegramUser.last_name,
+            username: telegramUser.username,
+            photoUrl: telegramUser.photo_url,
+            languageCode: telegramUser.language_code,
+            isPremium: telegramUser.is_premium?.toString(),
+            redirect: false,
         });
 
         window.location.href = "/";

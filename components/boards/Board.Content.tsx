@@ -35,7 +35,6 @@ import {
     DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 
-import type { ArtistWithSPG } from "@/app/actions/artists";
 import type { Player } from "@prisma/client";
 import type { FileData } from "../atoms/FileUploader";
 import type { BoardPostWithDetails } from "@/app/actions/boards/actions";
@@ -45,16 +44,24 @@ import { ShinyButton } from "../magicui/shiny-button";
 import { useToast } from "@/app/hooks/useToast";
 
 interface BoardContentProps {
-    artist: ArtistWithSPG;
     player: Player | null;
+    artistId: string;
+    artistName: string;
+    artistLogoUrl: string;
+    backgroundColors: string[];
+    foregroundColors: string[];
 }
 
 // 정렬 옵션 타입 정의
 type SortOption = "popularity" | "newest" | "oldest";
 
 export default React.memo(function BoardContent({
-    artist,
     player,
+    artistId,
+    artistName,
+    artistLogoUrl,
+    backgroundColors,
+    foregroundColors,
 }: BoardContentProps) {
     const toast = useToast();
     const [showPostEditor, setShowPostEditor] = useState(false);
@@ -124,7 +131,7 @@ export default React.memo(function BoardContent({
         isDeleteBoardPostPending,
     } = useBoards({
         getBoardsInput: {
-            artistId: artist.id,
+            artistId: artistId,
             isPublic: true,
             isActive: true,
         },
@@ -642,7 +649,7 @@ export default React.memo(function BoardContent({
                                         )}
                                     />
                                     <textarea
-                                        placeholder={`Share your thoughts with ${artist.name} fans...`}
+                                        placeholder={`Share your thoughts with ${artistName} fans...`}
                                         rows={3}
                                         value={newPostContent}
                                         onChange={(e) =>
@@ -864,8 +871,7 @@ export default React.memo(function BoardContent({
                                         Be the first to start the conversation!
                                     </p>
                                     <p className="text-white/40 text-sm md:text-base mt-2 md:mt-3">
-                                        Share your thoughts and earn{" "}
-                                        {artist.name} tokens
+                                        Share your thoughts and earn SGP
                                     </p>
                                     {!player && (
                                         <p className="text-white/30 text-xs md:text-sm mt-4 md:mt-6">
@@ -884,7 +890,15 @@ export default React.memo(function BoardContent({
                                             <BoardContentPost
                                                 key={post.id}
                                                 post={post}
-                                                artist={artist}
+                                                artistId={artistId}
+                                                artistName={artistName}
+                                                artistLogoUrl={artistLogoUrl}
+                                                backgroundColors={
+                                                    backgroundColors
+                                                }
+                                                foregroundColors={
+                                                    foregroundColors
+                                                }
                                                 player={player}
                                                 index={index}
                                                 activeBoard={activeBoard}
@@ -979,7 +993,7 @@ export default React.memo(function BoardContent({
             <BoardRewardsTutorialModal
                 isOpen={showRewardsTutorial}
                 onClose={() => setShowRewardsTutorial(false)}
-                artistName={artist.name}
+                artistName={artistName}
                 onComplete={() => {
                     setShowRewardsTutorial(false);
                 }}

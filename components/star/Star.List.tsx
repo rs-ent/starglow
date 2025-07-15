@@ -7,67 +7,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createArtistGradients } from "@/lib/utils/artist-styles";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import type { ArtistWithSPG } from "@/app/actions/artists";
+import { useArtistsGet } from "@/app/hooks/useArtists";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import Link from "next/link";
 import Image from "next/image";
+import type { ArtistsForStarList } from "@/app/actions/artists";
+import { useBoards } from "@/app/actions/boards/hooks";
+import { usePollsGet } from "@/app/hooks/usePolls";
+import { useQuestGet } from "@/app/hooks/useQuest";
 
-export interface PolishedArtist extends ArtistWithSPG {
-    totalPosts: number;
-    totalPolls: number;
-    totalQuests: number;
-}
-
-interface StarListProps {
-    artists: ArtistWithSPG[];
-}
-
-export default memo(function StarList({ artists }: StarListProps) {
+export default memo(function StarList() {
     const [hoveredArtist, setHoveredArtist] = useState<string | null>(null);
-
-    const polishedArtists: PolishedArtist[] = useMemo(() => {
-        return artists
-            .map((artist) => {
-                const collections = artist.story_spg?.filter(
-                    (collection) =>
-                        collection.isListed &&
-                        !collection.comingSoon &&
-                        !collection.hiddenDetails
-                );
-
-                const totalPosts =
-                    artist.boards?.reduce(
-                        (sum, board) => sum + board.posts.length,
-                        0
-                    ) || 0;
-
-                const polls = artist.polls?.filter(
-                    (poll) => poll.isActive && poll.showOnStarPage
-                );
-
-                const totalPolls = polls?.length || 0;
-
-                const quests = artist.quests?.filter((quest) => quest.isActive);
-
-                const totalQuests = quests?.length || 0;
-
-                return {
-                    ...artist,
-                    story_spg: collections,
-                    polls,
-                    quests,
-                    totalPosts,
-                    totalPolls,
-                    totalQuests,
-                } as PolishedArtist;
-            })
-            .sort((a, b) => {
-                if (a.hidden && !b.hidden) return 1;
-                if (!a.hidden && b.hidden) return -1;
-
-                return a.order - b.order;
-            });
-    }, [artists]);
+    const { artistsForStarList } = useArtistsGet();
 
     return (
         <div
@@ -88,7 +39,7 @@ export default memo(function StarList({ artists }: StarListProps) {
 
             {/* Artists Grid */}
             <AnimatePresence mode="wait">
-                {polishedArtists.length > 0 ? (
+                {artistsForStarList && artistsForStarList.length > 0 ? (
                     <motion.div
                         key="artists"
                         initial={{ opacity: 0 }}
@@ -100,7 +51,7 @@ export default memo(function StarList({ artists }: StarListProps) {
                             getResponsiveClass(70).gapClass
                         )}
                     >
-                        {polishedArtists.map((artist, index) => (
+                        {artistsForStarList.map((artist, index) => (
                             <ArtistCard
                                 key={artist.id}
                                 artist={artist}
@@ -158,7 +109,7 @@ export default memo(function StarList({ artists }: StarListProps) {
 
 // Artist Card Component
 interface ArtistCardProps {
-    artist: PolishedArtist;
+    artist: ArtistsForStarList;
     index: number;
     isHovered: boolean;
     onHover: (id: string | null) => void;
@@ -172,6 +123,24 @@ const ArtistCard = memo(function ArtistCard({
 }: ArtistCardProps) {
     const gradients = useMemo(() => createArtistGradients(artist), [artist]);
     const isHidden = useMemo(() => artist.hidden, [artist]);
+
+    const { artistAllBoardPostCountData: totalPosts } = useBoards({
+        getArtistAllBoardPostCountInput: {
+            artistId: artist.id,
+        },
+    });
+
+    const { artistAllActivePollCount: totalPolls } = usePollsGet({
+        getArtistAllActivePollCountInput: {
+            artistId: artist.id,
+        },
+    });
+
+    const { artistAllActiveQuestCount: totalQuests } = useQuestGet({
+        getArtistAllActiveQuestCountInput: {
+            artistId: artist.id,
+        },
+    });
 
     const CardContent = (
         <motion.div
@@ -272,18 +241,6 @@ const ArtistCard = memo(function ArtistCard({
                     {isHidden ? "???" : artist.name}
                 </h3>
 
-                {/* Description */}
-                {artist.description && (
-                    <p
-                        className={cn(
-                            "text-[rgba(255,255,255,0.6)] mb-4 line-clamp-2",
-                            getResponsiveClass(12).textClass
-                        )}
-                    >
-                        {artist.description}
-                    </p>
-                )}
-
                 {/* Real Stats */}
                 <div
                     className={cn(
@@ -311,7 +268,7 @@ const ArtistCard = memo(function ArtistCard({
                                 getResponsiveClass(15).textClass
                             )}
                         >
-                            {isHidden ? "0" : artist.totalPosts}
+                            {isHidden ? "0" : totalPosts}
                         </p>
                     </div>
                     <div
@@ -334,7 +291,7 @@ const ArtistCard = memo(function ArtistCard({
                                 getResponsiveClass(15).textClass
                             )}
                         >
-                            {isHidden ? "0" : artist.totalPolls}
+                            {isHidden ? "0" : totalPolls}
                         </p>
                     </div>
                     <div
@@ -357,7 +314,7 @@ const ArtistCard = memo(function ArtistCard({
                                 getResponsiveClass(15).textClass
                             )}
                         >
-                            {isHidden ? "0" : artist.totalQuests}
+                            {isHidden ? "0" : totalQuests}
                         </p>
                     </div>
                 </div>

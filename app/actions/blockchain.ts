@@ -18,15 +18,16 @@ import {
 import { prisma } from "@/lib/prisma/client";
 import { encryptPrivateKey, decryptPrivateKey } from "@/lib/utils/encryption";
 
-import { getTokenOwners } from "./collectionContracts";
-
-import type { BlockchainNetwork, User } from "@prisma/client";
+import type { BlockchainNetwork } from "@prisma/client";
 import type { Chain, Address, Hash, WalletClient, PublicClient } from "viem";
+
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 // 블록체인 네트워크 관련 함수
 export async function getBlockchainNetworks(includeInactive = false) {
     try {
         const networks = await prisma.blockchainNetwork.findMany({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: includeInactive ? {} : { isActive: true },
             orderBy: [{ isTestnet: "asc" }, { name: "asc" }],
         });
@@ -44,6 +45,7 @@ export async function getBlockchainNetworkById(id: string): Promise<{
 }> {
     try {
         const network = await prisma.blockchainNetwork.findUnique({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: { id },
         });
 
@@ -71,6 +73,7 @@ export interface addBlockchainNetworkParams {
 export async function addBlockchainNetwork(params: addBlockchainNetworkParams) {
     try {
         const existing = await prisma.blockchainNetwork.findFirst({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: {
                 OR: [{ chainId: params.chainId }, { name: params.name }],
             },
@@ -113,6 +116,7 @@ export async function updateBlockchainNetwork(
 ) {
     try {
         const network = await prisma.blockchainNetwork.findUnique({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: { id },
         });
 
@@ -137,6 +141,7 @@ export async function updateBlockchainNetwork(
 export async function getEscrowWallets() {
     try {
         const wallets = await prisma.escrowWallet.findMany({
+            cacheStrategy: getCacheStrategy("oneHour"),
             orderBy: {
                 createdAt: "desc",
             },
@@ -158,6 +163,7 @@ export async function getEscrowWallets() {
 export async function getActiveEscrowWallet() {
     try {
         const wallet = await prisma.escrowWallet.findFirst({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: { isActive: true },
             orderBy: {
                 createdAt: "desc",
@@ -223,6 +229,7 @@ export async function saveEscrowWallet(params: saveEscrowWalletParams) {
 export async function updateEscrowWalletStatus(id: string, isActive: boolean) {
     try {
         const wallet = await prisma.escrowWallet.findUnique({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: { id },
         });
 
@@ -258,6 +265,7 @@ export async function updateEscrowWalletBalance(
 ) {
     try {
         const wallet = await prisma.escrowWallet.findUnique({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: { id },
         });
 
@@ -293,6 +301,7 @@ export async function updateEscrowWalletBalance(
 export async function getEscrowWalletWithPrivateKey(id: string) {
     try {
         const wallet = await prisma.escrowWallet.findUnique({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: { id },
         });
 
@@ -329,6 +338,7 @@ export async function getEscrowWalletWithPrivateKey(id: string) {
 export async function getEscrowWalletWithPrivateKeyByAddress(address: string) {
     try {
         const wallet = await prisma.escrowWallet.findUnique({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: { address },
         });
 
@@ -383,6 +393,7 @@ export async function lookupBlockchainNetwork(params: {
         if (name && chainId) {
             // 이름과 체인 ID로 조회
             network = await prisma.blockchainNetwork.findFirst({
+                cacheStrategy: getCacheStrategy("oneHour"),
                 where: {
                     OR: [
                         { name: { equals: name, mode: "insensitive" } },
@@ -394,6 +405,7 @@ export async function lookupBlockchainNetwork(params: {
         } else if (name) {
             // 이름으로만 조회
             network = await prisma.blockchainNetwork.findFirst({
+                cacheStrategy: getCacheStrategy("oneHour"),
                 where: {
                     name: { equals: name, mode: "insensitive" },
                     isActive: true,
@@ -402,6 +414,7 @@ export async function lookupBlockchainNetwork(params: {
         } else {
             // 체인 ID로만 조회
             network = await prisma.blockchainNetwork.findFirst({
+                cacheStrategy: getCacheStrategy("oneHour"),
                 where: {
                     chainId: chainId,
                     isActive: true,
@@ -680,6 +693,7 @@ export async function estimateGasForTransactions(
         const { collectionAddress, walletId, transactions } = input;
 
         const collection = await prisma.collectionContract.findUnique({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: { address: collectionAddress },
             include: { network: true },
         });

@@ -33,7 +33,7 @@ export function useCreateQuestMutation() {
 
             return { previousQuests };
         },
-        onSuccess: (data, _variables, _context) => {
+        onSuccess: (data, variables, _context) => {
             queryClient
                 .invalidateQueries({ queryKey: questKeys.all })
                 .catch((error) => {
@@ -41,6 +41,16 @@ export function useCreateQuestMutation() {
                 });
             queryClient
                 .invalidateQueries({ queryKey: questKeys.list() })
+                .catch((error) => {
+                    console.error(error);
+                });
+
+            queryClient
+                .invalidateQueries({
+                    queryKey: questKeys.artistAllActiveQuestCount(
+                        variables.artistId ?? ""
+                    ),
+                })
                 .catch((error) => {
                     console.error(error);
                 });

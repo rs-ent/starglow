@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 
 import {
     getQuests,
@@ -14,6 +14,8 @@ import {
     getActiveQuestLogs,
     getCompletedQuestLogs,
     tokenGatingQuest,
+    getPlayerQuestLog,
+    getArtistAllActiveQuestCount,
 } from "../actions/quests";
 import { questKeys } from "../queryKeys";
 
@@ -29,6 +31,8 @@ import type {
     GetCompletedQuestLogsInput,
     TokenGatingQuestInput,
     QuestWithArtistAndRewardAsset,
+    GetPlayerQuestLogInput,
+    GetArtistAllActiveQuestCountInput,
 } from "../actions/quests";
 import type { TokenGatingData } from "../story/nft/actions";
 import type { Quest, QuestLog } from "@prisma/client";
@@ -160,5 +164,72 @@ export function useCompletedQuestLogsQuery({
         enabled: !!input?.playerId,
         staleTime: 500,
         gcTime: 1000,
+    });
+}
+
+export function usePlayerQuestLogQuery({
+    input,
+}: {
+    input?: GetPlayerQuestLogInput;
+}) {
+    return useQuery<QuestLog | null>({
+        queryKey: questKeys.playerQuestLog(input),
+        queryFn: () => getPlayerQuestLog(input),
+        enabled: !!input?.questId && !!input?.playerId,
+        staleTime: 100,
+        gcTime: 200,
+    });
+}
+
+export function useQuestsInfiniteQuery({
+    input,
+    pageSize = 10,
+}: {
+    input?: GetQuestsInput;
+    pageSize?: number;
+}) {
+    return useInfiniteQuery<{
+        items: QuestWithArtistAndRewardAsset[];
+        totalItems: number;
+        totalPages: number;
+        hasMore: boolean;
+        currentPage: number;
+    }>({
+        queryKey: questKeys.infinite(input),
+        queryFn: ({ pageParam = 1 }) =>
+            getQuests({
+                input,
+                pagination: {
+                    currentPage: pageParam as number,
+                    itemsPerPage: pageSize,
+                },
+            }).then((result) => ({
+                ...result,
+                hasMore: (pageParam as number) < result.totalPages,
+                currentPage: pageParam as number,
+            })),
+        getNextPageParam: (lastPage) => {
+            if (lastPage.hasMore && lastPage.items.length > 0) {
+                return lastPage.currentPage + 1;
+            }
+            return undefined;
+        },
+        initialPageParam: 1,
+        staleTime: 1000 * 60 * 2,
+        gcTime: 1000 * 60 * 5,
+    });
+}
+
+export function useArtistAllActiveQuestCountQuery({
+    input,
+}: {
+    input?: GetArtistAllActiveQuestCountInput;
+}) {
+    return useQuery<number>({
+        queryKey: questKeys.artistAllActiveQuestCount(input?.artistId),
+        queryFn: () => getArtistAllActiveQuestCount(input),
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 10,
+        enabled: !!input?.artistId,
     });
 }

@@ -17,9 +17,11 @@ import {
     usePlayerQuestLogsQuery,
     useQuestLogsQuery,
     useQuestsQuery,
-    useTokenGatingQuestQuery,
     useActiveQuestLogsQuery,
     useCompletedQuestLogsQuery,
+    usePlayerQuestLogQuery,
+    useQuestsInfiniteQuery,
+    useArtistAllActiveQuestCountQuery,
 } from "@/app/queries/questsQueries";
 
 import type {
@@ -30,8 +32,9 @@ import type {
     GetQuestsInput,
     GetActiveQuestLogsInput,
     GetCompletedQuestLogsInput,
-    TokenGatingQuestInput,
     PaginationInput,
+    GetPlayerQuestLogInput,
+    GetArtistAllActiveQuestCountInput,
 } from "../actions/quests";
 
 export function useQuestGet({
@@ -42,8 +45,11 @@ export function useQuestGet({
     getPlayerQuestLogsInput,
     getActiveQuestLogsInput,
     getCompletedQuestLogsInput,
-    getTokenGatingQuestInput,
+    getPlayerQuestLogInput,
+    getArtistAllActiveQuestCountInput,
     pagination,
+    useInfiniteScroll = false,
+    pageSize = 10,
 }: {
     getQuestsInput?: GetQuestsInput;
     getQuestLogsInput?: GetQuestLogsInput;
@@ -52,14 +58,22 @@ export function useQuestGet({
     getPlayerQuestLogsInput?: GetPlayerQuestLogsInput;
     getActiveQuestLogsInput?: GetActiveQuestLogsInput;
     getCompletedQuestLogsInput?: GetCompletedQuestLogsInput;
-    getTokenGatingQuestInput?: TokenGatingQuestInput;
+    getPlayerQuestLogInput?: GetPlayerQuestLogInput;
+    getArtistAllActiveQuestCountInput?: GetArtistAllActiveQuestCountInput;
     pagination?: PaginationInput;
+    useInfiniteScroll?: boolean;
+    pageSize?: number;
 }) {
     const {
         data: quests,
         isLoading: isLoadingQuests,
         error: questsError,
     } = useQuestsQuery({ input: getQuestsInput, pagination });
+
+    const questsInfiniteQuery = useQuestsInfiniteQuery({
+        input: getQuestsInput,
+        pageSize,
+    });
 
     const {
         data: questLogs,
@@ -98,35 +112,52 @@ export function useQuestGet({
     } = useCompletedQuestLogsQuery({ input: getCompletedQuestLogsInput });
 
     const {
-        data: tokenGatingQuest,
-        isLoading: isLoadingTokenGatingQuest,
-        error: tokenGatingQuestError,
-    } = useTokenGatingQuestQuery({ input: getTokenGatingQuestInput });
+        data: playerQuestLog,
+        isLoading: isLoadingPlayerQuestLog,
+        error: playerQuestLogError,
+    } = usePlayerQuestLogQuery({ input: getPlayerQuestLogInput });
+
+    const {
+        data: artistAllActiveQuestCount,
+        isLoading: isLoadingArtistAllActiveQuestCount,
+        error: artistAllActiveQuestCountError,
+    } = useArtistAllActiveQuestCountQuery({
+        input: getArtistAllActiveQuestCountInput,
+    });
 
     const isLoading =
-        isLoadingQuests ||
+        (useInfiniteScroll ? questsInfiniteQuery.isLoading : isLoadingQuests) ||
         isLoadingQuestLogs ||
         isLoadingClaimableQuestLogs ||
         isLoadingClaimedQuestLogs ||
         isLoadingPlayerQuestLogs ||
         isLoadingActiveQuestLogs ||
         isLoadingCompletedQuestLogs ||
-        isLoadingTokenGatingQuest;
+        isLoadingPlayerQuestLog ||
+        isLoadingArtistAllActiveQuestCount;
 
     const error =
-        questsError ||
+        (useInfiniteScroll ? questsInfiniteQuery.error : questsError) ||
         questLogsError ||
         claimableQuestLogsError ||
         claimedQuestLogsError ||
         playerQuestLogsError ||
         activeQuestLogsError ||
         completedQuestLogsError ||
-        tokenGatingQuestError;
+        playerQuestLogError ||
+        artistAllActiveQuestCountError;
 
     return {
-        quests,
-        isLoadingQuests,
-        questsError,
+        quests: useInfiniteScroll ? questsInfiniteQuery.data : quests,
+        isLoadingQuests: useInfiniteScroll
+            ? questsInfiniteQuery.isLoading
+            : isLoadingQuests,
+        questsError: useInfiniteScroll
+            ? questsInfiniteQuery.error
+            : questsError,
+        questsInfiniteQuery: useInfiniteScroll
+            ? questsInfiniteQuery
+            : undefined,
         questLogs,
         isLoadingQuestLogs,
         questLogsError,
@@ -145,9 +176,12 @@ export function useQuestGet({
         completedQuestLogs,
         isLoadingCompletedQuestLogs,
         completedQuestLogsError,
-        tokenGatingQuest,
-        isLoadingTokenGatingQuest,
-        tokenGatingQuestError,
+        playerQuestLog,
+        isLoadingPlayerQuestLog,
+        playerQuestLogError,
+        artistAllActiveQuestCount,
+        isLoadingArtistAllActiveQuestCount,
+        artistAllActiveQuestCountError,
         isLoading,
         error,
     };

@@ -7,10 +7,15 @@ import { animated, useSpring } from "@react-spring/three";
 import { RoundedBox, Text, useCursor } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { DoubleSide, LinearFilter, Vector3 } from "three";
+import type { Texture } from "three";
 
 import { useNFT } from "@/app/story/nft/hooks";
 import { formatDate } from "@/lib/utils/format";
-import { useCachedTexture } from "@/lib/utils/useCachedTexture";
+import {
+    useCachedTexture,
+    useBlurredTexture,
+    getTextureLoadingStatus,
+} from "@/lib/utils/useCachedTexture";
 
 import type { SPG } from "@/app/story/spg/actions";
 import type { Mesh } from "three";
@@ -188,11 +193,11 @@ const InfoBox = React.memo(function InfoBox({
     isLoading = false,
 }: InfoBoxProps) {
     const LoadingDots = React.memo(function LoadingDots() {
-        const { scale, opacity } = useSpring({
-            from: { scale: 0.5, opacity: 0.5 },
-            to: { scale: 0.5, opacity: 1 },
+        const { scale, opacity, rotation } = useSpring({
+            from: { scale: 0.3, opacity: 0.4, rotation: 0 },
+            to: { scale: 0.6, opacity: 1, rotation: Math.PI * 2 },
             loop: true,
-            config: { duration: 2000 },
+            config: { duration: 1500 },
         });
 
         return (
@@ -200,16 +205,33 @@ const InfoBox = React.memo(function InfoBox({
                 {[0, 1, 2].map((i) => (
                     <animated.mesh
                         key={i}
-                        position={[i * 0.3 - 0.3, 0, 0.1]}
+                        position={[i * 0.4 - 0.4, 0, 0.1]}
                         scale={scale}
+                        rotation-z={rotation.to((r) => r + i * 0.5)}
                     >
-                        <sphereGeometry args={[0.1, 16, 16]} />
+                        <sphereGeometry args={[0.08, 12, 12]} />
                         <animated.meshPhysicalMaterial
-                            color="#ffffff"
+                            color={
+                                i === 0
+                                    ? "#ff00aa"
+                                    : i === 1
+                                    ? "#00ffbb"
+                                    : "#aa00ff"
+                            }
                             transparent
                             opacity={opacity}
-                            metalness={0.8}
+                            metalness={0.9}
                             roughness={0.1}
+                            clearcoat={1}
+                            clearcoatRoughness={0.1}
+                            emissive={
+                                i === 0
+                                    ? "#ff00aa"
+                                    : i === 1
+                                    ? "#00ffbb"
+                                    : "#aa00ff"
+                            }
+                            emissiveIntensity={opacity.to((o) => o * 0.3)}
                         />
                     </animated.mesh>
                 ))}
@@ -289,9 +311,17 @@ const CardMesh = React.memo(function CardMesh({
         loadedTexture.needsUpdate = true;
     });
 
-    // 텍스처 로딩 상태 확인
-    const isTextureLoaded = normalTexture !== null;
-    const texture = normalTexture;
+    const blurTexture = useBlurredTexture(imageUrl, {
+        blur: 25,
+        brightness: 0.8,
+        contrast: 1.2,
+        opacity: 0.9,
+    });
+
+    // 텍스처 로딩 상태를 보다 정확하게 확인
+    const textureLoadingStatus = getTextureLoadingStatus(imageUrl);
+    const isTextureLoaded = textureLoadingStatus === "loaded";
+    const texture = isTextureLoaded ? normalTexture : blurTexture;
 
     const logoTexture = useCachedTexture("/logo/3d.svg", (loadedTexture) => {
         loadedTexture.minFilter = LinearFilter;
@@ -396,55 +426,62 @@ const CardMesh = React.memo(function CardMesh({
         [detailLevel]
     );
 
-    const cardMaterialProps = useMemo(
-        () => ({
+    const cardMaterialProps = useMemo(() => {
+        const baseProps = {
             color: backgroundColor,
             transparent: true,
             opacity: 0.95,
             roughness: 0.01,
             metalness: 0.2,
-            clearcoat:
-                detailLevel === "high"
-                    ? 1.5
-                    : detailLevel === "medium"
-                    ? 0.75
-                    : 0.1,
             clearcoatRoughness: 0.2,
-            transmission:
-                detailLevel === "high"
-                    ? 0.3
-                    : detailLevel === "medium"
-                    ? 0.15
-                    : 0.05,
-            ior:
-                detailLevel === "high"
-                    ? 2.5
-                    : detailLevel === "medium"
-                    ? 2.0
-                    : 1.5,
-            reflectivity:
-                detailLevel === "high"
-                    ? 0.8
-                    : detailLevel === "medium"
-                    ? 0.65
-                    : 0.5,
             thickness: 0.5,
             emissive: backgroundColor,
             emissiveIntensity: emissiveIntensity,
-            envMapIntensity:
-                detailLevel === "high"
-                    ? 1.2
-                    : detailLevel === "medium"
-                    ? 1.0
-                    : 0.8,
-        }),
-        [backgroundColor, detailLevel, emissiveIntensity]
-    );
+        };
+
+        switch (detailLevel) {
+            case "high":
+                return {
+                    ...baseProps,
+                    clearcoat: 1.5,
+                    transmission: 0.3,
+                    ior: 2.5,
+                    reflectivity: 0.8,
+                    envMapIntensity: 1.2,
+                };
+            case "medium":
+                return {
+                    ...baseProps,
+                    clearcoat: 0.75,
+                    transmission: 0.15,
+                    ior: 2.0,
+                    reflectivity: 0.65,
+                    envMapIntensity: 1.0,
+                };
+            default:
+                return {
+                    ...baseProps,
+                    clearcoat: 0.1,
+                    transmission: 0.05,
+                    ior: 1.5,
+                    reflectivity: 0.5,
+                    envMapIntensity: 0.8,
+                };
+        }
+    }, [backgroundColor, detailLevel, emissiveIntensity]);
+
+    // 텍스쳐 메모리 관리를 useRef로 최적화
+    const textureCleanupRef = useRef<Texture | null>(null);
 
     useEffect(() => {
+        textureCleanupRef.current = texture;
         return () => {
-            if (texture) {
-                texture.dispose();
+            // 컴포넌트 언마운트 시에만 dispose
+            if (
+                textureCleanupRef.current &&
+                textureCleanupRef.current !== texture
+            ) {
+                textureCleanupRef.current.dispose();
             }
         };
     }, [texture]);
@@ -541,15 +578,40 @@ const CardMesh = React.memo(function CardMesh({
                         thickness={0.5}
                         envMapIntensity={1}
                     />
-                ) : (
+                ) : texture?.image ? (
+                    // 블러 텍스처가 로딩된 경우
                     <meshPhysicalMaterial
-                        color="rgb(78,59,153)"
+                        map={texture}
                         transparent={true}
-                        opacity={0.7}
-                        roughness={0.7}
-                        metalness={0.1}
-                        clearcoat={1}
-                        clearcoatRoughness={0.8}
+                        metalness={0.3}
+                        roughness={0.3}
+                        clearcoat={0.8}
+                        clearcoatRoughness={0.3}
+                        transmission={0.1}
+                        ior={1.4}
+                        reflectivity={0.4}
+                        thickness={0.3}
+                        envMapIntensity={0.8}
+                        emissive={backgroundColor}
+                        emissiveIntensity={0.05}
+                    />
+                ) : (
+                    // 텍스처 로딩 실패 또는 로딩 중인 경우 - 그라디언트 효과
+                    <meshPhysicalMaterial
+                        color={backgroundColor}
+                        transparent={true}
+                        opacity={0.85}
+                        roughness={0.2}
+                        metalness={0.6}
+                        clearcoat={1.2}
+                        clearcoatRoughness={0.4}
+                        transmission={0.15}
+                        ior={1.8}
+                        reflectivity={0.8}
+                        thickness={0.5}
+                        envMapIntensity={1.2}
+                        emissive={backgroundColor}
+                        emissiveIntensity={0.15}
                     />
                 )}
             </mesh>

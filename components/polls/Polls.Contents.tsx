@@ -6,7 +6,6 @@ import { memo } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
 
-import { usePollsGet } from "@/app/hooks/usePolls";
 import { cn } from "@/lib/utils/tailwind";
 
 import PollsContentsTotal from "./Polls.Contents.Total";
@@ -24,14 +23,6 @@ const contentVariants = {
 };
 
 function PollsContents({ player }: PollsContentsProps) {
-    const { playerPollLogs } = usePollsGet({
-        getPlayerPollLogsInput: player?.id
-            ? {
-                  playerId: player.id,
-              }
-            : undefined,
-    });
-
     return (
         <div
             className={cn(
@@ -48,10 +39,7 @@ function PollsContents({ player }: PollsContentsProps) {
                     variants={contentVariants}
                     className="w-full flex justify-center items-center"
                 >
-                    <PollsContentsTotal
-                        player={player}
-                        pollLogs={playerPollLogs}
-                    />
+                    <PollsContentsTotal player={player} />
                 </motion.div>
             </AnimatePresence>
         </div>

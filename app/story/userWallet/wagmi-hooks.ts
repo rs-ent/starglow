@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { WalletStatus } from "@prisma/client";
-import { useSession } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import {
     useAccount,
     useConnect,
@@ -16,7 +16,6 @@ import {
 } from "wagmi";
 import { BaseError } from "wagmi";
 
-import { setUserWithWallet } from "@/app/actions/user";
 import { useToast } from "@/app/hooks/useToast";
 
 import { useUserWallet } from "./hooks";
@@ -34,7 +33,7 @@ export function useWagmiConnection() {
         },
     });
 
-    const { data: session } = useSession();
+    const { data: session, update: updateSession } = useSession();
     const { address, isConnected, chain } = useAccount();
     const { connect, connectors } = useConnect({
         mutation: {
@@ -155,11 +154,19 @@ export function useWagmiConnection() {
                 let user = session?.user;
                 if (!user && !isSettingUser) {
                     setIsSettingUser(true);
-                    const { user: newUser } = await setUserWithWallet({
+
+                    // NextAuth v5 Credentials 표준 방식
+                    const result = await signIn("wallet", {
                         walletAddress: address,
                         provider: currentConnection.connector.id,
+                        redirect: false,
                     });
-                    user = newUser;
+
+                    if (result?.ok) {
+                        // 세션 강제 업데이트
+                        await updateSession();
+                        user = session?.user;
+                    }
                 }
 
                 if (user) {
@@ -175,6 +182,9 @@ export function useWagmiConnection() {
                         window.location.href = callbackUrlRef.current;
                         callbackUrlRef.current = null;
                     }
+                } else {
+                    // NextAuth signIn 성공 후 세션 새로고침
+                    window.location.reload();
                 }
             } catch (error) {
                 console.error("Failed to process wallet connection:", error);
@@ -195,6 +205,7 @@ export function useWagmiConnection() {
         session?.user,
         toast,
         isSettingUser,
+        updateSession,
     ]);
 
     // 체인 전환

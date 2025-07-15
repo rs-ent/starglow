@@ -61,6 +61,15 @@ const nextConfig = {
             type: "json",
         });
 
+        config.ignoreWarnings = [
+            { module: /node_modules\/@opentelemetry\/instrumentation/ },
+            { module: /node_modules\/prisma-instrumentation/ },
+            {
+                message:
+                    /Critical dependency: the request of a dependency is an expression/,
+            },
+        ];
+
         return config;
     },
 

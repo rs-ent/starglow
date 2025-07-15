@@ -2,19 +2,18 @@
 
 "use client";
 
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback } from "react";
 
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { cn } from "@/lib/utils/tailwind";
 
 import PollsList from "./Polls.List";
 import PartialLoading from "../atoms/PartialLoading";
-import type { Artist, Player, PollLog } from "@prisma/client";
+import type { Player } from "@prisma/client";
 
 interface PollsContentsPrivateArtistListProps {
-    artist: Artist;
+    artistId: string;
     player: Player | null;
-    pollLogs?: PollLog[];
     className?: string;
     fgColorFrom?: string;
     fgColorTo?: string;
@@ -26,9 +25,8 @@ interface PollsContentsPrivateArtistListProps {
 }
 
 function PollsContentsPrivateArtistList({
-    artist,
+    artistId,
     player,
-    pollLogs,
     className,
     fgColorFrom,
     fgColorTo,
@@ -40,19 +38,10 @@ function PollsContentsPrivateArtistList({
 }: PollsContentsPrivateArtistListProps) {
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
-            artistId: artist.id,
+            artistId: artistId,
             isActive: true,
         },
     });
-
-    // 필터링된 폴 로그 메모이제이션
-    const filteredPollLogs = useMemo(() => {
-        if (!pollLogs || !pollsList?.items) return [];
-
-        return pollLogs.filter((log) =>
-            pollsList.items.some((poll) => poll.id === log.pollId)
-        );
-    }, [pollLogs, pollsList?.items]);
 
     // 로딩 상태 렌더링
     const renderLoading = useCallback(
@@ -91,9 +80,7 @@ function PollsContentsPrivateArtistList({
         return (
             <PollsList
                 polls={pollsList.items}
-                artist={artist}
                 player={player}
-                pollLogs={filteredPollLogs}
                 fgColorFrom={fgColorFrom}
                 fgColorTo={fgColorTo}
                 bgColorFrom={bgColorFrom}
@@ -106,9 +93,7 @@ function PollsContentsPrivateArtistList({
         );
     }, [
         pollsList?.items,
-        artist,
         player,
-        filteredPollLogs,
         fgColorFrom,
         fgColorTo,
         bgColorFrom,
@@ -145,9 +130,7 @@ function PollsContentsPrivateArtistList({
 
     return (
         <div className={cn("w-full", className)}>
-            <div key={`artist-polls-${artist.id}`} className="relative">
-                {renderContent()}
-            </div>
+            <div className="relative">{renderContent()}</div>
         </div>
     );
 }

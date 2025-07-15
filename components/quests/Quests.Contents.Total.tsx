@@ -2,7 +2,8 @@
 
 "use client";
 
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState, useEffect } from "react";
+import { useInView } from "react-intersection-observer";
 
 import { useQuestGet } from "@/app/hooks/useQuest";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -13,18 +14,17 @@ import InviteFriends from "../atoms/InviteFriends";
 import type { QuestWithArtistAndRewardAsset } from "@/app/actions/quests";
 import Image from "next/image";
 
-import type { Artist, Player, QuestLog, ReferralLog } from "@prisma/client";
+import type { Artist, Player } from "@prisma/client";
 
 interface QuestsTotalProps {
     player: Player | null;
-    questLogs: QuestLog[];
-    referralLogs?: ReferralLog[];
+    useInfiniteScroll?: boolean;
 }
 
 const now = new Date();
 
-function QuestsTotal({ player, questLogs, referralLogs }: QuestsTotalProps) {
-    const { quests, isLoading, error } = useQuestGet({
+function QuestsTotal({ player, useInfiniteScroll = true }: QuestsTotalProps) {
+    const { quests, isLoading, error, questsInfiniteQuery } = useQuestGet({
         getQuestsInput: {
             isActive: true,
             startDate: now,
@@ -33,12 +33,29 @@ function QuestsTotal({ player, questLogs, referralLogs }: QuestsTotalProps) {
             endDateIndicator: "before",
             test: player?.tester ?? false,
         },
+        useInfiniteScroll,
+        pageSize: 10,
     });
 
     const [selectedType, setSelectedType] = useState<string>("All");
 
+    const { ref, inView } = useInView({
+        threshold: 0.1,
+        triggerOnce: false,
+    });
+
+    const allQuests = useMemo(() => {
+        if (!quests) return [];
+
+        if (useInfiniteScroll && questsInfiniteQuery?.data) {
+            return questsInfiniteQuery.data.pages.flatMap((page) => page.items);
+        }
+
+        return "items" in quests ? quests.items : [];
+    }, [quests, questsInfiniteQuery?.data, useInfiniteScroll]);
+
     const { types, artistsMap } = useMemo(() => {
-        if (!quests?.items || quests.items.length === 0) {
+        if (!allQuests || allQuests.length === 0) {
             return {
                 types: ["All"],
                 artistsMap: new Map<string, Artist>(),
@@ -48,7 +65,7 @@ function QuestsTotal({ player, questLogs, referralLogs }: QuestsTotalProps) {
         const uniqueTypesSet = new Set<string>();
         const uniqueArtistsMap = new Map<string, Artist>();
 
-        quests.items.forEach((quest: QuestWithArtistAndRewardAsset) => {
+        allQuests.forEach((quest: QuestWithArtistAndRewardAsset) => {
             if (quest.type) uniqueTypesSet.add(quest.type);
             if (quest.artist) {
                 uniqueArtistsMap.set(quest.artist.name, quest.artist);
@@ -62,23 +79,36 @@ function QuestsTotal({ player, questLogs, referralLogs }: QuestsTotalProps) {
             types: ["All", ...questTypes, ...artistNames],
             artistsMap: uniqueArtistsMap,
         };
-    }, [quests?.items]);
+    }, [allQuests]);
 
     const filteredQuests = useMemo(() => {
-        if (!quests?.items) return [];
+        if (!allQuests) return [];
 
         return selectedType === "All"
-            ? quests.items
-            : quests.items.filter(
-                  (quest) =>
+            ? allQuests
+            : allQuests.filter(
+                  (quest: QuestWithArtistAndRewardAsset) =>
                       quest.type === selectedType ||
                       quest.artist?.name === selectedType
               );
-    }, [quests?.items, selectedType]);
+    }, [allQuests, selectedType]);
 
     const handleTypeClick = useCallback((type: string) => {
         setSelectedType(type);
     }, []);
+
+    useEffect(() => {
+        if (
+            inView &&
+            useInfiniteScroll &&
+            questsInfiniteQuery?.hasNextPage &&
+            !questsInfiniteQuery?.isFetchingNextPage
+        ) {
+            questsInfiniteQuery.fetchNextPage().catch((error) => {
+                console.error("Error fetching next page:", error);
+            });
+        }
+    }, [inView, useInfiniteScroll, questsInfiniteQuery, allQuests.length]);
 
     return (
         <div className="relative max-w-[1000px] w-screen">
@@ -105,22 +135,43 @@ function QuestsTotal({ player, questLogs, referralLogs }: QuestsTotalProps) {
                     </div>
                 </div>
 
-                <div>
+                <div
+                    className={cn(
+                        "overflow-y-auto",
+                        "max-h-[calc(100vh-300px)]",
+                        "scroll-smooth"
+                    )}
+                >
                     <div
                         key={selectedType}
                         className={cn("mb-[100px] lg:mb-[0px]")}
                     >
-                        {quests && questLogs && (
-                            <QuestsMissions
-                                player={player}
-                                quests={filteredQuests}
-                                questLogs={questLogs}
-                                isLoading={isLoading}
-                                error={error}
-                                permission={true}
-                                tokenGating={null}
-                                referralLogs={referralLogs || []}
-                            />
+                        <QuestsMissions
+                            player={player}
+                            quests={filteredQuests}
+                            isLoading={isLoading}
+                            error={error}
+                            permission={true}
+                            tokenGating={null}
+                        />
+
+                        {useInfiniteScroll && (
+                            <div
+                                ref={ref}
+                                className="h-10 flex items-center justify-center"
+                            >
+                                {questsInfiniteQuery?.isFetchingNextPage && (
+                                    <div className="text-sm text-gray-500">
+                                        Loading more quests...
+                                    </div>
+                                )}
+                                {questsInfiniteQuery?.hasNextPage === false &&
+                                    filteredQuests.length > 0 && (
+                                        <div className="text-sm text-gray-400">
+                                            No more quests to load
+                                        </div>
+                                    )}
+                            </div>
                         )}
                     </div>
                 </div>

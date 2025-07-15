@@ -83,7 +83,7 @@ export function useGetPlayerAsset({
             getPlayerAssetInput?.assetId || ""
         ),
         queryFn: () => getPlayerAsset(getPlayerAssetInput),
-        staleTime: 1000 * 60 * 5,
+        staleTime: 2000,
     });
 }
 

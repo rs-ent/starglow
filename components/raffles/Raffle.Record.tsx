@@ -2,7 +2,7 @@
 
 "use client";
 
-import { memo, useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { memo, useState, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Clock, Trophy, Eye, EyeOff, XCircle } from "lucide-react";
 import Image from "next/image";
@@ -31,7 +31,7 @@ export default memo(function RaffleRecord({
     const { data: session } = useSession();
     const toast = useToast();
     const [selectedRecord, setSelectedRecord] = useState<string | null>(null);
-    const loadMoreRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     const {
         playerParticipationsInfiniteData,
@@ -120,61 +120,24 @@ export default memo(function RaffleRecord({
         playerParticipationsInfiniteError,
     ]);
 
-    const stateRef = useRef({
-        sessionPlayerId: session?.player?.id,
-        raffleId: raffle.id,
+    const handleFetchNextPage = useCallback(async () => {
+        if (!session?.player?.id || !raffle.id) return;
+        if (!hasNextPage) return;
+        if (isFetchingNextPage || isInfiniteLoading) return;
+
+        try {
+            await playerParticipationsInfiniteFetchNextPage();
+        } catch (error) {
+            console.error("Failed to fetch next page:", error);
+        }
+    }, [
+        session?.player?.id,
+        raffle.id,
         hasNextPage,
         isFetchingNextPage,
         isInfiniteLoading,
-        fetchNextPage: playerParticipationsInfiniteFetchNextPage,
-    });
-
-    useEffect(() => {
-        stateRef.current = {
-            sessionPlayerId: session?.player?.id,
-            raffleId: raffle.id,
-            hasNextPage,
-            isFetchingNextPage,
-            isInfiniteLoading,
-            fetchNextPage: playerParticipationsInfiniteFetchNextPage,
-        };
-    });
-
-    useEffect(() => {
-        const currentRef = loadMoreRef.current;
-        if (!currentRef) return;
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                const target = entries[0];
-                if (target.isIntersecting) {
-                    const state = stateRef.current;
-                    if (
-                        state.sessionPlayerId &&
-                        state.raffleId &&
-                        state.hasNextPage &&
-                        !state.isFetchingNextPage &&
-                        !state.isInfiniteLoading
-                    ) {
-                        state.fetchNextPage().catch((error: any) => {
-                            console.error("Failed to fetch next page:", error);
-                        });
-                    }
-                }
-            },
-            {
-                root: null,
-                rootMargin: "50px", // 마진 줄여서 더 정확한 트리거
-                threshold: 0.1,
-            }
-        );
-
-        observer.observe(currentRef);
-
-        return () => {
-            observer.unobserve(currentRef);
-        };
-    }, []);
+        playerParticipationsInfiniteFetchNextPage,
+    ]);
 
     const handleRevealSingle = useCallback(
         async (participantId: string) => {
@@ -515,7 +478,10 @@ export default memo(function RaffleRecord({
                     )}
 
                     {/* Records List */}
-                    <div className={cn("flex-1 overflow-y-auto py-2 px-1")}>
+                    <div
+                        ref={scrollContainerRef}
+                        className={cn("flex-1 overflow-y-auto py-2 px-1")}
+                    >
                         {/* 초기 로딩 상태 */}
                         {isInfiniteLoading &&
                             allParticipations.length === 0 && (
@@ -830,30 +796,37 @@ export default memo(function RaffleRecord({
                                     }
                                 )}
 
-                                {/* 무한 스크롤 로딩 영역 */}
-                                {(isFetchingNextPage || hasNextPage) && (
-                                    <div
-                                        ref={loadMoreRef}
-                                        className="py-4 flex justify-center"
-                                    >
-                                        {isFetchingNextPage ? (
-                                            <div className="flex items-center gap-2">
-                                                <div className="animate-spin rounded-full border-b-2 border-white/50 w-4 h-4"></div>
-                                                <span className="text-white/60 text-sm">
-                                                    Loading more records...
-                                                </span>
-                                            </div>
-                                        ) : hasNextPage ? (
-                                            <span className="text-white/40 text-sm">
-                                                Scroll to load more
-                                            </span>
-                                        ) : (
-                                            <span className="text-white/40 text-sm">
-                                                🎉 All records loaded!
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
+                                {/* Load More 버튼 영역 */}
+                                <div className="py-4 flex justify-center">
+                                    {hasNextPage ? (
+                                        <motion.button
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            disabled={isFetchingNextPage}
+                                            onClick={handleFetchNextPage}
+                                            className={cn(
+                                                "px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 text-white font-bold rounded-xl transition-all duration-300 flex items-center gap-2",
+                                                getResponsiveClass(20)
+                                                    .textClass,
+                                                getResponsiveClass(25)
+                                                    .paddingClass
+                                            )}
+                                        >
+                                            {isFetchingNextPage ? (
+                                                <>
+                                                    <div className="animate-spin rounded-full border-b-2 border-white w-4 h-4"></div>
+                                                    Loading...
+                                                </>
+                                            ) : (
+                                                "Load More Records"
+                                            )}
+                                        </motion.button>
+                                    ) : allParticipations.length > 0 ? (
+                                        <span className="text-white/40 text-sm">
+                                            🎉 All records loaded!
+                                        </span>
+                                    ) : null}
+                                </div>
                             </div>
                         )}
                     </div>

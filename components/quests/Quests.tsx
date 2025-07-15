@@ -28,19 +28,19 @@ function Quests({ player }: QuestsProps) {
                         width={600}
                         height={600}
                         className="scale-150 rotate-90 md:scale-125 md:rotate-0 lg:scale-100 lg:rotate-0 transition-all duration-1000"
-                        loading="lazy"
-                        fetchPriority="low"
+                        priority={false}
+                        unoptimized={false}
                     />
                 </div>
 
                 <Image
                     src="/elements/bg-quest-blur.svg"
                     alt="Background"
-                    width={400}
-                    height={800}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className="opacity-90 w-full h-full object-cover scale-125 lg:scale-100 bg-blend-overlay transition-all duration-1000"
-                    loading="eager"
-                    fetchPriority="high"
+                    priority={false}
+                    unoptimized={false}
                 />
             </div>
 
