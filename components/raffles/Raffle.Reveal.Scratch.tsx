@@ -652,7 +652,6 @@ export default memo(function RaffleScratchCard({
         setIsComplete(true);
 
         if (onReveal) {
-            // 콘페티를 먼저 실행하고 약간의 지연 후 콜백 호출
             handleConfetti();
             setTimeout(() => {
                 onReveal();

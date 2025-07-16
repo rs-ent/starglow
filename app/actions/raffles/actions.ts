@@ -1414,6 +1414,7 @@ export async function participateInRaffle(
                             assetAmount: true,
                             spgAddress: true,
                             nftQuantity: true,
+                            order: true,
                             asset: {
                                 select: {
                                     id: true,

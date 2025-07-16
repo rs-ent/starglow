@@ -363,7 +363,7 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
                                 <p
                                     className={cn(
                                         "text-[rgba(255,255,255,0.55)] max-w-2xl mx-auto leading-relaxed font-light",
-                                        getResponsiveClass(20).textClass
+                                        getResponsiveClass(15).textClass
                                     )}
                                 >
                                     {raffle.description}
@@ -650,7 +650,7 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
                             ) : (
                                 <div
                                     className={cn(
-                                        "relative w-full h-full rounded-[10px] border-2 flex items-center justify-center p-3 z-10"
+                                        "relative w-full h-full rounded-[10px] border-2 flex items-center justify-center z-10"
                                     )}
                                     style={{
                                         background:
@@ -660,12 +660,31 @@ const GrandPrizeCard = memo(function GrandPrizeCard({
                                     }}
                                 >
                                     {prize.asset.iconUrl ? (
-                                        <div className="relative w-full h-full">
+                                        <div
+                                            className={cn(
+                                                "relative w-full h-full",
+                                                "rounded-[10px] border border-white/15",
+                                                "bg-gradient-to-br from-slate-800 via-slate-600 to-slate-900"
+                                            )}
+                                        >
                                             <Image
                                                 src={prize.asset.iconUrl}
                                                 alt={prize.title}
                                                 fill
                                                 className="object-contain"
+                                            />
+
+                                            {/* Compact shimmer effect */}
+                                            <div
+                                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -skew-x-12"
+                                                style={{
+                                                    animation:
+                                                        "shimmer 2s infinite",
+                                                    background:
+                                                        "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)",
+                                                    transform:
+                                                        "translateX(-100%) skewX(-12deg)",
+                                                }}
                                             />
                                         </div>
                                     ) : (
@@ -1079,7 +1098,7 @@ const ParticipationCard = memo(function ParticipationCard({
             const result = await participateInRaffleAsync({
                 raffleId: raffle.id,
                 playerId: playerId,
-                ipAddress: undefined, // 선택사항
+                ipAddress: undefined,
                 userAgent: navigator.userAgent,
             });
 

@@ -1,0 +1,595 @@
+[33mcommit 3061ca5942896ca95da663e7c3d27b84d8288cf8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mprisma-optimize[m[33m, [m[1;31morigin/prisma-optimize[m[33m)[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Tue Jul 15 19:09:40 2025 +0900
+
+    Raffles.sol
+
+[33mcommit b9c86623ed4c73633a2e5c9bd6b64df27ffdc1f4[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Tue Jul 15 12:11:00 2025 +0900
+
+    optimization 2
+
+[33mcommit 4909b6f19ac34c9fe04c8ad4ede01c91405110fc[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Tue Jul 15 09:19:27 2025 +0900
+
+    Optimization
+
+[33mcommit 469149bf408f400a64f27e8eba09510b94afd371[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 14 20:45:17 2025 +0900
+
+    Raffle Record Infinite Scroll
+
+[33mcommit 3adc54fc99403fb61d22239c66b6fff0b521177f[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 14 19:34:09 2025 +0900
+
+    prisma optimize
+
+[33mcommit 422332a334e083990987e0deb2ae5e250530adf1[m[33m ([m[1;32mmain[m[33m)[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 14 15:47:24 2025 +0900
+
+    Cache
+
+[33mcommit a20fdf65088aba10024307ae155379c3fa7a5cbc[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 14 14:25:48 2025 +0900
+
+    RefferalLog
+
+[33mcommit 1f6202be14784c4f8c74f9a7126615af4af3d7af[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 14 14:08:21 2025 +0900
+
+    Total
+
+[33mcommit a77c5ff49ee27ff21daeb3a33c190882d24da5c0[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 14 13:10:21 2025 +0900
+
+    Server Restart
+
+[33mcommit f6fa57c178e4aba86170b54c6bc979953666fa04[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 14 11:38:04 2025 +0900
+
+    Middleware fix
+
+[33mcommit ac9b548a47f9cd69e9e40f45857bb05812a6ad42[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 14 11:24:18 2025 +0900
+
+    Server Maintenance
+
+[33mcommit ed0dae57e5ae153720985a5bc744fddc51b7a189[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 14 10:46:20 2025 +0900
+
+    [fix] InvitePage.tsx
+    method could be Unknwon
+
+[33mcommit 436c560f9a144bb46d80b9eccc4410c9b379cdba[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Mon Jul 14 08:43:08 2025 +0900
+
+    Public Analytics with Nonce
+
+[33mcommit 6248f9805dfc9edb8d1133b77550760bf2226837[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Mon Jul 14 08:34:35 2025 +0900
+
+    Raffle Analytics
+
+[33mcommit 9ea780d770a4a5b48567658dbdf679107a6e1a20[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 13 11:42:14 2025 +0900
+
+    Analytics 1.1
+
+[33mcommit 9e38cbcfe77d2dbcf686eb94cdd238b27b099ad0[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 13 11:39:51 2025 +0900
+
+    Analytics 1.1
+
+[33mcommit ace3c7e0d226617eaed278826bb731d0cbc21775[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 13 11:37:08 2025 +0900
+
+    Analytics
+
+[33mcommit 60cc0befabf355dde79096756561711934f04501[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 13 11:14:51 2025 +0900
+
+    Anlaytics
+
+[33mcommit 80c37cf5447b62f64c0bbb8fb5f1aaada86a9ddc[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sat Jul 12 17:16:52 2025 +0900
+
+    NFT Preload
+
+[33mcommit 349ed63f54ca7a30f17cd68192920f0f2bee1f0a[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Fri Jul 11 18:14:03 2025 +0900
+
+    em
+
+[33mcommit 3216136469f47dc4edda48209984c4845e9ff3ec[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Fri Jul 11 18:07:37 2025 +0900
+
+    [fix] Poll.Bar.tsx
+    if the poll is betting mode then calculate with actualvotecount
+
+[33mcommit 19d726506845aa64d106a46b36ae2acce7a7feae[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 11 13:21:22 2025 +0900
+
+    [update] Board Sandbox
+    Board sandbox mode for management
+
+[33mcommit f72360b7f9859c6b52b4b43501bde42091c16db6[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 11 11:44:14 2025 +0900
+
+    berachain3.png
+
+[33mcommit 2a79f60f4d8e085f3fa6acfc8b2dd35da857ae5e[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 11 11:31:52 2025 +0900
+
+    berachain
+
+[33mcommit c95ef2aa23e3f359af77f479d5254cbab7d4acae[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 11 11:26:31 2025 +0900
+
+    Berachain
+
+[33mcommit 9963b5f23daa4a5bf6af0188d666df6099ed60e1[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 11 11:18:52 2025 +0900
+
+    Berachain
+
+[33mcommit 817347aa10a9248fdbb4fad990c97382e23dcb91[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 11 11:12:35 2025 +0900
+
+    introduction
+
+[33mcommit c6b8ea58a77ff7cdd7f54e47015752fe89f3eba7[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 11 11:09:45 2025 +0900
+
+    star page
+
+[33mcommit c5e97d4dfe740761f26152778dc8d12c63c4ce40[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Thu Jul 10 23:53:42 2025 +0900
+
+    [fix] Raffle
+    too much data userParticipationData should be seperated
+
+[33mcommit a6046132a3e57b94a136247f0e5ed99c8170148a[m
+Merge: 30280d9 e3ee22e
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Thu Jul 10 23:45:42 2025 +0900
+
+    Merge branch 'main' of https://github.com/rs-ent/starglow
+
+[33mcommit 30280d922fafa98419f10ef2009e0cbdf5c56246[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Thu Jul 10 23:45:29 2025 +0900
+
+    [fix] Raffle
+    too much data userParticipationData should be seperated
+
+[33mcommit e3ee22e0319fd9f02c5d1a93e9e3eec9164d609a[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Thu Jul 10 19:00:17 2025 +0900
+
+    [fix] user.ts | playerAssets.actions.ts
+    try not to duplicate user data and reset assets
+
+[33mcommit 39d9c918cbf4d9ef955817c9bc441d376609c5ef[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Thu Jul 10 15:32:48 2025 +0900
+
+    [fix] Referrer Modal
+    truncate Referrer Name
+
+[33mcommit e49c99bbd84f33c7c14d8963ae8aee32b8bf1665[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Thu Jul 10 15:25:46 2025 +0900
+
+    [fix] Nofity.Invitation.Success.tsx
+    Notify referrer name slice
+
+[33mcommit a0d34386b62dacff2db6a070a26092797c240a42[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Thu Jul 10 14:47:45 2025 +0900
+
+    [fix] polls.ts | Admin.Poll.Create.Settings.tsx
+    can consume asset relation be null
+
+[33mcommit 7f90e4ebdf80a3f4c327805d5c89b3c10b5eac9d[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Thu Jul 10 14:14:53 2025 +0900
+
+    [add] ImageViewer.tsx
+    external link added
+
+[33mcommit 98b6b7a3c1c02a0d6ad7af7fb088371b2535dff0[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Thu Jul 10 13:45:46 2025 +0900
+
+    [ui] Raffle.Record.tsx
+    Mobile optimization
+
+[33mcommit 6457fc8eaf134835ab518e2bd6f1a00dd638ddc1[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Thu Jul 10 10:49:59 2025 +0900
+
+    [fix] board/actions.ts & Board.Content.tsx
+    Order logic change
+
+[33mcommit 03ee671b63b7de078a4241cf482eadaec250a97a[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Wed Jul 9 19:03:06 2025 +0900
+
+    [new] Asset Tutorial
+    asset tutorial customizing admin
+    only admin is completed
+    modify function is not work
+    infinite loop would be a problem
+
+[33mcommit 159055285d05cd1d3e8707019b14876cba630ed5[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Wed Jul 9 12:35:42 2025 +0900
+
+    [CHANGE] Star.Contents.tsx & Star.List.tsx
+    Quests & Polls -> Quests & Engages
+
+[33mcommit 0f4da08df3809f17c25abe359454dc76c75d559a[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Wed Jul 9 12:05:03 2025 +0900
+
+    [CHANGE] star/code/page.tsx
+    :: dynamic page index from id to code
+    [CHANGE] Star.List.tsx & Star.Contents.tsx
+    :: engage -> polls, earn -> quests
+
+[33mcommit 7f76fdb40e47ec08a2cb9aac77083ff058ff53f6[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Wed Jul 9 11:57:27 2025 +0900
+
+    [CHANGE] star/code/page.tsx
+    :: dynamic page index from id to code
+    [CHANGE] Star.List.tsx & Star.Contents.tsx
+    :: engage -> polls, earn -> quests
+
+[33mcommit bdaee728d6d699586b3c8d7893e6adf9aba1e812[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Tue Jul 8 19:00:47 2025 +0900
+
+    [ui] Polls.List.Card.tsx
+    :: voting reward should not be shown when the Poll has been ended
+
+[33mcommit 2108f726d23294564cf25278fdda1a0c3b06a164[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Tue Jul 8 18:35:41 2025 +0900
+
+    [optimization] updateTweetAuthorMetrics.ts | updateTweetMetrics.ts
+    :: transaction limit increase & transaction seperation
+
+[33mcommit c4a8f829ebdcedee70ba00c3c821f0e146928ed1[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Tue Jul 8 18:11:25 2025 +0900
+
+    fetchTaggedTweets: transaction increase & optimization
+
+[33mcommit 0a595155e6605c706a9759810bfebda4da73871f[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Tue Jul 8 18:03:33 2025 +0900
+
+    fetchTaggedTweets: transaction increase & optimization
+
+[33mcommit fc72fad42140766582d0ad400c30abdace9d7aad[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Tue Jul 8 17:29:50 2025 +0900
+
+    History
+
+[33mcommit 15e2be9facf0b8f3ab7c03299f77061346d1439b[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Tue Jul 8 15:36:40 2025 +0900
+
+    tester
+
+[33mcommit ce92e39be401468024be80cb6c764d502f1fa1bf[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Tue Jul 8 11:10:50 2025 +0900
+
+    quest claim race conditioning modify
+
+[33mcommit bca1c76e236e1b0890a8f4dc88e3fb404a9bd872[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Tue Jul 8 08:26:16 2025 +0900
+
+    claimQuestLog should get new for race condition
+
+[33mcommit 981c223b634a90a824a4b523870aee8e703ca977[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Tue Jul 8 06:43:43 2025 +0900
+
+    poll betting record always show profits
+
+[33mcommit fb667e4ef78426a12efb2382abbddc80e72f6a21[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Tue Jul 8 06:26:27 2025 +0900
+
+    glow_Id
+
+[33mcommit d809c62a084f37b42f46ba78ba11226ea7d5e0a6[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Mon Jul 7 22:09:03 2025 +0900
+
+    collectionid
+
+[33mcommit f279c4738766068a826e4bab17d3c618d955793c[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Mon Jul 7 21:29:01 2025 +0900
+
+    address hide
+
+[33mcommit ef638b8cfc41e32d4222c996f8c1e4a49b7f9686[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Mon Jul 7 21:14:45 2025 +0900
+
+    address hidden
+
+[33mcommit c38b1e89fde777a4d1dcc44294b2cc6d307424a9[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 7 15:16:42 2025 +0900
+
+    participation Poll revoke
+
+[33mcommit 7d86e107e2fb002d9c08506f386970e61d33cc1f[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 7 15:10:26 2025 +0900
+
+    participation Poll optimization
+
+[33mcommit adcf9718d68f8f8d4963438a6f6ff4a6ca28d6d3[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 7 14:33:09 2025 +0900
+
+    participation
+
+[33mcommit 745bb9437fff8c9adb808db6bdc88fca4a138eab[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Mon Jul 7 14:15:34 2025 +0900
+
+    telegram
+
+[33mcommit af029ab8981085b10a848a107ff108010437dcbb[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Mon Jul 7 06:51:16 2025 +0900
+
+    test complete 0.1
+
+[33mcommit 9f539321fbc00f902c6e81d53a26edcf3acbfeb5[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Mon Jul 7 01:09:32 2025 +0900
+
+    isListed is true
+
+[33mcommit 578e68623a9dbd2b296f6ff9c8c9a71d9f62785c[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 6 22:31:27 2025 +0900
+
+    option.name expand
+
+[33mcommit ad1aa01d281061d7448482646c2cf3e7681c908b[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 6 21:21:59 2025 +0900
+
+    referral Data
+
+[33mcommit 7f6cc23b84b5cce2d6cacce5a201c1d2097abf60[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 6 21:10:49 2025 +0900
+
+    referral
+
+[33mcommit 54ed21683a991dcdce65757bb7cbcfe6dd943753[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 6 19:54:51 2025 +0900
+
+    favicon change
+
+[33mcommit cc439d43cf937328086f7342e536d891161a070b[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 6 18:53:53 2025 +0900
+
+    sgp migration
+
+[33mcommit 039dec20249f2f77c7d6ff3b0fe30a7fc316a786[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 6 18:38:01 2025 +0900
+
+    sgp migration
+
+[33mcommit 12a0268eb50de800aa7e5ffdc44948d202bb0daa[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 6 13:45:53 2025 +0900
+
+    middleware
+
+[33mcommit 95973e89d180d81265caa9617fdc0e374932717c[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 6 13:26:48 2025 +0900
+
+    favicon next13+
+
+[33mcommit 3f04e0def20d31eead856724fc0f5198a386014e[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 6 13:25:24 2025 +0900
+
+    favicon
+
+[33mcommit 4ce66459ce9a661f6eed050e8722e15f1eabb0a7[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sun Jul 6 13:04:54 2025 +0900
+
+    under construction
+
+[33mcommit f6f15d06578d6d85c656e9072441286b7dd26484[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Sat Jul 5 01:29:13 2025 +0900
+
+    nft_preload
+
+[33mcommit f1249ab300b6b4e1aff77352388d246d2b55b1be[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Fri Jul 4 23:32:52 2025 +0900
+
+    nft
+
+[33mcommit a343d6d7646e8a9e6ff248c9266bcf00490c5de5[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Fri Jul 4 22:42:44 2025 +0900
+
+    3d opt
+
+[33mcommit f6f0d81a66283bacf7e9e8a6b4519a4248efb1d7[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 4 20:04:31 2025 +0900
+
+    disconnection
+
+[33mcommit e5a301c52824d9afce0824c03a1486ddb2e3cee7[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 4 18:58:03 2025 +0900
+
+    wagmi-hooks
+
+[33mcommit 5be84f001c9c280d58fe293c073683a4d20b3317[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 4 18:48:04 2025 +0900
+
+    external disconnection
+
+[33mcommit 82ebcd5804cf3f871abcff066d359ad7114f85f4[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 4 18:42:01 2025 +0900
+
+    disconnection
+
+[33mcommit a2959e1c7ee17c71cabd324571ee7aeaa1402121[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 4 18:27:44 2025 +0900
+
+    wallet disconnection
+
+[33mcommit 0cd3b99b491a626e47064e585ece5a4f2cc9c5de[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 4 18:24:28 2025 +0900
+
+    wallet disconnection
+
+[33mcommit 29162a7da0fffc0b51389b62f3d3bc23265d5d9c[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 4 17:25:58 2025 +0900
+
+    no click collection
+
+[33mcommit 499055c6eb671b60a652a839eec96c16fb333a60[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 4 17:05:26 2025 +0900
+
+    diff
+
+[33mcommit df97eebe436cfb008889847a819ade347fec1228[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 4 16:37:29 2025 +0900
+
+    artist
+
+[33mcommit 6b33f29b1e94ebe315cdd098eb4b5ed8f773b7c8[m
+Author: WaydCloud <goldencho3@gmail.com>
+Date:   Fri Jul 4 15:13:31 2025 +0900
+
+    actions
+
+[33mcommit 9e78be2d604fc81420a879728b309e0f8154279f[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Fri Jul 4 12:04:57 2025 +0900
+
+    gogo
+
+[33mcommit b3cb4bd404d5dbdb6618eea5800205d07deeae9e[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Fri Jul 4 11:47:23 2025 +0900
+
+    raffle change
+
+[33mcommit 28be1aaf4e0e8d64338e24b7d13a8d56975cc63b[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Fri Jul 4 02:23:21 2025 +0900
+
+    badluck
+
+[33mcommit 2f07060539d9321bf82c68171dea1841e4bc4036[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Fri Jul 4 02:09:38 2025 +0900
+
+    badLuck
+
+[33mcommit d842d1f51dc190ff6c7c4134c0214952524250c6[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Fri Jul 4 00:43:52 2025 +0900
+
+    poll option bodyfont
+
+[33mcommit f5f764d2d1de81ac8aa8efaafebbbe08e4383e9e[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Thu Jul 3 23:56:52 2025 +0900
+
+    files
+
+[33mcommit fdaf4efabb84167c5ade5e3a032927decb2d8735[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Thu Jul 3 23:33:28 2025 +0900
+
+    orphan
+
+[33mcommit 6f1ff4129f208ec2f964406d8d0675373d0e3e3f[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Thu Jul 3 22:24:26 2025 +0900
+
+    files
+
+[33mcommit bbd0ac566a3f773cd8f02e82c7413732905617a7[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Thu Jul 3 21:25:54 2025 +0900
+
+    useBlurredTexture Remove
+
+[33mcommit 683ff026dd88da9a375fb743dfc729d07807b46c[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Thu Jul 3 21:14:34 2025 +0900
+
+    benefits
+
+[33mcommit e223c4d0f9f563f5b93f0a81311aff4670a4f1fa[m
+Author: rs-ent <rs.ent.contact@gmail.com>
+Date:   Thu Jul 3 20:59:02 2025 +0900
+
+    benefits

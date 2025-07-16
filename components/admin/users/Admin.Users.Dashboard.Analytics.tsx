@@ -45,7 +45,7 @@ import {
 import { useAssetHoldingRankingPaginated } from "@/app/actions/userDashboard/queries";
 
 // 공통 컴포넌트 import
-import { MetricCard, ChartCard, DataCard } from "./shared/MetricCard";
+import { ChartCard, DataCard } from "./shared/MetricCard";
 import { DashboardLoading, DashboardError } from "./shared/DashboardStates";
 
 // 정확한 숫자 표시를 위한 함수
