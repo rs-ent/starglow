@@ -138,6 +138,7 @@ export function useWagmiConnection() {
             }
 
             if (processedAddresses.current.has(address)) {
+                console.info(`Address ${address} already processed, skipping`);
                 return;
             }
 
@@ -145,17 +146,19 @@ export function useWagmiConnection() {
                 conn.accounts.includes(address)
             );
 
-            if (!currentConnection) return;
+            if (!currentConnection) {
+                console.warn(`No connection found for address: ${address}`);
+                return;
+            }
 
             try {
                 isProcessingConnection.current = true;
                 processedAddresses.current.add(address);
 
-                let user = session?.user;
+                const user = session?.user;
                 if (!user && !isSettingUser) {
                     setIsSettingUser(true);
 
-                    // NextAuth v5 Credentials 표준 방식
                     const result = await signIn("wallet", {
                         walletAddress: address,
                         provider: currentConnection.connector.id,
@@ -163,35 +166,183 @@ export function useWagmiConnection() {
                     });
 
                     if (result?.ok) {
-                        // 세션 강제 업데이트
-                        await updateSession();
-                        user = session?.user;
+                        await connectWalletWithRetry(
+                            address,
+                            currentConnection.connector.id
+                        );
+
+                        if (callbackUrlRef.current) {
+                            window.location.href = callbackUrlRef.current;
+                            callbackUrlRef.current = null;
+                        }
+                        return;
+                    } else {
+                        const errorMsg = result?.error || "SignIn failed";
+                        console.error(`SignIn failed:`, {
+                            error: errorMsg,
+                            result,
+                        });
+                        throw new Error(`Authentication failed: ${errorMsg}`);
                     }
                 }
 
                 if (user) {
-                    await connectWalletAsync({
-                        address,
-                        network: chainId.toString(),
-                        provider: currentConnection.connector.id,
-                        userId: user.id,
-                    });
+                    console.info(
+                        `Existing user session found, connecting wallet:`,
+                        {
+                            userId: user.id,
+                            userName: user.name,
+                        }
+                    );
 
-                    // 콜백 URL로 리다이렉트
+                    await connectWalletWithRetry(
+                        address,
+                        currentConnection.connector.id
+                    );
+
                     if (callbackUrlRef.current) {
+                        console.info(
+                            `Redirecting to: ${callbackUrlRef.current}`
+                        );
                         window.location.href = callbackUrlRef.current;
                         callbackUrlRef.current = null;
                     }
-                } else {
-                    // NextAuth signIn 성공 후 세션 새로고침
-                    window.location.reload();
                 }
-            } catch (error) {
-                console.error("Failed to process wallet connection:", error);
+            } catch (error: any) {
+                const errorMsg = error.message || error.toString();
+                console.error(`Wallet connection process failed:`, {
+                    address,
+                    provider: currentConnection.connector.id,
+                    error: errorMsg,
+                    chainId,
+                    hasSession: !!session?.user,
+                });
+
                 processedAddresses.current.delete(address);
+
+                if (errorMsg.includes("ownership conflict")) {
+                    toast.error(
+                        "This wallet is already connected to another account"
+                    );
+                } else if (errorMsg.includes("Authentication")) {
+                    toast.error("Authentication failed. Please try again");
+                } else if (errorMsg.includes("Connection failed after")) {
+                    toast.error(
+                        "Connection failed. Please check your wallet and try again"
+                    );
+                } else {
+                    toast.error("Failed to connect wallet. Please try again");
+                }
             } finally {
                 isProcessingConnection.current = false;
                 setIsSettingUser(false);
+
+                console.info(
+                    `Wallet connection process completed for: ${address}`
+                );
+            }
+        };
+
+        const connectWalletWithRetry = async (
+            walletAddress: string,
+            provider: string,
+            maxRetries = 3
+        ) => {
+            let lastError: any = null;
+
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    console.info(
+                        `Attempting wallet connection (${attempt}/${maxRetries}): ${walletAddress} via ${provider}`
+                    );
+
+                    const result = await connectWalletAsync({
+                        address: walletAddress,
+                        network: chainId.toString(),
+                        provider: provider,
+                    });
+
+                    if (typeof result === "string") {
+                        const errorMsg = result.toLowerCase();
+
+                        if (errorMsg.includes("belongs to another user")) {
+                            console.error(
+                                `Wallet ownership conflict: ${walletAddress} belongs to another user`
+                            );
+                            throw new Error(
+                                `Wallet ownership conflict: ${result}`
+                            );
+                        }
+
+                        if (errorMsg.includes("not authenticated")) {
+                            console.error(
+                                `Authentication error during wallet connection: ${result}`
+                            );
+                            throw new Error(`Authentication error: ${result}`);
+                        }
+
+                        lastError = new Error(result);
+                        console.warn(
+                            `Connection attempt ${attempt} failed: ${result}`
+                        );
+
+                        if (attempt === maxRetries) {
+                            throw lastError;
+                        }
+                        continue;
+                    }
+
+                    console.info(
+                        `Wallet connected successfully (${attempt}/${maxRetries}): ${walletAddress}`
+                    );
+
+                    try {
+                        await updateSession();
+                        console.info("Session updated after wallet connection");
+                    } catch (sessionError) {
+                        console.warn("Failed to update session:", sessionError);
+                    }
+
+                    return result;
+                } catch (error: any) {
+                    lastError = error;
+                    const errorMsg = error.message || error.toString();
+
+                    console.error(
+                        `Connection attempt ${attempt}/${maxRetries} failed:`,
+                        {
+                            walletAddress,
+                            provider,
+                            error: errorMsg,
+                            chainId,
+                        }
+                    );
+
+                    if (
+                        errorMsg.includes("ownership conflict") ||
+                        errorMsg.includes("Authentication error") ||
+                        errorMsg.includes("Not authenticated")
+                    ) {
+                        console.error(
+                            `Fatal error, stopping retries: ${errorMsg}`
+                        );
+                        throw error;
+                    }
+
+                    if (attempt === maxRetries) {
+                        console.error(
+                            `Failed to connect wallet after ${maxRetries} attempts. Final error: ${errorMsg}`
+                        );
+                        throw new Error(
+                            `Connection failed after ${maxRetries} attempts. Last error: ${errorMsg}`
+                        );
+                    }
+
+                    const waitTime = 10;
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, waitTime)
+                    );
+                }
             }
         };
 
@@ -208,7 +359,6 @@ export function useWagmiConnection() {
         updateSession,
     ]);
 
-    // 체인 전환
     const handleSwitchChain = useCallback(
         async (targetChainId: number) => {
             try {
@@ -228,23 +378,18 @@ export function useWagmiConnection() {
         [switchChain, chains, toast, handleWagmiError]
     );
 
-    // 지갑 연결 해제
     const handleDisconnect = useCallback(async () => {
         try {
             const prevAddress = address;
 
-            // 먼저 지갑 연결 해제
             await disconnect();
 
-            // 처리된 주소 목록에서 제거
             if (prevAddress) {
                 processedAddresses.current.delete(prevAddress);
             }
 
-            // DB 업데이트
-            if (prevAddress && session?.user?.id) {
+            if (prevAddress) {
                 await updateWalletAsync({
-                    userId: session.user.id,
                     walletAddress: prevAddress,
                     status: WalletStatus.INACTIVE,
                 });
@@ -255,47 +400,39 @@ export function useWagmiConnection() {
             console.error("Failed to disconnect wallet:", error);
             toast.error("Failed to disconnect wallet");
         }
-    }, [disconnect, address, updateWalletAsync, session, toast]);
+    }, [disconnect, address, updateWalletAsync, toast]);
 
-    // 지원되는 커넥터 필터링
     const availableConnectors = connectors.filter(
         (connector) => connector.ready !== false
     );
 
     return {
-        // 연결 상태
         isConnected,
         address,
         chainId,
         chain,
 
-        // 네트워크 정보
         networks: storyNetworks,
         currentNetwork,
         chains,
 
-        // 커넥터
         connectors: availableConnectors,
         connections,
 
-        // 액션
         connect: handleConnect,
         disconnect: handleDisconnect,
         switchChain: handleSwitchChain,
 
-        // 상태 플래그
         isPendingConnectWallet,
         isSuccessConnectWallet,
         isErrorConnectWallet,
 
-        // 서명 검증
         verifyWalletSignature,
         verifyWalletSignatureAsync,
         isPendingVerifyWalletSignature,
         isSuccessVerifyWalletSignature,
         isErrorVerifyWalletSignature,
 
-        // 지갑 업데이트
         updateWallet,
         isPendingUpdateWallet,
         isSuccessUpdateWallet,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
     FaRocket,
     FaArrowLeft,
@@ -18,6 +18,8 @@ import {
     estimateGasComprehensive,
 } from "@/app/story/interaction/actions";
 import { deployRafflesContract } from "@/app/actions/raffles/web3/actions-admin";
+
+import rafflesJson from "@/web3/artifacts/contracts/Raffles.sol/Raffles.json";
 
 interface Props {
     onBack: () => void;
@@ -71,36 +73,6 @@ export default function AdminRafflesWeb3Deploy({ onBack }: Props) {
         },
     });
 
-    // 네트워크 선택 시 지갑 잔액 조회
-    useEffect(() => {
-        if (form.networkId && escrowWallets && escrowWallets.length > 0) {
-            const fetchAllBalances = async () => {
-                try {
-                    const result = await fetchEscrowWalletsBalanceAsync({
-                        networkId: form.networkId,
-                        addresses: escrowWallets.map((w) => w.address),
-                    });
-                    if (result) {
-                        setWalletBalances(
-                            result.reduce(
-                                (acc, cur) => ({
-                                    ...acc,
-                                    [cur.address]: cur.balance,
-                                }),
-                                {} as Record<string, string>
-                            )
-                        );
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch wallet balances:", error);
-                }
-            };
-            fetchAllBalances().catch((e) => {
-                console.error("Failed to fetch wallet balances:", e);
-            });
-        }
-    }, [form.networkId, escrowWallets, fetchEscrowWalletsBalanceAsync]);
-
     const refreshGasEstimate = useCallback(async () => {
         if (!form.networkId || !form.walletAddress) {
             toast.warning("먼저 네트워크와 지갑을 선택해주세요.");
@@ -129,8 +101,7 @@ export default function AdminRafflesWeb3Deploy({ onBack }: Props) {
                 const comprehensiveEstimate = await estimateGasComprehensive({
                     networkId: form.networkId,
                     walletAddress: form.walletAddress,
-                    deploymentBytecode:
-                        "0x608060405234801561001057600080fd5b50600080fd5b50" as `0x${string}`, // 임시 바이트코드
+                    deploymentBytecode: rafflesJson.bytecode as `0x${string}`,
                     gasMultiplier: 1.2,
                 });
 
@@ -159,15 +130,6 @@ export default function AdminRafflesWeb3Deploy({ onBack }: Props) {
             setIsEstimatingGas(false);
         }
     }, [form.networkId, form.walletAddress, toast]);
-
-    // 네트워크와 지갑이 선택되면 자동으로 가스비 계산
-    useEffect(() => {
-        if (form.networkId && form.walletAddress) {
-            refreshGasEstimate().catch((e: any) => {
-                console.error("Gas estimation error:", e);
-            });
-        }
-    }, [form.networkId, form.walletAddress, refreshGasEstimate]);
 
     const handleDeploy = async () => {
         if (!form.networkId || !form.walletAddress || !form.contractName) {
@@ -241,6 +203,34 @@ export default function AdminRafflesWeb3Deploy({ onBack }: Props) {
         }
     };
 
+    const fetchAllBalances = useCallback(
+        async (networkId?: string) => {
+            const targetNetworkId = networkId || form.networkId;
+            if (!escrowWallets || !targetNetworkId) return;
+
+            try {
+                const result = await fetchEscrowWalletsBalanceAsync({
+                    networkId: targetNetworkId,
+                    addresses: escrowWallets.map((w) => w.address),
+                });
+                if (result) {
+                    setWalletBalances(
+                        result.reduce(
+                            (acc, cur) => ({
+                                ...acc,
+                                [cur.address]: cur.balance,
+                            }),
+                            {} as Record<string, string>
+                        )
+                    );
+                }
+            } catch (error) {
+                console.error("Failed to fetch wallet balances:", error);
+            }
+        },
+        [form.networkId, escrowWallets, fetchEscrowWalletsBalanceAsync]
+    );
+
     return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center bg-gradient-to-br from-[#181c2b] to-[#2a2342] p-8 rounded-2xl shadow-2xl border border-purple-900/30 relative overflow-hidden">
             <TbTopologyStar3 className="absolute text-[18rem] text-purple-900/10 left-[-2rem] top-[-4rem] pointer-events-none select-none" />
@@ -275,13 +265,21 @@ export default function AdminRafflesWeb3Deploy({ onBack }: Props) {
                                     storyNetworks?.map((network) => (
                                         <button
                                             key={network.id}
-                                            onClick={() =>
+                                            onClick={() => {
                                                 setForm((prev) => ({
                                                     ...prev,
                                                     networkId: network.id,
-                                                    walletAddress: "", // 네트워크 변경 시 지갑 선택 초기화
-                                                }))
-                                            }
+                                                    walletAddress: "",
+                                                }));
+                                                fetchAllBalances(
+                                                    network.id
+                                                ).catch((error) => {
+                                                    console.error(
+                                                        "Failed to fetch wallet balances:",
+                                                        error
+                                                    );
+                                                });
+                                            }}
                                             className={`
                                             relative group p-4 rounded-xl border-2 transition-all duration-300
                                             ${
@@ -564,8 +562,8 @@ export default function AdminRafflesWeb3Deploy({ onBack }: Props) {
                                         </>
                                     ) : (
                                         <div className="text-center py-4 text-gray-400">
-                                            네트워크와 지갑을 선택하면 자동으로
-                                            계산됩니다
+                                            네트워크와 지갑을 선택한 뒤
+                                            새로고침을 클릭하세요
                                         </div>
                                     )}
 

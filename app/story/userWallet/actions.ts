@@ -15,7 +15,8 @@ import type { Hex } from "viem";
 import { auth } from "@/app/auth/authSettings";
 import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
-export async function createWallet(userId: string) {
+export async function createWallet(userId: string, provider: string | null) {
+    if (provider === "wallet") return;
     try {
         const result = await prisma.$transaction(async (tx) => {
             const defaultNetwork = await tx.blockchainNetwork.findFirst({
@@ -133,14 +134,51 @@ export interface conectWalletInput {
     address: string;
     network: string;
     provider: string;
-    userId: string;
     nickname?: string;
+}
+
+// 🔔 백업 알림 정리 헬퍼 함수
+async function cleanupBackupNotifications(
+    tx: any,
+    userId: string,
+    walletAddress: string
+): Promise<void> {
+    try {
+        const player = await tx.player.findUnique({
+            where: { userId },
+            select: { id: true },
+        });
+
+        if (player) {
+            await tx.userNotification.deleteMany({
+                where: {
+                    playerId: player.id,
+                    entityType: "wallet",
+                    entityId: walletAddress,
+                    OR: [
+                        { tags: { has: "backup" } },
+                        { tags: { has: "security" } },
+                        { type: "ACCOUNT_SECURITY" },
+                    ],
+                },
+            });
+        }
+    } catch (error) {
+        console.error("Failed to cleanup backup notifications:", error);
+    }
 }
 
 export async function connectWallet(
     input: conectWalletInput
 ): Promise<Wallet | string> {
     try {
+        const session = await auth();
+        if (!session?.user?.id) {
+            throw new Error("Not authenticated");
+        }
+
+        const userId = session.user.id;
+
         const result = await prisma.$transaction(async (tx) => {
             const existingWallet = await tx.wallet.findUnique({
                 cacheStrategy: getCacheStrategy("tenSeconds"),
@@ -150,27 +188,89 @@ export async function connectWallet(
             });
 
             if (existingWallet) {
-                return await tx.wallet.update({
+                if (existingWallet.userId !== userId) {
+                    console.warn(
+                        `Wallet ${input.address} belongs to user ${existingWallet.userId}, but user ${userId} is trying to connect. This should not happen in normal flow.`
+                    );
+                }
+
+                const isExternalWallet = input.provider !== "starglow";
+                const isStarglowToExternal =
+                    existingWallet.provider === "starglow" && isExternalWallet;
+
+                if (isExternalWallet && !existingWallet.default) {
+                    await tx.wallet.updateMany({
+                        where: {
+                            userId: userId,
+                            default: true,
+                        },
+                        data: {
+                            default: false,
+                        },
+                    });
+                }
+
+                const updateData: any = {
+                    lastAccessedAt: new Date(),
+                    status: WalletStatus.ACTIVE,
+                    ...(isExternalWallet && { default: true }),
+                };
+
+                if (isStarglowToExternal) {
+                    updateData.provider = input.provider;
+                    updateData.privateKey = null;
+                    updateData.keyHash = null;
+                    updateData.nonce = null;
+                    updateData.nickname =
+                        input.nickname || `${input.provider} Wallet`;
+                }
+
+                const updatedWallet = await tx.wallet.update({
                     where: {
                         id: existingWallet.id,
                     },
+                    data: updateData,
+                });
+
+                if (isStarglowToExternal) {
+                    await cleanupBackupNotifications(tx, userId, input.address);
+                }
+
+                return updatedWallet;
+            }
+
+            const isExternalWallet = input.provider !== "starglow";
+
+            if (isExternalWallet) {
+                await tx.wallet.updateMany({
+                    where: {
+                        userId: userId,
+                        default: true,
+                    },
                     data: {
-                        lastAccessedAt: new Date(),
-                        status: WalletStatus.ACTIVE,
+                        default: false,
                     },
                 });
             }
 
-            const newWallet = await tx.wallet.create({
-                data: {
-                    userId: input.userId,
+            const newWallet = await tx.wallet.upsert({
+                where: {
+                    address: input.address,
+                },
+                create: {
+                    userId: userId,
                     address: input.address,
                     network: input.network,
                     provider: input.provider,
-                    nickname: input.nickname,
+                    nickname: input.nickname || `${input.provider} Wallet`,
                     status: WalletStatus.ACTIVE,
                     lastAccessedAt: new Date(),
-                    default: true,
+                    default: isExternalWallet ? true : false,
+                },
+                update: {
+                    lastAccessedAt: new Date(),
+                    status: WalletStatus.ACTIVE,
+                    ...(isExternalWallet && { default: true }),
                 },
             });
 
@@ -213,7 +313,6 @@ export async function verifyWalletSignature(
 }
 
 export interface updateWalletInput {
-    userId: string;
     walletAddress: string;
     network?: string;
     status?: WalletStatus;
@@ -226,29 +325,40 @@ export async function updateWallet(
     input: updateWalletInput
 ): Promise<Wallet | string> {
     try {
+        // 🔧 내부에서 현재 세션 가져오기
+        const session = await auth();
+        if (!session?.user?.id) {
+            throw new Error("Not authenticated");
+        }
+
+        const userId = session.user.id;
+
         const result = await prisma.$transaction(async (tx) => {
-            const { userId, walletAddress, ...rest } = input;
-            if (!userId || !walletAddress) {
+            const { walletAddress, ...rest } = input;
+            if (!walletAddress) {
                 return "Invalid input";
             }
 
-            if (rest.default) {
-                const wallet = await tx.wallet.findUnique({
-                    cacheStrategy: getCacheStrategy("tenSeconds"),
-                    where: { address: walletAddress },
-                    select: { userId: true },
-                });
+            // 권한 검증: 해당 지갑이 현재 사용자의 것인지 확인
+            const wallet = await tx.wallet.findUnique({
+                cacheStrategy: getCacheStrategy("tenSeconds"),
+                where: { address: walletAddress },
+                select: { userId: true },
+            });
 
-                if (wallet) {
-                    await tx.wallet.updateMany({
-                        where: {
-                            userId: wallet.userId,
-                            default: true,
-                            address: { not: walletAddress },
-                        },
-                        data: { default: false },
-                    });
-                }
+            if (!wallet || wallet.userId !== userId) {
+                throw new Error("Wallet not found or not authorized");
+            }
+
+            if (rest.default) {
+                await tx.wallet.updateMany({
+                    where: {
+                        userId: userId,
+                        default: true,
+                        address: { not: walletAddress },
+                    },
+                    data: { default: false },
+                });
             }
 
             const updatedWallet = await tx.wallet.update({

@@ -88,6 +88,7 @@ function SignInButtons() {
         "kakao",
         "wallet",
         "telegram",
+        "starglow",
     ];
     const DONOT_SHOW_WALLET_PROVIDERS = ["starglow"];
 

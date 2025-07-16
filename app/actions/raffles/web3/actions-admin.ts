@@ -3,12 +3,12 @@
 "use server";
 
 import type { Address } from "viem";
-import { createPublicClient, getContract, http } from "viem";
+import { getContract } from "viem";
 import type { OnchainRaffleContract } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma/client";
-import { deployContract, getChain } from "@/app/actions/blockchain";
-import { fetchWalletClient } from "@/app/story/client";
+import { deployContract } from "@/app/actions/blockchain";
+import { fetchWalletClient, fetchPublicClient } from "@/app/story/client";
 
 import rafflesJson from "@/web3/artifacts/contracts/Raffles.sol/Raffles.json";
 
@@ -66,10 +66,8 @@ export async function deployRafflesContract(
         });
 
         // 배포 블록 번호 조회
-        const chain = await getChain(network);
-        const publicClient = createPublicClient({
-            chain,
-            transport: http(),
+        const publicClient = await fetchPublicClient({
+            network,
         });
 
         const receipt = await publicClient.waitForTransactionReceipt({
@@ -88,7 +86,6 @@ export async function deployRafflesContract(
             client: walletClient,
         });
 
-        // Admin 추가 (배포자를 첫 번째 admin으로 설정) - 선택사항
         try {
             const addAdminTx = await (rafflesContract.write as any).addAdmin([
                 input.walletAddress as Address,

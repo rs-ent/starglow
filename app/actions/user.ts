@@ -156,7 +156,7 @@ export async function setUserWithTelegram(
 
         const [player, wallet] = await Promise.all([
             setPlayer({ user }),
-            createWallet(user.id),
+            createWallet(user.id, "telegram"),
         ]);
 
         if (!player.player || !wallet) {
@@ -195,19 +195,41 @@ export async function setUserWithWallet(
 
         const result = await prisma.$transaction(async (tx) => {
             const existingWallet = await tx.wallet.findUnique({
-                cacheStrategy: getCacheStrategy("realtime"),
                 where: {
                     address: input.walletAddress,
                 },
                 select: {
                     userId: true,
                     user: true,
+                    provider: true,
                 },
             });
 
             let user = existingWallet?.user || null;
 
-            if (!user) {
+            if (user) {
+                user = await tx.user.update({
+                    where: { id: user.id },
+                    data: {
+                        lastLoginAt: new Date(),
+                    },
+                });
+
+                if (
+                    existingWallet &&
+                    existingWallet.provider !== input.provider
+                ) {
+                    await tx.wallet.update({
+                        where: {
+                            address: input.walletAddress,
+                        },
+                        data: {
+                            provider: input.provider,
+                            lastAccessedAt: new Date(),
+                        },
+                    });
+                }
+            } else {
                 user = await tx.user.create({
                     data: {
                         name: input.walletAddress,
@@ -215,26 +237,17 @@ export async function setUserWithWallet(
                         provider: input.provider,
                     },
                 });
-            } else {
-                user = await tx.user.update({
-                    where: { id: user.id },
-                    data: {
-                        lastLoginAt: new Date(),
-                    },
-                });
             }
 
             return user;
         });
 
-        // 플레이어 생성
         const [player] = await Promise.all([setPlayer({ user: result })]);
 
         if (!player.player) {
             throw new Error("Failed to create player");
         }
 
-        // 추천인 코드가 있는 경우 처리
         if (input.referrerCode) {
             await invitePlayer({
                 referredUser: result,
@@ -254,11 +267,19 @@ export interface getUserProviderInput {
     userId: string;
 }
 
+export interface getUserProviderOutput {
+    provider: ProviderType | null;
+    walletProvider: ProviderType | null;
+}
+
 export async function getUserProvider(
     input?: getUserProviderInput
-): Promise<ProviderType | null> {
+): Promise<getUserProviderOutput> {
     if (!input) {
-        return null;
+        return {
+            provider: null,
+            walletProvider: null,
+        };
     }
 
     const user = await prisma.user.findUnique({
@@ -266,8 +287,19 @@ export async function getUserProvider(
         where: { id: input.userId },
         select: {
             provider: true,
+            wallets: {
+                where: {
+                    default: true,
+                },
+                select: {
+                    provider: true,
+                },
+            },
         },
     });
 
-    return user?.provider as ProviderType | null;
+    return {
+        provider: user?.provider as ProviderType | null,
+        walletProvider: user?.wallets[0]?.provider as ProviderType | null,
+    };
 }

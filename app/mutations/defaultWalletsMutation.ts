@@ -12,9 +12,11 @@ export function useCreateWallet() {
 
     return useMutation({
         mutationFn: async (userId: string) => {
-            return createWallet(userId);
+            return createWallet(userId, "starglow");
         },
         onSuccess: (data) => {
+            if (!data) return;
+
             queryClient
                 .invalidateQueries({
                     queryKey: queryKeys.defaultWallets.polygon,

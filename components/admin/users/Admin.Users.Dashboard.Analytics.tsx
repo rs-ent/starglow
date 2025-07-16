@@ -579,15 +579,18 @@ function ActivityPatternsAnalysis({
         return convertedData;
     }, [hourlyData, selectedTimezone]);
 
-    const dayNames = [
-        "일요일",
-        "월요일",
-        "화요일",
-        "수요일",
-        "목요일",
-        "금요일",
-        "토요일",
-    ];
+    const dayNames = useMemo(
+        () => [
+            "일요일",
+            "월요일",
+            "화요일",
+            "수요일",
+            "목요일",
+            "금요일",
+            "토요일",
+        ],
+        []
+    );
 
     // 시간대 변환된 요일별 데이터 생성
     const dailyChartData = useMemo(() => {

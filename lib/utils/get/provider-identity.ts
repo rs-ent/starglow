@@ -14,6 +14,8 @@ const providerIcons: Record<ProviderType, string> = {
     "io.metamask": "/icons/blockchain/metamask.svg",
     metaMaskSDK: "/icons/blockchain/metamask.svg",
     walletConnect: "/icons/blockchain/walletconnect.svg",
+    starglow: "/icons/blockchain/starglow.svg",
+    wallet: "/icons/blockchain/wallet.svg",
 };
 
 const providerColors: Record<ProviderType, string> = {
@@ -36,6 +38,9 @@ const providerColors: Record<ProviderType, string> = {
         "bg-[rgba(255,255,255,1)] text-[rgba(0,0,0,1)] hover:bg-[rgba(255,255,255,1)] hover:text-[rgba(0,0,0,1)] hover:scale-105",
     walletConnect:
         "bg-[#ffffff] text-[#3B99FC] hover:bg-[#ffffff] hover:text-[#3B99FC] hover:scale-105",
+    starglow:
+        "bg-[#ffffff] text-[#3B99FC] hover:bg-[#ffffff] hover:text-[#3B99FC] hover:scale-105",
+    wallet: "bg-[#ffffff] text-[#3B99FC] hover:bg-[#ffffff] hover:text-[#3B99FC] hover:scale-105",
 };
 
 export function getProviderIdentity(providerId?: ProviderType) {

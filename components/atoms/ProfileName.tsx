@@ -35,15 +35,21 @@ export default React.memo(function ProfileName({
         getUserProviderInput: { userId: user.id || "" },
     });
 
-    const { icon, color, nickname } = useMemo(() => {
+    const { providerId, icon, color, nickname } = useMemo(() => {
         const nickname = player?.nickname || user?.name || user?.email || "";
-        if (!provider) return { icon: null, color: null, nickname };
-        const { icon, color } = getProviderIdentity(provider);
-        return { provider, icon, color, nickname };
+        if (!provider || !provider.provider)
+            return { icon: null, color: null, nickname };
+
+        const providerId =
+            provider.provider === "wallet"
+                ? provider.walletProvider || provider.provider
+                : provider.provider;
+
+        const { icon, color } = getProviderIdentity(providerId);
+        return { providerId, icon, color, nickname };
     }, [player?.nickname, user, provider]);
 
     const { textClass, frameClass, iconClass } = useMemo(() => {
-        // Ensure all sizes are multiples of 5
         const normalizedSize = Math.round(size / 5) * 5;
         const frameSize = Math.max(5, Math.round((normalizedSize + 5) / 5) * 5);
         const iconSize = Math.max(5, Math.round((normalizedSize - 5) / 5) * 5);
@@ -69,9 +75,9 @@ export default React.memo(function ProfileName({
             <div className="flex flex-row gap-[5px] items-center justify-center">
                 {icon && (
                     <>
-                        {provider !== "telegram" &&
-                        provider !== "io.metamask" &&
-                        provider !== "metaMaskSDK" ? (
+                        {providerId !== "telegram" &&
+                        providerId !== "io.metamask" &&
+                        providerId !== "metaMaskSDK" ? (
                             <motion.div
                                 whileHover={{ rotate: 15 }}
                                 className={cn(
@@ -83,7 +89,7 @@ export default React.memo(function ProfileName({
                             >
                                 <Image
                                     src={icon}
-                                    alt={`${provider} icon`}
+                                    alt={`${providerId} icon`}
                                     className={iconClass}
                                     width={size}
                                     height={size}
@@ -95,7 +101,7 @@ export default React.memo(function ProfileName({
                             <motion.div whileHover={{ rotate: 15 }}>
                                 <Image
                                     src={icon}
-                                    alt={`${provider} icon`}
+                                    alt={`${providerId} icon`}
                                     className={iconClass}
                                     width={size}
                                     height={size}

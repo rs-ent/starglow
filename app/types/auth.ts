@@ -9,7 +9,9 @@ export type ProviderType =
     | "telegram"
     | "io.metamask"
     | "metaMaskSDK"
-    | "walletConnect";
+    | "walletConnect"
+    | "starglow"
+    | "wallet";
 
 export type Provider = {
     id: ProviderType;

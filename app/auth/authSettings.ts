@@ -358,10 +358,15 @@ const authOptions: NextAuthConfig = {
                             return null;
                         }),
 
-                        createWallet(user.id).catch((error) => {
-                            console.error("Failed to create wallet:", error);
-                            return null;
-                        }),
+                        createWallet(user.id, account?.provider || null).catch(
+                            (error) => {
+                                console.error(
+                                    "Failed to create wallet:",
+                                    error
+                                );
+                                return null;
+                            }
+                        ),
                     ];
 
                     await Promise.allSettled(corePromises);
