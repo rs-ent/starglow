@@ -601,12 +601,13 @@ Table BlockchainNetwork {
   collectionContracts CollectionContract [not null]
   factoryContracts FactoryContract [not null]
   nfts NFT [not null]
+  onchainRaffleContracts OnchainRaffleContract [not null]
+  onchainRaffles OnchainRaffle [not null]
   story_ipAssets Story_ipAsset [not null]
   story_nfts Story_nft [not null]
   story_spg Story_spg [not null]
   story_spg_contracts Story_spgContract [not null]
   tbaContracts TBAContract [not null]
-  onchainRaffleContracts OnchainRaffleContract [not null]
 }
 
 Table AssetsContract {
@@ -1574,9 +1575,26 @@ Table OnchainRaffleContract {
   blockNumber Int
   isActive Boolean [not null, default: true]
   networkId String [not null]
-  network BlockchainNetwork [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  network BlockchainNetwork [not null]
+}
+
+Table OnchainRaffle {
+  id String [pk]
+  contractAddress String [not null]
+  raffleId String [not null]
+  txHash String [not null]
+  blockNumber Int
+  networkId String [not null]
+  isActive Boolean [not null, default: true]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  network BlockchainNetwork [not null]
+
+  indexes {
+    (contractAddress, raffleId) [unique]
+  }
 }
 
 Table PollBettingSettlementLog {
@@ -2298,6 +2316,8 @@ Ref: RaffleWinner.prizeId > RafflePrize.id
 Ref: RaffleWinner.raffleId > Raffle.id [delete: Cascade]
 
 Ref: OnchainRaffleContract.networkId > BlockchainNetwork.id
+
+Ref: OnchainRaffle.networkId > BlockchainNetwork.id
 
 Ref: PollBettingSettlementLog.pollId > Poll.id
 

@@ -1,18 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { FaRocket, FaCog, FaArrowLeft } from "react-icons/fa";
+import { FaRocket, FaCog, FaArrowLeft, FaPlus } from "react-icons/fa";
 import { SiEthereum } from "react-icons/si";
 import { TbTopologyStar3 } from "react-icons/tb";
 
 import AdminRafflesWeb3Deploy from "./Admin.Raffles.Web3.Deploy";
 import AdminRafflesWeb3Contracts from "./Admin.Raffles.Web3.Contracts";
+import { AdminRafflesWeb3CreateManager } from "./Admin.Raffles.Web3.Create.Manager";
 
 interface Props {
     onBack: () => void;
 }
 
-type DeploymentMode = "deploy" | "manage" | null;
+type DeploymentMode = "deploy" | "manage" | "create" | null;
 
 export default function AdminRafflesWeb3Dashboard({ onBack }: Props) {
     const [deploymentMode, setDeploymentMode] = useState<DeploymentMode>(null);
@@ -33,6 +34,10 @@ export default function AdminRafflesWeb3Dashboard({ onBack }: Props) {
         return <AdminRafflesWeb3Contracts onBack={handleBack} />;
     }
 
+    if (deploymentMode === "create") {
+        return <AdminRafflesWeb3CreateManager onBack={handleBack} />;
+    }
+
     return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center bg-gradient-to-br from-[#181c2b] to-[#2a2342] p-8 rounded-2xl shadow-2xl border border-purple-900/30 relative overflow-hidden">
             <TbTopologyStar3 className="absolute text-[18rem] text-purple-900/10 left-[-2rem] top-[-4rem] pointer-events-none select-none" />
@@ -46,7 +51,7 @@ export default function AdminRafflesWeb3Dashboard({ onBack }: Props) {
                 블록체인 기반 래플 관리
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <button
                     className="flex flex-col items-center gap-4 px-12 py-8 bg-gradient-to-r from-purple-700 via-pink-700 to-red-700 text-white font-bold rounded-xl shadow-xl hover:scale-105 hover:from-red-700 hover:to-purple-700 transition-all duration-200 text-xl tracking-wide border border-purple-500/30"
                     onClick={() => setDeploymentMode("deploy")}
@@ -55,6 +60,17 @@ export default function AdminRafflesWeb3Dashboard({ onBack }: Props) {
                     <span>컨트랙트 배포</span>
                     <span className="text-sm text-gray-200 font-normal">
                         새 래플 컨트랙트 배포
+                    </span>
+                </button>
+
+                <button
+                    className="flex flex-col items-center gap-4 px-12 py-8 bg-gradient-to-r from-green-700 via-blue-700 to-purple-700 text-white font-bold rounded-xl shadow-xl hover:scale-105 hover:from-purple-700 hover:to-green-700 transition-all duration-200 text-xl tracking-wide border border-green-500/30"
+                    onClick={() => setDeploymentMode("create")}
+                >
+                    <FaPlus className="text-4xl" />
+                    <span>래플 생성</span>
+                    <span className="text-sm text-gray-200 font-normal">
+                        새로운 래플 만들기
                     </span>
                 </button>
 

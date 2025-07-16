@@ -659,30 +659,31 @@ model ExchangeRate {
 }
 
 model BlockchainNetwork {
-  id                  String               @id @default(cuid())
-  name                String               @unique
-  chainId             Int                  @unique
-  rpcUrl              String
-  explorerUrl         String
-  symbol              String
-  isTestnet           Boolean              @default(true)
-  isActive            Boolean              @default(true)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  multicallAddress    String?
-  isStoryNetwork      Boolean              @default(false)
-  defaultNetwork      Boolean              @default(false)
-  assets              Asset[]
-  assetsContracts     AssetsContract[]
-  collectionContracts CollectionContract[]
-  factoryContracts    FactoryContract[]
-  nfts                NFT[]
-  story_ipAssets      Story_ipAsset[]
-  story_nfts          Story_nft[]
-  story_spg           Story_spg[]
-  story_spg_contracts Story_spgContract[]
-  tbaContracts        TBAContract[]
+  id                     String                  @id @default(cuid())
+  name                   String                  @unique
+  chainId                Int                     @unique
+  rpcUrl                 String
+  explorerUrl            String
+  symbol                 String
+  isTestnet              Boolean                 @default(true)
+  isActive               Boolean                 @default(true)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  multicallAddress       String?
+  isStoryNetwork         Boolean                 @default(false)
+  defaultNetwork         Boolean                 @default(false)
+  assets                 Asset[]
+  assetsContracts        AssetsContract[]
+  collectionContracts    CollectionContract[]
+  factoryContracts       FactoryContract[]
+  nfts                   NFT[]
   onchainRaffleContracts OnchainRaffleContract[]
+  onchainRaffles         OnchainRaffle[]
+  story_ipAssets         Story_ipAsset[]
+  story_nfts             Story_nft[]
+  story_spg              Story_spg[]
+  story_spg_contracts    Story_spgContract[]
+  tbaContracts           TBAContract[]
 
   @@index([isStoryNetwork])
   @@index([isTestnet, isActive, isStoryNetwork])
@@ -1751,22 +1752,38 @@ model RaffleWinner {
 }
 
 model OnchainRaffleContract {
-  id String @id @default(cuid())
-  address String
-  txHash String
-  deployedBy String
+  id          String            @id @default(cuid())
+  address     String
+  txHash      String
+  deployedBy  String
   blockNumber Int?
-
-  isActive Boolean @default(true)
-
-  networkId String
-  network BlockchainNetwork @relation(fields: [networkId], references: [id])
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive    Boolean           @default(true)
+  networkId   String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  network     BlockchainNetwork @relation(fields: [networkId], references: [id])
 
   @@index([networkId])
   @@index([isActive])
+}
+
+model OnchainRaffle {
+  id              String            @id @default(cuid())
+  contractAddress String
+  raffleId        String
+  txHash          String
+  blockNumber     Int?
+  networkId       String
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  network         BlockchainNetwork @relation(fields: [networkId], references: [id])
+
+  @@unique([contractAddress, raffleId])
+  @@index([contractAddress])
+  @@index([networkId])
+  @@index([isActive])
+  @@index([raffleId])
 }
 
 model PollBettingSettlementLog {
