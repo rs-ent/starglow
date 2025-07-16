@@ -1465,32 +1465,130 @@ export async function getWalletNetworkDistribution() {
     return getWalletNetworkAnalysis();
 }
 
-// 📈 DAU/MAU 분석 - 새로운 핵심 함수
+// 📈 DAU/MAU 분석 - 개선된 핵심 함수
 export async function getDAUMAUAnalysis(days: number = 30) {
     try {
         const now = new Date();
         const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-        // 📊 DAU 데이터 계산 (일별 활성 지갑 수)
-        const activeWalletsByDay = await prisma.wallet.findMany({
-            cacheStrategy: getCacheStrategy("tenMinutes"),
-            where: {
-                status: "ACTIVE",
-                lastAccessedAt: {
-                    gte: startDate,
+        // 📊 단일 쿼리로 모든 필요한 데이터 가져오기 (성능 최적화)
+        const [dailyActiveWallets, dailyNewUsers] = await Promise.all([
+            // DAU: 일별 활성 사용자 데이터 (lastAccessedAt 기준)
+            prisma.wallet.findMany({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
+                where: {
+                    status: "ACTIVE",
+                    lastAccessedAt: {
+                        gte: startDate,
+                    },
                 },
-            },
-            select: {
-                id: true,
-                lastAccessedAt: true,
-                userId: true,
-            },
-        });
+                select: {
+                    lastAccessedAt: true,
+                    userId: true,
+                    user: {
+                        select: {
+                            createdAt: true,
+                        },
+                    },
+                },
+                orderBy: {
+                    lastAccessedAt: "asc",
+                },
+            }),
 
-        // 📅 MAU 데이터 계산 (월별 활성 지갑 수)
+            // NEW USER: 신규 사용자 데이터 (User createdAt 기준)
+            prisma.user.findMany({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
+                where: {
+                    active: true,
+                    createdAt: {
+                        gte: startDate,
+                    },
+                    wallets: {
+                        some: {
+                            status: "ACTIVE",
+                        },
+                    },
+                },
+                select: {
+                    id: true,
+                    createdAt: true,
+                },
+                orderBy: {
+                    createdAt: "asc",
+                },
+            }),
+        ]);
+
+        // 📅 개선된 MAU 데이터 계산 (사용자 중심, 성능 최적화)
         const monthsBack = 6;
         const mauData = [];
 
+        // 한 번에 모든 월별 데이터 가져오기 (성능 최적화)
+        const sixMonthsAgo = new Date(
+            now.getFullYear(),
+            now.getMonth() - (monthsBack - 1),
+            1
+        );
+
+        const [monthlyActiveUsers, monthlyNewUsers] = await Promise.all([
+            // 최근 6개월 활성 사용자
+            prisma.user.findMany({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
+                where: {
+                    active: true,
+                    wallets: {
+                        some: {
+                            status: "ACTIVE",
+                            lastAccessedAt: {
+                                gte: sixMonthsAgo,
+                            },
+                        },
+                    },
+                },
+                select: {
+                    id: true,
+                    createdAt: true,
+                    wallets: {
+                        where: {
+                            status: "ACTIVE",
+                            lastAccessedAt: {
+                                gte: sixMonthsAgo,
+                            },
+                        },
+                        select: {
+                            lastAccessedAt: true,
+                        },
+                        orderBy: {
+                            lastAccessedAt: "desc",
+                        },
+                        take: 1,
+                    },
+                },
+            }),
+
+            // 최근 6개월 신규 사용자
+            prisma.user.findMany({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
+                where: {
+                    active: true,
+                    createdAt: {
+                        gte: sixMonthsAgo,
+                    },
+                    wallets: {
+                        some: {
+                            status: "ACTIVE",
+                        },
+                    },
+                },
+                select: {
+                    id: true,
+                    createdAt: true,
+                },
+            }),
+        ]);
+
+        // 월별 데이터 생성
         for (let i = monthsBack - 1; i >= 0; i--) {
             const monthStart = new Date(
                 now.getFullYear(),
@@ -1500,67 +1598,60 @@ export async function getDAUMAUAnalysis(days: number = 30) {
             const monthEnd = new Date(
                 now.getFullYear(),
                 now.getMonth() - i + 1,
-                0
+                0,
+                23,
+                59,
+                59
             );
 
-            const [monthlyActiveWallets, monthlyNewWallets] = await Promise.all(
-                [
-                    // 해당 월에 활동한 지갑들
-                    prisma.wallet.findMany({
-                        cacheStrategy: getCacheStrategy("tenMinutes"),
-                        where: {
-                            status: "ACTIVE",
-                            lastAccessedAt: {
-                                gte: monthStart,
-                                lte: monthEnd,
-                            },
-                        },
-                        select: {
-                            id: true,
-                            userId: true,
-                            createdAt: true,
-                        },
-                    }),
-
-                    // 해당 월에 새로 생성된 지갑들
-                    prisma.wallet.findMany({
-                        cacheStrategy: getCacheStrategy("tenMinutes"),
-                        where: {
-                            status: "ACTIVE",
-                            createdAt: {
-                                gte: monthStart,
-                                lte: monthEnd,
-                            },
-                        },
-                        select: {
-                            id: true,
-                            userId: true,
-                        },
-                    }),
-                ]
+            // 해당 월에 활동한 사용자들
+            const activeInMonth = monthlyActiveUsers.filter((user: any) =>
+                user.wallets.some((wallet: any) => {
+                    const lastAccess = new Date(wallet.lastAccessedAt);
+                    return lastAccess >= monthStart && lastAccess <= monthEnd;
+                })
             );
 
-            // 고유 사용자 수 계산
-            const uniqueActiveUsers = new Set(
-                monthlyActiveWallets.map((w) => w.userId)
-            ).size;
-            const uniqueNewUsers = new Set(
-                monthlyNewWallets.map((w) => w.userId)
-            ).size;
+            // 해당 월에 가입한 신규 사용자들
+            const newInMonth = monthlyNewUsers.filter((user: any) => {
+                const createdAt = new Date(user.createdAt);
+                return createdAt >= monthStart && createdAt <= monthEnd;
+            });
 
-            // 이탈률 계산 (간단한 방식: 이전 달 대비)
+            const uniqueActiveUsers = activeInMonth.length;
+            const uniqueNewUsers = newInMonth.length;
+
+            // 개선된 이탈률 계산
             const prevMonthActiveUsers: number =
-                i < monthsBack - 1
+                mauData.length > 0
                     ? mauData[mauData.length - 1]?.activeUsers || 0
                     : 0;
+
+            const retentionRate: number =
+                prevMonthActiveUsers > 0
+                    ? Math.max(
+                          0,
+                          ((uniqueActiveUsers - uniqueNewUsers) /
+                              prevMonthActiveUsers) *
+                              100
+                      )
+                    : 0;
+
             const churnRate: number =
                 prevMonthActiveUsers > 0
                     ? Math.max(
                           0,
-                          ((prevMonthActiveUsers - uniqueActiveUsers) /
-                              prevMonthActiveUsers) *
-                              100
+                          100 -
+                              retentionRate -
+                              (uniqueNewUsers / prevMonthActiveUsers) * 100
                       )
+                    : 0;
+
+            const growthRate: number =
+                prevMonthActiveUsers > 0
+                    ? ((uniqueActiveUsers - prevMonthActiveUsers) /
+                          prevMonthActiveUsers) *
+                      100
                     : 0;
 
             mauData.push({
@@ -1570,41 +1661,60 @@ export async function getDAUMAUAnalysis(days: number = 30) {
                 }),
                 activeUsers: uniqueActiveUsers,
                 newUsers: uniqueNewUsers,
+                returningUsers: uniqueActiveUsers - uniqueNewUsers,
                 churnRate: Math.round(churnRate * 100) / 100,
+                retentionRate: Math.round(retentionRate * 100) / 100,
+                growthRate: Math.round(growthRate * 100) / 100,
+                date: monthStart.toISOString().split("T")[0],
             });
         }
 
-        // 📊 DAU 데이터 처리 (일별 집계)
+        // 📊 개선된 데이터 처리 로직 (메모리 효율적)
         const dauMap = new Map<string, Set<string>>();
         const newUserMap = new Map<string, Set<string>>();
+        const returningUserMap = new Map<string, Set<string>>();
 
-        activeWalletsByDay.forEach((wallet) => {
+        // DAU 집계 (lastAccessedAt 기준, 고유 사용자)
+        dailyActiveWallets.forEach((wallet: any) => {
             const dateKey = wallet.lastAccessedAt.toISOString().split("T")[0];
             const userId = wallet.userId;
 
-            // DAU 집계 (고유 사용자 기준)
             if (!dauMap.has(dateKey)) {
                 dauMap.set(dateKey, new Set());
             }
             dauMap.get(dateKey)!.add(userId);
 
-            // 신규 사용자 여부 확인 (7일 이내 생성된 지갑)
-            const isNewUser =
-                wallet.lastAccessedAt.getTime() -
-                    new Date(
-                        wallet.lastAccessedAt.getTime() -
-                            7 * 24 * 60 * 60 * 1000
-                    ).getTime() >
-                0;
+            // 사용자 생성일과 접속일 비교로 정확한 신규/리턴 구분
+            const userCreatedDate = new Date(wallet.user.createdAt)
+                .toISOString()
+                .split("T")[0];
+            const isNewUser = userCreatedDate === dateKey;
+
             if (isNewUser) {
                 if (!newUserMap.has(dateKey)) {
                     newUserMap.set(dateKey, new Set());
                 }
                 newUserMap.get(dateKey)!.add(userId);
+            } else {
+                if (!returningUserMap.has(dateKey)) {
+                    returningUserMap.set(dateKey, new Set());
+                }
+                returningUserMap.get(dateKey)!.add(userId);
             }
         });
 
-        // 📈 DAU 배열 생성
+        // 추가 신규 사용자 데이터 보정 (활동하지 않은 신규 사용자도 포함)
+        dailyNewUsers.forEach((user: any) => {
+            const dateKey = user.createdAt.toISOString().split("T")[0];
+            const userId = user.id;
+
+            if (!newUserMap.has(dateKey)) {
+                newUserMap.set(dateKey, new Set());
+            }
+            newUserMap.get(dateKey)!.add(userId);
+        });
+
+        // 📈 개선된 DAU 배열 생성 (더 정확한 메트릭)
         const dauData = [];
         for (let i = days - 1; i >= 0; i--) {
             const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
@@ -1612,13 +1722,27 @@ export async function getDAUMAUAnalysis(days: number = 30) {
 
             const activeUsers = dauMap.get(dateKey)?.size || 0;
             const newUsers = newUserMap.get(dateKey)?.size || 0;
-            const returningUsers = activeUsers - newUsers;
+            const returningUsers = returningUserMap.get(dateKey)?.size || 0;
+
+            // 검증: activeUsers = newUsers + returningUsers 이어야 함
+            const calculatedReturning = Math.max(0, activeUsers - newUsers);
+            const finalReturningUsers = Math.max(
+                returningUsers,
+                calculatedReturning
+            );
 
             dauData.push({
                 date: dateKey,
                 activeUsers,
                 newUsers,
-                returningUsers,
+                returningUsers: finalReturningUsers,
+                // 추가 메트릭
+                newUserRate:
+                    activeUsers > 0 ? (newUsers / activeUsers) * 100 : 0,
+                retentionRate:
+                    activeUsers > 0
+                        ? (finalReturningUsers / activeUsers) * 100
+                        : 0,
             });
         }
 

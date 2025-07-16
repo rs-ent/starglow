@@ -45,7 +45,7 @@ import {
 import { useAssetHoldingRankingPaginated } from "@/app/actions/userDashboard/queries";
 
 // 공통 컴포넌트 import
-import { MetricCard, ChartCard } from "./shared/MetricCard";
+import { MetricCard, ChartCard, DataCard } from "./shared/MetricCard";
 import { DashboardLoading, DashboardError } from "./shared/DashboardStates";
 
 // 정확한 숫자 표시를 위한 함수
@@ -205,56 +205,67 @@ function KPIOverview({ metrics, dauData, mauData }: KPIOverviewProps) {
     const latestDAU = dauData?.[dauData.length - 1];
     const latestMAU = mauData?.[mauData.length - 1];
     const previousDAU = dauData?.[dauData.length - 2];
-    const previousMAU = mauData?.[mauData.length - 2];
 
+    // 개선된 메트릭 계산
     const dauGrowth = previousDAU
         ? ((latestDAU?.activeUsers - previousDAU.activeUsers) /
               previousDAU.activeUsers) *
           100
         : 0;
 
-    const mauGrowth = previousMAU
-        ? ((latestMAU?.activeUsers - previousMAU.activeUsers) /
-              previousMAU.activeUsers) *
-          100
-        : 0;
+    // MAU는 이제 growthRate를 직접 제공
+    const mauGrowth = latestMAU?.growthRate || 0;
 
-    const stickiness = latestMAU
-        ? (latestDAU?.activeUsers / latestMAU.activeUsers) * 100
-        : 0;
+    const stickiness =
+        latestMAU?.activeUsers > 0
+            ? (latestDAU?.activeUsers / latestMAU.activeUsers) * 100
+            : 0;
+
+    // 신규 사용자 비율 (개선된 데이터에서 제공)
+    const newUserRate = latestDAU?.newUserRate || 0;
+
+    // 리텐션 비율 (개선된 데이터에서 제공)
+    const retentionRate = latestMAU?.retentionRate || 0;
 
     return (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <MetricCard
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
+            <DataCard
                 title="DAU"
                 value={formatNumber(latestDAU?.activeUsers || 0)}
                 icon={Users}
-                trend={{
-                    value: Math.abs(dauGrowth),
-                    isPositive: dauGrowth >= 0,
-                }}
+                subtitle={`신규: ${newUserRate.toFixed(1)}% | 성장: ${
+                    dauGrowth >= 0 ? "+" : ""
+                }${dauGrowth.toFixed(1)}%`}
             />
 
-            <MetricCard
+            <DataCard
                 title="MAU"
                 value={formatNumber(latestMAU?.activeUsers || 0)}
                 icon={Calendar}
-                trend={{
-                    value: Math.abs(mauGrowth),
-                    isPositive: mauGrowth >= 0,
-                }}
+                subtitle={`리텐션: ${retentionRate.toFixed(1)}% | 성장: ${
+                    mauGrowth >= 0 ? "+" : ""
+                }${mauGrowth.toFixed(1)}%`}
             />
 
-            <MetricCard
+            <DataCard
                 title="Stickiness"
                 value={`${stickiness.toFixed(1)}%`}
                 icon={Target}
+                subtitle="DAU/MAU 비율"
             />
 
-            <MetricCard
+            <DataCard
+                title="New Users"
+                value={formatNumber(latestDAU?.newUsers || 0)}
+                icon={Star}
+                subtitle="오늘 신규 가입"
+            />
+
+            <DataCard
                 title="Wallets"
                 value={formatNumber(metrics?.totalWallets || 0)}
                 icon={Wallet}
+                subtitle={`활성: ${formatNumber(metrics?.activeWallets || 0)}`}
             />
         </div>
     );
@@ -267,7 +278,7 @@ interface GrowthTrendsProps {
 }
 
 function GrowthTrends({ dauData }: GrowthTrendsProps) {
-    // Combine last 30 days of DAU data for trend visualization
+    // 개선된 DAU 데이터로 트렌드 시각화 (추가 메트릭 포함)
     const trendData = dauData?.slice(-30).map((item) => {
         const date = new Date(item.date);
         return {
@@ -278,6 +289,8 @@ function GrowthTrends({ dauData }: GrowthTrendsProps) {
             dau: item.activeUsers,
             newUsers: item.newUsers,
             returning: item.returningUsers,
+            newUserRate: item.newUserRate || 0,
+            retentionRate: item.retentionRate || 0,
         };
     });
 
