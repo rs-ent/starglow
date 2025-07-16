@@ -5,23 +5,16 @@ import {
     FaCheckCircle,
     FaExclamationTriangle,
     FaInfoCircle,
-    FaPlay,
     FaSpinner,
-    FaCopy,
     FaEdit,
     FaCalendarAlt,
     FaCogs,
     FaCoins,
     FaGift,
-    FaShieldAlt,
-    FaGasPump,
-    FaCalculator,
     FaRocket,
     FaList,
     FaEye,
     FaClock,
-    FaUsers,
-    FaDollarSign,
 } from "react-icons/fa";
 import type { RaffleFormData } from "./Admin.Raffles.Web3.Create.Manager";
 
@@ -38,29 +31,66 @@ const CHECKLIST_ITEMS = [
     {
         id: "basic_info",
         label: "기본 정보 입력",
-        description: "제목, 설명, 이미지가 모두 설정되었는지 확인",
+        description: "제목과 이미지가 설정되었는지 확인",
         validator: (data: RaffleFormData) =>
-            data.basicInfo.title &&
-            data.basicInfo.description &&
-            data.basicInfo.imageUrl,
+            data.basicInfo.title && data.basicInfo.imageUrl,
+        detailValidator: (data: RaffleFormData) => {
+            const issues = [];
+            if (!data.basicInfo.title)
+                issues.push("제목이 입력되지 않았습니다");
+            if (!data.basicInfo.imageUrl)
+                issues.push("이미지가 선택되지 않았습니다");
+            return issues;
+        },
     },
     {
         id: "timing",
         label: "일정 설정",
-        description: "시작일, 종료일, 추첨일이 올바르게 설정되었는지 확인",
+        description: "종료일과 추첨일이 올바르게 설정되었는지 확인",
         validator: (data: RaffleFormData) =>
-            data.timing.startDate > Math.floor(Date.now() / 1000) + 3600 &&
+            data.timing.startDate &&
             data.timing.endDate > data.timing.startDate &&
             (data.timing.instantDraw ||
                 data.timing.drawDate > data.timing.endDate),
+        detailValidator: (data: RaffleFormData) => {
+            const issues = [];
+            if (!data.timing.startDate)
+                issues.push("시작일이 설정되지 않았습니다");
+            if (!data.timing.endDate)
+                issues.push("종료일이 설정되지 않았습니다");
+            else if (data.timing.endDate <= data.timing.startDate)
+                issues.push("종료일이 시작일보다 빠릅니다");
+            if (
+                !data.timing.instantDraw &&
+                (!data.timing.drawDate ||
+                    data.timing.drawDate <= data.timing.endDate)
+            ) {
+                issues.push("추첨일이 종료일보다 빠릅니다");
+            }
+            return issues;
+        },
     },
     {
         id: "settings",
         label: "래플 설정",
         description: "참여 제한과 추첨 방법이 설정되었는지 확인",
         validator: (data: RaffleFormData) =>
-            data.settings.participationLimit > 0 &&
-            data.settings.participationLimitPerPlayer > 0,
+            (data.settings.participationLimit >= 0 ||
+                data.settings.participationLimit === -1) &&
+            (data.settings.participationLimitPerPlayer >= 0 ||
+                data.settings.participationLimitPerPlayer === -1),
+        detailValidator: (data: RaffleFormData) => {
+            const issues = [];
+            if (data.settings.participationLimit < -1)
+                issues.push(
+                    "최대 참가자 수가 유효하지 않습니다 (-1: 무제한, 0 이상: 제한)"
+                );
+            if (data.settings.participationLimitPerPlayer < -1)
+                issues.push(
+                    "개인 참여 한도가 유효하지 않습니다 (-1: 무제한, 0 이상: 제한)"
+                );
+            return issues;
+        },
     },
     {
         id: "fee",
@@ -69,14 +99,33 @@ const CHECKLIST_ITEMS = [
         validator: (data: RaffleFormData) =>
             data.fee.participationFeeAsset &&
             parseFloat(data.fee.participationFeeAmount) >= 0,
+        detailValidator: (data: RaffleFormData) => {
+            const issues = [];
+            if (!data.fee.participationFeeAsset)
+                issues.push("참가비 토큰이 선택되지 않았습니다");
+            if (parseFloat(data.fee.participationFeeAmount) < 0)
+                issues.push("참가비 금액이 유효하지 않습니다");
+            return issues;
+        },
     },
     {
         id: "prizes",
         label: "상품 설정",
         description: "최소 1개 이상의 상품이 설정되었는지 확인",
         validator: (data: RaffleFormData) =>
-            data.prizes.length > 0 &&
-            data.prizes.every((p) => p.title && p.description),
+            data.prizes.length > 0 && data.prizes.every((p) => p.title),
+        detailValidator: (data: RaffleFormData) => {
+            const issues = [];
+            if (data.prizes.length === 0)
+                issues.push("최소 1개 이상의 상품이 필요합니다");
+            data.prizes.forEach((prize, index) => {
+                if (!prize.title)
+                    issues.push(
+                        `상품 ${index + 1}: 제목이 입력되지 않았습니다`
+                    );
+            });
+            return issues;
+        },
     },
     {
         id: "contract",
@@ -84,6 +133,14 @@ const CHECKLIST_ITEMS = [
         description: "활성화된 컨트랙트가 선택되었는지 확인",
         validator: (data: RaffleFormData) =>
             data.contractId && data.networkId && data.walletAddress,
+        detailValidator: (data: RaffleFormData) => {
+            const issues = [];
+            if (!data.contractId) issues.push("컨트랙트가 선택되지 않았습니다");
+            if (!data.networkId) issues.push("네트워크가 선택되지 않았습니다");
+            if (!data.walletAddress)
+                issues.push("지갑 주소가 연결되지 않았습니다");
+            return issues;
+        },
     },
 ];
 
@@ -103,6 +160,7 @@ export function AdminRafflesWeb3CreateReview({
         return CHECKLIST_ITEMS.map((item) => ({
             ...item,
             isValid: item.validator(data),
+            issues: item.detailValidator ? item.detailValidator(data) : [],
         }));
     }, [data]);
 
@@ -205,13 +263,35 @@ export function AdminRafflesWeb3CreateReview({
                                                     />
                                                 )}
                                             </div>
-                                            <div>
+                                            <div className="flex-1">
                                                 <h5 className="font-medium text-white">
                                                     {item.label}
                                                 </h5>
                                                 <p className="text-sm text-gray-400">
                                                     {item.description}
                                                 </p>
+                                                {!item.isValid &&
+                                                    item.issues &&
+                                                    item.issues.length > 0 && (
+                                                        <div className="mt-2 space-y-1">
+                                                            {item.issues.map(
+                                                                (
+                                                                    issue,
+                                                                    issueIndex
+                                                                ) => (
+                                                                    <div
+                                                                        key={
+                                                                            issueIndex
+                                                                        }
+                                                                        className="flex items-center gap-1 text-xs text-red-300"
+                                                                    >
+                                                                        <span className="w-1 h-1 bg-red-400 rounded-full"></span>
+                                                                        {issue}
+                                                                    </div>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    )}
                                             </div>
                                         </div>
                                         <button
@@ -374,21 +454,38 @@ export function AdminRafflesWeb3CreateReview({
                                         <span className="text-gray-300">
                                             최대 참가자:
                                         </span>
-                                        <p className="text-white font-medium">
-                                            {data.settings.participationLimit.toLocaleString()}
-                                            명
+                                        <p
+                                            className={`font-medium ${
+                                                data.settings
+                                                    .participationLimit === -1
+                                                    ? "text-green-400"
+                                                    : "text-white"
+                                            }`}
+                                        >
+                                            {data.settings
+                                                .participationLimit === -1
+                                                ? "무제한"
+                                                : `${data.settings.participationLimit.toLocaleString()}명`}
                                         </p>
                                     </div>
                                     <div>
                                         <span className="text-gray-300">
                                             개인 한도:
                                         </span>
-                                        <p className="text-white font-medium">
-                                            {
+                                        <p
+                                            className={`font-medium ${
                                                 data.settings
-                                                    .participationLimitPerPlayer
-                                            }
-                                            개
+                                                    .participationLimitPerPlayer ===
+                                                -1
+                                                    ? "text-green-400"
+                                                    : "text-white"
+                                            }`}
+                                        >
+                                            {data.settings
+                                                .participationLimitPerPlayer ===
+                                            -1
+                                                ? "무제한"
+                                                : `${data.settings.participationLimitPerPlayer}개`}
                                         </p>
                                     </div>
                                     <div>

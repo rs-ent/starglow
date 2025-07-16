@@ -7,7 +7,6 @@ import { FaArrowLeft, FaArrowRight, FaCheck } from "react-icons/fa";
 import { useStoryNetwork } from "@/app/story/network/hooks";
 import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
 import { createRaffle } from "@/app/actions/raffles/web3/actions-admin";
-import type { CreateRaffleInput } from "@/app/actions/raffles/web3/actions-admin";
 
 import { AdminRafflesWeb3CreateBasicInfo } from "@/components/admin/raffles/web3/Admin.Raffles.Web3.Create.BasicInfo";
 import { AdminRafflesWeb3CreateTiming } from "@/components/admin/raffles/web3/Admin.Raffles.Web3.Create.Timing";

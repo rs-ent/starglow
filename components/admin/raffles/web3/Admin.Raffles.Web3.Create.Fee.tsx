@@ -12,7 +12,6 @@ import {
     FaExclamationTriangle,
     FaMagic,
     FaEye,
-    FaPercent,
     FaPiggyBank,
     FaDatabase,
 } from "react-icons/fa";

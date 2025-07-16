@@ -55,7 +55,6 @@ export default function FileUploaderIPFS({
 
     return (
         <div className={`flex flex-col gap-4 ${className} relative`}>
-            {/* React Icon을 배경으로 사용 */}
             <TbHexagon className="absolute text-[8rem] text-blue-900/10 left-[-2rem] top-[-2rem] pointer-events-none select-none z-0" />
             <SiIpfs className="absolute text-[4rem] text-cyan-400/20 right-2 top-2 pointer-events-none select-none z-0" />
 
@@ -92,12 +91,12 @@ export default function FileUploaderIPFS({
                                         alt="ipfs-preview"
                                         width={fileData.width}
                                         height={fileData.height}
-                                        className="object-cover w-full h-full"
+                                        className="object-contain w-full h-full"
                                     />
                                 ) : isVideo ? (
                                     <video
                                         src={fileData.url}
-                                        className="object-cover w-full h-full"
+                                        className="object-contain w-full h-full"
                                         controls
                                     />
                                 ) : isAudio ? (

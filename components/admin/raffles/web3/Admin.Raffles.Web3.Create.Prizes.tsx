@@ -1,14 +1,15 @@
 "use client";
 
 import { useCallback, useState, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import { useAssetsGet } from "@/app/actions/assets/hooks";
 import { useSPG } from "@/app/story/spg/hooks";
 import { tierMap } from "@/components/raffles/raffle-tier";
+import FileUploaderIPFS from "@/components/atoms/FileUploader.IPFS";
 import {
     FaGift,
     FaPlus,
     FaTrash,
-    FaStar,
     FaImage,
     FaCoins,
     FaGem,
@@ -16,15 +17,11 @@ import {
     FaChartPie,
     FaLightbulb,
     FaCopy,
-    FaCheck,
-    FaExclamationTriangle,
     FaDice,
-    FaUsers,
     FaTrophy,
     FaGripVertical,
     FaEdit,
     FaSave,
-    FaTimes,
 } from "react-icons/fa";
 import type { RaffleFormData } from "./Admin.Raffles.Web3.Create.Manager";
 import { cn } from "@/lib/utils/tailwind";
@@ -81,6 +78,7 @@ const PRIZE_TYPES = [
 ] as const;
 
 export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
+    const { data: session } = useSession();
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
     const [showPreview, setShowPreview] = useState(false);
@@ -130,10 +128,30 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
         (index: number, field: string, value: any) => {
             const prizes = Array.isArray(data.prizes) ? data.prizes : [];
             const newPrizes = [...prizes];
+
             newPrizes[index] = {
                 ...newPrizes[index],
                 [field]: value,
             };
+
+            updateData("prizes", newPrizes);
+        },
+        [data.prizes, updateData]
+    );
+
+    const updateMultipleFields = useCallback(
+        (index: number, updates: Record<string, any>) => {
+            const prizes = Array.isArray(data.prizes) ? data.prizes : [];
+            const newPrizes = [...prizes];
+            const beforeUpdate = JSON.parse(JSON.stringify(newPrizes[index]));
+
+            newPrizes[index] = {
+                ...newPrizes[index],
+                ...updates,
+            };
+
+            const afterUpdate = JSON.parse(JSON.stringify(newPrizes[index]));
+
             updateData("prizes", newPrizes);
         },
         [data.prizes, updateData]
@@ -159,6 +177,15 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
             console.error("Copy failed:", error);
         }
     }, []);
+
+    const handleImageUpload = useCallback(
+        (index: number, files: any[]) => {
+            if (files[0]?.url) {
+                updatePrize(index, "imageUrl", files[0].url);
+            }
+        },
+        [updatePrize]
+    );
 
     const handleDragStart = useCallback((index: number) => {
         setDraggedIndex(index);
@@ -191,31 +218,50 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
 
     const handleAssetSelection = useCallback(
         (index: number, assetId: string) => {
-            updatePrize(index, "assetId", assetId);
-
             const selectedAsset = assetsData?.find((a) => a.id === assetId);
+
             if (selectedAsset) {
-                // 기본적으로 iconUrl 사용, 없으면 imageUrl 사용
                 const defaultImage =
                     selectedAsset.iconUrl || selectedAsset.imageUrl || "";
-                updatePrize(index, "imageUrl", defaultImage);
+
+                // 한 번에 assetId와 imageUrl 업데이트
+                const updates = {
+                    assetId: assetId,
+                    imageUrl: defaultImage,
+                };
+
+                try {
+                    updateMultipleFields(index, updates);
+                } catch (error) {
+                    console.error("❌ STEP 2: 다중 필드 업데이트 실패:", error);
+                }
+            } else {
+                try {
+                    updatePrize(index, "assetId", assetId);
+                } catch (error) {
+                    console.error("❌ assetId 업데이트 실패:", error);
+                }
             }
         },
-        [assetsData, updatePrize]
+        [assetsData, updatePrize, updateMultipleFields, data.prizes]
     );
 
     const handleNFTSelection = useCallback(
         (index: number, collectionAddress: string) => {
-            updatePrize(index, "collectionAddress", collectionAddress);
-
             const selectedNFT = spgsData?.find(
                 (s) => s.address === collectionAddress
             );
-            if (selectedNFT?.imageUrl) {
-                updatePrize(index, "imageUrl", selectedNFT.imageUrl);
-            }
+
+            const updates = {
+                collectionAddress: collectionAddress,
+                ...(selectedNFT?.imageUrl && {
+                    imageUrl: selectedNFT.imageUrl,
+                }),
+            };
+
+            updateMultipleFields(index, updates);
         },
-        [spgsData, updatePrize]
+        [spgsData, updateMultipleFields]
     );
 
     const handleAssetImageSelection = useCallback(
@@ -234,22 +280,25 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
 
     const handlePrizeTypeChange = useCallback(
         (index: number, prizeType: 0 | 1 | 2) => {
-            // 기본 업데이트
-            updatePrize(index, "prizeType", prizeType);
+            const updates: Record<string, any> = {
+                prizeType,
+                assetId: "",
+                collectionAddress: "",
+                tokenIds: [],
+                imageUrl:
+                    prizeType === 0
+                        ? "https://w3s.link/ipfs/bafkreifjx4hcx2dtlbpek7dnsmnus7tiqqzjmqxkrzwp6d4utdt5jhe3qm"
+                        : "",
+            };
 
-            // 타입별 필드 초기화
-            updatePrize(index, "assetId", "");
-            updatePrize(index, "collectionAddress", "");
-            updatePrize(index, "tokenIds", []);
-            updatePrize(index, "imageUrl", "");
-
-            // 빈 상품이 아닌 경우 기본 수량 설정
             if (prizeType !== 0) {
-                updatePrize(index, "registeredTicketQuantity", 1);
-                updatePrize(index, "prizeQuantity", 1);
+                updates.registeredTicketQuantity = 1;
+                updates.prizeQuantity = 1;
             }
+
+            updateMultipleFields(index, updates);
         },
-        [updatePrize]
+        [updateMultipleFields]
     );
 
     const getTierInfo = useCallback((tier: number) => {
@@ -700,6 +749,13 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                                 <label className="block text-sm font-medium text-gray-300 mb-2">
                                                                     에셋 선택
                                                                 </label>
+                                                                {(() => {
+                                                                    const currentValue =
+                                                                        prize.assetId ||
+                                                                        "";
+
+                                                                    return null;
+                                                                })()}
                                                                 <select
                                                                     value={
                                                                         prize.assetId ||
@@ -855,93 +911,272 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                             1 && (
                                                             <div>
                                                                 <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                                    <FaImage
+                                                                        className="inline mr-2"
+                                                                        size={
+                                                                            14
+                                                                        }
+                                                                    />
                                                                     에셋 이미지
-                                                                    선택
                                                                 </label>
-                                                                <select
-                                                                    value={
-                                                                        prize.imageUrl ===
-                                                                        assetsData?.find(
-                                                                            (
-                                                                                a
+                                                                <div className="space-y-4 p-4 bg-gray-750 rounded-lg border border-gray-600">
+                                                                    {prize.assetId && (
+                                                                        <div>
+                                                                            <label className="block text-xs text-gray-400 mb-2">
+                                                                                에셋에서
+                                                                                선택
+                                                                            </label>
+                                                                            <select
+                                                                                value={
+                                                                                    prize.imageUrl ===
+                                                                                    assetsData?.find(
+                                                                                        (
+                                                                                            a
+                                                                                        ) =>
+                                                                                            a.id ===
+                                                                                            prize.assetId
+                                                                                    )
+                                                                                        ?.iconUrl
+                                                                                        ? "iconUrl"
+                                                                                        : "imageUrl"
+                                                                                }
+                                                                                onChange={(
+                                                                                    e
+                                                                                ) =>
+                                                                                    handleAssetImageSelection(
+                                                                                        index,
+                                                                                        e
+                                                                                            .target
+                                                                                            .value as
+                                                                                            | "iconUrl"
+                                                                                            | "imageUrl"
+                                                                                    )
+                                                                                }
+                                                                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                                                                disabled={
+                                                                                    !prize.assetId
+                                                                                }
+                                                                            >
+                                                                                <option value="iconUrl">
+                                                                                    아이콘
+                                                                                    이미지
+                                                                                </option>
+                                                                                <option value="imageUrl">
+                                                                                    상세
+                                                                                    이미지
+                                                                                </option>
+                                                                            </select>
+                                                                        </div>
+                                                                    )}
+
+                                                                    <div>
+                                                                        <label className="block text-xs text-gray-400 mb-2">
+                                                                            또는
+                                                                            직접
+                                                                            업로드
+                                                                        </label>
+                                                                        <FileUploaderIPFS
+                                                                            userId={
+                                                                                session
+                                                                                    ?.user
+                                                                                    ?.id ||
+                                                                                ""
+                                                                            }
+                                                                            type="image"
+                                                                            multiple={
+                                                                                false
+                                                                            }
+                                                                            onComplete={(
+                                                                                files
                                                                             ) =>
-                                                                                a.id ===
-                                                                                prize.assetId
-                                                                        )
-                                                                            ?.iconUrl
-                                                                            ? "iconUrl"
-                                                                            : "imageUrl"
-                                                                    }
-                                                                    onChange={(
-                                                                        e
-                                                                    ) =>
-                                                                        handleAssetImageSelection(
-                                                                            index,
-                                                                            e
-                                                                                .target
-                                                                                .value as
-                                                                                | "iconUrl"
-                                                                                | "imageUrl"
-                                                                        )
-                                                                    }
-                                                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                                    disabled={
-                                                                        !prize.assetId
-                                                                    }
-                                                                >
-                                                                    <option value="iconUrl">
-                                                                        아이콘
-                                                                        이미지
-                                                                    </option>
-                                                                    <option value="imageUrl">
-                                                                        상세
-                                                                        이미지
-                                                                    </option>
-                                                                </select>
-                                                                {prize.assetId && (
-                                                                    <div className="mt-2 text-xs text-gray-400">
-                                                                        현재:{" "}
-                                                                        {prize.imageUrl ||
-                                                                            "이미지 없음"}
+                                                                                handleImageUpload(
+                                                                                    index,
+                                                                                    files
+                                                                                )
+                                                                            }
+                                                                            className="mb-3"
+                                                                        />
                                                                     </div>
-                                                                )}
+
+                                                                    <input
+                                                                        type="url"
+                                                                        value={
+                                                                            prize.imageUrl
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            updatePrize(
+                                                                                index,
+                                                                                "imageUrl",
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            )
+                                                                        }
+                                                                        placeholder="또는 직접 URL 입력: https://example.com/image.jpg"
+                                                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                                                    />
+
+                                                                    {prize.imageUrl && (
+                                                                        <div className="mt-3">
+                                                                            <img
+                                                                                src={
+                                                                                    prize.imageUrl
+                                                                                }
+                                                                                alt="에셋 이미지 미리보기"
+                                                                                className="w-full h-32 object-contain rounded-lg border border-gray-600"
+                                                                                onError={(
+                                                                                    e
+                                                                                ) => {
+                                                                                    const target =
+                                                                                        e.target as HTMLImageElement;
+                                                                                    target.style.display =
+                                                                                        "none";
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         )}
 
                                                         {prize.prizeType ===
-                                                            2 &&
-                                                            prize.collectionAddress && (
-                                                                <div>
-                                                                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                                                                        NFT
-                                                                        컬렉션
-                                                                        이미지
-                                                                    </label>
-                                                                    <div className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-gray-300">
-                                                                        <div className="text-sm">
-                                                                            자동
-                                                                            설정됨:{" "}
-                                                                            {prize.imageUrl ||
-                                                                                "이미지 없음"}
+                                                            2 && (
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                                    <FaImage
+                                                                        className="inline mr-2"
+                                                                        size={
+                                                                            14
+                                                                        }
+                                                                    />
+                                                                    NFT 이미지
+                                                                </label>
+                                                                <div className="space-y-4 p-4 bg-gray-750 rounded-lg border border-gray-600">
+                                                                    {prize.collectionAddress && (
+                                                                        <div className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-gray-300">
+                                                                            <div className="text-sm">
+                                                                                <span className="text-purple-400">
+                                                                                    💜
+                                                                                    컬렉션에서
+                                                                                    자동
+                                                                                    설정:
+                                                                                </span>
+                                                                                <span className="ml-2">
+                                                                                    {prize.imageUrl ||
+                                                                                        "이미지 없음"}
+                                                                                </span>
+                                                                            </div>
                                                                         </div>
+                                                                    )}
+
+                                                                    <div>
+                                                                        <label className="block text-xs text-gray-400 mb-2">
+                                                                            또는
+                                                                            직접
+                                                                            업로드
+                                                                        </label>
+                                                                        <FileUploaderIPFS
+                                                                            userId={
+                                                                                session
+                                                                                    ?.user
+                                                                                    ?.id ||
+                                                                                ""
+                                                                            }
+                                                                            type="image"
+                                                                            multiple={
+                                                                                false
+                                                                            }
+                                                                            onComplete={(
+                                                                                files
+                                                                            ) =>
+                                                                                handleImageUpload(
+                                                                                    index,
+                                                                                    files
+                                                                                )
+                                                                            }
+                                                                            className="mb-3"
+                                                                        />
                                                                     </div>
+
+                                                                    <input
+                                                                        type="url"
+                                                                        value={
+                                                                            prize.imageUrl
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            updatePrize(
+                                                                                index,
+                                                                                "imageUrl",
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            )
+                                                                        }
+                                                                        placeholder="또는 직접 URL 입력: https://example.com/image.jpg"
+                                                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                                                    />
+
+                                                                    {prize.imageUrl && (
+                                                                        <div className="mt-3">
+                                                                            <img
+                                                                                src={
+                                                                                    prize.imageUrl
+                                                                                }
+                                                                                alt="NFT 이미지 미리보기"
+                                                                                className="w-full h-32 object-contain rounded-lg border border-gray-600"
+                                                                                onError={(
+                                                                                    e
+                                                                                ) => {
+                                                                                    const target =
+                                                                                        e.target as HTMLImageElement;
+                                                                                    target.style.display =
+                                                                                        "none";
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                            )}
+                                                            </div>
+                                                        )}
 
                                                         {prize.prizeType ===
                                                             0 && (
                                                             <div>
                                                                 <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                                    <FaImage
+                                                                        className="inline mr-2"
+                                                                        size={
+                                                                            14
+                                                                        }
+                                                                    />
                                                                     상품 이미지
-                                                                    URL
                                                                     (선택사항)
                                                                 </label>
-                                                                <div className="relative">
-                                                                    <FaImage
-                                                                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                                                                        size={
-                                                                            16
+                                                                <div className="space-y-4 p-4 bg-gray-750 rounded-lg border border-gray-600">
+                                                                    <FileUploaderIPFS
+                                                                        userId={
+                                                                            session
+                                                                                ?.user
+                                                                                ?.id ||
+                                                                            ""
                                                                         }
+                                                                        type="image"
+                                                                        multiple={
+                                                                            false
+                                                                        }
+                                                                        onComplete={(
+                                                                            files
+                                                                        ) =>
+                                                                            handleImageUpload(
+                                                                                index,
+                                                                                files
+                                                                            )
+                                                                        }
+                                                                        className="mb-3"
                                                                     />
                                                                     <input
                                                                         type="url"
@@ -959,9 +1194,28 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                                                     .value
                                                                             )
                                                                         }
-                                                                        placeholder="https://example.com/image.jpg"
-                                                                        className="w-full pl-10 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                                        placeholder="또는 직접 URL 입력: https://example.com/image.jpg"
+                                                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                                                                     />
+                                                                    {prize.imageUrl && (
+                                                                        <div className="mt-3">
+                                                                            <img
+                                                                                src={
+                                                                                    prize.imageUrl
+                                                                                }
+                                                                                alt="상품 이미지 미리보기"
+                                                                                className="w-full h-32 object-contain rounded-lg border border-gray-600"
+                                                                                onError={(
+                                                                                    e
+                                                                                ) => {
+                                                                                    const target =
+                                                                                        e.target as HTMLImageElement;
+                                                                                    target.style.display =
+                                                                                        "none";
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         )}
@@ -1133,12 +1387,12 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
 
                                                     {prize.imageUrl && (
                                                         <div className="flex justify-center">
-                                                            <div className="relative w-32 h-32">
+                                                            <div className="relative w-32 h-32 overflow-hidden rounded-xl">
                                                                 {/* Holographic border effect for NFT */}
                                                                 {prize.prizeType ===
                                                                     2 && (
                                                                     <div
-                                                                        className="absolute inset-0 rounded-xl animate-spin scale-110"
+                                                                        className="absolute inset-0 rounded-xl animate-spin scale-150"
                                                                         style={{
                                                                             animationDuration:
                                                                                 "3s",

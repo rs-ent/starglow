@@ -1,19 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { FaRocket, FaCog, FaArrowLeft, FaPlus } from "react-icons/fa";
+import { FaRocket, FaCog, FaArrowLeft, FaPlus, FaList } from "react-icons/fa";
 import { SiEthereum } from "react-icons/si";
 import { TbTopologyStar3 } from "react-icons/tb";
 
 import AdminRafflesWeb3Deploy from "./Admin.Raffles.Web3.Deploy";
 import AdminRafflesWeb3Contracts from "./Admin.Raffles.Web3.Contracts";
 import { AdminRafflesWeb3CreateManager } from "./Admin.Raffles.Web3.Create.Manager";
+import AdminRafflesWeb3List from "./Admin.Raffles.Web3.List";
 
 interface Props {
     onBack: () => void;
 }
 
-type DeploymentMode = "deploy" | "manage" | "create" | null;
+type DeploymentMode = "deploy" | "manage" | "create" | "list" | null;
 
 export default function AdminRafflesWeb3Dashboard({ onBack }: Props) {
     const [deploymentMode, setDeploymentMode] = useState<DeploymentMode>(null);
@@ -38,6 +39,21 @@ export default function AdminRafflesWeb3Dashboard({ onBack }: Props) {
         return <AdminRafflesWeb3CreateManager onBack={handleBack} />;
     }
 
+    if (deploymentMode === "list") {
+        return (
+            <div className="space-y-4">
+                <button
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all duration-200"
+                    onClick={handleBack}
+                >
+                    <FaArrowLeft />
+                    대시보드로 돌아가기
+                </button>
+                <AdminRafflesWeb3List />
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center bg-gradient-to-br from-[#181c2b] to-[#2a2342] p-8 rounded-2xl shadow-2xl border border-purple-900/30 relative overflow-hidden">
             <TbTopologyStar3 className="absolute text-[18rem] text-purple-900/10 left-[-2rem] top-[-4rem] pointer-events-none select-none" />
@@ -51,7 +67,7 @@ export default function AdminRafflesWeb3Dashboard({ onBack }: Props) {
                 블록체인 기반 래플 관리
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <button
                     className="flex flex-col items-center gap-4 px-12 py-8 bg-gradient-to-r from-purple-700 via-pink-700 to-red-700 text-white font-bold rounded-xl shadow-xl hover:scale-105 hover:from-red-700 hover:to-purple-700 transition-all duration-200 text-xl tracking-wide border border-purple-500/30"
                     onClick={() => setDeploymentMode("deploy")}
@@ -82,6 +98,17 @@ export default function AdminRafflesWeb3Dashboard({ onBack }: Props) {
                     <span>컨트랙트 관리</span>
                     <span className="text-sm text-gray-200 font-normal">
                         기존 컨트랙트 설정
+                    </span>
+                </button>
+
+                <button
+                    className="flex flex-col items-center gap-4 px-12 py-8 bg-gradient-to-r from-amber-700 via-orange-700 to-red-700 text-white font-bold rounded-xl shadow-xl hover:scale-105 hover:from-red-700 hover:to-amber-700 transition-all duration-200 text-xl tracking-wide border border-amber-500/30"
+                    onClick={() => setDeploymentMode("list")}
+                >
+                    <FaList className="text-4xl" />
+                    <span>래플 목록</span>
+                    <span className="text-sm text-gray-200 font-normal">
+                        배포된 래플 보기
                     </span>
                 </button>
             </div>

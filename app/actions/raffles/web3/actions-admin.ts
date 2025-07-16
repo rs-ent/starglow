@@ -15,6 +15,14 @@ import rafflesJson from "@/web3/artifacts/contracts/Raffles.sol/Raffles.json";
 const abi = rafflesJson.abi;
 const bytecode = rafflesJson.bytecode as `0x${string}`;
 
+// uint256 최대값 (무제한을 나타내는 값)
+const MAX_UINT256 = BigInt(
+    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+);
+
+// Zero address (빈 주소 대신 사용)
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
+
 export interface DeployRafflesContractInput {
     networkId: string;
     walletAddress: string;
@@ -319,17 +327,29 @@ export async function createRaffle(
             };
         }
 
-        if (input.timing.endDate <= input.timing.startDate) {
+        // 현재 시간 확인 및 시작일 자동 조정
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+        const adjustedStartDate = Math.max(
+            input.timing.startDate,
+            currentTimestamp + 60
+        ); // 현재시간보다 최소 60초 후
+
+        if (input.timing.endDate <= adjustedStartDate) {
             return {
                 success: false,
                 error: "End date must be after start date",
             };
         }
 
-        if (input.timing.startDate < Date.now() / 1000) {
+        // 추첨일이 종료일보다 최소 30분(1800초) 늦어야 함 (컨트랙트 MIN_DRAW_DELAY)
+        const MIN_DRAW_DELAY = 1800; // 30 minutes in seconds
+        if (
+            !input.timing.instantDraw &&
+            input.timing.drawDate < input.timing.endDate + MIN_DRAW_DELAY
+        ) {
             return {
                 success: false,
-                error: "Start date cannot be in the past",
+                error: "Draw date must be at least 30 minutes after end date",
             };
         }
 
@@ -338,6 +358,43 @@ export async function createRaffle(
                 success: false,
                 error: "At least one prize is required",
             };
+        }
+
+        // 상품별 상세 검증
+        for (let i = 0; i < input.prizes.length; i++) {
+            const prize = input.prizes[i];
+
+            if (!prize.title.trim()) {
+                return {
+                    success: false,
+                    error: `Prize ${i + 1}: Title is required`,
+                };
+            }
+
+            // NFT 상품인 경우 collection address 필수
+            if (
+                prize.prizeType === 2 &&
+                (!prize.collectionAddress || !prize.collectionAddress.trim())
+            ) {
+                return {
+                    success: false,
+                    error: `Prize ${
+                        i + 1
+                    }: Collection address is required for NFT prizes`,
+                };
+            }
+
+            // collection address가 있으면 유효한 주소인지 확인
+            if (
+                prize.collectionAddress &&
+                prize.collectionAddress.trim() &&
+                !/^0x[a-fA-F0-9]{40}$/.test(prize.collectionAddress)
+            ) {
+                return {
+                    success: false,
+                    error: `Prize ${i + 1}: Invalid collection address format`,
+                };
+            }
         }
 
         // 컨트랙트 인스턴스 생성
@@ -361,17 +418,23 @@ export async function createRaffle(
                 iconUrl: input.basicInfo.iconUrl,
             },
             timing: {
-                startDate: BigInt(input.timing.startDate),
+                startDate: BigInt(adjustedStartDate),
                 endDate: BigInt(input.timing.endDate),
                 instantDraw: input.timing.instantDraw,
-                drawDate: BigInt(input.timing.drawDate),
+                drawDate: input.timing.instantDraw
+                    ? BigInt(input.timing.endDate + 1800) // 즉시 추첨시 종료일보다 30분(1800초) 후로 설정 (MIN_DRAW_DELAY)
+                    : BigInt(input.timing.drawDate),
             },
             settings: {
                 dynamicWeight: input.settings.dynamicWeight,
-                participationLimit: BigInt(input.settings.participationLimit),
-                participationLimitPerPlayer: BigInt(
-                    input.settings.participationLimitPerPlayer
-                ),
+                participationLimit:
+                    input.settings.participationLimit === -1
+                        ? MAX_UINT256
+                        : BigInt(input.settings.participationLimit),
+                participationLimitPerPlayer:
+                    input.settings.participationLimitPerPlayer === -1
+                        ? MAX_UINT256
+                        : BigInt(input.settings.participationLimitPerPlayer),
             },
             fee: {
                 participationFeeAsset: input.fee.participationFeeAsset,
@@ -382,7 +445,10 @@ export async function createRaffle(
             },
             prizes: input.prizes.map((prize) => ({
                 prizeType: prize.prizeType,
-                collectionAddress: prize.collectionAddress as Address,
+                collectionAddress:
+                    prize.prizeType === 2 && prize.collectionAddress
+                        ? (prize.collectionAddress as Address)
+                        : ZERO_ADDRESS,
                 registeredTicketQuantity: BigInt(
                     prize.registeredTicketQuantity
                 ),
@@ -456,6 +522,259 @@ export async function createRaffle(
                 error instanceof Error
                     ? error.message
                     : "Failed to create raffle",
+        };
+    }
+}
+
+export interface GetRafflesInput {
+    networkId?: string;
+    contractAddress?: string;
+    isActive?: boolean;
+    limit?: number;
+    offset?: number;
+}
+
+export interface GetRafflesResult {
+    success: boolean;
+    data?: Array<{
+        id: string;
+        contractAddress: string;
+        raffleId: string;
+        txHash: string;
+        blockNumber: number | null;
+        networkId: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        network: {
+            id: string;
+            name: string;
+            chainId: number;
+        };
+    }>;
+    total?: number;
+    error?: string;
+}
+
+/**
+ * 배포된 래플 목록 조회
+ */
+export async function getRaffles(
+    input: GetRafflesInput = {}
+): Promise<GetRafflesResult> {
+    try {
+        const where = {
+            ...(input.networkId && { networkId: input.networkId }),
+            ...(input.contractAddress && {
+                contractAddress: input.contractAddress,
+            }),
+            ...(input.isActive !== undefined && { isActive: input.isActive }),
+        };
+
+        const [raffles, total, networks] = await Promise.all([
+            prisma.onchainRaffle.findMany({
+                where,
+                orderBy: {
+                    createdAt: "desc",
+                },
+                ...(input.limit && { take: input.limit }),
+                ...(input.offset && { skip: input.offset }),
+            }),
+            prisma.onchainRaffle.count({ where }),
+            prisma.blockchainNetwork.findMany({
+                select: {
+                    id: true,
+                    name: true,
+                    chainId: true,
+                },
+            }),
+        ]);
+
+        const networkMap = new Map(networks.map((net) => [net.id, net]));
+
+        const mappedRaffles = raffles.map((raffle) => ({
+            id: raffle.id,
+            contractAddress: raffle.contractAddress,
+            raffleId: raffle.raffleId,
+            txHash: raffle.txHash,
+            blockNumber: raffle.blockNumber,
+            networkId: raffle.networkId,
+            isActive: raffle.isActive,
+            createdAt: raffle.createdAt,
+            updatedAt: raffle.updatedAt,
+            network: networkMap.get(raffle.networkId) || {
+                id: raffle.networkId,
+                name: "Unknown",
+                chainId: 0,
+            },
+        }));
+
+        return {
+            success: true,
+            data: mappedRaffles,
+            total,
+        };
+    } catch (error) {
+        console.error("Error fetching raffles:", error);
+        return {
+            success: false,
+            error: "Failed to fetch raffles",
+        };
+    }
+}
+
+export interface UpdateRaffleInput {
+    id: string;
+    isActive?: boolean;
+}
+
+export interface UpdateRaffleResult {
+    success: boolean;
+    data?: {
+        id: string;
+        raffleId: string;
+        contractAddress: string;
+        isActive: boolean;
+    };
+    error?: string;
+}
+
+/**
+ * 래플 상태 업데이트
+ */
+export async function updateRaffle(
+    input: UpdateRaffleInput
+): Promise<UpdateRaffleResult> {
+    try {
+        const updatedRaffle = await prisma.onchainRaffle.update({
+            where: { id: input.id },
+            data: {
+                ...(input.isActive !== undefined && {
+                    isActive: input.isActive,
+                }),
+                updatedAt: new Date(),
+            },
+            select: {
+                id: true,
+                raffleId: true,
+                contractAddress: true,
+                isActive: true,
+            },
+        });
+
+        return {
+            success: true,
+            data: updatedRaffle,
+        };
+    } catch (error) {
+        console.error("Error updating raffle:", error);
+        return {
+            success: false,
+            error: "Failed to update raffle",
+        };
+    }
+}
+
+export interface GetRaffleDataForSimulationInput {
+    contractAddress: string;
+    raffleId: string;
+    networkId: string;
+}
+
+export interface GetRaffleDataForSimulationResult {
+    success: boolean;
+    data?: {
+        raffleId: string;
+        title: string;
+        description: string;
+        entryFee: number;
+        prizes: Array<{
+            id: string;
+            title: string;
+            description: string;
+            imageUrl: string;
+            order: number;
+            quantity: number;
+            prizeType: number;
+            userValue?: number;
+        }>;
+        networkName: string;
+        contractAddress: string;
+    };
+    error?: string;
+}
+
+/**
+ * Smart Contract에서 래플 데이터를 조회하여 시뮬레이션용 데이터로 변환
+ */
+export async function getRaffleDataForSimulation(
+    input: GetRaffleDataForSimulationInput
+): Promise<GetRaffleDataForSimulationResult> {
+    try {
+        // 네트워크 정보 조회
+        const network = await prisma.blockchainNetwork.findUnique({
+            where: { id: input.networkId },
+        });
+        if (!network) {
+            return {
+                success: false,
+                error: "Network not found",
+            };
+        }
+
+        // Public Client 생성
+        const publicClient = await fetchPublicClient({ network });
+
+        // 컨트랙트 인스턴스 생성
+        const raffleContract = getContract({
+            address: input.contractAddress as `0x${string}`,
+            abi,
+            client: publicClient,
+        });
+
+        // Smart Contract에서 래플 정보 가져오기
+        const contractRaffle = await (raffleContract.read as any).getRaffle([
+            BigInt(input.raffleId),
+        ]);
+
+        // 상품 정보 변환
+        const prizes = contractRaffle.prizes.map(
+            (prize: any, index: number) => ({
+                id: `prize_${index}`,
+                title: prize.title || `상품 ${index + 1}`,
+                description: prize.description || "",
+                imageUrl: prize.imageUrl || "",
+                order: Number(prize.order),
+                quantity: Number(prize.registeredTicketQuantity),
+                prizeType: Number(prize.prizeType),
+                userValue: 0, // 사용자가 직접 입력해야 하는 값
+            })
+        );
+
+        // 시뮬레이션 데이터 구성
+        const simulationData = {
+            raffleId: input.raffleId,
+            title: contractRaffle.basicInfo.title || `래플 #${input.raffleId}`,
+            description: contractRaffle.basicInfo.description || "",
+            entryFee:
+                Number(contractRaffle.fee.participationFeeAmount) / 1e18 || 100, // Wei를 BERA로 변환
+            prizes,
+            networkName: network.name,
+            contractAddress: input.contractAddress,
+        };
+
+        return {
+            success: true,
+            data: simulationData,
+        };
+    } catch (error) {
+        console.error("Error getting raffle data for simulation:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to get raffle data",
         };
     }
 }
