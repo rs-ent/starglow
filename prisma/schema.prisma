@@ -17,8 +17,6 @@ model User {
   name                   String?
   email                  String?                 @unique
   emailVerified          DateTime?
-  password               String?
-  phone                  String?
   image                  String?
   role                   String                  @default("user")
   active                 Boolean                 @default(true)
@@ -26,15 +24,17 @@ model User {
   lastLoginAt            DateTime?
   provider               String?
   telegramId             String?                 @unique
+  password               String?
+  phone                  String?
+  discordId              String?                 @unique
   accounts               Account[]
   collectionParticipants CollectionParticipant[]
+  discordCode            DiscordCode[]
   loginAttempts          LoginAttemptLog[]       @relation("UserLoginAttempts")
   payments               Payment[]
   player                 Player?
   sessions               Session[]
   wallets                Wallet[]
-  discordId              String?                 @unique
-  discordCode            DiscordCode[]
 
   @@index([email, active])
   @@index([role, active])
@@ -62,11 +62,11 @@ model Account {
 }
 
 model DiscordAccount {
-  id                String  @id @default(cuid())
-  discordId         String  @unique
-  userIds           String[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id        String   @id @default(cuid())
+  discordId String   @unique
+  userIds   String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userIds])
   @@index([createdAt])
@@ -74,12 +74,11 @@ model DiscordAccount {
 }
 
 model DiscordCode {
-  id                String  @id @default(cuid())
-  code              String  @unique
-  expiresAt         DateTime
-  userId            String
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(cuid())
+  code      String   @unique
+  expiresAt DateTime
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([expiresAt])
   @@index([userId])
@@ -101,7 +100,6 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expires])
-  @@index([expires])
 }
 
 model Wallet {
@@ -110,7 +108,6 @@ model Wallet {
   address        String       @unique
   privateKey     String?
   network        String
-  provider       String       @default("starglow")
   createdAt      DateTime     @default(now())
   default        Boolean      @default(false)
   primary        Int?         @default(0)
@@ -119,6 +116,7 @@ model Wallet {
   status         WalletStatus @default(ACTIVE)
   keyHash        String?
   nonce          String?
+  provider       String       @default("starglow")
   payments       Payment[]
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -129,61 +127,59 @@ model Wallet {
 }
 
 model Player {
-  id                     String               @id @default(cuid())
-  userId                 String?              @unique
-  telegramId             String?              @unique
-  tweetAuthorId          String?              @unique
-  tweetVerified          Boolean              @default(false)
-  tester                 Boolean              @default(false)
-  name                   String?
-  nickname               String?
-  image                  String?
-  email                  String?
-  referralCount          Int                  @default(0)
-  referredBy             String?
-  referredMethod         String?
-  referredAt             DateTime             @default(now())
-  createdAt              DateTime             @default(now())
-  lastConnectedAt        DateTime             @updatedAt
-  referralCode           String               @unique
-  artistFeedReactions    ArtistFeedReaction[]
-  referrer               Player?              @relation("Referrer", fields: [referredBy], references: [id])
-  referredPlayers        Player[]             @relation("Referrer")
-  tweetAuthor            TweetAuthor?         @relation("PlayerToTweetAuthor", fields: [tweetAuthorId], references: [authorId])
-  user                   User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  playerAssets           PlayerAsset[]
-  pollLogs               PollLog[]
-  questLogs              QuestLog[]
-  referredPlayerLogs     ReferralLog[]        @relation("ReferredPlayer")
-  referrerPlayerLogs     ReferralLog[]        @relation("ReferrerPlayer")
-  rewardLogs             RewardsLog[]
-  boardPosts             BoardPost[]          @relation("BoardPostAuthor")
-  boardComments          BoardComment[]       @relation("BoardCommentAuthor")
-  boardReactions         BoardReaction[]      @relation("BoardReactionPlayer")
-  boardPostRewards       BoardPostReward[]    @relation("BoardPostRewardPlayer")
-  grantedBoardRewards    BoardPostReward[]    @relation("BoardPostRewardGranter")
-  raffleParticipants     RaffleParticipant[]
-  raffleWinners          RaffleWinner[]
-  userNotifications      UserNotification[]
-  notificationSettings   NotificationSettings?
-  isArtist               Boolean              @default(false)
-  artistId               String?
-  artist                 Artist?              @relation("PlayerArtist", fields: [artistId], references: [id])
-  boardTrustLevel        Int                  @default(0)
-  boardReputationScore   Int                  @default(0)
+  id                       String                  @id @default(cuid())
+  userId                   String?                 @unique
+  telegramId               String?                 @unique
+  name                     String?
+  createdAt                DateTime                @default(now())
+  lastConnectedAt          DateTime                @updatedAt
+  referralCount            Int                     @default(0)
+  referredAt               DateTime                @default(now())
+  referredBy               String?
+  referredMethod           String?
+  referralCode             String                  @unique
+  nickname                 String?
+  email                    String?
+  image                    String?
+  tweetAuthorId            String?                 @unique
+  tweetVerified            Boolean                 @default(false)
+  artistId                 String?
+  isArtist                 Boolean                 @default(false)
+  boardReputationScore     Int                     @default(0)
+  boardTrustLevel          Int                     @default(0)
+  tester                   Boolean                 @default(false)
+  browser                  String?
+  city                     String?
+  country                  String?
+  device                   String?
+  ipAddress                String?
+  locale                   String?
+  os                       String?
+  state                    String?
+  artistFeedReactions      ArtistFeedReaction[]
+  assetInstances           AssetInstance[]
+  boardComments            BoardComment[]          @relation("BoardCommentAuthor")
   committedBoardModeration BoardModerationReport[] @relation("BoardModerationReportOffender")
-  reportedBoardModeration BoardModerationReport[] @relation("BoardModerationReportReporter")
-  assetInstances         AssetInstance[]
-
-  // 추가된 정보 필드
-  ipAddress              String?
-  locale                 String?  
-  os                     String?
-  device                 String?
-  browser                String?
-  country                String?
-  state                  String?
-  city                   String?
+  reportedBoardModeration  BoardModerationReport[] @relation("BoardModerationReportReporter")
+  boardPosts               BoardPost[]             @relation("BoardPostAuthor")
+  grantedBoardRewards      BoardPostReward[]       @relation("BoardPostRewardGranter")
+  boardPostRewards         BoardPostReward[]       @relation("BoardPostRewardPlayer")
+  boardReactions           BoardReaction[]         @relation("BoardReactionPlayer")
+  artist                   Artist?                 @relation("PlayerArtist", fields: [artistId], references: [id])
+  referrer                 Player?                 @relation("Referrer", fields: [referredBy], references: [id])
+  referredPlayers          Player[]                @relation("Referrer")
+  tweetAuthor              TweetAuthor?            @relation("PlayerToTweetAuthor", fields: [tweetAuthorId], references: [authorId])
+  user                     User?                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playerAssets             PlayerAsset[]
+  pollLogs                 PollLog[]
+  questLogs                QuestLog[]
+  raffleParticipants       RaffleParticipant[]
+  raffleWinners            RaffleWinner[]
+  referredPlayerLogs       ReferralLog[]           @relation("ReferredPlayer")
+  referrerPlayerLogs       ReferralLog[]           @relation("ReferrerPlayer")
+  rewardLogs               RewardsLog[]
+  notificationSettings     NotificationSettings?
+  userNotifications        UserNotification[]
 
   @@unique([userId, telegramId])
   @@index([userId, telegramId])
@@ -207,8 +203,8 @@ model ReferralLog {
   id               String   @id @default(cuid())
   referredPlayerId String
   referrerPlayerId String
-  method           String?
   createdAt        DateTime @default(now())
+  method           String?
   referredPlayer   Player   @relation("ReferredPlayer", fields: [referredPlayerId], references: [id], onDelete: Cascade)
   referrerPlayer   Player   @relation("ReferrerPlayer", fields: [referrerPlayerId], references: [id], onDelete: Cascade)
 
@@ -217,15 +213,15 @@ model ReferralLog {
 }
 
 model PlayerAsset {
-  id        String            @id @default(cuid())
-  playerId  String
-  assetId   String
-  balance   Int               @default(0)
-  status    PlayerAssetStatus @default(ACTIVE)
-  updatedAt DateTime          @updatedAt
-  asset     Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  player    Player            @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  id             String            @id @default(cuid())
+  playerId       String
+  assetId        String
+  balance        Int               @default(0)
+  updatedAt      DateTime          @updatedAt
+  status         PlayerAssetStatus @default(ACTIVE)
   assetInstances AssetInstance[]
+  asset          Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  player         Player            @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@unique([playerId, assetId])
   @@index([assetId])
@@ -235,34 +231,34 @@ model PlayerAsset {
 model Quest {
   id                 String       @id @default(cuid())
   title              String
-  questType          QuestType    @default(URL)
   description        String?
   url                String?
-  urls               String[]
   icon               String?
-  imgUrl             String?
-  youtubeUrl         String?
-  rewardAssetId      String?
-  rewardAmount       Int?
   startDate          DateTime?
   endDate            DateTime?
-  needToken          Boolean      @default(false)
-  needTokenAddress   String?
+  permanent          Boolean      @default(false)
+  effects            String?
+  type               String?
+  rewardAmount       Int?
+  rewardAssetId      String?
+  imgUrl             String?
+  isActive           Boolean      @default(true)
+  order              Int?         @default(0)
+  youtubeUrl         String?
   repeatable         Boolean      @default(false)
   repeatableCount    Int?
   repeatableInterval Int?
-  multiClaimable     Boolean      @default(false)
-  multiClaimLimit    Int?
-  multiClaimInterval Int?
+  artistId           String?
+  needToken          Boolean      @default(false)
+  needTokenAddress   String?
   isReferral         Boolean      @default(false)
   referralCount      Int?
-  permanent          Boolean      @default(false)
-  isActive           Boolean      @default(true)
-  order              Int?         @default(0)
+  questType          QuestType    @default(URL)
+  multiClaimInterval Int?
+  multiClaimLimit    Int?
+  multiClaimable     Boolean      @default(false)
+  urls               String[]
   test               Boolean      @default(false)
-  effects            String?
-  type               String?
-  artistId           String?
   artist             Artist?      @relation("ArtistQuests", fields: [artistId], references: [id])
   rewardAsset        Asset?       @relation("QuestRewardAsset", fields: [rewardAssetId], references: [id])
   questLogs          QuestLog[]
@@ -275,36 +271,26 @@ model Quest {
   @@index([questType, isActive])
 }
 
-enum QuestLogStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  RECLAIMABLE
-  CLAIMED
-  FAILED
-  DEPRECATED
-}
-
 model QuestLog {
-  id             String       @id @default(cuid())
+  id             String         @id @default(cuid())
   playerId       String
   questId        String
-  completed      Boolean      @default(false)
+  completed      Boolean        @default(false)
   completedAt    DateTime?
-  rewardAssetId  String?
+  createdAt      DateTime       @default(now())
   rewardAmount   Int?
-  repeatCount    Int          @default(1)
-  completedDates DateTime[]
-  reclaimable    Boolean      @default(false)
-  claimedDates   DateTime[]
-  deprecated     Boolean      @default(false)
-  createdAt      DateTime     @default(now())
-  isClaimed      Boolean      @default(false)
-  status         QuestLogStatus @default(PENDING)
+  rewardAssetId  String?
   claimedAt      DateTime?
-  player         Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  quest          Quest        @relation(fields: [questId], references: [id])
-  rewardAsset    Asset?       @relation("QuestLogRewardAsset", fields: [rewardAssetId], references: [id])
+  isClaimed      Boolean        @default(false)
+  repeatCount    Int            @default(1)
+  completedDates DateTime[]
+  deprecated     Boolean        @default(false)
+  reclaimable    Boolean        @default(false)
+  claimedDates   DateTime[]
+  status         QuestLogStatus @default(PENDING)
+  player         Player         @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  quest          Quest          @relation(fields: [questId], references: [id])
+  rewardAsset    Asset?         @relation("QuestLogRewardAsset", fields: [rewardAssetId], references: [id])
   rewardLogs     RewardsLog[]
 
   @@unique([playerId, questId])
@@ -315,77 +301,77 @@ model QuestLog {
 }
 
 model Poll {
-  id                         String       @id @default(cuid())
-  title                      String
-  titleShorten               String?
-  description                String?
-  category                   PollCategory @default(PUBLIC)
-  status                     PollStatus   @default(UPCOMING)
-  isActive                   Boolean      @default(false)
-  showOnPollPage             Boolean      @default(true)
-  showOnStarPage             Boolean      @default(true)
-  options                    Json[]
-  optionsOrder               String[]     @default([])
-  hasAnswer                  Boolean      @default(false)
-  hasAnswerAnnouncement      Boolean      @default(false)
-  answerOptionIds            String[]     @default([])
-  imgUrl                     String?
-  youtubeUrl                 String?
-  startDate                  DateTime     @default(now())
-  endDate                    DateTime
-  answerAnnouncementDate     DateTime?
-  exposeInScheduleTab        Boolean      @default(true)
-  hideResults                Boolean      @default(false)
-  resultVisibleDate          DateTime?
-  prePromoText               String?
-  prePromoImg                String?
-  postPromoText              String?
-  postPromoImg               String?
-  needToken                  Boolean      @default(true)
-  needTokenAddress           String?
-  minimumPoints              Int?
-  minimumSGP                 Int?
-  minimumSGT                 Int?
-  requiredQuests             String[]     @default([])
-  allowMultipleVote          Boolean      @default(false)
-  voteLimit                  Int?
-  bettingMode                Boolean      @default(false)
-  bettingAssetId             String?
-  minimumBet                 Int          @default(1000)
-  maximumBet                 Int          @default(10000)
+  id                          String                     @id @default(cuid())
+  title                       String
+  titleShorten                String?
+  startDate                   DateTime                   @default(now())
+  endDate                     DateTime
+  exposeInScheduleTab         Boolean                    @default(true)
+  totalVotes                  Int                        @default(0)
+  totalBetsAmount             Int                        @default(0)
+  createdAt                   DateTime                   @default(now())
+  updatedAt                   DateTime                   @updatedAt
+  allowMultipleVote           Boolean                    @default(false)
+  bettingMode                 Boolean                    @default(false)
+  category                    PollCategory               @default(PUBLIC)
+  customResults               Int[]                      @default([])
+  description                 String?
+  hideResults                 Boolean                    @default(false)
+  imgUrl                      String?
+  maximumBet                  Int                        @default(10000)
+  metadata                    Json?
+  minimumBet                  Int                        @default(1000)
+  minimumPoints               Int?
+  minimumSGP                  Int?
+  minimumSGT                  Int?
+  needToken                   Boolean                    @default(true)
+  needTokenAddress            String?
+  optionsOrder                String[]                   @default([])
+  postPromoImg                String?
+  postPromoText               String?
+  prePromoImg                 String?
+  prePromoText                String?
+  requiredQuests              String[]                   @default([])
+  resultVisibleDate           DateTime?
+  status                      PollStatus                 @default(UPCOMING)
+  tags                        String[]                   @default([])
+  uniqueVoters                Int                        @default(0)
+  verificationHash            String?
+  verifiedAt                  DateTime?
+  verifiedBy                  String?
+  viewCount                   Int                        @default(0)
+  voteLimit                   Int?
+  youtubeUrl                  String?
+  options                     Json[]
+  bettingAssetId              String?
+  participationRewardAmount   Int?
+  participationRewardAssetId  String?
+  artistId                    String?
+  isActive                    Boolean                    @default(false)
+  answerOptionIds             String[]                   @default([])
+  hasAnswer                   Boolean                    @default(false)
+  bettingStatus               BettingStatus              @default(OPEN)
+  houseCommissionRate         Float                      @default(0.05)
+  isSettled                   Boolean                    @default(false)
+  optionBetAmounts            Json?
+  settledAt                   DateTime?
+  settledBy                   String?
+  totalCommissionAmount       Int                        @default(0)
+  winningOptionId             String?
+  answerAnnouncementDate      DateTime?
+  hasAnswerAnnouncement       Boolean                    @default(false)
+  participationConsumeAmount  Int?
   participationConsumeAssetId String?
-  participationConsumeAmount Int?
-  participationRewardAssetId String?
-  participationRewardAmount  Int?
-  viewCount                  Int          @default(0)
-  uniqueVoters               Int          @default(0)
-  totalVotes                 Int          @default(0)
-  totalBetsAmount            Int          @default(0)
-  customResults              Int[]        @default([])
-  verificationHash           String?
-  verifiedAt                 DateTime?
-  verifiedBy                 String?
-  test                       Boolean      @default(false)
-  tags                       String[]     @default([])
-  metadata                   Json?
-  createdAt                  DateTime     @default(now())
-  updatedAt                  DateTime     @updatedAt
-  artistId                   String?
-  artist                     Artist?      @relation("ArtistPolls", fields: [artistId], references: [id])
-  bettingAsset               Asset?       @relation("PollBettingAsset", fields: [bettingAssetId], references: [id])
-  participationConsumeAsset  Asset?       @relation("PollParticipationConsume", fields: [participationConsumeAssetId], references: [id])
-  participationRewardAsset   Asset?       @relation("PollParticipationReward", fields: [participationRewardAssetId], references: [id])
-  pollLogs                   PollLog[]
-  rewardLogs                 RewardsLog[]
-  bettingStatus              BettingStatus @default(OPEN)
-  isSettled                  Boolean      @default(false)
-  settledAt                  DateTime?
-  winningOptionId            String?
-  settledBy                  String?
-  houseCommissionRate        Float        @default(0.05)  // 5% 수수료
-  totalCommissionAmount      Int          @default(0)
-  optionBetAmounts           Json?
-  settlementLogs             PollBettingSettlementLog[]
+  showOnPollPage              Boolean                    @default(true)
+  showOnStarPage              Boolean                    @default(true)
+  test                        Boolean                    @default(false)
+  artist                      Artist?                    @relation("ArtistPolls", fields: [artistId], references: [id])
+  bettingAsset                Asset?                     @relation("PollBettingAsset", fields: [bettingAssetId], references: [id])
+  participationConsumeAsset   Asset?                     @relation("PollParticipationConsume", fields: [participationConsumeAssetId], references: [id])
+  participationRewardAsset    Asset?                     @relation("PollParticipationReward", fields: [participationRewardAssetId], references: [id])
+  settlementLogs              PollBettingSettlementLog[]
+  pollLogs                    PollLog[]
+  rewardLogs                  RewardsLog[]
 
   @@index([category])
   @@index([artistId])
@@ -394,60 +380,61 @@ model Poll {
 }
 
 model PollLog {
-  id            String       @id @default(cuid())
-  playerId      String
-  pollId        String
-  optionId      String
-  option        Json
-  amount        Int          @default(1)
-  betAmount     Int          @default(0)
-  payoutAmount  Int          @default(0)
-  payoutMultiplier Float?
-  isPayoutDistributed Boolean @default(false)
+  id                  String       @id @default(cuid())
+  playerId            String
+  pollId              String
+  betAmount           Int          @default(0)
+  createdAt           DateTime     @default(now())
+  ipAddress           String?
+  userAgent           String?
+  updatedAt           DateTime     @updatedAt
+  record              Json?
+  rewardAmount        Int?
+  rewardAssetId       String?
+  amount              Int          @default(1)
+  option              Json
+  optionId            String
+  isPayoutDistributed Boolean      @default(false)
+  payoutAmount        Int          @default(0)
   payoutDistributedAt DateTime?
-  ipAddress     String?
-  userAgent     String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  rewardAssetId String?
-  rewardAmount  Int?
-  record        Json?
-  player        Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  poll          Poll         @relation(fields: [pollId], references: [id])
-  rewardAsset   Asset?       @relation("PollLogRewardAsset", fields: [rewardAssetId], references: [id])
-  rewardLogs    RewardsLog[]
+  payoutMultiplier    Float?
+  player              Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  poll                Poll         @relation(fields: [pollId], references: [id])
+  rewardAsset         Asset?       @relation("PollLogRewardAsset", fields: [rewardAssetId], references: [id])
+  rewardLogs          RewardsLog[]
 
   @@unique([playerId, pollId, optionId])
   @@index([pollId])
   @@index([playerId, pollId])
+  @@index([playerId])
 }
 
 model RewardsLog {
-  id            String    @id @default(cuid())
-  playerId      String
-  assetId       String?
-  balanceBefore Int?
-  balanceAfter  Int?
-  questId       String?
-  questLogId    String?
-  pollId        String?
-  pollLogId     String?
-  raffleId      String?
+  id                  String             @id @default(cuid())
+  playerId            String
+  questId             String?
+  questLogId          String?
+  pollId              String?
+  pollLogId           String?
+  amount              Int
+  reason              String?
+  createdAt           DateTime           @default(now())
+  assetId             String?
+  balanceAfter        Int?
+  balanceBefore       Int?
+  tweetAuthorId       String?
+  tweetIds            String[]
+  raffleId            String?
   raffleParticipantId String?
-  amount        Int
-  reason        String?
-  createdAt     DateTime  @default(now())
-  asset         Asset?    @relation(fields: [assetId], references: [id])
-  player        Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  poll          Poll?     @relation(fields: [pollId], references: [id])
-  pollLog       PollLog?  @relation(fields: [pollLogId], references: [id])
-  quest         Quest?    @relation(fields: [questId], references: [id])
-  questLog      QuestLog? @relation(fields: [questLogId], references: [id])
-  raffle        Raffle?   @relation(fields: [raffleId], references: [id])
-  raffleParticipant RaffleParticipant? @relation(fields: [raffleParticipantId], references: [id])
-  tweetAuthorId String?
-  tweetAuthor   TweetAuthor? @relation(fields: [tweetAuthorId], references: [id])
-  tweetIds      String[]
+  asset               Asset?             @relation(fields: [assetId], references: [id])
+  player              Player             @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  poll                Poll?              @relation(fields: [pollId], references: [id])
+  pollLog             PollLog?           @relation(fields: [pollLogId], references: [id])
+  quest               Quest?             @relation(fields: [questId], references: [id])
+  questLog            QuestLog?          @relation(fields: [questLogId], references: [id])
+  raffle              Raffle?            @relation(fields: [raffleId], references: [id])
+  raffleParticipant   RaffleParticipant? @relation(fields: [raffleParticipantId], references: [id])
+  tweetAuthor         TweetAuthor?       @relation(fields: [tweetAuthorId], references: [id])
 
   @@index([playerId, pollId])
   @@index([playerId, questId])
@@ -524,11 +511,11 @@ model StoredFiles {
   order     Int?      @default(0)
   purpose   String?
   bucket    String
-  focusX    Float     @default(0.5)
-  focusY    Float     @default(0.5)
   expiresAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  focusX    Float     @default(0.5)
+  focusY    Float     @default(0.5)
 
   @@unique([sourceUrl, type])
   @@index([bucket, purpose])
@@ -630,6 +617,8 @@ model PaymentPromotion {
   createdAt     DateTime                     @default(now())
   updatedAt     DateTime                     @updatedAt
   payments      Payment[]
+
+  @@index([code])
 }
 
 model WebhookEvent {
@@ -677,10 +666,10 @@ model BlockchainNetwork {
   symbol              String
   isTestnet           Boolean              @default(true)
   isActive            Boolean              @default(true)
-  isStoryNetwork      Boolean              @default(false)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   multicallAddress    String?
+  isStoryNetwork      Boolean              @default(false)
   defaultNetwork      Boolean              @default(false)
   assets              Asset[]
   assetsContracts     AssetsContract[]
@@ -715,51 +704,49 @@ model AssetsContract {
 }
 
 model Asset {
-  id                            String             @id @default(cuid())
-  name                          String
-  symbol                        String
-  description                   String?
-  iconUrl                       String?
-  imageUrl                      String?
-  metadata                      Json?
-  assetType                     AssetType
-  contractAddress               String?
-  isActive                      Boolean            @default(true)
-  isDefault                     Boolean            @default(false)
-  selectors                     String[]           @default([])
-  abis                          Json?
-  creatorAddress                String?
-  assetId                       String?
-  assetsContractAddress         String?
-  networkId                     String?
-  artistId                      String?
-  needTutorial                  Boolean            @default(false)
-  createdAt                     DateTime           @default(now())
-  updatedAt                     DateTime           @updatedAt
-  assetsContract                AssetsContract?    @relation(fields: [assetsContractAddress], references: [address])
-  network                       BlockchainNetwork? @relation(fields: [networkId], references: [id])
-  artist                        Artist?            @relation("ArtistAssets", fields: [artistId], references: [id])
-  playerAssets                  PlayerAsset[]
-  pollBettingAssets             Poll[]             @relation("PollBettingAsset")
-  pollParticipationRewardAssets Poll[]             @relation("PollParticipationReward")
-  pollLogRewardAssets           PollLog[]          @relation("PollLogRewardAsset")
-  questRewardAssets             Quest[]            @relation("QuestRewardAsset")
-  questLogRewardAssets          QuestLog[]         @relation("QuestLogRewardAsset")
-  rewardsLogs                   RewardsLog[]
-  stakeRewards                  StakeReward[]      @relation("StakeReward")
-  stakeRewardLogs               StakeRewardLog[]   @relation("StakeRewardLog")
-  boardPostRewards              BoardPostReward[]  @relation("BoardPostRewardAsset")
-  boardPostCreationRewards      Board[]            @relation("BoardPostCreationReward")
-  boardPopularPostRewards       Board[]            @relation("BoardPopularPostReward")
-  boardQualityContentRewards    Board[]            @relation("BoardQualityContentReward")
-  rafflePrizes                  RafflePrize[]      @relation("RafflePrizeAsset")
-  raffleEntryFeeAssets          Raffle[]           @relation("RaffleEntryFeeAsset")
+  id                             String             @id @default(cuid())
+  name                           String
+  symbol                         String
+  description                    String?
+  iconUrl                        String?
+  imageUrl                       String?
+  metadata                       Json?
+  assetType                      AssetType
+  contractAddress                String?
+  isActive                       Boolean            @default(true)
+  selectors                      String[]           @default([])
+  abis                           Json?
+  networkId                      String?
+  createdAt                      DateTime           @default(now())
+  updatedAt                      DateTime           @updatedAt
+  creatorAddress                 String?
+  assetsContractAddress          String?
+  assetId                        String?
+  isDefault                      Boolean            @default(false)
+  artistId                       String?
+  hasInstance                    Boolean            @default(false)
+  needTutorial                   Boolean            @default(false)
+  artist                         Artist?            @relation("ArtistAssets", fields: [artistId], references: [id])
+  assetsContract                 AssetsContract?    @relation(fields: [assetsContractAddress], references: [address])
+  network                        BlockchainNetwork? @relation(fields: [networkId], references: [id])
+  assetInstances                 AssetInstance[]
+  assetTutorial                  AssetTutorial?
+  boardPopularPostRewards        Board[]            @relation("BoardPopularPostReward")
+  boardPostCreationRewards       Board[]            @relation("BoardPostCreationReward")
+  boardQualityContentRewards     Board[]            @relation("BoardQualityContentReward")
+  boardPostRewards               BoardPostReward[]  @relation("BoardPostRewardAsset")
+  playerAssets                   PlayerAsset[]
+  pollBettingAssets              Poll[]             @relation("PollBettingAsset")
   pollParticipationConsumeAssets Poll[]             @relation("PollParticipationConsume")
-  
-  assetTutorial                 AssetTutorial?
-
-  hasInstance                   Boolean            @default(false)
-  assetInstances                AssetInstance[]
+  pollParticipationRewardAssets  Poll[]             @relation("PollParticipationReward")
+  pollLogRewardAssets            PollLog[]          @relation("PollLogRewardAsset")
+  questRewardAssets              Quest[]            @relation("QuestRewardAsset")
+  questLogRewardAssets           QuestLog[]         @relation("QuestLogRewardAsset")
+  raffleEntryFeeAssets           Raffle[]           @relation("RaffleEntryFeeAsset")
+  rafflePrizes                   RafflePrize[]      @relation("RafflePrizeAsset")
+  rewardsLogs                    RewardsLog[]
+  stakeRewards                   StakeReward[]      @relation("StakeReward")
+  stakeRewardLogs                StakeRewardLog[]   @relation("StakeRewardLog")
 
   @@index([isDefault])
   @@index([assetType, isActive])
@@ -773,51 +760,32 @@ model AssetTutorial {
   assetId   String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  asset     Asset    @relation(fields: [assetId], references: [id])
   steps     Json
-}
-
-enum AssetInstanceStatus {
-  PENDING
-  RECEIVED
-  RECEIVED_EXPIRED
-  USED
-  EXPIRED
-  EXCHANGED
-  CANCELLED
-  DESTROYED
+  asset     Asset    @relation(fields: [assetId], references: [id])
 }
 
 model AssetInstance {
-  id        String   @id @default(cuid())
-  serialNumber String
-  code String?
-  status AssetInstanceStatus @default(PENDING)
-
-  assetId String
-  asset Asset @relation(fields: [assetId], references: [id])
-
-  playerId String?
-  player Player? @relation(fields: [playerId], references: [id])
-
+  id            String              @id @default(cuid())
+  serialNumber  String
+  status        AssetInstanceStatus @default(PENDING)
+  assetId       String
+  playerId      String?
   playerAssetId String?
-  playerAsset PlayerAsset? @relation(fields: [playerAssetId], references: [id])
-
-  expiresAt DateTime?
-  validFrom DateTime?
-  validUntil DateTime?
-
-  usedAt DateTime?
-  usedBy String?
-  usedFor String?
-  usedLocation String?
-
-  source String?
-
-  metadata Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  expiresAt     DateTime?
+  validFrom     DateTime?
+  validUntil    DateTime?
+  usedAt        DateTime?
+  usedBy        String?
+  usedFor       String?
+  usedLocation  String?
+  source        String?
+  metadata      Json?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  code          String?
+  asset         Asset               @relation(fields: [assetId], references: [id])
+  playerAsset   PlayerAsset?        @relation(fields: [playerAssetId], references: [id])
+  player        Player?             @relation(fields: [playerId], references: [id])
 
   @@unique([assetId, serialNumber])
   @@unique([assetId, code])
@@ -829,14 +797,14 @@ model AssetInstance {
 
 model AssetTransaction {
   id              String   @id @default(cuid())
-  success         Boolean
   assetId         String
+  success         Boolean
+  createdAt       DateTime @default(now())
+  amount          Int?
   description     String?
   metadata        Json?
-  amount          Int?
   receiverAddress String?
   transactionHash String   @unique
-  createdAt       DateTime @default(now())
 
   @@index([assetId, success])
 }
@@ -879,13 +847,13 @@ model ipfs {
   cid              String   @unique
   url              String   @unique
   type             String   @default("default")
-  previewUrl       String?
-  previewWidth     Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
   previewHeight    Int?
   previewMimeType  String?
   previewSizeBytes Int?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  previewUrl       String?
+  previewWidth     Int?
 
   @@index([type])
   @@index([previewUrl])
@@ -918,7 +886,6 @@ model CollectionContract {
   factoryId      String
   networkId      String
   createdBy      String                  @default("admin")
-  creatorAddress String                  @default("0x58E1F072A8f41e1d476F06d73a6cB7b866e6f63B")
   txHash         String?
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
@@ -933,12 +900,13 @@ model CollectionContract {
   isPaused       Boolean                 @default(false)
   pauseAt        DateTime?
   unpauseAt      DateTime?
-  preSaleStart   DateTime?
-  preSaleEnd     DateTime?
-  saleStart      DateTime?
-  saleEnd        DateTime?
-  glowStart      DateTime?
+  creatorAddress String                  @default("0x58E1F072A8f41e1d476F06d73a6cB7b866e6f63B")
   glowEnd        DateTime?
+  glowStart      DateTime?
+  preSaleEnd     DateTime?
+  preSaleStart   DateTime?
+  saleEnd        DateTime?
+  saleStart      DateTime?
   pageImages     String[]
   artist         Artist?                 @relation(fields: [artistId], references: [id])
   factory        FactoryContract         @relation(fields: [factoryId], references: [id])
@@ -1022,10 +990,10 @@ model StakeReward {
   id                String             @id @default(cuid())
   assetId           String
   amount            Int
-  stakeDuration     BigInt
-  collectionAddress String
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  stakeDuration     BigInt
+  collectionAddress String
   asset             Asset              @relation("StakeReward", fields: [assetId], references: [id])
   collection        CollectionContract @relation("StakeReward", fields: [collectionAddress], references: [address])
   stakeRewardLogs   StakeRewardLog[]   @relation("StakeRewardLog")
@@ -1035,7 +1003,6 @@ model StakeRewardLog {
   id            String      @id @default(cuid())
   stakeRewardId String
   nftId         String
-  assetId       String
   amount        Int
   isDistributed Boolean     @default(false)
   distributedAt DateTime?
@@ -1043,6 +1010,7 @@ model StakeRewardLog {
   claimedAt     DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  assetId       String
   asset         Asset       @relation("StakeRewardLog", fields: [assetId], references: [id])
   nft           NFT         @relation("StakeRewardLog", fields: [nftId], references: [id])
   stakeReward   StakeReward @relation("StakeRewardLog", fields: [stakeRewardId], references: [id])
@@ -1072,10 +1040,8 @@ model NFTEvent {
 
 model Artist {
   id                  String               @id @default(cuid())
-  order               Int                  @default(0)
   name                String
   description         String?
-  logoUrl             String?
   imageUrl            String?
   externalUrl         String?
   reportUrl           String?
@@ -1086,25 +1052,28 @@ model Artist {
   music               String[]             @default([])
   events              String[]             @default([])
   additionalInfo      Json?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  logoUrl             String?
   backgroundColors    String[]             @default([])
   foregroundColors    String[]             @default([])
   code                String?              @unique
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
   hidden              Boolean              @default(false)
+  order               Int                  @default(0)
   feeds               ArtistFeed[]
   members             ArtistMember[]
   messages            ArtistMessage[]
+  assets              Asset[]              @relation("ArtistAssets")
+  boards              Board[]              @relation("ArtistBoards")
   collectionContracts CollectionContract[]
+  players             Player[]             @relation("PlayerArtist")
   polls               Poll[]               @relation("ArtistPolls")
   quests              Quest[]              @relation("ArtistQuests")
-  story_spg           Story_spg[]
-  boards              Board[]              @relation("ArtistBoards")
-  players             Player[]             @relation("PlayerArtist")
   raffles             Raffle[]             @relation("ArtistRaffles")
-  assets              Asset[]              @relation("ArtistAssets")
+  story_spg           Story_spg[]
 
   @@index([name])
+  @@index([code])
 }
 
 model ArtistMember {
@@ -1138,12 +1107,12 @@ model ArtistMessage {
   artistId    String
   bannerUrl   String?
   externalUrl String?
-  isActive    Boolean   @default(true)
-  startDate   DateTime?
-  endDate     DateTime?
   message     String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  endDate     DateTime?
+  isActive    Boolean   @default(true)
+  startDate   DateTime?
   artist      Artist    @relation(fields: [artistId], references: [id])
 }
 
@@ -1213,41 +1182,41 @@ model TBAContract {
 model Story_spg {
   id                       String             @id @default(cuid())
   address                  String             @unique
-  baseURI                  String
   contractURI              String
   name                     String             @unique
   symbol                   String             @unique
-  imageUrl                 String?
-  metadata                 Json?
   createdAt                DateTime           @default(now())
   updatedAt                DateTime           @updatedAt
-  contractAddress          String?
   networkId                String
   ownerAddress             String
   artistId                 String?
-  tbaRegistryAddress       String?
-  tbaImplementationAddress String?
+  contractAddress          String?
+  baseURI                  String
+  backgroundColor          String?
+  circulation              Int                @default(1000)
+  foregroundColor          String?
+  glowEnd                  DateTime?
+  glowStart                DateTime?
+  pageImages               String[]
+  preOrderEnd              DateTime?
+  preOrderStart            DateTime?
+  price                    Int                @default(0)
+  saleEnd                  DateTime?
+  saleStart                DateTime?
   isListed                 Boolean            @default(false)
+  imageUrl                 String?
+  metadata                 Json?
   reportUrl                String?
   sharePercentage          Float              @default(0.0)
-  preOrderStart            DateTime?
-  preOrderEnd              DateTime?
-  saleStart                DateTime?
-  saleEnd                  DateTime?
-  glowStart                DateTime?
-  glowEnd                  DateTime?
-  price                    Int                @default(0)
-  circulation              Int                @default(1000)
-  pageImages               String[]
+  tbaImplementationAddress String?
+  tbaRegistryAddress       String?
   comingSoon               Boolean            @default(false)
   hiddenDetails            Boolean            @default(false)
-  backgroundColor          String?
-  foregroundColor          String?
+  rafflePrizes             RafflePrize[]      @relation("RafflePrizeSPG")
   story_nfts               Story_nft[]
   artist                   Artist?            @relation(fields: [artistId], references: [id])
   contract                 Story_spgContract? @relation(fields: [contractAddress], references: [address])
   network                  BlockchainNetwork  @relation(fields: [networkId], references: [id])
-  rafflePrizes             RafflePrize[]      @relation("RafflePrizeSPG")
 
   @@index([networkId])
   @@index([ownerAddress, networkId])
@@ -1259,15 +1228,15 @@ model Story_spg {
 model Story_nft {
   id              String            @id @default(cuid())
   tokenId         String
+  contractAddress String
   ownerAddress    String
   networkId       String
   tokenURI        String
-  tokenURICid     String
   mintTxHash      String?
-  contractAddress String
-  ipId            String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+  tokenURICid     String
+  ipId            String?
   spgCollection   Story_spg         @relation(fields: [contractAddress], references: [address])
   ipAsset         Story_ipAsset?    @relation(fields: [ipId], references: [ipId])
   network         BlockchainNetwork @relation(fields: [networkId], references: [id])
@@ -1302,76 +1271,68 @@ model Story_ipAsset {
 }
 
 model TweetAuthor {
-  id String @id @default(cuid())
-  authorId String @unique
-  name String?
-  username String?
+  id              String                @id @default(cuid())
+  authorId        String                @unique
+  name            String?
+  username        String?
   profileImageUrl String?
-
-  validated Boolean @default(false)
-  validatedAt DateTime?
-  registered Boolean @default(false)
-  registeredAt DateTime?
-  
-  tweets Tweet[]
-  player Player? @relation("PlayerToTweetAuthor")
-  metrics TweetAuthorMetrics[]
-  isBlacklisted Boolean @default(false)
-  blacklistedAt DateTime?
-  blacklistData TweetAuthorBlacklist?
-
-  rewardsLogs RewardsLog[]
+  blacklistedAt   DateTime?
+  isBlacklisted   Boolean               @default(false)
+  registered      Boolean               @default(false)
+  registeredAt    DateTime?
+  validated       Boolean               @default(false)
+  validatedAt     DateTime?
+  player          Player?               @relation("PlayerToTweetAuthor")
+  rewardsLogs     RewardsLog[]
+  tweets          Tweet[]
+  blacklistData   TweetAuthorBlacklist?
+  metrics         TweetAuthorMetrics[]
 
   @@index([isBlacklisted])
 }
 
 model TweetAuthorMetrics {
-  id String @id @default(cuid())
-  tweetAuthorId String
-  tweetAuthor TweetAuthor @relation(fields: [tweetAuthorId], references: [authorId])
-  
+  id             String      @id @default(cuid())
+  tweetAuthorId  String
   followersCount Int
   followingCount Int
-  tweetCount Int
-  listedCount Int
-  verified Boolean @default(false)
-  
-  recordedAt DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  tweetCount     Int
+  listedCount    Int
+  verified       Boolean     @default(false)
+  recordedAt     DateTime    @default(now())
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  tweetAuthor    TweetAuthor @relation(fields: [tweetAuthorId], references: [authorId])
 
   @@index([tweetAuthorId])
 }
 
 model TweetAuthorBlacklist {
-  id String @id @default(cuid())
-  authorId String @unique
-  author TweetAuthor @relation(fields: [authorId], references: [authorId])
-
-  reason String?
-  tweetCount Int @default(0)
+  id          String      @id @default(cuid())
+  authorId    String      @unique
+  reason      String?
+  tweetCount  Int         @default(0)
   periodStart DateTime?
-  periodEnd DateTime?
-  isActive Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  periodEnd   DateTime?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  author      TweetAuthor @relation(fields: [authorId], references: [authorId])
 
   @@index([isActive])
 }
-
 
 model Tweet {
   id                    String         @id @default(cuid())
   tweetId               String         @unique
   text                  String
-  authorName            String?
-  authorUsername        String?
-  authorProfileImageUrl String?
   authorId              String
-  isDeleted             Boolean        @default(false)
-  deletedAt             DateTime?
   createdAt             DateTime       @default(now())
+  authorName            String?
+  authorProfileImageUrl String?
+  authorUsername        String?
+  deletedAt             DateTime?
+  isDeleted             Boolean        @default(false)
   updatedAt             DateTime       @updatedAt
   author                TweetAuthor    @relation(fields: [authorId], references: [authorId])
   media                 TweetMedia[]
@@ -1452,21 +1413,530 @@ model XAuthSession {
   playerId     String
   expiresAt    DateTime
   createdAt    DateTime @default(now())
-  
+
   @@index([expiresAt])
 }
 
-// Board System Models
-
 model BoardModerationRule {
-  id String @id @default(cuid())
-  category String
+  id        String                  @id @default(cuid())
+  category  String
   stopWords String[]
-  isActive Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive  Boolean                 @default(true)
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+  reports   BoardModerationReport[]
+}
 
-  reports BoardModerationReport[]
+model BoardModerationReport {
+  id            String                      @id @default(cuid())
+  boardId       String
+  postId        String?
+  commentId     String?
+  reporterId    String?
+  offenderId    String?
+  relatedRuleId String?
+  reason        String?
+  type          BoardModerationReportType   @default(UNKNOWN)
+  status        BoardModerationReportStatus @default(PENDING)
+  reviewResult  String?
+  reviewAt      DateTime?
+  reviewBy      String?
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+  board         Board                       @relation(fields: [boardId], references: [id])
+  comment       BoardComment?               @relation(fields: [commentId], references: [id])
+  offender      Player?                     @relation("BoardModerationReportOffender", fields: [offenderId], references: [id])
+  post          BoardPost?                  @relation(fields: [postId], references: [id])
+  relatedRule   BoardModerationRule?        @relation(fields: [relatedRuleId], references: [id])
+  reporter      Player?                     @relation("BoardModerationReportReporter", fields: [reporterId], references: [id])
+
+  @@unique([reporterId, boardId, postId, commentId])
+  @@index([status, createdAt])
+  @@index([type, createdAt])
+  @@index([reporterId, createdAt])
+  @@index([offenderId, createdAt])
+  @@index([relatedRuleId, createdAt])
+  @@index([boardId, createdAt])
+  @@index([postId, createdAt])
+  @@index([commentId, createdAt])
+}
+
+model BoardModerationTrustLevelAction {
+  id                                    String   @id @default(cuid())
+  trustLevel                            Int      @unique @default(0)
+  reputationScore                       Int      @default(0)
+  postPerDay                            Int      @default(5)
+  commentPerDay                         Int      @default(10)
+  syllableLimit                         Int      @default(1000)
+  linkPerPostLimit                      Int      @default(0)
+  attachmentPerPostLimit                Int      @default(3)
+  isActive                              Boolean  @default(true)
+  increaseReputationScoreByCleanPost    Int      @default(3)
+  increaseReputationScoreByCleanComment Int      @default(1)
+  increaseReputationScoreByReportedPost Int      @default(1)
+  createdAt                             DateTime @default(now())
+  updatedAt                             DateTime @updatedAt
+}
+
+model Board {
+  id                          String                  @id @default(cuid())
+  name                        String
+  description                 String?
+  artistId                    String?
+  isPublic                    Boolean                 @default(true)
+  isActive                    Boolean                 @default(true)
+  order                       Int                     @default(0)
+  iconUrl                     String?
+  bannerUrl                   String?
+  rules                       String?
+  metadata                    Json?
+  createdAt                   DateTime                @default(now())
+  updatedAt                   DateTime                @updatedAt
+  allowAdminRewards           Boolean                 @default(false)
+  allowArtistRewards          Boolean                 @default(false)
+  allowTeamRewards            Boolean                 @default(false)
+  allowUserRewards            Boolean                 @default(false)
+  dailyPostLimit              Int?
+  maxRewardPerPost            Int?
+  popularPostRewardAmount     Int?
+  popularPostRewardAssetId    String?
+  popularPostRewardEnabled    Boolean                 @default(false)
+  popularPostThreshold        Int?
+  postCreationRewardAmount    Int?
+  postCreationRewardAssetId   String?
+  postCreationRewardEnabled   Boolean                 @default(false)
+  qualityContentRewardAmount  Int?
+  qualityContentRewardAssetId String?
+  qualityContentRewardEnabled Boolean                 @default(false)
+  weeklyPostLimit             Int?
+  artist                      Artist?                 @relation("ArtistBoards", fields: [artistId], references: [id])
+  popularPostRewardAsset      Asset?                  @relation("BoardPopularPostReward", fields: [popularPostRewardAssetId], references: [id])
+  postCreationRewardAsset     Asset?                  @relation("BoardPostCreationReward", fields: [postCreationRewardAssetId], references: [id])
+  qualityContentRewardAsset   Asset?                  @relation("BoardQualityContentReward", fields: [qualityContentRewardAssetId], references: [id])
+  reports                     BoardModerationReport[]
+  posts                       BoardPost[]
+
+  @@index([artistId, isActive])
+  @@index([isPublic, isActive, order])
+}
+
+model BoardPost {
+  id                   String                  @id @default(cuid())
+  boardId              String
+  authorId             String?
+  authorType           BoardAuthorType         @default(PLAYER)
+  title                String
+  content              String
+  imageUrls            String[]                @default([])
+  videoUrls            String[]                @default([])
+  attachmentUrls       String[]                @default([])
+  nftAddress           String?
+  nftTokenId           String?
+  tags                 String[]                @default([])
+  isPinned             Boolean                 @default(false)
+  isHidden             Boolean                 @default(false)
+  viewCount            Int                     @default(0)
+  likeCount            Int                     @default(0)
+  dislikeCount         Int                     @default(0)
+  recommendCount       Int                     @default(0)
+  commentCount         Int                     @default(0)
+  shareCount           Int                     @default(0)
+  metadata             Json?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  files                Json[]                  @default([])
+  isSandbox            Boolean                 @default(false)
+  isSandboxBoardArtist Boolean                 @default(false)
+  sandboxImgUrl        String?
+  sandboxNickname      String?
+  comments             BoardComment[]
+  reports              BoardModerationReport[]
+  author               Player?                 @relation("BoardPostAuthor", fields: [authorId], references: [id])
+  board                Board                   @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  rewards              BoardPostReward[]
+  reactions            BoardReaction[]
+
+  @@index([boardId, isPinned, createdAt])
+  @@index([authorId, createdAt])
+  @@index([authorType, createdAt])
+  @@index([recommendCount, createdAt])
+  @@index([boardId, isHidden, isPinned])
+}
+
+model BoardComment {
+  id                   String                  @id @default(cuid())
+  postId               String
+  authorId             String?
+  authorType           BoardAuthorType         @default(PLAYER)
+  content              String
+  parentId             String?
+  imageUrls            String[]                @default([])
+  isHidden             Boolean                 @default(false)
+  likeCount            Int                     @default(0)
+  dislikeCount         Int                     @default(0)
+  replyCount           Int                     @default(0)
+  metadata             Json?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  files                Json[]                  @default([])
+  isSandbox            Boolean                 @default(false)
+  isSandboxBoardArtist Boolean                 @default(false)
+  sandboxImgUrl        String?
+  sandboxNickname      String?
+  author               Player?                 @relation("BoardCommentAuthor", fields: [authorId], references: [id])
+  parent               BoardComment?           @relation("CommentReplies", fields: [parentId], references: [id])
+  replies              BoardComment[]          @relation("CommentReplies")
+  post                 BoardPost               @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reports              BoardModerationReport[]
+  reactions            BoardReaction[]
+
+  @@index([postId, parentId, createdAt])
+  @@index([authorId, createdAt])
+  @@index([parentId])
+}
+
+model BoardReaction {
+  id        String            @id @default(cuid())
+  playerId  String?
+  postId    String?
+  commentId String?
+  type      BoardReactionType
+  createdAt DateTime          @default(now())
+  comment   BoardComment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  player    Player?           @relation("BoardReactionPlayer", fields: [playerId], references: [id])
+  post      BoardPost?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, postId, type])
+  @@unique([playerId, commentId, type])
+  @@index([postId, type])
+  @@index([commentId, type])
+  @@index([playerId])
+}
+
+model BoardPostReward {
+  id            String            @id @default(cuid())
+  postId        String
+  playerId      String
+  grantedBy     String?
+  grantedByType BoardAuthorType?
+  assetId       String?
+  amount        Int
+  reason        BoardRewardReason
+  txHash        String?
+  status        BoardRewardStatus @default(PENDING)
+  metadata      Json?
+  createdAt     DateTime          @default(now())
+  processedAt   DateTime?
+  asset         Asset?            @relation("BoardPostRewardAsset", fields: [assetId], references: [id])
+  grantedByUser Player?           @relation("BoardPostRewardGranter", fields: [grantedBy], references: [id])
+  player        Player            @relation("BoardPostRewardPlayer", fields: [playerId], references: [id])
+  post          BoardPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, status])
+  @@index([playerId, status])
+  @@index([grantedBy, createdAt])
+  @@index([reason, status])
+}
+
+model Raffle {
+  id                  String              @id @default(cuid())
+  title               String
+  description         String?
+  imgUrl              String?
+  startDate           DateTime            @default(now())
+  endDate             DateTime
+  drawDate            DateTime?
+  instantReveal       Boolean             @default(true)
+  displayType         String              @default("GACHA")
+  maxParticipants     Int?
+  entryFeeAssetId     String?
+  entryFeeAmount      Int                 @default(0)
+  allowMultipleEntry  Boolean             @default(false)
+  isPublic            Boolean             @default(true)
+  isActive            Boolean             @default(true)
+  artistId            String?
+  totalSlots          Int                 @default(0)
+  totalParticipants   Int                 @default(0)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  isLimited           Boolean             @default(true)
+  maxEntriesPerPlayer Int?
+  artist              Artist?             @relation("ArtistRaffles", fields: [artistId], references: [id])
+  entryFeeAsset       Asset?              @relation("RaffleEntryFeeAsset", fields: [entryFeeAssetId], references: [id])
+  participants        RaffleParticipant[]
+  prizes              RafflePrize[]
+  winners             RaffleWinner[]
+  rewardLogs          RewardsLog[]
+
+  @@index([startDate, endDate])
+  @@index([artistId])
+  @@index([isActive, isPublic])
+  @@index([displayType])
+}
+
+model RafflePrize {
+  id           String              @id @default(cuid())
+  raffleId     String
+  title        String
+  description  String?
+  imageUrl     String?
+  order        Int                 @default(0)
+  quantity     Int
+  prizeType    RafflePrizeType
+  assetId      String?
+  assetAmount  Int?
+  spgAddress   String?
+  nftQuantity  Int?
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  rarityOrder  Int?                @default(9)
+  rarityTier   RarityTier?         @default(COMMON)
+  participants RaffleParticipant[]
+  asset        Asset?              @relation("RafflePrizeAsset", fields: [assetId], references: [id])
+  raffle       Raffle              @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+  spg          Story_spg?          @relation("RafflePrizeSPG", fields: [spgAddress], references: [address])
+  winners      RaffleWinner[]
+
+  @@index([raffleId, order])
+  @@index([raffleId, isActive])
+  @@index([prizeType])
+  @@index([quantity])
+}
+
+model RaffleParticipant {
+  id         String       @id @default(cuid())
+  raffleId   String
+  playerId   String
+  prizeId    String?
+  drawnAt    DateTime?
+  revealedAt DateTime?
+  isRevealed Boolean      @default(false)
+  slotNumber Int?
+  randomSeed String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  player     Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  prize      RafflePrize? @relation(fields: [prizeId], references: [id])
+  raffle     Raffle       @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+  rewardLogs RewardsLog[]
+
+  @@index([playerId])
+  @@index([drawnAt])
+  @@index([revealedAt])
+  @@index([raffleId, playerId])
+}
+
+model RaffleWinner {
+  id              String            @id @default(cuid())
+  raffleId        String
+  prizeId         String
+  playerId        String
+  status          RafflePrizeStatus @default(PENDING)
+  distributedAt   DateTime?
+  transactionHash String?
+  failureReason   String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  player          Player            @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  prize           RafflePrize       @relation(fields: [prizeId], references: [id])
+  raffle          Raffle            @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+
+  @@index([raffleId])
+  @@index([playerId])
+  @@index([status])
+  @@index([distributedAt])
+}
+
+model PollBettingSettlementLog {
+  id                    String                      @id @default(cuid())
+  pollId                String
+  settlementType        PollBettingSettlementType   @default(AUTO)
+  winningOptionIds      String[]                    @default([])
+  totalPayout           Int                         @default(0)
+  totalWinners          Int                         @default(0)
+  totalBettingPool      Int                         @default(0)
+  houseCommission       Int                         @default(0)
+  houseCommissionRate   Float                       @default(0.05)
+  optionResults         Json?
+  payoutDistribution    Json?
+  settlementRule        Json?
+  tieBreakApplied       String?
+  tieCount              Int?
+  status                PollBettingSettlementStatus @default(SUCCESS)
+  isManual              Boolean                     @default(false)
+  processedBy           String?
+  processingTimeMs      Int?
+  errorMessage          String?
+  errorDetails          Json?
+  retryCount            Int                         @default(0)
+  metadata              Json?
+  alertsSent            String[]                    @default([])
+  settlementStartedAt   DateTime                    @default(now())
+  settlementCompletedAt DateTime?
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  poll                  Poll                        @relation(fields: [pollId], references: [id])
+
+  @@index([pollId])
+  @@index([settlementType, status])
+  @@index([createdAt])
+  @@index([status, isManual])
+  @@index([processedBy, createdAt])
+}
+
+model UserNotification {
+  id             String                 @id @default(cuid())
+  playerId       String
+  type           NotificationType
+  category       NotificationCategory   @default(GENERAL)
+  title          String
+  message        String
+  description    String?
+  actionType     NotificationActionType @default(NONE)
+  actionUrl      String?
+  actionData     Json?
+  entityType     String?
+  entityId       String?
+  entityData     Json?
+  betAmount      Float?
+  winAmount      Float?
+  rewardAmount   Float?
+  priority       NotificationPriority   @default(MEDIUM)
+  status         NotificationStatus     @default(PENDING)
+  isRead         Boolean                @default(false)
+  readAt         DateTime?
+  isSent         Boolean                @default(false)
+  sentAt         DateTime?
+  sentChannels   String[]               @default([])
+  failedChannels String[]               @default([])
+  iconUrl        String?
+  imageUrl       String?
+  badgeCount     Int?                   @default(0)
+  showBadge      Boolean                @default(false)
+  scheduledAt    DateTime?
+  expiresAt      DateTime?
+  metadata       Json?
+  tags           String[]               @default([])
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  player         Player                 @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, isRead, createdAt])
+  @@index([playerId, type, createdAt])
+  @@index([playerId, category, createdAt])
+  @@index([type, status, createdAt])
+  @@index([scheduledAt, status])
+  @@index([expiresAt])
+  @@index([entityType, entityId])
+  @@index([entityType, type])
+  @@index([playerId, entityType, createdAt])
+  @@map("user_notifications")
+}
+
+model NotificationSettings {
+  id                     String   @id @default(cuid())
+  playerId               String   @unique
+  inAppEnabled           Boolean  @default(true)
+  pushEnabled            Boolean  @default(true)
+  emailEnabled           Boolean  @default(false)
+  smsEnabled             Boolean  @default(false)
+  telegramEnabled        Boolean  @default(false)
+  discordEnabled         Boolean  @default(false)
+  bettingEnabled         Boolean  @default(true)
+  bettingSuccessEnabled  Boolean  @default(true)
+  bettingResultEnabled   Boolean  @default(true)
+  bettingPayoutEnabled   Boolean  @default(true)
+  pollEnabled            Boolean  @default(true)
+  pollEndingEnabled      Boolean  @default(true)
+  pollResultEnabled      Boolean  @default(true)
+  pollNewEnabled         Boolean  @default(true)
+  questEnabled           Boolean  @default(true)
+  questCompleteEnabled   Boolean  @default(true)
+  questRewardEnabled     Boolean  @default(true)
+  questNewEnabled        Boolean  @default(true)
+  raffleEnabled          Boolean  @default(true)
+  raffleResultEnabled    Boolean  @default(true)
+  raffleNewEnabled       Boolean  @default(true)
+  boardEnabled           Boolean  @default(true)
+  boardCommentEnabled    Boolean  @default(true)
+  boardReactionEnabled   Boolean  @default(true)
+  boardRewardEnabled     Boolean  @default(true)
+  artistEnabled          Boolean  @default(true)
+  artistFeedEnabled      Boolean  @default(true)
+  artistMessageEnabled   Boolean  @default(true)
+  assetEnabled           Boolean  @default(true)
+  assetRewardEnabled     Boolean  @default(true)
+  assetTransferEnabled   Boolean  @default(false)
+  nftEnabled             Boolean  @default(true)
+  nftMintEnabled         Boolean  @default(true)
+  nftTransferEnabled     Boolean  @default(false)
+  socialEnabled          Boolean  @default(true)
+  referralEnabled        Boolean  @default(true)
+  followEnabled          Boolean  @default(true)
+  systemEnabled          Boolean  @default(true)
+  maintenanceEnabled     Boolean  @default(true)
+  updateEnabled          Boolean  @default(true)
+  securityEnabled        Boolean  @default(true)
+  doNotDisturbEnabled    Boolean  @default(false)
+  doNotDisturbStart      String?
+  doNotDisturbEnd        String?
+  doNotDisturbDays       String[] @default([])
+  maxDailyNotifications  Int?     @default(50)
+  maxHourlyNotifications Int?     @default(10)
+  enableDigestMode       Boolean  @default(false)
+  digestFrequency        String   @default("DAILY")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  player                 Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
+model NotificationStats {
+  id           String   @id @default(cuid())
+  date         DateTime @unique @default(now()) @db.Date
+  totalSent    Int      @default(0)
+  totalRead    Int      @default(0)
+  totalClicked Int      @default(0)
+  totalFailed  Int      @default(0)
+  inAppSent    Int      @default(0)
+  pushSent     Int      @default(0)
+  emailSent    Int      @default(0)
+  telegramSent Int      @default(0)
+  bettingCount Int      @default(0)
+  pollCount    Int      @default(0)
+  questCount   Int      @default(0)
+  raffleCount  Int      @default(0)
+  socialCount  Int      @default(0)
+  systemCount  Int      @default(0)
+  openRate     Float?
+  clickRate    Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("notification_stats")
+}
+
+enum QuestLogStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  RECLAIMABLE
+  CLAIMED
+  FAILED
+  DEPRECATED
+}
+
+enum AssetInstanceStatus {
+  PENDING
+  RECEIVED
+  RECEIVED_EXPIRED
+  USED
+  EXPIRED
+  EXCHANGED
+  CANCELLED
+  DESTROYED
 }
 
 enum BoardModerationReportStatus {
@@ -1487,230 +1957,6 @@ enum BoardModerationReportType {
   AI_FLAGGED
   USER_REPORT
   MODERATOR_REPORT
-}
-model BoardModerationReport {
-  id String @id @default(cuid())
-  boardId String
-  board Board @relation(fields: [boardId], references: [id])
-  postId String?
-  post BoardPost? @relation(fields: [postId], references: [id])
-  commentId String?
-  comment BoardComment? @relation(fields: [commentId], references: [id])
-  reporterId String?
-  reporter Player? @relation("BoardModerationReportReporter", fields: [reporterId], references: [id])
-  offenderId String?
-  offender Player? @relation("BoardModerationReportOffender", fields: [offenderId], references: [id])
-  relatedRuleId String?
-  relatedRule BoardModerationRule? @relation(fields: [relatedRuleId], references: [id])
-  reason String?
-
-  type BoardModerationReportType @default(UNKNOWN)
-
-  status BoardModerationReportStatus @default(PENDING)
-  reviewResult String?
-  reviewAt DateTime?
-  reviewBy String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([reporterId, boardId, postId, commentId])
-  @@index([status, createdAt])
-  @@index([type, createdAt])
-  @@index([reporterId, createdAt])
-  @@index([offenderId, createdAt])
-  @@index([relatedRuleId, createdAt])
-  @@index([boardId, createdAt])
-  @@index([postId, createdAt])
-  @@index([commentId, createdAt])
-}
-
-model BoardModerationTrustLevelAction {
-  id String @id @default(cuid())
-  trustLevel Int @unique @default(0)
-  reputationScore Int @default(0)
-  
-  postPerDay Int @default(5)
-  commentPerDay Int @default(10)
-  syllableLimit Int @default(1000)
-  linkPerPostLimit Int @default(0)
-  attachmentPerPostLimit Int @default(3)
-  isActive Boolean @default(true)
-
-  increaseReputationScoreByCleanPost Int @default(3)
-  increaseReputationScoreByCleanComment Int @default(1)
-  increaseReputationScoreByReportedPost Int @default(1)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Board {
-  id          String      @id @default(cuid())
-  name        String
-  description String?
-  artistId    String?
-  isPublic    Boolean     @default(true)
-  isActive    Boolean     @default(true)
-  order       Int         @default(0)
-  iconUrl     String?
-  bannerUrl   String?
-  rules       String?
-  metadata    Json?
-  
-  // Reward Configuration - 명시적 설정만 허용
-  postCreationRewardEnabled    Boolean @default(false)
-  postCreationRewardAmount     Int?
-  postCreationRewardAssetId    String?
-  
-  popularPostRewardEnabled     Boolean @default(false)
-  popularPostThreshold         Int?
-  popularPostRewardAmount      Int?
-  popularPostRewardAssetId     String?
-  
-  qualityContentRewardEnabled  Boolean @default(false)
-  qualityContentRewardAmount   Int?
-  qualityContentRewardAssetId  String?
-  
-  // Permission Settings - 명시적 설정만 허용
-  allowUserRewards             Boolean @default(false)
-  allowArtistRewards           Boolean @default(false)
-  allowTeamRewards             Boolean @default(false)
-  allowAdminRewards            Boolean @default(false)
-  
-  // Daily/Weekly Limits
-  dailyPostLimit               Int?
-  weeklyPostLimit              Int?
-  maxRewardPerPost             Int?
-  
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  artist      Artist?     @relation("ArtistBoards", fields: [artistId], references: [id])
-  posts       BoardPost[]
-  postCreationRewardAsset  Asset? @relation("BoardPostCreationReward", fields: [postCreationRewardAssetId], references: [id])
-  popularPostRewardAsset   Asset? @relation("BoardPopularPostReward", fields: [popularPostRewardAssetId], references: [id])
-  qualityContentRewardAsset Asset? @relation("BoardQualityContentReward", fields: [qualityContentRewardAssetId], references: [id])
-  reports BoardModerationReport[]
-
-  @@index([artistId, isActive])
-  @@index([isPublic, isActive, order])
-}
-
-model BoardPost {
-  id             String            @id @default(cuid())
-  boardId        String
-  authorId       String?
-  authorType     BoardAuthorType   @default(PLAYER)
-  title          String
-  content        String
-  imageUrls      String[]          @default([])
-  videoUrls      String[]          @default([])
-  attachmentUrls String[]          @default([])
-  // 파일 메타데이터 (FileData 형태의 JSON 배열)
-  files          Json[]            @default([])
-  nftAddress     String?
-  nftTokenId     String?
-  tags           String[]          @default([])
-  isSandbox      Boolean           @default(false)
-  sandboxImgUrl  String?
-  sandboxNickname String?
-  isSandboxBoardArtist  Boolean           @default(false)
-  isPinned       Boolean           @default(false)
-  isHidden       Boolean           @default(false)
-  viewCount      Int               @default(0)
-  likeCount      Int               @default(0)
-  dislikeCount   Int               @default(0)
-  recommendCount Int               @default(0)
-  commentCount   Int               @default(0)
-  shareCount     Int               @default(0)
-  metadata       Json?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  board          Board             @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  author         Player?            @relation("BoardPostAuthor", fields: [authorId], references: [id])
-  comments       BoardComment[]
-  reactions      BoardReaction[]
-  rewards        BoardPostReward[]
-  reports        BoardModerationReport[]
-  @@index([boardId, isPinned, createdAt])
-  @@index([authorId, createdAt])
-  @@index([authorType, createdAt])
-  @@index([recommendCount, createdAt])
-  @@index([boardId, isHidden, isPinned])
-}
-
-model BoardComment {
-  id            String            @id @default(cuid())
-  postId        String
-  authorId      String?
-  authorType    BoardAuthorType   @default(PLAYER)
-  content       String
-  parentId      String?
-  imageUrls     String[]          @default([])
-  // 파일 메타데이터 (FileData 형태의 JSON 배열)
-  files         Json[]            @default([])
-  isSandbox      Boolean           @default(false)
-  sandboxImgUrl  String?
-  sandboxNickname String?
-  isSandboxBoardArtist  Boolean           @default(false)
-  isHidden      Boolean           @default(false)
-  likeCount     Int               @default(0)
-  dislikeCount  Int               @default(0)
-  replyCount    Int               @default(0)
-  metadata      Json?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  post          BoardPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author        Player?            @relation("BoardCommentAuthor", fields: [authorId], references: [id])
-  parent        BoardComment?     @relation("CommentReplies", fields: [parentId], references: [id])
-  replies       BoardComment[]    @relation("CommentReplies")
-  reactions     BoardReaction[]
-  reports       BoardModerationReport[]
-  @@index([postId, parentId, createdAt])
-  @@index([authorId, createdAt])
-  @@index([parentId])
-}
-
-model BoardReaction {
-  id        String             @id @default(cuid())
-  playerId  String?
-  postId    String?
-  commentId String?
-  type      BoardReactionType
-  createdAt DateTime           @default(now())
-  player    Player?             @relation("BoardReactionPlayer", fields: [playerId], references: [id])
-  post      BoardPost?         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  comment   BoardComment?      @relation(fields: [commentId], references: [id], onDelete: Cascade)
-
-  @@unique([playerId, postId, type])
-  @@unique([playerId, commentId, type])
-  @@index([postId, type])
-  @@index([commentId, type])
-}
-
-model BoardPostReward {
-  id            String             @id @default(cuid())
-  postId        String
-  playerId      String
-  grantedBy     String?
-  grantedByType BoardAuthorType?
-  assetId       String?
-  amount        Int
-  reason        BoardRewardReason
-  txHash        String?
-  status        BoardRewardStatus  @default(PENDING)
-  metadata      Json?
-  createdAt     DateTime           @default(now())
-  processedAt   DateTime?
-  post          BoardPost          @relation(fields: [postId], references: [id], onDelete: Cascade)
-  player        Player             @relation("BoardPostRewardPlayer", fields: [playerId], references: [id])
-  grantedByUser Player?            @relation("BoardPostRewardGranter", fields: [grantedBy], references: [id])
-  asset         Asset?             @relation("BoardPostRewardAsset", fields: [assetId], references: [id])
-
-  @@index([postId, status])
-  @@index([playerId, status])
-  @@index([grantedBy, createdAt])
-  @@index([reason, status])
 }
 
 enum PlayerAssetStatus {
@@ -1841,163 +2087,6 @@ enum BoardRewardStatus {
   CANCELLED
 }
 
-model Raffle {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  imgUrl      String?
-  
-  // 📅 날짜 기반 상태 관리 (status는 계산으로 처리)
-  startDate   DateTime @default(now())
-  endDate     DateTime
-  drawDate    DateTime? // null이면 즉시 공개
-  
-  // ⚡ 공개 방식
-  instantReveal Boolean @default(true) // 즉시 결과 확인 여부
-  
-  // 🎯 상품 소진 방식
-  isLimited Boolean @default(true) // true: 수량 소진형, false: 고정 확률형
-  
-  // 🎨 UI 표현 방식 (프론트엔드 전용)
-  displayType String @default("GACHA") // "SCRATCH_CARD", "SLOT_MACHINE", "ROULETTE", etc.
-  
-  // 👥 참가 조건
-  maxParticipants     Int?
-  entryFeeAssetId     String?
-  entryFeeAmount      Int     @default(0)
-  allowMultipleEntry  Boolean @default(false)
-  maxEntriesPerPlayer Int?
-  
-  // 🔧 설정
-  isPublic Boolean @default(true)
-  isActive Boolean @default(true)
-  artistId String?
-  
-  // 📊 통계 (자동 계산)
-  totalSlots        Int @default(0) // 모든 상품 수량의 합
-  totalParticipants Int @default(0)
-  
-  // Relations
-  artist       Artist? @relation("ArtistRaffles", fields: [artistId], references: [id])
-  entryFeeAsset Asset? @relation("RaffleEntryFeeAsset", fields: [entryFeeAssetId], references: [id])
-  prizes       RafflePrize[]
-  participants RaffleParticipant[]
-  winners      RaffleWinner[]
-  rewardLogs   RewardsLog[]
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([startDate, endDate])
-  @@index([artistId])
-  @@index([isActive, isPublic])
-  @@index([displayType])
-}
-
-model RafflePrize {
-  id       String @id @default(cuid())
-  raffleId String
-  
-  // 🎁 상품 정보
-  title       String
-  description String?
-  imageUrl    String?
-  order       Int @default(0)
-  
-  // 📦 수량 = 확률 (핵심 개념!)
-  quantity Int // 이 상품의 총 개수 (확률 = quantity/totalSlots)
-  
-  // 🏆 상품 타입
-  prizeType RafflePrizeType // "ASSET", "NFT", "EMPTY" (꽝)
-  
-  // 💎 레어도 시스템
-  rarityTier  RarityTier? @default(COMMON) // COSMIC(1) > STELLAR(2) > ... > COMMON(9)
-  rarityOrder Int? @default(9) // 1(최고) ~ 9(최저), COSMIC=1, COMMON=9
-  
-  // Asset 상품
-  assetId     String?
-  assetAmount Int?
-  
-  // NFT 상품  
-  spgAddress  String?
-  nftQuantity Int?
-  
-  // 상태
-  isActive Boolean @default(true)
-  
-  // Relations
-  raffle      Raffle @relation(fields: [raffleId], references: [id], onDelete: Cascade)
-  asset       Asset? @relation("RafflePrizeAsset", fields: [assetId], references: [id])
-  spg         Story_spg? @relation("RafflePrizeSPG", fields: [spgAddress], references: [address])
-  participants RaffleParticipant[] // 이 상품을 뽑은 참가자들
-  winners     RaffleWinner[]
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([raffleId, order])
-  @@index([raffleId, isActive])
-  @@index([prizeType])
-  @@index([quantity])
-}
-
-model RaffleParticipant {
-  id       String @id @default(cuid())
-  raffleId String
-  playerId String
-  
-  // 🎲 추첨 결과
-  prizeId       String? // 당첨된 상품 ID (null이면 미추첨)
-  drawnAt       DateTime? // 추첨 실행 시간
-  revealedAt    DateTime? // 사용자가 결과 확인한 시간
-  isRevealed    Boolean @default(false)
-  
-  // 🔢 추첨 정보 (검증용)
-  slotNumber    Int? // 뽑은 슬롯 번호
-  randomSeed    String? // 추첨 시드
-  
-  // Relations
-  raffle Raffle @relation(fields: [raffleId], references: [id], onDelete: Cascade)
-  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  prize  RafflePrize? @relation(fields: [prizeId], references: [id])
-  rewardLogs RewardsLog[]
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@index([playerId])
-  @@index([drawnAt])
-  @@index([revealedAt])
-  @@index([raffleId, playerId, createdAt])
-  @@index([createdAt])
-}
-
-model RaffleWinner {
-  id      String @id @default(cuid())
-  raffleId String
-  prizeId  String
-  playerId String
-  
-  // 🎁 지급 상태
-  status          RafflePrizeStatus @default(PENDING)
-  distributedAt   DateTime?
-  transactionHash String?
-  failureReason   String?
-  
-  // Relations  
-  raffle Raffle @relation(fields: [raffleId], references: [id], onDelete: Cascade)
-  prize  RafflePrize @relation(fields: [prizeId], references: [id])
-  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([raffleId])
-  @@index([playerId])
-  @@index([status])
-  @@index([distributedAt])
-}
-
 enum RafflePrizeType {
   ASSET
   NFT
@@ -2014,15 +2103,15 @@ enum RafflePrizeStatus {
 }
 
 enum RarityTier {
-  COSMIC      // 우주급 (1) - 최고 레어도
-  STELLAR     // 별급 (2)
-  CELESTIAL   // 천상급 (3)
-  DIVINE      // 신성급 (4)
-  LEGENDARY   // 전설급 (5)
-  EPIC        // 서사급 (6)
-  RARE        // 희귀급 (7)
-  UNCOMMON    // 언커먼급 (8)
-  COMMON      // 일반급 (9) - 기본값
+  COSMIC
+  STELLAR
+  CELESTIAL
+  DIVINE
+  LEGENDARY
+  EPIC
+  RARE
+  UNCOMMON
+  COMMON
 }
 
 enum BettingStatus {
@@ -2033,403 +2122,125 @@ enum BettingStatus {
   CANCELLED
 }
 
-// 폴 베팅 정산 로그 모델 추가
-model PollBettingSettlementLog {
-  id                    String                     @id @default(cuid())
-  pollId                String
-  
-  // 🎯 정산 결과
-  settlementType        PollBettingSettlementType  @default(AUTO)
-  winningOptionIds      String[]                   @default([])
-  totalPayout           Int                        @default(0)
-  totalWinners          Int                        @default(0)
-  totalBettingPool      Int                        @default(0)
-  houseCommission       Int                        @default(0)
-  houseCommissionRate   Float                      @default(0.05)
-  
-  // 📊 정산 통계
-  optionResults         Json?                      // {optionId: {voteCount, betAmount, winners, payout}}
-  payoutDistribution    Json?                      // {playerId: payoutAmount}
-  
-  // ⚖️ 정산 규칙 적용 정보
-  settlementRule        Json?                      // 적용된 정산 규칙 설정
-  tieBreakApplied       String?                    // "SPLIT", "REFUND", "MANUAL" 등
-  tieCount              Int?                       // 동점 옵션 수
-  
-  // 🔄 처리 정보
-  status                PollBettingSettlementStatus @default(SUCCESS)
-  isManual              Boolean                    @default(false)
-  processedBy           String?                    // "cron", "admin", "manual"
-  processingTimeMs      Int?                       // 처리 시간 (밀리초)
-  
-  // 🚨 에러 정보
-  errorMessage          String?
-  errorDetails          Json?                      // 상세 에러 스택 등
-  retryCount            Int                        @default(0)
-  
-  // 📝 메타데이터
-  metadata              Json?                      // 추가 정보
-  alertsSent            String[]                   @default([]) // 발송된 알림 타입들
-  
-  // 📅 시간 정보
-  settlementStartedAt   DateTime                   @default(now())
-  settlementCompletedAt DateTime?
-  createdAt             DateTime                   @default(now())
-  updatedAt             DateTime                   @updatedAt
-  
-  // Relations
-  poll                  Poll                       @relation(fields: [pollId], references: [id])
-  
-  @@index([pollId])
-  @@index([settlementType, status])
-  @@index([createdAt])
-  @@index([status, isManual])
-  @@index([processedBy, createdAt])
-}
-
 enum PollBettingSettlementType {
-  AUTO          // 자동 정산
-  MANUAL        // 수동 정산 
-  REFUND        // 전액 환불
-  EMERGENCY     // 긴급 정산
+  AUTO
+  MANUAL
+  REFUND
+  EMERGENCY
 }
 
 enum PollBettingSettlementStatus {
-  SUCCESS       // 정산 완료
-  FAILED        // 정산 실패
-  PARTIAL       // 부분 정산 (일부만 성공)
-  PENDING       // 정산 대기
-  CANCELLED     // 정산 취소
+  SUCCESS
+  FAILED
+  PARTIAL
+  PENDING
+  CANCELLED
 }
 
-// 🔔 ===== NOTIFICATION SYSTEM =====
-
-// 사용자 알림 메인 테이블
-model UserNotification {
-  id          String   @id @default(cuid())
-  playerId    String
-  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  
-  // 📱 알림 기본 정보
-  type        NotificationType
-  category    NotificationCategory @default(GENERAL)
-  title       String
-  message     String
-  description String?               // 상세 설명 (선택적)
-  
-  // 🎯 알림 액션 정보
-  actionType  NotificationActionType @default(NONE)
-  actionUrl   String?               // 딥링크 또는 웹 URL
-  actionData  Json?                 // 액션에 필요한 추가 데이터
-  
-  // 🔗 관련 엔티티 정보 (JSON으로 유연하게 처리)
-  entityType  String?   // "poll", "quest", "raffle", "boardPost", "artist", "asset" 등
-  entityId    String?   // 관련 엔티티의 ID
-  entityData  Json?     // 엔티티 관련 추가 데이터 (이름, 이미지 등 캐시용)
-  
-  // 💰 베팅/보상 관련 정보 (해당 타입에만 사용)
-  betAmount   Float?
-  winAmount   Float?
-  rewardAmount Float?
-  
-  // 📊 우선순위 및 상태
-  priority    NotificationPriority @default(MEDIUM)
-  status      NotificationStatus @default(PENDING)
-  
-  // 📺 읽음 상태
-  isRead      Boolean  @default(false)
-  readAt      DateTime?
-  
-  // 📡 발송 상태 및 채널
-  isSent      Boolean  @default(false)
-  sentAt      DateTime?
-  sentChannels String[] @default([]) // ['in-app', 'push', 'telegram']
-  failedChannels String[] @default([]) // 발송 실패한 채널들
-  
-  // 🎨 UI 표시 옵션
-  iconUrl     String?
-  imageUrl    String?
-  badgeCount  Int?     @default(0)
-  showBadge   Boolean  @default(false)
-  
-  // ⏰ 스케줄링
-  scheduledAt DateTime? // 예약 발송 시간
-  expiresAt   DateTime? // 알림 만료 시간
-  
-  // 📝 메타데이터 (확장성을 위한)
-  metadata    Json?     // 알림별 커스텀 데이터
-  tags        String[]  @default([]) // 필터링용 태그
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@index([playerId, isRead, createdAt])
-  @@index([playerId, type, createdAt])
-  @@index([playerId, category, createdAt])
-  @@index([type, status, createdAt])
-  @@index([scheduledAt, status])
-  @@index([expiresAt])
-  @@index([entityType, entityId])
-  @@index([entityType, type])
-  @@index([playerId, entityType, createdAt])
-  @@map("user_notifications")
-}
-
-// 사용자별 알림 설정
-model NotificationSettings {
-  id          String   @id @default(cuid())
-  playerId    String   @unique
-  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  
-  // 📱 채널별 글로벌 설정
-  inAppEnabled     Boolean @default(true)
-  pushEnabled      Boolean @default(true)
-  emailEnabled     Boolean @default(false)
-  smsEnabled       Boolean @default(false)
-  telegramEnabled  Boolean @default(false)
-  discordEnabled   Boolean @default(false)
-  
-  // 🎰 베팅 관련 알림 설정
-  bettingEnabled        Boolean @default(true)
-  bettingSuccessEnabled Boolean @default(true)
-  bettingResultEnabled  Boolean @default(true)
-  bettingPayoutEnabled  Boolean @default(true)
-  
-  // 📊 폴 관련 알림 설정
-  pollEnabled           Boolean @default(true)
-  pollEndingEnabled     Boolean @default(true)
-  pollResultEnabled     Boolean @default(true)
-  pollNewEnabled        Boolean @default(true)
-  
-  // 🎯 퀘스트 관련 알림 설정
-  questEnabled          Boolean @default(true)
-  questCompleteEnabled  Boolean @default(true)
-  questRewardEnabled    Boolean @default(true)
-  questNewEnabled       Boolean @default(true)
-  
-  // 🎲 래플 관련 알림 설정
-  raffleEnabled         Boolean @default(true)
-  raffleResultEnabled   Boolean @default(true)
-  raffleNewEnabled      Boolean @default(true)
-  
-  // 📝 보드 관련 알림 설정
-  boardEnabled          Boolean @default(true)
-  boardCommentEnabled   Boolean @default(true)
-  boardReactionEnabled  Boolean @default(true)
-  boardRewardEnabled    Boolean @default(true)
-  
-  // ⭐ 아티스트 관련 알림 설정
-  artistEnabled         Boolean @default(true)
-  artistFeedEnabled     Boolean @default(true)
-  artistMessageEnabled  Boolean @default(true)
-  
-  // 💎 자산 관련 알림 설정
-  assetEnabled          Boolean @default(true)
-  assetRewardEnabled    Boolean @default(true)
-  assetTransferEnabled  Boolean @default(false)
-  
-  // 🖼️ NFT 관련 알림 설정
-  nftEnabled            Boolean @default(true)
-  nftMintEnabled        Boolean @default(true)
-  nftTransferEnabled    Boolean @default(false)
-  
-  // 👥 소셜 관련 알림 설정
-  socialEnabled         Boolean @default(true)
-  referralEnabled       Boolean @default(true)
-  followEnabled         Boolean @default(true)
-  
-  // ⚙️ 시스템 관련 알림 설정
-  systemEnabled         Boolean @default(true)
-  maintenanceEnabled    Boolean @default(true)
-  updateEnabled         Boolean @default(true)
-  securityEnabled       Boolean @default(true)
-  
-  // 🔕 방해 금지 설정
-  doNotDisturbEnabled   Boolean @default(false)
-  doNotDisturbStart     String? // "22:00" 형태
-  doNotDisturbEnd       String? // "08:00" 형태
-  doNotDisturbDays      String[] @default([]) // ["MON", "TUE", ...]
-  
-  // 📊 빈도 제한 설정
-  maxDailyNotifications   Int? @default(50)
-  maxHourlyNotifications  Int? @default(10)
-  enableDigestMode        Boolean @default(false) // 요약 모드
-  digestFrequency         String @default("DAILY") // "HOURLY", "DAILY", "WEEKLY"
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@map("notification_settings")
-}
-
-// 📊 알림 통계 및 분석 (선택적)
-model NotificationStats {
-  id                String   @id @default(cuid())
-  date              DateTime @default(now()) @db.Date
-  
-  // 📈 발송 통계
-  totalSent         Int @default(0)
-  totalRead         Int @default(0)
-  totalClicked      Int @default(0)
-  totalFailed       Int @default(0)
-  
-  // 📱 채널별 통계
-  inAppSent         Int @default(0)
-  pushSent          Int @default(0)
-  emailSent         Int @default(0)
-  telegramSent      Int @default(0)
-  
-  // 🎯 타입별 통계
-  bettingCount      Int @default(0)
-  pollCount         Int @default(0)
-  questCount        Int @default(0)
-  raffleCount       Int @default(0)
-  socialCount       Int @default(0)
-  systemCount       Int @default(0)
-  
-  // 📊 응답률 계산
-  openRate          Float? // 읽음률
-  clickRate         Float? // 클릭률
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@unique([date])
-  @@map("notification_stats")
-}
-
-// 🔔 알림 타입 정의
 enum NotificationType {
-  // 🎰 베팅 관련
-  BETTING_SUCCESS           // 베팅 성공
-  BETTING_FAILED            // 베팅 실패
-  POLL_BETTING_WIN          // 베팅 당첨
-  POLL_BETTING_LOSE         // 베팅 낙첨
-  POLL_BETTING_PAYOUT       // 배당 지급
-  POLL_BETTING_REFUND       // 베팅 환불
-  SETTLEMENT_COMPLETE       // 정산 완료
-  
-  // 📊 폴 관련
-  POLL_STARTED              // 폴 시작
-  POLL_ENDING_SOON          // 폴 종료 예고 (1시간 전)
-  POLL_ENDED                // 폴 종료
-  POLL_RESULT_ANNOUNCED     // 폴 결과 발표
-  POLL_PARTICIPATION_REWARD // 폴 참여 보상
-  
-  // 🎯 퀘스트 관련
-  QUEST_AVAILABLE           // 새 퀘스트 등록
-  QUEST_REMINDER            // 퀘스트 리마인더
-  QUEST_COMPLETED           // 퀘스트 완료
-  QUEST_REWARD_RECEIVED     // 퀘스트 보상 지급
-  QUEST_EXPIRING_SOON       // 퀘스트 만료 예고
-  
-  // 🎲 래플 관련
-  RAFFLE_NEW                // 새 래플 등록
-  RAFFLE_ENTRY_CONFIRMED    // 래플 참가 확인
-  RAFFLE_DRAWING_SOON       // 추첨 예고
-  RAFFLE_RESULT_AVAILABLE   // 추첨 결과 확인 가능
-  RAFFLE_WIN                // 래플 당첨
-  RAFFLE_PRIZE_DISTRIBUTED  // 상품 지급 완료
-  
-  // 📝 보드 관련
-  BOARD_POST_COMMENT        // 내 게시글에 댓글
-  BOARD_POST_REACTION       // 내 게시글에 반응
-  BOARD_COMMENT_REPLY       // 내 댓글에 답글
-  BOARD_POST_REWARD         // 게시글 보상
-  BOARD_MENTION             // 게시글/댓글에서 멘션
-  
-  // ⭐ 아티스트 관련
-  ARTIST_NEW_FEED           // 아티스트 새 피드
-  ARTIST_NEW_MESSAGE        // 아티스트 새 메시지
-  ARTIST_LIVE_EVENT         // 아티스트 라이브 이벤트
-  ARTIST_SPECIAL_CONTENT    // 아티스트 특별 컨텐츠
-  
-  // 💎 자산 관련
-  ASSET_RECEIVED            // 자산 수령
-  ASSET_SENT                // 자산 전송
-  ASSET_STAKING_REWARD      // 스테이킹 보상
-  ASSET_BALANCE_LOW         // 잔액 부족 경고
-  
-  // 🖼️ NFT 관련
-  NFT_MINTED                // NFT 민팅 완료
-  NFT_TRANSFERRED           // NFT 전송
-  NFT_STAKING_REWARD        // NFT 스테이킹 보상
-  NFT_COLLECTION_NEW        // 새 컬렉션 등록
-  
-  // 👥 소셜 관련
-  REFERRAL_JOINED           // 추천인 가입
-  REFERRAL_REWARD           // 추천 보상
-  ACHIEVEMENT_UNLOCKED      // 업적 달성
-  LEVEL_UP                  // 레벨업
-  
-  // ⚙️ 시스템 관련
-  SYSTEM_MAINTENANCE        // 시스템 점검
-  SYSTEM_UPDATE             // 업데이트 알림
-  ACCOUNT_SECURITY          // 보안 알림
-  TERMS_UPDATED             // 약관 업데이트
-  PROMOTIONAL               // 프로모션 알림
-  
-  // 🎉 이벤트 관련
-  EVENT_STARTED             // 이벤트 시작
-  EVENT_ENDING_SOON         // 이벤트 종료 예고
-  EVENT_REWARD              // 이벤트 보상
-  
-  // 📞 일반 알림
-  GENERAL_INFO              // 일반 정보
-  WELCOME                   // 환영 메시지
-  BIRTHDAY                  // 생일 축하
+  BETTING_SUCCESS
+  BETTING_FAILED
+  POLL_BETTING_WIN
+  POLL_BETTING_LOSE
+  POLL_BETTING_PAYOUT
+  POLL_BETTING_REFUND
+  POLL_STARTED
+  POLL_ENDING_SOON
+  POLL_ENDED
+  POLL_RESULT_ANNOUNCED
+  POLL_PARTICIPATION_REWARD
+  QUEST_AVAILABLE
+  QUEST_REMINDER
+  QUEST_COMPLETED
+  QUEST_REWARD_RECEIVED
+  QUEST_EXPIRING_SOON
+  RAFFLE_NEW
+  RAFFLE_ENTRY_CONFIRMED
+  RAFFLE_DRAWING_SOON
+  RAFFLE_RESULT_AVAILABLE
+  RAFFLE_WIN
+  RAFFLE_PRIZE_DISTRIBUTED
+  BOARD_POST_COMMENT
+  BOARD_POST_REACTION
+  BOARD_COMMENT_REPLY
+  BOARD_POST_REWARD
+  BOARD_MENTION
+  ARTIST_NEW_FEED
+  ARTIST_NEW_MESSAGE
+  ARTIST_LIVE_EVENT
+  ARTIST_SPECIAL_CONTENT
+  ASSET_RECEIVED
+  ASSET_SENT
+  ASSET_STAKING_REWARD
+  ASSET_BALANCE_LOW
+  NFT_MINTED
+  NFT_TRANSFERRED
+  NFT_STAKING_REWARD
+  NFT_COLLECTION_NEW
+  REFERRAL_JOINED
+  REFERRAL_REWARD
+  ACHIEVEMENT_UNLOCKED
+  LEVEL_UP
+  SYSTEM_MAINTENANCE
+  SYSTEM_UPDATE
+  ACCOUNT_SECURITY
+  TERMS_UPDATED
+  PROMOTIONAL
+  EVENT_STARTED
+  EVENT_ENDING_SOON
+  EVENT_REWARD
+  GENERAL_INFO
+  WELCOME
+  BIRTHDAY
+  SETTLEMENT_COMPLETE
 }
 
-// 📂 알림 카테고리
 enum NotificationCategory {
-  BETTING      // 베팅 관련
-  POLLS        // 폴 관련  
-  QUESTS       // 퀘스트 관련
-  RAFFLES      // 래플 관련
-  SOCIAL       // 소셜 활동
-  ASSETS       // 자산 관련
-  NFTS         // NFT 관련
-  ARTISTS      // 아티스트 관련
-  BOARDS       // 게시판 관련
-  EVENTS       // 이벤트 관련
-  SYSTEM       // 시스템 관련
-  GENERAL      // 일반
+  BETTING
+  POLLS
+  QUESTS
+  RAFFLES
+  SOCIAL
+  ASSETS
+  NFTS
+  ARTISTS
+  BOARDS
+  EVENTS
+  SYSTEM
+  GENERAL
 }
 
-// 🎯 알림 액션 타입
 enum NotificationActionType {
-  NONE                // 액션 없음
-  OPEN_APP            // 앱 열기
-  OPEN_URL            // URL 열기
-  OPEN_POLL           // 특정 폴 열기
-  OPEN_QUEST          // 특정 퀘스트 열기
-  OPEN_RAFFLE         // 특정 래플 열기
-  OPEN_BOARD_POST     // 특정 게시글 열기
-  OPEN_ARTIST_FEED    // 아티스트 피드 열기
-  OPEN_WALLET         // 지갑 열기
-  OPEN_NFT_COLLECTION // NFT 컬렉션 열기
-  OPEN_SETTINGS       // 설정 열기
-  CLAIM_REWARD        // 보상 수령
-  PARTICIPATE_POLL    // 폴 참여
-  PARTICIPATE_RAFFLE  // 래플 참여
-  VIEW_RESULT         // 결과 확인
+  NONE
+  OPEN_APP
+  OPEN_URL
+  OPEN_POLL
+  OPEN_QUEST
+  OPEN_RAFFLE
+  OPEN_BOARD_POST
+  OPEN_ARTIST_FEED
+  OPEN_WALLET
+  OPEN_NFT_COLLECTION
+  OPEN_SETTINGS
+  CLAIM_REWARD
+  PARTICIPATE_POLL
+  PARTICIPATE_RAFFLE
+  VIEW_RESULT
 }
 
-// 🚦 알림 우선순위
 enum NotificationPriority {
-  URGENT      // 긴급 (빨간색, 즉시 표시)
-  HIGH        // 높음 (주황색, 우선 표시)  
-  MEDIUM      // 보통 (기본값)
-  LOW         // 낮음 (회색, 나중에 표시)
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
 }
 
-// 📊 알림 상태
 enum NotificationStatus {
-  PENDING     // 발송 대기
-  SCHEDULED   // 예약됨
-  SENDING     // 발송 중
-  SENT        // 발송 완료
-  FAILED      // 발송 실패
-  CANCELLED   // 취소됨
-  EXPIRED     // 만료됨
+  PENDING
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+  EXPIRED
 }
