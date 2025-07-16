@@ -12,10 +12,11 @@ import { cn } from "@/lib/utils/tailwind";
 
 import UserSettingsProfileModal from "../user/User.Settings.Profile.Modal";
 
-import type { ProviderType } from "@/app/types/auth";
 import type { Player } from "@prisma/client";
 import type { User } from "next-auth";
 import Image from "next/image";
+
+import { useUserGet } from "@/app/hooks/useUser";
 
 interface ProfileNameProps {
     user: User;
@@ -26,16 +27,20 @@ interface ProfileNameProps {
 export default React.memo(function ProfileName({
     user,
     player,
-    size = 20,
+    size = 25,
 }: ProfileNameProps) {
     const [showUserSettings, setShowUserSettings] = useState(false);
 
-    const { provider, icon, color, nickname } = useMemo(() => {
-        const provider = (user as any).provider as ProviderType | undefined;
-        const { icon, color } = getProviderIdentity(provider);
+    const { provider } = useUserGet({
+        getUserProviderInput: { userId: user.id || "" },
+    });
+
+    const { icon, color, nickname } = useMemo(() => {
         const nickname = player?.nickname || user?.name || user?.email || "";
+        if (!provider) return { icon: null, color: null, nickname };
+        const { icon, color } = getProviderIdentity(provider);
         return { provider, icon, color, nickname };
-    }, [player?.nickname, user]);
+    }, [player?.nickname, user, provider]);
 
     const { textClass, frameClass, iconClass } = useMemo(() => {
         // Ensure all sizes are multiples of 5
@@ -61,27 +66,14 @@ export default React.memo(function ProfileName({
                     onClose={() => setShowUserSettings(false)}
                 />
             )}
-            <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className={cn(
-                    "flex flex-row gap-[5px] items-center justify-center group cursor-pointer",
-                    "bg-gradient-to-br from-white/5 to-white/0",
-                    "hover:from-white/10 hover:to-white/5",
-                    "border border-white/10 hover:border-white/20",
-                    "rounded-xl px-3 py-2",
-                    "transition-all duration-300 ease-out",
-                    "hover:shadow-lg hover:shadow-white/10"
-                )}
-                onClick={() => setShowUserSettings(true)}
-            >
+            <div className="flex flex-row gap-[5px] items-center justify-center">
                 {icon && (
                     <>
                         {provider !== "telegram" &&
                         provider !== "io.metamask" &&
                         provider !== "metaMaskSDK" ? (
                             <motion.div
-                                whileHover={{ rotate: 5 }}
+                                whileHover={{ rotate: 15 }}
                                 className={cn(
                                     "rounded-full",
                                     "flex items-center justify-center",
@@ -100,7 +92,7 @@ export default React.memo(function ProfileName({
                                 />
                             </motion.div>
                         ) : (
-                            <motion.div whileHover={{ rotate: 5 }}>
+                            <motion.div whileHover={{ rotate: 15 }}>
                                 <Image
                                     src={icon}
                                     alt={`${provider} icon`}
@@ -114,16 +106,31 @@ export default React.memo(function ProfileName({
                         )}
                     </>
                 )}
-                <p
+                <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     className={cn(
-                        "text-white/80 group-hover:text-white",
-                        "transition-colors duration-300",
-                        textClass
+                        "flex flex-row gap-[5px] items-center justify-center group cursor-pointer",
+                        "bg-gradient-to-br from-white/5 to-white/0",
+                        "hover:from-white/10 hover:to-white/5",
+                        "border border-white/10 hover:border-white/20",
+                        "rounded-xl px-3 py-2",
+                        "transition-all duration-300 ease-out",
+                        "hover:shadow-lg hover:shadow-white/10"
                     )}
+                    onClick={() => setShowUserSettings(true)}
                 >
-                    {nickname}
-                </p>
-            </motion.div>
+                    <p
+                        className={cn(
+                            "text-white/80 group-hover:text-white",
+                            "transition-colors duration-300",
+                            textClass
+                        )}
+                    >
+                        {nickname}
+                    </p>
+                </motion.div>
+            </div>
         </>
     );
 });

@@ -12,6 +12,7 @@ export interface UserDetailData {
     country: string | null;
     state: string | null;
     city: string | null;
+    timezone: string | null;
 }
 
 /**
@@ -299,6 +300,7 @@ export async function getClientSideUserDetails(): Promise<UserDetailData> {
         country: locationData?.country || null,
         state: locationData?.state || null,
         city: locationData?.city || null,
+        timezone: null,
     };
 }
 
@@ -436,20 +438,33 @@ export async function getUserDetailDataForServerAction(): Promise<
             return { ip: null };
         };
 
+        // Vercel 지역 정보 헤더에서 직접 추출 (빠르고 안정적)
+        const getVercelLocationData = () => {
+            return {
+                country: headersList.get("x-vercel-ip-country") || null,
+                state: headersList.get("x-vercel-ip-region") || null,
+                city: headersList.get("x-vercel-ip-city") || null,
+                timezone: headersList.get("x-vercel-ip-timezone") || null,
+            };
+        };
+
         const userAgent = headersList.get("user-agent") || "";
         const acceptLanguage = headersList.get("accept-language") || "";
 
         const ipResult = getIP();
+        const locationData = getVercelLocationData();
+
         const result = {
             ipAddress: ipResult.ip,
             locale: parseLocaleFromAcceptLanguage(acceptLanguage),
             os: parseOSFromUserAgent(userAgent),
             device: parseDeviceFromUserAgent(userAgent),
             browser: parseBrowserFromUserAgent(userAgent),
-            // 서버에서는 지역 정보 null (속도 우선)
-            country: null,
-            state: null,
-            city: null,
+            // Vercel에서 제공하는 지역 정보 사용 (외부 API 불필요!)
+            country: locationData.country,
+            state: locationData.state,
+            city: locationData.city,
+            timezone: locationData.timezone,
         };
 
         return result;
@@ -481,6 +496,7 @@ export async function getUserDetailData(
             country: null, // 서버에서는 null (속도 우선)
             state: null,
             city: null,
+            timezone: null,
         };
     }
 

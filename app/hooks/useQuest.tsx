@@ -97,6 +97,7 @@ export function useQuestGet({
         data: playerQuestLogs,
         isLoading: isLoadingPlayerQuestLogs,
         error: playerQuestLogsError,
+        refetch: refetchPlayerQuestLogs,
     } = usePlayerQuestLogsQuery({ input: getPlayerQuestLogsInput });
 
     const {
@@ -115,6 +116,7 @@ export function useQuestGet({
         data: playerQuestLog,
         isLoading: isLoadingPlayerQuestLog,
         error: playerQuestLogError,
+        refetch: refetchPlayerQuestLog,
     } = usePlayerQuestLogQuery({ input: getPlayerQuestLogInput });
 
     const {
@@ -182,6 +184,8 @@ export function useQuestGet({
         artistAllActiveQuestCount,
         isLoadingArtistAllActiveQuestCount,
         artistAllActiveQuestCountError,
+        refetchPlayerQuestLogs,
+        refetchPlayerQuestLog,
         isLoading,
         error,
     };

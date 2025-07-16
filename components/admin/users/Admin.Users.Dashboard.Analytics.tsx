@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
     Select,
     SelectContent,
@@ -33,6 +33,9 @@ import {
     Tooltip,
     ResponsiveContainer,
     Legend,
+    BarChart,
+    Bar,
+    Cell,
 } from "recharts";
 
 // hooks import
@@ -42,7 +45,11 @@ import {
     useUserDashboard,
     useUserDashboardAssetAnalysis,
 } from "@/app/actions/userDashboard/hooks";
-import { useAssetHoldingRankingPaginated } from "@/app/actions/userDashboard/queries";
+import {
+    useAssetHoldingRankingPaginated,
+    useHourlyActivity,
+    useDailyActivity,
+} from "@/app/actions/userDashboard/queries";
 
 // 공통 컴포넌트 import
 import { ChartCard, DataCard } from "./shared/MetricCard";
@@ -359,6 +366,495 @@ function GrowthTrends({ dauData }: GrowthTrendsProps) {
                 </ResponsiveContainer>
             </div>
         </ChartCard>
+    );
+}
+
+// 시간대 정보 타입
+interface TimezoneInfo {
+    value: string;
+    label: string;
+    country: string;
+    utcOffset: string;
+}
+
+const TIMEZONE_OPTIONS: TimezoneInfo[] = [
+    {
+        value: "Asia/Seoul",
+        label: "한국 시간 (KST)",
+        country: "🇰🇷 한국",
+        utcOffset: "UTC+9",
+    },
+    {
+        value: "Africa/Lagos",
+        label: "나이지리아 시간 (WAT)",
+        country: "🇳🇬 나이지리아",
+        utcOffset: "UTC+1",
+    },
+    {
+        value: "Asia/Taipei",
+        label: "대만 시간 (CST)",
+        country: "🇹🇼 대만",
+        utcOffset: "UTC+8",
+    },
+    {
+        value: "Asia/Dhaka",
+        label: "방글라데시 시간 (BST)",
+        country: "🇧🇩 방글라데시",
+        utcOffset: "UTC+6",
+    },
+    {
+        value: "Asia/Ho_Chi_Minh",
+        label: "베트남 시간 (ICT)",
+        country: "🇻🇳 베트남",
+        utcOffset: "UTC+7",
+    },
+    {
+        value: "Asia/Singapore",
+        label: "싱가포르 시간 (SGT)",
+        country: "🇸🇬 싱가포르",
+        utcOffset: "UTC+8",
+    },
+    {
+        value: "Europe/London",
+        label: "영국 시간 (GMT/BST)",
+        country: "🇬🇧 영국",
+        utcOffset: "UTC+0/+1",
+    },
+    {
+        value: "Asia/Kolkata",
+        label: "인도 시간 (IST)",
+        country: "🇮🇳 인도",
+        utcOffset: "UTC+5:30",
+    },
+    {
+        value: "Asia/Jakarta",
+        label: "인도네시아 시간 (WIB)",
+        country: "🇮🇩 인도네시아",
+        utcOffset: "UTC+7",
+    },
+    {
+        value: "Asia/Tokyo",
+        label: "일본 시간 (JST)",
+        country: "🇯🇵 일본",
+        utcOffset: "UTC+9",
+    },
+    {
+        value: "Asia/Shanghai",
+        label: "중국 시간 (CST)",
+        country: "🇨🇳 중국",
+        utcOffset: "UTC+8",
+    },
+    {
+        value: "Asia/Karachi",
+        label: "파키스탄 시간 (PKT)",
+        country: "🇵🇰 파키스탄",
+        utcOffset: "UTC+5",
+    },
+    {
+        value: "Europe/Paris",
+        label: "프랑스 시간 (CET)",
+        country: "🇫🇷 프랑스",
+        utcOffset: "UTC+1/+2",
+    },
+    {
+        value: "Asia/Manila",
+        label: "필리핀 시간 (PST)",
+        country: "🇵🇭 필리핀",
+        utcOffset: "UTC+8",
+    },
+    {
+        value: "Australia/Sydney",
+        label: "호주 시간 (AEST)",
+        country: "🇦🇺 호주",
+        utcOffset: "UTC+10/+11",
+    },
+    {
+        value: "America/Chicago",
+        label: "미국 중부 시간 (CST/CDT)",
+        country: "🇺🇸 미국 중부",
+        utcOffset: "UTC-6/-5",
+    },
+    {
+        value: "America/Los_Angeles",
+        label: "미국 서부 시간 (PST/PDT)",
+        country: "🇺🇸 미국 서부",
+        utcOffset: "UTC-8/-7",
+    },
+    {
+        value: "America/New_York",
+        label: "미국 동부 시간 (EST/EDT)",
+        country: "🇺🇸 미국 동부",
+        utcOffset: "UTC-5/-4",
+    },
+    {
+        value: "UTC",
+        label: "협정세계시 (UTC)",
+        country: "🌍 국제 표준",
+        utcOffset: "UTC+0",
+    },
+];
+
+// UTC 시간을 선택된 시간대로 변환하는 함수
+function convertToTimezone(utcHour: number, targetTimezone: string): number {
+    const utcDate = new Date();
+    utcDate.setUTCHours(utcHour, 0, 0, 0);
+
+    const targetDate = new Date(
+        utcDate.toLocaleString("en-US", { timeZone: targetTimezone })
+    );
+    return targetDate.getHours();
+}
+
+// 요일을 선택된 시간대로 변환하는 함수 (날짜 변경선 고려)
+function convertDayToTimezone(
+    utcDay: number,
+    utcHour: number,
+    targetTimezone: string
+): number {
+    // 이번 주의 해당 요일로 날짜 설정
+    const now = new Date();
+    const currentDay = now.getUTCDay();
+    const daysFromToday = utcDay - currentDay;
+
+    const utcDate = new Date(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + daysFromToday
+    );
+    utcDate.setUTCHours(utcHour, 0, 0, 0);
+
+    const targetDate = new Date(
+        utcDate.toLocaleString("en-US", { timeZone: targetTimezone })
+    );
+    return targetDate.getDay();
+}
+
+// Activity Patterns Analysis Component
+interface ActivityPatternsProps {
+    hourlyData: any[];
+    dailyData: any[];
+    timePeriod: string;
+}
+
+function ActivityPatternsAnalysis({
+    hourlyData,
+    dailyData,
+    timePeriod,
+}: ActivityPatternsProps) {
+    const [selectedTimezone, setSelectedTimezone] =
+        useState<string>("Asia/Seoul");
+
+    // 선택된 시간대 정보 찾기
+    const currentTimezone = TIMEZONE_OPTIONS.find(
+        (tz) => tz.value === selectedTimezone
+    );
+
+    // 시간대 변환된 시간별 데이터 생성
+    const hourlyChartData = useMemo(() => {
+        if (!hourlyData) return [];
+
+        // 24시간 배열 초기화
+        const convertedData = Array.from({ length: 24 }, (_, index) => ({
+            hour: index,
+            activity: 0,
+            label:
+                index === 0
+                    ? "자정"
+                    : index === 6
+                    ? "오전 6시"
+                    : index === 12
+                    ? "정오"
+                    : index === 18
+                    ? "오후 6시"
+                    : `${index}시`,
+            hourDisplay: `${index}:00`,
+        }));
+
+        // UTC 시간을 선택된 시간대로 변환하여 데이터 매핑
+        hourlyData.forEach((item, utcHour) => {
+            const localHour = convertToTimezone(utcHour, selectedTimezone);
+            convertedData[localHour].activity += item?.activityCount || 0;
+        });
+
+        return convertedData;
+    }, [hourlyData, selectedTimezone]);
+
+    const dayNames = [
+        "일요일",
+        "월요일",
+        "화요일",
+        "수요일",
+        "목요일",
+        "금요일",
+        "토요일",
+    ];
+
+    // 시간대 변환된 요일별 데이터 생성
+    const dailyChartData = useMemo(() => {
+        if (!dailyData) return [];
+
+        // 7일 배열 초기화
+        const convertedData = Array.from({ length: 7 }, (_, index) => ({
+            day: dayNames[index],
+            dayNumber: index,
+            activity: 0,
+            isWeekend: index === 0 || index === 6,
+        }));
+
+        // 시간대 변환 (날짜 변경선 고려)
+        dailyData.forEach((item, utcDay) => {
+            // 대표적으로 정오(12시)를 기준으로 요일 변환 계산
+            const localDay = convertDayToTimezone(utcDay, 12, selectedTimezone);
+            convertedData[localDay].activity += item?.activityCount || 0;
+        });
+
+        return convertedData;
+    }, [dailyData, selectedTimezone, dayNames]);
+
+    const maxHourlyActivity = Math.max(
+        ...hourlyChartData.map((d: any) => d.activity)
+    );
+    const maxDailyActivity = Math.max(
+        ...dailyChartData.map((d: any) => d.activity)
+    );
+
+    const peakHour = hourlyChartData.find(
+        (d) => d.activity === maxHourlyActivity
+    );
+    const peakDay = dailyChartData.find((d) => d.activity === maxDailyActivity);
+
+    const CustomHourlyTooltip = ({ active, payload }: any) => {
+        if (active && payload && payload.length) {
+            const data = payload[0].payload;
+            return (
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 shadow-xl">
+                    <p className="font-semibold text-white mb-2">
+                        {data.label}
+                    </p>
+                    <p className="text-purple-400">
+                        <span className="font-medium">활성 사용자:</span>{" "}
+                        {formatNumber(data.activity)}
+                    </p>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    const CustomDailyTooltip = ({ active, payload }: any) => {
+        if (active && payload && payload.length) {
+            const data = payload[0].payload;
+            return (
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 shadow-xl">
+                    <p className="font-semibold text-white mb-2">{data.day}</p>
+                    <p className="text-emerald-400">
+                        <span className="font-medium">활성 사용자:</span>{" "}
+                        {formatNumber(data.activity)}
+                    </p>
+                    {data.isWeekend && (
+                        <p className="text-slate-400 text-sm">주말</p>
+                    )}
+                </div>
+            );
+        }
+        return null;
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* 시간대 선택 섹션 */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 bg-slate-800/30 rounded-lg border border-slate-700">
+                <div>
+                    <h3 className="text-lg font-semibold text-white mb-1">
+                        활동 패턴 분석
+                    </h3>
+                    <p className="text-sm text-slate-400">
+                        선택한 시간대 기준으로 사용자 활동 패턴을 분석합니다
+                    </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="text-sm text-slate-300">
+                        <span className="font-medium">현재 시간대:</span>
+                        <br className="sm:hidden" />
+                        <span className="text-purple-400 ml-1">
+                            {currentTimezone?.country} (
+                            {currentTimezone?.utcOffset})
+                        </span>
+                    </div>
+
+                    <Select
+                        value={selectedTimezone}
+                        onValueChange={setSelectedTimezone}
+                    >
+                        <SelectTrigger className="w-[280px] bg-slate-800 border-slate-600 text-slate-200">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-600 max-h-60">
+                            {TIMEZONE_OPTIONS.map((timezone) => (
+                                <SelectItem
+                                    key={timezone.value}
+                                    value={timezone.value}
+                                    className="text-slate-200 hover:bg-slate-700"
+                                >
+                                    <div className="flex flex-col">
+                                        <span className="font-medium">
+                                            {timezone.country}
+                                        </span>
+                                        <span className="text-xs text-slate-400">
+                                            {timezone.label} •{" "}
+                                            {timezone.utcOffset}
+                                        </span>
+                                    </div>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+                <ChartCard title="시간대별 활동 패턴">
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-slate-400">
+                                    최근 {timePeriod}일 기준
+                                </p>
+                                {peakHour && (
+                                    <p className="text-sm text-purple-400 font-medium">
+                                        피크 시간: {peakHour.label} (
+                                        {formatNumber(peakHour.activity)}명)
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={hourlyChartData}
+                                    margin={{
+                                        top: 20,
+                                        right: 30,
+                                        left: 20,
+                                        bottom: 5,
+                                    }}
+                                >
+                                    <CartesianGrid
+                                        strokeDasharray="3 3"
+                                        stroke="#374151"
+                                    />
+                                    <XAxis
+                                        dataKey="hourDisplay"
+                                        fontSize={11}
+                                        tick={{ fill: "#9CA3AF" }}
+                                        interval={2}
+                                    />
+                                    <YAxis
+                                        fontSize={12}
+                                        tick={{ fill: "#9CA3AF" }}
+                                        tickFormatter={(value) =>
+                                            formatNumber(value)
+                                        }
+                                    />
+                                    <Tooltip
+                                        content={<CustomHourlyTooltip />}
+                                    />
+                                    <Bar
+                                        dataKey="activity"
+                                        fill="#8b5cf6"
+                                        radius={[2, 2, 0, 0]}
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        <div className="text-xs text-slate-400 space-y-1">
+                            <p>
+                                • 현재 시간대:{" "}
+                                <span className="text-purple-300">
+                                    {currentTimezone?.label}
+                                </span>
+                            </p>
+                            <p>
+                                • UTC에서 {currentTimezone?.utcOffset}로 변환된
+                                데이터
+                            </p>
+                        </div>
+                    </div>
+                </ChartCard>
+
+                <ChartCard title="요일별 활동 패턴">
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-slate-400">
+                                    최근 {timePeriod}일 기준
+                                </p>
+                                {peakDay && (
+                                    <p className="text-sm text-emerald-400 font-medium">
+                                        가장 활발한 요일: {peakDay.day} (
+                                        {formatNumber(peakDay.activity)}명)
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={dailyChartData}
+                                    margin={{
+                                        top: 20,
+                                        right: 30,
+                                        left: 20,
+                                        bottom: 5,
+                                    }}
+                                >
+                                    <CartesianGrid
+                                        strokeDasharray="3 3"
+                                        stroke="#374151"
+                                    />
+                                    <XAxis
+                                        dataKey="day"
+                                        fontSize={12}
+                                        tick={{ fill: "#9CA3AF" }}
+                                    />
+                                    <YAxis
+                                        fontSize={12}
+                                        tick={{ fill: "#9CA3AF" }}
+                                        tickFormatter={(value) =>
+                                            formatNumber(value)
+                                        }
+                                    />
+                                    <Tooltip content={<CustomDailyTooltip />} />
+                                    <Bar
+                                        dataKey="activity"
+                                        radius={[2, 2, 0, 0]}
+                                    >
+                                        {dailyChartData.map((entry, index) => (
+                                            <Cell
+                                                key={`cell-${index}`}
+                                                fill={
+                                                    entry.isWeekend
+                                                        ? "#f59e0b"
+                                                        : "#10b981"
+                                                }
+                                            />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        <div className="text-xs text-slate-400 space-y-1">
+                            <p>• {currentTimezone?.country} 기준 요일별 분석</p>
+                        </div>
+                    </div>
+                </ChartCard>
+            </div>
+        </div>
     );
 }
 
@@ -830,6 +1326,14 @@ export function AdminUsersDashboardAnalytics() {
     // Fetch asset ranking data
     const { holdingRanking } = useUserDashboardAssetAnalysis();
 
+    // Fetch activity patterns data
+    const { data: hourlyData, isLoading: isHourlyLoading } = useHourlyActivity(
+        Number(timePeriod) as 7 | 30 | 90
+    );
+    const { data: dailyData, isLoading: isDailyLoading } = useDailyActivity(
+        Number(timePeriod) as 7 | 30 | 90
+    );
+
     // Filter DAU/MAU data after July 7, 2025
     const filteredDauData = filterDataAfterDate(dauData || [], "2025-07-07");
     const filteredMauData = filterDataAfterDate(mauData || [], "2025-07-07");
@@ -839,7 +1343,9 @@ export function AdminUsersDashboardAnalytics() {
         network.isLoading ||
         !dauData ||
         !mauData ||
-        holdingRanking.isLoading;
+        holdingRanking.isLoading ||
+        isHourlyLoading ||
+        isDailyLoading;
     const isError =
         metrics.isError || network.isError || holdingRanking.isError;
 
@@ -889,6 +1395,13 @@ export function AdminUsersDashboardAnalytics() {
                 <GrowthTrends
                     dauData={filteredDauData}
                     mauData={filteredMauData}
+                />
+
+                {/* Activity Patterns Analysis */}
+                <ActivityPatternsAnalysis
+                    hourlyData={hourlyData || []}
+                    dailyData={dailyData || []}
+                    timePeriod={timePeriod}
                 />
 
                 {/* Web3 & Network Analytics */}

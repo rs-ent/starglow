@@ -9,6 +9,7 @@ import { createWallet } from "../story/userWallet/actions";
 import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 import type { Prisma, Player, User } from "@prisma/client";
+import type { ProviderType } from "../types/auth";
 
 export interface GetUsersInput {
     ids?: string[];
@@ -247,4 +248,26 @@ export async function setUserWithWallet(
         console.error("Failed to set user with wallet", error);
         throw error;
     }
+}
+
+export interface getUserProviderInput {
+    userId: string;
+}
+
+export async function getUserProvider(
+    input?: getUserProviderInput
+): Promise<ProviderType | null> {
+    if (!input) {
+        return null;
+    }
+
+    const user = await prisma.user.findUnique({
+        cacheStrategy: getCacheStrategy("oneDay"),
+        where: { id: input.userId },
+        select: {
+            provider: true,
+        },
+    });
+
+    return user?.provider as ProviderType | null;
 }

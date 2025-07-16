@@ -7,16 +7,26 @@ import {
     useSetUserWithTelegram,
 } from "@/app/mutations/userMutations";
 
-import { useUserQuery, useUsersQuery } from "../queries/userQueries";
+import {
+    useUserQuery,
+    useUsersQuery,
+    useUserProviderQuery,
+} from "../queries/userQueries";
 
-import type { GetUserByEmailInput, GetUsersInput } from "@/app/actions/user";
+import type {
+    GetUserByEmailInput,
+    GetUsersInput,
+    getUserProviderInput,
+} from "@/app/actions/user";
 
 export function useUserGet({
     getUserByEmailInput,
     getUsersInput,
+    getUserProviderInput,
 }: {
     getUserByEmailInput?: GetUserByEmailInput;
     getUsersInput?: GetUsersInput;
+    getUserProviderInput?: getUserProviderInput;
 }) {
     const {
         data: users,
@@ -30,8 +40,16 @@ export function useUserGet({
         error: userError,
     } = useUserQuery({ getUserByEmailInput });
 
-    const isLoading = isUserLoading || isUsersLoading;
-    const error = userError || usersError;
+    const {
+        data: provider,
+        isLoading: isProviderLoading,
+        error: providerError,
+    } = useUserProviderQuery({
+        getUserProviderInput,
+    });
+
+    const isLoading = isUserLoading || isUsersLoading || isProviderLoading;
+    const error = userError || usersError || providerError;
 
     return {
         users,
@@ -42,11 +60,16 @@ export function useUserGet({
         isUserLoading,
         userError,
 
+        provider,
+        isProviderLoading,
+        providerError,
+
         isLoading,
         error,
 
         useUsersQuery,
         useUserQuery,
+        useUserProviderQuery,
     };
 }
 

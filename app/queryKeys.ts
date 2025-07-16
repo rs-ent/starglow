@@ -52,6 +52,7 @@ export const queryKeys = {
         byEmail: (email: string) => ["user", "email", email] as const,
         byTelegramId: (telegramId: string) =>
             ["user", "telegram", telegramId] as const,
+        provider: (userId: string) => ["user", "provider", userId] as const,
     },
     currency: ["currency"] as const,
     rewards: ["rewards"] as const,

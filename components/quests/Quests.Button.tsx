@@ -71,7 +71,11 @@ function QuestsButton({
         },
     });
 
-    const { playerQuestLog, isLoading: isLoadingPlayerQuestLog } = useQuestGet({
+    const {
+        playerQuestLog,
+        isLoading: isLoadingPlayerQuestLog,
+        refetchPlayerQuestLog,
+    } = useQuestGet({
         getPlayerQuestLogInput: {
             questId: quest.id,
             playerId: player?.id || "",
@@ -91,12 +95,36 @@ function QuestsButton({
     const [blockFunction, setBlockFunction] = useState<boolean>(false);
     const [showInteractFeedback, setShowInteractFeedback] =
         useState<boolean>(false);
-    const [status, setStatus] = useState<"completed" | "claimed" | "default">(
-        "default"
-    );
-    const [buttonStyle, setButtonStyle] = useState<string>(
-        "gradient-border morp-glass-1"
-    );
+    // 서버 상태에서 파생되는 상태 계산
+    const status = useMemo((): "completed" | "claimed" | "default" => {
+        if (!playerQuestLog) return "default";
+
+        if (quest.repeatable && quest.repeatableCount) {
+            if (playerQuestLog.isClaimed) return "claimed";
+            if (
+                playerQuestLog.repeatCount >= quest.repeatableCount &&
+                playerQuestLog.completed
+            ) {
+                return "completed";
+            }
+            return "default";
+        } else {
+            if (playerQuestLog.isClaimed) return "claimed";
+            if (playerQuestLog.completed) return "completed";
+            return "default";
+        }
+    }, [quest, playerQuestLog]);
+
+    const buttonStyle = useMemo(() => {
+        switch (status) {
+            case "completed":
+                return "border-2 border-[rgba(139,92,246,0.9)] animate-pulse";
+            case "claimed":
+                return "opacity-40 bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)]";
+            default:
+                return "gradient-border morp-glass-1";
+        }
+    }, [status]);
     const [isCountdownComplete, setIsCountdownComplete] =
         useState<boolean>(false);
 
@@ -120,6 +148,14 @@ function QuestsButton({
         lastClickTimeRef.current = now;
         return true;
     }, []);
+
+    // 로그 Refetch 함수 (즉시 실행)
+    const refetchPlayerQuestLogImmediate = useCallback(() => {
+        if (isLoadingPlayerQuestLog) return;
+        refetchPlayerQuestLog().catch((error) => {
+            console.error("Refetch player quest log error:", error);
+        });
+    }, [isLoadingPlayerQuestLog, refetchPlayerQuestLog]);
 
     // 퀘스트 완료 핸들러
     const handleCompleteQuest = useCallback(async () => {
@@ -201,10 +237,6 @@ function QuestsButton({
             });
 
             if (result.success) {
-                setStatus("completed");
-                setButtonStyle(
-                    "border-2 border-[rgba(139,92,246,0.9)] animate-pulse"
-                );
                 if (
                     quest.repeatable &&
                     quest.repeatableCount &&
@@ -217,13 +249,13 @@ function QuestsButton({
                 } else {
                     toast.success("Quest completed! Please claim your reward.");
                 }
+                refetchPlayerQuestLogImmediate();
             } else {
                 toast.error(result.error || "Failed to complete quest");
             }
         } catch (error) {
             console.error("Quest completion error:", error);
-            isProcessingRef.current = false;
-            setBlockFunction(false);
+            toast.error("Failed to complete quest. Please try again.");
         } finally {
             isProcessingRef.current = false;
             setBlockFunction(false);
@@ -242,6 +274,7 @@ function QuestsButton({
         toast,
         preventRapidClicks,
         playerQuestLog?.repeatCount,
+        refetchPlayerQuestLogImmediate,
     ]);
 
     // 퀘스트 보상 청구 핸들러
@@ -316,19 +349,14 @@ function QuestsButton({
                 });
 
                 if (result.success) {
-                    setStatus("claimed");
-                    setButtonStyle(
-                        "opacity-40 bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)]"
-                    );
                     setShowInteractFeedback(true);
+                    refetchPlayerQuestLogImmediate();
                 } else {
                     toast.error(result.error || "Failed to claim quest reward");
                 }
             } catch (error) {
                 console.error("Claim reward error:", error);
-                setShowInteractFeedback(false);
-                isProcessingRef.current = false;
-                setBlockFunction(false);
+                toast.error("Failed to claim quest reward. Please try again.");
             } finally {
                 isProcessingRef.current = false;
                 setBlockFunction(false);
@@ -345,56 +373,12 @@ function QuestsButton({
             claimQuestReward,
             toast,
             preventRapidClicks,
+            refetchPlayerQuestLogImmediate,
         ]
     );
 
-    // 퀘스트 상태 업데이트
+    // 대기 시간 계산
     useEffect(() => {
-        if (!playerQuestLog) {
-            setStatus("default");
-            setButtonStyle("gradient-border morp-glass-1");
-            return;
-        }
-
-        // 반복 퀘스트 처리
-        if (quest.repeatable && quest.repeatableCount) {
-            if (playerQuestLog.isClaimed) {
-                setStatus("claimed");
-                setButtonStyle(
-                    "opacity-40 bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)]"
-                );
-            } else if (
-                playerQuestLog.repeatCount >= quest.repeatableCount &&
-                playerQuestLog.completed
-            ) {
-                // 최대 반복 횟수에 도달하고 completed 상태일 때만 completed 상태로 설정
-                setStatus("completed");
-                setButtonStyle(
-                    "border-2 border-[rgba(139,92,246,0.9)] animate-pulse"
-                );
-            } else {
-                // 아직 최대 반복 횟수에 도달하지 않았거나 completed가 아니면 default 상태 유지
-                setStatus("default");
-                setButtonStyle("gradient-border morp-glass-1");
-            }
-        } else {
-            // 일반 퀘스트 처리
-            if (playerQuestLog.isClaimed) {
-                setStatus("claimed");
-                setButtonStyle(
-                    "opacity-40 bg-gradient-to-br from-[rgba(0,0,0,0.2)] to-[rgba(0,0,0,0.05)]"
-                );
-            } else if (playerQuestLog.completed) {
-                setStatus("completed");
-                setButtonStyle(
-                    "border-2 border-[rgba(139,92,246,0.9)] animate-pulse"
-                );
-            } else {
-                setStatus("default");
-                setButtonStyle("gradient-border morp-glass-1");
-            }
-        }
-
         // 반복 가능한 퀘스트의 대기 시간 처리
         if (
             quest.repeatable &&

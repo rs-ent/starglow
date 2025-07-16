@@ -301,33 +301,9 @@ export function useCompleteQuestMutation() {
 
     return useMutation({
         mutationFn: completeQuest,
-        onMutate: async (variables) => {
-            if (!variables?.quest?.id || !variables?.player?.id) {
-                return { previousData: null };
-            }
-
-            await queryClient.cancelQueries({
-                queryKey: questKeys.complete({
-                    quest: variables.quest.id as any,
-                    player: variables.player.id as any,
-                }),
-            });
-
-            const previousData = await queryClient.getQueryData(
-                questKeys.complete({
-                    quest: variables.quest.id as any,
-                    player: variables.player.id as any,
-                })
-            );
-
-            return { previousData };
-        },
-        onSuccess: (_data, variables, _context) => {
+        onSuccess: (_data, variables) => {
             if (!variables?.quest?.id || !variables?.player?.id) return;
 
-            // 🎯 최적화: 특정 퀘스트와 플레이어에 대해서만 무효화
-
-            // 1. 특정 퀘스트 상세 정보만 무효화
             queryClient
                 .invalidateQueries({
                     queryKey: questKeys.detail({
@@ -338,7 +314,6 @@ export function useCompleteQuestMutation() {
                     console.error(error);
                 });
 
-            // 2. 특정 퀘스트 완료 상태만 무효화
             queryClient
                 .invalidateQueries({
                     queryKey: questKeys.complete({
@@ -350,7 +325,6 @@ export function useCompleteQuestMutation() {
                     console.error(error);
                 });
 
-            // 3. 특정 플레이어의 특정 퀘스트 로그만 무효화 (Quest Button용)
             queryClient
                 .invalidateQueries({
                     queryKey: questKeys.playerQuestLog({
@@ -362,7 +336,6 @@ export function useCompleteQuestMutation() {
                     console.error(error);
                 });
 
-            // 4. 특정 플레이어의 로그들만 무효화 (대시보드용)
             queryClient
                 .invalidateQueries({
                     queryKey: questKeys.playerLogs({
@@ -393,7 +366,6 @@ export function useCompleteQuestMutation() {
                     console.error(error);
                 });
 
-            // 5. 필요한 경우에만 리스트 무효화 (반복 퀘스트인 경우)
             if (
                 variables?.quest?.repeatable ||
                 variables?.quest?.multiClaimable
@@ -405,13 +377,7 @@ export function useCompleteQuestMutation() {
                     .catch((error) => {
                         console.error(error);
                     });
-            }
 
-            // 6. 필요한 경우에만 무한 스크롤 무효화 (퀘스트 순서가 변경될 수 있는 경우)
-            if (
-                variables?.quest?.repeatable ||
-                variables?.quest?.multiClaimable
-            ) {
                 queryClient
                     .invalidateQueries({
                         queryKey: questKeys.infinite(),
@@ -420,22 +386,9 @@ export function useCompleteQuestMutation() {
                         console.error(error);
                     });
             }
-
-            // 7. 완료 - 모든 필요한 쿼리 무효화 완료
         },
-        onError: (error, variables, context) => {
+        onError: (error) => {
             console.error("Error completing quest:", error);
-
-            // 오류 발생 시 이전 상태로 롤백
-            if (context?.previousData) {
-                queryClient.setQueryData(
-                    questKeys.complete({
-                        quest: variables?.quest?.id as any,
-                        player: variables?.player?.id as any,
-                    }),
-                    context.previousData
-                );
-            }
         },
     });
 }
@@ -520,6 +473,9 @@ export function useClaimQuestRewardMutation() {
                 .catch((error) => {
                     console.error(error);
                 });
+        },
+        onError: (error) => {
+            console.error("Error claiming quest reward:", error);
         },
     });
 }

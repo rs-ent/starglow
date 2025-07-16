@@ -10,7 +10,6 @@ import ProfileName from "@/components/atoms/ProfileName";
 import type { Player } from "@prisma/client";
 import type { User } from "next-auth";
 
-
 interface UserProfileProps {
     user: User;
     player: Player;

@@ -18,17 +18,40 @@ import { AdminRafflesAnalyticsRaffle } from "./Admin.Raffles.Analytics.Raffle";
 import { AdminRafflesAnalyticsTimeline } from "./Admin.Raffles.Analytics.Timeline";
 import { AdminRafflesAnalyticsRevenue } from "./Admin.Raffles.Analytics.Revenue";
 
-interface AdminRafflesAnalyticsProps {
+export type RaffleMode = "web2" | "web3";
+
+export interface AdminRafflesAnalyticsProps {
     onBack: () => void;
+    raffleMode: RaffleMode;
 }
 
-export function AdminRafflesAnalytics({ onBack }: AdminRafflesAnalyticsProps) {
+export function AdminRafflesAnalytics({
+    onBack,
+    raffleMode,
+}: AdminRafflesAnalyticsProps) {
     const [selectedRaffleId, setSelectedRaffleId] = useState<string>("");
 
-    // 모든 래플 목록 조회
     const { rafflesData, isRafflesLoading } = useRaffles({
-        getRafflesInput: { limit: 100 }, // 관리자는 모든 래플을 볼 수 있도록
+        getRafflesInput: { limit: 100 },
     });
+
+    if (raffleMode === "web3") {
+        return (
+            <div className="space-y-6 p-6">
+                <Button variant="outline" onClick={onBack}>
+                    <ArrowLeftIcon className="w-4 h-4" />← Back
+                </Button>
+                <div className="text-center p-8">
+                    <h3 className="text-lg font-semibold mb-4">
+                        Web3 Raffle Analytics (Coming Soon)
+                    </h3>
+                    <p className="text-muted-foreground mb-4">
+                        Web3 래플 분석 기능이 곧 출시됩니다.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     if (isRafflesLoading) {
         return (
@@ -45,11 +68,11 @@ export function AdminRafflesAnalytics({ onBack }: AdminRafflesAnalyticsProps) {
     return (
         <div className="space-y-6 p-6">
             <Button variant="outline" onClick={onBack}>
-                <ArrowLeftIcon className="w-4 h-4" />
-                뒤로가기
+                <ArrowLeftIcon className="w-4 h-4" />← Back
             </Button>
+
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold">래플 분석</h1>
+                <h1 className="text-2xl font-bold">Web2 래플 분석</h1>
                 <Badge variant="outline">총 {raffles.length}개 래플</Badge>
             </div>
 

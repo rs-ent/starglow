@@ -177,6 +177,10 @@ export async function updatePlayer(
                 ...(userDetails.os && { os: userDetails.os }),
                 ...(userDetails.device && { device: userDetails.device }),
                 ...(userDetails.browser && { browser: userDetails.browser }),
+                ...(userDetails.country && { country: userDetails.country }),
+                ...(userDetails.state && { state: userDetails.state }),
+                ...(userDetails.city && { city: userDetails.city }),
+                ...(userDetails.timezone && { timezone: userDetails.timezone }),
             },
         });
 
@@ -312,6 +316,10 @@ async function upsertPlayerCore(
                 ...(userDetails.os && { os: userDetails.os }),
                 ...(userDetails.device && { device: userDetails.device }),
                 ...(userDetails.browser && { browser: userDetails.browser }),
+                ...(userDetails.country && { country: userDetails.country }),
+                ...(userDetails.state && { state: userDetails.state }),
+                ...(userDetails.city && { city: userDetails.city }),
+                ...(userDetails.timezone && { timezone: userDetails.timezone }),
             };
 
             // Handle tweet author connection only if needed
@@ -343,7 +351,24 @@ async function upsertPlayerCore(
                             connect: { authorId: input.tweetAuthorId },
                         },
                     }),
-                    ...userDetails,
+                    // 🎯 사용자 상세 정보 포함
+                    ...(userDetails.ipAddress && {
+                        ipAddress: userDetails.ipAddress,
+                    }),
+                    ...(userDetails.locale && { locale: userDetails.locale }),
+                    ...(userDetails.os && { os: userDetails.os }),
+                    ...(userDetails.device && { device: userDetails.device }),
+                    ...(userDetails.browser && {
+                        browser: userDetails.browser,
+                    }),
+                    ...(userDetails.country && {
+                        country: userDetails.country,
+                    }),
+                    ...(userDetails.state && { state: userDetails.state }),
+                    ...(userDetails.city && { city: userDetails.city }),
+                    ...(userDetails.timezone && {
+                        timezone: userDetails.timezone,
+                    }),
                 },
             });
 
@@ -944,6 +969,9 @@ export async function updatePlayerDetails(
         }
         if (details.city !== undefined && details.city !== null) {
             updateData.city = details.city;
+        }
+        if (details.timezone !== undefined && details.timezone !== null) {
+            updateData.timezone = details.timezone;
         }
 
         // 업데이트할 데이터가 없으면 성공으로 처리

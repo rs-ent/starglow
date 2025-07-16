@@ -156,6 +156,7 @@ model Player {
   locale                   String?
   os                       String?
   state                    String?
+  timezone                 String?
   artistFeedReactions      ArtistFeedReaction[]
   assetInstances           AssetInstance[]
   boardComments            BoardComment[]          @relation("BoardCommentAuthor")
@@ -681,6 +682,7 @@ model BlockchainNetwork {
   story_spg           Story_spg[]
   story_spg_contracts Story_spgContract[]
   tbaContracts        TBAContract[]
+  onchainRaffleContracts OnchainRaffleContract[]
 
   @@index([isStoryNetwork])
   @@index([isTestnet, isActive, isStoryNetwork])
@@ -1746,6 +1748,25 @@ model RaffleWinner {
   @@index([playerId])
   @@index([status])
   @@index([distributedAt])
+}
+
+model OnchainRaffleContract {
+  id String @id @default(cuid())
+  address String
+  txHash String
+  deployedBy String
+  blockNumber Int?
+
+  isActive Boolean @default(true)
+
+  networkId String
+  network BlockchainNetwork @relation(fields: [networkId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([networkId])
+  @@index([isActive])
 }
 
 model PollBettingSettlementLog {

@@ -7,8 +7,6 @@ Table User {
   name String
   email String [unique]
   emailVerified DateTime
-  password String
-  phone String
   image String
   role String [not null, default: 'user']
   active Boolean [not null, default: true]
@@ -16,15 +14,17 @@ Table User {
   lastLoginAt DateTime
   provider String
   telegramId String [unique]
+  password String
+  phone String
+  discordId String [unique]
   accounts Account [not null]
   collectionParticipants CollectionParticipant [not null]
+  discordCode DiscordCode [not null]
   loginAttempts LoginAttemptLog [not null]
   payments Payment [not null]
   player Player
   sessions Session [not null]
   wallets Wallet [not null]
-  discordId String [unique]
-  discordCode DiscordCode [not null]
 }
 
 Table Account {
@@ -87,7 +87,6 @@ Table Wallet {
   address String [unique, not null]
   privateKey String
   network String [not null]
-  provider String [not null, default: 'starglow']
   createdAt DateTime [default: `now()`, not null]
   default Boolean [not null, default: false]
   primary Int [default: 0]
@@ -96,6 +95,7 @@ Table Wallet {
   status WalletStatus [not null, default: 'ACTIVE']
   keyHash String
   nonce String
+  provider String [not null, default: 'starglow']
   payments Payment [not null]
   user User [not null]
 }
@@ -104,21 +104,43 @@ Table Player {
   id String [pk]
   userId String [unique]
   telegramId String [unique]
-  tweetAuthorId String [unique]
-  tweetVerified Boolean [not null, default: false]
-  tester Boolean [not null, default: false]
   name String
-  nickname String
-  image String
-  email String
-  referralCount Int [not null, default: 0]
-  referredBy String
-  referredMethod String
-  referredAt DateTime [default: `now()`, not null]
   createdAt DateTime [default: `now()`, not null]
   lastConnectedAt DateTime [not null]
+  referralCount Int [not null, default: 0]
+  referredAt DateTime [default: `now()`, not null]
+  referredBy String
+  referredMethod String
   referralCode String [unique, not null]
+  nickname String
+  email String
+  image String
+  tweetAuthorId String [unique]
+  tweetVerified Boolean [not null, default: false]
+  artistId String
+  isArtist Boolean [not null, default: false]
+  boardReputationScore Int [not null, default: 0]
+  boardTrustLevel Int [not null, default: 0]
+  tester Boolean [not null, default: false]
+  browser String
+  city String
+  country String
+  device String
+  ipAddress String
+  locale String
+  os String
+  state String
+  timezone String
   artistFeedReactions ArtistFeedReaction [not null]
+  assetInstances AssetInstance [not null]
+  boardComments BoardComment [not null]
+  committedBoardModeration BoardModerationReport [not null]
+  reportedBoardModeration BoardModerationReport [not null]
+  boardPosts BoardPost [not null]
+  grantedBoardRewards BoardPostReward [not null]
+  boardPostRewards BoardPostReward [not null]
+  boardReactions BoardReaction [not null]
+  artist Artist
   referrer Player
   referredPlayers Player [not null]
   tweetAuthor TweetAuthor
@@ -126,34 +148,13 @@ Table Player {
   playerAssets PlayerAsset [not null]
   pollLogs PollLog [not null]
   questLogs QuestLog [not null]
+  raffleParticipants RaffleParticipant [not null]
+  raffleWinners RaffleWinner [not null]
   referredPlayerLogs ReferralLog [not null]
   referrerPlayerLogs ReferralLog [not null]
   rewardLogs RewardsLog [not null]
-  boardPosts BoardPost [not null]
-  boardComments BoardComment [not null]
-  boardReactions BoardReaction [not null]
-  boardPostRewards BoardPostReward [not null]
-  grantedBoardRewards BoardPostReward [not null]
-  raffleParticipants RaffleParticipant [not null]
-  raffleWinners RaffleWinner [not null]
-  userNotifications user_notifications [not null]
   notificationSettings notification_settings
-  isArtist Boolean [not null, default: false]
-  artistId String
-  artist Artist
-  boardTrustLevel Int [not null, default: 0]
-  boardReputationScore Int [not null, default: 0]
-  committedBoardModeration BoardModerationReport [not null]
-  reportedBoardModeration BoardModerationReport [not null]
-  assetInstances AssetInstance [not null]
-  ipAddress String
-  locale String
-  os String
-  device String
-  browser String
-  country String
-  state String
-  city String
+  userNotifications user_notifications [not null]
 
   indexes {
     (userId, telegramId) [unique]
@@ -173,8 +174,8 @@ Table ReferralLog {
   id String [pk]
   referredPlayerId String [not null]
   referrerPlayerId String [not null]
-  method String
   createdAt DateTime [default: `now()`, not null]
+  method String
   referredPlayer Player [not null]
   referrerPlayer Player [not null]
 
@@ -188,11 +189,11 @@ Table PlayerAsset {
   playerId String [not null]
   assetId String [not null]
   balance Int [not null, default: 0]
-  status PlayerAssetStatus [not null, default: 'ACTIVE']
   updatedAt DateTime [not null]
+  status PlayerAssetStatus [not null, default: 'ACTIVE']
+  assetInstances AssetInstance [not null]
   asset Asset [not null]
   player Player [not null]
-  assetInstances AssetInstance [not null]
 
   indexes {
     (playerId, assetId) [unique]
@@ -202,34 +203,34 @@ Table PlayerAsset {
 Table Quest {
   id String [pk]
   title String [not null]
-  questType QuestType [not null, default: 'URL']
   description String
   url String
-  urls String[] [not null]
   icon String
-  imgUrl String
-  youtubeUrl String
-  rewardAssetId String
-  rewardAmount Int
   startDate DateTime
   endDate DateTime
-  needToken Boolean [not null, default: false]
-  needTokenAddress String
+  permanent Boolean [not null, default: false]
+  effects String
+  type String
+  rewardAmount Int
+  rewardAssetId String
+  imgUrl String
+  isActive Boolean [not null, default: true]
+  order Int [default: 0]
+  youtubeUrl String
   repeatable Boolean [not null, default: false]
   repeatableCount Int
   repeatableInterval Int
-  multiClaimable Boolean [not null, default: false]
-  multiClaimLimit Int
-  multiClaimInterval Int
+  artistId String
+  needToken Boolean [not null, default: false]
+  needTokenAddress String
   isReferral Boolean [not null, default: false]
   referralCount Int
-  permanent Boolean [not null, default: false]
-  isActive Boolean [not null, default: true]
-  order Int [default: 0]
+  questType QuestType [not null, default: 'URL']
+  multiClaimInterval Int
+  multiClaimLimit Int
+  multiClaimable Boolean [not null, default: false]
+  urls String[] [not null]
   test Boolean [not null, default: false]
-  effects String
-  type String
-  artistId String
   artist Artist
   rewardAsset Asset
   questLogs QuestLog [not null]
@@ -242,17 +243,17 @@ Table QuestLog {
   questId String [not null]
   completed Boolean [not null, default: false]
   completedAt DateTime
-  rewardAssetId String
+  createdAt DateTime [default: `now()`, not null]
   rewardAmount Int
+  rewardAssetId String
+  claimedAt DateTime
+  isClaimed Boolean [not null, default: false]
   repeatCount Int [not null, default: 1]
   completedDates DateTime[] [not null]
+  deprecated Boolean [not null, default: false]
   reclaimable Boolean [not null, default: false]
   claimedDates DateTime[] [not null]
-  deprecated Boolean [not null, default: false]
-  createdAt DateTime [default: `now()`, not null]
-  isClaimed Boolean [not null, default: false]
   status QuestLogStatus [not null, default: 'PENDING']
-  claimedAt DateTime
   player Player [not null]
   quest Quest [not null]
   rewardAsset Asset
@@ -267,95 +268,95 @@ Table Poll {
   id String [pk]
   title String [not null]
   titleShorten String
-  description String
-  category PollCategory [not null, default: 'PUBLIC']
-  status PollStatus [not null, default: 'UPCOMING']
-  isActive Boolean [not null, default: false]
-  showOnPollPage Boolean [not null, default: true]
-  showOnStarPage Boolean [not null, default: true]
-  options Json[] [not null]
-  optionsOrder String[] [not null]
-  hasAnswer Boolean [not null, default: false]
-  hasAnswerAnnouncement Boolean [not null, default: false]
-  answerOptionIds String[] [not null]
-  imgUrl String
-  youtubeUrl String
   startDate DateTime [default: `now()`, not null]
   endDate DateTime [not null]
-  answerAnnouncementDate DateTime
   exposeInScheduleTab Boolean [not null, default: true]
+  totalVotes Int [not null, default: 0]
+  totalBetsAmount Int [not null, default: 0]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  allowMultipleVote Boolean [not null, default: false]
+  bettingMode Boolean [not null, default: false]
+  category PollCategory [not null, default: 'PUBLIC']
+  customResults Int[] [not null]
+  description String
   hideResults Boolean [not null, default: false]
-  resultVisibleDate DateTime
-  prePromoText String
-  prePromoImg String
-  postPromoText String
-  postPromoImg String
-  needToken Boolean [not null, default: true]
-  needTokenAddress String
+  imgUrl String
+  maximumBet Int [not null, default: 10000]
+  metadata Json
+  minimumBet Int [not null, default: 1000]
   minimumPoints Int
   minimumSGP Int
   minimumSGT Int
+  needToken Boolean [not null, default: true]
+  needTokenAddress String
+  optionsOrder String[] [not null]
+  postPromoImg String
+  postPromoText String
+  prePromoImg String
+  prePromoText String
   requiredQuests String[] [not null]
-  allowMultipleVote Boolean [not null, default: false]
-  voteLimit Int
-  bettingMode Boolean [not null, default: false]
-  bettingAssetId String
-  minimumBet Int [not null, default: 1000]
-  maximumBet Int [not null, default: 10000]
-  participationConsumeAssetId String
-  participationConsumeAmount Int
-  participationRewardAssetId String
-  participationRewardAmount Int
-  viewCount Int [not null, default: 0]
+  resultVisibleDate DateTime
+  status PollStatus [not null, default: 'UPCOMING']
+  tags String[] [not null]
   uniqueVoters Int [not null, default: 0]
-  totalVotes Int [not null, default: 0]
-  totalBetsAmount Int [not null, default: 0]
-  customResults Int[] [not null]
   verificationHash String
   verifiedAt DateTime
   verifiedBy String
-  test Boolean [not null, default: false]
-  tags String[] [not null]
-  metadata Json
-  createdAt DateTime [default: `now()`, not null]
-  updatedAt DateTime [not null]
+  viewCount Int [not null, default: 0]
+  voteLimit Int
+  youtubeUrl String
+  options Json[] [not null]
+  bettingAssetId String
+  participationRewardAmount Int
+  participationRewardAssetId String
   artistId String
+  isActive Boolean [not null, default: false]
+  answerOptionIds String[] [not null]
+  hasAnswer Boolean [not null, default: false]
+  bettingStatus BettingStatus [not null, default: 'OPEN']
+  houseCommissionRate Float [not null, default: 0.05]
+  isSettled Boolean [not null, default: false]
+  optionBetAmounts Json
+  settledAt DateTime
+  settledBy String
+  totalCommissionAmount Int [not null, default: 0]
+  winningOptionId String
+  answerAnnouncementDate DateTime
+  hasAnswerAnnouncement Boolean [not null, default: false]
+  participationConsumeAmount Int
+  participationConsumeAssetId String
+  showOnPollPage Boolean [not null, default: true]
+  showOnStarPage Boolean [not null, default: true]
+  test Boolean [not null, default: false]
   artist Artist
   bettingAsset Asset
   participationConsumeAsset Asset
   participationRewardAsset Asset
+  settlementLogs PollBettingSettlementLog [not null]
   pollLogs PollLog [not null]
   rewardLogs RewardsLog [not null]
-  bettingStatus BettingStatus [not null, default: 'OPEN']
-  isSettled Boolean [not null, default: false]
-  settledAt DateTime
-  winningOptionId String
-  settledBy String
-  houseCommissionRate Float [not null, default: 0.05]
-  totalCommissionAmount Int [not null, default: 0]
-  optionBetAmounts Json
-  settlementLogs PollBettingSettlementLog [not null]
 }
 
 Table PollLog {
   id String [pk]
   playerId String [not null]
   pollId String [not null]
-  optionId String [not null]
-  option Json [not null]
-  amount Int [not null, default: 1]
   betAmount Int [not null, default: 0]
-  payoutAmount Int [not null, default: 0]
-  payoutMultiplier Float
-  isPayoutDistributed Boolean [not null, default: false]
-  payoutDistributedAt DateTime
+  createdAt DateTime [default: `now()`, not null]
   ipAddress String
   userAgent String
-  createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
-  rewardAssetId String
-  rewardAmount Int
   record Json
+  rewardAmount Int
+  rewardAssetId String
+  amount Int [not null, default: 1]
+  option Json [not null]
+  optionId String [not null]
+  isPayoutDistributed Boolean [not null, default: false]
+  payoutAmount Int [not null, default: 0]
+  payoutDistributedAt DateTime
+  payoutMultiplier Float
   player Player [not null]
   poll Poll [not null]
   rewardAsset Asset
@@ -369,18 +370,20 @@ Table PollLog {
 Table RewardsLog {
   id String [pk]
   playerId String [not null]
-  assetId String
-  balanceBefore Int
-  balanceAfter Int
   questId String
   questLogId String
   pollId String
   pollLogId String
-  raffleId String
-  raffleParticipantId String
   amount Int [not null]
   reason String
   createdAt DateTime [default: `now()`, not null]
+  assetId String
+  balanceAfter Int
+  balanceBefore Int
+  tweetAuthorId String
+  tweetIds String[] [not null]
+  raffleId String
+  raffleParticipantId String
   asset Asset
   player Player [not null]
   poll Poll
@@ -389,9 +392,7 @@ Table RewardsLog {
   questLog QuestLog
   raffle Raffle
   raffleParticipant RaffleParticipant
-  tweetAuthorId String
   tweetAuthor TweetAuthor
-  tweetIds String[] [not null]
 }
 
 Table Events {
@@ -453,11 +454,11 @@ Table StoredFiles {
   order Int [default: 0]
   purpose String
   bucket String [not null]
-  focusX Float [not null, default: 0.5]
-  focusY Float [not null, default: 0.5]
   expiresAt DateTime
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  focusX Float [not null, default: 0.5]
+  focusY Float [not null, default: 0.5]
 
   indexes {
     (sourceUrl, type) [unique]
@@ -590,10 +591,10 @@ Table BlockchainNetwork {
   symbol String [not null]
   isTestnet Boolean [not null, default: true]
   isActive Boolean [not null, default: true]
-  isStoryNetwork Boolean [not null, default: false]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   multicallAddress String
+  isStoryNetwork Boolean [not null, default: false]
   defaultNetwork Boolean [not null, default: false]
   assets Asset [not null]
   assetsContracts AssetsContract [not null]
@@ -605,6 +606,7 @@ Table BlockchainNetwork {
   story_spg Story_spg [not null]
   story_spg_contracts Story_spgContract [not null]
   tbaContracts TBAContract [not null]
+  onchainRaffleContracts OnchainRaffleContract [not null]
 }
 
 Table AssetsContract {
@@ -633,39 +635,39 @@ Table Asset {
   assetType AssetType [not null]
   contractAddress String
   isActive Boolean [not null, default: true]
-  isDefault Boolean [not null, default: false]
   selectors String[] [not null]
   abis Json
-  creatorAddress String
-  assetId String
-  assetsContractAddress String
   networkId String
-  artistId String
-  needTutorial Boolean [not null, default: false]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  creatorAddress String
+  assetsContractAddress String
+  assetId String
+  isDefault Boolean [not null, default: false]
+  artistId String
+  hasInstance Boolean [not null, default: false]
+  needTutorial Boolean [not null, default: false]
+  artist Artist
   assetsContract AssetsContract
   network BlockchainNetwork
-  artist Artist
+  assetInstances AssetInstance [not null]
+  assetTutorial AssetTutorial
+  boardPopularPostRewards Board [not null]
+  boardPostCreationRewards Board [not null]
+  boardQualityContentRewards Board [not null]
+  boardPostRewards BoardPostReward [not null]
   playerAssets PlayerAsset [not null]
   pollBettingAssets Poll [not null]
+  pollParticipationConsumeAssets Poll [not null]
   pollParticipationRewardAssets Poll [not null]
   pollLogRewardAssets PollLog [not null]
   questRewardAssets Quest [not null]
   questLogRewardAssets QuestLog [not null]
+  raffleEntryFeeAssets Raffle [not null]
+  rafflePrizes RafflePrize [not null]
   rewardsLogs RewardsLog [not null]
   stakeRewards StakeReward [not null]
   stakeRewardLogs StakeRewardLog [not null]
-  boardPostRewards BoardPostReward [not null]
-  boardPostCreationRewards Board [not null]
-  boardPopularPostRewards Board [not null]
-  boardQualityContentRewards Board [not null]
-  rafflePrizes RafflePrize [not null]
-  raffleEntryFeeAssets Raffle [not null]
-  pollParticipationConsumeAssets Poll [not null]
-  assetTutorial AssetTutorial
-  hasInstance Boolean [not null, default: false]
-  assetInstances AssetInstance [not null]
 }
 
 Table AssetTutorial {
@@ -673,21 +675,17 @@ Table AssetTutorial {
   assetId String [unique, not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
-  asset Asset [not null]
   steps Json [not null]
+  asset Asset [not null]
 }
 
 Table AssetInstance {
   id String [pk]
   serialNumber String [not null]
-  code String
   status AssetInstanceStatus [not null, default: 'PENDING']
   assetId String [not null]
-  asset Asset [not null]
   playerId String
-  player Player
   playerAssetId String
-  playerAsset PlayerAsset
   expiresAt DateTime
   validFrom DateTime
   validUntil DateTime
@@ -699,6 +697,10 @@ Table AssetInstance {
   metadata Json
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  code String
+  asset Asset [not null]
+  playerAsset PlayerAsset
+  player Player
 
   indexes {
     (assetId, serialNumber) [unique]
@@ -708,14 +710,14 @@ Table AssetInstance {
 
 Table AssetTransaction {
   id String [pk]
-  success Boolean [not null]
   assetId String [not null]
+  success Boolean [not null]
+  createdAt DateTime [default: `now()`, not null]
+  amount Int
   description String
   metadata Json
-  amount Int
   receiverAddress String
   transactionHash String [unique, not null]
-  createdAt DateTime [default: `now()`, not null]
 }
 
 Table FactoryContract {
@@ -755,13 +757,13 @@ Table ipfs {
   cid String [unique, not null]
   url String [unique, not null]
   type String [not null, default: 'default']
-  previewUrl String
-  previewWidth Int
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
   previewHeight Int
   previewMimeType String
   previewSizeBytes Int
-  createdAt DateTime [default: `now()`, not null]
-  updatedAt DateTime [not null]
+  previewUrl String
+  previewWidth Int
 }
 
 Table Metadata {
@@ -793,7 +795,6 @@ Table CollectionContract {
   factoryId String [not null]
   networkId String [not null]
   createdBy String [not null, default: 'admin']
-  creatorAddress String [not null, default: '0x58E1F072A8f41e1d476F06d73a6cB7b866e6f63B']
   txHash String
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
@@ -808,12 +809,13 @@ Table CollectionContract {
   isPaused Boolean [not null, default: false]
   pauseAt DateTime
   unpauseAt DateTime
-  preSaleStart DateTime
-  preSaleEnd DateTime
-  saleStart DateTime
-  saleEnd DateTime
-  glowStart DateTime
+  creatorAddress String [not null, default: '0x58E1F072A8f41e1d476F06d73a6cB7b866e6f63B']
   glowEnd DateTime
+  glowStart DateTime
+  preSaleEnd DateTime
+  preSaleStart DateTime
+  saleEnd DateTime
+  saleStart DateTime
   pageImages String[] [not null]
   artist Artist
   factory FactoryContract [not null]
@@ -890,10 +892,10 @@ Table StakeReward {
   id String [pk]
   assetId String [not null]
   amount Int [not null]
-  stakeDuration BigInt [not null]
-  collectionAddress String [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  stakeDuration BigInt [not null]
+  collectionAddress String [not null]
   asset Asset [not null]
   collection CollectionContract [not null]
   stakeRewardLogs StakeRewardLog [not null]
@@ -903,7 +905,6 @@ Table StakeRewardLog {
   id String [pk]
   stakeRewardId String [not null]
   nftId String [not null]
-  assetId String [not null]
   amount Int [not null]
   isDistributed Boolean [not null, default: false]
   distributedAt DateTime
@@ -911,6 +912,7 @@ Table StakeRewardLog {
   claimedAt DateTime
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  assetId String [not null]
   asset Asset [not null]
   nft NFT [not null]
   stakeReward StakeReward [not null]
@@ -933,10 +935,8 @@ Table NFTEvent {
 
 Table Artist {
   id String [pk]
-  order Int [not null, default: 0]
   name String [not null]
   description String
-  logoUrl String
   imageUrl String
   externalUrl String
   reportUrl String
@@ -947,23 +947,25 @@ Table Artist {
   music String[] [not null]
   events String[] [not null]
   additionalInfo Json
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  logoUrl String
   backgroundColors String[] [not null]
   foregroundColors String[] [not null]
   code String [unique]
-  createdAt DateTime [default: `now()`, not null]
-  updatedAt DateTime [not null]
   hidden Boolean [not null, default: false]
+  order Int [not null, default: 0]
   feeds ArtistFeed [not null]
   members ArtistMember [not null]
   messages ArtistMessage [not null]
+  assets Asset [not null]
+  boards Board [not null]
   collectionContracts CollectionContract [not null]
+  players Player [not null]
   polls Poll [not null]
   quests Quest [not null]
-  story_spg Story_spg [not null]
-  boards Board [not null]
-  players Player [not null]
   raffles Raffle [not null]
-  assets Asset [not null]
+  story_spg Story_spg [not null]
 }
 
 Table ArtistMember {
@@ -997,12 +999,12 @@ Table ArtistMessage {
   artistId String [not null]
   bannerUrl String
   externalUrl String
-  isActive Boolean [not null, default: true]
-  startDate DateTime
-  endDate DateTime
   message String [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  endDate DateTime
+  isActive Boolean [not null, default: true]
+  startDate DateTime
   artist Artist [not null]
 }
 
@@ -1071,55 +1073,55 @@ Table TBAContract {
 Table Story_spg {
   id String [pk]
   address String [unique, not null]
-  baseURI String [not null]
   contractURI String [not null]
   name String [unique, not null]
   symbol String [unique, not null]
-  imageUrl String
-  metadata Json
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
-  contractAddress String
   networkId String [not null]
   ownerAddress String [not null]
   artistId String
-  tbaRegistryAddress String
-  tbaImplementationAddress String
+  contractAddress String
+  baseURI String [not null]
+  backgroundColor String
+  circulation Int [not null, default: 1000]
+  foregroundColor String
+  glowEnd DateTime
+  glowStart DateTime
+  pageImages String[] [not null]
+  preOrderEnd DateTime
+  preOrderStart DateTime
+  price Int [not null, default: 0]
+  saleEnd DateTime
+  saleStart DateTime
   isListed Boolean [not null, default: false]
+  imageUrl String
+  metadata Json
   reportUrl String
   sharePercentage Float [not null, default: 0]
-  preOrderStart DateTime
-  preOrderEnd DateTime
-  saleStart DateTime
-  saleEnd DateTime
-  glowStart DateTime
-  glowEnd DateTime
-  price Int [not null, default: 0]
-  circulation Int [not null, default: 1000]
-  pageImages String[] [not null]
+  tbaImplementationAddress String
+  tbaRegistryAddress String
   comingSoon Boolean [not null, default: false]
   hiddenDetails Boolean [not null, default: false]
-  backgroundColor String
-  foregroundColor String
+  rafflePrizes RafflePrize [not null]
   story_nfts Story_nft [not null]
   artist Artist
   contract Story_spgContract
   network BlockchainNetwork [not null]
-  rafflePrizes RafflePrize [not null]
 }
 
 Table Story_nft {
   id String [pk]
   tokenId String [not null]
+  contractAddress String [not null]
   ownerAddress String [not null]
   networkId String [not null]
   tokenURI String [not null]
-  tokenURICid String [not null]
   mintTxHash String
-  contractAddress String [not null]
-  ipId String
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  tokenURICid String [not null]
+  ipId String
   spgCollection Story_spg [not null]
   ipAsset Story_ipAsset
   network BlockchainNetwork [not null]
@@ -1159,23 +1161,22 @@ Table TweetAuthor {
   name String
   username String
   profileImageUrl String
-  validated Boolean [not null, default: false]
-  validatedAt DateTime
+  blacklistedAt DateTime
+  isBlacklisted Boolean [not null, default: false]
   registered Boolean [not null, default: false]
   registeredAt DateTime
-  tweets Tweet [not null]
+  validated Boolean [not null, default: false]
+  validatedAt DateTime
   player Player
-  metrics TweetAuthorMetrics [not null]
-  isBlacklisted Boolean [not null, default: false]
-  blacklistedAt DateTime
-  blacklistData TweetAuthorBlacklist
   rewardsLogs RewardsLog [not null]
+  tweets Tweet [not null]
+  blacklistData TweetAuthorBlacklist
+  metrics TweetAuthorMetrics [not null]
 }
 
 Table TweetAuthorMetrics {
   id String [pk]
   tweetAuthorId String [not null]
-  tweetAuthor TweetAuthor [not null]
   followersCount Int [not null]
   followingCount Int [not null]
   tweetCount Int [not null]
@@ -1184,12 +1185,12 @@ Table TweetAuthorMetrics {
   recordedAt DateTime [default: `now()`, not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  tweetAuthor TweetAuthor [not null]
 }
 
 Table TweetAuthorBlacklist {
   id String [pk]
   authorId String [unique, not null]
-  author TweetAuthor [not null]
   reason String
   tweetCount Int [not null, default: 0]
   periodStart DateTime
@@ -1197,19 +1198,20 @@ Table TweetAuthorBlacklist {
   isActive Boolean [not null, default: true]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  author TweetAuthor [not null]
 }
 
 Table Tweet {
   id String [pk]
   tweetId String [unique, not null]
   text String [not null]
-  authorName String
-  authorUsername String
-  authorProfileImageUrl String
   authorId String [not null]
-  isDeleted Boolean [not null, default: false]
-  deletedAt DateTime
   createdAt DateTime [default: `now()`, not null]
+  authorName String
+  authorProfileImageUrl String
+  authorUsername String
+  deletedAt DateTime
+  isDeleted Boolean [not null, default: false]
   updatedAt DateTime [not null]
   author TweetAuthor [not null]
   media TweetMedia [not null]
@@ -1291,17 +1293,11 @@ Table BoardModerationRule {
 Table BoardModerationReport {
   id String [pk]
   boardId String [not null]
-  board Board [not null]
   postId String
-  post BoardPost
   commentId String
-  comment BoardComment
   reporterId String
-  reporter Player
   offenderId String
-  offender Player
   relatedRuleId String
-  relatedRule BoardModerationRule
   reason String
   type BoardModerationReportType [not null, default: 'UNKNOWN']
   status BoardModerationReportStatus [not null, default: 'PENDING']
@@ -1310,6 +1306,12 @@ Table BoardModerationReport {
   reviewBy String
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  board Board [not null]
+  comment BoardComment
+  offender Player
+  post BoardPost
+  relatedRule BoardModerationRule
+  reporter Player
 
   indexes {
     (reporterId, boardId, postId, commentId) [unique]
@@ -1345,31 +1347,31 @@ Table Board {
   bannerUrl String
   rules String
   metadata Json
-  postCreationRewardEnabled Boolean [not null, default: false]
-  postCreationRewardAmount Int
-  postCreationRewardAssetId String
-  popularPostRewardEnabled Boolean [not null, default: false]
-  popularPostThreshold Int
-  popularPostRewardAmount Int
-  popularPostRewardAssetId String
-  qualityContentRewardEnabled Boolean [not null, default: false]
-  qualityContentRewardAmount Int
-  qualityContentRewardAssetId String
-  allowUserRewards Boolean [not null, default: false]
-  allowArtistRewards Boolean [not null, default: false]
-  allowTeamRewards Boolean [not null, default: false]
-  allowAdminRewards Boolean [not null, default: false]
-  dailyPostLimit Int
-  weeklyPostLimit Int
-  maxRewardPerPost Int
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  allowAdminRewards Boolean [not null, default: false]
+  allowArtistRewards Boolean [not null, default: false]
+  allowTeamRewards Boolean [not null, default: false]
+  allowUserRewards Boolean [not null, default: false]
+  dailyPostLimit Int
+  maxRewardPerPost Int
+  popularPostRewardAmount Int
+  popularPostRewardAssetId String
+  popularPostRewardEnabled Boolean [not null, default: false]
+  popularPostThreshold Int
+  postCreationRewardAmount Int
+  postCreationRewardAssetId String
+  postCreationRewardEnabled Boolean [not null, default: false]
+  qualityContentRewardAmount Int
+  qualityContentRewardAssetId String
+  qualityContentRewardEnabled Boolean [not null, default: false]
+  weeklyPostLimit Int
   artist Artist
-  posts BoardPost [not null]
-  postCreationRewardAsset Asset
   popularPostRewardAsset Asset
+  postCreationRewardAsset Asset
   qualityContentRewardAsset Asset
   reports BoardModerationReport [not null]
+  posts BoardPost [not null]
 }
 
 Table BoardPost {
@@ -1382,14 +1384,9 @@ Table BoardPost {
   imageUrls String[] [not null]
   videoUrls String[] [not null]
   attachmentUrls String[] [not null]
-  files Json[] [not null]
   nftAddress String
   nftTokenId String
   tags String[] [not null]
-  isSandbox Boolean [not null, default: false]
-  sandboxImgUrl String
-  sandboxNickname String
-  isSandboxBoardArtist Boolean [not null, default: false]
   isPinned Boolean [not null, default: false]
   isHidden Boolean [not null, default: false]
   viewCount Int [not null, default: 0]
@@ -1401,12 +1398,17 @@ Table BoardPost {
   metadata Json
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
-  board Board [not null]
-  author Player
+  files Json[] [not null]
+  isSandbox Boolean [not null, default: false]
+  isSandboxBoardArtist Boolean [not null, default: false]
+  sandboxImgUrl String
+  sandboxNickname String
   comments BoardComment [not null]
-  reactions BoardReaction [not null]
-  rewards BoardPostReward [not null]
   reports BoardModerationReport [not null]
+  author Player
+  board Board [not null]
+  rewards BoardPostReward [not null]
+  reactions BoardReaction [not null]
 }
 
 Table BoardComment {
@@ -1417,11 +1419,6 @@ Table BoardComment {
   content String [not null]
   parentId String
   imageUrls String[] [not null]
-  files Json[] [not null]
-  isSandbox Boolean [not null, default: false]
-  sandboxImgUrl String
-  sandboxNickname String
-  isSandboxBoardArtist Boolean [not null, default: false]
   isHidden Boolean [not null, default: false]
   likeCount Int [not null, default: 0]
   dislikeCount Int [not null, default: 0]
@@ -1429,12 +1426,17 @@ Table BoardComment {
   metadata Json
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
-  post BoardPost [not null]
+  files Json[] [not null]
+  isSandbox Boolean [not null, default: false]
+  isSandboxBoardArtist Boolean [not null, default: false]
+  sandboxImgUrl String
+  sandboxNickname String
   author Player
   parent BoardComment
   replies BoardComment [not null]
-  reactions BoardReaction [not null]
+  post BoardPost [not null]
   reports BoardModerationReport [not null]
+  reactions BoardReaction [not null]
 }
 
 Table BoardReaction {
@@ -1444,9 +1446,9 @@ Table BoardReaction {
   commentId String
   type BoardReactionType [not null]
   createdAt DateTime [default: `now()`, not null]
+  comment BoardComment
   player Player
   post BoardPost
-  comment BoardComment
 
   indexes {
     (playerId, postId, type) [unique]
@@ -1468,10 +1470,10 @@ Table BoardPostReward {
   metadata Json
   createdAt DateTime [default: `now()`, not null]
   processedAt DateTime
-  post BoardPost [not null]
-  player Player [not null]
-  grantedByUser Player
   asset Asset
+  grantedByUser Player
+  player Player [not null]
+  post BoardPost [not null]
 }
 
 Table Raffle {
@@ -1483,26 +1485,26 @@ Table Raffle {
   endDate DateTime [not null]
   drawDate DateTime
   instantReveal Boolean [not null, default: true]
-  isLimited Boolean [not null, default: true]
   displayType String [not null, default: 'GACHA']
   maxParticipants Int
   entryFeeAssetId String
   entryFeeAmount Int [not null, default: 0]
   allowMultipleEntry Boolean [not null, default: false]
-  maxEntriesPerPlayer Int
   isPublic Boolean [not null, default: true]
   isActive Boolean [not null, default: true]
   artistId String
   totalSlots Int [not null, default: 0]
   totalParticipants Int [not null, default: 0]
-  artist Artist
-  entryFeeAsset Asset
-  prizes RafflePrize [not null]
-  participants RaffleParticipant [not null]
-  winners RaffleWinner [not null]
-  rewardLogs RewardsLog [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  isLimited Boolean [not null, default: true]
+  maxEntriesPerPlayer Int
+  artist Artist
+  entryFeeAsset Asset
+  participants RaffleParticipant [not null]
+  prizes RafflePrize [not null]
+  winners RaffleWinner [not null]
+  rewardLogs RewardsLog [not null]
 }
 
 Table RafflePrize {
@@ -1514,20 +1516,20 @@ Table RafflePrize {
   order Int [not null, default: 0]
   quantity Int [not null]
   prizeType RafflePrizeType [not null]
-  rarityTier RarityTier [default: 'COMMON']
-  rarityOrder Int [default: 9]
   assetId String
   assetAmount Int
   spgAddress String
   nftQuantity Int
   isActive Boolean [not null, default: true]
-  raffle Raffle [not null]
-  asset Asset
-  spg Story_spg
-  participants RaffleParticipant [not null]
-  winners RaffleWinner [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  rarityOrder Int [default: 9]
+  rarityTier RarityTier [default: 'COMMON']
+  participants RaffleParticipant [not null]
+  asset Asset
+  raffle Raffle [not null]
+  spg Story_spg
+  winners RaffleWinner [not null]
 }
 
 Table RaffleParticipant {
@@ -1540,12 +1542,12 @@ Table RaffleParticipant {
   isRevealed Boolean [not null, default: false]
   slotNumber Int
   randomSeed String
-  raffle Raffle [not null]
-  player Player [not null]
-  prize RafflePrize
-  rewardLogs RewardsLog [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  player Player [not null]
+  prize RafflePrize
+  raffle Raffle [not null]
+  rewardLogs RewardsLog [not null]
 }
 
 Table RaffleWinner {
@@ -1557,9 +1559,22 @@ Table RaffleWinner {
   distributedAt DateTime
   transactionHash String
   failureReason String
-  raffle Raffle [not null]
-  prize RafflePrize [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
   player Player [not null]
+  prize RafflePrize [not null]
+  raffle Raffle [not null]
+}
+
+Table OnchainRaffleContract {
+  id String [pk]
+  address String [not null]
+  txHash String [not null]
+  deployedBy String [not null]
+  blockNumber Int
+  isActive Boolean [not null, default: true]
+  networkId String [not null]
+  network BlockchainNetwork [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
 }
@@ -1598,7 +1613,6 @@ Table PollBettingSettlementLog {
 Table user_notifications {
   id String [pk]
   playerId String [not null]
-  player Player [not null]
   type NotificationType [not null]
   category NotificationCategory [not null, default: 'GENERAL']
   title String [not null]
@@ -1631,12 +1645,12 @@ Table user_notifications {
   tags String[] [not null]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  player Player [not null]
 }
 
 Table notification_settings {
   id String [pk]
   playerId String [unique, not null]
-  player Player [not null]
   inAppEnabled Boolean [not null, default: true]
   pushEnabled Boolean [not null, default: true]
   emailEnabled Boolean [not null, default: false]
@@ -1688,6 +1702,7 @@ Table notification_settings {
   digestFrequency String [not null, default: 'DAILY']
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
+  player Player [not null]
 }
 
 Table notification_stats {
@@ -1949,7 +1964,6 @@ Enum NotificationType {
   POLL_BETTING_LOSE
   POLL_BETTING_PAYOUT
   POLL_BETTING_REFUND
-  SETTLEMENT_COMPLETE
   POLL_STARTED
   POLL_ENDING_SOON
   POLL_ENDED
@@ -1998,6 +2012,7 @@ Enum NotificationType {
   GENERAL_INFO
   WELCOME
   BIRTHDAY
+  SETTLEMENT_COMPLETE
 }
 
 Enum NotificationCategory {
@@ -2058,13 +2073,13 @@ Ref: Session.userId > User.id [delete: Cascade]
 
 Ref: Wallet.userId > User.id [delete: Cascade]
 
+Ref: Player.artistId > Artist.id
+
 Ref: Player.referredBy - Player.id
 
 Ref: Player.tweetAuthorId - TweetAuthor.authorId
 
 Ref: Player.userId - User.id [delete: Cascade]
-
-Ref: Player.artistId > Artist.id
 
 Ref: ReferralLog.referredPlayerId > Player.id [delete: Cascade]
 
@@ -2130,19 +2145,19 @@ Ref: VirtualAccount.paymentId - Payment.id [delete: Cascade]
 
 Ref: AssetsContract.networkId > BlockchainNetwork.id
 
+Ref: Asset.artistId > Artist.id
+
 Ref: Asset.assetsContractAddress > AssetsContract.address
 
 Ref: Asset.networkId > BlockchainNetwork.id
-
-Ref: Asset.artistId > Artist.id
 
 Ref: AssetTutorial.assetId - Asset.id
 
 Ref: AssetInstance.assetId > Asset.id
 
-Ref: AssetInstance.playerId > Player.id
-
 Ref: AssetInstance.playerAssetId > PlayerAsset.id
+
+Ref: AssetInstance.playerId > Player.id
 
 Ref: FactoryContract.networkId > BlockchainNetwork.id
 
@@ -2218,69 +2233,71 @@ Ref: TweetResponse.tweetSyncDataId > TweetSyncData.id [delete: Cascade]
 
 Ref: BoardModerationReport.boardId > Board.id
 
-Ref: BoardModerationReport.postId > BoardPost.id
-
 Ref: BoardModerationReport.commentId > BoardComment.id
-
-Ref: BoardModerationReport.reporterId > Player.id
 
 Ref: BoardModerationReport.offenderId > Player.id
 
+Ref: BoardModerationReport.postId > BoardPost.id
+
 Ref: BoardModerationReport.relatedRuleId > BoardModerationRule.id
+
+Ref: BoardModerationReport.reporterId > Player.id
 
 Ref: Board.artistId > Artist.id
 
-Ref: Board.postCreationRewardAssetId > Asset.id
-
 Ref: Board.popularPostRewardAssetId > Asset.id
+
+Ref: Board.postCreationRewardAssetId > Asset.id
 
 Ref: Board.qualityContentRewardAssetId > Asset.id
 
-Ref: BoardPost.boardId > Board.id [delete: Cascade]
-
 Ref: BoardPost.authorId > Player.id
 
-Ref: BoardComment.postId > BoardPost.id [delete: Cascade]
+Ref: BoardPost.boardId > Board.id [delete: Cascade]
 
 Ref: BoardComment.authorId > Player.id
 
 Ref: BoardComment.parentId - BoardComment.id
 
+Ref: BoardComment.postId > BoardPost.id [delete: Cascade]
+
+Ref: BoardReaction.commentId > BoardComment.id [delete: Cascade]
+
 Ref: BoardReaction.playerId > Player.id
 
 Ref: BoardReaction.postId > BoardPost.id [delete: Cascade]
 
-Ref: BoardReaction.commentId > BoardComment.id [delete: Cascade]
-
-Ref: BoardPostReward.postId > BoardPost.id [delete: Cascade]
-
-Ref: BoardPostReward.playerId > Player.id
+Ref: BoardPostReward.assetId > Asset.id
 
 Ref: BoardPostReward.grantedBy > Player.id
 
-Ref: BoardPostReward.assetId > Asset.id
+Ref: BoardPostReward.playerId > Player.id
+
+Ref: BoardPostReward.postId > BoardPost.id [delete: Cascade]
 
 Ref: Raffle.artistId > Artist.id
 
 Ref: Raffle.entryFeeAssetId > Asset.id
 
-Ref: RafflePrize.raffleId > Raffle.id [delete: Cascade]
-
 Ref: RafflePrize.assetId > Asset.id
 
-Ref: RafflePrize.spgAddress > Story_spg.address
+Ref: RafflePrize.raffleId > Raffle.id [delete: Cascade]
 
-Ref: RaffleParticipant.raffleId > Raffle.id [delete: Cascade]
+Ref: RafflePrize.spgAddress > Story_spg.address
 
 Ref: RaffleParticipant.playerId > Player.id [delete: Cascade]
 
 Ref: RaffleParticipant.prizeId > RafflePrize.id
 
-Ref: RaffleWinner.raffleId > Raffle.id [delete: Cascade]
+Ref: RaffleParticipant.raffleId > Raffle.id [delete: Cascade]
+
+Ref: RaffleWinner.playerId > Player.id [delete: Cascade]
 
 Ref: RaffleWinner.prizeId > RafflePrize.id
 
-Ref: RaffleWinner.playerId > Player.id [delete: Cascade]
+Ref: RaffleWinner.raffleId > Raffle.id [delete: Cascade]
+
+Ref: OnchainRaffleContract.networkId > BlockchainNetwork.id
 
 Ref: PollBettingSettlementLog.pollId > Poll.id
 
