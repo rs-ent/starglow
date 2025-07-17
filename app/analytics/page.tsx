@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminUsersDashboardAnalytics } from "@/components/admin/users/Admin.Users.Dashboard.Analytics";
+import AdminUsersDashboardAnalytics from "@/components/admin/users/Admin.Users.Dashboard.Analytics";
 import { use } from "react";
 
 interface AnalyticsPageProps {

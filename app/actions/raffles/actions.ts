@@ -1202,7 +1202,6 @@ export async function participateInRaffle(
             cacheStrategy: getCacheStrategy("tenSeconds"),
             where: { id: input.raffleId },
             select: {
-                // Only select fields needed for participation validation
                 id: true,
                 title: true,
                 startDate: true,
@@ -1442,15 +1441,17 @@ export async function participateInRaffle(
                 },
             });
 
-            if (drawnPrize && drawnPrize.prizeType !== "EMPTY") {
-                await tx.raffleWinner.create({
-                    data: {
-                        raffleId: input.raffleId,
-                        prizeId: drawnPrize.id,
-                        playerId: input.playerId,
-                        status: "PENDING",
-                    },
-                });
+            if (drawnPrize) {
+                if (drawnPrize.prizeType !== "EMPTY") {
+                    await tx.raffleWinner.create({
+                        data: {
+                            raffleId: input.raffleId,
+                            prizeId: drawnPrize.id,
+                            playerId: input.playerId,
+                            status: "PENDING",
+                        },
+                    });
+                }
 
                 if (raffle.isLimited) {
                     await tx.rafflePrize.update({
@@ -2021,16 +2022,16 @@ export async function drawAllWinners(
                             },
                         });
 
-                        if (raffleData.isLimited) {
-                            await tx.rafflePrize.update({
-                                where: { id: drawResult.prize.id },
-                                data: {
-                                    quantity: { decrement: 1 },
-                                },
-                            });
-                        }
-
                         allWinners.push(winner);
+                    }
+
+                    if (raffleData.isLimited) {
+                        await tx.rafflePrize.update({
+                            where: { id: drawResult.prize.id },
+                            data: {
+                                quantity: { decrement: 1 },
+                            },
+                        });
                     }
                 } catch (error) {
                     console.error(

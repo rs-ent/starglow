@@ -38,17 +38,8 @@ const PERFORMANCE_THRESHOLD = 1000;
 export async function middleware(request: NextRequest) {
     const start = Date.now();
 
-    if (process.env.NODE_ENV === "development") {
-        console.log(`[MIDDLEWARE] MAINTENANCE_MODE: ${MAINTENANCE_MODE}`);
-        console.log(
-            `[MIDDLEWARE] MAINTENANCE_BYPASS_SECRET exists: ${!!MAINTENANCE_BYPASS_SECRET}`
-        );
-        console.log(`[MIDDLEWARE] URL: ${request.url}`);
-    }
-
     const bypassParam = request.nextUrl.searchParams.get("bypass");
     if (MAINTENANCE_MODE && bypassParam === MAINTENANCE_BYPASS_SECRET) {
-        console.log(`[BYPASS] Setting bypass cookie and redirecting`);
         const url = new URL(request.url);
         url.searchParams.delete("bypass");
 
@@ -63,9 +54,6 @@ export async function middleware(request: NextRequest) {
     }
 
     if (MAINTENANCE_MODE && shouldShowMaintenancePage(request)) {
-        console.log(
-            `[MAINTENANCE] Redirecting to maintenance page: ${request.url}`
-        );
         return NextResponse.redirect(new URL("/maintenance", request.url));
     }
 
@@ -119,29 +107,19 @@ function shouldShowMaintenancePage(request: NextRequest): boolean {
         "unknown";
 
     if (MAINTENANCE_BYPASS_IPS.includes(clientIP)) {
-        console.log(`[BYPASS] ✅ IP bypass successful for ${clientIP}`);
         return false;
     }
 
     const bypassCookie = request.cookies.get("maintenance-bypass");
     if (bypassCookie && bypassCookie.value === MAINTENANCE_BYPASS_SECRET) {
-        console.log(`[BYPASS] ✅ Cookie bypass successful`);
         return false;
     }
 
     const bypassParam = request.nextUrl.searchParams.get("bypass");
 
     if (MAINTENANCE_BYPASS_SECRET && bypassParam) {
-        console.log(`[BYPASS] Secret exists: ${!!MAINTENANCE_BYPASS_SECRET}`);
-        console.log(`[BYPASS] Param value: ${bypassParam}`);
-        console.log(
-            `[BYPASS] Match: ${bypassParam === MAINTENANCE_BYPASS_SECRET}`
-        );
 
         if (bypassParam === MAINTENANCE_BYPASS_SECRET) {
-            console.log(
-                `[BYPASS] ✅ Bypass successful for ${request.nextUrl.pathname}`
-            );
             return false;
         }
     }

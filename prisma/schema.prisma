@@ -831,18 +831,18 @@ model FactoryContract {
 }
 
 model EscrowWallet {
-  id         String   @id @default(cuid())
-  address    String   @unique
-  privateKey String
-  keyHash    String
-  networkIds String[] @default([])
-  isActive   Boolean  @default(true)
-  balance    Json?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  nonce      String
+  id                     String                  @id @default(cuid())
+  address                String                  @unique
+  privateKey             String
+  keyHash                String
+  networkIds             String[]                @default([])
+  isActive               Boolean                 @default(true)
+  balance                Json?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  nonce                  String
+  onchainRaffles         OnchainRaffle[]
   onchainRaffleContracts OnchainRaffleContract[]
-  onchainRaffles        OnchainRaffle[]
 
   @@index([isActive])
 }
@@ -1754,37 +1754,37 @@ model RaffleWinner {
 }
 
 model OnchainRaffleContract {
-  id          String            @id @default(cuid())
-  address     String @unique
-  txHash      String @unique
-  deployedBy  String
-  blockNumber Int?
-  isActive    Boolean           @default(true)
-  networkId   String
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  network     BlockchainNetwork @relation(fields: [networkId], references: [id])
-  escrowWallet    EscrowWallet?     @relation(fields: [deployedBy], references: [address])
-  raffles         OnchainRaffle[] 
+  id           String            @id @default(cuid())
+  address      String            @unique
+  txHash       String            @unique
+  deployedBy   String
+  blockNumber  Int?
+  isActive     Boolean           @default(true)
+  networkId    String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  raffles      OnchainRaffle[]
+  escrowWallet EscrowWallet      @relation(fields: [deployedBy], references: [address])
+  network      BlockchainNetwork @relation(fields: [networkId], references: [id])
 
   @@index([networkId])
   @@index([isActive])
 }
 
 model OnchainRaffle {
-  id              String            @id @default(cuid())
-  contractAddress String
-  raffleId        String
-  txHash          String
-  deployedBy      String
-  blockNumber     Int?
-  networkId       String
-  isActive        Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  network         BlockchainNetwork @relation(fields: [networkId], references: [id])
-  escrowWallet    EscrowWallet?     @relation(fields: [deployedBy], references: [address])
-  onchainRaffleContract OnchainRaffleContract? @relation(fields: [contractAddress], references: [address])
+  id                    String                @id @default(cuid())
+  contractAddress       String
+  raffleId              String
+  txHash                String
+  blockNumber           Int?
+  networkId             String
+  isActive              Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  deployedBy            String
+  onchainRaffleContract OnchainRaffleContract @relation(fields: [contractAddress], references: [address])
+  escrowWallet          EscrowWallet          @relation(fields: [deployedBy], references: [address])
+  network               BlockchainNetwork     @relation(fields: [networkId], references: [id])
 
   @@unique([contractAddress, raffleId])
   @@index([contractAddress])
@@ -1961,6 +1961,38 @@ model NotificationStats {
   updatedAt    DateTime @updatedAt
 
   @@map("notification_stats")
+}
+
+model DailyActivityWallet {
+  id String @id @default(cuid())
+  date DateTime @unique @default(now()) @db.Date
+  activeWallets Int @default(0)
+  newWallets Int @default(0)
+  returningWallets Int @default(0)
+  totalWallets Int @default(0)
+
+  pollParticipationCount Int @default(0)
+  questParticipationCount Int @default(0)
+  raffleParticipationCount Int @default(0)
+
+
+  @@index([date])
+}
+
+model MonthlyActivityWallet {
+  id String @id @default(cuid())
+  date DateTime @unique @default(now()) @db.Date
+  activeWallets Int @default(0)
+  newWallets Int @default(0)
+  returningWallets Int @default(0)
+
+  totalWallets Int @default(0)
+
+  pollParticipationCount Int @default(0)
+  questParticipationCount Int @default(0)
+  raffleParticipationCount Int @default(0)
+
+  @@index([date])
 }
 
 enum QuestLogStatus {

@@ -2,7 +2,6 @@
 
 import { PrismaClient } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";
-import { withOptimize } from "@prisma/extension-optimize";
 
 declare global {
     var prisma: ReturnType<typeof createPrismaClient> | undefined;
@@ -59,26 +58,7 @@ function createPrismaClient() {
         errorFormat: "minimal",
     });
 
-    const optimizedClient = process.env.OPTIMIZE_API_KEY
-        ? client.$extends(
-              withOptimize({ apiKey: process.env.OPTIMIZE_API_KEY })
-          )
-        : client;
-
-    const acceleratedClient = optimizedClient.$extends(withAccelerate());
-
-    if (process.env.NODE_ENV === "development") {
-        console.info("🚀 Prisma Client with Accelerate (Business Plan)");
-        console.info(`📊 Cache TTL: ${config.cacheConfig.defaultTtl}s`);
-        console.info(`🌍 Global Edge Cache: Enabled`);
-        console.info(
-            `🔍 Optimize: ${
-                process.env.OPTIMIZE_API_KEY
-                    ? "Enabled"
-                    : "Disabled (No API Key)"
-            }`
-        );
-    }
+    const acceleratedClient = client.$extends(withAccelerate());
 
     return acceleratedClient;
 }
