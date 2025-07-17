@@ -146,7 +146,6 @@ const CHECKLIST_ITEMS = [
 
 export function AdminRafflesWeb3CreateReview({
     data,
-    updateData,
     onSubmit,
     isSubmitting,
     onEditStep,
@@ -185,11 +184,6 @@ export function AdminRafflesWeb3CreateReview({
             ...prev,
             [section]: !prev[section],
         }));
-    }, []);
-
-    // 복사 기능
-    const copyToClipboard = useCallback((text: string) => {
-        navigator.clipboard.writeText(text);
     }, []);
 
     return (

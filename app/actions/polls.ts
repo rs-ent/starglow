@@ -1571,7 +1571,7 @@ export async function settleBettingPoll(
                     });
 
                     for (const bettor of allBettors) {
-                        // updatePlayerAsset 함수 사용으로 안전한 환불 처리
+                        // updatePlayerAsset 함수 사용으로 안전한 환불 처리 (성능 최적화: 로그 스킵)
                         const refundResult = await updatePlayerAsset(
                             {
                                 transaction: {
@@ -1587,6 +1587,7 @@ export async function settleBettingPoll(
                                     },
                                     pollId: pollId,
                                 },
+                                skipRewardsLog: true, // 트랜잭션 성능 최적화
                             },
                             tx
                         );
@@ -1618,6 +1619,17 @@ export async function settleBettingPoll(
                         totalWinners: allBettors.length,
                         isRefund: true,
                         refundedPlayerIds: allBettors.map((b) => b.playerId),
+                        // 🗄️ 나중에 rewardsLog 생성용 데이터
+                        rewardsLogData: {
+                            pollId,
+                            assetId: poll.bettingAssetId,
+                            pollTitle: poll.title,
+                            refundDetails: allBettors.map((b) => ({
+                                playerId: b.playerId,
+                                amount: b.amount,
+                            })),
+                            isRefund: true,
+                        },
                     };
                 }
 
@@ -1654,7 +1666,7 @@ export async function settleBettingPoll(
                     const payout = Math.floor(exactPayout * 100) / 100; // 소수점 2자리까지
 
                     if (payout > 0) {
-                        // updatePlayerAsset 함수 사용으로 안전한 배당 지급
+                        // updatePlayerAsset 함수 사용으로 안전한 배당 지급 (성능 최적화: 로그 스킵)
                         const payoutResult = await updatePlayerAsset(
                             {
                                 transaction: {
@@ -1673,6 +1685,7 @@ export async function settleBettingPoll(
                                     },
                                     pollId: pollId,
                                 },
+                                skipRewardsLog: true, // 트랜잭션 성능 최적화
                             },
                             tx
                         );
@@ -1702,7 +1715,7 @@ export async function settleBettingPoll(
                     );
 
                     if (topWinner) {
-                        // updatePlayerAsset 함수 사용으로 안전한 잔여 금액 지급
+                        // updatePlayerAsset 함수 사용으로 안전한 잔여 금액 지급 (성능 최적화: 로그 스킵)
                         const remainingPayoutResult = await updatePlayerAsset(
                             {
                                 transaction: {
@@ -1719,6 +1732,7 @@ export async function settleBettingPoll(
                                     },
                                     pollId: pollId,
                                 },
+                                skipRewardsLog: true, // 트랜잭션 성능 최적화
                             },
                             tx
                         );
@@ -1753,12 +1767,74 @@ export async function settleBettingPoll(
                     totalWinners: winners.length,
                     payoutDetails,
                     winnerIds: winners.map((w) => w.playerId),
+                    // 🗄️ 나중에 rewardsLog 생성용 데이터
+                    rewardsLogData: {
+                        pollId,
+                        assetId: poll.bettingAssetId,
+                        pollTitle: poll.title,
+                        payoutDetails,
+                        isRefund: false,
+                    },
                 };
             },
             {
-                timeout: 30000, // 30초 타임아웃 설정
+                timeout: 120000, // 120초 타임아웃 설정 (대용량 정산 대응)
             }
         );
+
+        // 🗄️ 정산 완료 후 rewardsLog 비동기 생성 (성능 최적화)
+        if (result.success && (result as any).rewardsLogData) {
+            const logData = (result as any).rewardsLogData;
+
+            // 비동기로 rewardsLog 생성 (정산 완료에 영향 없음)
+            setImmediate(async () => {
+                try {
+                    const logEntries = [];
+
+                    if (logData.isRefund && logData.refundDetails) {
+                        // 환불 케이스: 각 환불자에 대해 로그 생성
+                        for (const refund of logData.refundDetails) {
+                            logEntries.push({
+                                playerId: refund.playerId,
+                                assetId: logData.assetId,
+                                amount: refund.amount,
+                                balanceBefore: 0, // 정확한 값은 별도 조회 필요시 추가
+                                balanceAfter: refund.amount,
+                                pollId: logData.pollId,
+                                reason: `Betting refund for poll 『${logData.pollTitle}』 (no winners)`,
+                            });
+                        }
+                    } else if (logData.payoutDetails) {
+                        // 배당 케이스: 각 승리자에 대해 로그 생성
+                        for (const payout of logData.payoutDetails) {
+                            logEntries.push({
+                                playerId: payout.playerId,
+                                assetId: logData.assetId,
+                                amount: payout.amount,
+                                balanceBefore: 0, // 정확한 값은 별도 조회 필요시 추가
+                                balanceAfter: payout.amount,
+                                pollId: logData.pollId,
+                                reason: `Betting payout for poll 『${logData.pollTitle}』`,
+                            });
+                        }
+                    }
+
+                    // 배치로 rewardsLog 생성
+                    if (logEntries.length > 0) {
+                        await prisma.rewardsLog.createMany({
+                            data: logEntries,
+                            skipDuplicates: true,
+                        });
+                    }
+                } catch (logError) {
+                    console.error(
+                        `❌ Failed to create rewards logs for poll ${logData.pollId}:`,
+                        logError
+                    );
+                    // 로그 생성 실패는 정산에 영향을 주지 않음
+                }
+            });
+        }
 
         // 🔔 정산 완료 후 알림 전송
         if (result.success) {

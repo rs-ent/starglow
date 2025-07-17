@@ -74,7 +74,10 @@ export function AdminRafflesWeb3CreateFee({ data, updateData }: Props) {
 
     // 오프체인 에셋 가져오기
     const assetsResult = useAssetsGet({ getAssetsInput: {} });
-    const offchainAssets = (assetsResult.assets?.assets || []) as Asset[];
+    const offchainAssets = useMemo(
+        () => (assetsResult.assets?.assets || []) as Asset[],
+        [assetsResult.assets?.assets]
+    );
 
     // 현재 선택된 에셋 찾기
     const selectedAsset = useMemo(() => {
@@ -553,7 +556,7 @@ export function AdminRafflesWeb3CreateFee({ data, updateData }: Props) {
 
                         {selectedAsset ? (
                             <div className="space-y-4">
-                                {revenueCalculation.map((calc, index) => (
+                                {revenueCalculation.map((calc) => (
                                     <div
                                         key={calc.scenario}
                                         className={`p-4 rounded-lg border ${

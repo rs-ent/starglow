@@ -217,9 +217,18 @@ export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
                                                         className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
                                                         title="상세보기"
                                                         onClick={() => {
-                                                            navigator.clipboard.writeText(
-                                                                contract.address
-                                                            );
+                                                            navigator.clipboard
+                                                                .writeText(
+                                                                    contract.address
+                                                                )
+                                                                .catch(
+                                                                    (err) => {
+                                                                        console.error(
+                                                                            "Failed to copy address:",
+                                                                            err
+                                                                        );
+                                                                    }
+                                                                );
                                                             toast.success(
                                                                 "주소가 복사되었습니다!"
                                                             );

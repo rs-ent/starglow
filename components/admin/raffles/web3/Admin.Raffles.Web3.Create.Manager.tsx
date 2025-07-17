@@ -54,6 +54,7 @@ export interface RaffleFormData {
         iconUrl: string;
         assetId: string;
         tokenIds: number[];
+        userValue?: number; // 분석을 위한 상품 가치
     }>;
 }
 
@@ -86,11 +87,7 @@ const STEPS = [
     },
 ];
 
-interface Props {
-    onBack?: () => void;
-}
-
-export function AdminRafflesWeb3CreateManager({ onBack }: Props = {}) {
+export function AdminRafflesWeb3CreateManager() {
     const { storyNetworks } = useStoryNetwork();
     const { escrowWallets } = useEscrowWallets();
     const toast = useToast();
@@ -217,7 +214,7 @@ export function AdminRafflesWeb3CreateManager({ onBack }: Props = {}) {
         } finally {
             setIsSubmitting(false);
         }
-    }, [formData]);
+    }, [formData, toast]);
 
     const currentStepData = STEPS[currentStep];
     const CurrentStepComponent = currentStepData.component;

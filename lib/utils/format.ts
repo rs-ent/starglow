@@ -207,3 +207,113 @@ export function formatTimeAgo(
 export function formatTimeAgoShort(date: Date | string): string {
     return formatTimeAgo(date, true);
 }
+
+export function formatWeiToEther(
+    weiValue: bigint | string | number,
+    decimals: number = 18
+): number {
+    try {
+        const bigIntValue = BigInt(weiValue);
+        const divisor = BigInt(10 ** decimals);
+
+        // 정수 부분
+        const integerPart = bigIntValue / divisor;
+
+        // 소수점 부분 계산
+        const remainder = bigIntValue % divisor;
+        const decimalPart = Number(remainder) / 10 ** decimals;
+
+        return Number(integerPart) + decimalPart;
+    } catch (error) {
+        console.warn(
+            "Failed to convert wei to ether:",
+            error,
+            "Value:",
+            weiValue
+        );
+        return 0;
+    }
+}
+
+export function formatEtherToWei(
+    etherValue: number | string,
+    decimals: number = 18
+): bigint {
+    try {
+        const numValue =
+            typeof etherValue === "string"
+                ? parseFloat(etherValue)
+                : etherValue;
+
+        // 소수점 처리를 위해 문자열로 변환 후 처리
+        const etherStr = numValue.toFixed(decimals);
+        const [integerPart, decimalPart = ""] = etherStr.split(".");
+
+        // 소수점 부분을 적절한 길이로 패딩
+        const paddedDecimal = decimalPart
+            .padEnd(decimals, "0")
+            .slice(0, decimals);
+        const fullIntegerStr = integerPart + paddedDecimal;
+
+        return BigInt(fullIntegerStr);
+    } catch (error) {
+        console.warn(
+            "Failed to convert ether to wei:",
+            error,
+            "Value:",
+            etherValue
+        );
+        return BigInt(0);
+    }
+}
+
+/**
+ * BigInt 값을 안전하게 포맷팅 (천 단위 구분자 포함)
+ * @param value BigInt 값
+ * @param decimals 표시할 소수점 자릿수 (기본값: 18)
+ * @returns 포맷된 문자열
+ */
+export function formatBigIntWithCommas(
+    value: bigint,
+    decimals: number = 18
+): string {
+    const etherValue = formatWeiToEther(value, decimals);
+    return etherValue.toLocaleString("en-US", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 6, // 최대 6자리까지만 표시
+    });
+}
+
+/**
+ * BigInt 값을 단순히 숫자로 안전하게 변환 (wei 변환 없이)
+ * @param value BigInt 또는 문자열 값
+ * @returns 숫자 값
+ */
+export function safeBigIntToNumber(value: bigint | string | number): number {
+    try {
+        if (typeof value === "number") {
+            return value;
+        }
+
+        const bigIntValue = BigInt(value);
+
+        // BigInt가 Number의 안전한 범위를 벗어나는지 확인
+        if (bigIntValue > BigInt(Number.MAX_SAFE_INTEGER)) {
+            console.warn(
+                "BigInt value exceeds safe integer range, precision may be lost:",
+                bigIntValue
+            );
+            return Number(bigIntValue);
+        }
+
+        return Number(bigIntValue);
+    } catch (error) {
+        console.warn(
+            "Failed to convert BigInt to number:",
+            error,
+            "Value:",
+            value
+        );
+        return 0;
+    }
+}

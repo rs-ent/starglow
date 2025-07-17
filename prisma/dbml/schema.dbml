@@ -601,8 +601,8 @@ Table BlockchainNetwork {
   collectionContracts CollectionContract [not null]
   factoryContracts FactoryContract [not null]
   nfts NFT [not null]
-  onchainRaffleContracts OnchainRaffleContract [not null]
   onchainRaffles OnchainRaffle [not null]
+  onchainRaffleContracts OnchainRaffleContract [not null]
   story_ipAssets Story_ipAsset [not null]
   story_nfts Story_nft [not null]
   story_spg Story_spg [not null]
@@ -751,6 +751,8 @@ Table EscrowWallet {
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   nonce String [not null]
+  onchainRaffleContracts OnchainRaffleContract [not null]
+  onchainRaffles OnchainRaffle [not null]
 }
 
 Table ipfs {
@@ -1569,8 +1571,8 @@ Table RaffleWinner {
 
 Table OnchainRaffleContract {
   id String [pk]
-  address String [not null]
-  txHash String [not null]
+  address String [unique, not null]
+  txHash String [unique, not null]
   deployedBy String [not null]
   blockNumber Int
   isActive Boolean [not null, default: true]
@@ -1578,6 +1580,8 @@ Table OnchainRaffleContract {
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   network BlockchainNetwork [not null]
+  escrowWallet EscrowWallet
+  raffles OnchainRaffle [not null]
 }
 
 Table OnchainRaffle {
@@ -1585,12 +1589,15 @@ Table OnchainRaffle {
   contractAddress String [not null]
   raffleId String [not null]
   txHash String [not null]
+  deployedBy String [not null]
   blockNumber Int
   networkId String [not null]
   isActive Boolean [not null, default: true]
   createdAt DateTime [default: `now()`, not null]
   updatedAt DateTime [not null]
   network BlockchainNetwork [not null]
+  escrowWallet EscrowWallet
+  onchainRaffleContract OnchainRaffleContract
 
   indexes {
     (contractAddress, raffleId) [unique]
@@ -2317,7 +2324,13 @@ Ref: RaffleWinner.raffleId > Raffle.id [delete: Cascade]
 
 Ref: OnchainRaffleContract.networkId > BlockchainNetwork.id
 
+Ref: OnchainRaffleContract.deployedBy > EscrowWallet.address
+
 Ref: OnchainRaffle.networkId > BlockchainNetwork.id
+
+Ref: OnchainRaffle.deployedBy > EscrowWallet.address
+
+Ref: OnchainRaffle.contractAddress > OnchainRaffleContract.address
 
 Ref: PollBettingSettlementLog.pollId > Poll.id
 

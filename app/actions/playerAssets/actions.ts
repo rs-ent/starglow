@@ -256,6 +256,7 @@ export async function getPlayerAsset(
 
 export interface UpdatePlayerAssetInput {
     transaction: PlayerAssetTransactionInput;
+    skipRewardsLog?: boolean; // 트랜잭션 성능 최적화용
 }
 
 export async function updatePlayerAsset(
@@ -407,8 +408,9 @@ async function updatePlayerAssetBalance(
     });
 
     if (
-        input.transaction.operation === "ADD" ||
-        input.transaction.operation === "SUBTRACT"
+        !input.skipRewardsLog &&
+        (input.transaction.operation === "ADD" ||
+        input.transaction.operation === "SUBTRACT")
     ) {
         await tx.rewardsLog.create({
             data: {

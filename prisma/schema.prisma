@@ -677,8 +677,8 @@ model BlockchainNetwork {
   collectionContracts    CollectionContract[]
   factoryContracts       FactoryContract[]
   nfts                   NFT[]
-  onchainRaffleContracts OnchainRaffleContract[]
   onchainRaffles         OnchainRaffle[]
+  onchainRaffleContracts OnchainRaffleContract[]
   story_ipAssets         Story_ipAsset[]
   story_nfts             Story_nft[]
   story_spg              Story_spg[]
@@ -841,6 +841,8 @@ model EscrowWallet {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   nonce      String
+  onchainRaffleContracts OnchainRaffleContract[]
+  onchainRaffles        OnchainRaffle[]
 
   @@index([isActive])
 }
@@ -1753,8 +1755,8 @@ model RaffleWinner {
 
 model OnchainRaffleContract {
   id          String            @id @default(cuid())
-  address     String
-  txHash      String
+  address     String @unique
+  txHash      String @unique
   deployedBy  String
   blockNumber Int?
   isActive    Boolean           @default(true)
@@ -1762,6 +1764,8 @@ model OnchainRaffleContract {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   network     BlockchainNetwork @relation(fields: [networkId], references: [id])
+  escrowWallet    EscrowWallet?     @relation(fields: [deployedBy], references: [address])
+  raffles         OnchainRaffle[] 
 
   @@index([networkId])
   @@index([isActive])
@@ -1772,12 +1776,15 @@ model OnchainRaffle {
   contractAddress String
   raffleId        String
   txHash          String
+  deployedBy      String
   blockNumber     Int?
   networkId       String
   isActive        Boolean           @default(true)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   network         BlockchainNetwork @relation(fields: [networkId], references: [id])
+  escrowWallet    EscrowWallet?     @relation(fields: [deployedBy], references: [address])
+  onchainRaffleContract OnchainRaffleContract? @relation(fields: [contractAddress], references: [address])
 
   @@unique([contractAddress, raffleId])
   @@index([contractAddress])

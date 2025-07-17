@@ -87,7 +87,7 @@ export default memo(function RafflesList() {
     }
 
     return (
-        <div className="relative flex flex-col w-full h-full overflow-hidden">
+        <div className="relative flex flex-col w-full min-h-screen h-full overflow-hidden">
             <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
 
             {/* Multiple radial gradients to create blur-like effect */}

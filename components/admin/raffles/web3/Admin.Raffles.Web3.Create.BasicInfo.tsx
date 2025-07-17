@@ -78,7 +78,9 @@ export function AdminRafflesWeb3CreateBasicInfo({
 
     useEffect(() => {
         if (selectedNetwork) {
-            loadContracts(selectedNetwork);
+            loadContracts(selectedNetwork).catch((err) => {
+                console.error("Error loading contracts:", err);
+            });
         }
     }, [selectedNetwork, loadContracts]);
 
@@ -114,6 +116,7 @@ export function AdminRafflesWeb3CreateBasicInfo({
             setTimeout(() => setCopiedField(null), 2000);
             toast.success("클립보드에 복사되었습니다!");
         } catch (error) {
+            console.error("Copy failed:", error);
             toast.error("복사에 실패했습니다.");
         }
     }, []);

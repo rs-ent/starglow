@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,6 @@ import {
     updateRaffle,
     getRaffleDataForSimulation,
 } from "@/app/actions/raffles/web3/actions-admin";
-import { getRafflesContracts } from "@/app/actions/raffles/web3/actions-admin";
 import AdminRafflesWeb3Simulation from "./Admin.Raffles.Web3.Simulation";
 
 interface RaffleData {
@@ -48,21 +47,19 @@ interface RaffleData {
     };
 }
 
-interface ContractData {
-    id: string;
-    address: string;
-    networkId: string;
-    isActive: boolean;
-}
-
 // Server Action에서 반환하는 데이터 타입과 동일
 type SimulationRaffleData = NonNullable<
     Awaited<ReturnType<typeof getRaffleDataForSimulation>>["data"]
 >;
 
+type Filters = {
+    networkId: string;
+    contractAddress: string;
+    isActive: boolean | undefined;
+};
+
 export default function AdminRafflesWeb3List() {
     const [raffles, setRaffles] = useState<RaffleData[]>([]);
-    const [contracts, setContracts] = useState<ContractData[]>([]);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState<string | null>(null);
     const [copiedHash, setCopiedHash] = useState<string | null>(null);
@@ -73,19 +70,16 @@ export default function AdminRafflesWeb3List() {
         useState<SimulationRaffleData | null>(null);
     const [loadingSimulation, setLoadingSimulation] = useState(false);
 
-    const [filters, setFilters] = useState({
+    const [filters, setFilters] = useState<Filters>({
         networkId: "",
         contractAddress: "",
         isActive: undefined as boolean | undefined,
     });
 
-    const loadData = async () => {
+    const loadData = useCallback(async (filters: Filters) => {
         setLoading(true);
         try {
-            const [rafflesResult, contractsResult] = await Promise.all([
-                getRaffles(filters),
-                getRafflesContracts(),
-            ]);
+            const rafflesResult = await getRaffles(filters);
 
             if (rafflesResult.success && rafflesResult.data) {
                 setRaffles(rafflesResult.data);
@@ -95,17 +89,13 @@ export default function AdminRafflesWeb3List() {
                         (rafflesResult.error || "알 수 없는 오류")
                 );
             }
-
-            if (contractsResult.success && contractsResult.data) {
-                setContracts(contractsResult.data);
-            }
         } catch (error) {
             console.error("Error loading data:", error);
             toast.error("데이터 로딩 중 오류가 발생했습니다");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     const loadRaffleForSimulation = async (raffle: RaffleData) => {
         setLoadingSimulation(true);
@@ -139,10 +129,6 @@ export default function AdminRafflesWeb3List() {
             setLoadingSimulation(false);
         }
     };
-
-    useEffect(() => {
-        loadData();
-    }, [filters]);
 
     const handleToggleActive = async (
         raffleId: string,
@@ -184,6 +170,7 @@ export default function AdminRafflesWeb3List() {
             toast.success(`${type} 복사됨`);
             setTimeout(() => setCopiedHash(null), 2000);
         } catch (error) {
+            console.error("Error copying to clipboard:", error);
             toast.error("복사 실패");
         }
     };
@@ -269,12 +256,13 @@ export default function AdminRafflesWeb3List() {
                     <div className="flex flex-wrap gap-4 mb-6">
                         <Select
                             value={filters.networkId}
-                            onValueChange={(value) =>
+                            onValueChange={(value) => {
                                 setFilters((prev) => ({
                                     ...prev,
                                     networkId: value === "all" ? "" : value,
-                                }))
-                            }
+                                }));
+                                loadData(filters).catch(console.error);
+                            }}
                         >
                             <SelectTrigger className="w-48">
                                 <SelectValue placeholder="네트워크 선택" />
@@ -296,13 +284,14 @@ export default function AdminRafflesWeb3List() {
 
                         <Select
                             value={filters.contractAddress}
-                            onValueChange={(value) =>
+                            onValueChange={(value) => {
                                 setFilters((prev) => ({
                                     ...prev,
                                     contractAddress:
                                         value === "all" ? "" : value,
-                                }))
-                            }
+                                }));
+                                loadData(filters).catch(console.error);
+                            }}
                         >
                             <SelectTrigger className="w-48">
                                 <SelectValue placeholder="컨트랙트 선택" />
@@ -325,15 +314,16 @@ export default function AdminRafflesWeb3List() {
                                     ? "all"
                                     : filters.isActive.toString()
                             }
-                            onValueChange={(value) =>
+                            onValueChange={(value) => {
                                 setFilters((prev) => ({
                                     ...prev,
                                     isActive:
                                         value === "all"
                                             ? undefined
                                             : value === "true",
-                                }))
-                            }
+                                }));
+                                loadData(filters).catch(console.error);
+                            }}
                         >
                             <SelectTrigger className="w-32">
                                 <SelectValue placeholder="상태" />
@@ -346,7 +336,9 @@ export default function AdminRafflesWeb3List() {
                         </Select>
 
                         <Button
-                            onClick={loadData}
+                            onClick={() =>
+                                loadData(filters).catch(console.error)
+                            }
                             variant="outline"
                             disabled={loading}
                         >

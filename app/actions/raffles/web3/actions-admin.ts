@@ -9,6 +9,7 @@ import type { OnchainRaffleContract } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 import { deployContract } from "@/app/actions/blockchain";
 import { fetchWalletClient, fetchPublicClient } from "@/app/story/client";
+import { safeBigIntToNumber, formatWeiToEther } from "@/lib/utils/format";
 
 import rafflesJson from "@/web3/artifacts/contracts/Raffles.sol/Raffles.json";
 
@@ -502,6 +503,7 @@ export async function createRaffle(
                 txHash: createTx,
                 blockNumber: Number(receipt.blockNumber),
                 networkId: input.networkId,
+                deployedBy: input.walletAddress,
                 isActive: true,
             },
         });
@@ -688,6 +690,13 @@ export interface GetRaffleDataForSimulationResult {
         title: string;
         description: string;
         entryFee: number;
+        entryFeeAsset: {
+            id: string;
+            name: string;
+            symbol: string;
+            description?: string;
+            iconUrl?: string;
+        } | null;
         prizes: Array<{
             id: string;
             title: string;
@@ -751,13 +760,64 @@ export async function getRaffleDataForSimulation(
             })
         );
 
+        // 참가비 Asset 정보 조회
+        let entryFeeAsset = null;
+        if (contractRaffle.fee.participationFeeAssetId) {
+            try {
+                const asset = await prisma.asset.findUnique({
+                    where: { id: contractRaffle.fee.participationFeeAssetId },
+                    select: {
+                        id: true,
+                        name: true,
+                        symbol: true,
+                        description: true,
+                        iconUrl: true,
+                    },
+                });
+
+                if (asset) {
+                    entryFeeAsset = {
+                        id: asset.id,
+                        name: asset.name,
+                        symbol: asset.symbol,
+                        description: asset.description || undefined,
+                        iconUrl: asset.iconUrl || undefined,
+                    };
+                }
+            } catch (error) {
+                console.warn("Failed to fetch asset info:", error);
+                // Asset 조회 실패시 기본 정보라도 제공
+                entryFeeAsset = {
+                    id: contractRaffle.fee.participationFeeAssetId,
+                    name:
+                        contractRaffle.fee.participationFeeAsset ||
+                        "Unknown Asset",
+                    symbol: "???",
+                    description: "Asset 정보를 불러올 수 없습니다",
+                };
+            }
+        }
+
         // 시뮬레이션 데이터 구성
+        const rawFeeAmount = contractRaffle.fee.participationFeeAmount;
+
+        // BigInt 값을 안전하게 변환 (wei 단위가 아닌 일반 숫자로 처리)
+        const entryFee = (() => {
+            const simpleConversion = safeBigIntToNumber(rawFeeAmount);
+            const weiConversion = formatWeiToEther(rawFeeAmount);
+
+            // 단순 변환이 합리적인 범위 내의 값이면 사용, 그렇지 않으면 wei 변환 사용
+            return simpleConversion > 0 && simpleConversion <= 100000000
+                ? simpleConversion
+                : weiConversion;
+        })();
+
         const simulationData = {
             raffleId: input.raffleId,
             title: contractRaffle.basicInfo.title || `래플 #${input.raffleId}`,
             description: contractRaffle.basicInfo.description || "",
-            entryFee:
-                Number(contractRaffle.fee.participationFeeAmount) / 1e18 || 100, // Wei를 BERA로 변환
+            entryFee: entryFee || 0,
+            entryFeeAsset,
             prizes,
             networkName: network.name,
             contractAddress: input.contractAddress,
@@ -775,6 +835,384 @@ export async function getRaffleDataForSimulation(
                 error instanceof Error
                     ? error.message
                     : "Failed to get raffle data",
+        };
+    }
+}
+
+export interface SetRaffleActiveInput {
+    contractAddress: string;
+    raffleId: string;
+    networkId: string;
+    walletAddress: string;
+    isActive: boolean;
+}
+
+export interface SetRaffleActiveResult {
+    success: boolean;
+    data?: {
+        raffleId: string;
+        contractAddress: string;
+        isActive: boolean;
+        txHash: string;
+        blockNumber: number;
+    };
+    error?: string;
+}
+
+/**
+ * 스마트 컨트랙트에서 래플 활성/비활성 상태 변경
+ */
+export async function setRaffleActive(
+    input: SetRaffleActiveInput
+): Promise<SetRaffleActiveResult> {
+    try {
+        // OnchainRaffle 레코드 및 관련 정보 조회 (모든 관계 포함)
+        const onchainRaffle = await prisma.onchainRaffle.findUnique({
+            where: {
+                contractAddress_raffleId: {
+                    contractAddress: input.contractAddress,
+                    raffleId: input.raffleId,
+                },
+            },
+            include: {
+                network: true,
+                escrowWallet: true,
+            },
+        });
+
+        if (!onchainRaffle) {
+            return {
+                success: false,
+                error: "Raffle not found in database",
+            };
+        }
+
+        // 요청한 지갑 주소와 실제 배포자 검증
+        if (onchainRaffle.deployedBy !== input.walletAddress) {
+            return {
+                success: false,
+                error: "Wallet address does not match raffle deployer",
+            };
+        }
+
+        if (!onchainRaffle.escrowWallet) {
+            return {
+                success: false,
+                error: "Escrow wallet not found",
+            };
+        }
+
+        // 컨트랙트 인스턴스 생성
+        const walletClient = await fetchWalletClient({
+            network: onchainRaffle.network,
+            walletAddress: input.walletAddress,
+        });
+
+        const rafflesContract = getContract({
+            address: input.contractAddress as Address,
+            abi,
+            client: walletClient,
+        });
+
+        // 스마트 컨트랙트 상태 변경 트랜잭션 실행
+        const setActiveTx = await (
+            rafflesContract.write as any
+        ).setRaffleActive([BigInt(input.raffleId), input.isActive]);
+
+        // 트랜잭션 대기 및 결과 확인
+        const publicClient = await fetchPublicClient({
+            network: onchainRaffle.network,
+        });
+
+        const receipt = await publicClient.waitForTransactionReceipt({
+            hash: setActiveTx,
+        });
+
+        // DB 동기화 - OnchainRaffle 레코드 업데이트
+        await prisma.onchainRaffle.update({
+            where: { id: onchainRaffle.id },
+            data: {
+                isActive: input.isActive,
+                updatedAt: new Date(),
+            },
+        });
+
+        return {
+            success: true,
+            data: {
+                raffleId: input.raffleId,
+                contractAddress: input.contractAddress,
+                isActive: input.isActive,
+                txHash: setActiveTx,
+                blockNumber: Number(receipt.blockNumber),
+            },
+        };
+    } catch (error) {
+        console.error("Error setting raffle active status:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to set raffle active status",
+        };
+    }
+}
+
+export interface CancelRaffleInput {
+    contractAddress: string;
+    raffleId: string;
+    networkId: string;
+    walletAddress: string;
+    reason: string;
+}
+
+export interface CancelRaffleResult {
+    success: boolean;
+    data?: {
+        raffleId: string;
+        contractAddress: string;
+        reason: string;
+        txHash: string;
+        blockNumber: number;
+    };
+    error?: string;
+}
+
+/**
+ * 래플 취소 (환불 가능한 상태로 만듦)
+ */
+export async function cancelRaffle(
+    input: CancelRaffleInput
+): Promise<CancelRaffleResult> {
+    try {
+        // 입력 검증
+        if (!input.reason.trim()) {
+            return {
+                success: false,
+                error: "Cancellation reason is required",
+            };
+        }
+
+        // OnchainRaffle 레코드 및 관련 정보 조회 (모든 관계 포함)
+        const onchainRaffle = await prisma.onchainRaffle.findUnique({
+            where: {
+                contractAddress_raffleId: {
+                    contractAddress: input.contractAddress,
+                    raffleId: input.raffleId,
+                },
+            },
+            include: {
+                network: true,
+                escrowWallet: true,
+            },
+        });
+
+        if (!onchainRaffle) {
+            return {
+                success: false,
+                error: "Raffle not found in database",
+            };
+        }
+
+        // 요청한 지갑 주소와 실제 배포자 검증
+        if (onchainRaffle.deployedBy !== input.walletAddress) {
+            return {
+                success: false,
+                error: "Wallet address does not match raffle deployer",
+            };
+        }
+
+        if (!onchainRaffle.escrowWallet) {
+            return {
+                success: false,
+                error: "Escrow wallet not found",
+            };
+        }
+
+        // 컨트랙트 인스턴스 생성
+        const walletClient = await fetchWalletClient({
+            networkId: onchainRaffle.networkId,
+            walletAddress: input.walletAddress,
+        });
+
+        const rafflesContract = getContract({
+            address: input.contractAddress as Address,
+            abi,
+            client: walletClient,
+        });
+
+        // 래플 취소 트랜잭션 실행
+        const cancelTx = await (rafflesContract.write as any).cancelRaffle([
+            BigInt(input.raffleId),
+            input.reason,
+        ]);
+
+        // 트랜잭션 대기 및 결과 확인
+        const publicClient = await fetchPublicClient({
+            network: onchainRaffle.network,
+        });
+
+        const receipt = await publicClient.waitForTransactionReceipt({
+            hash: cancelTx,
+        });
+
+        // DB 동기화 - OnchainRaffle 레코드 업데이트 (취소된 래플은 비활성화)
+        await prisma.onchainRaffle.update({
+            where: { id: onchainRaffle.id },
+            data: {
+                isActive: false, // 취소된 래플은 비활성화
+                updatedAt: new Date(),
+            },
+        });
+
+        return {
+            success: true,
+            data: {
+                raffleId: input.raffleId,
+                contractAddress: input.contractAddress,
+                reason: input.reason,
+                txHash: cancelTx,
+                blockNumber: Number(receipt.blockNumber),
+            },
+        };
+    } catch (error) {
+        console.error("Error cancelling raffle:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to cancel raffle",
+        };
+    }
+}
+
+export interface ProcessRefundInput {
+    contractAddress: string;
+    raffleId: string;
+    networkId: string;
+    walletAddress: string;
+    playerAddress: string;
+    method: string;
+}
+
+export interface ProcessRefundResult {
+    success: boolean;
+    data?: {
+        raffleId: string;
+        contractAddress: string;
+        playerAddress: string;
+        method: string;
+        txHash: string;
+        blockNumber: number;
+    };
+    error?: string;
+}
+
+/**
+ * 환불 처리 (관리자용)
+ */
+export async function processRefund(
+    input: ProcessRefundInput
+): Promise<ProcessRefundResult> {
+    try {
+        // 입력 검증
+        if (!input.method.trim()) {
+            return {
+                success: false,
+                error: "Refund method is required",
+            };
+        }
+
+        if (
+            !input.playerAddress ||
+            !/^0x[a-fA-F0-9]{40}$/.test(input.playerAddress)
+        ) {
+            return {
+                success: false,
+                error: "Valid player address is required",
+            };
+        }
+
+        // OnchainRaffle 레코드 및 관련 정보 조회
+        const onchainRaffle = await prisma.onchainRaffle.findUnique({
+            where: {
+                contractAddress_raffleId: {
+                    contractAddress: input.contractAddress,
+                    raffleId: input.raffleId,
+                },
+            },
+            include: {
+                network: true,
+            },
+        });
+
+        if (!onchainRaffle) {
+            return {
+                success: false,
+                error: "Raffle not found in database",
+            };
+        }
+
+        // 에스크로 지갑 조회
+        const escrowWallet = await prisma.escrowWallet.findUnique({
+            where: { address: input.walletAddress },
+        });
+        if (!escrowWallet) {
+            return {
+                success: false,
+                error: "Escrow wallet not found",
+            };
+        }
+
+        // 컨트랙트 인스턴스 생성
+        const walletClient = await fetchWalletClient({
+            networkId: onchainRaffle.networkId,
+            walletAddress: input.walletAddress,
+        });
+
+        const rafflesContract = getContract({
+            address: input.contractAddress as Address,
+            abi,
+            client: walletClient,
+        });
+
+        // 환불 처리 트랜잭션 실행
+        const refundTx = await (rafflesContract.write as any).processRefund([
+            BigInt(input.raffleId),
+            input.playerAddress as Address,
+            input.method,
+        ]);
+
+        // 트랜잭션 대기 및 결과 확인
+        const publicClient = await fetchPublicClient({
+            network: onchainRaffle.network,
+        });
+
+        const receipt = await publicClient.waitForTransactionReceipt({
+            hash: refundTx,
+        });
+
+        return {
+            success: true,
+            data: {
+                raffleId: input.raffleId,
+                contractAddress: input.contractAddress,
+                playerAddress: input.playerAddress,
+                method: input.method,
+                txHash: refundTx,
+                blockNumber: Number(receipt.blockNumber),
+            },
+        };
+    } catch (error) {
+        console.error("Error processing refund:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to process refund",
         };
     }
 }
