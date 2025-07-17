@@ -22,7 +22,6 @@ import type {
 
 // Notification 함수들 import 추가
 import {
-    createBettingWinNotification,
     createBettingFailedNotification,
     createBettingRefundNotification,
     createSettlementCompleteNotification,
@@ -1901,13 +1900,11 @@ export async function settleBettingPoll(
                                 // 🏆 승리자 알림
                                 const winAmount =
                                     payoutMap.get(bettor.playerId) || 0;
-                                await createBettingWinNotification(
-                                    bettor.playerId,
-                                    pollId,
-                                    poll.title,
-                                    bettor.amount,
-                                    winAmount
-                                );
+                                await (bettor.playerId,
+                                pollId,
+                                poll.title,
+                                bettor.amount,
+                                winAmount);
                             } else {
                                 // 😔 패배자 알림 (환불이 아닌 경우만)
                                 if (winningOptionIds.length > 0) {

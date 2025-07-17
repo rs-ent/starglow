@@ -1,254 +1,25 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { processNextSettlementStep } from "@/app/actions/polls-cron";
 import { prisma } from "@/lib/prisma/client";
-import { settleBettingPoll, getPollResult } from "@/app/actions/polls";
-import {
-    PollBettingSettlementType,
-    PollBettingSettlementStatus,
-} from "@prisma/client";
+
+// 내부 정산 단계 (metadata에 저장)
+export const INTERNAL_PHASES = {
+    PHASE_1_PREPARE: "PHASE_1_PREPARE",
+    PHASE_2_PROCESS: "PHASE_2_PROCESS",
+    PHASE_3_FINALIZE: "PHASE_3_FINALIZE",
+    PHASE_4_NOTIFY: "PHASE_4_NOTIFY",
+    COMPLETED: "COMPLETED",
+} as const;
 
 // Vercel Cron Secret 검증
 const CRON_SECRET = process.env.CRON_SECRET;
 
-interface SettlementRule {
-    type: "VOTE_COUNT" | "BET_AMOUNT" | "HYBRID" | "MANUAL_ONLY";
-    minVoteThreshold: number;
-    tieBreakRule: "SPLIT" | "REFUND" | "HIGHEST_BET";
-    autoSettlementDelay: number; // 폴 종료 후 정산까지 대기 시간 (분)
-}
-
-interface SettlementAlert {
-    type: "SUCCESS" | "ERROR" | "MANUAL_REQUIRED" | "TIE_DETECTED";
-    pollId: string;
-    message: string;
-    timestamp: Date;
-    additionalData?: any;
-}
-
-// 기본 정산 규칙
-const DEFAULT_SETTLEMENT_RULES: SettlementRule = {
-    type: "VOTE_COUNT",
-    minVoteThreshold: 1,
-    tieBreakRule: "SPLIT",
-    autoSettlementDelay: 5, // 5분 후 자동 정산
-};
-
-// 알림 전송 함수 (향후 Discord/Slack 웹훅, 이메일 등으로 확장 가능)
-async function sendSettlementAlert(alert: SettlementAlert): Promise<void> {
-    try {
-        console.info(alert);
-    } catch (error) {
-        console.error("Failed to send settlement alert:", error);
-    }
-}
-
-// 정산 로그 저장 함수
-async function savePollBettingSettlementLog({
-    pollId,
-    settlementType,
-    winningOptionIds,
-    settlementResult,
-    alertData,
-    processingTimeMs,
-    isManual = false,
-    status = PollBettingSettlementStatus.SUCCESS,
-    errorMessage,
-    errorDetails,
-}: {
-    pollId: string;
-    settlementType: PollBettingSettlementType;
-    winningOptionIds: string[];
-    settlementResult?: any;
-    alertData?: any;
-    processingTimeMs?: number;
-    isManual?: boolean;
-    status?: PollBettingSettlementStatus;
-    errorMessage?: string;
-    errorDetails?: any;
-}): Promise<void> {
-    try {
-        // Poll 데이터 가져오기 (정산 통계용)
-        const poll = await prisma.poll.findUnique({
-            where: { id: pollId },
-            select: {
-                totalBetsAmount: true,
-                houseCommissionRate: true,
-                totalCommissionAmount: true,
-                optionBetAmounts: true,
-            },
-        });
-
-        // 정산 로그 생성
-        await prisma.pollBettingSettlementLog.create({
-            data: {
-                pollId,
-                settlementType,
-                winningOptionIds,
-
-                // 정산 결과
-                totalPayout: settlementResult?.totalPayout || 0,
-                totalWinners: settlementResult?.totalWinners || 0,
-                totalBettingPool: poll?.totalBetsAmount || 0,
-                houseCommission: poll?.totalCommissionAmount || 0,
-                houseCommissionRate: poll?.houseCommissionRate || 0.05,
-
-                // 정산 통계 (JSON)
-                optionResults: poll?.optionBetAmounts || undefined,
-                payoutDistribution:
-                    settlementResult?.payoutDistribution || undefined,
-
-                // 정산 규칙 적용 정보
-                settlementRule: {
-                    type: "VOTE_COUNT",
-                    minVoteThreshold: 1,
-                    tieBreakRule: "SPLIT",
-                    autoSettlementDelay: 5,
-                },
-                tieBreakApplied: alertData?.tieBreakRule || undefined,
-                tieCount: alertData?.tieCount || undefined,
-
-                // 처리 정보
-                status,
-                isManual,
-                processedBy: isManual ? "admin" : "cron",
-                processingTimeMs,
-
-                // 에러 정보
-                errorMessage,
-                errorDetails: errorDetails
-                    ? JSON.stringify(errorDetails)
-                    : undefined,
-
-                // 메타데이터
-                metadata: {
-                    reason: alertData?.reason || undefined,
-                    settlementType: alertData?.settlementType || undefined,
-                    originalAlertData: alertData || undefined,
-                },
-                alertsSent: ["CONSOLE", "USER_NOTIFICATIONS"], // 콘솔 로깅 + 사용자 알림
-
-                // 시간 정보
-                settlementStartedAt: new Date(),
-                settlementCompletedAt:
-                    status === PollBettingSettlementStatus.SUCCESS
-                        ? new Date()
-                        : null,
-            },
-        });
-    } catch (error) {
-        console.error(
-            `❌ Failed to save settlement log for poll ${pollId}:`,
-            error
-        );
-        // 정산 로그 저장 실패는 전체 정산을 실패시키지 않음
-    }
-}
-
-// 정산 규칙에 따른 승리자 결정
-async function determineWinners(
-    pollId: string,
-    rules: SettlementRule
-): Promise<{ winnerIds: string[]; requiresManual: boolean; alertData?: any }> {
-    const pollResult = await getPollResult({ pollId });
-
-    // 투표가 충분하지 않은 경우
-    if (pollResult.totalVotes < rules.minVoteThreshold) {
-        return {
-            winnerIds: [],
-            requiresManual: true,
-            alertData: {
-                reason: "INSUFFICIENT_VOTES",
-                totalVotes: pollResult.totalVotes,
-                minRequired: rules.minVoteThreshold,
-            },
-        };
-    }
-
-    switch (rules.type) {
-        case "VOTE_COUNT": {
-            // 베팅 모드에서는 실제 득표수(actualVoteCount)를 사용, 일반 모드에서는 voteCount 사용
-            const maxVoteCount = Math.max(
-                ...pollResult.results.map(
-                    (r) => r.actualVoteCount || r.voteCount
-                )
-            );
-            const winners = pollResult.results.filter(
-                (r) => (r.actualVoteCount || r.voteCount) === maxVoteCount
-            );
-
-            // 동점 처리
-            if (winners.length > 1) {
-                switch (rules.tieBreakRule) {
-                    case "SPLIT":
-                        return {
-                            winnerIds: winners.map((w) => w.optionId),
-                            requiresManual: false,
-                            alertData: {
-                                tieCount: winners.length,
-                                tieBreakRule: "SPLIT",
-                            },
-                        };
-                    case "REFUND":
-                        return {
-                            winnerIds: [], // 전액 환불
-                            requiresManual: false,
-                            alertData: {
-                                tieCount: winners.length,
-                                tieBreakRule: "REFUND",
-                            },
-                        };
-                    case "HIGHEST_BET":
-                        // 베팅 금액이 높은 옵션이 승리 (베팅 데이터 필요)
-                        return {
-                            winnerIds: [],
-                            requiresManual: true,
-                            alertData: {
-                                reason: "TIE_NEEDS_BET_ANALYSIS",
-                                tiedOptions: winners.map((w) => w.optionId),
-                            },
-                        };
-                }
-            }
-
-            return {
-                winnerIds: winners.map((w) => w.optionId),
-                requiresManual: false,
-            };
-        }
-
-        case "BET_AMOUNT": {
-            // 베팅 금액 기준 (구현 필요)
-            return {
-                winnerIds: [],
-                requiresManual: true,
-                alertData: { reason: "BET_AMOUNT_RULE_NOT_IMPLEMENTED" },
-            };
-        }
-
-        case "MANUAL_ONLY": {
-            return {
-                winnerIds: [],
-                requiresManual: true,
-                alertData: { reason: "MANUAL_ONLY_RULE" },
-            };
-        }
-
-        default: {
-            return {
-                winnerIds: [],
-                requiresManual: true,
-                alertData: {
-                    reason: "UNKNOWN_SETTLEMENT_RULE",
-                    rule: rules.type,
-                },
-            };
-        }
-    }
-}
-
 export async function GET(request: NextRequest) {
+    const startTime = Date.now();
+
     try {
-        // Cron secret 검증
+        // 🔒 보안: Authorization 헤더 확인
         const authHeader = request.headers.get("authorization");
         if (authHeader !== `Bearer ${CRON_SECRET}`) {
             return NextResponse.json(
@@ -257,304 +28,117 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const now = new Date();
+        console.info("🔄 Starting betting poll settlement cron job");
 
-        // 정산 대상 폴 찾기 (강화된 상태 체크)
-        const settlementCandidates = await prisma.poll.findMany({
-            where: {
-                bettingMode: true,
-                // 폴이 종료되고 지연 시간이 지난 것들만
-                endDate: {
-                    lt: new Date(
-                        now.getTime() -
-                            DEFAULT_SETTLEMENT_RULES.autoSettlementDelay *
-                                60 *
-                                1000
-                    ),
-                },
-                // 🔒 강화된 정산 상태 체크 (3중 조건)
-                AND: [
-                    { isSettled: false },
-                    { settledAt: null },
-                    { bettingStatus: { not: "SETTLED" } },
-                    { bettingStatus: { not: "SETTLING" } },
-                    { answerOptionIds: { equals: [] } }, // 빈 배열 또는 null
-                ],
-                isActive: true,
-            },
-            select: {
-                id: true,
-                title: true,
-                endDate: true,
-                totalVotes: true,
-                uniqueVoters: true,
-                optionBetAmounts: true,
-                bettingStatus: true,
-                isSettled: true,
-                settledAt: true,
-            },
-        });
+        // 📊 현재 시스템 상태 조회 (성능 모니터링용)
+        const systemStatus = await getSettlementSystemStatus();
 
-        if (settlementCandidates.length === 0) {
+        // ⚡ 다음 정산 단계 실행 (1분 cron에 최적화된 단일 단계 처리)
+        const result = await processNextSettlementStep();
+
+        const totalExecutionTime = Date.now() - startTime;
+
+        // ✅ 성공 응답
+        if (result.success) {
+            console.info(`✅ Settlement step completed successfully:`, {
+                phase: result.phase,
+                nextPhase: result.nextPhase,
+                message: result.message,
+                completed: result.completed,
+                executionTime: totalExecutionTime,
+                systemStatus,
+            });
+
             return NextResponse.json({
                 success: true,
-                message: "No polls ready for settlement",
-                processed: 0,
-            });
-        }
-
-        const results = [];
-        const alerts: SettlementAlert[] = [];
-
-        // 각 폴에 대해 향상된 정산 실행
-        for (const poll of settlementCandidates) {
-            const settlementStartTime = Date.now();
-
-            try {
-                // 정산 규칙에 따른 승리자 결정
-                const { winnerIds, requiresManual, alertData } =
-                    await determineWinners(poll.id, DEFAULT_SETTLEMENT_RULES);
-
-                if (requiresManual) {
-                    // 수동 정산 필요한 경우
-                    const alert: SettlementAlert = {
-                        type: "MANUAL_REQUIRED",
-                        pollId: poll.id,
-                        message: `Poll "${poll.title}" requires manual settlement`,
-                        timestamp: now,
-                        additionalData: {
-                            ...alertData,
-                            pollTitle: poll.title,
-                            endTime: poll.endDate,
-                            totalVotes: poll.totalVotes,
-                        },
-                    };
-
-                    alerts.push(alert);
-                    await sendSettlementAlert(alert);
-
-                    // 🗄️ 수동 정산 로그 저장
-                    await savePollBettingSettlementLog({
-                        pollId: poll.id,
-                        settlementType: PollBettingSettlementType.MANUAL,
-                        winningOptionIds: [],
-                        alertData,
-                        processingTimeMs: Date.now() - settlementStartTime,
-                        isManual: true,
-                        status: PollBettingSettlementStatus.PENDING,
-                        errorMessage: `Manual settlement required: ${alertData?.reason}`,
-                    });
-
-                    results.push({
-                        pollId: poll.id,
-                        success: false,
-                        requiresManual: true,
-                        reason:
-                            alertData?.reason || "MANUAL_SETTLEMENT_REQUIRED",
-                        ...alertData,
-                    });
-                    continue;
-                }
-
-                if (winnerIds.length === 0) {
-                    // 전액 환불 케이스
-                    const alert: SettlementAlert = {
-                        type: "SUCCESS",
-                        pollId: poll.id,
-                        message: `Poll "${poll.title}" settled with full refund`,
-                        timestamp: now,
-                        additionalData: {
-                            settlementType: "FULL_REFUND",
-                            reason: alertData?.tieBreakRule || "NO_WINNERS",
-                        },
-                    };
-
-                    alerts.push(alert);
-                    await sendSettlementAlert(alert);
-
-                    // 🗄️ 환불 정산 로그 저장
-                    await savePollBettingSettlementLog({
-                        pollId: poll.id,
-                        settlementType: PollBettingSettlementType.REFUND,
-                        winningOptionIds: [],
-                        alertData,
-                        processingTimeMs: Date.now() - settlementStartTime,
-                        isManual: false,
-                        status: PollBettingSettlementStatus.SUCCESS,
-                    });
-                }
-
-                // 자동 정산 실행
-                const settlementResult = await settleBettingPoll({
-                    pollId: poll.id,
-                    winningOptionIds: winnerIds,
-                });
-
-                if (settlementResult.success) {
-                    const alert: SettlementAlert = {
-                        type: "SUCCESS",
-                        pollId: poll.id,
-                        message: `Poll "${poll.title}" successfully auto-settled`,
-                        timestamp: now,
-                        additionalData: {
-                            winnerCount: settlementResult.totalWinners,
-                            totalPayout: settlementResult.totalPayout,
-                            winningOptions: winnerIds,
-                            ...alertData,
-                        },
-                    };
-
-                    alerts.push(alert);
-                    await sendSettlementAlert(alert);
-
-                    // 🗄️ 성공적인 자동 정산 로그 저장
-                    await savePollBettingSettlementLog({
-                        pollId: poll.id,
-                        settlementType: PollBettingSettlementType.AUTO,
-                        winningOptionIds: winnerIds,
-                        settlementResult,
-                        alertData,
-                        processingTimeMs: Date.now() - settlementStartTime,
-                        isManual: false,
-                        status: PollBettingSettlementStatus.SUCCESS,
-                    });
-                } else {
-                    const alert: SettlementAlert = {
-                        type: "ERROR",
-                        pollId: poll.id,
-                        message: `Settlement failed for poll "${poll.title}": ${settlementResult.error}`,
-                        timestamp: now,
-                        additionalData: {
-                            error: settlementResult.error,
-                            winningOptions: winnerIds,
-                        },
-                    };
-
-                    alerts.push(alert);
-                    await sendSettlementAlert(alert);
-
-                    // 🗄️ 실패한 자동 정산 로그 저장
-                    await savePollBettingSettlementLog({
-                        pollId: poll.id,
-                        settlementType: PollBettingSettlementType.AUTO,
-                        winningOptionIds: winnerIds,
-                        alertData,
-                        processingTimeMs: Date.now() - settlementStartTime,
-                        isManual: false,
-                        status: PollBettingSettlementStatus.FAILED,
-                        errorMessage: settlementResult.error,
-                    });
-                }
-
-                results.push({
-                    pollId: poll.id,
-                    title: poll.title,
-                    winningOptions: winnerIds,
-                    ...settlementResult,
-                    alertData,
-                });
-            } catch (error) {
-                console.error(
-                    `❌ Error in enhanced settlement for poll ${poll.id}:`,
-                    error
-                );
-
-                const alert: SettlementAlert = {
-                    type: "ERROR",
-                    pollId: poll.id,
-                    message: `Critical error during settlement of poll "${poll.title}"`,
-                    timestamp: now,
-                    additionalData: {
-                        error:
-                            error instanceof Error
-                                ? error.message
-                                : "Unknown error",
-                        stack: error instanceof Error ? error.stack : undefined,
+                data: {
+                    settlement: {
+                        phase: result.phase,
+                        nextPhase: result.nextPhase,
+                        message: result.message,
+                        completed: result.completed,
+                        executionTimeMs: result.executionTimeMs || 0,
+                        metadata: result.metadata,
                     },
-                };
-
-                alerts.push(alert);
-                await sendSettlementAlert(alert);
-
-                // 🗄️ 예외 발생 정산 로그 저장
-                await savePollBettingSettlementLog({
-                    pollId: poll.id,
-                    settlementType: PollBettingSettlementType.EMERGENCY,
-                    winningOptionIds: [],
-                    processingTimeMs: Date.now() - settlementStartTime,
-                    isManual: false,
-                    status: PollBettingSettlementStatus.FAILED,
-                    errorMessage:
-                        error instanceof Error
-                            ? error.message
-                            : "Unknown error",
-                    errorDetails: error instanceof Error ? error.stack : error,
-                });
-
-                results.push({
-                    pollId: poll.id,
-                    success: false,
-                    error:
-                        error instanceof Error
-                            ? error.message
-                            : "Unknown error",
-                });
-            }
-        }
-
-        const successCount = results.filter((r) => r.success).length;
-        const manualCount = results.filter((r) => r.requiresManual).length;
-
-        // 최종 요약 알림
-        if (results.length > 0) {
-            const summaryAlert: SettlementAlert = {
-                type: "SUCCESS",
-                pollId: "BATCH_SUMMARY",
-                message: `Batch settlement completed: ${successCount}/${results.length} successful, ${manualCount} manual`,
-                timestamp: now,
-                additionalData: {
-                    processed: results.length,
-                    successful: successCount,
-                    manualRequired: manualCount,
-                    failed: results.length - successCount - manualCount,
+                    systemStatus,
+                    summary: {
+                        currentPhase: result.phase,
+                        isCompleted: result.completed,
+                        totalExecutionTimeMs: totalExecutionTime,
+                        timestamp: new Date().toISOString(),
+                    },
                 },
-            };
+                performance: {
+                    stepExecutionTimeMs: result.executionTimeMs || 0,
+                    totalApiExecutionTimeMs: totalExecutionTime,
+                    memoryUsage: process.memoryUsage(),
+                },
+            });
+        } else {
+            // ❌ 에러 응답 (실패 시에도 상세 정보 제공)
+            console.error(`❌ Settlement step failed:`, {
+                phase: result.phase,
+                error: result.error,
+                executionTime: totalExecutionTime,
+                systemStatus,
+            });
 
-            await sendSettlementAlert(summaryAlert);
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: {
+                        phase: result.phase,
+                        message: result.error,
+                        executionTimeMs: result.executionTimeMs || 0,
+                        timestamp: new Date().toISOString(),
+                    },
+                    systemStatus, // 에러 상황에서도 시스템 상태 제공
+                    debug: {
+                        totalExecutionTimeMs: totalExecutionTime,
+                        memoryUsage: process.memoryUsage(),
+                        phase: result.phase,
+                    },
+                },
+                { status: 500 }
+            );
         }
-
-        return NextResponse.json({
-            success: true,
-            message: `Enhanced settlement processed ${results.length} polls, ${successCount} successful, ${manualCount} need manual intervention`,
-            processed: results.length,
-            successful: successCount,
-            manualRequired: manualCount,
-            results,
-            alerts: alerts.length,
-            timestamp: now,
-        });
     } catch (error) {
-        console.error("❌ Enhanced betting settlement cron error:", error);
+        const totalExecutionTime = Date.now() - startTime;
 
-        // 시스템 전체 오류 알림
-        const criticalAlert: SettlementAlert = {
-            type: "ERROR",
-            pollId: "SYSTEM_ERROR",
-            message: "Critical system error in betting settlement cron",
-            timestamp: new Date(),
-            additionalData: {
-                error: error instanceof Error ? error.message : "Unknown error",
-                stack: error instanceof Error ? error.stack : undefined,
-            },
-        };
+        console.error("❌ Critical cron settlement error:", {
+            error: error instanceof Error ? error.message : "Unknown error",
+            stack: error instanceof Error ? error.stack : undefined,
+            executionTime: totalExecutionTime,
+        });
 
-        await sendSettlementAlert(criticalAlert);
+        // 🚨 크리티컬 에러 시에도 가능한 한 많은 정보 제공
+        let systemStatus = null;
+        try {
+            systemStatus = await getSettlementSystemStatus();
+        } catch (statusError) {
+            console.error("Failed to get system status:", statusError);
+        }
 
         return NextResponse.json(
             {
                 success: false,
-                error: error instanceof Error ? error.message : "Unknown error",
-                timestamp: new Date(),
+                error: {
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : "Unknown error",
+                    type: "CRITICAL_ERROR",
+                    timestamp: new Date().toISOString(),
+                },
+                systemStatus,
+                debug: {
+                    totalExecutionTimeMs: totalExecutionTime,
+                    memoryUsage: process.memoryUsage(),
+                    errorType:
+                        error instanceof Error
+                            ? error.constructor.name
+                            : "Unknown",
+                },
             },
             { status: 500 }
         );
@@ -564,4 +148,131 @@ export async function GET(request: NextRequest) {
 // POST 메서드도 지원 (수동 트리거용)
 export async function POST(request: NextRequest) {
     return GET(request);
+}
+
+/**
+ * 정산 시스템의 현재 상태를 조회합니다.
+ */
+async function getSettlementSystemStatus() {
+    try {
+        const [
+            totalSettlingPolls,
+            pollsByPhase,
+            recentlyCompletedPolls,
+            pendingPolls,
+        ] = await Promise.all([
+            // 현재 정산 중인 전체 폴 수
+            prisma.poll.count({
+                where: {
+                    bettingMode: true,
+                    isSettled: false,
+                    bettingStatus: "SETTLING",
+                },
+            }),
+
+            // Phase별 폴 수 (metadata 기반)
+            prisma.poll.findMany({
+                where: {
+                    bettingMode: true,
+                    isSettled: false,
+                    bettingStatus: "SETTLING",
+                },
+                select: {
+                    id: true,
+                    title: true,
+                    metadata: true,
+                    updatedAt: true,
+                },
+            }),
+
+            // 최근 24시간 내 완료된 정산 수
+            prisma.poll.count({
+                where: {
+                    bettingMode: true,
+                    isSettled: true,
+                    settledAt: {
+                        gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                    },
+                },
+            }),
+
+            // 정산 대기 중인 폴 수 (종료됐지만 아직 정산 안된 것들)
+            prisma.poll.count({
+                where: {
+                    bettingMode: true,
+                    isSettled: false,
+                    bettingStatus: "OPEN",
+                    endDate: {
+                        lt: new Date(),
+                    },
+                },
+            }),
+        ]);
+
+        // Phase별 통계 계산
+        const phaseStats = {
+            PHASE_1_PREPARE: 0,
+            PHASE_2_PROCESS: 0,
+            PHASE_3_FINALIZE: 0,
+            PHASE_4_NOTIFY: 0,
+            UNKNOWN: 0,
+        };
+
+        const settlementDetails = pollsByPhase.map((poll) => {
+            const metadata = poll.metadata as any;
+            const phase = metadata?.settlementPhase || "UNKNOWN";
+
+            if (phase in phaseStats) {
+                phaseStats[phase as keyof typeof phaseStats]++;
+            } else {
+                phaseStats.UNKNOWN++;
+            }
+
+            return {
+                pollId: poll.id,
+                title: poll.title,
+                currentPhase: phase,
+                lastUpdated: poll.updatedAt,
+                settlementData: metadata?.settlementData
+                    ? {
+                          totalBatches: metadata.settlementData.totalBatches,
+                          currentBatch: metadata.settlementData.currentBatch,
+                          processedWinners:
+                              metadata.settlementData.processedWinners,
+                          totalWinners: metadata.settlementData.totalWinners,
+                          isRefund: metadata.settlementData.isRefund,
+                      }
+                    : null,
+            };
+        });
+
+        return {
+            overview: {
+                totalSettlingPolls,
+                pendingPolls,
+                recentlyCompletedPolls,
+                healthStatus:
+                    totalSettlingPolls < 10
+                        ? "HEALTHY"
+                        : totalSettlingPolls < 50
+                        ? "BUSY"
+                        : "OVERLOADED",
+            },
+            phaseDistribution: phaseStats,
+            activeSettlements: settlementDetails.slice(0, 5), // 최대 5개만 표시
+            timing: {
+                avgSettlementTimeEstimate: "~4-8 minutes", // 4 phases × 1-2분
+                lastCheckTimestamp: new Date().toISOString(),
+            },
+        };
+    } catch (error) {
+        console.error("Failed to get settlement system status:", error);
+        return {
+            overview: {
+                healthStatus: "ERROR",
+                error: "Failed to fetch system status",
+            },
+            timestamp: new Date().toISOString(),
+        };
+    }
 }
