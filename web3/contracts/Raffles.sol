@@ -313,14 +313,15 @@ contract Raffles is ReentrancyGuard, Ownable {
         uint256 prizesLength = prizes.length;
         
         for (uint256 i = 0; i < prizesLength;) {
-            prizes[i].pickedTicketQuantity = 0;
-            prizes[i].startTicketNumber = ticketNumber;
+            Prize memory prize = prizes[i];
+            prize.pickedTicketQuantity = 0;
+            prize.startTicketNumber = ticketNumber;
             
-            _createTicketBlocks(raffleId, i, ticketNumber, prizes[i].registeredTicketQuantity);
+            _createTicketBlocks(raffleId, i, ticketNumber, prize.registeredTicketQuantity);
             
-            newRaffle.prizes.push(prizes[i]);
-            newRaffle.status.totalQuantity += prizes[i].registeredTicketQuantity;
-            ticketNumber += prizes[i].registeredTicketQuantity;
+            newRaffle.prizes.push(prize);
+            newRaffle.status.totalQuantity += prize.registeredTicketQuantity;
+            ticketNumber += prize.registeredTicketQuantity;
             
             unchecked { ++i; }
         }
