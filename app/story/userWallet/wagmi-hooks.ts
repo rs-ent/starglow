@@ -17,6 +17,7 @@ import {
 import { BaseError } from "wagmi";
 
 import { useToast } from "@/app/hooks/useToast";
+import { useLoading } from "@/app/hooks/useLoading";
 
 import { useUserWallet } from "./hooks";
 import { useStoryNetwork } from "../network/hooks";
@@ -26,6 +27,7 @@ import type { Connector } from "wagmi";
 
 export function useWagmiConnection() {
     const toast = useToast();
+    const { startLoading, setProgress, endLoading } = useLoading();
     const [isSettingUser, setIsSettingUser] = useState(false);
     const { storyNetworks } = useStoryNetwork({
         getStoryNetworksInput: {
@@ -120,15 +122,27 @@ export function useWagmiConnection() {
                 isProcessingConnection.current = true;
                 callbackUrlRef.current = callbackUrl || null;
 
+                startLoading();
+                setProgress(10);
+                toast.info("Connecting wallet...");
+
                 await connect({ connector: selectedConnector });
             } catch (error) {
                 console.error("Failed to connect wallet:", error);
                 handleWagmiError(error as Error);
+                endLoading();
             } finally {
                 isProcessingConnection.current = false;
             }
         },
-        [connect, handleWagmiError]
+        [
+            connect,
+            handleWagmiError,
+            startLoading,
+            setProgress,
+            endLoading,
+            toast,
+        ]
     );
 
     useEffect(() => {
@@ -148,6 +162,7 @@ export function useWagmiConnection() {
 
             if (!currentConnection) {
                 console.warn(`No connection found for address: ${address}`);
+                endLoading();
                 return;
             }
 
@@ -155,9 +170,12 @@ export function useWagmiConnection() {
                 isProcessingConnection.current = true;
                 processedAddresses.current.add(address);
 
+                setProgress(30);
+
                 const user = session?.user;
                 if (!user && !isSettingUser) {
                     setIsSettingUser(true);
+                    setProgress(50);
 
                     const result = await signIn("wallet", {
                         walletAddress: address,
@@ -166,10 +184,16 @@ export function useWagmiConnection() {
                     });
 
                     if (result?.ok) {
+                        setProgress(70);
+
                         await connectWalletWithRetry(
                             address,
                             currentConnection.connector.id
                         );
+
+                        setProgress(100);
+                        toast.success("Wallet connected successfully!");
+                        endLoading();
 
                         if (callbackUrlRef.current) {
                             window.location.href = callbackUrlRef.current;
@@ -195,10 +219,16 @@ export function useWagmiConnection() {
                         }
                     );
 
+                    setProgress(70);
+
                     await connectWalletWithRetry(
                         address,
                         currentConnection.connector.id
                     );
+
+                    setProgress(100);
+                    toast.success("Wallet connected successfully!");
+                    endLoading();
 
                     if (callbackUrlRef.current) {
                         console.info(
@@ -209,6 +239,7 @@ export function useWagmiConnection() {
                     }
                 }
             } catch (error: any) {
+                endLoading();
                 const errorMsg = error.message || error.toString();
                 console.error(`Wallet connection process failed:`, {
                     address,
@@ -256,6 +287,13 @@ export function useWagmiConnection() {
                         `Attempting wallet connection (${attempt}/${maxRetries}): ${walletAddress} via ${provider}`
                     );
 
+                    if (attempt > 1) {
+                        setProgress(70 + (attempt - 1) * 5);
+                        toast.info(
+                            `Retrying connection (${attempt}/${maxRetries})...`
+                        );
+                    }
+
                     const result = await connectWalletAsync({
                         address: walletAddress,
                         network: chainId.toString(),
@@ -297,6 +335,7 @@ export function useWagmiConnection() {
                     );
 
                     try {
+                        setProgress(90);
                         await updateSession();
                         console.info("Session updated after wallet connection");
                     } catch (sessionError) {
@@ -357,6 +396,8 @@ export function useWagmiConnection() {
         toast,
         isSettingUser,
         updateSession,
+        setProgress,
+        endLoading,
     ]);
 
     const handleSwitchChain = useCallback(
@@ -368,19 +409,37 @@ export function useWagmiConnection() {
                     return;
                 }
 
+                startLoading();
+                setProgress(50);
+
                 await switchChain({ chainId: targetChainId });
+
+                setProgress(100);
                 toast.success(`Switched to ${targetChain.name}`);
+                endLoading();
             } catch (error) {
+                endLoading();
                 console.error("Failed to switch chain:", error);
                 handleWagmiError(error as Error);
             }
         },
-        [switchChain, chains, toast, handleWagmiError]
+        [
+            switchChain,
+            chains,
+            toast,
+            handleWagmiError,
+            startLoading,
+            setProgress,
+            endLoading,
+        ]
     );
 
     const handleDisconnect = useCallback(async () => {
         try {
             const prevAddress = address;
+
+            startLoading();
+            setProgress(50);
 
             await disconnect();
 
@@ -389,18 +448,30 @@ export function useWagmiConnection() {
             }
 
             if (prevAddress) {
+                setProgress(80);
                 await updateWalletAsync({
                     walletAddress: prevAddress,
                     status: WalletStatus.INACTIVE,
                 });
             }
 
+            setProgress(100);
             toast.success("Wallet disconnected");
+            endLoading();
         } catch (error) {
+            endLoading();
             console.error("Failed to disconnect wallet:", error);
             toast.error("Failed to disconnect wallet");
         }
-    }, [disconnect, address, updateWalletAsync, toast]);
+    }, [
+        disconnect,
+        address,
+        updateWalletAsync,
+        toast,
+        startLoading,
+        setProgress,
+        endLoading,
+    ]);
 
     const availableConnectors = connectors.filter(
         (connector) => connector.ready !== false

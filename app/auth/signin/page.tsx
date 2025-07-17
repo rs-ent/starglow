@@ -3,9 +3,10 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 
 import { useSearchParams } from "next/navigation";
-import { getProviders, useSession, signIn } from "next-auth/react";
+import { getProviders, signIn } from "next-auth/react";
 
 import { useToast } from "@/app/hooks/useToast";
+import { useSessionRecovery } from "@/app/hooks/useSessionRecovery";
 import { WALLET_PROVIDERS } from "@/app/types/auth";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import SocialAuthButton from "@/components/atoms/SocialAuthButton";
@@ -24,13 +25,13 @@ function SignInButtons() {
     const callbackUrl = params.get("callbackUrl") || "/";
     const error = params.get("error");
 
-    const { data: session } = useSession();
+    const { isSessionHealthy, isRecovering } = useSessionRecovery();
 
     useEffect(() => {
-        if (session?.user?.id) {
+        if (isSessionHealthy && !isRecovering) {
             redirect(callbackUrl || "/");
         }
-    }, [session?.user?.id, callbackUrl]);
+    }, [isSessionHealthy, isRecovering, callbackUrl]);
 
     useEffect(() => {
         if (error) {
@@ -38,6 +39,10 @@ function SignInButtons() {
                 toast.info(
                     "The email is already linked to another account. Please sign in using your original provider."
                 );
+            } else if (error === "SessionRequired") {
+                toast.error("Session expired. Please sign in again.");
+            } else if (error === "AccessDenied") {
+                toast.error("Access denied.");
             } else {
                 toast.error("An error occurred while signing in");
             }
@@ -77,8 +82,12 @@ function SignInButtons() {
         }
     }
 
-    if (!providers) {
-        return <PartialLoading text="Loading..." />;
+    if (!providers || isRecovering) {
+        return (
+            <PartialLoading
+                text={isRecovering ? "Session recovery..." : "Loading..."}
+            />
+        );
     }
 
     const DONOT_SHOW_PROVIDERS = [

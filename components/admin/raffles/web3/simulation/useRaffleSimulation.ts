@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 // Web Worker 인터페이스 정의 (Worker와 동기화)
 interface Prize {
@@ -688,7 +688,7 @@ export function useRaffleSimulation(): [SimulationState, SimulationControls] {
         progressData: null,
     });
 
-    let currentEngine: RaffleSimulationEngine | null = null;
+    const currentEngine = useRef<RaffleSimulationEngine | null>(null);
 
     const runSimulation = useCallback(
         async (config: SimulationConfig, seed?: number) => {
@@ -704,10 +704,13 @@ export function useRaffleSimulation(): [SimulationState, SimulationControls] {
                     progressData: null,
                 }));
 
-                currentEngine = new RaffleSimulationEngine(config, seed);
+                currentEngine.current = new RaffleSimulationEngine(
+                    config,
+                    seed
+                );
 
-                const result = await currentEngine.runSimulation(
-                    (progressData) => {
+                const result = await currentEngine.current.runSimulation(
+                    (progressData: SimulationProgress) => {
                         setState((prev) => ({
                             ...prev,
                             progress: progressData.progress,
@@ -741,28 +744,28 @@ export function useRaffleSimulation(): [SimulationState, SimulationControls] {
     );
 
     const pauseSimulation = useCallback(() => {
-        if (currentEngine) {
-            currentEngine.pause();
+        if (currentEngine.current) {
+            currentEngine.current.pause();
             setState((prev) => ({
                 ...prev,
                 isPaused: true,
             }));
         }
-    }, [currentEngine]);
+    }, []);
 
     const resumeSimulation = useCallback(() => {
-        if (currentEngine) {
-            currentEngine.resume();
+        if (currentEngine.current) {
+            currentEngine.current.resume();
             setState((prev) => ({
                 ...prev,
                 isPaused: false,
             }));
         }
-    }, [currentEngine]);
+    }, []);
 
     const stopSimulation = useCallback(() => {
-        if (currentEngine) {
-            currentEngine.stop();
+        if (currentEngine.current) {
+            currentEngine.current.stop();
         }
         setState((prev) => ({
             ...prev,
@@ -772,7 +775,7 @@ export function useRaffleSimulation(): [SimulationState, SimulationControls] {
             currentRun: 0,
             error: null,
         }));
-    }, [currentEngine]);
+    }, []);
 
     const calculateStats = useCallback(
         async (profitLossHistory: number[]): Promise<AdvancedStats | null> => {

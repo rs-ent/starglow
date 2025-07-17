@@ -1753,6 +1753,24 @@ Table notification_stats {
   updatedAt DateTime [not null]
 }
 
+Table PlayerAssetsStatus {
+  id String [pk]
+  assetId String [not null]
+  totalBalance Int [not null, default: 0]
+  rewardedCount Int [not null, default: 0]
+  date DateTime [default: `now()`, not null]
+  dailyActivityWalletId String
+  dailyActivityWallet DailyActivityWallet
+  monthlyActivityWalletId String
+  monthlyActivityWallet MonthlyActivityWallet
+
+  indexes {
+    (assetId, date) [unique]
+    (assetId, dailyActivityWalletId) [unique]
+    (assetId, monthlyActivityWalletId) [unique]
+  }
+}
+
 Table DailyActivityWallet {
   id String [pk]
   date DateTime [default: `now()`, unique, not null]
@@ -1763,6 +1781,7 @@ Table DailyActivityWallet {
   pollParticipationCount Int [not null, default: 0]
   questParticipationCount Int [not null, default: 0]
   raffleParticipationCount Int [not null, default: 0]
+  playerAssetsStatus PlayerAssetsStatus [not null]
 }
 
 Table MonthlyActivityWallet {
@@ -1775,6 +1794,7 @@ Table MonthlyActivityWallet {
   pollParticipationCount Int [not null, default: 0]
   questParticipationCount Int [not null, default: 0]
   raffleParticipationCount Int [not null, default: 0]
+  playerAssetsStatus PlayerAssetsStatus [not null]
 }
 
 Table StakeReward {
@@ -2361,3 +2381,7 @@ Ref: PollBettingSettlementLog.pollId > Poll.id
 Ref: user_notifications.playerId > Player.id [delete: Cascade]
 
 Ref: notification_settings.playerId - Player.id [delete: Cascade]
+
+Ref: PlayerAssetsStatus.dailyActivityWalletId > DailyActivityWallet.id
+
+Ref: PlayerAssetsStatus.monthlyActivityWalletId > MonthlyActivityWallet.id

@@ -16,6 +16,7 @@ import { sepolia, storyAeneid } from "wagmi/chains";
 
 import { ModalProvider } from "@/app/hooks/useModalStack";
 import { WalletDisconnectWatcher } from "@/components/atoms/WalletDisconnectWatcher";
+import SessionMonitor from "@/components/atoms/SessionMonitor";
 
 // 체인 배열 정의
 export const chains = [sepolia, storyAeneid] as const;
@@ -127,6 +128,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 <SessionProvider refetchInterval={0}>
                     <ModalProvider>
                         <WalletDisconnectWatcher />
+                        <SessionMonitor />
                         {children}
                         {process.env.NODE_ENV === "development" && (
                             <ReactQueryDevtools initialIsOpen={false} />

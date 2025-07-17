@@ -1963,6 +1963,26 @@ model NotificationStats {
   @@map("notification_stats")
 }
 
+model PlayerAssetsStatus {
+  id String @id @default(cuid())
+  assetId String
+  totalBalance Int @default(0)
+  rewardedCount Int @default(0)
+  date DateTime @default(now()) @db.Date
+
+  dailyActivityWalletId String?
+  dailyActivityWallet DailyActivityWallet? @relation(fields: [dailyActivityWalletId], references: [id])
+
+  monthlyActivityWalletId String?
+  monthlyActivityWallet MonthlyActivityWallet? @relation(fields: [monthlyActivityWalletId], references: [id])
+
+  @@unique([assetId, date])
+  @@unique([assetId, dailyActivityWalletId])
+  @@unique([assetId, monthlyActivityWalletId])
+  @@index([date])
+  @@index([assetId])
+}
+
 model DailyActivityWallet {
   id String @id @default(cuid())
   date DateTime @unique @default(now()) @db.Date
@@ -1974,6 +1994,8 @@ model DailyActivityWallet {
   pollParticipationCount Int @default(0)
   questParticipationCount Int @default(0)
   raffleParticipationCount Int @default(0)
+
+  playerAssetsStatus PlayerAssetsStatus[]
 
 
   @@index([date])
@@ -1991,6 +2013,8 @@ model MonthlyActivityWallet {
   pollParticipationCount Int @default(0)
   questParticipationCount Int @default(0)
   raffleParticipationCount Int @default(0)
+
+  playerAssetsStatus PlayerAssetsStatus[]
 
   @@index([date])
 }
