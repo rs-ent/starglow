@@ -16,7 +16,28 @@ import { auth } from "@/app/auth/authSettings";
 import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 export async function createWallet(userId: string, provider: string | null) {
-    if (provider === "wallet") return;
+    if (provider === "wallet") {
+        const wallets = await prisma.wallet.findMany({
+            where: {
+                userId,
+            },
+        });
+
+        if (wallets.length > 1) {
+            const starglowWallet = wallets.find(
+                (wallet) => wallet.provider === "starglow"
+            );
+            if (starglowWallet) {
+                await prisma.wallet.delete({
+                    where: {
+                        id: starglowWallet.id,
+                    },
+                });
+            }
+        }
+
+        return;
+    }
     try {
         const result = await prisma.$transaction(async (tx) => {
             const defaultNetwork = await tx.blockchainNetwork.findFirst({
