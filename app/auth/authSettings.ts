@@ -357,19 +357,10 @@ const authOptions: NextAuthConfig = {
                             console.error("Failed to set player:", error);
                             return null;
                         }),
-
-                        createWallet(user.id, account?.provider || null).catch(
-                            (error) => {
-                                console.error(
-                                    "Failed to create wallet:",
-                                    error
-                                );
-                                return null;
-                            }
-                        ),
                     ];
 
                     await Promise.allSettled(corePromises);
+                    await createWallet(user.id, account?.provider || null);
 
                     if (backgroundTasks.length > 0) {
                         Promise.allSettled(backgroundTasks).catch(() => {});

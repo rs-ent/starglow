@@ -33,6 +33,27 @@ export async function createWallet(userId: string, provider: string | null) {
                         id: starglowWallet.id,
                     },
                 });
+
+                const player = await prisma.player.findUnique({
+                    cacheStrategy: getCacheStrategy("sevenDays"),
+                    where: { userId },
+                    select: { id: true },
+                });
+
+                if (!player) {
+                    return {
+                        success: false,
+                        error: "Player not found",
+                    };
+                }
+
+                await prisma.userNotification.deleteMany({
+                    where: {
+                        playerId: player.id,
+                        entityType: "wallet",
+                        entityId: starglowWallet.address,
+                    },
+                });
             }
         }
 
