@@ -91,6 +91,43 @@ export function useUpdatePlayerSettingsMutation() {
 
     return useMutation({
         mutationFn: updatePlayerSettings,
+        onMutate: async (variables) => {
+            if (!variables?.playerId) return;
+
+            await queryClient.cancelQueries({
+                queryKey: playerKeys.profile(variables.playerId),
+            });
+
+            const previousProfile = queryClient.getQueryData(
+                playerKeys.profile(variables.playerId)
+            );
+
+            queryClient.setQueryData(
+                playerKeys.profile(variables.playerId),
+                (old: any) => {
+                    if (!old) return old;
+                    return {
+                        ...old,
+                        ...(variables.nickname !== undefined && {
+                            name: variables.nickname,
+                        }),
+                        ...(variables.image !== undefined && {
+                            image: variables.image,
+                        }),
+                    };
+                }
+            );
+
+            return { previousProfile };
+        },
+        onError: (err, variables, context) => {
+            if (context?.previousProfile && variables?.playerId) {
+                queryClient.setQueryData(
+                    playerKeys.profile(variables.playerId),
+                    context.previousProfile
+                );
+            }
+        },
         onSuccess: (_data, variables) => {
             if (variables?.playerId) {
                 invalidatePlayerQueries(

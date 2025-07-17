@@ -12,31 +12,26 @@ import { useToast } from "@/app/hooks/useToast";
 import FileUploader from "@/components/atoms/FileUploader";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-
-import type { Player } from "@prisma/client";
-import type { User } from "next-auth";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 
 interface UserSettingsProfileProps {
-    player: Player;
-    user: User;
     showNickname?: boolean;
     showImage?: boolean;
 }
 
 export default function UserSettingsProfile({
-    player,
-    user,
     showNickname = true,
     showImage = true,
 }: UserSettingsProfileProps) {
     const toast = useToast();
+    const { data: session } = useSession();
     const { updatePlayerSettings, isUpdatePlayerSettingsPending } =
         usePlayerSet();
 
     const { playerProfile, refetchPlayerProfile } = usePlayerGet({
         getPlayerProfileInput: {
-            playerId: player.id,
+            playerId: session?.player?.id || "",
         },
     });
 
@@ -44,14 +39,12 @@ export default function UserSettingsProfile({
         return {
             initialNickname:
                 playerProfile?.name ||
-                player.nickname ||
-                user.name ||
-                user.email ||
+                session?.user.name ||
+                session?.user.email ||
                 "",
-            initialImage:
-                playerProfile?.image || player.image || user.image || "",
+            initialImage: playerProfile?.image || session?.user.image || "",
         };
-    }, [playerProfile, player, user]);
+    }, [playerProfile, session]);
 
     const [nickname, setNickname] = useState(initialNickname);
     const [image, setImage] = useState(initialImage);
@@ -59,7 +52,7 @@ export default function UserSettingsProfile({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const result = await updatePlayerSettings({
-            playerId: player.id,
+            playerId: session?.player?.id || "",
             nickname,
             image,
         });
@@ -68,7 +61,7 @@ export default function UserSettingsProfile({
         } else {
             toast.success("Successfully updated!");
             refetchPlayerProfile().catch((error) => {
-                console.error("Error refetching player image:", error);
+                console.error("Error refetching player profile:", error);
             });
         }
     };

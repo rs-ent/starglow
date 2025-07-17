@@ -70,7 +70,6 @@ export default function AdminUsersDashboardMonthlyData({
         if (selectedYear && selectedMonth) {
             setSelectedYearState(selectedYear);
             setSelectedMonthState(selectedMonth);
-            // 자동으로 데이터도 fetch
             handleFetchMonthlyData().catch((error) => {
                 console.error("Failed to fetch monthly data:", error);
             });

@@ -10,20 +10,13 @@ import { cn } from "@/lib/utils/tailwind";
 import UserSettingsProfile from "./User.Settings.Profile";
 import EnhancedPortal from "../atoms/Portal.Enhanced";
 
-import type { Player } from "@prisma/client";
-import type { User } from "next-auth";
-
 interface UserSettingsProfileModalProps {
-    player: Player;
-    user: User;
     showNickname?: boolean;
     showImage?: boolean;
     onClose: () => void;
 }
 
 export default function UserSettingsProfileModal({
-    player,
-    user,
     showNickname = true,
     showImage = true,
     onClose,
@@ -81,8 +74,6 @@ export default function UserSettingsProfileModal({
                         {/* Modal Content */}
                         <div className="p-6">
                             <UserSettingsProfile
-                                player={player}
-                                user={user}
                                 showNickname={showNickname}
                                 showImage={showImage}
                             />

@@ -11,32 +11,33 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
 import UserSettingsProfileModal from "../user/User.Settings.Profile.Modal";
-
-import type { Player } from "@prisma/client";
-import type { User } from "next-auth";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 
 import { useUserGet } from "@/app/hooks/useUser";
+import { usePlayerGet } from "@/app/hooks/usePlayer";
 
 interface ProfileNameProps {
-    user: User;
-    player: Player;
     size?: number;
 }
 
 export default React.memo(function ProfileName({
-    user,
-    player,
     size = 25,
 }: ProfileNameProps) {
     const [showUserSettings, setShowUserSettings] = useState(false);
+    const { data: session } = useSession();
+    const { playerProfile } = usePlayerGet({
+        getPlayerProfileInput: {
+            playerId: session?.player?.id || "",
+        },
+    });
 
     const { provider } = useUserGet({
-        getUserProviderInput: { userId: user.id || "" },
+        getUserProviderInput: { userId: session?.user.id || "" },
     });
 
     const { providerId, icon, color, nickname } = useMemo(() => {
-        const nickname = player?.nickname || user?.name || user?.email || "";
+        const nickname = playerProfile?.name || "";
         if (!provider || !provider.provider)
             return { icon: null, color: null, nickname };
 
@@ -47,7 +48,7 @@ export default React.memo(function ProfileName({
 
         const { icon, color } = getProviderIdentity(providerId);
         return { providerId, icon, color, nickname };
-    }, [player?.nickname, user, provider]);
+    }, [playerProfile?.name, provider]);
 
     const { textClass, frameClass, iconClass } = useMemo(() => {
         const normalizedSize = Math.round(size / 5) * 5;
@@ -65,8 +66,6 @@ export default React.memo(function ProfileName({
         <>
             {showUserSettings && (
                 <UserSettingsProfileModal
-                    player={player}
-                    user={user}
                     showNickname={true}
                     showImage={false}
                     onClose={() => setShowUserSettings(false)}

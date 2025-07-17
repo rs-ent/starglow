@@ -11,29 +11,29 @@ import { cn } from "@/lib/utils/tailwind";
 
 import UserSettingsProfileModal from "../user/User.Settings.Profile.Modal";
 
-import type { Player } from "@prisma/client";
-import type { User } from "next-auth";
 import Image from "next/image";
+import { usePlayerGet } from "@/app/hooks/usePlayer";
+import { useSession } from "next-auth/react";
 
 interface ProfileImageProps {
-    user: User;
-    player: Player;
     className?: string;
     size?: number;
 }
 
 export default React.memo(function ProfileImage({
-    user,
-    player,
     className,
     size = 60,
 }: ProfileImageProps) {
     const [showUserSettings, setShowUserSettings] = useState(false);
+    const { data: session } = useSession();
 
-    const image = player?.image || user?.image || "";
+    const { playerProfile } = usePlayerGet({
+        getPlayerProfileInput: {
+            playerId: session?.player?.id || "",
+        },
+    });
 
     const { frameSize, cameraSize } = useMemo(() => {
-        // Ensure all sizes are multiples of 5
         const normalizedSize = Math.round(size / 5) * 5;
         const cameraSizeRaw = Math.floor(normalizedSize / 2);
         const normalizedCameraSize = Math.max(
@@ -51,8 +51,6 @@ export default React.memo(function ProfileImage({
         <>
             {showUserSettings && (
                 <UserSettingsProfileModal
-                    player={player}
-                    user={user}
                     showNickname={false}
                     showImage={true}
                     onClose={() => setShowUserSettings(false)}
@@ -108,15 +106,15 @@ export default React.memo(function ProfileImage({
                 </motion.div>
 
                 {/* Profile Image */}
-                {image ? (
+                {playerProfile?.image ? (
                     <Image
-                        src={image}
+                        src={playerProfile.image}
                         alt="Profile"
                         width={size * 2}
                         height={size * 2}
                         className="w-full h-full object-cover -z-10"
                         priority={false}
-                        unoptimized={image.startsWith("http")}
+                        unoptimized={playerProfile.image.startsWith("http")}
                     />
                 ) : (
                     <DefaultProfileImageSvg opacity={0.9} scale={1.1} />

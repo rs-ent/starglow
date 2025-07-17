@@ -50,7 +50,7 @@ export interface GetOnchainRafflesResult {
 }
 
 export async function getOnchainRaffles(
-    input: GetOnchainRafflesInput = {}
+    input?: GetOnchainRafflesInput
 ): Promise<GetOnchainRafflesResult> {
     if (!input) {
         return {
@@ -83,7 +83,7 @@ export async function getOnchainRaffles(
 
         const [raffles, total] = await Promise.all([
             prisma.onchainRaffle.findMany({
-                cacheStrategy: getCacheStrategy("oneHour"),
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
                 where,
                 select: {
                     id: true,
@@ -110,7 +110,7 @@ export async function getOnchainRaffles(
                 },
             }),
             prisma.onchainRaffle.count({
-                cacheStrategy: getCacheStrategy("oneHour"),
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
                 where,
             }),
         ]);
@@ -203,12 +203,20 @@ export interface GetRaffleFromContractResult {
 }
 
 export async function getRaffleFromContract(
-    input: GetRaffleFromContractInput
+    input?: GetRaffleFromContractInput
 ): Promise<GetRaffleFromContractResult> {
+    if (!input) {
+        return {
+            success: false,
+            error: "Input is required",
+        };
+    }
+
     try {
         const { contractAddress, raffleId, dataKeys = ["status"] } = input;
 
         const dbRaffle = await prisma.onchainRaffle.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: {
                 contractAddress_raffleId: { contractAddress, raffleId },
             },
@@ -359,8 +367,14 @@ export interface GetRaffleStatusInput {
 }
 
 export async function getRaffleStatusFromContract(
-    input: GetRaffleStatusInput
+    input?: GetRaffleStatusInput
 ): Promise<GetRaffleFromContractResult> {
+    if (!input) {
+        return {
+            success: false,
+            error: "Input is required",
+        };
+    }
     return getRaffleFromContract({
         ...input,
         dataKeys: ["status"],
@@ -407,8 +421,14 @@ export interface GetRaffleListResult {
 }
 
 export async function getRaffleListFromContract(
-    input: GetRaffleListInput
+    input?: GetRaffleListInput
 ): Promise<GetRaffleListResult> {
+    if (!input) {
+        return {
+            success: false,
+            error: "Input is required",
+        };
+    }
     try {
         const { raffles } = input;
 
@@ -417,6 +437,7 @@ export async function getRaffleListFromContract(
         }
 
         const dbRaffle = await prisma.onchainRaffle.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: {
                 contractAddress_raffleId: {
                     contractAddress: raffles[0].contractAddress,
@@ -536,8 +557,14 @@ export async function getRaffleListFromContract(
 }
 
 export async function getRaffleListStatusFromContract(
-    input: GetRaffleListInput
+    input?: GetRaffleListInput
 ): Promise<GetRaffleListResult> {
+    if (!input) {
+        return {
+            success: false,
+            error: "Input is required",
+        };
+    }
     try {
         const { raffles } = input;
 
@@ -546,6 +573,7 @@ export async function getRaffleListStatusFromContract(
         }
 
         const dbRaffle = await prisma.onchainRaffle.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: {
                 contractAddress_raffleId: {
                     contractAddress: raffles[0].contractAddress,
@@ -665,12 +693,19 @@ export interface GetUserParticipationResult {
 }
 
 export async function getUserParticipation(
-    input: GetUserParticipationInput
+    input?: GetUserParticipationInput
 ): Promise<GetUserParticipationResult> {
+    if (!input) {
+        return {
+            success: false,
+            error: "Input is required",
+        };
+    }
     try {
         const { contractAddress, raffleId, playerId } = input;
 
         const player = (await prisma.player.findUnique({
+            cacheStrategy: getCacheStrategy("oneHour"),
             where: {
                 id: playerId,
             },
@@ -706,6 +741,7 @@ export async function getUserParticipation(
         const playerWallet = player.user.wallets[0].address;
 
         const dbRaffle = await prisma.onchainRaffle.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: {
                 contractAddress_raffleId: {
                     contractAddress,
@@ -838,13 +874,20 @@ export interface GetLotteryResultResult {
 }
 
 export async function getLotteryResult(
-    input: GetLotteryResultInput
+    input?: GetLotteryResultInput
 ): Promise<GetLotteryResultResult> {
+    if (!input) {
+        return {
+            success: false,
+            error: "Input is required",
+        };
+    }
     try {
         const { contractAddress, resultId } = input;
 
         // DB에서 네트워크 정보 조회 (컨트랙트 주소로)
         const dbRaffle = await prisma.onchainRaffle.findFirst({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: {
                 contractAddress,
             },

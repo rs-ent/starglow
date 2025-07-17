@@ -884,7 +884,7 @@ export async function getPlayerProfile(
 
     try {
         const player = await prisma.player.findUnique({
-            cacheStrategy: getCacheStrategy("tenSeconds"),
+            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: input.playerId },
             select: {
                 nickname: true,
