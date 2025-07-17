@@ -1778,7 +1778,7 @@ export async function settleBettingPoll(
                 };
             },
             {
-                timeout: 120000, // 120초 타임아웃 설정 (대용량 정산 대응)
+                timeout: 90000, // 90초 타임아웃 설정 (Accelerate 최대 제한)
             }
         );
 

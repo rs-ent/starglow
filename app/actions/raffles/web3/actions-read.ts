@@ -804,3 +804,164 @@ export async function getUserParticipation(
         };
     }
 }
+
+export interface GetLotteryResultInput {
+    contractAddress: string;
+    resultId: string;
+}
+
+export interface LotteryResultData {
+    resultId: string;
+    contractAddress: string;
+    player: string;
+    raffleId: string;
+    ticketNumber: string;
+    prizeIndex: bigint;
+    claimed: boolean;
+    drawnAt: bigint;
+    claimedAt: bigint;
+    prize?: {
+        title: string;
+        description: string;
+        imageUrl: string;
+        iconUrl: string;
+        prizeType: number;
+        rarity: bigint;
+        assetId: string;
+    };
+}
+
+export interface GetLotteryResultResult {
+    success: boolean;
+    data?: LotteryResultData;
+    error?: string;
+}
+
+export async function getLotteryResult(
+    input: GetLotteryResultInput
+): Promise<GetLotteryResultResult> {
+    try {
+        const { contractAddress, resultId } = input;
+
+        // DB에서 네트워크 정보 조회 (컨트랙트 주소로)
+        const dbRaffle = await prisma.onchainRaffle.findFirst({
+            where: {
+                contractAddress,
+            },
+            select: {
+                network: {
+                    select: {
+                        id: true,
+                        name: true,
+                        chainId: true,
+                        symbol: true,
+                        rpcUrl: true,
+                        explorerUrl: true,
+                        multicallAddress: true,
+                    },
+                },
+            },
+        });
+
+        if (!dbRaffle) {
+            return {
+                success: false,
+                error: "Contract not found in database",
+            };
+        }
+
+        const publicClient = await fetchPublicClient({
+            network: dbRaffle.network,
+        });
+
+        const contract = getContract({
+            address: contractAddress as `0x${string}`,
+            abi,
+            client: publicClient,
+        });
+
+        // 컨트랙트에서 추첨 결과 조회
+        const lotteryResult = (await contract.read.getLotteryResult([
+            BigInt(resultId),
+        ])) as {
+            lotteryTicketNumber: string;
+            player: string;
+            raffleId: bigint;
+            prizeIndex: bigint;
+            drawnAt: bigint;
+            claimed: boolean;
+            claimedAt: bigint;
+        };
+
+        if (
+            !lotteryResult.player ||
+            lotteryResult.player ===
+                "0x0000000000000000000000000000000000000000"
+        ) {
+            return {
+                success: false,
+                error: "Lottery result not found",
+            };
+        }
+
+        const result: LotteryResultData = {
+            resultId,
+            contractAddress,
+            player: lotteryResult.player,
+            raffleId: lotteryResult.raffleId.toString(),
+            ticketNumber: lotteryResult.lotteryTicketNumber,
+            prizeIndex: lotteryResult.prizeIndex,
+            claimed: lotteryResult.claimed,
+            drawnAt: lotteryResult.drawnAt,
+            claimedAt: lotteryResult.claimedAt,
+        };
+
+        // 상품 정보도 함께 조회 (선택적)
+        try {
+            const raffleData = (await contract.read.getRaffle([
+                lotteryResult.raffleId,
+            ])) as {
+                prizes: Array<{
+                    title: string;
+                    description: string;
+                    imageUrl: string;
+                    iconUrl: string;
+                    prizeType: number;
+                    rarity: bigint;
+                    assetId: string;
+                }>;
+            };
+
+            const prizeIndex = Number(lotteryResult.prizeIndex);
+            if (raffleData.prizes && raffleData.prizes[prizeIndex]) {
+                const prize = raffleData.prizes[prizeIndex];
+                result.prize = {
+                    title: prize.title,
+                    description: prize.description,
+                    imageUrl: prize.imageUrl,
+                    iconUrl: prize.iconUrl,
+                    prizeType: Number(prize.prizeType),
+                    rarity: prize.rarity,
+                    assetId: prize.assetId,
+                };
+            }
+        } catch (prizeError) {
+            // 상품 정보 조회 실패해도 기본 결과는 반환
+            console.warn("Failed to fetch prize info:", prizeError);
+        }
+
+        return {
+            success: true,
+            data: result,
+        };
+    } catch (error) {
+        console.error("Error fetching lottery result:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to fetch lottery result",
+        };
+    }
+}
