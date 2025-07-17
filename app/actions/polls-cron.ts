@@ -19,7 +19,7 @@ type InternalPhase = (typeof INTERNAL_PHASES)[keyof typeof INTERNAL_PHASES];
 // 1분 cron 제한에 맞춘 설정
 const CRON_CONFIG = {
     MAX_EXECUTION_TIME: 25000, // 25초 (5초 안전 마진)
-    BATCH_SIZE: 5, // 더 작은 배치 크기
+    BATCH_SIZE: 10, // 성능 최적화: 5 → 10으로 증가
     MAX_POLLS_PER_RUN: 1, // 한 번에 하나의 폴만 처리
     TRANSACTION_TIMEOUT: 15000, // 15초 트랜잭션
 } as const;
@@ -213,10 +213,9 @@ async function processPhase1Prepare(pollId: string): Promise<CronStepResult> {
         const betAmounts = (poll.optionBetAmounts as any) || {};
         const totalCommission = poll.totalCommissionAmount || 0;
 
-        // 전체 베팅 금액 계산 (기존 로직의 정밀도 보정)
+        // 전체 베팅 금액 계산 (정수 강제)
         const totalBetAmount = Object.values(betAmounts).reduce(
-            (sum: number, amount: any) =>
-                Math.floor((sum + (amount || 0)) * 100) / 100,
+            (sum: number, amount: any) => Math.floor(sum + (amount || 0)),
             0
         );
 
@@ -260,12 +259,10 @@ async function processPhase1Prepare(pollId: string): Promise<CronStepResult> {
                 (r) => (r.actualVoteCount || r.voteCount) === maxVoteCount
             );
 
-            // 🔍 기존 로직의 승리 옵션들의 총 베팅 금액 계산 (정밀도 보정)
+            // 🔍 기존 로직의 승리 옵션들의 총 베팅 금액 계산 (정수 강제)
             const totalWinningBets = winningOptions.reduce(
                 (sum, option) =>
-                    Math.floor(
-                        (sum + (betAmounts[option.optionId] || 0)) * 100
-                    ) / 100,
+                    Math.floor(sum + (betAmounts[option.optionId] || 0)),
                 0
             );
 
@@ -283,9 +280,8 @@ async function processPhase1Prepare(pollId: string): Promise<CronStepResult> {
                 },
             });
 
-            // 🔍 기존 로직의 배당 풀 계산 (정밀도 보정)
-            const payoutPool =
-                Math.floor((totalBetAmount - totalCommission) * 100) / 100;
+            // 🔍 기존 로직의 배당 풀 계산 (정수 강제)
+            const payoutPool = Math.floor(totalBetAmount - totalCommission);
 
             settlementMetadata = {
                 currentPhase: INTERNAL_PHASES.PHASE_2_PROCESS,
@@ -444,9 +440,8 @@ async function processPhase2Process(pollId: string): Promise<CronStepResult> {
             await prisma.$transaction(
                 async (tx) => {
                     for (const bettor of allBettors) {
-                        // 🔍 기존 로직과 동일한 환불 처리 (정밀도 보정)
-                        const refundAmount =
-                            Math.floor(bettor.amount * 100) / 100;
+                        // 🔍 기존 로직과 동일한 환불 처리 (정수 강제)
+                        const refundAmount = Math.floor(bettor.amount);
 
                         const refundResult = await updatePlayerAsset(
                             {
@@ -528,12 +523,13 @@ async function processPhase2Process(pollId: string): Promise<CronStepResult> {
                 // 모든 배당 완료 - 잔여 금액 처리
                 const totalActualPayout = settlementData.totalActualPayout || 0;
                 const payoutPool = settlementData.payoutPool;
-                const remainingAmount =
-                    Math.floor((payoutPool - totalActualPayout) * 100) / 100;
+                const remainingAmount = Math.floor(
+                    payoutPool - totalActualPayout
+                );
 
                 // 🔍 기존 로직의 잔여 금액 처리
-                if (remainingAmount > 0.01) {
-                    // 1센트 이상의 잔여 금액이 있다면 가장 큰 배당을 받은 승리자에게 추가 지급
+                if (remainingAmount > 0) {
+                    // 1원 이상의 잔여 금액이 있다면 가장 큰 배당을 받은 승리자에게 추가 지급
                     const allWinners = await prisma.pollLog.findMany({
                         where: {
                             pollId,
@@ -583,7 +579,9 @@ async function processPhase2Process(pollId: string): Promise<CronStepResult> {
                 const updatedMetadata = {
                     ...settlementData,
                     currentPhase: INTERNAL_PHASES.PHASE_3_FINALIZE,
-                    totalActualPayout: totalActualPayout + remainingAmount,
+                    totalActualPayout: Math.floor(
+                        totalActualPayout + remainingAmount
+                    ),
                     remainingAmount: 0,
                     lastProcessedTime: new Date().toISOString(),
                 };
@@ -603,9 +601,9 @@ async function processPhase2Process(pollId: string): Promise<CronStepResult> {
                     success: true,
                     phase: INTERNAL_PHASES.PHASE_2_PROCESS,
                     nextPhase: INTERNAL_PHASES.PHASE_3_FINALIZE,
-                    message: `All payouts completed. Total paid: ${
+                    message: `All payouts completed. Total paid: ${Math.floor(
                         totalActualPayout + remainingAmount
-                    }, Remaining processed: ${remainingAmount}`,
+                    )}, Remaining processed: ${remainingAmount}`,
                     executionTimeMs: Date.now() - startTime,
                 };
             }
@@ -618,11 +616,11 @@ async function processPhase2Process(pollId: string): Promise<CronStepResult> {
             await prisma.$transaction(
                 async (tx) => {
                     for (const winner of winners) {
-                        // 🔍 기존 로직과 동일한 정밀한 배당 계산
+                        // 🔍 기존 로직과 동일한 정밀한 배당 계산 (정수 강제 - 버림)
                         const winnerBetAmount = winner.amount;
                         const payoutRatio = winnerBetAmount / totalWinningBets;
                         const exactPayout = payoutPool * payoutRatio;
-                        const payout = Math.floor(exactPayout * 100) / 100; // 소수점 2자리까지
+                        const payout = Math.floor(exactPayout); // 정수 버림
 
                         if (payout > 0) {
                             const payoutResult = await updatePlayerAsset(
@@ -654,7 +652,7 @@ async function processPhase2Process(pollId: string): Promise<CronStepResult> {
                                 );
                             }
 
-                            batchPayout += payout;
+                            batchPayout = Math.floor(batchPayout + payout);
                         }
                     }
                 },
@@ -667,8 +665,9 @@ async function processPhase2Process(pollId: string): Promise<CronStepResult> {
                 currentBatch: currentBatch + 1,
                 processedWinners:
                     settlementData.processedWinners + winners.length,
-                totalActualPayout:
-                    (settlementData.totalActualPayout || 0) + batchPayout,
+                totalActualPayout: Math.floor(
+                    (settlementData.totalActualPayout || 0) + batchPayout
+                ),
                 lastProcessedTime: new Date().toISOString(),
             };
 
@@ -1010,10 +1009,13 @@ async function processPhase4Notify(pollId: string): Promise<CronStepResult> {
                     const winnerBetAmount = winner.amount;
                     const payoutRatio = winnerBetAmount / totalWinningBets;
                     const exactPayout = payoutPool * payoutRatio;
-                    const payout = Math.floor(exactPayout * 100) / 100;
+                    const payout = Math.floor(exactPayout); // 정수 버림
 
                     const currentPayout = payoutMap.get(winner.playerId) || 0;
-                    payoutMap.set(winner.playerId, currentPayout + payout);
+                    payoutMap.set(
+                        winner.playerId,
+                        Math.floor(currentPayout + payout)
+                    );
                 }
 
                 // 🔔 각 베팅 참가자에게 개별 알림 전송 (기존 로직과 동일)

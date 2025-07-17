@@ -923,10 +923,9 @@ export async function participatePoll(
                     [optionId]: (currentBetAmounts[optionId] || 0) + amount,
                 };
 
-                // 수수료 계산 (정수 연산으로 정밀도 문제 해결)
-                const commissionRate = currentPoll?.houseCommissionRate || 0.05;
-                const commission =
-                    Math.floor(amount * commissionRate * 100) / 100; // 소수점 2자리까지
+                // 수수료 계산 (정수 강제 - 버림)
+                const commissionRate = currentPoll?.houseCommissionRate || 0.01;
+                const commission = Math.floor(amount * commissionRate); // 정수 버림
                 const newTotalCommission =
                     (currentPoll?.totalCommissionAmount || 0) + commission;
 
@@ -1542,18 +1541,17 @@ export async function settleBettingPoll(
                 const betAmounts = (poll.optionBetAmounts as any) || {};
                 const totalCommission = poll.totalCommissionAmount || 0;
 
-                // 전체 베팅 금액 계산 (정밀도 보정)
+                // 전체 베팅 금액 계산 (정수 강제)
                 const totalBetAmount = Object.values(betAmounts).reduce(
                     (sum: number, amount: any) =>
-                        Math.floor((sum + (amount || 0)) * 100) / 100,
+                        Math.floor(sum + (amount || 0)),
                     0
                 );
 
                 // 승리 옵션들의 총 베팅 금액 계산
                 const totalWinningBets = winningOptionIds.reduce(
                     (sum, optionId) =>
-                        Math.floor((sum + (betAmounts[optionId] || 0)) * 100) /
-                        100,
+                        Math.floor(sum + (betAmounts[optionId] || 0)),
                     0
                 );
 
@@ -1632,9 +1630,8 @@ export async function settleBettingPoll(
                     };
                 }
 
-                // 배당 풀 계산 (전체 베팅 금액 - 수수료, 정밀도 보정)
-                const payoutPool =
-                    Math.floor((totalBetAmount - totalCommission) * 100) / 100;
+                // 배당 풀 계산 (전체 베팅 금액 - 수수료, 정수 강제)
+                const payoutPool = Math.floor(totalBetAmount - totalCommission);
 
                 // 승리자들에게 배당 지급
                 const winners = await tx.pollLog.findMany({
@@ -1658,11 +1655,11 @@ export async function settleBettingPoll(
                 }> = [];
 
                 for (const winner of winners) {
-                    // 개별 승리자의 배당 비율 계산 (정밀도 보정)
+                    // 개별 승리자의 배당 비율 계산 (정수 강제 - 버림)
                     const winnerBetAmount = winner.amount;
                     const payoutRatio = winnerBetAmount / totalWinningBets;
                     const exactPayout = payoutPool * payoutRatio;
-                    const payout = Math.floor(exactPayout * 100) / 100; // 소수점 2자리까지
+                    const payout = Math.floor(exactPayout); // 정수 버림
 
                     if (payout > 0) {
                         // updatePlayerAsset 함수 사용으로 안전한 배당 지급 (성능 최적화: 로그 스킵)
@@ -1695,7 +1692,9 @@ export async function settleBettingPoll(
                             );
                         }
 
-                        totalActualPayout += payout;
+                        totalActualPayout = Math.floor(
+                            totalActualPayout + payout
+                        );
                         payoutDetails.push({
                             playerId: winner.playerId,
                             amount: payout,
@@ -1703,11 +1702,12 @@ export async function settleBettingPoll(
                     }
                 }
 
-                // 잔여 금액 처리 (소수점 오차로 인한)
-                const remainingAmount =
-                    Math.floor((payoutPool - totalActualPayout) * 100) / 100;
-                if (remainingAmount > 0.01) {
-                    // 1센트 이상의 잔여 금액이 있다면
+                // 잔여 금액 처리 (정수 강제)
+                const remainingAmount = Math.floor(
+                    payoutPool - totalActualPayout
+                );
+                if (remainingAmount > 0) {
+                    // 1원 이상의 잔여 금액이 있다면
                     // 가장 큰 배당을 받은 승리자에게 추가 지급
                     const topWinner = payoutDetails.reduce((prev, current) =>
                         prev.amount > current.amount ? prev : current
