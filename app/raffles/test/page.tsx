@@ -1,7 +1,7 @@
 /// app/raffles/test/page.tsx
 
 import { Suspense } from "react";
-import RafflesList from "@/components/raffles/Raffles.List";
+import Raffles from "@/components/raffles/web3/Raffles";
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 import type { Metadata } from "next";
 
@@ -28,7 +28,7 @@ function RafflesLoading() {
 }
 
 async function RafflesContent() {
-    return <RafflesList />;
+    return <Raffles />;
 }
 
 export default function RafflesEntryPage() {
