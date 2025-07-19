@@ -149,10 +149,11 @@ export default memo(function RaffleOnchainParticipation({
         participationCount >= participationLimit;
 
     const canParticipate = useMemo(() => {
-        const hasEnoughBalance = feeData?.participationFeeAmount
-            ? Number(feeData.participationFeeAmount) <=
-              (playerAsset?.data?.balance || 0)
-            : true;
+        const feeAmount = feeData?.participationFeeAmount;
+        const hasEnoughBalance =
+            feeAmount != null && Number(feeAmount) > 0
+                ? Number(feeAmount) <= (playerAsset?.data?.balance || 0)
+                : true;
 
         return (
             isLive && (!hasParticipated || !hasReachedLimit) && hasEnoughBalance
@@ -555,7 +556,7 @@ export default memo(function RaffleOnchainParticipation({
                 </motion.div>
 
                 <div className="space-y-4 mb-6">
-                    {feeData?.participationFeeAmount &&
+                    {feeData?.participationFeeAmount != null &&
                         Number(feeData.participationFeeAmount) > 0 && (
                             <motion.div
                                 variants={itemVariants}
@@ -623,7 +624,8 @@ export default memo(function RaffleOnchainParticipation({
                                                 )}
                                                 <span>
                                                     {`${Number(
-                                                        feeData.participationFeeAmount
+                                                        feeData.participationFeeAmount ||
+                                                            0
                                                     ).toLocaleString()} ${
                                                         entryFeeAsset.symbol ||
                                                         "tokens"
@@ -632,7 +634,8 @@ export default memo(function RaffleOnchainParticipation({
                                             </div>
                                         ) : (
                                             `${Number(
-                                                feeData.participationFeeAmount
+                                                feeData.participationFeeAmount ||
+                                                    0
                                             ).toLocaleString()} tokens`
                                         )}
                                     </div>

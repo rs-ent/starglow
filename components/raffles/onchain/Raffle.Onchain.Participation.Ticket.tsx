@@ -137,470 +137,364 @@ export default memo(function RaffleOnchainParticipationTicket({
         ticketData.ticketNumber ||
         generateLotteryNumber(ticketData.txHash);
 
+    if (!isVisible) return null;
+
     return (
-        <AnimatePresence>
-            {isVisible && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className={cn(
-                        "fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center",
-                        smallPadding.paddingClass
-                    )}
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="relative max-w-lg w-full mx-auto max-h-[800px] h-full overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <button
                     onClick={onClose}
+                    className="absolute top-4 right-4 z-20 rounded-full bg-black/70 hover:bg-black/90 transition-colors p-3"
                 >
-                    <motion.div
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.5, opacity: 0 }}
-                        transition={{
-                            type: "spring",
-                            damping: 20,
-                            stiffness: 300,
-                        }}
-                        className="relative max-w-lg w-full mx-auto max-h-[800px] h-full overflow-y-auto"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={onClose}
-                            className={cn(
-                                "absolute top-4 right-4 z-20 rounded-full bg-black/70 hover:bg-black/90 transition-colors",
-                                smallPadding.paddingClass
-                            )}
+                    <X className="w-5 h-5 text-white" />
+                </button>
+
+                <div
+                    className="relative bg-gradient-to-b from-slate-900 via-slate-800 to-cyan-900 overflow-hidden border border-cyan-400/30"
+                    style={{
+                        width: "100%",
+                        minHeight: "600px",
+                        clipPath: `polygon(
+                            0% 0%, 
+                            calc(100% - 20px) 0%, 
+                            100% 20px, 
+                            100% calc(100% - 20px), 
+                            calc(100% - 20px) 100%, 
+                            20px 100%, 
+                            0% calc(100% - 20px), 
+                            0% 20px
+                        )`,
+                        boxShadow: `
+                            inset 0 0 50px rgba(34, 211, 238, 0.1),
+                            0 0 30px rgba(34, 211, 238, 0.2),
+                            0 0 60px rgba(34, 211, 238, 0.1)
+                        `,
+                    }}
+                >
+                    <div className="absolute inset-0">
+                        {/* Top perforated edge */}
+                        <div className="absolute top-0 left-0 right-0 h-2 flex justify-center">
+                            {[...Array(25)].map((_, i) => (
+                                <div
+                                    key={`top-${i}`}
+                                    className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse mx-1"
+                                    style={{
+                                        boxShadow:
+                                            "0 0 4px rgba(34, 211, 238, 0.8)",
+                                        animationDelay: `${i * 50}ms`,
+                                    }}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Bottom perforated edge */}
+                        <div className="absolute bottom-0 left-0 right-0 h-2 flex justify-center">
+                            {[...Array(25)].map((_, i) => (
+                                <div
+                                    key={`bottom-${i}`}
+                                    className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse mx-1"
+                                    style={{
+                                        boxShadow:
+                                            "0 0 4px rgba(34, 211, 238, 0.8)",
+                                        animationDelay: `${i * 50}ms`,
+                                    }}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Middle divider */}
+                        <div
+                            className="absolute left-0 right-0"
+                            style={{ top: "65%" }}
                         >
-                            <X
-                                className={cn(
-                                    "text-white",
-                                    getResponsiveClass(20).frameClass
-                                )}
-                            />
-                        </motion.button>
+                            <div className="flex justify-center">
+                                {[...Array(30)].map((_, i) => (
+                                    <div
+                                        key={`divider-${i}`}
+                                        className="w-1 h-1 bg-cyan-400 rounded-full animate-pulse mx-1"
+                                        style={{
+                                            boxShadow:
+                                                "0 0 2px rgba(34, 211, 238, 0.6)",
+                                            animationDelay: `${i * 30}ms`,
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Grid pattern overlay */}
+                    <div className="absolute inset-0 opacity-10">
+                        <div
+                            className="w-full h-full"
+                            style={{
+                                backgroundImage: `
+                                    linear-gradient(90deg, rgba(34, 211, 238, 0.3) 1px, transparent 1px),
+                                    linear-gradient(180deg, rgba(34, 211, 238, 0.3) 1px, transparent 1px)
+                                `,
+                                backgroundSize: "20px 20px",
+                            }}
+                        />
+                    </div>
+
+                    {/* Diagonal lines */}
+                    <div className="absolute inset-0 opacity-5">
+                        <div
+                            className="w-full h-full"
+                            style={{
+                                backgroundImage: `repeating-linear-gradient(
+                                45deg,
+                                transparent,
+                                transparent 10px,
+                                #22d3ee 10px,
+                                #22d3ee 20px
+                            )`,
+                            }}
+                        />
+                    </div>
+
+                    <div className="relative z-10 h-full flex flex-col p-8">
+                        <div className="text-center mb-6">
+                            <div className="p-4 mb-4 flex flex-col">
+                                <div
+                                    className="text-xs font-bold text-cyan-300 tracking-widest"
+                                    style={{
+                                        textShadow:
+                                            "0 0 10px rgba(34, 211, 238, 0.8)",
+                                    }}
+                                >
+                                    ★ RAFFLE LOTTERY TICKET ★
+                                </div>
+                                <div
+                                    className="text-3xl font-bold text-cyan-100 break-words font-mono"
+                                    style={{
+                                        textShadow:
+                                            "0 0 15px rgba(34, 211, 238, 0.6)",
+                                    }}
+                                >
+                                    {ticketData.raffleTitle}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 grid grid-cols-2 gap-6 mb-6">
+                            <div className="space-y-2">
+                                <div>
+                                    <div className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                                        Date
+                                    </div>
+                                    <div
+                                        className="text-lg font-black text-cyan-100 font-mono"
+                                        style={{
+                                            textShadow:
+                                                "0 0 8px rgba(34, 211, 238, 0.5)",
+                                        }}
+                                    >
+                                        {formatDate(ticketData.participatedAt)}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                                        Time
+                                    </div>
+                                    <div
+                                        className="text-lg font-black text-cyan-100 font-mono"
+                                        style={{
+                                            textShadow:
+                                                "0 0 8px rgba(34, 211, 238, 0.5)",
+                                        }}
+                                    >
+                                        {formatTime(ticketData.participatedAt)}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                                        Entry Fee
+                                    </div>
+                                    <div
+                                        className="text-lg font-black text-cyan-100 font-mono"
+                                        style={{
+                                            textShadow:
+                                                "0 0 8px rgba(34, 211, 238, 0.5)",
+                                        }}
+                                    >
+                                        {ticketData.entryFeePaid.toLocaleString()}{" "}
+                                        {ticketData.entryFeeAsset?.symbol ||
+                                            "TOKENS"}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div>
+                                    <div className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                                        Participant
+                                    </div>
+                                    <div
+                                        className="text-lg font-black text-cyan-100 font-mono"
+                                        style={{
+                                            textShadow:
+                                                "0 0 8px rgba(34, 211, 238, 0.5)",
+                                        }}
+                                    >
+                                        #
+                                        {ticketData.participantId
+                                            .toString()
+                                            .padStart(4, "0")}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                                        Seat
+                                    </div>
+                                    <div
+                                        className="text-lg font-black text-cyan-100 font-mono"
+                                        style={{
+                                            textShadow:
+                                                "0 0 8px rgba(34, 211, 238, 0.5)",
+                                        }}
+                                    >
+                                        {hasInstantPrize
+                                            ? "INSTANT"
+                                            : "GENERAL"}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                                        Row
+                                    </div>
+                                    <div
+                                        className="text-lg font-black text-cyan-100 font-mono"
+                                        style={{
+                                            textShadow:
+                                                "0 0 8px rgba(34, 211, 238, 0.5)",
+                                        }}
+                                    >
+                                        BERACHAIN
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="text-center mb-6">
+                            <div
+                                className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2"
+                                style={{
+                                    textShadow:
+                                        "0 0 15px rgba(34, 211, 238, 0.8)",
+                                }}
+                            >
+                                ★ LOTTERY NUMBER ★
+                            </div>
+                            <div
+                                className="text-5xl font-black text-cyan-100 tracking-wider font-mono bg-slate-800/70 border-2 border-cyan-400 border-dashed p-4"
+                                style={{
+                                    textShadow:
+                                        "0 0 20px rgba(34, 211, 238, 0.9)",
+                                    boxShadow:
+                                        "inset 0 0 20px rgba(34, 211, 238, 0.2), 0 0 25px rgba(34, 211, 238, 0.3)",
+                                }}
+                            >
+                                {ticketNumber}
+                            </div>
+                        </div>
 
                         <div
-                            className="relative bg-gradient-to-b from-slate-900 via-slate-800 to-cyan-900 overflow-hidden border border-cyan-400/30"
+                            className="border-t-2 border-cyan-400/60 border-dashed py-3 mt-auto"
                             style={{
-                                width: "100%",
-                                minHeight: "600px",
-                                clipPath: `polygon(
-                                    0% 0%, 
-                                    calc(100% - 20px) 0%, 
-                                    100% 20px, 
-                                    100% calc(100% - 20px), 
-                                    calc(100% - 20px) 100%, 
-                                    20px 100%, 
-                                    0% calc(100% - 20px), 
-                                    0% 20px
-                                )`,
-                                boxShadow: `
-                                    inset 0 0 50px rgba(34, 211, 238, 0.1),
-                                    0 0 30px rgba(34, 211, 238, 0.2),
-                                    0 0 60px rgba(34, 211, 238, 0.1)
-                                `,
+                                boxShadow:
+                                    "0 -2px 10px rgba(34, 211, 238, 0.2)",
                             }}
                         >
-                            <div className="absolute inset-0">
-                                {/* Top perforated edge - now glowing */}
-                                <div className="absolute top-0 left-0 right-0 h-2 flex justify-center">
-                                    {[...Array(25)].map((_, i) => (
+                            <div className="mb-4 flex flex-col items-center justify-center text-center gap-2">
+                                <div className="flex flex-row justify-between items-end gap-2 w-full">
+                                    <div className="flex flex-col items-start text-left">
                                         <div
-                                            key={`top-${i}`}
-                                            className={cn(
-                                                "w-2 h-2 bg-cyan-400 rounded-full animate-pulse",
-                                                smallMargin.marginXClass
-                                            )}
+                                            className="text-xs font-black text-cyan-100 font-mono"
                                             style={{
-                                                boxShadow:
-                                                    "0 0 4px rgba(34, 211, 238, 0.8)",
-                                                animationDelay: `${i * 50}ms`,
+                                                textShadow:
+                                                    "0 0 8px rgba(34, 211, 238, 0.6)",
                                             }}
-                                        />
-                                    ))}
-                                </div>
-
-                                {/* Bottom perforated edge - now glowing */}
-                                <div className="absolute bottom-0 left-0 right-0 h-2 flex justify-center">
-                                    {[...Array(25)].map((_, i) => (
-                                        <div
-                                            key={`bottom-${i}`}
-                                            className={cn(
-                                                "w-2 h-2 bg-cyan-400 rounded-full animate-pulse",
-                                                smallMargin.marginXClass
-                                            )}
-                                            style={{
-                                                boxShadow:
-                                                    "0 0 4px rgba(34, 211, 238, 0.8)",
-                                                animationDelay: `${i * 50}ms`,
-                                            }}
-                                        />
-                                    ))}
-                                </div>
-
-                                {/* Middle divider - now glowing */}
-                                <div
-                                    className="absolute left-0 right-0"
-                                    style={{ top: "65%" }}
-                                >
-                                    <div className="flex justify-center">
-                                        {[...Array(30)].map((_, i) => (
+                                        >
+                                            Ticket
+                                            <br />#{ticketNumber}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-end justify-center gap-px overflow-hidden rounded">
+                                        {generateBarcodeFromHash(
+                                            ticketData.txHash
+                                        ).map((bar, index) => (
                                             <div
-                                                key={`divider-${i}`}
-                                                className={cn(
-                                                    "w-1 h-1 bg-cyan-400 rounded-full animate-pulse",
-                                                    smallMargin.marginXClass
-                                                )}
+                                                key={index}
+                                                className="bg-white"
                                                 style={{
+                                                    height: `${bar.height}px`,
+                                                    width: `${bar.width}px`,
+                                                    minWidth: "1px",
                                                     boxShadow:
-                                                        "0 0 2px rgba(34, 211, 238, 0.6)",
-                                                    animationDelay: `${
-                                                        i * 30
-                                                    }ms`,
+                                                        "0 0 3px rgba(34, 211, 238, 0.8)",
                                                 }}
                                             />
                                         ))}
                                     </div>
                                 </div>
-                            </div>
-
-                            {/* Space station grid pattern overlay */}
-                            <div className="absolute inset-0 opacity-10">
                                 <div
-                                    className="w-full h-full"
+                                    className="text-xs font-black text-cyan-100 tracking-wider font-mono bg-slate-800/70 border border-cyan-400 border-dashed w-full text-center truncate cursor-pointer p-2"
+                                    onClick={handleCopyTxHash}
                                     style={{
-                                        backgroundImage: `
-                                            linear-gradient(90deg, rgba(34, 211, 238, 0.3) 1px, transparent 1px),
-                                            linear-gradient(180deg, rgba(34, 211, 238, 0.3) 1px, transparent 1px)
-                                        `,
-                                        backgroundSize: "20px 20px",
+                                        textShadow:
+                                            "0 0 8px rgba(34, 211, 238, 0.6)",
+                                        boxShadow:
+                                            "inset 0 0 10px rgba(34, 211, 238, 0.2)",
                                     }}
-                                />
-                            </div>
-
-                            {/* Holographic diagonal lines */}
-                            <div className="absolute inset-0 opacity-5">
-                                <div
-                                    className="w-full h-full"
-                                    style={{
-                                        backgroundImage: `repeating-linear-gradient(
-                                        45deg,
-                                        transparent,
-                                        transparent 10px,
-                                        #22d3ee 10px,
-                                        #22d3ee 20px
-                                    )`,
-                                    }}
-                                />
+                                >
+                                    {ticketData.txHash}
+                                </div>
                             </div>
 
                             <div
-                                className={cn(
-                                    "relative z-10 h-full flex flex-col",
-                                    largePadding.paddingClass
-                                )}
+                                className="flex flex-col justify-between items-center gap-3 w-full border-t-2 border-cyan-400/60 border-dashed pt-3"
+                                style={{
+                                    boxShadow:
+                                        "0 -1px 5px rgba(34, 211, 238, 0.2)",
+                                }}
                             >
-                                <div
-                                    className={cn(
-                                        "text-center",
-                                        mediumMargin.marginYClass
-                                    )}
-                                >
-                                    <motion.div
-                                        initial={{ scale: 0 }}
-                                        animate={{ scale: 1 }}
-                                        transition={{ delay: 0.2 }}
-                                        className={cn(
-                                            smallPadding.paddingClass,
-                                            smallMargin.marginYClass,
-                                            "flex flex-col"
-                                        )}
-                                    >
-                                        <div
-                                            className={cn(
-                                                "font-bold text-cyan-300 tracking-widest",
-                                                smallText.textClass
-                                            )}
-                                            style={{
-                                                textShadow:
-                                                    "0 0 10px rgba(34, 211, 238, 0.8)",
-                                            }}
-                                        >
-                                            ★ RAFFLE LOTTERY TICKET ★
-                                        </div>
-                                        <div
-                                            className={cn(
-                                                "font-bold text-cyan-100 break-words font-mono",
-                                                xlText.textClass
-                                            )}
-                                            style={{
-                                                textShadow:
-                                                    "0 0 15px rgba(34, 211, 238, 0.6)",
-                                            }}
-                                        >
-                                            {ticketData.raffleTitle}
-                                        </div>
-                                    </motion.div>
-                                </div>
-
-                                <div
-                                    className={cn(
-                                        "flex-1 grid grid-cols-2",
-                                        mediumGap.gapClass,
-                                        mediumMargin.marginYClass
-                                    )}
-                                >
-                                    <div className={"space-y-2"}>
-                                        <div>
-                                            <div
-                                                className={cn(
-                                                    "font-bold text-cyan-400 uppercase tracking-wider",
-                                                    smallText.textClass
-                                                )}
-                                            >
-                                                Date
-                                            </div>
-                                            <div
-                                                className={cn(
-                                                    "font-black text-cyan-100 font-mono  ",
-                                                    mediumText.textClass
-                                                )}
-                                                style={{
-                                                    textShadow:
-                                                        "0 0 8px rgba(34, 211, 238, 0.5)",
-                                                }}
-                                            >
-                                                {formatDate(
-                                                    ticketData.participatedAt
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div
-                                                className={cn(
-                                                    "font-bold text-cyan-400 uppercase tracking-wider",
-                                                    smallText.textClass
-                                                )}
-                                            >
-                                                Time
-                                            </div>
-                                            <div
-                                                className={cn(
-                                                    "font-black text-cyan-100 font-mono",
-                                                    mediumText.textClass
-                                                )}
-                                                style={{
-                                                    textShadow:
-                                                        "0 0 8px rgba(34, 211, 238, 0.5)",
-                                                }}
-                                            >
-                                                {formatTime(
-                                                    ticketData.participatedAt
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div
-                                                className={cn(
-                                                    "font-bold text-cyan-400 uppercase tracking-wider",
-                                                    smallText.textClass
-                                                )}
-                                            >
-                                                Entry Fee
-                                            </div>
-                                            <div
-                                                className={cn(
-                                                    "font-black text-cyan-100 font-mono",
-                                                    mediumText.textClass
-                                                )}
-                                                style={{
-                                                    textShadow:
-                                                        "0 0 8px rgba(34, 211, 238, 0.5)",
-                                                }}
-                                            >
-                                                {ticketData.entryFeePaid.toLocaleString()}{" "}
-                                                {ticketData.entryFeeAsset
-                                                    ?.symbol || "TOKENS"}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className={"space-y-2"}>
-                                        <div>
-                                            <div
-                                                className={cn(
-                                                    "font-bold text-cyan-400 uppercase tracking-wider",
-                                                    smallText.textClass
-                                                )}
-                                            >
-                                                Participant
-                                            </div>
-                                            <div
-                                                className={cn(
-                                                    "font-black text-cyan-100 font-mono",
-                                                    mediumText.textClass
-                                                )}
-                                                style={{
-                                                    textShadow:
-                                                        "0 0 8px rgba(34, 211, 238, 0.5)",
-                                                }}
-                                            >
-                                                #
-                                                {ticketData.participantId
-                                                    .toString()
-                                                    .padStart(4, "0")}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div
-                                                className={cn(
-                                                    "font-bold text-cyan-400 uppercase tracking-wider",
-                                                    smallText.textClass
-                                                )}
-                                            >
-                                                Seat
-                                            </div>
-                                            <div
-                                                className={cn(
-                                                    "font-black text-cyan-100 font-mono",
-                                                    mediumText.textClass
-                                                )}
-                                                style={{
-                                                    textShadow:
-                                                        "0 0 8px rgba(34, 211, 238, 0.5)",
-                                                }}
-                                            >
-                                                {hasInstantPrize
-                                                    ? "INSTANT"
-                                                    : "GENERAL"}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div
-                                                className={cn(
-                                                    "font-bold text-cyan-400 uppercase tracking-wider",
-                                                    smallText.textClass
-                                                )}
-                                            >
-                                                Row
-                                            </div>
-                                            <div
-                                                className={cn(
-                                                    "font-black text-cyan-100 font-mono",
-                                                    mediumText.textClass
-                                                )}
-                                                style={{
-                                                    textShadow:
-                                                        "0 0 8px rgba(34, 211, 238, 0.5)",
-                                                }}
-                                            >
-                                                BERACHAIN
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div
-                                    className={cn(
-                                        "text-center",
-                                        mediumMargin.marginYClass
-                                    )}
-                                >
-                                    <div
-                                        className={cn(
-                                            "font-bold text-cyan-300 uppercase tracking-wider",
-                                            smallText.textClass,
-                                            smallMargin.marginYClass
-                                        )}
+                                <div className="grid grid-cols-2 gap-4 w-full">
+                                    <button
+                                        onClick={handleCopyTxHash}
+                                        className="text-xs font-black text-cyan-100 tracking-wider font-mono bg-slate-800/70 border-2 border-cyan-400 border-dashed py-2 hover:bg-slate-700/70 transition-colors"
                                         style={{
                                             textShadow:
-                                                "0 0 15px rgba(34, 211, 238, 0.8)",
-                                        }}
-                                    >
-                                        ★ LOTTERY NUMBER ★
-                                    </div>
-                                    <div
-                                        className={cn(
-                                            "font-black text-cyan-100 tracking-wider font-mono bg-slate-800/70 border-2 border-cyan-400 border-dashed",
-                                            xxlText.textClass,
-                                            smallPadding.paddingClass
-                                        )}
-                                        style={{
-                                            textShadow:
-                                                "0 0 20px rgba(34, 211, 238, 0.9)",
+                                                "0 0 8px rgba(34, 211, 238, 0.6)",
                                             boxShadow:
-                                                "inset 0 0 20px rgba(34, 211, 238, 0.2), 0 0 25px rgba(34, 211, 238, 0.3)",
+                                                "inset 0 0 10px rgba(34, 211, 238, 0.2)",
                                         }}
                                     >
-                                        {ticketNumber}
-                                    </div>
-                                </div>
+                                        {copySuccess
+                                            ? "✅ Copied!"
+                                            : "COPY HASH"}
+                                    </button>
 
-                                <div
-                                    className={cn(
-                                        "border-t-2 border-cyan-400/60 border-dashed py-3 mt-auto"
-                                    )}
-                                    style={{
-                                        boxShadow:
-                                            "0 -2px 10px rgba(34, 211, 238, 0.2)",
-                                    }}
-                                >
-                                    <div
-                                        className={cn(
-                                            smallMargin.marginYClass,
-                                            "flex flex-col items-center justify-center text-center gap-2 mb-1"
-                                        )}
-                                    >
-                                        <div className="flex flex-row justify-between items-end gap-2 w-full">
-                                            <div className="flex flex-col items-start text-left">
-                                                <div
-                                                    className={cn(
-                                                        "font-black text-cyan-100 font-mono",
-                                                        smallText.textClass
-                                                    )}
-                                                    style={{
-                                                        textShadow:
-                                                            "0 0 8px rgba(34, 211, 238, 0.6)",
-                                                    }}
-                                                >
-                                                    Ticket
-                                                    <br />#{ticketNumber}
-                                                </div>
-                                            </div>
-                                            <div
-                                                className={cn(
-                                                    "flex items-end justify-center gap-px overflow-hidden rounded"
-                                                )}
-                                            >
-                                                {generateBarcodeFromHash(
-                                                    ticketData.txHash
-                                                ).map((bar, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className="bg-white"
-                                                        style={{
-                                                            height: `${bar.height}px`,
-                                                            width: `${bar.width}px`,
-                                                            minWidth: "1px",
-                                                            boxShadow:
-                                                                "0 0 3px rgba(34, 211, 238, 0.8)",
-                                                        }}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div
-                                            className={cn(
-                                                "font-black text-cyan-100 tracking-wider font-mono bg-slate-800/70 border border-cyan-400 border-dashed",
-                                                "w-full text-center truncate cursor-pointer",
-                                                smallText.textClass,
-                                                smallPadding.paddingClass
-                                            )}
-                                            onClick={handleCopyTxHash}
+                                    {ticketData.explorerUrl && (
+                                        <button
+                                            onClick={() =>
+                                                window.open(
+                                                    `https://beratrail.io/tx/${ticketData.txHash}`,
+                                                    "_blank"
+                                                )
+                                            }
+                                            className="text-xs font-black text-cyan-100 tracking-wider font-mono bg-slate-800/70 border-2 border-cyan-400 border-dashed py-2"
                                             style={{
                                                 textShadow:
                                                     "0 0 8px rgba(34, 211, 238, 0.6)",
@@ -608,117 +502,32 @@ export default memo(function RaffleOnchainParticipationTicket({
                                                     "inset 0 0 10px rgba(34, 211, 238, 0.2)",
                                             }}
                                         >
-                                            {ticketData.txHash}
-                                        </div>
-                                    </div>
+                                            EXPLORER
+                                        </button>
+                                    )}
+                                </div>
 
-                                    <div
-                                        className={cn(
-                                            "flex flex-col justify-between items-center gap-1 w-full",
-                                            "border-t-2 border-cyan-400/60 border-dashed pt-3 mt-auto"
-                                        )}
+                                {hasInstantPrize && (
+                                    <button
+                                        onClick={() => {
+                                            onInstantDraw?.();
+                                        }}
+                                        className="text-lg font-black text-cyan-100 tracking-wider font-mono bg-slate-800/70 border-2 border-cyan-400 border-dashed w-full p-6 hover:bg-slate-700/70 transition-colors"
                                         style={{
+                                            textShadow:
+                                                "0 0 15px rgba(34, 211, 238, 0.8)",
                                             boxShadow:
-                                                "0 -1px 5px rgba(34, 211, 238, 0.2)",
+                                                "inset 0 0 20px rgba(34, 211, 238, 0.3), 0 0 30px rgba(34, 211, 238, 0.4)",
                                         }}
                                     >
-                                        <div
-                                            className={
-                                                smallGap.gapClass +
-                                                " grid grid-cols-2 w-full"
-                                            }
-                                        >
-                                            <motion.button
-                                                whileHover={{
-                                                    scale: 1.05,
-                                                    boxShadow:
-                                                        "0 0 20px rgba(34, 211, 238, 0.5)",
-                                                }}
-                                                whileTap={{ scale: 0.95 }}
-                                                onClick={handleCopyTxHash}
-                                                className={cn(
-                                                    "font-black text-cyan-100 tracking-wider font-mono bg-slate-800/70 border-2 border-cyan-400 border-dashed",
-                                                    smallText.textClass,
-                                                    "py-1"
-                                                )}
-                                                style={{
-                                                    textShadow:
-                                                        "0 0 8px rgba(34, 211, 238, 0.6)",
-                                                    boxShadow:
-                                                        "inset 0 0 10px rgba(34, 211, 238, 0.2)",
-                                                }}
-                                            >
-                                                {copySuccess
-                                                    ? "✅ Copied!"
-                                                    : "COPY HASH"}
-                                            </motion.button>
-
-                                            {ticketData.explorerUrl && (
-                                                <motion.button
-                                                    whileHover={{
-                                                        scale: 1.05,
-                                                        boxShadow:
-                                                            "0 0 20px rgba(34, 211, 238, 0.5)",
-                                                    }}
-                                                    whileTap={{
-                                                        scale: 0.95,
-                                                    }}
-                                                    onClick={() =>
-                                                        window.open(
-                                                            `https://beratrail.io/tx/${ticketData.txHash}`,
-                                                            "_blank"
-                                                        )
-                                                    }
-                                                    className={cn(
-                                                        "font-black text-cyan-100 tracking-wider font-mono bg-slate-800/70 border-2 border-cyan-400 border-dashed",
-                                                        smallText.textClass,
-                                                        "py-1"
-                                                    )}
-                                                    style={{
-                                                        textShadow:
-                                                            "0 0 8px rgba(34, 211, 238, 0.6)",
-                                                        boxShadow:
-                                                            "inset 0 0 10px rgba(34, 211, 238, 0.2)",
-                                                    }}
-                                                >
-                                                    EXPLORER
-                                                </motion.button>
-                                            )}
-                                        </div>
-
-                                        {hasInstantPrize && (
-                                            <motion.button
-                                                initial={{ y: 20, opacity: 0 }}
-                                                animate={{ y: 0, opacity: 1 }}
-                                                transition={{ delay: 1.0 }}
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
-                                                onClick={() => {
-                                                    onInstantDraw?.();
-                                                }}
-                                                className={cn(
-                                                    "font-black text-cyan-100 tracking-wider font-mono bg-slate-800/70 border-2 border-cyan-400 border-dashed w-full",
-                                                    "animate-pulse",
-                                                    largePadding.paddingClass,
-                                                    mediumText.textClass
-                                                )}
-                                                style={{
-                                                    textShadow:
-                                                        "0 0 15px rgba(34, 211, 238, 0.8)",
-                                                    boxShadow:
-                                                        "inset 0 0 20px rgba(34, 211, 238, 0.3), 0 0 30px rgba(34, 211, 238, 0.4)",
-                                                }}
-                                            >
-                                                🚀 INSTANT PRIZE DRAW
-                                            </motion.button>
-                                        )}
-                                    </div>
-                                </div>
+                                        🚀 INSTANT PRIZE DRAW
+                                    </button>
+                                )}
                             </div>
                         </div>
-                    </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
+                    </div>
+                </div>
+            </motion.div>
+        </div>
     );
 });

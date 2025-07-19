@@ -2,7 +2,7 @@
 
 "use client";
 
-import { memo, useMemo, useState, useCallback } from "react";
+import { memo, useMemo, useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -16,7 +16,7 @@ import RaffleOnchainParticipation from "./Raffle.Onchain.Participation";
 import RaffleOnchainPrizesGrandPrize from "./Raffle.Onchain.Prizes.GrandPrize";
 import RaffleOnchainParticipationTicket from "./Raffle.Onchain.Participation.Ticket";
 import RaffleScratchCard from "../Raffle.Reveal.Scratch";
-import { AnimatePresence } from "framer-motion";
+import EnhancedPortal from "@/components/atoms/Portal.Enhanced";
 
 interface TicketData {
     raffleTitle: string;
@@ -42,6 +42,8 @@ interface TicketData {
     walletAddress: string;
 }
 
+type ModalState = "none" | "ticket" | "scratch";
+
 interface RaffleOnchainProps {
     contractAddress: string;
     raffleId: string;
@@ -51,34 +53,105 @@ export default memo(function RaffleOnchain({
     contractAddress,
     raffleId,
 }: RaffleOnchainProps) {
-    // 모달 상태 관리
-    const [showTicket, setShowTicket] = useState(false);
-    const [showScratch, setShowScratch] = useState(false);
+    const [modalState, setModalState] = useState<ModalState>("none");
     const [ticketData, setTicketData] = useState<TicketData | null>(null);
+    const [scratchCardSize, setScratchCardSize] = useState(() => {
+        if (typeof window === "undefined") {
+            return { width: 350, height: 250 }; // SSR 기본값
+        }
 
-    // 모달 핸들러 함수들
+        const screenWidth = window.innerWidth;
+
+        if (screenWidth >= 1280) {
+            // xl 이상
+            return { width: 450, height: 320 };
+        } else if (screenWidth >= 1024) {
+            // lg
+            return { width: 400, height: 280 };
+        } else if (screenWidth >= 768) {
+            // md
+            return { width: 350, height: 250 };
+        } else {
+            // 모바일
+            return { width: 300, height: 200 };
+        }
+    });
+
+    useEffect(() => {
+        const updateCardSize = () => {
+            const screenWidth = window.innerWidth;
+
+            if (screenWidth >= 1280) {
+                // xl 이상
+                setScratchCardSize({ width: 450, height: 320 });
+            } else if (screenWidth >= 1024) {
+                // lg
+                setScratchCardSize({ width: 400, height: 280 });
+            } else if (screenWidth >= 768) {
+                // md
+                setScratchCardSize({ width: 350, height: 250 });
+            } else {
+                // 모바일
+                setScratchCardSize({ width: 300, height: 200 });
+            }
+        };
+
+        window.addEventListener("resize", updateCardSize);
+        return () => window.removeEventListener("resize", updateCardSize);
+    }, []);
+
     const handleParticipationSuccess = useCallback((ticket: TicketData) => {
         setTicketData(ticket);
-        setShowTicket(true);
-    }, []);
-
-    const handleScratchReveal = useCallback(() => {
-        // 스크래치 완료 후 모달은 유지되고, 사용자가 직접 닫을 때까지 기다림
-    }, []);
-
-    const handleCloseTicket = useCallback(() => {
-        setShowTicket(false);
-        setTicketData(null);
-    }, []);
-
-    const handleCloseScratch = useCallback(() => {
-        setShowScratch(false);
-        setTicketData(null);
+        setModalState("ticket");
     }, []);
 
     const handleInstantDraw = useCallback(() => {
-        setShowTicket(false);
-        setShowScratch(true);
+        setModalState("scratch");
+    }, []);
+
+    const handleCloseModal = useCallback(() => {
+        setModalState("none");
+        setTimeout(() => {
+            setTicketData(null);
+        }, 300);
+    }, []);
+
+    const scratchPrizeData = useMemo(() => {
+        if (!ticketData?.prizeWon) return null;
+
+        const prizeType =
+            ticketData.prizeWon.prizeType === 0
+                ? ("EMPTY" as const)
+                : ticketData.prizeWon.prizeType === 1
+                ? ("ASSET" as const)
+                : ("NFT" as const);
+
+        return {
+            id: `prize-${ticketData.prizeWon.title}-${Date.now()}`,
+            title: ticketData.prizeWon.title,
+            prizeType,
+            order: ticketData.prizeWon.prizeType * 10,
+            quantity: 1,
+            spg: ticketData.prizeWon.imageUrl
+                ? {
+                      imageUrl: ticketData.prizeWon.imageUrl,
+                      metadata: {
+                          image: ticketData.prizeWon.imageUrl,
+                      },
+                  }
+                : undefined,
+            asset:
+                ticketData.prizeWon.prizeType === 1
+                    ? {
+                          iconUrl: ticketData.prizeWon.imageUrl,
+                          symbol: "REWARD",
+                      }
+                    : undefined,
+        };
+    }, [ticketData?.prizeWon]);
+
+    const handleScratchReveal = useCallback(() => {
+        // 스크래치 완료 후 모달은 유지됨
     }, []);
 
     // 🔒 정적 데이터: 한번에 가져오기 (변화 거의 없음)
@@ -90,7 +163,7 @@ export default memo(function RaffleOnchain({
         getRaffleFromContractInput: {
             contractAddress,
             raffleId,
-            dataKeys: ["basicInfo", "timing", "settings", "fee", "prizes"], // 정적 데이터만
+            dataKeys: ["basicInfo", "timing", "settings", "fee", "prizes"],
         },
     });
 
@@ -103,7 +176,7 @@ export default memo(function RaffleOnchain({
         getRaffleFromContractInput: {
             contractAddress,
             raffleId,
-            dataKeys: ["status"], // 동적 상태 데이터만
+            dataKeys: ["status"],
         },
         getRaffleParticipantsInput: {
             contractAddress,
@@ -120,7 +193,6 @@ export default memo(function RaffleOnchain({
         [dynamicData?.success, dynamicData?.data?.status]
     );
 
-    // Transform statusData to match RaffleOnchainStatus expected props
     const transformedStatusData = useMemo(
         () =>
             statusData
@@ -148,32 +220,14 @@ export default memo(function RaffleOnchain({
     }
 
     return (
-        <div
-            className={cn(
-                "relative w-full min-h-screen overflow-hidden mb-[100px] md:mb-[50px]"
-            )}
-        >
-            {/* Background Effects - Elegant Blockchain Theme */}
+        <div className="relative w-full min-h-screen overflow-hidden mb-[100px] md:mb-[50px]">
+            {/* 🚀 간소화된 배경 효과 */}
             <div className="fixed inset-0 -z-10">
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950" />
                 <div className="absolute inset-0 bg-gradient-to-tr from-cyan-950/20 via-transparent to-purple-950/20" />
-
-                {/* Static subtle pattern overlay */}
-                <div
-                    className="absolute inset-0 opacity-10"
-                    style={{
-                        backgroundImage: `radial-gradient(circle at 25% 25%, rgba(6, 182, 212, 0.1) 0%, transparent 50%),
-                                         radial-gradient(circle at 75% 75%, rgba(168, 85, 247, 0.1) 0%, transparent 50%)`,
-                    }}
-                />
             </div>
 
-            <div
-                className={cn(
-                    "relative z-10",
-                    "mt-[50px] mb-[20px] md:mb-[40px] md:mt-[0px]"
-                )}
-            >
+            <div className="relative z-10 mt-[50px] mb-[20px] md:mb-[40px] md:mt-[0px]">
                 <div
                     className={cn(
                         "container mx-auto",
@@ -182,7 +236,6 @@ export default memo(function RaffleOnchain({
                 >
                     {raffleData && (
                         <>
-                            {/* Hero Section */}
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -208,19 +261,16 @@ export default memo(function RaffleOnchain({
                                         data={raffleData?.prizes}
                                     />
                                 )}
-                            {/* Prizes Card */}
+
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.1, duration: 0.4 }}
                                 className="relative hidden md:block"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-purple-500/5 rounded-2xl blur-lg" />
-                                <div className="relative">
-                                    <RaffleOnchainPrizes
-                                        data={raffleData?.prizes}
-                                    />
-                                </div>
+                                <RaffleOnchainPrizes
+                                    data={raffleData?.prizes}
+                                />
                             </motion.div>
 
                             <motion.div
@@ -229,86 +279,67 @@ export default memo(function RaffleOnchain({
                                 transition={{ delay: 0.2, duration: 0.4 }}
                                 className="relative group hidden md:block"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-xl blur-md group-hover:blur-sm transition-all duration-300" />
-                                <div className="relative">
-                                    <RaffleOnchainSettings
-                                        data={raffleData?.settings}
-                                    />
-                                </div>
+                                <RaffleOnchainSettings
+                                    data={raffleData?.settings}
+                                />
                             </motion.div>
                         </div>
 
                         {/* Right Column - Participation & Status */}
                         <div className="lg:col-span-2 space-y-8">
-                            {/* Participation Card */}
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: 0.15, duration: 0.4 }}
                                 className="relative group"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 rounded-xl blur-md group-hover:blur-sm transition-all duration-300" />
-                                <div className="relative">
-                                    <RaffleOnchainParticipation
-                                        contractAddress={contractAddress}
-                                        raffleId={raffleId}
-                                        basicInfo={raffleData?.basicInfo}
-                                        timingData={raffleData?.timing}
-                                        settingsData={raffleData?.settings}
-                                        feeData={raffleData?.fee}
-                                        statusData={transformedStatusData}
-                                        isStatusLoading={isDynamicLoading}
-                                        onParticipationSuccess={
-                                            handleParticipationSuccess
-                                        }
-                                    />
-                                </div>
+                                <RaffleOnchainParticipation
+                                    contractAddress={contractAddress}
+                                    raffleId={raffleId}
+                                    basicInfo={raffleData?.basicInfo}
+                                    timingData={raffleData?.timing}
+                                    settingsData={raffleData?.settings}
+                                    feeData={raffleData?.fee}
+                                    statusData={transformedStatusData}
+                                    isStatusLoading={isDynamicLoading}
+                                    onParticipationSuccess={
+                                        handleParticipationSuccess
+                                    }
+                                />
                             </motion.div>
 
-                            {/* Timing Card */}
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: 0.05, duration: 0.4 }}
                                 className="relative group"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-xl blur-md group-hover:blur-sm transition-all duration-300" />
-                                <div className="relative">
-                                    <RaffleOnchainTiming
-                                        data={raffleData?.timing}
-                                    />
-                                </div>
+                                <RaffleOnchainTiming
+                                    data={raffleData?.timing}
+                                />
                             </motion.div>
 
-                            {/* Prizes Card */}
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.1, duration: 0.4 }}
                                 className="relative block md:hidden"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-purple-500/5 rounded-2xl blur-lg" />
-                                <div className="relative">
-                                    <RaffleOnchainPrizes
-                                        data={raffleData?.prizes}
-                                    />
-                                </div>
+                                <RaffleOnchainPrizes
+                                    data={raffleData?.prizes}
+                                />
                             </motion.div>
 
-                            {/* Status Card */}
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: 0.2, duration: 0.4 }}
                                 className="relative group"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-purple-500/5 rounded-xl blur-md group-hover:blur-sm transition-all duration-300" />
-                                <div className="relative">
-                                    <RaffleOnchainStatus
-                                        data={transformedStatusData}
-                                        isLoading={isDynamicLoading}
-                                    />
-                                </div>
+                                <RaffleOnchainStatus
+                                    data={transformedStatusData}
+                                    isLoading={isDynamicLoading}
+                                />
                             </motion.div>
 
                             <motion.div
@@ -317,37 +348,35 @@ export default memo(function RaffleOnchain({
                                 transition={{ delay: 0.2, duration: 0.4 }}
                                 className="relative group block md:hidden"
                             >
-                                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-xl blur-md group-hover:blur-sm transition-all duration-300" />
-                                <div className="relative">
-                                    <RaffleOnchainSettings
-                                        data={raffleData?.settings}
-                                    />
-                                </div>
+                                <RaffleOnchainSettings
+                                    data={raffleData?.settings}
+                                />
                             </motion.div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* 티켓 모달 */}
-            {showTicket && ticketData && (
-                <RaffleOnchainParticipationTicket
-                    isVisible={showTicket}
-                    onClose={handleCloseTicket}
-                    ticketData={ticketData}
-                    onInstantDraw={handleInstantDraw}
-                />
+            {/* 🚀 Enhanced Portal로 모달 최적화 */}
+            {modalState === "ticket" && ticketData && (
+                <EnhancedPortal layer="modal">
+                    <RaffleOnchainParticipationTicket
+                        isVisible={modalState === "ticket"}
+                        onClose={handleCloseModal}
+                        ticketData={ticketData}
+                        onInstantDraw={handleInstantDraw}
+                    />
+                </EnhancedPortal>
             )}
 
-            {/* 스크래치 모달 */}
-            <AnimatePresence>
-                {showScratch && ticketData?.prizeWon && (
+            {modalState === "scratch" && ticketData?.prizeWon && (
+                <EnhancedPortal layer="modal">
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
-                        onClick={handleCloseScratch}
+                        onClick={handleCloseModal}
                     >
                         <motion.div
                             initial={{ scale: 0.8, opacity: 0 }}
@@ -357,63 +386,35 @@ export default memo(function RaffleOnchain({
                             onClick={(e) => e.stopPropagation()}
                         >
                             <RaffleScratchCard
-                                prize={
-                                    ticketData.prizeWon
-                                        ? {
-                                              id: `prize-${
-                                                  ticketData.prizeWon.title
-                                              }-${Date.now()}`,
-                                              title: ticketData.prizeWon.title,
-                                              prizeType:
-                                                  ticketData.prizeWon
-                                                      .prizeType === 0
-                                                      ? "EMPTY"
-                                                      : ticketData.prizeWon
-                                                            .prizeType === 1
-                                                      ? "ASSET"
-                                                      : "NFT",
-                                              order:
-                                                  ticketData.prizeWon
-                                                      .prizeType * 10,
-                                              quantity: 1,
-                                              spg: ticketData.prizeWon.imageUrl
-                                                  ? {
-                                                        imageUrl:
-                                                            ticketData.prizeWon
-                                                                .imageUrl,
-                                                        metadata: {
-                                                            image: ticketData
-                                                                .prizeWon
-                                                                .imageUrl,
-                                                        },
-                                                    }
-                                                  : undefined,
-                                              asset:
-                                                  ticketData.prizeWon
-                                                      .prizeType === 1
-                                                      ? {
-                                                            iconUrl:
-                                                                ticketData
-                                                                    .prizeWon
-                                                                    .imageUrl,
-                                                            symbol: "REWARD",
-                                                        }
-                                                      : undefined,
-                                          }
-                                        : null
-                                }
+                                prize={scratchPrizeData}
                                 onReveal={handleScratchReveal}
-                                cardSize={{ width: 350, height: 250 }}
+                                cardSize={scratchCardSize}
+                                className="mx-auto"
                             />
+
+                            <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={handleCloseModal}
+                                className={cn(
+                                    "absolute -top-12 right-0 text-white/60 hover:text-white",
+                                    "w-10 h-10 flex items-center justify-center rounded-full",
+                                    "bg-black/20 backdrop-blur-sm transition-all",
+                                    "text-xl font-light",
+                                    "touch-manipulation select-none"
+                                )}
+                            >
+                                ✕
+                            </motion.button>
                         </motion.div>
                     </motion.div>
-                )}
-            </AnimatePresence>
+                </EnhancedPortal>
+            )}
         </div>
     );
 });
 
-// Loading Skeleton Component
+// Loading Skeleton Component - 간소화
 const OnchainRaffleSkeleton = memo(function OnchainRaffleSkeleton() {
     return (
         <div className="flex items-center justify-center min-h-screen relative">
@@ -425,14 +426,8 @@ const OnchainRaffleSkeleton = memo(function OnchainRaffleSkeleton() {
                 className="text-center max-w-md mx-auto px-6 relative z-10"
             >
                 <div className="relative mb-8">
-                    <div
-                        className={cn(
-                            "border-4 border-cyan-400 border-t-transparent rounded-full mx-auto animate-spin",
-                            getResponsiveClass(50).frameClass
-                        )}
-                    />
+                    <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full mx-auto animate-spin" />
                 </div>
-
                 <p className="text-slate-300 leading-relaxed">
                     Loading raffle data...
                     <br />
@@ -445,7 +440,7 @@ const OnchainRaffleSkeleton = memo(function OnchainRaffleSkeleton() {
     );
 });
 
-// Error Component
+// Error Component - 간소화
 const OnchainRaffleError = memo(function OnchainRaffleError() {
     return (
         <div className="flex items-center justify-center min-h-screen relative">
@@ -456,15 +451,8 @@ const OnchainRaffleError = memo(function OnchainRaffleError() {
                 transition={{ duration: 0.3 }}
                 className="text-center max-w-md mx-auto px-6 relative z-10"
             >
-                <div className={cn("mb-6", getResponsiveClass(65).textClass)}>
-                    ⛓️💔
-                </div>
-                <h3
-                    className={cn(
-                        "font-bold mb-4 bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent",
-                        getResponsiveClass(35).textClass
-                    )}
-                >
+                <div className="text-6xl mb-6">⛓️💔</div>
+                <h3 className="text-3xl font-bold mb-4 bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
                     Connection Failed
                 </h3>
                 <p className="text-slate-300 mb-8 leading-relaxed">
@@ -479,14 +467,7 @@ const OnchainRaffleError = memo(function OnchainRaffleError() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => window.location.reload()}
-                    className={cn(
-                        "w-full bg-gradient-to-r from-red-600 to-orange-600",
-                        "hover:from-red-500 hover:to-orange-500",
-                        "text-white font-bold rounded-xl transition-colors duration-200",
-                        "flex items-center justify-center gap-2",
-                        getResponsiveClass(20).paddingClass,
-                        getResponsiveClass(15).textClass
-                    )}
+                    className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 py-4 px-6 text-lg"
                 >
                     🔄 Retry
                 </motion.button>
