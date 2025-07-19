@@ -11,9 +11,7 @@ interface RafflesOnchainListProps {
     raffles: Raffle[];
 }
 
-function RafflesOnchainList({
-    raffles,
-}: RafflesOnchainListProps) {
+function RafflesOnchainList({ raffles }: RafflesOnchainListProps) {
     return (
         <div className="p-6 bg-gray-900 min-h-screen text-white">
             <h1 className="text-2xl font-bold mb-4">Onchain Raffles</h1>
@@ -25,9 +23,9 @@ function RafflesOnchainList({
                 <p className="text-gray-400">No raffles found.</p>
             ) : (
                 <div className="grid gap-4">
-                    {raffles?.map((raffle) => (
+                    {raffles?.map((raffle, index) => (
                         <Link
-                            key={raffle.raffleId}
+                            key={index}
                             href={`/raffles/test/${raffle.contractAddress}/${raffle.raffleId}`}
                             className="border border-gray-700 rounded-lg p-4 bg-gray-800 shadow-lg hover:shadow-xl transition-shadow"
                         >

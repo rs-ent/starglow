@@ -48,12 +48,16 @@ function RafflesOnchainListCard({
     return (
         <div>
             <div>
-                <Image
-                    src={coreData?.imageUrl || ""}
-                    alt={coreData?.title || ""}
-                    width={100}
-                    height={100}
-                />
+                {coreData?.imageUrl && (
+                    <Image
+                        src={coreData?.imageUrl || ""}
+                        alt={coreData?.title || ""}
+                        width={100}
+                        height={100}
+                        priority={true}
+                        unoptimized={false}
+                    />
+                )}
             </div>
             <div>
                 <p>{coreData?.title}</p>
@@ -93,12 +97,16 @@ function RafflesOnchainListCard({
                             : coreData.participationLimitPerPlayer.toString()
                         : "0"}
                 </p>
-                <Image
-                    src={asset?.iconUrl || ""}
-                    alt={asset?.name || ""}
-                    width={100}
-                    height={100}
-                />
+                {asset?.iconUrl && (
+                    <Image
+                        src={asset?.iconUrl || ""}
+                        alt={asset?.name || ""}
+                        width={100}
+                        height={100}
+                        priority={false}
+                        unoptimized={false}
+                    />
+                )}
                 <p>{asset?.name}</p>
                 <p>{coreData?.participationFeeAmount?.toString() || "0"}</p>
                 <p>{coreData?.participationCount?.toString() || "0"}</p>
