@@ -3,22 +3,34 @@
 "use client";
 
 import { memo } from "react";
+import { useOnchainRaffles } from "@/app/actions/raffles/web3/hooks";
+import RafflesOnchainList from "./Raffles.Onchain.List";
 
 function Raffles() {
-    return (
-        <div
-            style={{
-                padding: "20px",
-                backgroundColor: "#1a1a1a",
-                color: "white",
-                minHeight: "100vh",
-            }}
-        >
-            <h1>Test Page</h1>
-            <p>Raffles component is working!</p>
-            <p>If you see this, the basic component structure is fine.</p>
-        </div>
-    );
+    const { onchainRaffles, isOnchainRafflesLoading, isOnchainRafflesError } =
+        useOnchainRaffles({
+            getOnchainRafflesInput: {},
+        });
+
+    if (isOnchainRafflesLoading) {
+        return (
+            <div className="p-6 bg-gray-900 min-h-screen text-white">
+                <h1 className="text-2xl font-bold mb-4">Onchain Raffles</h1>
+                <p className="text-gray-400">Loading...</p>
+            </div>
+        );
+    }
+
+    if (isOnchainRafflesError) {
+        return (
+            <div className="p-6 bg-gray-900 min-h-screen text-white">
+                <h1 className="text-2xl font-bold mb-4">Onchain Raffles</h1>
+                <p className="text-red-400">Failed to load data.</p>
+            </div>
+        );
+    }
+
+    return <RafflesOnchainList raffles={onchainRaffles?.data?.raffles || []} />;
 }
 
 export default memo(Raffles);
