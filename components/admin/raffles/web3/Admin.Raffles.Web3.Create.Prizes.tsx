@@ -80,6 +80,15 @@ const PRIZE_TYPES = [
         bgColor: "bg-purple-900/30",
         borderColor: "border-purple-700",
     },
+    {
+        value: 3,
+        label: "토큰",
+        description: "ERC-20 토큰",
+        icon: FaDollarSign,
+        color: "text-green-400",
+        bgColor: "bg-green-900/30",
+        borderColor: "border-green-700",
+    },
 ] as const;
 
 export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
@@ -107,26 +116,26 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
 
     const addPrize = useCallback(() => {
         const prizes = Array.isArray(data.prizes) ? data.prizes : [];
-        const entryFee = parseFloat(data.fee?.participationFeeAmount || "0");
 
         const newPrize = {
-            prizeType: 1 as 0 | 1 | 2,
+            prizeType: 0 as 0 | 1 | 2 | 3,
             collectionAddress: "",
-            registeredTicketQuantity: 1,
+            registeredTicketQuantity: 10,
             order: prizes.length + 1,
             rarity: 0,
             prizeQuantity: 1,
-            title: "",
-            description: "",
-            imageUrl: "",
+            title: "Bad Luck",
+            description: "Try again next time!",
+            imageUrl:
+                "https://w3s.link/ipfs/bafkreifjx4hcx2dtlbpek7dnsmnus7tiqqzjmqxkrzwp6d4utdt5jhe3qm",
             iconUrl: "",
             assetId: "",
             tokenIds: [],
-            userValue: entryFee * 2, // 기본값: 참가비의 2배 (에셋 타입)
+            userValue: 0,
         };
 
         updateData("prizes", [...prizes, newPrize]);
-    }, [data.prizes, updateData, data.fee?.participationFeeAmount]);
+    }, [data.prizes, updateData]);
 
     const removePrize = useCallback(
         (index: number) => {
@@ -284,7 +293,7 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
     );
 
     const handlePrizeTypeChange = useCallback(
-        (index: number, prizeType: 0 | 1 | 2) => {
+        (index: number, prizeType: 0 | 1 | 2 | 3) => {
             const entryFee = parseFloat(
                 data.fee?.participationFeeAmount || "0"
             );
@@ -305,13 +314,12 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                         ? entryFee * 2 // 에셋 기본값: 참가비의 2배
                         : prizeType === 2
                         ? entryFee * 5 // NFT 기본값: 참가비의 5배
+                        : prizeType === 3
+                        ? entryFee * 3 // 토큰 기본값: 참가비의 3배
                         : entryFee,
+                registeredTicketQuantity: prizeType === 0 ? 10 : 1, // 빈 상품은 기본적으로 많은 티켓 할당
+                prizeQuantity: 1,
             };
-
-            if (prizeType !== 0) {
-                updates.registeredTicketQuantity = 1;
-                updates.prizeQuantity = 1;
-            }
 
             updateMultipleFields(index, updates);
         },
@@ -776,6 +784,7 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                                             | 0
                                                                             | 1
                                                                             | 2
+                                                                            | 3
                                                                     )
                                                                 }
                                                                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"

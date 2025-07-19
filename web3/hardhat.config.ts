@@ -1,11 +1,10 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-require("@nomicfoundation/hardhat-toolbox");
-require("@nomicfoundation/hardhat-viem");
-require("@nomicfoundation/hardhat-ethers");
-require("@openzeppelin/hardhat-upgrades");
-require("dotenv/config");
-const config = {
+import { HardhatUserConfig } from "hardhat/config";
+import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-viem";
+import "@openzeppelin/hardhat-upgrades";
+import "dotenv/config";
+
+const config: HardhatUserConfig = {
     solidity: {
         version: "0.8.28",
         settings: {
@@ -42,6 +41,15 @@ const config = {
                 : [],
             chainId: 80002,
         },
+        berachain_bepolia: {
+            url:
+                process.env.BERACHAIN_RPC_URL ||
+                "https://bepolia.rpc.berachain.com",
+            accounts: process.env.ESCROW_PRIVATE_KEY
+                ? [process.env.ESCROW_PRIVATE_KEY]
+                : [],
+            chainId: 80069,
+        },
     },
     paths: {
         sources: "./contracts",
@@ -50,4 +58,5 @@ const config = {
         artifacts: "./artifacts",
     },
 };
-exports.default = config;
+
+export default config;

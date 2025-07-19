@@ -6,6 +6,7 @@
   "scripts": {
     "compile": "hardhat compile",
     "deploy:amoy": "hardhat run scripts/deploy-factory.ts --network polygonAmoy",
+    "deploy:berachain": "hardhat run scripts/deploy-raffles.ts --network berachain_bepolia",
     "hardhat": "hardhat"
   },
   "dependencies": {
@@ -14,7 +15,6 @@
     "erc721a": "^4.3.0"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-ethers": "^3.0.8",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@nomicfoundation/hardhat-viem": "^2.0.6",
     "@openzeppelin/hardhat-upgrades": "^3.9.0",

@@ -858,7 +858,7 @@ export default function UserWallets({ user }: UserWalletsProps) {
                                             >
                                                 <Check
                                                     className={cn(
-                                                        getResponsiveClass(18)
+                                                        getResponsiveClass(20)
                                                             .frameClass
                                                     )}
                                                 />
@@ -871,7 +871,7 @@ export default function UserWallets({ user }: UserWalletsProps) {
                                             >
                                                 <X
                                                     className={cn(
-                                                        getResponsiveClass(18)
+                                                        getResponsiveClass(20)
                                                             .frameClass
                                                     )}
                                                 />
@@ -912,7 +912,7 @@ export default function UserWallets({ user }: UserWalletsProps) {
                                             >
                                                 <Edit3
                                                     className={cn(
-                                                        getResponsiveClass(14)
+                                                        getResponsiveClass(15)
                                                             .frameClass
                                                     )}
                                                 />

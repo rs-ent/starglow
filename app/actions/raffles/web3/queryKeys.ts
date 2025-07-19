@@ -30,6 +30,8 @@ export const raffleQueryKeys = {
     raffleListStatus: (
         raffles: Array<{ contractAddress: string; raffleId: string }>
     ) => [...raffleQueryKeys.lists(), "bulk-status", raffles] as const,
+    raffleListCard: (filters: string) =>
+        [...raffleQueryKeys.lists(), "bulk-card", filters] as const,
     userParticipation: (
         contractAddress: string,
         raffleId: string,
@@ -44,4 +46,11 @@ export const raffleQueryKeys = {
         ] as const,
     lotteryResult: (contractAddress: string, resultId: string) =>
         [...raffleQueryKeys.all, "result", contractAddress, resultId] as const,
+    raffleParticipants: (contractAddress: string, raffleId: string) =>
+        [
+            ...raffleQueryKeys.all,
+            "participants",
+            contractAddress,
+            raffleId,
+        ] as const,
 } as const;

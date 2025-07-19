@@ -16,6 +16,6 @@
     "resolveJsonModule": true,
     "typeRoots": ["./node_modules/@types"]
   },
-  "include": ["./scripts/**/*", "./test/**/*", "./hardhat.config.ts"],
+  "include": ["./scripts/**/*", "./test/**/*", "hardhat.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

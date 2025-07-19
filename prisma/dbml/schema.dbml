@@ -1604,6 +1604,37 @@ Table OnchainRaffle {
   }
 }
 
+Table OnchainRafflePrizeDistribution {
+  id String [pk]
+  contractAddress String [not null]
+  raffleId String [not null]
+  resultId Int [not null]
+  batchId String [not null]
+  chunkId String [not null, default: '0']
+  prizeIndex Int [not null]
+  prizeType Int [not null]
+  assetId String
+  spgAddress String
+  tokenAddress String
+  amount Int
+  playerId String [not null]
+  playerAddress String [not null]
+  status RafflePrizeStatus [not null, default: 'PENDING']
+  retryCount Int [not null, default: 0]
+  maxRetries Int [not null, default: 3]
+  createdAt DateTime [default: `now()`, not null]
+  processedAt DateTime
+  distributedAt DateTime
+  lastRetryAt DateTime
+  transactionHash String
+  failureReason String
+  gasUsed String
+
+  indexes {
+    (contractAddress, raffleId, resultId) [unique]
+  }
+}
+
 Table PollBettingSettlementLog {
   id String [pk]
   pollId String [not null]

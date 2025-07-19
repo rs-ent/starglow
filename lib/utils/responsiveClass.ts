@@ -75,6 +75,16 @@ export const getResponsiveClass = (size: number) => {
         90: "w-[90px] h-[90px]  sm:w-[101px] sm:h-[101px]  md:w-[112px] md:h-[112px] lg:w-[123px] lg:h-[123px] xl:w-[134px] xl:h-[134px]",
         95: "w-[95px] h-[95px]  sm:w-[106px] sm:h-[106px]  md:w-[117px] md:h-[117px] lg:w-[128px] lg:h-[128px] xl:w-[139px] xl:h-[139px]",
         100: "w-[100px] h-[100px]  sm:w-[111px] sm:h-[111px]  md:w-[122px] md:h-[122px] lg:w-[133px] lg:h-[133px] xl:w-[144px] xl:h-[144px]",
+        105: "w-[105px] h-[105px]  sm:w-[116px] sm:h-[116px]  md:w-[127px] md:h-[127px] lg:w-[138px] lg:h-[138px] xl:w-[149px] xl:h-[149px]",
+        110: "w-[110px] h-[110px]  sm:w-[121px] sm:h-[121px]  md:w-[132px] md:h-[132px] lg:w-[143px] lg:h-[143px] xl:w-[154px] xl:h-[154px]",
+        115: "w-[115px] h-[115px]  sm:w-[126px] sm:h-[126px]  md:w-[137px] md:h-[137px] lg:w-[148px] lg:h-[148px] xl:w-[159px] xl:h-[159px]",
+        120: "w-[120px] h-[120px]  sm:w-[131px] sm:h-[131px]  md:w-[142px] md:h-[142px] lg:w-[153px] lg:h-[153px] xl:w-[164px] xl:h-[164px]",
+        125: "w-[125px] h-[125px]  sm:w-[136px] sm:h-[136px]  md:w-[147px] md:h-[147px] lg:w-[158px] lg:h-[158px] xl:w-[169px] xl:h-[169px]",
+        130: "w-[130px] h-[130px]  sm:w-[141px] sm:h-[141px]  md:w-[152px] md:h-[152px] lg:w-[163px] lg:h-[163px] xl:w-[174px] xl:h-[174px]",
+        135: "w-[135px] h-[135px]  sm:w-[146px] sm:h-[146px]  md:w-[157px] md:h-[157px] lg:w-[168px] lg:h-[168px] xl:w-[179px] xl:h-[179px]",
+        140: "w-[140px] h-[140px]  sm:w-[151px] sm:h-[151px]  md:w-[162px] md:h-[162px] lg:w-[173px] lg:h-[173px] xl:w-[184px] xl:h-[184px]",
+        145: "w-[145px] h-[145px]  sm:w-[156px] sm:h-[156px]  md:w-[167px] md:h-[167px] lg:w-[178px] lg:h-[178px] xl:w-[189px] xl:h-[189px]",
+        150: "w-[150px] h-[150px]  sm:w-[161px] sm:h-[161px]  md:w-[172px] md:h-[172px] lg:w-[183px] lg:h-[183px] xl:w-[194px] xl:h-[194px]",
     };
 
     const marginX = {

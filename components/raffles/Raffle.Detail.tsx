@@ -29,6 +29,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 
 import { useRaffles } from "@/app/actions/raffles/hooks";
+import { useOnchainRaffles } from "@/app/actions/raffles/web3/hooks";
 import { useToast } from "@/app/hooks/useToast";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -74,6 +75,28 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
         minutes: number;
         seconds: number;
     }>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+    // 온체인 래플 여부 확인
+    const { onchainRaffles: onchainRaffleCheck } = useOnchainRaffles({
+        getOnchainRafflesInput: {
+            limit: 1,
+            offset: 0,
+        },
+    });
+
+    // 래플이 온체인인지 확인
+    const isOnchainRaffle = useMemo(() => {
+        if (!onchainRaffleCheck?.success || !onchainRaffleCheck.data?.raffles)
+            return false;
+        return onchainRaffleCheck.data.raffles.some(
+            (r) => r.raffleId === raffleId
+        );
+    }, [onchainRaffleCheck, raffleId]);
+
+    // 오프체인 래플 데이터 조회 (온체인이 아닌 경우에만)
+    const { raffleData, isRaffleLoading, raffleError } = useRaffles({
+        getRaffleId: !isOnchainRaffle ? raffleId : undefined,
+    });
 
     // 반응형 스크래치 카드 크기 상태
     const [scratchCardSize, setScratchCardSize] = useState(() => {
@@ -130,10 +153,6 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
     }, [showScratchModal]);
 
     const toast = useToast();
-
-    const { raffleData, isRaffleLoading, raffleError } = useRaffles({
-        getRaffleId: raffleId,
-    });
 
     const raffle = useMemo(
         () => (raffleData?.success ? raffleData.data : null),
@@ -239,6 +258,70 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
         scratchResult?.prize?.prizeType,
         toast,
     ]);
+
+    if (isOnchainRaffle) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-center max-w-md mx-auto px-6"
+                >
+                    <motion.div
+                        animate={{
+                            rotate: [0, 10, -10, 0],
+                            scale: [1, 1.1, 1],
+                        }}
+                        transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                        }}
+                        className={cn("mb-6", getResponsiveClass(65).textClass)}
+                    >
+                        ⛓️🎁
+                    </motion.div>
+                    <h3
+                        className={cn(
+                            "font-bold text-[rgba(255,255,255,0.95)] mb-4",
+                            getResponsiveClass(35).textClass
+                        )}
+                    >
+                        Onchain Raffle Detected
+                    </h3>
+                    <p className="text-[rgba(255,255,255,0.6)] mb-8 leading-relaxed">
+                        This is an onchain raffle running on the blockchain.
+                        <br />
+                        <span className="text-[rgba(255,255,255,0.4)] text-sm mt-2 block">
+                            Please use the dedicated onchain raffle interface.
+                        </span>
+                    </p>
+
+                    <Link href={`/raffles/onchain/${raffleId}`}>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className={cn(
+                                "w-full bg-gradient-to-r from-[rgba(160,140,200,0.8)] to-[rgba(200,140,160,0.8)]",
+                                "hover:from-[rgba(160,140,200,0.9)] hover:to-[rgba(200,140,160,0.9)]",
+                                "text-[rgba(255,255,255,0.95)] font-bold rounded-xl transition-all duration-300",
+                                "flex items-center justify-center gap-2",
+                                getResponsiveClass(20).paddingClass,
+                                getResponsiveClass(15).textClass
+                            )}
+                        >
+                            <ExternalLink
+                                className={cn(
+                                    getResponsiveClass(20).frameClass
+                                )}
+                            />
+                            View Onchain Raffle
+                        </motion.button>
+                    </Link>
+                </motion.div>
+            </div>
+        );
+    }
 
     if (isRaffleLoading) {
         return <RaffleDetailSkeleton />;

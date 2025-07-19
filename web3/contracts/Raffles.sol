@@ -10,6 +10,7 @@ contract Raffles is ReentrancyGuard, Ownable {
         string description;
         string imageUrl;
         string iconUrl;
+        Prize bestPrize;
     }
     
     struct RaffleTiming {
@@ -43,7 +44,28 @@ contract Raffles is ReentrancyGuard, Ownable {
         bool isActive;
         bool isDrawn;
         uint256 totalQuantity;
-        uint256 remainingQuantity;
+        uint256 drawnParticipantCount;
+    }
+
+    struct RaffleCoreInfo {
+        string title;
+        string imageUrl;
+        string iconUrl;
+        uint256 startDate;
+        uint256 endDate;
+        uint256 drawDate;
+        bool instantDraw;
+        uint256 participationLimit;
+        uint256 participationLimitPerPlayer;
+        string participationFeeAssetId;
+        int256 participationFeeAmount;
+        uint256 raffleId;
+        bool isActive;
+        bool isDrawn;
+        uint256 totalQuantity;
+        uint256 participationCount;
+        Prize defaultBestPrize;
+        Prize currentBestPrize;
     }
 
     struct Raffle {
@@ -113,15 +135,12 @@ contract Raffles is ReentrancyGuard, Ownable {
     mapping(uint256 => LotteryResult) public lotteryResults;
     uint256 private _lotteryResultIdCounter = 1;
 
-    uint256 constant TICKET_BLOCK_SIZE = 10000;
-    mapping(uint256 => mapping(uint256 => uint256)) public raffleTicketBlocks;
-    mapping(uint256 => mapping(uint256 => bool)) public excludedTickets;
+
 
     bool public paused;
     mapping(address => bool) public admins;
     
-    uint256 public constant MIN_RAFFLE_DURATION = 1 hours;
-    uint256 public constant MIN_DRAW_DELAY = 30 minutes;
+
     
     constructor() Ownable(msg.sender) {
         admins[msg.sender] = true;
@@ -167,25 +186,7 @@ contract Raffles is ReentrancyGuard, Ownable {
     }
 
     event RaffleCreated(uint256 indexed raffleId);
-    event RaffleCancelled(uint256 indexed raffleId, string reason);
     event RaffleStatusChanged(uint256 indexed raffleId, bool isActive, address indexed admin);
-    event PrizeDistributed(
-        uint256 indexed resultId,
-        uint256 indexed raffleId,
-        address indexed player,
-        uint256 prizeIndex,
-        string prizeTitle,
-        address admin,
-        string deliveryMethod,
-        string trackingInfo,
-        uint256 timestamp
-    );
-    event RefundRequested(
-        uint256 indexed raffleId,
-        address indexed player,
-        string reason,
-        uint256 timestamp
-    );
     event RefundProcessed(
         uint256 indexed raffleId,
         address indexed player,
@@ -194,17 +195,7 @@ contract Raffles is ReentrancyGuard, Ownable {
         uint256 timestamp
     );
 
-    function cancelRaffle(uint256 raffleId, string memory reason) external onlyAdmin whenNotPaused {
-        Raffle storage raffle = raffles[raffleId];
-        require(raffle.status.isActive, "RAFFLE_NOT_ACTIVE");
-        require(!raffle.status.isDrawn, "ALREADY_DRAWN");
-        require(bytes(reason).length > 0, "REASON_REQUIRED");
-        
-        raffle.status.isActive = false;
-        raffle.status.isDrawn = true;
-        
-        emit RaffleCancelled(raffleId, reason);
-    }
+
 
     function setRaffleActive(uint256 raffleId, bool _isActive) external onlyAdmin whenNotPaused {
         Raffle storage raffle = raffles[raffleId];
@@ -217,46 +208,9 @@ contract Raffles is ReentrancyGuard, Ownable {
         emit RaffleStatusChanged(raffleId, _isActive, msg.sender);
     }
 
-    function markPrizeDelivered(
-        uint256 resultId,
-        string memory deliveryMethod,
-        string memory trackingInfo
-    ) external onlyAdmin whenNotPaused {
-        LotteryResult storage result = lotteryResults[resultId];
-        require(result.drawnAt > 0, "PRIZE_NOT_DRAWN");
-        require(!result.claimed, "ALREADY_DELIVERED");
-        require(bytes(deliveryMethod).length > 0, "DELIVERY_METHOD_REQUIRED");
-        
-        result.claimed = true;
-        result.claimedAt = block.timestamp;
-        
-        Raffle storage raffle = raffles[result.raffleId];
-        require(result.prizeIndex < raffle.prizes.length, "INVALID_PRIZE_INDEX");
-        
-        emit PrizeDistributed(
-            resultId,
-            result.raffleId,
-            result.player,
-            result.prizeIndex,
-            raffle.prizes[result.prizeIndex].title,
-            msg.sender,
-            deliveryMethod,
-            trackingInfo,
-            block.timestamp
-        );
-    }
 
-    function requestRefund(uint256 raffleId, string memory reason) external whenNotPaused {
-        require(playerParticipationCount[raffleId][msg.sender] > 0, "NOT_PARTICIPATED");
-        require(bytes(reason).length > 0, "REASON_REQUIRED");
-        
-        emit RefundRequested(
-            raffleId,
-            msg.sender,
-            reason,
-            block.timestamp
-        );
-    }
+
+
 
     function processRefund(
         uint256 raffleId,
@@ -280,13 +234,15 @@ contract Raffles is ReentrancyGuard, Ownable {
         // 🚀 가스 최적화: 검증 순서 최적화 (빠른 실패)
         require(bytes(params.basicInfo.title).length > 0, "TITLE_REQUIRED");
         require(params.timing.endDate > params.timing.startDate, "INVALID_DATE");
+        require(params.timing.drawDate > params.timing.endDate, "DRAW_BEFORE_END");
         
-        // 한 번에 계산하여 가스 절약
-        unchecked {
-            uint256 duration = params.timing.endDate - params.timing.startDate;
-            require(duration >= MIN_RAFFLE_DURATION, "RAFFLE_TOO_SHORT");
-            require(params.timing.drawDate >= params.timing.endDate + MIN_DRAW_DELAY, "DRAW_TOO_EARLY");
-        }
+        
+        // 🔒 Safe delay calculation with overflow protection  
+        uint256 delay = params.timing.drawDate - params.timing.endDate;
+        require(delay >= 30 minutes, "DRAW_TOO_EARLY");
+        
+        // 🔒 Prevent far future dates (max 1 year)
+        require(params.timing.drawDate <= block.timestamp + 365 days, "DRAW_TOO_FAR");
 
         uint256 raffleId = _raffleIdCounter++;
 
@@ -299,9 +255,64 @@ contract Raffles is ReentrancyGuard, Ownable {
         newRaffle.status.isActive = true;
         newRaffle.status.isDrawn = false;
         newRaffle.status.totalQuantity = 0;
-        newRaffle.status.remainingQuantity = 0;
+        newRaffle.status.drawnParticipantCount = 0;
+        newRaffle.basicInfo.bestPrize = _findBestPrizeFromMemory(params.prizes);
 
         return _initializeRafflePrizes(raffleId, newRaffle, params.prizes);
+    }
+    
+    function _findBestPrize(Prize[] storage prizes) private view returns (Prize memory) {
+        require(prizes.length > 0, "NO_PRIZES");
+        
+        Prize memory bestPrize;
+        bool foundAvailable = false;
+        
+        for (uint256 i = 0; i < prizes.length;) {
+            Prize storage currentPrize = prizes[i];
+            
+            // 🔒 underflow 방지: pickedTicketQuantity가 더 큰 경우 0으로 처리
+            uint256 availableTickets = 0;
+            if (currentPrize.registeredTicketQuantity > currentPrize.pickedTicketQuantity) {
+                availableTickets = currentPrize.registeredTicketQuantity - currentPrize.pickedTicketQuantity;
+            }
+            
+            if (availableTickets > 0) {
+                if (!foundAvailable) {
+                    bestPrize = currentPrize;
+                    foundAvailable = true;
+                } else {
+                    if (currentPrize.rarity > bestPrize.rarity || 
+                        (currentPrize.rarity == bestPrize.rarity && currentPrize.order > bestPrize.order)) {
+                        bestPrize = currentPrize;
+                    }
+                }
+            }
+            
+            unchecked { ++i; }
+        }
+        
+        require(foundAvailable, "NO_AVAILABLE_PRIZES");
+        return bestPrize;
+    }
+    
+    function _findBestPrizeFromMemory(Prize[] memory prizes) private pure returns (Prize memory) {
+        require(prizes.length > 0, "NO_PRIZES");
+        
+        Prize memory bestPrize = prizes[0];
+        
+        for (uint256 i = 1; i < prizes.length;) {
+            Prize memory currentPrize = prizes[i];
+            
+            // rarity가 더 높거나, rarity가 같고 order가 더 높은 경우
+            if (currentPrize.rarity > bestPrize.rarity || 
+                (currentPrize.rarity == bestPrize.rarity && currentPrize.order > bestPrize.order)) {
+                bestPrize = currentPrize;
+            }
+            
+            unchecked { ++i; }
+        }
+        
+        return bestPrize;
     }
     
     function _initializeRafflePrizes(
@@ -309,24 +320,32 @@ contract Raffles is ReentrancyGuard, Ownable {
         Raffle storage newRaffle,
         Prize[] memory prizes
     ) private returns (uint256) {
+        require(prizes.length > 0, "NO_PRIZES_PROVIDED");
+        
         uint256 ticketNumber = 0;
         uint256 prizesLength = prizes.length;
+        uint256 totalTickets = 0;
         
         for (uint256 i = 0; i < prizesLength;) {
             Prize memory prize = prizes[i];
+            require(prize.registeredTicketQuantity > 0, "PRIZE_ZERO_TICKETS");
+            
             prize.pickedTicketQuantity = 0;
             prize.startTicketNumber = ticketNumber;
             
-            _createTicketBlocks(raffleId, i, ticketNumber, prize.registeredTicketQuantity);
-            
             newRaffle.prizes.push(prize);
             newRaffle.status.totalQuantity += prize.registeredTicketQuantity;
+            totalTickets += prize.registeredTicketQuantity;
             ticketNumber += prize.registeredTicketQuantity;
             
             unchecked { ++i; }
         }
 
-        newRaffle.status.remainingQuantity = newRaffle.status.totalQuantity;
+        // 🔒 최종 검증: 전체 티켓 수량이 0이 아닌지 확인
+        require(totalTickets > 0, "TOTAL_TICKETS_ZERO");
+        require(newRaffle.status.totalQuantity == totalTickets, "QUANTITY_MISMATCH");
+
+        newRaffle.status.drawnParticipantCount = 0;
 
         emit RaffleCreated(raffleId);
 
@@ -383,7 +402,7 @@ contract Raffles is ReentrancyGuard, Ownable {
         
         require(!raffle.status.isDrawn, "ALREADY_DRAWN");
         require(raffle.timing.instantDraw || block.timestamp >= raffle.timing.drawDate, "TOO_EARLY");
-        require(raffle.status.remainingQuantity > 0, "RAFFLE_ENDED");
+        require(raffle.status.totalQuantity > 0, "RAFFLE_ENDED");
 
         return _drawForParticipant(participantId, raffle, 0, raffleId);
     }
@@ -397,7 +416,11 @@ contract Raffles is ReentrancyGuard, Ownable {
         uint256[] memory participantIds = raffleParticipants[raffleId];
         uint256 participantCount = participantIds.length;
         
+        // 🔒 Enhanced boundary checks
+        require(participantCount > 0, "NO_PARTICIPANTS");
         require(startIndex < participantCount, "START_INDEX_OUT_OF_BOUNDS");
+        require(maxCount > 0, "INVALID_MAX_COUNT");
+        require(maxCount <= 1000, "BATCH_SIZE_TOO_LARGE"); // Gas limit protection
         
         uint256 endIndex = startIndex + maxCount;
         if (endIndex > participantCount) {
@@ -405,6 +428,7 @@ contract Raffles is ReentrancyGuard, Ownable {
         }
         
         uint256 processCount = endIndex - startIndex;
+        require(processCount > 0, "NOTHING_TO_PROCESS");
         uint256[] memory prizeIndices = new uint256[](processCount);
         
         for (uint256 i = 0; i < processCount;) {
@@ -431,6 +455,9 @@ contract Raffles is ReentrancyGuard, Ownable {
         Participant memory participant = participants[participantId];
         require(participant.player != address(0), "INVALID_PARTICIPANT");
 
+        // 🔒 안전성 검사: totalQuantity 확인
+        require(raffle.status.totalQuantity > 0, "NO_TICKETS_AVAILABLE");
+
         bytes32 randomSeed = _generateSecureRandom(
             participant.player,
             raffleId,
@@ -438,10 +465,17 @@ contract Raffles is ReentrancyGuard, Ownable {
         );
         
         uint256 randomValue = uint256(randomSeed) % raffle.status.totalQuantity;
-        uint256 prizeIndex = _selectPrize(raffle, randomValue, raffleId);
+        uint256 prizeIndex = _selectPrize(raffle, randomValue);
+        
+        // 🔒 Critical boundary check: validate prizeIndex
+        require(prizeIndex < raffle.prizes.length, "INVALID_PRIZE_INDEX");
 
+        // 🔒 안전한 수량 업데이트: underflow 방지
         if (raffle.settings.dynamicWeight) {
             raffle.prizes[prizeIndex].pickedTicketQuantity++;
+            
+            // totalQuantity 감소 전 underflow 방지
+            require(raffle.status.totalQuantity > 0, "CANNOT_DECREASE_ZERO_QUANTITY");
             raffle.status.totalQuantity--;
         }
         
@@ -456,12 +490,12 @@ contract Raffles is ReentrancyGuard, Ownable {
             claimedAt: 0
         });
         
-        // 🎯 티켓 번호로 결과 ID 빠른 조회를 위한 매핑 업데이트
         ticketToResultId[participant.lotteryTicketNumber] = resultId;
 
-        raffle.status.remainingQuantity--;
+        raffle.status.drawnParticipantCount++;
 
-        if (raffle.status.remainingQuantity == 0) {
+        // 래플 완료 체크: 동적 가중치에서 티켓 소진 시
+        if (raffle.settings.dynamicWeight && raffle.status.totalQuantity == 0) {
             raffle.status.isDrawn = true;
         }
         
@@ -481,23 +515,18 @@ contract Raffles is ReentrancyGuard, Ownable {
 
     function _selectPrize(
         Raffle storage raffle,
-        uint256 randomValue,
-        uint256 raffleId
+        uint256 randomValue
     ) private view returns (uint256) {
-        if (raffle.settings.dynamicWeight) {
-            return _selectPrizeDynamic(raffle, randomValue, raffleId);
-        } else {
-            return _selectPrizeStatic(raffleId, randomValue);
-        }
+        return _selectPrizeOptimized(raffle, randomValue);
     }
 
     function _selectPrizeStatic(
-        uint256 raffleId,
+        Raffle storage raffle,
         uint256 randomValue
     ) private view returns (uint256) {
-        Raffle storage raffle = raffles[raffleId];
+        require(raffle.prizes.length > 0, "NO_PRIZES_AVAILABLE");
         
-        // 🚀 대용량 상품이 있는 경우 선형 검색 사용
+        // 🚀 안전한 선형 검색 방식 (블록 테이블 의존성 제거)
         uint256 currentStart = 0;
         uint256 prizesLength = raffle.prizes.length;
         
@@ -505,6 +534,7 @@ contract Raffles is ReentrancyGuard, Ownable {
             Prize storage prize = raffle.prizes[i];
             uint256 prizeEnd = currentStart + prize.registeredTicketQuantity;
             
+            // 🔒 안전한 범위 검사
             if (randomValue >= currentStart && randomValue < prizeEnd) {
                 return i;
             }
@@ -513,90 +543,74 @@ contract Raffles is ReentrancyGuard, Ownable {
             unchecked { ++i; }
         }
         
-        // 폴백: 블록 테이블 방식 (소용량 상품들)
-        uint256 blockIndex = randomValue / TICKET_BLOCK_SIZE;
-        uint256 candidatePrize = raffleTicketBlocks[raffleId][blockIndex];
-        
-        // 유효성 검사
-        if (candidatePrize < prizesLength) {
-            return candidatePrize;
+        // 🔒 안전한 폴백: 마지막 유효한 상품 반환
+        // randomValue가 totalQuantity를 초과하는 경우를 대비
+        if (prizesLength > 0) {
+            return prizesLength - 1;
         }
         
-        // 최종 폴백
-        return prizesLength > 0 ? prizesLength - 1 : 0;
+        revert("NO_VALID_PRIZE_FOUND");
     }
 
     function _selectPrizeDynamic(
         Raffle storage raffle,
-        uint256 randomValue,
-        uint256 raffleId
-    ) private view returns (uint256) {
-        uint256 maxRetries = 10;
-        
-        for (uint256 retry = 0; retry < maxRetries;) {
-            uint256 blockIndex = (randomValue + retry) / TICKET_BLOCK_SIZE;
-            uint256 candidatePrize = raffleTicketBlocks[raffleId][blockIndex];
-            
-            if (candidatePrize < raffle.prizes.length) {
-                Prize storage prize = raffle.prizes[candidatePrize];
-                uint256 availableTickets = prize.registeredTicketQuantity - prize.pickedTicketQuantity;
-                
-                if (availableTickets > 0) {
-                    uint256 ticketInPrize = (randomValue + retry) - prize.startTicketNumber;
-                    if (ticketInPrize < availableTickets) {
-                        return candidatePrize;
-                    }
-                }
-            }
-            
-            unchecked { ++retry; }
-        }
-        
-        return _selectPrizeLinear(raffle, randomValue);
-    }
-
-    function _selectPrizeLinear(
-        Raffle storage raffle,
         uint256 randomValue
     ) private view returns (uint256) {
-        uint256 currentStart = 0;
+        // 🎯 동적 가중치: 현재 남은 티켓 기준으로 재매핑된 randomValue 사용
+        uint256 remainingTotalTickets = raffle.status.totalQuantity;
+        require(remainingTotalTickets > 0, "NO_REMAINING_TICKETS");
+        
+        // 남은 티켓 수 기준으로 randomValue 재조정
+        uint256 adjustedRandomValue = randomValue % remainingTotalTickets;
+        
+        // 🚀 선형 검색 방식으로 동적 가중치 처리 (가장 안전하고 정확함)
+        uint256 currentPosition = 0;
         uint256 prizesLength = raffle.prizes.length;
         
         for (uint256 i = 0; i < prizesLength;) {
             Prize storage prize = raffle.prizes[i];
-            uint256 availableTickets = prize.registeredTicketQuantity - prize.pickedTicketQuantity;
             
-            if (randomValue >= currentStart && randomValue < currentStart + availableTickets) {
-                return i;
+            // 🔒 안전한 availableTickets 계산
+            uint256 availableTickets = 0;
+            if (prize.registeredTicketQuantity > prize.pickedTicketQuantity) {
+                availableTickets = prize.registeredTicketQuantity - prize.pickedTicketQuantity;
             }
             
-            currentStart += availableTickets;
+            if (availableTickets > 0) {
+                // 현재 상품의 범위에 속하는지 확인
+                if (adjustedRandomValue >= currentPosition && 
+                    adjustedRandomValue < currentPosition + availableTickets) {
+                    return i;
+                }
+                currentPosition += availableTickets;
+            }
             
             unchecked { ++i; }
         }
-
-        return prizesLength - 1;
-    }
-
-    function _createTicketBlocks(
-        uint256 raffleId,
-        uint256 prizeIndex,
-        uint256 startTicket,
-        uint256 ticketQuantity
-    ) private {
-        // 🚀 대용량 상품 최적화: 10만개 이상은 블록 생성 생략
-        if (ticketQuantity >= 100000) {
-            // 큰 상품은 블록 테이블 사용하지 않음 (선형 검색으로 처리)
-            return;
+        
+        // 🔒 폴백: 사용 가능한 첫 번째 상품 반환
+        for (uint256 i = 0; i < prizesLength;) {
+            Prize storage prize = raffle.prizes[i];
+            if (prize.registeredTicketQuantity > prize.pickedTicketQuantity) {
+                return i;
+            }
+            unchecked { ++i; }
         }
         
-        uint256 endTicket = startTicket + ticketQuantity;
-        
-        for (uint256 ticket = startTicket; ticket < endTicket;) {
-            uint256 blockIndex = ticket / TICKET_BLOCK_SIZE;
-            raffleTicketBlocks[raffleId][blockIndex] = prizeIndex;
-            
-            unchecked { ticket += TICKET_BLOCK_SIZE; }
+        // 🚨 최종 폴백: 마지막 상품 (이론적으로 도달하지 않아야 함)
+        revert("NO_AVAILABLE_PRIZES_DYNAMIC");
+    }
+
+
+
+    function _selectPrizeOptimized(
+        Raffle storage raffle,
+        uint256 randomValue
+    ) private view returns (uint256) {
+        if (raffle.settings.dynamicWeight) {
+            return _selectPrizeDynamic(raffle, randomValue);
+        } else {
+            return _selectPrizeStatic(raffle, randomValue);
         }
     }
 
@@ -612,11 +626,7 @@ contract Raffles is ReentrancyGuard, Ownable {
                 nonce,
                 block.timestamp,
                 block.prevrandao,
-                blockhash(block.number - 1),
-                blockhash(block.number - 2),
-                block.coinbase,
-                tx.origin,
-                gasleft()
+                blockhash(block.number - 1)
             )
         );
     }
@@ -645,7 +655,7 @@ contract Raffles is ReentrancyGuard, Ownable {
         // 기본 상태 검증
         require(raffle.status.isActive, "RAFFLE_NOT_ACTIVE");
         require(!raffle.status.isDrawn, "RAFFLE_ENDED");
-        require(raffle.status.remainingQuantity > 0, "RAFFLE_ENDED");
+        require(raffle.status.totalQuantity > 0, "RAFFLE_ENDED");
         
         // 시간 검증
         require(block.timestamp >= raffle.timing.startDate, "RAFFLE_NOT_STARTED");
@@ -673,9 +683,7 @@ contract Raffles is ReentrancyGuard, Ownable {
         return lotteryResults[resultId];
     }
 
-    function getUserParticipation(uint256 raffleId, address player) external view returns (uint256) {
-        return playerParticipationCount[raffleId][player];
-    }
+
 
     function getRaffleParticipants(uint256 raffleId) external view returns (uint256[] memory) {
         return raffleParticipants[raffleId];
@@ -690,11 +698,36 @@ contract Raffles is ReentrancyGuard, Ownable {
         return raffles[raffleId];
     }
 
-    function getRaffleStatus(uint256 raffleId) external view returns (bool isActive, bool isDrawn, uint256 remainingQuantity) {
-        // 🚀 가스 최적화: 필요한 필드만 직접 읽기
+
+
+
+
+    function getRaffleCoreInfo(uint256 raffleId) external view returns (RaffleCoreInfo memory) {
         Raffle storage raffle = raffles[raffleId];
         require(raffle.timing.startDate > 0, "RAFFLE_NOT_EXISTS");
-        return (raffle.status.isActive, raffle.status.isDrawn, raffle.status.remainingQuantity);
+
+        Prize memory bestPrize = _findBestPrize(raffle.prizes);
+
+        return RaffleCoreInfo({
+            title: raffle.basicInfo.title,
+            imageUrl: raffle.basicInfo.imageUrl,
+            iconUrl: raffle.basicInfo.iconUrl,
+            startDate: raffle.timing.startDate,
+            endDate: raffle.timing.endDate,
+            drawDate: raffle.timing.drawDate,
+            instantDraw: raffle.timing.instantDraw,
+            participationLimit: raffle.settings.participationLimit,
+            participationLimitPerPlayer: raffle.settings.participationLimitPerPlayer,
+            participationFeeAssetId: raffle.fee.participationFeeAssetId,
+            participationFeeAmount: raffle.fee.participationFeeAmount,
+            raffleId: raffleId,
+            isActive: raffle.status.isActive,
+            isDrawn: raffle.status.isDrawn,
+            totalQuantity: raffle.status.totalQuantity,
+            participationCount: raffleParticipants[raffleId].length,
+            defaultBestPrize: raffle.basicInfo.bestPrize,
+            currentBestPrize: bestPrize
+        });
     }
 
     // 참가 + 즉시 추첨 + 배포 마킹 통합 함수
@@ -704,29 +737,34 @@ contract Raffles is ReentrancyGuard, Ownable {
         whenNotPaused 
         returns (uint256 participantId, uint256 prizeIndex, uint256 resultId) 
     {
-        // 🚀 가스 최적화: 통합 검증 함수 사용 (즉시 추첨 포함)
         _validateParticipation(raffleId, player, true);
         
-        // Storage reference for prize operations
         Raffle storage raffle = raffles[raffleId];
         
-        // 1단계: 참가 처리
+        // 🔒 추가 안전성 검사: totalQuantity 재확인
+        require(raffle.status.totalQuantity > 0, "NO_TICKETS_REMAINING");
+        
         participantId = _participateInternal(raffleId, player);
         
-        // 2단계: 즉시 추첨 로직 (최적화된 버전)
+        // 🔒 안전한 랜덤값 생성: totalQuantity 재확인 후 modulo 연산
+        uint256 currentTotalQuantity = raffle.status.totalQuantity;
+        require(currentTotalQuantity > 0, "RAFFLE_TICKETS_EXHAUSTED");
+        
         Participant memory participant = participants[participantId];
         bytes32 randomSeed = _generateSecureRandom(player, raffleId, participantId);
-        uint256 randomValue = uint256(randomSeed) % raffle.status.totalQuantity;
-        prizeIndex = _selectPrize(raffle, randomValue, raffleId);
+        uint256 randomValue = uint256(randomSeed) % currentTotalQuantity;
+        prizeIndex = _selectPrize(raffle, randomValue);
         
-        // 3단계: 상품 수량 업데이트
+        // 🔒 안전한 수량 업데이트: underflow 방지
         if (raffle.settings.dynamicWeight) {
             raffle.prizes[prizeIndex].pickedTicketQuantity++;
+            
+            // totalQuantity 감소 전 underflow 방지
+            require(raffle.status.totalQuantity > 0, "CANNOT_DECREASE_ZERO_QUANTITY");
             raffle.status.totalQuantity--;
         }
-        raffle.status.remainingQuantity--;
+        raffle.status.drawnParticipantCount++;
         
-        // 4단계: 즉시 배포 완료로 마킹
         resultId = _lotteryResultIdCounter++;
         lotteryResults[resultId] = LotteryResult({
             lotteryTicketNumber: participant.lotteryTicketNumber,
@@ -734,15 +772,14 @@ contract Raffles is ReentrancyGuard, Ownable {
             raffleId: raffleId,
             prizeIndex: prizeIndex,
             drawnAt: block.timestamp,
-            claimed: true,        // ✅ 즉시 배포 완료 마킹
+            claimed: true,
             claimedAt: block.timestamp
         });
         
-        // 🎯 매핑 업데이트
         ticketToResultId[participant.lotteryTicketNumber] = resultId;
         
-        // 래플 완료 체크
-        if (raffle.status.remainingQuantity == 0) {
+        // 래플 완료 체크: 동적 가중치에서 티켓 소진 시
+        if (raffle.settings.dynamicWeight && raffle.status.totalQuantity == 0) {
             raffle.status.isDrawn = true;
         }
         
@@ -751,59 +788,7 @@ contract Raffles is ReentrancyGuard, Ownable {
         return (participantId, prizeIndex, resultId);
     }
     
-    // 배치 참가 + 추첨 + 상품 배포
-    function batchParticipateDrawAndDistribute(
-        uint256 raffleId,
-        address[] calldata players,
-        uint256[] calldata prizeIndices // 미리 계산된 상품 인덱스
-    ) external onlyAdmin nonReentrant whenNotPaused returns (uint256[] memory) {
-        require(players.length == prizeIndices.length, "ARRAY_LENGTH_MISMATCH");
-        
-        Raffle storage raffle = raffles[raffleId];
-        require(raffle.status.isActive, "RAFFLE_NOT_ACTIVE");
-        
-        uint256[] memory resultIds = new uint256[](players.length);
-        
-        for (uint256 i = 0; i < players.length;) {
-            // 1. 참가 처리
-            uint256 participantId = _participateInternal(raffleId, players[i]);
-            
-            // 2. 추첨 결과 기록 (가스 절약을 위해 미리 계산된 인덱스 사용)
-            uint256 resultId = _lotteryResultIdCounter++;
-            lotteryResults[resultId] = LotteryResult({
-                lotteryTicketNumber: participants[participantId].lotteryTicketNumber,
-                player: players[i],
-                raffleId: raffleId,
-                prizeIndex: prizeIndices[i],
-                drawnAt: block.timestamp,
-                claimed: true, // 즉시 배포로 처리
-                claimedAt: block.timestamp
-            });
-            
-            // 🎯 매핑 업데이트
-            ticketToResultId[participants[participantId].lotteryTicketNumber] = resultId;
-            
-            resultIds[i] = resultId;
-            
-            // 상품 수량 업데이트
-            if (raffle.settings.dynamicWeight) {
-                raffle.prizes[prizeIndices[i]].pickedTicketQuantity++;
-                raffle.status.totalQuantity--;
-            }
-            raffle.status.remainingQuantity--;
-            
-            emit BatchProcessed(raffleId, players[i], participantId, prizeIndices[i], resultId);
-            
-            unchecked { ++i; }
-        }
-        
-        // 래플 완료 체크
-        if (raffle.status.remainingQuantity == 0) {
-            raffle.status.isDrawn = true;
-        }
-        
-        return resultIds;
-    }
+
     
     // 참가 내부 함수 (중복 코드 제거)
     function _participateInternal(uint256 raffleId, address player) 
@@ -824,45 +809,12 @@ contract Raffles is ReentrancyGuard, Ownable {
         raffleParticipants[raffleId].push(participantId);
         playerParticipationCount[raffleId][player]++;
         
-        // 🎯 매핑 업데이트
         playerParticipantIds[raffleId][player].push(participantId);
         
         return participantId;
     }
     
-    // 상품 일괄 배포 (오프체인 처리 후 온체인 확정)
-    function confirmBatchDistribution(
-        uint256[] calldata resultIds,
-        bool[] calldata distributionSuccess,
-        string[] calldata deliveryMethods
-    ) external onlyAdmin whenNotPaused {
-        require(resultIds.length == distributionSuccess.length, "ARRAY_LENGTH_MISMATCH");
-        require(resultIds.length == deliveryMethods.length, "ARRAY_LENGTH_MISMATCH");
-        
-        for (uint256 i = 0; i < resultIds.length;) {
-            LotteryResult storage result = lotteryResults[resultIds[i]];
-            
-            if (distributionSuccess[i]) {
-                result.claimed = true;
-                result.claimedAt = block.timestamp;
-                
-                Raffle storage raffle = raffles[result.raffleId];
-                emit PrizeDistributed(
-                    resultIds[i],
-                    result.raffleId,
-                    result.player,
-                    result.prizeIndex,
-                    raffle.prizes[result.prizeIndex].title,
-                    msg.sender,
-                    deliveryMethods[i],
-                    "Batch confirmed",
-                    block.timestamp
-                );
-            }
-            
-            unchecked { ++i; }
-        }
-    }
+
     
     event ParticipatedAndDrawn(
         uint256 indexed raffleId,
@@ -871,14 +823,6 @@ contract Raffles is ReentrancyGuard, Ownable {
         uint256 prizeIndex,
         uint256 resultId,
         uint256 timestamp
-    );
-    
-    event BatchProcessed(
-        uint256 indexed raffleId,
-        address indexed player,
-        uint256 participantId,
-        uint256 prizeIndex,
-        uint256 resultId
     );
 
     // 🎯 새로운 함수: 사용자 참가 상세 정보 일괄 조회

@@ -11,29 +11,28 @@ import {
 import {
     useOnchainRafflesQuery,
     useRaffleFromContractQuery,
-    useRaffleStatusQuery,
-    useRaffleListQuery,
-    useRaffleListStatusQuery,
+    useRaffleCoreInfoForListCardQuery,
     useUserParticipationQuery,
     useLotteryResultQuery,
+    useRaffleParticipantsQuery,
 } from "./queries";
 
 import type {
     GetOnchainRafflesInput,
     GetRaffleFromContractInput,
-    GetRaffleStatusInput,
-    GetRaffleListInput,
+    GetRaffleCoreInfoForListCardInput,
     GetUserParticipationInput,
     GetLotteryResultInput,
+    GetRaffleParticipantsInput,
 } from "./actions-read";
 
 export interface UseOnchainRafflesInput {
     getOnchainRafflesInput?: GetOnchainRafflesInput;
     getRaffleFromContractInput?: GetRaffleFromContractInput;
-    getRaffleStatusInput?: GetRaffleStatusInput;
-    getRaffleListInput?: GetRaffleListInput;
+    getRaffleCoreInfoForListCardInput?: GetRaffleCoreInfoForListCardInput;
     getUserParticipationInput?: GetUserParticipationInput;
     getLotteryResultInput?: GetLotteryResultInput;
+    getRaffleParticipantsInput?: GetRaffleParticipantsInput;
 }
 
 export function useOnchainRaffles(input?: UseOnchainRafflesInput) {
@@ -52,25 +51,13 @@ export function useOnchainRaffles(input?: UseOnchainRafflesInput) {
     } = useRaffleFromContractQuery(input?.getRaffleFromContractInput);
 
     const {
-        data: raffleStatus,
-        isLoading: isRaffleStatusLoading,
-        isError: isRaffleStatusError,
-        refetch: refetchRaffleStatus,
-    } = useRaffleStatusQuery(input?.getRaffleStatusInput);
-
-    const {
-        data: raffleList,
-        isLoading: isRaffleListLoading,
-        isError: isRaffleListError,
-        refetch: refetchRaffleList,
-    } = useRaffleListQuery(input?.getRaffleListInput);
-
-    const {
-        data: raffleListStatus,
-        isLoading: isRaffleListStatusLoading,
-        isError: isRaffleListStatusError,
-        refetch: refetchRaffleListStatus,
-    } = useRaffleListStatusQuery(input?.getRaffleListInput);
+        data: raffleCoreInfoForListCard,
+        isLoading: isRaffleCoreInfoForListCardLoading,
+        isError: isRaffleCoreInfoForListCardError,
+        refetch: refetchRaffleCoreInfoForListCard,
+    } = useRaffleCoreInfoForListCardQuery(
+        input?.getRaffleCoreInfoForListCardInput
+    );
 
     const {
         data: userParticipation,
@@ -85,6 +72,13 @@ export function useOnchainRaffles(input?: UseOnchainRafflesInput) {
         isError: isLotteryResultError,
         refetch: refetchLotteryResult,
     } = useLotteryResultQuery(input?.getLotteryResultInput);
+
+    const {
+        data: raffleParticipants,
+        isLoading: isRaffleParticipantsLoading,
+        isError: isRaffleParticipantsError,
+        refetch: refetchRaffleParticipants,
+    } = useRaffleParticipantsQuery(input?.getRaffleParticipantsInput);
 
     const {
         mutate: participate,
@@ -121,20 +115,10 @@ export function useOnchainRaffles(input?: UseOnchainRafflesInput) {
         isRaffleFromContractError,
         refetchRaffleFromContract,
 
-        raffleStatus,
-        isRaffleStatusLoading,
-        isRaffleStatusError,
-        refetchRaffleStatus,
-
-        raffleList,
-        isRaffleListLoading,
-        isRaffleListError,
-        refetchRaffleList,
-
-        raffleListStatus,
-        isRaffleListStatusLoading,
-        isRaffleListStatusError,
-        refetchRaffleListStatus,
+        raffleCoreInfoForListCard,
+        isRaffleCoreInfoForListCardLoading,
+        isRaffleCoreInfoForListCardError,
+        refetchRaffleCoreInfoForListCard,
 
         userParticipation,
         isUserParticipationLoading,
@@ -145,6 +129,11 @@ export function useOnchainRaffles(input?: UseOnchainRafflesInput) {
         isLotteryResultLoading,
         isLotteryResultError,
         refetchLotteryResult,
+
+        raffleParticipants,
+        isRaffleParticipantsLoading,
+        isRaffleParticipantsError,
+        refetchRaffleParticipants,
 
         participate,
         participateAsync,

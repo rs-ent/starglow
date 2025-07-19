@@ -3,7 +3,6 @@
 "use server";
 
 import { getContract } from "viem";
-import type { Abi } from "viem";
 import { prisma } from "@/lib/prisma/client";
 import { fetchPublicClient } from "@/app/story/client";
 import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
@@ -35,6 +34,43 @@ export type Raffle = Pick<
         | "explorerUrl"
         | "multicallAddress"
     >;
+};
+
+/*
+struct Prize {
+        PrizeType prizeType;
+        address collectionAddress;
+        uint256 registeredTicketQuantity;
+        uint256 pickedTicketQuantity;
+        uint256 order;
+        uint256 rarity;
+        uint256 prizeQuantity;
+        uint256 startTicketNumber;
+        
+        string title;
+        string description;
+        string imageUrl;
+        string iconUrl;
+        string assetId;
+        uint256[] tokenIds;
+    }
+        */
+
+export type Prize = {
+    prizeType: number;
+    collectionAddress: string;
+    registeredTicketQuantity: bigint;
+    pickedTicketQuantity: bigint;
+    order: bigint;
+    rarity: bigint;
+    prizeQuantity: bigint;
+    startTicketNumber: bigint;
+    title: string;
+    description: string;
+    imageUrl: string;
+    iconUrl: string;
+    assetId: string;
+    tokenIds: bigint[];
 };
 
 export interface GetOnchainRafflesResult {
@@ -176,24 +212,9 @@ export interface ContractRaffleData {
         isActive: boolean;
         isDrawn: boolean;
         totalQuantity: bigint;
-        remainingQuantity: bigint;
+        drawnParticipantCount: bigint;
     };
-    prizes?: Array<{
-        prizeType: number;
-        collectionAddress: string;
-        registeredTicketQuantity: bigint;
-        pickedTicketQuantity: bigint;
-        order: bigint;
-        rarity: bigint;
-        prizeQuantity: bigint;
-        startTicketNumber: bigint;
-        title: string;
-        description: string;
-        imageUrl: string;
-        iconUrl: string;
-        assetId: string;
-        tokenIds: bigint[];
-    }>;
+    prizes?: Array<Prize>;
 }
 
 export interface GetRaffleFromContractResult {
@@ -257,14 +278,23 @@ export async function getRaffleFromContract(
         const result: ContractRaffleData = { raffleId };
 
         if (dataKeys.includes("status")) {
-            const statusData = (await contract.read.getRaffleStatus([
+            const fullRaffleForStatus = (await contract.read.getRaffle([
                 BigInt(raffleId),
-            ])) as [boolean, boolean, bigint];
+            ])) as {
+                status: {
+                    isActive: boolean;
+                    isDrawn: boolean;
+                    totalQuantity: bigint;
+                    drawnParticipantCount: bigint;
+                };
+            };
+
             result.status = {
-                isActive: statusData[0],
-                isDrawn: statusData[1],
-                remainingQuantity: statusData[2],
-                totalQuantity: statusData[2],
+                isActive: fullRaffleForStatus.status.isActive,
+                isDrawn: fullRaffleForStatus.status.isDrawn,
+                drawnParticipantCount:
+                    fullRaffleForStatus.status.drawnParticipantCount,
+                totalQuantity: fullRaffleForStatus.status.totalQuantity,
             };
         }
 
@@ -304,9 +334,9 @@ export async function getRaffleFromContract(
                     isActive: boolean;
                     isDrawn: boolean;
                     totalQuantity: bigint;
-                    remainingQuantity: bigint;
+                    drawnParticipantCount: bigint;
                 };
-                prizes: Array<any>;
+                prizes: Array<Prize>;
             };
 
             if (dataKeys.includes("basicInfo")) {
@@ -322,7 +352,7 @@ export async function getRaffleFromContract(
                 result.fee = fullRaffleData.fee;
             }
             if (dataKeys.includes("prizes")) {
-                result.prizes = fullRaffleData.prizes.map((prize: any) => ({
+                result.prizes = fullRaffleData.prizes.map((prize: Prize) => ({
                     prizeType: Number(prize.prizeType),
                     collectionAddress: prize.collectionAddress,
                     registeredTicketQuantity: prize.registeredTicketQuantity,
@@ -361,68 +391,64 @@ export async function getRaffleFromContract(
     }
 }
 
-export interface GetRaffleStatusInput {
-    contractAddress: string;
-    raffleId: string;
-}
-
-export async function getRaffleStatusFromContract(
-    input?: GetRaffleStatusInput
-): Promise<GetRaffleFromContractResult> {
-    if (!input) {
-        return {
-            success: false,
-            error: "Input is required",
-        };
+/*
+struct RaffleCoreInfo {
+        string title;
+        string imageUrl;
+        string iconUrl;
+        uint256 startDate;
+        uint256 endDate;
+        uint256 drawDate;
+        bool instantDraw;
+        uint256 participationLimit;
+        uint256 participationLimitPerPlayer;
+        string participationFeeAssetId;
+        int256 participationFeeAmount;
+        uint256 raffleId;
+        bool isActive;
+        bool isDrawn;
+        uint256 totalQuantity;
+        uint256 participationCount;
+        Prize defaultBestPrize;
+        Prize currentBestPrize;
     }
-    return getRaffleFromContract({
-        ...input,
-        dataKeys: ["status"],
-    });
-}
+        */
 
-export interface RaffleListItem {
-    raffleId: string;
-    contractAddress: string;
-    imageUrl: string;
+export type RaffleCoreInfo = {
     title: string;
-    highestTierPrize: {
-        title: string;
-        rarity: bigint;
-        imageUrl: string;
-    };
-    totalPrizeCount: number;
+    imageUrl: string;
+    iconUrl: string;
     startDate: bigint;
     endDate: bigint;
     drawDate: bigint;
-    totalParticipants: number;
-    participationFee: {
-        asset: string;
-        amount: bigint;
-    };
-    status: {
-        isActive: boolean;
-        isDrawn: boolean;
-        remainingQuantity: bigint;
-    };
+    instantDraw: boolean;
+    participationLimit: bigint;
+    participationLimitPerPlayer: bigint;
+    participationFeeAssetId: string;
+    participationFeeAmount: bigint;
+    raffleId: bigint;
+    isActive: boolean;
+    isDrawn: boolean;
+    totalQuantity: bigint;
+    participationCount: bigint;
+    defaultBestPrize: Prize;
+    currentBestPrize: Prize;
+};
+
+export interface GetRaffleCoreInfoForListCardInput {
+    contractAddress: string;
+    raffleId: string;
 }
 
-export interface GetRaffleListInput {
-    raffles: Array<{
-        contractAddress: string;
-        raffleId: string;
-    }>;
-}
-
-export interface GetRaffleListResult {
+export interface GetRaffleCoreInfoForListCardResult {
     success: boolean;
-    data?: RaffleListItem[];
+    data?: RaffleCoreInfo;
     error?: string;
 }
 
-export async function getRaffleListFromContract(
-    input?: GetRaffleListInput
-): Promise<GetRaffleListResult> {
+export async function getRaffleCoreInfoForListCard(
+    input?: GetRaffleCoreInfoForListCardInput
+): Promise<GetRaffleCoreInfoForListCardResult> {
     if (!input) {
         return {
             success: false,
@@ -430,18 +456,18 @@ export async function getRaffleListFromContract(
         };
     }
     try {
-        const { raffles } = input;
+        const { contractAddress, raffleId } = input;
 
-        if (raffles.length === 0) {
-            return { success: true, data: [] };
+        if (!contractAddress || !raffleId) {
+            return { success: true, data: undefined };
         }
 
         const dbRaffle = await prisma.onchainRaffle.findUnique({
             cacheStrategy: getCacheStrategy("fiveMinutes"),
             where: {
                 contractAddress_raffleId: {
-                    contractAddress: raffles[0].contractAddress,
-                    raffleId: raffles[0].raffleId,
+                    contractAddress,
+                    raffleId,
                 },
             },
             select: {
@@ -459,10 +485,10 @@ export async function getRaffleListFromContract(
             },
         });
 
-        if (!dbRaffle?.network.multicallAddress) {
+        if (!dbRaffle) {
             return {
                 success: false,
-                error: "Multicall not supported on this network",
+                error: "Raffle not found in database",
             };
         }
 
@@ -470,184 +496,19 @@ export async function getRaffleListFromContract(
             network: dbRaffle.network,
         });
 
-        const multicallRequests = raffles.flatMap(
-            ({ contractAddress, raffleId }) => [
-                {
-                    address: contractAddress as `0x${string}`,
-                    abi: abi as Abi,
-                    functionName: "getRaffle",
-                    args: [BigInt(raffleId)],
-                },
-                {
-                    address: contractAddress as `0x${string}`,
-                    abi: abi as Abi,
-                    functionName: "getRaffleParticipants",
-                    args: [BigInt(raffleId)],
-                },
-            ]
-        );
-
-        const multicallResults = await publicClient.multicall({
-            contracts: multicallRequests,
+        const contract = getContract({
+            address: contractAddress as `0x${string}`,
+            abi,
+            client: publicClient,
         });
 
-        const raffleListItems: RaffleListItem[] = [];
-
-        for (let i = 0; i < raffles.length; i++) {
-            const raffleIndex = i * 2;
-            const participantsIndex = i * 2 + 1;
-
-            const raffleResult = multicallResults[raffleIndex];
-            const participantsResult = multicallResults[participantsIndex];
-
-            if (
-                raffleResult.status === "success" &&
-                participantsResult.status === "success"
-            ) {
-                const raffleData = raffleResult.result as any;
-                const participantsData = participantsResult.result as bigint[];
-
-                const highestTierPrize = raffleData.prizes.reduce(
-                    (highest: any, current: any) =>
-                        current.rarity > highest.rarity ? current : highest
-                );
-
-                raffleListItems.push({
-                    raffleId: raffles[i].raffleId,
-                    contractAddress: raffles[i].contractAddress,
-                    imageUrl: raffleData.basicInfo.imageUrl,
-                    title: raffleData.basicInfo.title,
-                    highestTierPrize: {
-                        title: highestTierPrize.title,
-                        rarity: highestTierPrize.rarity,
-                        imageUrl: highestTierPrize.imageUrl,
-                    },
-                    totalPrizeCount: raffleData.prizes.length,
-                    startDate: raffleData.timing.startDate,
-                    endDate: raffleData.timing.endDate,
-                    drawDate: raffleData.timing.drawDate,
-                    totalParticipants: participantsData.length,
-                    participationFee: {
-                        asset: raffleData.fee.participationFeeAsset,
-                        amount: raffleData.fee.participationFeeAmount,
-                    },
-                    status: {
-                        isActive: raffleData.status.isActive,
-                        isDrawn: raffleData.status.isDrawn,
-                        remainingQuantity: raffleData.status.remainingQuantity,
-                    },
-                });
-            }
-        }
+        const coreData = (await contract.read.getRaffleCoreInfo([
+            BigInt(raffleId),
+        ])) as RaffleCoreInfo;
 
         return {
             success: true,
-            data: raffleListItems,
-        };
-    } catch (error) {
-        console.error("Error fetching raffle list from contract:", error);
-        return {
-            success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to fetch raffle list",
-        };
-    }
-}
-
-export async function getRaffleListStatusFromContract(
-    input?: GetRaffleListInput
-): Promise<GetRaffleListResult> {
-    if (!input) {
-        return {
-            success: false,
-            error: "Input is required",
-        };
-    }
-    try {
-        const { raffles } = input;
-
-        if (raffles.length === 0) {
-            return { success: true, data: [] };
-        }
-
-        const dbRaffle = await prisma.onchainRaffle.findUnique({
-            cacheStrategy: getCacheStrategy("fiveMinutes"),
-            where: {
-                contractAddress_raffleId: {
-                    contractAddress: raffles[0].contractAddress,
-                    raffleId: raffles[0].raffleId,
-                },
-            },
-            select: {
-                network: {
-                    select: {
-                        id: true,
-                        name: true,
-                        chainId: true,
-                        symbol: true,
-                        rpcUrl: true,
-                        explorerUrl: true,
-                        multicallAddress: true,
-                    },
-                },
-            },
-        });
-
-        if (!dbRaffle?.network.multicallAddress) {
-            return {
-                success: false,
-                error: "Multicall not supported on this network",
-            };
-        }
-
-        const publicClient = await fetchPublicClient({
-            network: dbRaffle.network,
-        });
-
-        const multicallRequests = raffles.map(
-            ({ contractAddress, raffleId }) => ({
-                address: contractAddress as `0x${string}`,
-                abi: abi as Abi,
-                functionName: "getRaffleStatus",
-                args: [BigInt(raffleId)],
-            })
-        );
-
-        const multicallResults = await publicClient.multicall({
-            contracts: multicallRequests,
-        });
-
-        const raffleListItems: Partial<RaffleListItem>[] = raffles.map(
-            (raffle, index) => {
-                const result = multicallResults[index];
-
-                if (result.status === "success") {
-                    const [isActive, isDrawn, remainingQuantity] =
-                        result.result as [boolean, boolean, bigint];
-
-                    return {
-                        raffleId: raffle.raffleId,
-                        contractAddress: raffle.contractAddress,
-                        status: {
-                            isActive,
-                            isDrawn,
-                            remainingQuantity,
-                        },
-                    };
-                }
-
-                return {
-                    raffleId: raffle.raffleId,
-                    contractAddress: raffle.contractAddress,
-                };
-            }
-        );
-
-        return {
-            success: true,
-            data: raffleListItems as RaffleListItem[],
+            data: coreData,
         };
     } catch (error) {
         console.error("Error fetching raffle list status:", error);
@@ -856,15 +717,7 @@ export interface LotteryResultData {
     claimed: boolean;
     drawnAt: bigint;
     claimedAt: bigint;
-    prize?: {
-        title: string;
-        description: string;
-        imageUrl: string;
-        iconUrl: string;
-        prizeType: number;
-        rarity: bigint;
-        assetId: string;
-    };
+    prize?: Prize;
 }
 
 export interface GetLotteryResultResult {
@@ -964,28 +817,14 @@ export async function getLotteryResult(
             const raffleData = (await contract.read.getRaffle([
                 lotteryResult.raffleId,
             ])) as {
-                prizes: Array<{
-                    title: string;
-                    description: string;
-                    imageUrl: string;
-                    iconUrl: string;
-                    prizeType: number;
-                    rarity: bigint;
-                    assetId: string;
-                }>;
+                prizes: Array<Prize>;
             };
 
             const prizeIndex = Number(lotteryResult.prizeIndex);
             if (raffleData.prizes && raffleData.prizes[prizeIndex]) {
                 const prize = raffleData.prizes[prizeIndex];
                 result.prize = {
-                    title: prize.title,
-                    description: prize.description,
-                    imageUrl: prize.imageUrl,
-                    iconUrl: prize.iconUrl,
-                    prizeType: Number(prize.prizeType),
-                    rarity: prize.rarity,
-                    assetId: prize.assetId,
+                    ...prize,
                 };
             }
         } catch (prizeError) {
@@ -1005,6 +844,101 @@ export async function getLotteryResult(
                 error instanceof Error
                     ? error.message
                     : "Failed to fetch lottery result",
+        };
+    }
+}
+
+export interface GetRaffleParticipantsInput {
+    contractAddress: string;
+    raffleId: string;
+}
+
+export interface GetRaffleParticipantsResult {
+    success: boolean;
+    data?: {
+        raffleId: string;
+        contractAddress: string;
+        participantIds: string[];
+        totalCount: number;
+    };
+    error?: string;
+}
+
+export async function getRaffleParticipants(
+    input?: GetRaffleParticipantsInput
+): Promise<GetRaffleParticipantsResult> {
+    if (!input) {
+        return {
+            success: false,
+            error: "Input is required",
+        };
+    }
+
+    try {
+        const { contractAddress, raffleId } = input;
+
+        const dbRaffle = await prisma.onchainRaffle.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
+            where: {
+                contractAddress_raffleId: { contractAddress, raffleId },
+            },
+            select: {
+                raffleId: true,
+                contractAddress: true,
+                network: {
+                    select: {
+                        id: true,
+                        name: true,
+                        chainId: true,
+                        symbol: true,
+                        rpcUrl: true,
+                        explorerUrl: true,
+                        multicallAddress: true,
+                    },
+                },
+            },
+        });
+
+        if (!dbRaffle) {
+            return {
+                success: false,
+                error: "Raffle not found in database",
+            };
+        }
+
+        const publicClient = await fetchPublicClient({
+            network: dbRaffle.network,
+        });
+
+        const contract = getContract({
+            address: contractAddress as `0x${string}`,
+            abi,
+            client: publicClient,
+        });
+
+        const participantIds = (await contract.read.getRaffleParticipants([
+            BigInt(raffleId),
+        ])) as bigint[];
+
+        const participantIdsString = participantIds.map((id) => id.toString());
+
+        return {
+            success: true,
+            data: {
+                raffleId,
+                contractAddress,
+                participantIds: participantIdsString,
+                totalCount: participantIdsString.length,
+            },
+        };
+    } catch (error) {
+        console.error("Error fetching raffle participants:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to fetch raffle participants",
         };
     }
 }

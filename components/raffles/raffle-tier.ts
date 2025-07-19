@@ -8,6 +8,9 @@ export const tierMap = {
         bg: "from-[rgba(148,163,184,0.15)] to-[rgba(100,116,139,0.15)]",
         border: "[rgba(148,163,184,0.30)]",
         glow: "[rgba(148,163,184,0.20)]",
+        mainColorR: 148,
+        mainColorG: 163,
+        mainColorB: 184,
     },
     1: {
         name: "UNCOMMON",
@@ -18,6 +21,9 @@ export const tierMap = {
         bg: "from-[rgba(52,211,153,0.15)] to-[rgba(20,184,166,0.15)]",
         border: "[rgba(52,211,153,0.30)]",
         glow: "[rgba(52,211,153,0.20)]",
+        mainColorR: 52,
+        mainColorG: 211,
+        mainColorB: 153,
     },
     2: {
         name: "RARE",
@@ -28,6 +34,9 @@ export const tierMap = {
         bg: "from-[rgba(56,189,248,0.15)] to-[rgba(59,130,246,0.15)]",
         border: "[rgba(56,189,248,0.30)]",
         glow: "[rgba(56,189,248,0.20)]",
+        mainColorR: 56,
+        mainColorG: 189,
+        mainColorB: 248,
     },
     3: {
         name: "EPIC",
@@ -38,6 +47,9 @@ export const tierMap = {
         bg: "from-[rgba(167,139,250,0.15)] to-[rgba(139,92,246,0.15)]",
         border: "[rgba(167,139,250,0.30)]",
         glow: "[rgba(167,139,250,0.20)]",
+        mainColorR: 167,
+        mainColorG: 139,
+        mainColorB: 250,
     },
     4: {
         name: "LEGENDARY",
@@ -48,6 +60,9 @@ export const tierMap = {
         bg: "from-[rgba(251,191,36,0.15)] to-[rgba(249,115,22,0.15)]",
         border: "[rgba(251,191,36,0.30)]",
         glow: "[rgba(251,191,36,0.20)]",
+        mainColorR: 251,
+        mainColorG: 191,
+        mainColorB: 36,
     },
     5: {
         name: "CELESTIAL",
@@ -58,6 +73,9 @@ export const tierMap = {
         bg: "from-[rgba(34,211,238,0.15)] to-[rgba(14,165,233,0.15)]",
         border: "[rgba(34,211,238,0.30)]",
         glow: "[rgba(34,211,238,0.20)]",
+        mainColorR: 34,
+        mainColorG: 211,
+        mainColorB: 238,
     },
     6: {
         name: "STELLAR",
@@ -68,6 +86,9 @@ export const tierMap = {
         bg: "from-[rgba(251,113,133,0.15)] to-[rgba(236,72,153,0.15)]",
         border: "[rgba(251,113,133,0.30)]",
         glow: "[rgba(251,113,133,0.20)]",
+        mainColorR: 251,
+        mainColorG: 113,
+        mainColorB: 133,
     },
     7: {
         name: "COSMIC",
@@ -78,5 +99,8 @@ export const tierMap = {
         bg: "from-[rgba(252,211,77,0.15)] to-[rgba(250,204,21,0.15)]",
         border: "[rgba(252,211,77,0.30)]",
         glow: "[rgba(252,211,77,0.20)]",
+        mainColorR: 252,
+        mainColorG: 211,
+        mainColorB: 77,
     },
 };

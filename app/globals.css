@@ -526,3 +526,33 @@ html {
     background: linear-gradient(90deg, transparent, transparent, transparent);
   }
 }
+
+@keyframes meteor {
+  to {
+    transform: translateY(300px) translateX(300px);
+  }
+}
+
+@keyframes hologram-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(34, 211, 153, 0.3), 
+                0 0 10px rgba(34, 211, 153, 0.2),
+                0 0 20px rgba(34, 211, 153, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(34, 211, 153, 0.6), 
+                0 0 30px rgba(34, 211, 153, 0.4),
+                0 0 40px rgba(34, 211, 153, 0.2);
+  }
+}
+
+@keyframes space-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}

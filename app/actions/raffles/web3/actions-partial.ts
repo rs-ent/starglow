@@ -15,7 +15,7 @@ import {
     updatePlayerAsset,
 } from "@/app/actions/playerAssets/actions";
 import { fetchWalletClient } from "@/app/story/client";
-import { initialTransfer } from "@/app/story/transfer/actions";
+import { distributePrize } from "./actions-write";
 
 const abi = rafflesJson.abi;
 
@@ -1221,74 +1221,34 @@ export async function distributeOnchainPrizes(
                                 );
                             }
 
-                            let distributionTxHash: string | undefined;
-
-                            if (winner.prize.prizeType === 1) {
-                                const assetId = winner.prize.assetId;
-                                const assetAmount = Number(
-                                    winner.prize.assetAmount
+                            // 🎁 통합 상금 분배 로직 사용
+                            const userWallet =
+                                player.user?.wallets?.[0]?.address;
+                            if (!userWallet) {
+                                throw new Error(
+                                    "User wallet address not found"
                                 );
-
-                                if (!assetId || assetAmount <= 0) {
-                                    throw new Error(
-                                        "Invalid asset prize configuration"
-                                    );
-                                }
-
-                                const result = await updatePlayerAsset(
-                                    {
-                                        transaction: {
-                                            playerId: player.id,
-                                            assetId,
-                                            amount: assetAmount,
-                                            operation: "ADD",
-                                            reason: `Onchain Raffle prize: ${winner.prize.title}`,
-                                        },
-                                    },
-                                    tx
-                                );
-
-                                if (!result.success) {
-                                    throw new Error(
-                                        `Asset distribution failed: ${result.error}`
-                                    );
-                                }
-                            } else if (winner.prize.prizeType === 2) {
-                                const spgAddress =
-                                    winner.prize.collectionAddress;
-                                const nftQuantity = Number(
-                                    winner.prize.nftQuantity || 1
-                                );
-
-                                if (!spgAddress || nftQuantity <= 0) {
-                                    throw new Error(
-                                        "Invalid NFT prize configuration"
-                                    );
-                                }
-
-                                const userWallet = player.user?.wallets?.[0]
-                                    ?.address as `0x${string}`;
-                                if (!userWallet) {
-                                    throw new Error(
-                                        "User wallet address not found"
-                                    );
-                                }
-
-                                const result = await initialTransfer({
-                                    spgAddress,
-                                    quantity: nftQuantity,
-                                    toAddress: userWallet,
-                                });
-
-                                if (!result) {
-                                    throw new Error("NFT transfer failed");
-                                }
-
-                                distributionTxHash =
-                                    "txHash" in result
-                                        ? result.txHash
-                                        : result.txHashes?.[0];
                             }
+
+                            const distributionResult = await distributePrize({
+                                playerId: player.id,
+                                prize: winner.prize,
+                                prizeTitle:
+                                    winner.prize.title ||
+                                    `Prize ${winner.prizeIndex + 1}`,
+                                playerWalletAddress: userWallet,
+                                tx,
+                            });
+
+                            if (!distributionResult.success) {
+                                throw new Error(
+                                    `Prize distribution failed: ${distributionResult.error}`
+                                );
+                            }
+
+                            // txHash 추적
+                            const distributionTxHash =
+                                distributionResult.txHash;
 
                             return {
                                 resultId: winner.resultId,

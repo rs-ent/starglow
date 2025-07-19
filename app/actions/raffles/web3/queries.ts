@@ -6,20 +6,19 @@ import { useQuery } from "@tanstack/react-query";
 import type {
     GetOnchainRafflesInput,
     GetRaffleFromContractInput,
-    GetRaffleStatusInput,
-    GetRaffleListInput,
     GetUserParticipationInput,
     GetLotteryResultInput,
+    GetRaffleCoreInfoForListCardInput,
+    GetRaffleParticipantsInput,
 } from "./actions-read";
 
 import {
     getOnchainRaffles,
     getRaffleFromContract,
-    getRaffleStatusFromContract,
-    getRaffleListFromContract,
-    getRaffleListStatusFromContract,
+    getRaffleCoreInfoForListCard,
     getUserParticipation,
     getLotteryResult,
+    getRaffleParticipants,
 } from "./actions-read";
 import { raffleQueryKeys } from "./queryKeys";
 
@@ -41,7 +40,7 @@ export function useOnchainRafflesQuery(
     });
 }
 
-// 🎯 특정 래플 상세 정보 조회
+// 🔒 래플 정적 데이터 조회 (변화 거의 없음 - 긴 캐시)
 export function useRaffleFromContractQuery(
     input?: GetRaffleFromContractInput,
     options?: {
@@ -51,6 +50,26 @@ export function useRaffleFromContractQuery(
         refetchInterval?: number;
     }
 ) {
+    // 정적 데이터만 포함하는지 확인
+    const isStaticDataOnly = input?.dataKeys?.every((key) =>
+        ["basicInfo", "timing", "settings", "fee", "prizes"].includes(key)
+    );
+
+    // 정적 데이터 전용 최적화
+    const staticDataOptimization = isStaticDataOnly
+        ? {
+              staleTime: 1000 * 60 * 15, // 15분 (매우 긴 캐시)
+              gcTime: 1000 * 60 * 60, // 1시간 (메모리에 오래 보관)
+              refetchOnWindowFocus: false, // 포커스 시 자동 새로고침 안함
+              refetchOnReconnect: false, // 재연결 시 자동 새로고침 안함
+          }
+        : {
+              staleTime: 1000 * 60 * 2, // 2분 (기본값)
+              gcTime: 1000 * 60 * 30, // 30분
+              refetchOnWindowFocus: true, // 포커스 시 새로고침
+              refetchOnReconnect: true, // 재연결 시 새로고침
+          };
+
     return useQuery({
         queryKey: raffleQueryKeys.contract(
             input?.contractAddress ?? "",
@@ -58,16 +77,17 @@ export function useRaffleFromContractQuery(
             input?.dataKeys
         ),
         queryFn: () => getRaffleFromContract(input),
-        staleTime: options?.staleTime ?? 1000 * 60 * 2, // 2분
-        gcTime: options?.gcTime ?? 1000 * 60 * 10, // 10분
         enabled: Boolean(input),
         refetchInterval: options?.refetchInterval,
+        ...staticDataOptimization,
+        // 사용자 옵션으로 오버라이드 가능
+        staleTime: options?.staleTime ?? staticDataOptimization.staleTime,
+        gcTime: options?.gcTime ?? staticDataOptimization.gcTime,
     });
 }
 
-// 📈 래플 상태만 조회 (빠른 업데이트용)
-export function useRaffleStatusQuery(
-    input?: GetRaffleStatusInput,
+export function useRaffleCoreInfoForListCardQuery(
+    input?: GetRaffleCoreInfoForListCardInput,
     options?: {
         enabled?: boolean;
         refetchInterval?: number;
@@ -75,56 +95,20 @@ export function useRaffleStatusQuery(
     }
 ) {
     return useQuery({
-        queryKey: raffleQueryKeys.status(
-            input?.contractAddress ?? "",
-            input?.raffleId ?? ""
+        queryKey: raffleQueryKeys.raffleListCard(
+            `${input?.contractAddress ?? ""}-${input?.raffleId ?? ""}`
         ),
-        queryFn: () => getRaffleStatusFromContract(input),
-        staleTime: options?.staleTime ?? 1000 * 30, // 30초 (실시간성 중요)
-        gcTime: 1000 * 60 * 5, // 5분
+        queryFn: () => getRaffleCoreInfoForListCard(input),
         enabled: Boolean(input),
-        refetchInterval: options?.refetchInterval ?? 1000 * 60, // 1분마다 자동 업데이트
+        staleTime: options?.staleTime ?? 1000 * 30, // 30초 (초단기 캐시)
+        gcTime: 1000 * 60 * 5, // 5분 (빠른 정리)
+        refetchInterval: options?.refetchInterval ?? 1000 * 30, // 30초마다 업데이트
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
     });
 }
 
-// 📋 래플 목록 (멀티콜) 조회
-export function useRaffleListQuery(
-    input?: GetRaffleListInput,
-    options?: {
-        enabled?: boolean;
-        staleTime?: number;
-        gcTime?: number;
-    }
-) {
-    return useQuery({
-        queryKey: raffleQueryKeys.raffleList(input?.raffles ?? []),
-        queryFn: () => getRaffleListFromContract(input),
-        staleTime: options?.staleTime ?? 1000 * 60 * 3, // 3분
-        gcTime: options?.gcTime ?? 1000 * 60 * 15, // 15분
-        enabled: Boolean(input),
-    });
-}
-
-// ⚡ 래플 목록 상태만 조회 (초고속)
-export function useRaffleListStatusQuery(
-    input?: GetRaffleListInput,
-    options?: {
-        enabled?: boolean;
-        refetchInterval?: number;
-        staleTime?: number;
-    }
-) {
-    return useQuery({
-        queryKey: raffleQueryKeys.raffleListStatus(input?.raffles ?? []),
-        queryFn: () => getRaffleListStatusFromContract(input),
-        staleTime: options?.staleTime ?? 1000 * 15, // 15초 (실시간성 최고)
-        gcTime: 1000 * 60 * 3, // 3분
-        enabled: Boolean(input),
-        refetchInterval: options?.refetchInterval ?? 1000 * 30, // 30초마다 상태 업데이트
-    });
-}
-
-// 👤 사용자 참가 정보 조회
+// 👤 사용자 참가 정보 조회 (사용자 액션에 따라 변화)
 export function useUserParticipationQuery(
     input?: GetUserParticipationInput,
     options?: {
@@ -141,13 +125,16 @@ export function useUserParticipationQuery(
             input?.playerId ?? ""
         ),
         queryFn: () => getUserParticipation(input),
-        staleTime: options?.staleTime ?? 1000 * 60, // 1분 (사용자 데이터는 자주 확인)
-        gcTime: options?.gcTime ?? 1000 * 60 * 20, // 20분
-        enabled: Boolean(input),
-        refetchInterval: options?.refetchInterval,
+        enabled: Boolean(input && input.playerId),
+        // 사용자 데이터 최적화
+        staleTime: options?.staleTime ?? 1000 * 15, // 15초 (중간 캐시)
+        gcTime: options?.gcTime ?? 1000 * 60 * 5, // 5분
+        refetchInterval: options?.refetchInterval, // 수동 새로고침 (참여 후 호출)
+        refetchOnWindowFocus: true, // 포커스 시 새로고침
     });
 }
 
+// 🎰 추첨 결과 조회 (불변 데이터 - 최장 캐시)
 export function useLotteryResultQuery(
     input?: GetLotteryResultInput,
     options?: {
@@ -162,8 +149,31 @@ export function useLotteryResultQuery(
             input?.resultId ?? ""
         ),
         queryFn: () => getLotteryResult(input),
-        staleTime: options?.staleTime ?? 1000 * 60 * 10, // 10분 (추첨 결과는 변경되지 않음)
-        gcTime: options?.gcTime ?? 1000 * 60 * 60, // 1시간
         enabled: Boolean(input),
+        // 불변 데이터 최적화
+        staleTime: options?.staleTime ?? 1000 * 60 * 60 * 2, // 2시간 (매우 긴 캐시)
+        gcTime: options?.gcTime ?? 1000 * 60 * 60 * 24, // 24시간 (장기 보관)
+        refetchOnWindowFocus: false, // 자동 새로고침 불필요
+        refetchOnReconnect: false, // 재연결 새로고침 불필요
+    });
+}
+
+export function useRaffleParticipantsQuery(
+    input?: GetRaffleParticipantsInput,
+    options?: {
+        enabled?: boolean;
+        staleTime?: number;
+        gcTime?: number;
+    }
+) {
+    return useQuery({
+        queryKey: raffleQueryKeys.raffleParticipants(
+            input?.contractAddress ?? "",
+            input?.raffleId ?? ""
+        ),
+        queryFn: () => getRaffleParticipants(input),
+        enabled: Boolean(input),
+        staleTime: options?.staleTime ?? 1000 * 30, // 30초
+        gcTime: options?.gcTime ?? 1000 * 60 * 5, // 5분
     });
 }

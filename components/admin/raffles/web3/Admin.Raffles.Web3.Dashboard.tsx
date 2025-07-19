@@ -36,7 +36,7 @@ export default function AdminRafflesWeb3Dashboard({ onBack }: Props) {
     }
 
     if (deploymentMode === "create") {
-        return <AdminRafflesWeb3CreateManager onBack={handleBack} />;
+        return <AdminRafflesWeb3CreateManager />;
     }
 
     if (deploymentMode === "list") {

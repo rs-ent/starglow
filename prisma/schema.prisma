@@ -1793,6 +1793,52 @@ model OnchainRaffle {
   @@index([raffleId])
 }
 
+model OnchainRafflePrizeDistribution {
+  id              String            @id @default(cuid())
+  contractAddress String
+  raffleId        String
+  resultId        Int               // 스마트 컨트랙트의 고유 결과 ID
+  
+  // 배치 처리 관련
+  batchId         String
+  chunkId         String            @default("0")
+  
+  // 상품 정보
+  prizeIndex      Int
+  prizeType       Int               // 1=ASSET, 2=NFT, 3=EMPTY  
+  assetId         String?
+  spgAddress      String?
+  tokenAddress    String?
+  amount          Int?
+  
+  // 플레이어 정보 (관계 없이 직접 저장)
+  playerId        String
+  playerAddress   String            // 지갑 주소 스냅샷
+  
+  // 처리 상태
+  status          RafflePrizeStatus @default(PENDING)
+  retryCount      Int               @default(0)
+  maxRetries      Int               @default(3)
+  
+  // 시간 추적
+  createdAt       DateTime          @default(now())
+  processedAt     DateTime?
+  distributedAt   DateTime?
+  lastRetryAt     DateTime?
+  
+  // 결과 추적
+  transactionHash String?
+  failureReason   String?
+  gasUsed         String?
+  
+  @@unique([contractAddress, raffleId, resultId])
+  @@index([status, createdAt])           // cron 작업용
+  @@index([batchId, chunkId])            // 배치 처리용
+  @@index([contractAddress, raffleId])   // 래플별 조회용
+  @@index([status, retryCount])          // 재시도 대상 조회용
+  @@index([playerId])                    // 플레이어별 조회용
+}
+
 model PollBettingSettlementLog {
   id                    String                      @id @default(cuid())
   pollId                String

@@ -372,6 +372,22 @@ export async function createRaffle(
                 };
             }
 
+            if (prize.prizeType === undefined || prize.prizeType === null) {
+                return {
+                    success: false,
+                    error: `Prize ${i + 1}: Prize type is required`,
+                };
+            }
+
+            if (![0, 1, 2, 3].includes(prize.prizeType)) {
+                return {
+                    success: false,
+                    error: `${i + 1}. ${
+                        prize.title
+                    }: Invalid prize type. Must be 0 (EMPTY), 1 (ASSET), 2 (NFT), or 3 (TOKEN)`,
+                };
+            }
+
             // NFT 상품인 경우 collection address 필수
             if (
                 prize.prizeType === 2 &&
@@ -410,6 +426,49 @@ export async function createRaffle(
             client: walletClient,
         });
 
+        // 최고 상품 찾기 (rarity가 가장 높은 상품)
+        const bestPrize = input.prizes.reduce((best, current) => {
+            if (
+                current.rarity > best.rarity ||
+                (current.rarity === best.rarity && current.order > best.order)
+            ) {
+                return current;
+            }
+            return best;
+        }, input.prizes[0]);
+
+        // BigInt 값들을 안전하게 처리하는 헬퍼 함수
+        const ensureBigInt = (value: any, defaultValue: number = 0): bigint => {
+            if (typeof value === "bigint") return value;
+            if (typeof value === "number") return BigInt(value);
+            if (typeof value === "string") return BigInt(value);
+            return BigInt(defaultValue);
+        };
+
+        // bestPrize를 Prize 구조체로 변환
+        const bestPrizeStruct = {
+            prizeType: bestPrize.prizeType ?? 0,
+            collectionAddress:
+                bestPrize.prizeType === 2 && bestPrize.collectionAddress
+                    ? (bestPrize.collectionAddress as Address)
+                    : ZERO_ADDRESS,
+            registeredTicketQuantity: ensureBigInt(
+                bestPrize.registeredTicketQuantity,
+                bestPrize.prizeType === 0 ? 10 : 1
+            ),
+            pickedTicketQuantity: BigInt(0),
+            order: ensureBigInt(bestPrize.order, 0),
+            rarity: ensureBigInt(bestPrize.rarity, 1),
+            prizeQuantity: ensureBigInt(bestPrize.prizeQuantity, 1),
+            startTicketNumber: BigInt(0),
+            title: bestPrize.title || "",
+            description: bestPrize.description || "",
+            imageUrl: bestPrize.imageUrl || "",
+            iconUrl: bestPrize.iconUrl || "",
+            assetId: bestPrize.assetId || "",
+            tokenIds: (bestPrize.tokenIds || []).map((id) => ensureBigInt(id)),
+        };
+
         // 컨트랙트 파라미터 구성
         const raffleParams = {
             basicInfo: {
@@ -417,6 +476,7 @@ export async function createRaffle(
                 description: input.basicInfo.description,
                 imageUrl: input.basicInfo.imageUrl,
                 iconUrl: input.basicInfo.iconUrl,
+                bestPrize: bestPrizeStruct,
             },
             timing: {
                 startDate: BigInt(adjustedStartDate),
@@ -444,27 +504,33 @@ export async function createRaffle(
                     input.fee.participationFeeAmount
                 ),
             },
-            prizes: input.prizes.map((prize) => ({
-                prizeType: prize.prizeType,
-                collectionAddress:
-                    prize.prizeType === 2 && prize.collectionAddress
-                        ? (prize.collectionAddress as Address)
-                        : ZERO_ADDRESS,
-                registeredTicketQuantity: BigInt(
-                    prize.registeredTicketQuantity
-                ),
-                pickedTicketQuantity: BigInt(0),
-                order: BigInt(prize.order),
-                rarity: BigInt(prize.rarity),
-                prizeQuantity: BigInt(prize.prizeQuantity),
-                startTicketNumber: BigInt(0), // 컨트랙트에서 자동 계산
-                title: prize.title,
-                description: prize.description,
-                imageUrl: prize.imageUrl,
-                iconUrl: prize.iconUrl,
-                assetId: prize.assetId,
-                tokenIds: prize.tokenIds.map((id) => BigInt(id)),
-            })),
+            prizes: input.prizes.map((prize) => {
+                // Solidity Prize 구조체와 정확히 같은 순서로 배치
+                return {
+                    prizeType: prize.prizeType ?? 0,
+                    collectionAddress:
+                        prize.prizeType === 2 && prize.collectionAddress
+                            ? (prize.collectionAddress as Address)
+                            : ZERO_ADDRESS,
+                    registeredTicketQuantity: ensureBigInt(
+                        prize.registeredTicketQuantity,
+                        prize.prizeType === 0 ? 10 : 1
+                    ),
+                    pickedTicketQuantity: BigInt(0),
+                    order: ensureBigInt(prize.order, 0),
+                    rarity: ensureBigInt(prize.rarity, 1),
+                    prizeQuantity: ensureBigInt(prize.prizeQuantity, 1),
+                    startTicketNumber: BigInt(0),
+                    title: prize.title || "",
+                    description: prize.description || "",
+                    imageUrl: prize.imageUrl || "",
+                    iconUrl: prize.iconUrl || "",
+                    assetId: prize.assetId || "",
+                    tokenIds: (prize.tokenIds || []).map((id) =>
+                        ensureBigInt(id)
+                    ),
+                };
+            }),
         };
 
         // 래플 생성 트랜잭션 실행
