@@ -6,7 +6,7 @@ import { memo } from "react";
 import { useOnchainRaffles } from "@/app/actions/raffles/web3/hooks";
 import RafflesOnchainList from "./Raffles.Onchain.List";
 
-export default memo(function Raffles() {
+function Raffles() {
     const { onchainRaffles, isOnchainRafflesLoading, isOnchainRafflesError } =
         useOnchainRaffles({
             getOnchainRafflesInput: {},
@@ -31,4 +31,6 @@ export default memo(function Raffles() {
     }
 
     return <RafflesOnchainList raffles={onchainRaffles?.data?.raffles || []} />;
-});
+}
+
+export default memo(Raffles);

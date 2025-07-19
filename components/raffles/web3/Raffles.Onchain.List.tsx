@@ -11,7 +11,7 @@ interface RafflesOnchainListProps {
     raffles: Raffle[];
 }
 
-export default memo(function RafflesOnchainList({
+function RafflesOnchainList({
     raffles,
 }: RafflesOnchainListProps) {
     return (
@@ -41,4 +41,6 @@ export default memo(function RafflesOnchainList({
             )}
         </div>
     );
-});
+}
+
+export default memo(RafflesOnchainList);
