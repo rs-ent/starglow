@@ -19,7 +19,7 @@ import { useStoryNetwork } from "@/app/story/network/hooks";
 import {
     getRafflesContracts,
     updateRafflesContract,
-} from "@/app/actions/raffles/web3/actions-admin";
+} from "@/app/actions/raffles/onchain/actions-admin";
 
 interface Props {
     onBack: () => void;

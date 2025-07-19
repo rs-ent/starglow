@@ -21,7 +21,7 @@ import {
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 
-import { useOnchainRaffles } from "@/app/actions/raffles/web3/hooks";
+import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
 import { useToast } from "@/app/hooks/useToast";
 import { useAssetsGet } from "@/app/actions/assets/hooks";
 import { usePlayerAssetsGet } from "@/app/actions/playerAssets/hooks";

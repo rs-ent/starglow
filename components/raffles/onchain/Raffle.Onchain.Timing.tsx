@@ -1,4 +1,4 @@
-/// components/raffles/web3/Raffle.Onchain.Timing.tsx
+/// components/raffles/onchain/Raffle.Onchain.Timing.tsx
 
 "use client";
 

@@ -1,7 +1,7 @@
 /// app/raffles/test/page.tsx
 
 import { Suspense } from "react";
-import Raffles from "@/components/raffles/web3/Raffles";
+import Raffles from "@/components/raffles/onchain/Raffles";
 import PartialLoadingServer from "@/components/atoms/PartialLoadingServer";
 import type { Metadata } from "next";
 

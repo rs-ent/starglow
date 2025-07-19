@@ -27,7 +27,7 @@ import {
     getRaffles,
     updateRaffle,
     getRaffleDataForSimulation,
-} from "@/app/actions/raffles/web3/actions-admin";
+} from "@/app/actions/raffles/onchain/actions-admin";
 import AdminRafflesWeb3Simulation from "./Admin.Raffles.Web3.Simulation";
 
 interface RaffleData {

@@ -10,7 +10,7 @@ import { TbTopologyStar3 } from "react-icons/tb";
 
 import AdminRaffles from "./Admin.Raffles";
 import { AdminRafflesAnalytics } from "./Admin.Raffles.Analytics";
-import AdminRafflesWeb3Dashboard from "./web3/Admin.Raffles.Web3.Dashboard";
+import AdminRafflesWeb3Dashboard from "./onchain/Admin.Raffles.Web3.Dashboard";
 
 type RaffleMode = "web2" | "web3";
 type ViewMode = "management" | "analytics";

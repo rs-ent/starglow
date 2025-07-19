@@ -4,7 +4,7 @@
 
 import { memo, useMemo, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { useOnchainRaffles } from "@/app/actions/raffles/web3/hooks";
+import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import RaffleOnchainHero from "./Raffle.Onchain.Hero";

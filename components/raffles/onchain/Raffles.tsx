@@ -3,7 +3,7 @@
 "use client";
 
 import { memo } from "react";
-import { useOnchainRaffles } from "@/app/actions/raffles/web3/hooks";
+import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
 import RafflesOnchainList from "./Raffles.Onchain.List";
 
 function Raffles() {

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
-import { distributePrize } from "@/app/actions/raffles/web3/actions-write";
+import { distributePrize } from "@/app/actions/raffles/onchain/actions-write";
 
 const BATCH_SIZE = 50; // 한 번에 처리할 레코드 수
 const MAX_RETRY_COUNT = 3;

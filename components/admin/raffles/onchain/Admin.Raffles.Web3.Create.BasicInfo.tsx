@@ -23,7 +23,7 @@ import type {
 
 import FileUploaderIPFS from "@/components/atoms/FileUploader.IPFS";
 
-import { getRafflesContracts } from "@/app/actions/raffles/web3/actions-admin";
+import { getRafflesContracts } from "@/app/actions/raffles/onchain/actions-admin";
 import type { RaffleFormData } from "./Admin.Raffles.Web3.Create.Manager";
 
 interface Props {

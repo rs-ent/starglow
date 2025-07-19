@@ -6,14 +6,14 @@ import { FaArrowLeft, FaArrowRight, FaCheck } from "react-icons/fa";
 
 import { useStoryNetwork } from "@/app/story/network/hooks";
 import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
-import { createRaffle } from "@/app/actions/raffles/web3/actions-admin";
+import { createRaffle } from "@/app/actions/raffles/onchain/actions-admin";
 
-import { AdminRafflesWeb3CreateBasicInfo } from "@/components/admin/raffles/web3/Admin.Raffles.Web3.Create.BasicInfo";
-import { AdminRafflesWeb3CreateTiming } from "@/components/admin/raffles/web3/Admin.Raffles.Web3.Create.Timing";
-import { AdminRafflesWeb3CreateSettings } from "@/components/admin/raffles/web3/Admin.Raffles.Web3.Create.Settings";
-import { AdminRafflesWeb3CreateFee } from "@/components/admin/raffles/web3/Admin.Raffles.Web3.Create.Fee";
-import { AdminRafflesWeb3CreatePrizes } from "@/components/admin/raffles/web3/Admin.Raffles.Web3.Create.Prizes";
-import { AdminRafflesWeb3CreateReview } from "@/components/admin/raffles/web3/Admin.Raffles.Web3.Create.Review";
+import { AdminRafflesWeb3CreateBasicInfo } from "@/components/admin/raffles/onchain/Admin.Raffles.Web3.Create.BasicInfo";
+import { AdminRafflesWeb3CreateTiming } from "@/components/admin/raffles/onchain/Admin.Raffles.Web3.Create.Timing";
+import { AdminRafflesWeb3CreateSettings } from "@/components/admin/raffles/onchain/Admin.Raffles.Web3.Create.Settings";
+import { AdminRafflesWeb3CreateFee } from "@/components/admin/raffles/onchain/Admin.Raffles.Web3.Create.Fee";
+import { AdminRafflesWeb3CreatePrizes } from "@/components/admin/raffles/onchain/Admin.Raffles.Web3.Create.Prizes";
+import { AdminRafflesWeb3CreateReview } from "@/components/admin/raffles/onchain/Admin.Raffles.Web3.Create.Review";
 
 export interface RaffleFormData {
     contractId: string;

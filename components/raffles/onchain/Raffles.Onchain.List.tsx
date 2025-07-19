@@ -4,7 +4,7 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import type { Raffle } from "@/app/actions/raffles/web3/actions-read";
+import type { Raffle } from "@/app/actions/raffles/onchain/actions-read";
 import RafflesOnchainListCard from "./Raffles.Onchain.List.Card";
 
 interface RafflesOnchainListProps {

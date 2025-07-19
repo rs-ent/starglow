@@ -3,7 +3,7 @@
 "use client";
 
 import { memo } from "react";
-import { useOnchainRaffles } from "@/app/actions/raffles/web3/hooks";
+import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
 import Image from "next/image";
 import { maxUint256 } from "viem";
 import { useAssetsGet } from "@/app/actions/assets/hooks";

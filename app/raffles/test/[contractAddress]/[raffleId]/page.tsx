@@ -1,6 +1,6 @@
 /// app/raffles/test/[contractAddress]/[raffleId]/page.tsx
 
-import RaffleOnchain from "@/components/raffles/web3/Raffle.Onchain";
+import RaffleOnchain from "@/components/raffles/onchain/Raffle.Onchain";
 import { Suspense } from "react";
 
 export default async function RaffleTestPage({

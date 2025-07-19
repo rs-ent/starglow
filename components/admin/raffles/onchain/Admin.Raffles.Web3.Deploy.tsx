@@ -17,7 +17,7 @@ import {
     estimateGasSimple,
     estimateGasComprehensive,
 } from "@/app/story/interaction/actions";
-import { deployRafflesContract } from "@/app/actions/raffles/web3/actions-admin";
+import { deployRafflesContract } from "@/app/actions/raffles/onchain/actions-admin";
 
 import rafflesJson from "@/web3/artifacts/contracts/Raffles.sol/Raffles.json";
 
