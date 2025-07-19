@@ -43,54 +43,54 @@ function RafflesOnchainListCard({
         return <div>Error</div>;
     }
 
+    const coreData = raffleCoreInfoForListCard?.data;
+
     return (
         <div>
             <div>
                 <Image
-                    src={raffleCoreInfoForListCard?.data?.imageUrl || ""}
-                    alt={raffleCoreInfoForListCard?.data?.title || ""}
+                    src={coreData?.imageUrl || ""}
+                    alt={coreData?.title || ""}
                     width={100}
                     height={100}
                 />
             </div>
             <div>
-                <p>{raffleCoreInfoForListCard?.data?.title}</p>
+                <p>{coreData?.title}</p>
                 <p>
-                    {new Date(
-                        Number(raffleCoreInfoForListCard?.data?.startDate) *
-                            1000
-                    ).toLocaleString()}
+                    {coreData?.startDate
+                        ? new Date(
+                              Number(coreData.startDate) * 1000
+                          ).toLocaleString()
+                        : ""}
                 </p>
                 <p>
-                    {new Date(
-                        Number(raffleCoreInfoForListCard?.data?.endDate) * 1000
-                    ).toLocaleString()}
+                    {coreData?.endDate
+                        ? new Date(
+                              Number(coreData.endDate) * 1000
+                          ).toLocaleString()
+                        : ""}
                 </p>
                 <p>
-                    {new Date(
-                        Number(raffleCoreInfoForListCard?.data?.drawDate) * 1000
-                    ).toLocaleString()}
+                    {coreData?.drawDate
+                        ? new Date(
+                              Number(coreData.drawDate) * 1000
+                          ).toLocaleString()
+                        : ""}
                 </p>
+                <p>{coreData?.instantDraw ? "Yes" : "No"}</p>
                 <p>
-                    {raffleCoreInfoForListCard?.data?.instantDraw
-                        ? "Yes"
-                        : "No"}
-                </p>
-                <p>
-                    {raffleCoreInfoForListCard?.data?.participationLimit
-                        ? raffleCoreInfoForListCard?.data?.participationLimit >=
-                          INFINITE
+                    {coreData?.participationLimit
+                        ? coreData.participationLimit >= INFINITE
                             ? "Infinite"
-                            : raffleCoreInfoForListCard?.data?.participationLimit.toLocaleString()
+                            : coreData.participationLimit.toString()
                         : "0"}
                 </p>
                 <p>
-                    {raffleCoreInfoForListCard?.data
-                        ?.participationLimitPerPlayer
-                        ? raffleCoreInfoForListCard?.data
-                              ?.participationLimitPerPlayer >= INFINITE
+                    {coreData?.participationLimitPerPlayer
+                        ? coreData.participationLimitPerPlayer >= INFINITE
                             ? "Infinite"
-                            : raffleCoreInfoForListCard?.data?.participationLimitPerPlayer.toLocaleString()
+                            : coreData.participationLimitPerPlayer.toString()
                         : "0"}
                 </p>
                 <Image
@@ -100,13 +100,11 @@ function RafflesOnchainListCard({
                     height={100}
                 />
                 <p>{asset?.name}</p>
-                <p>{raffleCoreInfoForListCard?.data?.participationFeeAmount}</p>
-                <p>{raffleCoreInfoForListCard?.data?.participationCount}</p>
-                <p>{raffleCoreInfoForListCard?.data?.totalQuantity}</p>
-                <p>
-                    {raffleCoreInfoForListCard?.data?.isActive ? "Yes" : "No"}
-                </p>
-                <p>{raffleCoreInfoForListCard?.data?.isDrawn ? "Yes" : "No"}</p>
+                <p>{coreData?.participationFeeAmount?.toString() || "0"}</p>
+                <p>{coreData?.participationCount?.toString() || "0"}</p>
+                <p>{coreData?.totalQuantity?.toString() || "0"}</p>
+                <p>{coreData?.isActive ? "Yes" : "No"}</p>
+                <p>{coreData?.isDrawn ? "Yes" : "No"}</p>
             </div>
         </div>
     );

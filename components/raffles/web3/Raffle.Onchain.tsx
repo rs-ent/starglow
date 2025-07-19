@@ -127,8 +127,10 @@ export default memo(function RaffleOnchain({
                 ? {
                       active: statusData.isActive,
                       isDrawn: statusData.isDrawn,
-                      drawnParticipantCount: statusData.drawnParticipantCount,
-                      totalQuantity: statusData.totalQuantity,
+                      drawnParticipantCount: Number(
+                          statusData.drawnParticipantCount
+                      ),
+                      totalQuantity: Number(statusData.totalQuantity),
                       totalParticipants: raffleParticipants?.data?.totalCount,
                   }
                 : undefined,

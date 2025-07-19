@@ -556,7 +556,7 @@ export default memo(function RaffleOnchainParticipation({
 
                 <div className="space-y-4 mb-6">
                     {feeData?.participationFeeAmount &&
-                        BigInt(feeData.participationFeeAmount) > 0n && (
+                        Number(feeData.participationFeeAmount) > 0 && (
                             <motion.div
                                 variants={itemVariants}
                                 transition={{
