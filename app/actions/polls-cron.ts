@@ -18,10 +18,10 @@ type InternalPhase = (typeof INTERNAL_PHASES)[keyof typeof INTERNAL_PHASES];
 
 // 1분 cron 제한에 맞춘 설정
 const CRON_CONFIG = {
-    MAX_EXECUTION_TIME: 25000, // 25초 (5초 안전 마진)
-    BATCH_SIZE: 10, // 성능 최적화: 5 → 10으로 증가
+    MAX_EXECUTION_TIME: 30000, // 30초 (안정성 우선)
+    BATCH_SIZE: 5, // 성능 최적화: 10 → 5로 감소 (더 작은 배치로 빠른 처리)
     MAX_POLLS_PER_RUN: 1, // 한 번에 하나의 폴만 처리
-    TRANSACTION_TIMEOUT: 60000, // 15초 트랜잭션
+    TRANSACTION_TIMEOUT: 20000, // 20초 트랜잭션 (전체 실행 시간보다 짧게)
 } as const;
 
 export interface SettlementMetadata {
@@ -208,21 +208,63 @@ async function processPhase1Prepare(pollId: string): Promise<CronStepResult> {
             };
         }
 
-        // 승리자 결정 (간단한 득표수 기준)
-        const pollResult = await getPollResult({ pollId });
-        let settlementMetadata: SettlementMetadata;
-
-        // 🔍 기존 로직의 정밀한 계산 적용
-        const betAmounts = (poll.optionBetAmounts as any) || {};
+        // 🔍 안전한 정산 로직 (실제 데이터 기반)
         const totalCommission = poll.totalCommissionAmount || 0;
 
-        // 전체 베팅 금액 계산 (정수 강제)
-        const totalBetAmount = Object.values(betAmounts).reduce(
-            (sum: number, amount: any) => Math.floor(sum + (amount || 0)),
-            0
+        // 실제 베팅 데이터 조회 (최적화된 쿼리)
+        const [pollLogs, pollOptions] = await Promise.all([
+            prisma.pollLog.findMany({
+                where: { pollId },
+                select: { optionId: true, amount: true },
+            }),
+            prisma.poll.findUnique({
+                where: { id: pollId },
+                select: { options: true },
+            }),
+        ]);
+
+        // 데이터 검증
+        if (!pollOptions?.options) {
+            return {
+                success: false,
+                phase: INTERNAL_PHASES.PHASE_1_PREPARE,
+                error: "Poll options not found",
+            };
+        }
+
+        // 실제 베팅 금액 계산
+        const betAmounts: Record<string, number> = {};
+        let totalBetAmount = 0;
+
+        for (const log of pollLogs) {
+            betAmounts[log.optionId] =
+                (betAmounts[log.optionId] || 0) + log.amount;
+            totalBetAmount += log.amount;
+        }
+
+        const options = (pollOptions?.options as any) || [];
+        const optionResults = options.map((option: any) => {
+            const betAmount = betAmounts[option.optionId] || 0;
+            return {
+                optionId: option.optionId,
+                name: option.name,
+                voteCount: betAmount,
+                actualVoteCount: pollLogs.filter(
+                    (log) => log.optionId === option.optionId
+                ).length,
+            };
+        });
+
+        const maxVoteCount = Math.max(
+            ...optionResults.map((r: any) => r.voteCount)
+        );
+        const winningOptions = optionResults.filter(
+            (r: any) => r.voteCount === maxVoteCount
         );
 
-        if (pollResult.totalVotes === 0 || totalBetAmount === 0) {
+        let settlementMetadata: SettlementMetadata;
+
+        if (totalBetAmount === 0 || pollLogs.length === 0) {
             // 아무도 투표하지 않은 경우 - 환불 처리
             const allBettors = await prisma.pollLog.findMany({
                 where: { pollId },
@@ -252,19 +294,9 @@ async function processPhase1Prepare(pollId: string): Promise<CronStepResult> {
                 remainingAmount: 0,
             };
         } else {
-            // 최대 득표 옵션들 찾기 (기존 로직과 동일)
-            const maxVoteCount = Math.max(
-                ...pollResult.results.map(
-                    (r) => r.actualVoteCount || r.voteCount
-                )
-            );
-            const winningOptions = pollResult.results.filter(
-                (r) => (r.actualVoteCount || r.voteCount) === maxVoteCount
-            );
-
             // 🔍 기존 로직의 승리 옵션들의 총 베팅 금액 계산 (정수 강제)
             const totalWinningBets = winningOptions.reduce(
-                (sum, option) =>
+                (sum: number, option: any) =>
                     Math.floor(sum + (betAmounts[option.optionId] || 0)),
                 0
             );
@@ -273,7 +305,9 @@ async function processPhase1Prepare(pollId: string): Promise<CronStepResult> {
             const winners = await prisma.pollLog.findMany({
                 where: {
                     pollId,
-                    optionId: { in: winningOptions.map((o) => o.optionId) },
+                    optionId: {
+                        in: winningOptions.map((o: any) => o.optionId),
+                    },
                 },
                 select: {
                     id: true,
@@ -294,7 +328,7 @@ async function processPhase1Prepare(pollId: string): Promise<CronStepResult> {
                 currentBatch: 0,
                 totalWinners: winners.length,
                 processedWinners: 0,
-                winningOptionIds: winningOptions.map((o) => o.optionId),
+                winningOptionIds: winningOptions.map((o: any) => o.optionId),
                 totalPayout: payoutPool,
                 isRefund: false,
                 startTime: new Date().toISOString(),
@@ -332,7 +366,9 @@ async function processPhase1Prepare(pollId: string): Promise<CronStepResult> {
                 settlementMetadata.totalWinners
             } ${settlementMetadata.isRefund ? "refunds" : "winners"} in ${
                 settlementMetadata.totalBatches
-            } batches. Total amount: ${settlementMetadata.totalPayout}`,
+            } batches. Total amount: ${
+                settlementMetadata.totalPayout
+            }. Poll logs: ${pollLogs.length}`,
             metadata: settlementMetadata,
             executionTimeMs: Date.now() - startTime,
         };
@@ -852,21 +888,42 @@ async function processPhase3Finalize(pollId: string): Promise<CronStepResult> {
         console.error(`Phase 3 error for poll ${pollId}:`, error);
 
         // ⚠️ Phase 3 실패 시 주의: 이미 실제 배당이 완료되었을 수 있음
-        // 수동 검토 필요할 수 있으나 일관성을 위해 롤백 시도
+        // 배당이 이미 지급된 상태이므로 롤백하지 않고 수동 검토 필요
+        console.error(
+            `🚨 CRITICAL: Poll ${pollId} failed in Phase 3 - Manual review required. Payouts may have been processed.`
+        );
+
+        // 배당 상태를 수동 검토 필요로 표시 (metadata에만 에러 정보 저장)
         try {
+            const poll = await prisma.poll.findUnique({
+                where: { id: pollId },
+                select: { metadata: true },
+            });
+
+            const currentMetadata = (poll?.metadata as any) || {};
+
             await prisma.poll.update({
                 where: { id: pollId },
                 data: {
-                    bettingStatus: "OPEN", // 다시 열린 상태로 되돌림
+                    bettingStatus: "SETTLING", // 기존 상태 유지
+                    metadata: {
+                        ...currentMetadata,
+                        settlementError: {
+                            phase: "PHASE_3_FINALIZE",
+                            error:
+                                error instanceof Error
+                                    ? error.message
+                                    : "Unknown error",
+                            timestamp: new Date().toISOString(),
+                            requiresManualReview: true,
+                        },
+                    },
                 },
             });
-            console.warn(
-                `⚠️ Poll ${pollId} rolled back from Phase 3 - Manual review recommended`
-            );
-        } catch (rollbackError) {
+        } catch (updateError) {
             console.error(
-                "❌ Failed to rollback settlement status:",
-                rollbackError
+                "❌ Failed to update poll status for manual review:",
+                updateError
             );
         }
 
@@ -1169,6 +1226,7 @@ async function processPhase4Notify(pollId: string): Promise<CronStepResult> {
  */
 export async function processNextSettlementStep(): Promise<CronStepResult> {
     const startTime = Date.now();
+    const initialMemory = process.memoryUsage();
 
     try {
         // 시간 제한 체크
@@ -1178,9 +1236,25 @@ export async function processNextSettlementStep(): Promise<CronStepResult> {
             }
         };
 
+        // 메모리 사용량 체크
+        const checkMemory = () => {
+            const currentMemory = process.memoryUsage();
+            const memoryIncrease =
+                currentMemory.heapUsed - initialMemory.heapUsed;
+            const memoryIncreaseMB = Math.round(memoryIncrease / 1024 / 1024);
+
+            if (memoryIncreaseMB > 100) {
+                // 100MB 이상 증가 시 경고
+                console.warn(
+                    `⚠️ High memory usage detected: +${memoryIncreaseMB}MB`
+                );
+            }
+        };
+
         // 다음 처리할 폴 찾기
         const nextPoll = await findNextPollToProcess();
         checkTime();
+        checkMemory();
 
         if (!nextPoll) {
             return {
@@ -1217,6 +1291,7 @@ export async function processNextSettlementStep(): Promise<CronStepResult> {
         }
 
         checkTime();
+        checkMemory();
 
         // 결과에 silent 플래그 추가 (실제 처리 여부에 따라)
         if (!result.silent) {
