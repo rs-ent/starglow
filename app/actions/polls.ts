@@ -28,6 +28,10 @@ import {
 } from "./notification/actions";
 import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
+import { participatePollOnchain } from "@/app/actions/polls/onchain/actions-write";
+import { createOnchainPoll } from "@/app/actions/polls/onchain/actions-admin";
+import { getPollResult as getOnchainPollResult } from "@/app/actions/polls/onchain/actions-read";
+
 // 에러 메시지 상수 (향후 국제화 대응)
 const ERROR_MESSAGES = {
     POLL_NOT_FOUND: "Poll not found",
@@ -120,6 +124,8 @@ export interface CreatePollInput {
     totalCommissionAmount?: number;
     optionBetAmounts?: any;
     test?: boolean;
+    isOnchain?: boolean;
+    onchainContractId?: string;
 }
 
 export async function createPoll(input: CreatePollInput): Promise<Poll> {
@@ -154,6 +160,40 @@ export async function createPoll(input: CreatePollInput): Promise<Poll> {
             }
         }
 
+        let onchainPollId: string | undefined;
+
+        if (input.isOnchain && input.onchainContractId) {
+            const onchainContract = await prisma.onchainPollContract.findUnique(
+                {
+                    where: { id: input.onchainContractId },
+                    select: {
+                        id: true,
+                        address: true,
+                        isActive: true,
+                    },
+                }
+            );
+
+            if (!onchainContract) {
+                throw new Error("Invalid onchain contract");
+            }
+
+            if (!onchainContract.isActive) {
+                throw new Error("Onchain contract is not active");
+            }
+
+            // 온체인 Poll 생성
+            const onchainResult = await createOnchainPoll(input);
+
+            if (!onchainResult.success) {
+                throw new Error(
+                    `Failed to create onchain poll: ${onchainResult.error}`
+                );
+            }
+
+            onchainPollId = onchainResult.pollId?.toString();
+        }
+
         const poll = await prisma.poll.create({
             data: {
                 ...input,
@@ -163,6 +203,7 @@ export async function createPoll(input: CreatePollInput): Promise<Poll> {
                 })),
                 optionsOrder: input.options.map((option) => option.optionId),
                 status: PollStatus.UPCOMING,
+                onchainPollId: onchainPollId,
             },
         });
 
@@ -301,7 +342,7 @@ export async function getPolls({
 
         const [items, totalItems] = await Promise.all([
             prisma.poll.findMany({
-                cacheStrategy: getCacheStrategy("tenMinutes"),
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
                 where,
                 orderBy: {
                     id: "desc",
@@ -315,7 +356,7 @@ export async function getPolls({
                 },
             }),
             prisma.poll.count({
-                cacheStrategy: getCacheStrategy("tenMinutes"),
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
                 where,
             }),
         ]);
@@ -411,6 +452,26 @@ export interface UpdatePollInput {
 export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
     try {
         const { id, ...data } = input;
+
+        // 온체인 Poll 수정 제한
+        const existingPoll = await prisma.poll.findUnique({
+            where: { id },
+            select: {
+                isOnchain: true,
+                onchainPollId: true,
+                title: true,
+            },
+        });
+
+        if (!existingPoll) {
+            throw new Error("Poll not found");
+        }
+
+        if (existingPoll.isOnchain) {
+            throw new Error(
+                `Cannot modify onchain poll '${existingPoll.title}'. Onchain polls are immutable on the blockchain.`
+            );
+        }
 
         if (input.bettingMode && input.bettingAssetId) {
             const bettingAsset = await prisma.asset.findUnique({
@@ -515,6 +576,26 @@ export async function updatePoll(input: UpdatePollInput): Promise<Poll> {
 
 export async function deletePoll(id: string): Promise<Poll> {
     try {
+        // 온체인 Poll 삭제 제한
+        const existingPoll = await prisma.poll.findUnique({
+            where: { id },
+            select: {
+                isOnchain: true,
+                onchainPollId: true,
+                title: true,
+            },
+        });
+
+        if (!existingPoll) {
+            throw new Error("Poll not found");
+        }
+
+        if (existingPoll.isOnchain) {
+            throw new Error(
+                `Cannot delete onchain poll '${existingPoll.title}'. Onchain polls are permanently stored on the blockchain. Use the activation toggle to disable it instead.`
+            );
+        }
+
         const deletedPoll = await prisma.poll.delete({
             where: { id },
         });
@@ -1043,7 +1124,42 @@ export async function participatePoll(
 
         const { pollLog } = result;
 
-        // 정답 확인
+        if (poll.isOnchain && poll.onchainContractId && poll.onchainPollId) {
+            try {
+                const onchainResult = await participatePollOnchain({
+                    contractAddressId: poll.onchainContractId,
+                    pollId: poll.onchainPollId,
+                    playerId: player.id,
+                    optionId: optionId,
+                    isBetting: poll.bettingMode,
+                    bettingAssetId: poll.bettingAssetId || undefined,
+                    bettingAmount: amount,
+                });
+
+                if (!onchainResult.success) {
+                    console.error(
+                        `❌ Onchain participation failed for poll ${poll.id}:`,
+                        onchainResult.error
+                    );
+                } else {
+                    console.info(
+                        `✅ Onchain participation successful for poll ${poll.id}:`,
+                        {
+                            txHash: onchainResult.data?.txHash,
+                            blockNumber: onchainResult.data?.blockNumber,
+                            participationId:
+                                onchainResult.data?.participationId,
+                        }
+                    );
+                }
+            } catch (error) {
+                console.error(
+                    `❌ Onchain participation error for poll ${poll.id}:`,
+                    error
+                );
+            }
+        }
+
         if (
             poll.hasAnswer &&
             poll.answerOptionIds &&
@@ -1108,6 +1224,13 @@ export async function getPollResult(
         where: { id: pollId },
         select: {
             options: true,
+            isOnchain: true,
+            onchainPollId: true,
+            onchainContract: {
+                select: {
+                    address: true,
+                },
+            },
         },
     });
 
@@ -1119,6 +1242,47 @@ export async function getPollResult(
         };
     }
 
+    // 온체인 poll인 경우 스마트컨트랙트에서 결과 조회
+    if (poll.isOnchain && poll.onchainPollId && poll.onchainContract?.address) {
+        try {
+            const onchainResult = await getOnchainPollResult({
+                contractAddress: poll.onchainContract.address,
+                pollId: poll.onchainPollId,
+            });
+
+            if (onchainResult.success && onchainResult.data) {
+                const onchainData = onchainResult.data;
+
+                return {
+                    pollId,
+                    totalVotes: Number(onchainData.totalVotes),
+                    results: onchainData.results.map((result) => ({
+                        optionId: result.optionId,
+                        name: result.name,
+                        shorten: result.name, // onchain에서는 shorten이 없으므로 name 사용
+                        description: "",
+                        imgUrl: "",
+                        youtubeUrl: "",
+                        voteCount: Number(result.voteCount),
+                        voteRate: Number(result.voteRate) / 100, // 온체인은 basis points로 저장
+                        actualVoteCount: Number(result.actualVoteCount),
+                    })),
+                };
+            } else {
+                console.warn(
+                    `Failed to get onchain result for poll ${pollId}, falling back to offchain data:`,
+                    onchainResult.error
+                );
+            }
+        } catch (error) {
+            console.error(
+                `Error getting onchain result for poll ${pollId}, falling back to offchain data:`,
+                error
+            );
+        }
+    }
+
+    // 오프체인 poll이거나 온체인 조회 실패 시 기존 로직 사용
     const pollLogs = await prisma.pollLog.findMany({
         cacheStrategy: getCacheStrategy("tenSeconds"),
         where: {

@@ -366,6 +366,9 @@ model Poll {
   showOnPollPage              Boolean                    @default(true)
   showOnStarPage              Boolean                    @default(true)
   test                        Boolean                    @default(false)
+  isOnchain                   Boolean                    @default(false)
+  onchainContractId           String?
+  onchainPollId               String?
   artist                      Artist?                    @relation("ArtistPolls", fields: [artistId], references: [id])
   bettingAsset                Asset?                     @relation("PollBettingAsset", fields: [bettingAssetId], references: [id])
   participationConsumeAsset   Asset?                     @relation("PollParticipationConsume", fields: [participationConsumeAssetId], references: [id])
@@ -373,11 +376,30 @@ model Poll {
   settlementLogs              PollBettingSettlementLog[]
   pollLogs                    PollLog[]
   rewardLogs                  RewardsLog[]
+  onchainContract             OnchainPollContract?       @relation(fields: [onchainContractId], references: [id])
 
   @@index([category])
   @@index([artistId])
   @@index([status, startDate])
   @@index([isActive, startDate])
+  @@index([isOnchain])
+}
+
+model OnchainPollContract {
+  id           String            @id @default(cuid())
+  address      String            @unique
+  txHash       String            @unique
+  deployedBy   String
+  blockNumber  Int?
+  isActive     Boolean           @default(true)
+  networkId    String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  network      BlockchainNetwork @relation(fields: [networkId], references: [id])
+  polls        Poll[]
+
+  @@index([networkId])
+  @@index([isActive])
 }
 
 model PollLog {
@@ -679,6 +701,7 @@ model BlockchainNetwork {
   nfts                   NFT[]
   onchainRaffles         OnchainRaffle[]
   onchainRaffleContracts OnchainRaffleContract[]
+  onchainPollContracts   OnchainPollContract[]
   story_ipAssets         Story_ipAsset[]
   story_nfts             Story_nft[]
   story_spg              Story_spg[]

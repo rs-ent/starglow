@@ -383,7 +383,7 @@ export async function participateAndDraw(
         }
 
         const player = (await prisma.player.findUnique({
-            cacheStrategy: getCacheStrategy("sevenDays"),
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where: { id: input.playerId },
             select: {
                 id: true,
@@ -751,7 +751,7 @@ export async function participate(
         }
 
         const player = (await prisma.player.findUnique({
-            cacheStrategy: getCacheStrategy("sevenDays"),
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where: { id: input.playerId },
             select: {
                 id: true,

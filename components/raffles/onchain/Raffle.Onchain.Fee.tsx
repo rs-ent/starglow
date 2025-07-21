@@ -68,13 +68,13 @@ export default memo(function RaffleOnchainFee({ data }: RaffleOnchainFeeProps) {
                 className={cn(
                     "relative bg-gradient-to-br from-slate-900/90 via-blue-950/60 to-purple-950/40",
                     "backdrop-blur-xl border border-cyan-400/30 rounded-3xl shadow-2xl shadow-cyan-500/20",
-                    "p-6 overflow-hidden"
+                    "p-6 overflow-hidden gpu-accelerate"
                 )}
             >
                 <Particles
                     className="absolute inset-0"
-                    quantity={30}
-                    staticity={50}
+                    quantity={12}
+                    staticity={60}
                     color="#06b6d4"
                     size={0.8}
                 />
@@ -125,13 +125,13 @@ export default memo(function RaffleOnchainFee({ data }: RaffleOnchainFeeProps) {
                 "relative bg-gradient-to-br from-slate-900/95 via-blue-950/70 to-purple-950/50",
                 "backdrop-blur-xl border border-cyan-400/30 rounded-3xl overflow-hidden",
                 "shadow-2xl shadow-cyan-500/20 hover:shadow-cyan-500/30",
-                "p-3 transition-all duration-500"
+                "p-3 transition-all duration-500 gpu-accelerate"
             )}
         >
             <Particles
                 className="absolute inset-0"
-                quantity={40}
-                staticity={30}
+                quantity={15}
+                staticity={40}
                 color={isFree ? "#10b981" : "#f59e0b"}
                 size={1}
                 refresh={false}
@@ -154,16 +154,16 @@ export default memo(function RaffleOnchainFee({ data }: RaffleOnchainFeeProps) {
                               ],
                     }}
                     transition={{
-                        duration: 15,
+                        duration: 25,
                         repeat: Infinity,
                         ease: "easeInOut",
                     }}
                 />
 
-                {[...Array(6)].map((_, i) => (
+                {[...Array(3)].map((_, i) => (
                     <motion.div
                         key={i}
-                        className="absolute rounded-full"
+                        className="absolute rounded-full gpu-animate"
                         style={{
                             width: `${1.5 + Math.random() * 2}px`,
                             height: `${1.5 + Math.random() * 2}px`,
@@ -183,9 +183,10 @@ export default memo(function RaffleOnchainFee({ data }: RaffleOnchainFeeProps) {
                             scale: [0.3, 1.5, 0.3],
                         }}
                         transition={{
-                            duration: 4 + Math.random() * 3,
+                            duration: 6 + Math.random() * 3,
                             repeat: Infinity,
-                            delay: Math.random() * 3,
+                            delay: Math.random() * 4,
+                            ease: "easeInOut",
                         }}
                     />
                 ))}

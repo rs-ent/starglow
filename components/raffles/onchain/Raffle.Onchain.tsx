@@ -2,7 +2,7 @@
 
 "use client";
 
-import { memo, useMemo, useState, useCallback, useEffect } from "react";
+import { memo, useMemo, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -55,49 +55,22 @@ export default memo(function RaffleOnchain({
 }: RaffleOnchainProps) {
     const [modalState, setModalState] = useState<ModalState>("none");
     const [ticketData, setTicketData] = useState<TicketData | null>(null);
-    const [scratchCardSize, setScratchCardSize] = useState(() => {
+
+    const scratchCardSize = useMemo(() => {
         if (typeof window === "undefined") {
-            return { width: 350, height: 250 }; // SSR 기본값
+            return { width: 350, height: 250 };
         }
 
         const screenWidth = window.innerWidth;
-
         if (screenWidth >= 1280) {
-            // xl 이상
             return { width: 450, height: 320 };
         } else if (screenWidth >= 1024) {
-            // lg
             return { width: 400, height: 280 };
         } else if (screenWidth >= 768) {
-            // md
             return { width: 350, height: 250 };
         } else {
-            // 모바일
             return { width: 300, height: 200 };
         }
-    });
-
-    useEffect(() => {
-        const updateCardSize = () => {
-            const screenWidth = window.innerWidth;
-
-            if (screenWidth >= 1280) {
-                // xl 이상
-                setScratchCardSize({ width: 450, height: 320 });
-            } else if (screenWidth >= 1024) {
-                // lg
-                setScratchCardSize({ width: 400, height: 280 });
-            } else if (screenWidth >= 768) {
-                // md
-                setScratchCardSize({ width: 350, height: 250 });
-            } else {
-                // 모바일
-                setScratchCardSize({ width: 300, height: 200 });
-            }
-        };
-
-        window.addEventListener("resize", updateCardSize);
-        return () => window.removeEventListener("resize", updateCardSize);
     }, []);
 
     const handleParticipationSuccess = useCallback((ticket: TicketData) => {
@@ -113,7 +86,7 @@ export default memo(function RaffleOnchain({
         setModalState("none");
         setTimeout(() => {
             setTicketData(null);
-        }, 300);
+        }, 200);
     }, []);
 
     const scratchPrizeData = useMemo(() => {
@@ -154,7 +127,6 @@ export default memo(function RaffleOnchain({
         // 스크래치 완료 후 모달은 유지됨
     }, []);
 
-    // 🔒 정적 데이터: 한번에 가져오기 (변화 거의 없음)
     const {
         raffleFromContract: staticData,
         isRaffleFromContractLoading: isStaticLoading,
@@ -167,7 +139,6 @@ export default memo(function RaffleOnchain({
         },
     });
 
-    // ⚡ 동적 데이터: 상태 포함하여 가져오기
     const {
         raffleFromContract: dynamicData,
         isRaffleFromContractLoading: isDynamicLoading,
@@ -209,19 +180,16 @@ export default memo(function RaffleOnchain({
         [statusData, raffleParticipants?.data?.totalCount]
     );
 
-    // 정적 데이터 로딩 중
     if (isStaticLoading) {
         return <OnchainRaffleSkeleton />;
     }
 
-    // 정적 데이터 로딩 실패
     if (isStaticError || !staticData?.success) {
         return <OnchainRaffleError />;
     }
 
     return (
         <div className="relative w-full min-h-screen overflow-hidden mb-[100px] md:mb-[50px]">
-            {/* 🚀 간소화된 배경 효과 */}
             <div className="fixed inset-0 -z-10">
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950" />
                 <div className="absolute inset-0 bg-gradient-to-tr from-cyan-950/20 via-transparent to-purple-950/20" />
@@ -239,21 +207,23 @@ export default memo(function RaffleOnchain({
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.4, ease: "easeOut" }}
+                                transition={{ duration: 0.3, ease: "easeOut" }}
                             >
-                                <RaffleOnchainHero raffleData={raffleData} />
+                                <RaffleOnchainHero
+                                    raffleData={raffleData}
+                                    contractAddress={contractAddress}
+                                    raffleId={raffleId}
+                                />
                             </motion.div>
                         </>
                     )}
 
-                    {/* Main Content Grid */}
                     <div
                         className={cn(
                             "grid grid-cols-1 lg:grid-cols-5",
                             getResponsiveClass(30).gapClass
                         )}
                     >
-                        {/* Left Column - Raffle Information */}
                         <div className="lg:col-span-3 space-y-8">
                             {raffleData?.prizes &&
                                 raffleData?.prizes.length > 0 && (
@@ -265,7 +235,7 @@ export default memo(function RaffleOnchain({
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1, duration: 0.4 }}
+                                transition={{ delay: 0.1, duration: 0.3 }}
                                 className="relative hidden md:block"
                             >
                                 <RaffleOnchainPrizes
@@ -276,7 +246,7 @@ export default memo(function RaffleOnchain({
                             <motion.div
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.2, duration: 0.4 }}
+                                transition={{ delay: 0.15, duration: 0.3 }}
                                 className="relative group hidden md:block"
                             >
                                 <RaffleOnchainSettings
@@ -285,12 +255,11 @@ export default memo(function RaffleOnchain({
                             </motion.div>
                         </div>
 
-                        {/* Right Column - Participation & Status */}
                         <div className="lg:col-span-2 space-y-8">
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.15, duration: 0.4 }}
+                                transition={{ delay: 0.1, duration: 0.3 }}
                                 className="relative group"
                             >
                                 <RaffleOnchainParticipation
@@ -311,7 +280,7 @@ export default memo(function RaffleOnchain({
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.05, duration: 0.4 }}
+                                transition={{ delay: 0.05, duration: 0.3 }}
                                 className="relative group"
                             >
                                 <RaffleOnchainTiming
@@ -322,7 +291,7 @@ export default memo(function RaffleOnchain({
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1, duration: 0.4 }}
+                                transition={{ delay: 0.1, duration: 0.3 }}
                                 className="relative block md:hidden"
                             >
                                 <RaffleOnchainPrizes
@@ -333,7 +302,7 @@ export default memo(function RaffleOnchain({
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.2, duration: 0.4 }}
+                                transition={{ delay: 0.15, duration: 0.3 }}
                                 className="relative group"
                             >
                                 <RaffleOnchainStatus
@@ -345,7 +314,7 @@ export default memo(function RaffleOnchain({
                             <motion.div
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.2, duration: 0.4 }}
+                                transition={{ delay: 0.15, duration: 0.3 }}
                                 className="relative group block md:hidden"
                             >
                                 <RaffleOnchainSettings
@@ -357,7 +326,6 @@ export default memo(function RaffleOnchain({
                 </div>
             </div>
 
-            {/* 🚀 Enhanced Portal로 모달 최적화 */}
             {modalState === "ticket" && ticketData && (
                 <EnhancedPortal layer="modal">
                     <RaffleOnchainParticipationTicket
@@ -371,17 +339,11 @@ export default memo(function RaffleOnchain({
 
             {modalState === "scratch" && ticketData?.prizeWon && (
                 <EnhancedPortal layer="modal">
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                    <div
                         className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
                         onClick={handleCloseModal}
                     >
-                        <motion.div
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.8, opacity: 0 }}
+                        <div
                             className="relative"
                             onClick={(e) => e.stopPropagation()}
                         >
@@ -392,9 +354,7 @@ export default memo(function RaffleOnchain({
                                 className="mx-auto"
                             />
 
-                            <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
+                            <button
                                 onClick={handleCloseModal}
                                 className={cn(
                                     "absolute -top-12 right-0 text-white/60 hover:text-white",
@@ -405,16 +365,15 @@ export default memo(function RaffleOnchain({
                                 )}
                             >
                                 ✕
-                            </motion.button>
-                        </motion.div>
-                    </motion.div>
+                            </button>
+                        </div>
+                    </div>
                 </EnhancedPortal>
             )}
         </div>
     );
 });
 
-// Loading Skeleton Component - 간소화
 const OnchainRaffleSkeleton = memo(function OnchainRaffleSkeleton() {
     return (
         <div className="flex items-center justify-center min-h-screen relative">
@@ -440,7 +399,6 @@ const OnchainRaffleSkeleton = memo(function OnchainRaffleSkeleton() {
     );
 });
 
-// Error Component - 간소화
 const OnchainRaffleError = memo(function OnchainRaffleError() {
     return (
         <div className="flex items-center justify-center min-h-screen relative">
@@ -463,14 +421,12 @@ const OnchainRaffleError = memo(function OnchainRaffleError() {
                     </span>
                 </p>
 
-                <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                <button
                     onClick={() => window.location.reload()}
                     className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 py-4 px-6 text-lg"
                 >
                     🔄 Retry
-                </motion.button>
+                </button>
             </motion.div>
         </div>
     );

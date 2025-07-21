@@ -42,7 +42,7 @@ const PrizeItemEmpty = memo(({ index }: { index: number }) => (
         }}
         className={cn(
             "relative bg-gradient-to-br from-slate-900/90 via-slate-800/70 to-slate-950/50",
-            "backdrop-blur-lg border border-slate-400/30 rounded-2xl p-4 overflow-hidden",
+            "backdrop-blur-lg border border-slate-400/30 rounded-2xl p-4 overflow-hidden gpu-accelerate",
             "shadow-lg shadow-slate-500/20"
         )}
     >
@@ -151,7 +151,7 @@ export default memo(function RaffleOnchainPrizesTierItem({
             }}
             className={cn(
                 "relative overflow-hidden rounded-2xl group cursor-pointer",
-                "backdrop-blur-lg border-2 transition-all duration-300 ease-out",
+                "backdrop-blur-lg border-2 transition-all duration-300 ease-out gpu-accelerate",
                 "bg-gradient-to-br shadow-xl",
                 prizeInfo.tierInfo.bg,
                 `border-${prizeInfo.tierInfo.border}`,
@@ -171,7 +171,7 @@ export default memo(function RaffleOnchainPrizesTierItem({
                         whileHover={imageHoverVariants}
                         transition={{ duration: 0.3, ease: "easeOut" }}
                         className={cn(
-                            "relative w-full h-full rounded-xl border-2 flex items-center justify-center overflow-hidden",
+                            "relative w-full h-full rounded-xl border-2 flex items-center justify-center overflow-hidden gpu-animate",
                             "bg-gradient-to-br from-slate-800/60 via-slate-700/40 to-slate-900/60",
                             "border-white/20 shadow-lg backdrop-blur-sm"
                         )}
@@ -191,14 +191,14 @@ export default memo(function RaffleOnchainPrizesTierItem({
                         ) : (
                             <motion.div
                                 animate={{
-                                    rotate: [0, 10, -10, 0],
-                                    scale: [1, 1.1, 1],
+                                    scale: [1, 1.05, 1],
                                 }}
                                 transition={{
-                                    duration: 6,
+                                    duration: 8,
                                     repeat: Infinity,
                                     ease: "easeInOut",
                                 }}
+                                className="gpu-animate"
                             >
                                 <Sparkles
                                     className={cn(
@@ -210,7 +210,7 @@ export default memo(function RaffleOnchainPrizesTierItem({
                         )}
 
                         {data.prizeType !== 0 && (
-                            <div className="absolute inset-0">
+                            <div className="absolute inset-0 gpu-animate">
                                 <ShimmerEffect />
                             </div>
                         )}
@@ -219,13 +219,12 @@ export default memo(function RaffleOnchainPrizesTierItem({
                     </motion.div>
 
                     <motion.div
-                        className="absolute -top-2 -right-2 w-6 h-6"
+                        className="absolute -top-2 -right-2 w-6 h-6 gpu-animate"
                         animate={{
-                            rotate: [0, 15, -15, 0],
-                            scale: [1, 1.2, 1],
+                            scale: [1, 1.1, 1],
                         }}
                         transition={{
-                            duration: 4,
+                            duration: 6,
                             repeat: Infinity,
                             ease: "easeInOut",
                         }}
@@ -241,10 +240,10 @@ export default memo(function RaffleOnchainPrizesTierItem({
                 <div className="space-y-3">
                     <motion.h4
                         className={cn(
-                            "font-bold line-clamp-2 text-white drop-shadow-md",
+                            "font-bold line-clamp-2 text-white drop-shadow-md gpu-animate",
                             getResponsiveClass(15).textClass
                         )}
-                        whileHover={{ scale: 1.05 }}
+                        whileHover={{ scale: 1.03 }}
                         transition={{ duration: 0.2 }}
                     >
                         {data.title || "Cosmic Prize"}

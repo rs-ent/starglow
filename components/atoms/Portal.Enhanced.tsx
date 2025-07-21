@@ -5,7 +5,6 @@
 import type { ReactNode } from "react";
 import { memo, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
-import { getPortalManager } from "@/lib/utils/portalManager";
 
 interface EnhancedPortalProps {
     children: ReactNode;
@@ -16,6 +15,13 @@ interface EnhancedPortalProps {
     disabled?: boolean;
 }
 
+const Z_INDEX_MAP = {
+    tooltip: 50,
+    popup: 60,
+    overlay: 70,
+    modal: 80,
+} as const;
+
 function EnhancedPortal({
     children,
     layer = "modal",
@@ -24,39 +30,42 @@ function EnhancedPortal({
     onUnmount,
     disabled = false,
 }: EnhancedPortalProps) {
-    const [mounted, setMounted] = useState(false);
+    const [container, setContainer] = useState<HTMLElement | null>(null);
     const id = useId().replace(/:/g, "-");
 
     useEffect(() => {
-        setMounted(true);
+        if (disabled) return;
+
+        const portalContainer = document.createElement("div");
+        portalContainer.id = `portal-${layer}-${id}`;
+        portalContainer.className = `portal-container portal-${layer}`;
+        portalContainer.style.zIndex = String(
+            customZIndex ?? Z_INDEX_MAP[layer]
+        );
+        portalContainer.style.position = "fixed";
+        portalContainer.style.inset = "0";
+        portalContainer.style.display = "contents";
+
+        document.body.appendChild(portalContainer);
+        setContainer(portalContainer);
+
         onMount?.();
 
         return () => {
+            if (portalContainer.parentNode) {
+                portalContainer.parentNode.removeChild(portalContainer);
+            }
             onUnmount?.();
         };
-    }, [onMount, onUnmount]);
-
-    const portalManager = getPortalManager();
-
-    useEffect(() => {
-        if (!mounted) return;
-
-        return () => {
-            portalManager.removePortalContainer(id, layer);
-        };
-    }, [mounted, id, layer, portalManager, customZIndex]);
-
-    if (!mounted) return null;
+    }, [disabled, layer, customZIndex, id, onMount, onUnmount]);
 
     if (disabled) {
         return <>{children}</>;
     }
 
-    const container = portalManager.createPortalContainer(
-        id,
-        layer,
-        customZIndex
-    );
+    if (!container) {
+        return null;
+    }
 
     return createPortal(children, container, id);
 }

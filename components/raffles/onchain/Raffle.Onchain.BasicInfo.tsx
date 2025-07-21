@@ -53,15 +53,15 @@ export default memo(function RaffleOnchainBasicInfo({
                 getResponsiveClass(30).paddingClass
             )}
         >
-            {/* Animated background effects */}
-            <div className="absolute inset-0">
+            {/* Optimized background effects */}
+            <div className="absolute inset-0 gpu-accelerate">
                 <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-blue-500/5 to-purple-500/5" />
 
-                {/* Floating particles */}
-                {[...Array(15)].map((_, i) => (
+                {/* Reduced floating particles */}
+                {[...Array(6)].map((_, i) => (
                     <motion.div
                         key={i}
-                        className="absolute w-1 h-1 bg-cyan-400/20 rounded-full"
+                        className="absolute w-1 h-1 bg-cyan-400/20 rounded-full gpu-animate"
                         style={{
                             left: `${Math.random() * 100}%`,
                             top: `${Math.random() * 100}%`,
@@ -72,9 +72,10 @@ export default memo(function RaffleOnchainBasicInfo({
                             scale: [1, 1.5, 1],
                         }}
                         transition={{
-                            duration: 4 + Math.random() * 2,
+                            duration: 6 + Math.random() * 2,
                             repeat: Infinity,
-                            delay: Math.random() * 3,
+                            delay: Math.random() * 4,
+                            ease: "easeInOut",
                         }}
                     />
                 ))}

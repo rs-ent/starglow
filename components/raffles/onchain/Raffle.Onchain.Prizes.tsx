@@ -57,13 +57,13 @@ const PrizesLoadingState = memo(() => (
         className={cn(
             "relative bg-gradient-to-br from-slate-900/95 via-emerald-950/70 to-purple-950/50",
             "backdrop-blur-xl border border-emerald-400/30 rounded-3xl shadow-2xl shadow-emerald-500/20",
-            "p-3 overflow-hidden"
+            "p-3 overflow-hidden gpu-accelerate"
         )}
     >
         <Particles
             className="absolute inset-0"
-            quantity={25}
-            staticity={40}
+            quantity={10}
+            staticity={50}
             color="#10b981"
             size={0.6}
         />
@@ -108,13 +108,13 @@ const PrizesEmptyState = memo(() => (
         className={cn(
             "relative bg-gradient-to-br from-slate-900/95 via-slate-800/70 to-slate-950/50",
             "backdrop-blur-xl border border-slate-400/30 rounded-3xl shadow-2xl shadow-slate-500/20",
-            "p-3 overflow-hidden"
+            "p-3 overflow-hidden gpu-accelerate"
         )}
     >
         <Particles
             className="absolute inset-0"
-            quantity={15}
-            staticity={60}
+            quantity={8}
+            staticity={70}
             color="#64748b"
             size={0.4}
         />
@@ -179,25 +179,25 @@ export default memo(function RaffleOnchainPrizes({
                 "relative bg-gradient-to-br from-slate-900/95 via-emerald-950/70 to-purple-950/50 mt-4",
                 "backdrop-blur-xl border border-emerald-400/30 rounded-3xl overflow-hidden",
                 "shadow-2xl shadow-emerald-500/20 hover:shadow-emerald-500/30",
-                "p-3 transition-all duration-500"
+                "p-3 transition-all duration-500 gpu-accelerate"
             )}
         >
             <Particles
                 className="absolute inset-0"
-                quantity={35}
-                staticity={20}
+                quantity={15}
+                staticity={30}
                 color="#10b981"
                 size={0.8}
                 refresh={false}
             />
 
             <BorderBeam
-                size={100}
-                duration={12}
+                size={80}
+                duration={18}
                 colorFrom="#10b981"
                 colorTo="#8b5cf6"
-                borderWidth={1.5}
-                className="opacity-60"
+                borderWidth={1}
+                className="opacity-50"
             />
 
             <div className="absolute inset-0 pointer-events-none">
@@ -211,16 +211,16 @@ export default memo(function RaffleOnchainPrizes({
                         ],
                     }}
                     transition={{
-                        duration: 18,
+                        duration: 30,
                         repeat: Infinity,
                         ease: "easeInOut",
                     }}
                 />
 
-                {[...Array(5)].map((_, i) => (
+                {[...Array(2)].map((_, i) => (
                     <motion.div
                         key={i}
-                        className="absolute rounded-full"
+                        className="absolute rounded-full gpu-animate"
                         style={{
                             width: `${1 + Math.random() * 1.5}px`,
                             height: `${1 + Math.random() * 1.5}px`,
@@ -236,9 +236,10 @@ export default memo(function RaffleOnchainPrizes({
                             scale: [0.2, 1.8, 0.2],
                         }}
                         transition={{
-                            duration: 5 + Math.random() * 4,
+                            duration: 8 + Math.random() * 4,
                             repeat: Infinity,
-                            delay: Math.random() * 4,
+                            delay: Math.random() * 5,
+                            ease: "easeInOut",
                         }}
                     />
                 ))}

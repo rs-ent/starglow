@@ -144,22 +144,22 @@ export default memo(function RaffleOnchainTiming({
                 className={cn(
                     "relative bg-gradient-to-br from-slate-900/90 via-blue-950/60 to-purple-950/40",
                     "backdrop-blur-xl border border-cyan-400/30 rounded-3xl shadow-2xl shadow-cyan-500/20",
-                    "p-6 overflow-hidden"
+                    "p-6 overflow-hidden gpu-accelerate"
                 )}
             >
                 <Particles
                     className="absolute inset-0"
-                    quantity={25}
-                    staticity={40}
+                    quantity={10}
+                    staticity={50}
                     color="#06b6d4"
                     size={0.6}
                 />
                 <BorderBeam
-                    size={80}
-                    duration={6}
+                    size={60}
+                    duration={10}
                     colorFrom="#06b6d4"
                     colorTo="#8b5cf6"
-                    borderWidth={1.5}
+                    borderWidth={1}
                 />
                 <div className="flex items-center justify-center relative z-10">
                     <motion.div
@@ -224,13 +224,13 @@ export default memo(function RaffleOnchainTiming({
                 "relative bg-gradient-to-br from-slate-900/95 via-blue-950/70 to-indigo-950/50",
                 "backdrop-blur-xl border border-cyan-400/30 rounded-3xl overflow-hidden",
                 "shadow-2xl shadow-cyan-500/20 hover:shadow-cyan-500/30",
-                "p-3 transition-all duration-500"
+                "p-3 transition-all duration-500 gpu-accelerate"
             )}
         >
             <Particles
                 className="absolute inset-0"
-                quantity={35}
-                staticity={20}
+                quantity={15}
+                staticity={30}
                 color="#06b6d4"
                 size={0.8}
                 refresh={false}
@@ -238,12 +238,12 @@ export default memo(function RaffleOnchainTiming({
 
             {timingInfo.status === "active" && (
                 <BorderBeam
-                    size={100}
-                    duration={12}
+                    size={70}
+                    duration={18}
                     colorFrom="#10b981"
                     colorTo="#06b6d4"
-                    borderWidth={1.5}
-                    className="opacity-60"
+                    borderWidth={1}
+                    className="opacity-40"
                 />
             )}
 
@@ -258,7 +258,7 @@ export default memo(function RaffleOnchainTiming({
                         ],
                     }}
                     transition={{
-                        duration: 18,
+                        duration: 30,
                         repeat: Infinity,
                         ease: "easeInOut",
                     }}

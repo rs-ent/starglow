@@ -215,7 +215,7 @@ export default memo(function RaffleOnchainStatus({
             className={cn(
                 "relative bg-gradient-to-br from-slate-900/95 via-violet-950/70 to-purple-950/50",
                 "backdrop-blur-xl border border-violet-400/30 rounded-3xl overflow-hidden",
-                "shadow-2xl shadow-violet-500/20",
+                "shadow-2xl shadow-violet-500/20 gpu-accelerate",
                 "p-4 sm:p-6"
             )}
         >

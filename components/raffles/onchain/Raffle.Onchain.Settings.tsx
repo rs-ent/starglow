@@ -380,7 +380,7 @@ export default memo(function RaffleOnchainSettings({
                 "relative bg-gradient-to-br from-slate-900/95 via-emerald-950/70 to-purple-950/50",
                 "backdrop-blur-xl border border-emerald-400/30 rounded-3xl overflow-hidden",
                 "shadow-2xl shadow-emerald-500/20 hover:shadow-emerald-500/30",
-                "p-4 sm:p-6 transition-all duration-500"
+                "p-4 sm:p-6 transition-all duration-500 gpu-accelerate"
             )}
         >
             <Particles

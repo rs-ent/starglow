@@ -83,6 +83,7 @@ export async function getPlayerByUserIdForSession(
                 artistId: true,
                 createdAt: true,
                 lastConnectedAt: true,
+                tester: true,
             },
         });
 

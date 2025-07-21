@@ -85,30 +85,30 @@ export default memo(function RaffleOnchainPrizesGrandPrize({
                 "bg-gradient-to-br from-slate-900 via-slate-800 to-black",
                 "border border-purple-500/30 shadow-2xl",
                 "hover:shadow-purple-500/50 hover:border-purple-400/50",
-                "transition-all duration-300",
+                "transition-all duration-300 gpu-accelerate",
                 getResponsiveClass(30).paddingClass
             )}
         >
             {/* Magic UI Border Beam */}
             <BorderBeam
-                size={150}
-                duration={12}
-                borderWidth={2}
+                size={100}
+                duration={18}
+                borderWidth={1.5}
                 colorFrom="#a855f7"
                 colorTo="#06b6d4"
-                className="opacity-60"
+                className="opacity-40"
             />
 
             <Particles
                 className="absolute inset-0"
-                quantity={30}
-                staticity={50}
+                quantity={12}
+                staticity={60}
                 color="#06b6d4"
                 size={0.8}
             />
 
             {/* Space Gradient Background */}
-            <div className="absolute inset-0 rounded-3xl opacity-30">
+            <div className="absolute inset-0 rounded-3xl opacity-30 gpu-animate">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 via-blue-600/20 to-emerald-600/20" />
                 <div
                     className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
@@ -122,10 +122,10 @@ export default memo(function RaffleOnchainPrizesGrandPrize({
             <div className="text-center relative z-10">
                 {/* Prize Image */}
                 <motion.div
-                    className="mb-6"
+                    className="mb-6 gpu-animate"
                     animate={{ y: [0, -4, 0] }}
                     transition={{
-                        duration: 3,
+                        duration: 6,
                         repeat: Infinity,
                         ease: "easeInOut",
                     }}
@@ -162,12 +162,15 @@ export default memo(function RaffleOnchainPrizesGrandPrize({
                                         />
                                     ) : (
                                         <motion.div
-                                            className="flex items-center justify-center w-full h-full"
-                                            animate={{ rotateY: [0, 360] }}
+                                            className="flex items-center justify-center w-full h-full gpu-animate"
+                                            animate={{
+                                                scale: [1, 1.05, 1],
+                                                rotate: [0, 5, -5, 0],
+                                            }}
                                             transition={{
-                                                duration: 8,
+                                                duration: 12,
                                                 repeat: Infinity,
-                                                ease: "linear",
+                                                ease: "easeInOut",
                                             }}
                                         >
                                             <Gem
@@ -194,17 +197,12 @@ export default memo(function RaffleOnchainPrizesGrandPrize({
                 >
                     <motion.h3
                         className={cn(
-                            "font-light text-white/90 mb-2 tracking-[0.2em] uppercase",
+                            "font-light text-white/90 mb-2 tracking-[0.2em] uppercase gpu-animate",
                             getResponsiveClass(15).textClass
                         )}
-                        animate={{
-                            textShadow: [
-                                "0 0 10px rgba(168, 85, 247, 0.5)",
-                                "0 0 20px rgba(168, 85, 247, 0.8)",
-                                "0 0 10px rgba(168, 85, 247, 0.5)",
-                            ],
+                        style={{
+                            textShadow: "0 0 15px rgba(168, 85, 247, 0.6)",
                         }}
-                        transition={{ duration: 2, repeat: Infinity }}
                     >
                         ⭐ GRAND PRIZE ⭐
                     </motion.h3>
@@ -224,7 +222,7 @@ export default memo(function RaffleOnchainPrizesGrandPrize({
 
             {/* Hover glow effect */}
             <motion.div
-                className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500"
+                className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500 gpu-animate"
                 style={{
                     background:
                         "radial-gradient(circle at center, rgba(168, 85, 247, 0.6), transparent 70%)",

@@ -376,13 +376,13 @@ export default memo(function RaffleOnchainParticipation({
                 "relative bg-gradient-to-br from-slate-900/95 via-purple-950/70 to-pink-950/50",
                 "backdrop-blur-xl border border-purple-400/30 rounded-3xl overflow-hidden",
                 "shadow-2xl shadow-purple-500/20 hover:shadow-purple-500/30",
-                "p-3 transition-all duration-500"
+                "p-3 transition-all duration-500 gpu-accelerate"
             )}
         >
             <Particles
                 className="absolute inset-0"
-                quantity={40}
-                staticity={25}
+                quantity={15}
+                staticity={35}
                 color="#a855f7"
                 size={0.7}
                 refresh={false}
@@ -390,12 +390,12 @@ export default memo(function RaffleOnchainParticipation({
 
             {canParticipate && (
                 <BorderBeam
-                    size={120}
-                    duration={10}
+                    size={80}
+                    duration={15}
                     colorFrom="#a855f7"
                     colorTo="#ec4899"
-                    borderWidth={1.5}
-                    className="opacity-70"
+                    borderWidth={1}
+                    className="opacity-50"
                 />
             )}
 
@@ -410,16 +410,16 @@ export default memo(function RaffleOnchainParticipation({
                         ],
                     }}
                     transition={{
-                        duration: 15,
+                        duration: 25,
                         repeat: Infinity,
                         ease: "easeInOut",
                     }}
                 />
 
-                {[...Array(7)].map((_, i) => (
+                {[...Array(3)].map((_, i) => (
                     <motion.div
                         key={i}
-                        className="absolute rounded-full"
+                        className="absolute rounded-full gpu-animate"
                         style={{
                             width: `${1.5 + Math.random() * 2}px`,
                             height: `${1.5 + Math.random() * 2}px`,
@@ -435,9 +435,10 @@ export default memo(function RaffleOnchainParticipation({
                             scale: [0.3, 2, 0.3],
                         }}
                         transition={{
-                            duration: 6 + Math.random() * 3,
+                            duration: 8 + Math.random() * 3,
                             repeat: Infinity,
-                            delay: Math.random() * 3,
+                            delay: Math.random() * 4,
+                            ease: "easeInOut",
                         }}
                     />
                 ))}
@@ -774,7 +775,7 @@ export default memo(function RaffleOnchainParticipation({
                         {canParticipate && !isPending && (
                             <>
                                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20" />
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer gpu-animate" />
                             </>
                         )}
 

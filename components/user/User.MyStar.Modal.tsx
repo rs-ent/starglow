@@ -73,8 +73,7 @@ export default function UserMyStarModal({
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.3 }}
-                            className="fixed inset-0 bg-black/80 -z-50 backdrop-blur-md"
-                            style={{ willChange: "opacity" }}
+                            className="fixed inset-0 bg-black/80 z-modal-backdrop backdrop-blur-md gpu-accelerate"
                         />
 
                         <motion.div
@@ -135,8 +134,8 @@ export default function UserMyStarModal({
                             }}
                         />
 
-                        <div className="fixed inset-0 z-50 pointer-events-none">
-                            {Array.from({ length: 36 }).map((_, i) => {
+                        <div className="fixed inset-0 z-modal pointer-events-none">
+                            {Array.from({ length: 12 }).map((_, i) => {
                                 const angle = Math.random() * 360;
                                 const startRadius = Math.random() * 40;
                                 const endRadius = 80 + Math.random() * 180;

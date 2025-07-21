@@ -13,13 +13,14 @@ import { Badge } from "@/components/ui/badge";
 import PollCreateModal from "./Admin.Polls.CreateModal";
 import AdminPollsList from "./Admin.Polls.List";
 import AdminPollsBettingMode from "./Admin.Polls.BettingMode";
+import { AdminPollsOnchainDeploy } from "./Admin.Polls.Onchain.Deploy";
 
 export default function AdminPollsDashboard() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [viewType, setViewType] = useState<"table" | "card">("table");
-    const [activeTab, setActiveTab] = useState<"general" | "betting">(
-        "general"
-    );
+    const [activeTab, setActiveTab] = useState<
+        "general" | "betting" | "onchain"
+    >("general");
 
     return (
         <>
@@ -49,11 +50,11 @@ export default function AdminPollsDashboard() {
                 <Tabs
                     value={activeTab}
                     onValueChange={(value) =>
-                        setActiveTab(value as "general" | "betting")
+                        setActiveTab(value as "general" | "betting" | "onchain")
                     }
                     className="w-full"
                 >
-                    <TabsList className="grid w-full grid-cols-2 bg-muted">
+                    <TabsList className="grid w-full grid-cols-3 bg-muted">
                         <TabsTrigger
                             value="general"
                             className="flex items-center gap-2"
@@ -69,6 +70,16 @@ export default function AdminPollsDashboard() {
                             베팅 모드 관리
                             <Badge variant="secondary" className="ml-1 text-xs">
                                 Live
+                            </Badge>
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="onchain"
+                            className="flex items-center gap-2"
+                        >
+                            <Settings className="w-4 h-4" />
+                            온체인 관리
+                            <Badge variant="default" className="ml-1 text-xs">
+                                Contract
                             </Badge>
                         </TabsTrigger>
                     </TabsList>
@@ -117,6 +128,11 @@ export default function AdminPollsDashboard() {
                     {/* 베팅 모드 관리 탭 */}
                     <TabsContent value="betting" className="space-y-6">
                         <AdminPollsBettingMode />
+                    </TabsContent>
+
+                    {/* 온체인 관리 탭 */}
+                    <TabsContent value="onchain" className="space-y-6">
+                        <AdminPollsOnchainDeploy />
                     </TabsContent>
                 </Tabs>
             </div>
