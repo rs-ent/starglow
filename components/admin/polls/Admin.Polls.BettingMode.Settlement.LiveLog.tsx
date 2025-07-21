@@ -319,8 +319,18 @@ export default function LiveLog({
                               -6
                           )} 정산 실패`;
 
-                    // 검증 결과에 따라 메시지 수정
-                    if (hasValidationErrors) {
+                    // 🔍 베팅이 없는 사용자 특별 처리
+                    if (playerResult.calculationDetails?.type === "NO_BET") {
+                        message = `플레이어 ${playerResult.playerId.slice(
+                            -6
+                        )} 베팅 없음 - 정산 대상 아님 ⚪`;
+                    } else if (
+                        playerResult.calculationDetails?.type === "ZERO_BET"
+                    ) {
+                        message = `플레이어 ${playerResult.playerId.slice(
+                            -6
+                        )} 0원 베팅 - 정산 대상 아님 ⚪`;
+                    } else if (hasValidationErrors) {
                         message += ` ⚠️ 계산 오류 감지 (${playerResult.validationResult.errors.length}개)`;
                     } else if (hasValidationWarnings) {
                         message += ` ⚠️ 경고 (${playerResult.validationResult.warnings.length}개)`;
@@ -353,6 +363,22 @@ export default function LiveLog({
                         message: playerResult.message,
                         duration: `${processingDuration}ms`,
                     };
+
+                    // 🔍 베팅이 없는 사용자 로그 데이터 개선
+                    if (
+                        playerResult.calculationDetails?.type === "NO_BET" ||
+                        playerResult.calculationDetails?.type === "ZERO_BET"
+                    ) {
+                        logData.noSettlementReason = {
+                            type: playerResult.calculationDetails.type,
+                            reason: playerResult.calculationDetails.reason,
+                            isParticipant:
+                                playerResult.calculationDetails.isParticipant ||
+                                false,
+                            betCount:
+                                playerResult.calculationDetails.betCount || 0,
+                        };
+                    }
 
                     // 계산 상세 정보 추가
                     if (playerResult.calculationDetails) {
@@ -1064,6 +1090,76 @@ const LogsSection = ({ filteredLogs, showTimestamps, logsEndRef }: any) => {
                                     </div>
                                     {log.data && (
                                         <div className="mt-2">
+                                            {/* 🔍 베팅이 없는 사용자 특별 표시 */}
+                                            {log.data.noSettlementReason && (
+                                                <div className="mb-3 p-3 bg-gray-900/20 border border-gray-600 rounded-lg">
+                                                    <h4 className="text-xs font-medium text-gray-400 mb-2">
+                                                        ⚪ 정산 대상 제외 사유
+                                                    </h4>
+                                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                                        <div>
+                                                            <span className="text-gray-400">
+                                                                유형:
+                                                            </span>
+                                                            <span className="ml-1 text-gray-300 font-medium">
+                                                                {log.data
+                                                                    .noSettlementReason
+                                                                    .type ===
+                                                                "NO_BET"
+                                                                    ? "베팅 없음"
+                                                                    : "0원 베팅"}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-gray-400">
+                                                                참여 여부:
+                                                            </span>
+                                                            <span className="ml-1 text-gray-300">
+                                                                {log.data
+                                                                    .noSettlementReason
+                                                                    .isParticipant
+                                                                    ? "참여"
+                                                                    : "미참여"}
+                                                            </span>
+                                                        </div>
+                                                        {log.data
+                                                            .noSettlementReason
+                                                            .betCount > 0 && (
+                                                            <div>
+                                                                <span className="text-gray-400">
+                                                                    베팅 횟수:
+                                                                </span>
+                                                                <span className="ml-1 text-gray-300">
+                                                                    {
+                                                                        log.data
+                                                                            .noSettlementReason
+                                                                            .betCount
+                                                                    }
+                                                                    회
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        <div className="col-span-2">
+                                                            <span className="text-gray-400">
+                                                                사유:
+                                                            </span>
+                                                            <span className="ml-1 text-gray-300 text-xs">
+                                                                {
+                                                                    log.data
+                                                                        .noSettlementReason
+                                                                        .reason
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-2 p-2 bg-gray-800 rounded text-xs text-gray-400">
+                                                        💡 이 플레이어는 정산
+                                                        대상이 아니므로 통계에서
+                                                        제외됩니다.
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* 🔍 정산 상세 정보 특별 표시 */}
                                             {log.data.calculation && (
                                                 <div className="mb-3 p-3 bg-blue-900/20 border border-blue-800 rounded-lg">
@@ -1088,6 +1184,18 @@ const LogsSection = ({ filteredLogs, showTimestamps, logsEndRef }: any) => {
                                                                               .type ===
                                                                           "REFUND"
                                                                         ? "text-yellow-400"
+                                                                        : log
+                                                                              .data
+                                                                              .calculation
+                                                                              .type ===
+                                                                          "NO_BET"
+                                                                        ? "text-gray-400"
+                                                                        : log
+                                                                              .data
+                                                                              .calculation
+                                                                              .type ===
+                                                                          "ZERO_BET"
+                                                                        ? "text-gray-400"
                                                                         : "text-gray-400"
                                                                 }`}
                                                             >
