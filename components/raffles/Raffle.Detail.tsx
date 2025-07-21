@@ -1097,6 +1097,13 @@ const ParticipationCard = memo(function ParticipationCard({
                 blockParticipateReason: "MAX ENTRIES REACHED",
             };
 
+        const playerBalance = playerAsset?.data?.balance || 0;
+        if (playerBalance && playerBalance < raffle.entryFeeAmount)
+            return {
+                canParticipate: false,
+                blockParticipateReason: "INSUFFICIENT ASSETS",
+            };
+
         return {
             canParticipate: true,
             blockParticipateReason: null,

@@ -2,14 +2,13 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
     TrendingUp,
     BarChart3,
     Settings,
     RefreshCw,
-    CheckCircle,
     Shield,
     Activity,
     Gavel,

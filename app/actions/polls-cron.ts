@@ -21,7 +21,7 @@ const CRON_CONFIG = {
     MAX_EXECUTION_TIME: 25000, // 25초 (5초 안전 마진)
     BATCH_SIZE: 10, // 성능 최적화: 5 → 10으로 증가
     MAX_POLLS_PER_RUN: 1, // 한 번에 하나의 폴만 처리
-    TRANSACTION_TIMEOUT: 15000, // 15초 트랜잭션
+    TRANSACTION_TIMEOUT: 60000, // 15초 트랜잭션
 } as const;
 
 export interface SettlementMetadata {
@@ -53,6 +53,7 @@ export interface CronStepResult {
     metadata?: Partial<SettlementMetadata>;
     completed?: boolean;
     executionTimeMs?: number;
+    silent?: boolean; // 로그 출력 제어용
 }
 
 /**
@@ -61,6 +62,7 @@ export interface CronStepResult {
 async function findNextPollToProcess(): Promise<{
     pollId: string;
     phase: InternalPhase;
+    hasWork: boolean; // 실제 작업이 있는지 여부
 } | null> {
     const now = new Date();
     const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
@@ -71,7 +73,6 @@ async function findNextPollToProcess(): Promise<{
             bettingMode: true,
             isSettled: false,
             bettingStatus: "SETTLING",
-            // 5분 이상 멈춰있는 건 스킵 (데드락 방지)
             updatedAt: { gte: fiveMinutesAgo },
         },
         select: { id: true, metadata: true },
@@ -84,6 +85,7 @@ async function findNextPollToProcess(): Promise<{
             return {
                 pollId: inProgressPoll.id,
                 phase: settlementData.settlementPhase as InternalPhase,
+                hasWork: true,
             };
         }
     }
@@ -124,6 +126,7 @@ async function findNextPollToProcess(): Promise<{
                 return {
                     pollId: newPoll.id,
                     phase: INTERNAL_PHASES.PHASE_1_PREPARE,
+                    hasWork: true,
                 };
             }
         }
@@ -1185,6 +1188,7 @@ export async function processNextSettlementStep(): Promise<CronStepResult> {
                 phase: INTERNAL_PHASES.COMPLETED,
                 message: "No polls to process",
                 executionTimeMs: Date.now() - startTime,
+                silent: true, // 조용한 모드 플래그
             };
         }
 
@@ -1213,6 +1217,12 @@ export async function processNextSettlementStep(): Promise<CronStepResult> {
         }
 
         checkTime();
+
+        // 결과에 silent 플래그 추가 (실제 처리 여부에 따라)
+        if (!result.silent) {
+            result.silent = false; // 실제 작업이 있었음을 명시
+        }
+
         return result;
     } catch (error) {
         console.error("Settlement step error:", error);

@@ -334,12 +334,12 @@ Table Poll {
   onchainPollId String
   artist Artist
   bettingAsset Asset
+  onchainContract OnchainPollContract
   participationConsumeAsset Asset
   participationRewardAsset Asset
   settlementLogs PollBettingSettlementLog [not null]
   pollLogs PollLog [not null]
   rewardLogs RewardsLog [not null]
-  onchainContract OnchainPollContract
 }
 
 Table OnchainPollContract {
@@ -619,9 +619,9 @@ Table BlockchainNetwork {
   collectionContracts CollectionContract [not null]
   factoryContracts FactoryContract [not null]
   nfts NFT [not null]
+  onchainPollContracts OnchainPollContract [not null]
   onchainRaffles OnchainRaffle [not null]
   onchainRaffleContracts OnchainRaffleContract [not null]
-  onchainPollContracts OnchainPollContract [not null]
   story_ipAssets Story_ipAsset [not null]
   story_nfts Story_nft [not null]
   story_spg Story_spg [not null]
@@ -1810,8 +1810,8 @@ Table PlayerAssetsStatus {
   rewardedCount Int [not null, default: 0]
   date DateTime [default: `now()`, not null]
   dailyActivityWalletId String
-  dailyActivityWallet DailyActivityWallet
   monthlyActivityWalletId String
+  dailyActivityWallet DailyActivityWallet
   monthlyActivityWallet MonthlyActivityWallet
 
   indexes {
@@ -2222,11 +2222,11 @@ Ref: Poll.artistId > Artist.id
 
 Ref: Poll.bettingAssetId > Asset.id
 
+Ref: Poll.onchainContractId > OnchainPollContract.id
+
 Ref: Poll.participationConsumeAssetId > Asset.id
 
 Ref: Poll.participationRewardAssetId > Asset.id
-
-Ref: Poll.onchainContractId > OnchainPollContract.id
 
 Ref: OnchainPollContract.networkId > BlockchainNetwork.id
 

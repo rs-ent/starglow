@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
     X,
     AlertTriangle,
@@ -39,7 +39,7 @@ export default function ManualSettlementModal({
     const [settling, setSettling] = useState(false);
     const [settlementResult, setSettlementResult] = useState<any>(null);
 
-    const loadPoll = async () => {
+    const loadPoll = useCallback(async () => {
         if (!pollId) return;
 
         setLoading(true);
@@ -60,7 +60,7 @@ export default function ManualSettlementModal({
         } finally {
             setLoading(false);
         }
-    };
+    }, [pollId]);
 
     const handleOptionToggle = (optionId: string) => {
         setSelectedOptions((prev) => {
@@ -122,12 +122,18 @@ export default function ManualSettlementModal({
 
     useEffect(() => {
         if (isOpen && pollId) {
-            loadPoll();
+            loadPoll().catch((err) => {
+                setError(
+                    err instanceof Error
+                        ? err.message
+                        : "폴 정보를 불러오는데 실패했습니다."
+                );
+            });
             setSelectedOptions([]);
             setSettlementResult(null);
             setError(null);
         }
-    }, [isOpen, pollId]);
+    }, [isOpen, pollId, loadPoll]);
 
     if (!isOpen) return null;
 

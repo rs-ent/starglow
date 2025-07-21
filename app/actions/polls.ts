@@ -2193,8 +2193,6 @@ export async function getBettingSettlementPolls(): Promise<
     BettingSettlementPoll[]
 > {
     try {
-        const now = new Date();
-
         const polls = await prisma.poll.findMany({
             where: {
                 bettingMode: true,
@@ -2357,21 +2355,7 @@ export async function manualSettlePoll(
     input: ManualSettlePollInput
 ): Promise<SettleBettingPollResult> {
     try {
-        console.log(`🔧 Manual settlement triggered for poll ${input.pollId}`);
-
         const result = await settleBettingPoll(input);
-
-        if (result.success) {
-            console.log(
-                `✅ Manual settlement completed for poll ${input.pollId}`
-            );
-        } else {
-            console.error(
-                `❌ Manual settlement failed for poll ${input.pollId}:`,
-                result.error
-            );
-        }
-
         return result;
     } catch (error) {
         console.error("Error in manual settlement:", error);

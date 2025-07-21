@@ -12,10 +12,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-    getBettingSettlementPolls,
-    manualSettlePoll,
-} from "@/app/actions/polls";
+import { getBettingSettlementPolls } from "@/app/actions/polls";
 import type { BettingSettlementPoll } from "@/app/actions/polls";
 import ManualSettlementModal from "./Admin.Poll.Manual.Settlement.Modal";
 
@@ -79,11 +76,19 @@ export default function AdminPollBettingSettlement() {
     };
 
     const handleSettlementSuccess = () => {
-        loadPolls();
+        loadPolls().catch((err) => {
+            setError(
+                err instanceof Error ? err.message : "Failed to load polls"
+            );
+        });
     };
 
     useEffect(() => {
-        loadPolls();
+        loadPolls().catch((err) => {
+            setError(
+                err instanceof Error ? err.message : "Failed to load polls"
+            );
+        });
 
         const interval = setInterval(loadPolls, 30000);
         return () => clearInterval(interval);

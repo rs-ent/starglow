@@ -28,26 +28,34 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        console.info("🔄 Starting betting poll settlement cron job");
-
-        // 📊 현재 시스템 상태 조회 (성능 모니터링용)
-        const systemStatus = await getSettlementSystemStatus();
-
         // ⚡ 다음 정산 단계 실행 (1분 cron에 최적화된 단일 단계 처리)
         const result = await processNextSettlementStep();
+
+        // 📊 실제 처리가 있을 때만 시스템 상태 조회 (성능 최적화)
+        const systemStatus = result.silent
+            ? null
+            : await getSettlementSystemStatus();
+
+        // 처리할 폴이 있을 때만 시작 로그 출력
+        if (!result.silent) {
+            console.info("🔄 Starting betting poll settlement cron job");
+        }
 
         const totalExecutionTime = Date.now() - startTime;
 
         // ✅ 성공 응답
         if (result.success) {
-            console.info(`✅ Settlement step completed successfully:`, {
-                phase: result.phase,
-                nextPhase: result.nextPhase,
-                message: result.message,
-                completed: result.completed,
-                executionTime: totalExecutionTime,
-                systemStatus,
-            });
+            // 조용한 모드일 때는 간단한 로그만 출력
+            if (!result.silent) {
+                console.info(`✅ Settlement step completed successfully:`, {
+                    phase: result.phase,
+                    nextPhase: result.nextPhase,
+                    message: result.message,
+                    completed: result.completed,
+                    executionTime: totalExecutionTime,
+                    systemStatus,
+                });
+            }
 
             return NextResponse.json({
                 success: true,
@@ -59,8 +67,9 @@ export async function GET(request: NextRequest) {
                         completed: result.completed,
                         executionTimeMs: result.executionTimeMs || 0,
                         metadata: result.metadata,
+                        silent: result.silent,
                     },
-                    systemStatus,
+                    systemStatus: result.silent ? null : systemStatus, // 조용한 모드일 때는 시스템 상태 생략
                     summary: {
                         currentPhase: result.phase,
                         isCompleted: result.completed,
@@ -68,11 +77,13 @@ export async function GET(request: NextRequest) {
                         timestamp: new Date().toISOString(),
                     },
                 },
-                performance: {
-                    stepExecutionTimeMs: result.executionTimeMs || 0,
-                    totalApiExecutionTimeMs: totalExecutionTime,
-                    memoryUsage: process.memoryUsage(),
-                },
+                performance: result.silent
+                    ? null
+                    : {
+                          stepExecutionTimeMs: result.executionTimeMs || 0,
+                          totalApiExecutionTimeMs: totalExecutionTime,
+                          memoryUsage: process.memoryUsage(),
+                      },
             });
         } else {
             // ❌ 에러 응답 (실패 시에도 상세 정보 제공)
