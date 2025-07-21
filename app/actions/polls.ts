@@ -23,6 +23,7 @@ import type {
 // Notification 함수들 import 추가
 import {
     createBettingFailedNotification,
+    createBettingWinNotification,
     createBettingRefundNotification,
     createSettlementCompleteNotification,
 } from "./notification/actions";
@@ -1748,7 +1749,6 @@ export async function settleBettingPoll(
                                     },
                                     pollId: pollId,
                                 },
-                                skipRewardsLog: true, // 트랜잭션 성능 최적화
                             },
                             tx
                         );
@@ -1845,7 +1845,6 @@ export async function settleBettingPoll(
                                     },
                                     pollId: pollId,
                                 },
-                                skipRewardsLog: true, // 트랜잭션 성능 최적화
                             },
                             tx
                         );
@@ -1895,7 +1894,6 @@ export async function settleBettingPoll(
                                     },
                                     pollId: pollId,
                                 },
-                                skipRewardsLog: true, // 트랜잭션 성능 최적화
                             },
                             tx
                         );
@@ -2064,11 +2062,13 @@ export async function settleBettingPoll(
                                 // 🏆 승리자 알림
                                 const winAmount =
                                     payoutMap.get(bettor.playerId) || 0;
-                                await (bettor.playerId,
-                                pollId,
-                                poll.title,
-                                bettor.amount,
-                                winAmount);
+                                await createBettingWinNotification(
+                                    bettor.playerId,
+                                    pollId,
+                                    poll.title,
+                                    bettor.amount,
+                                    winAmount
+                                );
                             } else {
                                 // 😔 패배자 알림 (환불이 아닌 경우만)
                                 if (winningOptionIds.length > 0) {
@@ -2169,5 +2169,218 @@ export async function getArtistAllActivePollCount(
     } catch (error) {
         console.error("Error getting artist all poll count:", error);
         return 0;
+    }
+}
+
+export interface BettingSettlementPoll {
+    id: string;
+    title: string;
+    endDate: Date;
+    bettingStatus: string;
+    isSettled: boolean;
+    settledAt: Date | null;
+    metadata: any;
+    artistId: string | null;
+    settlementPhase?: string;
+    totalBetAmount: number;
+    totalCommission: number;
+    optionBetAmounts: any;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export async function getBettingSettlementPolls(): Promise<
+    BettingSettlementPoll[]
+> {
+    try {
+        const now = new Date();
+
+        const polls = await prisma.poll.findMany({
+            where: {
+                bettingMode: true,
+                isSettled: false,
+            },
+            select: {
+                id: true,
+                title: true,
+                endDate: true,
+                bettingStatus: true,
+                isSettled: true,
+                settledAt: true,
+                metadata: true,
+                artistId: true,
+                optionBetAmounts: true,
+                totalCommissionAmount: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+            orderBy: [{ bettingStatus: "desc" }, { endDate: "asc" }],
+        });
+
+        return polls.map((poll) => {
+            const metadata = poll.metadata as any;
+            const settlementPhase = metadata?.settlementPhase || "PENDING";
+
+            const betAmounts = (poll.optionBetAmounts as any) || {};
+            const totalBetAmount = Object.values(betAmounts).reduce(
+                (sum: number, amount: any) => sum + (amount || 0),
+                0
+            );
+
+            return {
+                id: poll.id,
+                title: poll.title,
+                endDate: poll.endDate,
+                bettingStatus: poll.bettingStatus,
+                isSettled: poll.isSettled,
+                settledAt: poll.settledAt,
+                metadata: poll.metadata,
+                artistId: poll.artistId,
+                settlementPhase,
+                totalBetAmount,
+                totalCommission: poll.totalCommissionAmount || 0,
+                optionBetAmounts: poll.optionBetAmounts,
+                createdAt: poll.createdAt,
+                updatedAt: poll.updatedAt,
+            };
+        });
+    } catch (error) {
+        console.error("Error getting betting settlement polls:", error);
+        return [];
+    }
+}
+
+export interface PollOptionForSettlement {
+    optionId: string;
+    name: string;
+    description?: string;
+    imgUrl?: string;
+    betAmount: number;
+    betCount: number;
+}
+
+export interface PollForManualSettlement {
+    id: string;
+    title: string;
+    description?: string;
+    endDate: Date;
+    options: PollOptionForSettlement[];
+    totalBetAmount: number;
+    totalCommission: number;
+    bettingStatus: string;
+}
+
+export async function getPollForManualSettlement(
+    pollId: string
+): Promise<PollForManualSettlement | null> {
+    try {
+        const poll = await prisma.poll.findUnique({
+            where: { id: pollId },
+            select: {
+                id: true,
+                title: true,
+                description: true,
+                endDate: true,
+                options: true,
+                optionBetAmounts: true,
+                totalCommissionAmount: true,
+                bettingStatus: true,
+                bettingMode: true,
+                isSettled: true,
+            },
+        });
+
+        if (!poll || !poll.bettingMode || poll.isSettled) {
+            return null;
+        }
+
+        const betAmounts = (poll.optionBetAmounts as any) || {};
+        const totalBetAmount = Object.values(betAmounts).reduce(
+            (sum: number, amount: any) => sum + (amount || 0),
+            0
+        );
+
+        // 각 옵션별 베팅 참가자 수 조회
+        const optionBetCounts = await prisma.pollLog.groupBy({
+            by: ["optionId"],
+            where: {
+                pollId: pollId,
+            },
+            _count: {
+                playerId: true,
+            },
+        });
+
+        const betCountMap: Record<string, number> = {};
+        optionBetCounts.forEach((item: any) => {
+            if (item.optionId) {
+                betCountMap[item.optionId] = item._count.playerId;
+            }
+        });
+
+        const pollOptions = poll.options as unknown as PollOption[];
+        const optionsForSettlement: PollOptionForSettlement[] = pollOptions.map(
+            (option) => ({
+                optionId: option.optionId,
+                name: option.name,
+                description: option.description,
+                imgUrl: option.imgUrl,
+                betAmount:
+                    (betAmounts as Record<string, number>)[option.optionId] ||
+                    0,
+                betCount: betCountMap[option.optionId] || 0,
+            })
+        );
+
+        return {
+            id: poll.id,
+            title: poll.title,
+            description: poll.description || undefined,
+            endDate: poll.endDate,
+            options: optionsForSettlement,
+            totalBetAmount,
+            totalCommission: poll.totalCommissionAmount || 0,
+            bettingStatus: poll.bettingStatus,
+        };
+    } catch (error) {
+        console.error("Error getting poll for manual settlement:", error);
+        return null;
+    }
+}
+
+export interface ManualSettlePollInput {
+    pollId: string;
+    winningOptionIds: string[];
+}
+
+export async function manualSettlePoll(
+    input: ManualSettlePollInput
+): Promise<SettleBettingPollResult> {
+    try {
+        console.log(`🔧 Manual settlement triggered for poll ${input.pollId}`);
+
+        const result = await settleBettingPoll(input);
+
+        if (result.success) {
+            console.log(
+                `✅ Manual settlement completed for poll ${input.pollId}`
+            );
+        } else {
+            console.error(
+                `❌ Manual settlement failed for poll ${input.pollId}:`,
+                result.error
+            );
+        }
+
+        return result;
+    } catch (error) {
+        console.error("Error in manual settlement:", error);
+        return {
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Manual settlement failed",
+        };
     }
 }

@@ -112,8 +112,12 @@ async function PollContent({ id }: { id: string }) {
     );
 }
 
-export default function PollEntryPage({ params }: { params: { id: string } }) {
-    const { id } = params;
+export default async function PollEntryPage({
+    params,
+}: {
+    params: { id: string };
+}) {
+    const { id } = await params;
 
     return (
         <Suspense fallback={<PollsLoading />}>

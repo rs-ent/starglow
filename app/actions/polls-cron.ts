@@ -458,7 +458,6 @@ async function processPhase2Process(pollId: string): Promise<CronStepResult> {
                                     },
                                     pollId,
                                 },
-                                skipRewardsLog: true, // 성능 최적화
                             },
                             tx
                         );
@@ -562,7 +561,6 @@ async function processPhase2Process(pollId: string): Promise<CronStepResult> {
                                             },
                                             pollId,
                                         },
-                                        skipRewardsLog: true,
                                     },
                                     tx
                                 );
@@ -641,7 +639,6 @@ async function processPhase2Process(pollId: string): Promise<CronStepResult> {
                                         },
                                         pollId,
                                     },
-                                    skipRewardsLog: true, // 성능 최적화
                                 },
                                 tx
                             );

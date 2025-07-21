@@ -16,7 +16,6 @@ import {
     Shield,
     ExternalLink,
     Timer,
-    Award,
     Gem,
     CheckCircle2,
     Play,
@@ -749,6 +748,7 @@ const PrizeCard = memo(function PrizeCard({
     }, [prize.order, getTierInfo]);
 
     const percentage = useMemo(() => {
+        if (prize.quantity === 0) return "EMPTY";
         return ((prize.quantity / totalQuantity) * 100).toFixed(2);
     }, [prize.quantity, totalQuantity]);
 
@@ -941,7 +941,7 @@ const PrizeCard = memo(function PrizeCard({
                         getResponsiveClass(5).textClass
                     )}
                 >
-                    {percentage}%
+                    {percentage === "EMPTY" ? "EMPTY" : `${percentage}%`}
                 </p>
             </div>
         </motion.div>
@@ -1069,13 +1069,38 @@ const ParticipationCard = memo(function ParticipationCard({
         ? userParticipationCount >= raffle.maxEntriesPerPlayer
         : false;
 
-    const canParticipate = useMemo(() => {
-        return (
-            isLive &&
-            (!hasParticipated ||
-                (raffle?.allowMultipleEntry && !hasReachedMaxEntries)) &&
-            raffle.entryFeeAmount <= (playerAsset?.data?.balance || 0)
+    const { canParticipate, blockParticipateReason } = useMemo(() => {
+        const totalQuantity = raffle.prizes.reduce(
+            (acc: number, prize: any) => acc + prize.quantity,
+            0
         );
+
+        if (totalQuantity === 0)
+            return {
+                canParticipate: false,
+                blockParticipateReason: "OUT OF STOCK",
+            };
+
+        if (!isLive)
+            return {
+                canParticipate: false,
+                blockParticipateReason: "NOT LIVE",
+            };
+
+        if (
+            hasParticipated &&
+            raffle.allowMultipleEntry &&
+            hasReachedMaxEntries
+        )
+            return {
+                canParticipate: false,
+                blockParticipateReason: "MAX ENTRIES REACHED",
+            };
+
+        return {
+            canParticipate: true,
+            blockParticipateReason: null,
+        };
     }, [
         isLive,
         hasParticipated,
@@ -1396,14 +1421,7 @@ const ParticipationCard = memo(function ParticipationCard({
                                 Coming Soon
                             </>
                         ) : (
-                            <>
-                                <Award
-                                    className={cn(
-                                        getResponsiveClass(30).frameClass
-                                    )}
-                                />
-                                Unavailable
-                            </>
+                            <>{blockParticipateReason || "Unavailable"}</>
                         )}
                     </motion.button>
 
