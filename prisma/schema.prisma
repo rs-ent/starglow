@@ -383,6 +383,11 @@ model Poll {
   @@index([status, startDate])
   @@index([isActive, startDate])
   @@index([isOnchain])
+  @@index([bettingMode])
+  @@index([bettingMode, bettingStatus])
+  @@index([bettingMode, isSettled])
+  @@index([bettingAssetId])
+  @@index([isSettled, settledAt])
 }
 
 model OnchainPollContract {
@@ -428,8 +433,10 @@ model PollLog {
 
   @@unique([playerId, pollId, optionId])
   @@index([pollId])
-  @@index([playerId, pollId])
-  @@index([playerId])
+  @@index([pollId, playerId])
+  @@index([pollId, optionId])
+  @@index([pollId, amount])
+  @@index([playerId, pollId, amount])
 }
 
 model RewardsLog {
@@ -467,6 +474,11 @@ model RewardsLog {
   @@index([raffleId])
   @@index([tweetAuthorId, reason])
   @@index([tweetIds])
+  @@index([pollId, playerId, assetId])
+  @@index([pollId, reason])
+  @@index([reason])
+  @@index([pollId, assetId])
+  @@index([createdAt])
 }
 
 model Events {

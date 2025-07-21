@@ -698,6 +698,12 @@ export async function participatePoll(
                 error: ERROR_MESSAGES.PLAYER_NOT_FOUND,
             };
 
+        if (!player.userId)
+            return {
+                success: false,
+                error: ERROR_MESSAGES.PLAYER_NOT_FOUND,
+            };
+
         if (!poll.options)
             return {
                 success: false,
@@ -1023,13 +1029,34 @@ export async function participatePoll(
                     },
                 });
 
-                // TODO: PlayerAsset 트랜잭션 로그 생성 (스키마 확인 후 추가)
+                const consumeResult = await updatePlayerAsset(
+                    {
+                        transaction: {
+                            playerId: player.id,
+                            assetId: poll.bettingAssetId,
+                            amount: amount,
+                            operation: "SUBTRACT",
+                            reason: `Betting fee for poll 『${poll.title}』`,
+                            metadata: {
+                                pollId: poll.id,
+                                isBettingFee: true,
+                                consumeAmount: amount,
+                            },
+                            pollId: poll.id,
+                            pollLogId: pollLog.id,
+                        },
+                    },
+                    tx
+                );
+
+                if (!consumeResult.success) {
+                    throw new Error(
+                        consumeResult.error || "Failed to deduct betting fee"
+                    );
+                }
 
                 playerAssetUpdated = true;
             } else {
-                // 일반 폴 처리
-
-                // 참여 비용 차감 처리 (매번 차감)
                 if (
                     poll.participationConsumeAssetId &&
                     poll.participationConsumeAmount
@@ -1130,7 +1157,7 @@ export async function participatePoll(
                 const onchainResult = await participatePollOnchain({
                     contractAddressId: poll.onchainContractId,
                     pollId: poll.onchainPollId,
-                    playerId: player.id,
+                    userId: player.userId,
                     optionId: optionId,
                     isBetting: poll.bettingMode,
                     bettingAssetId: poll.bettingAssetId || undefined,
