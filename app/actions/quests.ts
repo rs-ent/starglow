@@ -259,13 +259,37 @@ export async function getQuests({
         let filteredItems = items;
         if (input.startDate !== undefined && input.endDate !== undefined) {
             filteredItems = filteredItems.filter((quest) => {
+                // permanent 퀘스트는 항상 포함
+                if (quest.permanent) return true;
+
+                // 현재 진행 중인 퀘스트 필터링
                 if (quest.startDate && quest.endDate) {
+                    const now = input.startDate!; // 현재 시간
                     return (
-                        quest.startDate >= input.startDate! &&
-                        quest.endDate <= input.endDate!
+                        new Date(quest.startDate).getTime() <= now.getTime() && // 이미 시작됨
+                        new Date(quest.endDate).getTime() >= now.getTime() // 아직 끝나지 않음
                     );
                 }
-                if (quest.permanent) return true;
+
+                // startDate나 endDate가 없는 경우의 처리
+                if (!quest.startDate && !quest.endDate) {
+                    return true; // 날짜 제한이 없는 퀘스트
+                }
+
+                if (!quest.startDate && quest.endDate) {
+                    return (
+                        new Date(quest.endDate).getTime() >=
+                        input.startDate!.getTime()
+                    );
+                }
+
+                if (quest.startDate && !quest.endDate) {
+                    return (
+                        new Date(quest.startDate).getTime() <=
+                        input.startDate!.getTime()
+                    );
+                }
+
                 return true;
             });
         }
