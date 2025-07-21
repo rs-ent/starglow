@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils/tailwind";
 import UserRewardsModal from "../user/User.Rewards.Modal";
 
 import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets/actions";
+import SignOut from "./SignOut";
 
 interface RewardPanelProps {
     playerId: string;
@@ -111,28 +112,32 @@ function RewardPanel({ playerId, assetNames, className }: RewardPanelProps) {
 
             {/* 보상 목록 */}
             <div className="flex gap-2 items-center justify-center">
-                {displayPlayerAssets.map((asset) => (
-                    <button
-                        key={asset.id}
-                        onClick={() => handleRewardClick(asset)}
-                        className={cn(
-                            "focus:outline-none focus:ring-2 focus:ring-white/30 rounded-md cursor-pointer relative group",
-                            "transition-all duration-300 hover:scale-105",
-                            "overflow-hidden"
-                        )}
-                        aria-label={`View ${asset.asset.name} details`}
-                    >
-                        <Funds
-                            funds={asset?.balance ?? 0}
-                            fundsLabel={asset.asset.symbol}
-                            fundsIcon={asset.asset.iconUrl ?? undefined}
-                            frameSize={20}
-                            textSize={15}
-                            gapSize={10}
-                            paddingSize={5}
-                        />
-                    </button>
-                ))}
+                {displayPlayerAssets.length > 0 ? (
+                    displayPlayerAssets.map((asset) => (
+                        <button
+                            key={asset.id}
+                            onClick={() => handleRewardClick(asset)}
+                            className={cn(
+                                "focus:outline-none focus:ring-2 focus:ring-white/30 rounded-md cursor-pointer relative group",
+                                "transition-all duration-300 hover:scale-105",
+                                "overflow-hidden"
+                            )}
+                            aria-label={`View ${asset.asset.name} details`}
+                        >
+                            <Funds
+                                funds={asset?.balance ?? 0}
+                                fundsLabel={asset.asset.symbol}
+                                fundsIcon={asset.asset.iconUrl ?? undefined}
+                                frameSize={20}
+                                textSize={15}
+                                gapSize={10}
+                                paddingSize={5}
+                            />
+                        </button>
+                    ))
+                ) : (
+                    <SignOut />
+                )}
             </div>
         </div>
     );

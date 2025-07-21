@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils/tailwind";
 
 import QuestsMissions from "./Quests.Missions";
 import InviteFriends from "../atoms/InviteFriends";
-import type { QuestWithArtistAndRewardAsset } from "@/app/actions/quests";
+import type { QuestWithClaimStatus } from "@/app/actions/quests";
 import Image from "next/image";
 
 import type { Artist, Player } from "@prisma/client";
@@ -24,18 +24,26 @@ interface QuestsTotalProps {
 const now = new Date();
 
 function QuestsTotal({ player, useInfiniteScroll = true }: QuestsTotalProps) {
-    const { quests, isLoading, error, questsInfiniteQuery } = useQuestGet({
-        getQuestsInput: {
-            isActive: true,
-            startDate: now,
-            endDate: now,
-            startDateIndicator: "after",
-            endDateIndicator: "before",
-            test: player?.tester ?? false,
-        },
-        useInfiniteScroll,
-        pageSize: 10,
-    });
+    const { quests, questTypes, isLoading, error, questsInfiniteQuery } =
+        useQuestGet({
+            getQuestsInput: {
+                isActive: true,
+                startDate: now,
+                endDate: now,
+                startDateIndicator: "after",
+                endDateIndicator: "before",
+                test: player?.tester ?? false,
+                playerId: player?.id,
+            },
+            getQuestTypesInput: {
+                isActive: true,
+                startDate: now,
+                endDate: now,
+                test: player?.tester ?? false,
+            },
+            useInfiniteScroll,
+            pageSize: 10,
+        });
 
     const [selectedType, setSelectedType] = useState<string>("All");
 
@@ -55,31 +63,58 @@ function QuestsTotal({ player, useInfiniteScroll = true }: QuestsTotalProps) {
     }, [quests, questsInfiniteQuery?.data, useInfiniteScroll]);
 
     const { types, artistsMap } = useMemo(() => {
-        if (!allQuests || allQuests.length === 0) {
+        if (!questTypes || questTypes.length === 0) {
             return {
                 types: ["All"],
                 artistsMap: new Map<string, Artist>(),
             };
         }
 
-        const uniqueTypesSet = new Set<string>();
-        const uniqueArtistsMap = new Map<string, Artist>();
+        const uniqueArtistsMap = new Map<
+            string,
+            {
+                id: string;
+                code: string;
+                imageUrl: string | null;
+                logoUrl: string | null;
+                name: string;
+            }
+        >();
+        const regularTypes: string[] = [];
+        const artistTypes: string[] = [];
 
-        allQuests.forEach((quest: QuestWithArtistAndRewardAsset) => {
-            if (quest.type) uniqueTypesSet.add(quest.type);
-            if (quest.artist) {
-                uniqueArtistsMap.set(quest.artist.name, quest.artist);
+        questTypes.forEach((item) => {
+            if (item.type) {
+                if (item.artist) {
+                    // 아티스트 타입
+                    artistTypes.push(item.artist.name);
+                    uniqueArtistsMap.set(item.artist.name, {
+                        id: "",
+                        code: "",
+                        name: item.artist.name,
+                        imageUrl: item.artist.logoUrl || null,
+                        logoUrl: item.artist.logoUrl || null,
+                    });
+                } else {
+                    // 일반 타입
+                    regularTypes.push(item.type);
+                }
             }
         });
 
-        const questTypes = Array.from(uniqueTypesSet);
-        const artistNames = Array.from(uniqueArtistsMap.keys());
+        // 각각 알파벳 순으로 정렬
+        const sortedRegularTypes = regularTypes.sort((a, b) =>
+            a.localeCompare(b)
+        );
+        const sortedArtistTypes = artistTypes.sort((a, b) =>
+            a.localeCompare(b)
+        );
 
         return {
-            types: ["All", ...questTypes, ...artistNames],
+            types: ["All", ...sortedRegularTypes, ...sortedArtistTypes],
             artistsMap: uniqueArtistsMap,
         };
-    }, [allQuests]);
+    }, [questTypes]);
 
     const filteredQuests = useMemo(() => {
         if (!allQuests) return [];
@@ -87,11 +122,33 @@ function QuestsTotal({ player, useInfiniteScroll = true }: QuestsTotalProps) {
         return selectedType === "All"
             ? allQuests
             : allQuests.filter(
-                  (quest: QuestWithArtistAndRewardAsset) =>
+                  (quest: QuestWithClaimStatus) =>
                       quest.type === selectedType ||
                       quest.artist?.name === selectedType
               );
     }, [allQuests, selectedType]);
+
+    const sortedQuests = useMemo(() => {
+        if (!filteredQuests) return [];
+
+        return [...filteredQuests].sort((a, b) => {
+            const aLog = a.questLog;
+            const bLog = b.questLog;
+
+            const getQuestPriority = (questLog: any) => {
+                if (!questLog) return 2;
+                if (questLog.completed && !questLog.isClaimed) return 1;
+                if (!questLog.completed && !questLog.isClaimed) return 2;
+                if (questLog.isClaimed) return 3;
+                return 2;
+            };
+
+            const aPriority = getQuestPriority(aLog);
+            const bPriority = getQuestPriority(bLog);
+
+            return aPriority - bPriority;
+        });
+    }, [filteredQuests]);
 
     const handleTypeClick = useCallback((type: string) => {
         setSelectedType(type);
@@ -108,7 +165,7 @@ function QuestsTotal({ player, useInfiniteScroll = true }: QuestsTotalProps) {
                 console.error("Error fetching next page:", error);
             });
         }
-    }, [inView, useInfiniteScroll, questsInfiniteQuery, allQuests.length]);
+    }, [inView, useInfiniteScroll, questsInfiniteQuery, sortedQuests.length]);
 
     return (
         <div className="relative max-w-[1000px] w-screen">
@@ -148,7 +205,7 @@ function QuestsTotal({ player, useInfiniteScroll = true }: QuestsTotalProps) {
                     >
                         <QuestsMissions
                             player={player}
-                            quests={filteredQuests}
+                            quests={sortedQuests}
                             isLoading={isLoading}
                             error={error}
                             permission={true}
@@ -166,7 +223,7 @@ function QuestsTotal({ player, useInfiniteScroll = true }: QuestsTotalProps) {
                                     </div>
                                 )}
                                 {questsInfiniteQuery?.hasNextPage === false &&
-                                    filteredQuests.length > 0 && (
+                                    sortedQuests.length > 0 && (
                                         <div className="text-sm text-gray-400">
                                             No more quests to load
                                         </div>
@@ -188,7 +245,13 @@ const TypeButton = memo(
         onClick,
     }: {
         type: string;
-        artist?: Artist;
+        artist?: {
+            id: string;
+            code: string | null;
+            imageUrl: string | null;
+            logoUrl: string | null;
+            name: string;
+        };
         isSelected: boolean;
         onClick: (type: string) => void;
     }) => {

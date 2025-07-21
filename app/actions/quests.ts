@@ -100,6 +100,14 @@ export type QuestWithArtistAndRewardAsset = Quest & {
     rewardAsset: Asset;
 };
 
+export type QuestWithClaimStatus = QuestWithArtistAndRewardAsset & {
+    questLog?: {
+        completed: boolean;
+        isClaimed: boolean;
+        repeatCount: number;
+    } | null;
+};
+
 export interface GetQuestsInput {
     startDate?: Date;
     startDateIndicator?: "before" | "after" | "on";
@@ -117,6 +125,7 @@ export interface GetQuestsInput {
     needToken?: boolean;
     needTokenAddress?: string | null;
     test?: boolean;
+    playerId?: string;
 }
 
 export async function getQuests({
@@ -126,7 +135,7 @@ export async function getQuests({
     input?: GetQuestsInput;
     pagination?: PaginationInput;
 }): Promise<{
-    items: QuestWithArtistAndRewardAsset[];
+    items: QuestWithClaimStatus[];
     totalItems: number;
     totalPages: number;
 }> {
@@ -166,7 +175,7 @@ export async function getQuests({
                     skip:
                         (pagination.currentPage - 1) * pagination.itemsPerPage,
                     take: pagination.itemsPerPage,
-                })) as QuestWithArtistAndRewardAsset[],
+                })) as QuestWithClaimStatus[],
 
                 prisma.quest.count({
                     cacheStrategy: getCacheStrategy("tenMinutes"),
@@ -247,8 +256,21 @@ export async function getQuests({
                             iconUrl: true,
                         },
                     },
+                    questLogs: input.playerId
+                        ? {
+                              where: {
+                                  playerId: input.playerId,
+                              },
+                              select: {
+                                  completed: true,
+                                  isClaimed: true,
+                                  repeatCount: true,
+                              },
+                              take: 1,
+                          }
+                        : false,
                 },
-            })) as QuestWithArtistAndRewardAsset[],
+            })) as QuestWithClaimStatus[],
 
             prisma.quest.count({
                 cacheStrategy: getCacheStrategy("tenMinutes"),
@@ -296,8 +318,15 @@ export async function getQuests({
 
         const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
 
+        // questLogs를 questLog로 변환
+        const transformedItems = filteredItems.map((quest: any) => ({
+            ...quest,
+            questLog: quest.questLogs?.[0] || null,
+            questLogs: undefined, // questLogs 제거
+        }));
+
         return {
-            items: filteredItems,
+            items: transformedItems,
             totalItems,
             totalPages,
         };
@@ -1369,5 +1398,119 @@ export async function getArtistAllActiveQuestCount(
     } catch (error) {
         console.error("Error getting artist all active quest count:", error);
         return 0;
+    }
+}
+
+export interface GetQuestTypesInput {
+    isActive?: boolean;
+    startDate?: Date;
+    endDate?: Date;
+    test?: boolean;
+}
+
+export interface QuestTypeInfo {
+    type: string | null;
+    artist: {
+        name: string;
+        logoUrl: string | null;
+    } | null;
+}
+
+export async function getQuestTypes(
+    input?: GetQuestTypesInput
+): Promise<QuestTypeInfo[]> {
+    try {
+        const where: Prisma.QuestWhereInput = {};
+
+        if (input?.isActive !== undefined) {
+            where.isActive = input.isActive;
+        }
+
+        if (input?.test !== undefined) {
+            where.test = input.test;
+        }
+
+        // 활성 퀘스트의 모든 타입과 아티스트 조합을 가져오기
+        const quests = await prisma.quest.findMany({
+            cacheStrategy: getCacheStrategy("tenMinutes"),
+            where,
+            select: {
+                type: true,
+                artist: {
+                    select: {
+                        name: true,
+                        logoUrl: true,
+                    },
+                },
+                startDate: true,
+                endDate: true,
+                permanent: true,
+            },
+        });
+
+        // 날짜 필터링 (서버에서 직접 처리하기 어려운 로직)
+        let filteredQuests = quests;
+        if (input?.startDate && input?.endDate) {
+            filteredQuests = quests.filter((quest) => {
+                if (quest.permanent) return true;
+
+                if (quest.startDate && quest.endDate) {
+                    const now = input.startDate!;
+                    return (
+                        new Date(quest.startDate).getTime() <= now.getTime() &&
+                        new Date(quest.endDate).getTime() >= now.getTime()
+                    );
+                }
+
+                if (!quest.startDate && !quest.endDate) {
+                    return true;
+                }
+
+                if (!quest.startDate && quest.endDate) {
+                    return (
+                        new Date(quest.endDate).getTime() >=
+                        input.startDate!.getTime()
+                    );
+                }
+
+                if (quest.startDate && !quest.endDate) {
+                    return (
+                        new Date(quest.startDate).getTime() <=
+                        input.startDate!.getTime()
+                    );
+                }
+
+                return true;
+            });
+        }
+
+        // 중복 제거를 위한 Set 사용
+        const uniqueTypes = new Set<string>();
+        const result: QuestTypeInfo[] = [];
+
+        filteredQuests.forEach((quest) => {
+            // Type 추가
+            if (quest.type && !uniqueTypes.has(quest.type)) {
+                uniqueTypes.add(quest.type);
+                result.push({
+                    type: quest.type,
+                    artist: null,
+                });
+            }
+
+            // Artist 추가
+            if (quest.artist && !uniqueTypes.has(quest.artist.name)) {
+                uniqueTypes.add(quest.artist.name);
+                result.push({
+                    type: quest.artist.name,
+                    artist: quest.artist,
+                });
+            }
+        });
+
+        return result;
+    } catch (error) {
+        console.error("Error getting quest types:", error);
+        return [];
     }
 }

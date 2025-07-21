@@ -16,6 +16,7 @@ import {
     tokenGatingQuest,
     getPlayerQuestLog,
     getArtistAllActiveQuestCount,
+    getQuestTypes,
 } from "../actions/quests";
 import { questKeys } from "../queryKeys";
 
@@ -30,9 +31,11 @@ import type {
     GetActiveQuestLogsInput,
     GetCompletedQuestLogsInput,
     TokenGatingQuestInput,
-    QuestWithArtistAndRewardAsset,
+    QuestWithClaimStatus,
     GetPlayerQuestLogInput,
     GetArtistAllActiveQuestCountInput,
+    GetQuestTypesInput,
+    QuestTypeInfo,
 } from "../actions/quests";
 import type { TokenGatingData } from "../story/nft/actions";
 import type { Quest, QuestLog } from "@prisma/client";
@@ -45,7 +48,7 @@ export function useQuestsQuery({
     pagination?: PaginationInput;
 }) {
     return useQuery<{
-        items: QuestWithArtistAndRewardAsset[];
+        items: QuestWithClaimStatus[];
         totalItems: number;
         totalPages: number;
     }>({
@@ -189,7 +192,7 @@ export function useQuestsInfiniteQuery({
     pageSize?: number;
 }) {
     return useInfiniteQuery<{
-        items: QuestWithArtistAndRewardAsset[];
+        items: QuestWithClaimStatus[];
         totalItems: number;
         totalPages: number;
         hasMore: boolean;
@@ -231,5 +234,14 @@ export function useArtistAllActiveQuestCountQuery({
         staleTime: 1000 * 60 * 5,
         gcTime: 1000 * 60 * 10,
         enabled: !!input?.artistId,
+    });
+}
+
+export function useQuestTypesQuery({ input }: { input?: GetQuestTypesInput }) {
+    return useQuery<QuestTypeInfo[]>({
+        queryKey: [...questKeys.types(input)],
+        queryFn: () => getQuestTypes(input),
+        staleTime: 1000 * 60 * 10,
+        gcTime: 1000 * 60 * 15,
     });
 }

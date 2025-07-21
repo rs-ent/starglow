@@ -22,6 +22,7 @@ import {
     usePlayerQuestLogQuery,
     useQuestsInfiniteQuery,
     useArtistAllActiveQuestCountQuery,
+    useQuestTypesQuery,
 } from "@/app/queries/questsQueries";
 
 import type {
@@ -35,6 +36,7 @@ import type {
     PaginationInput,
     GetPlayerQuestLogInput,
     GetArtistAllActiveQuestCountInput,
+    GetQuestTypesInput,
 } from "../actions/quests";
 
 export function useQuestGet({
@@ -47,6 +49,7 @@ export function useQuestGet({
     getCompletedQuestLogsInput,
     getPlayerQuestLogInput,
     getArtistAllActiveQuestCountInput,
+    getQuestTypesInput,
     pagination,
     useInfiniteScroll = false,
     pageSize = 10,
@@ -60,6 +63,7 @@ export function useQuestGet({
     getCompletedQuestLogsInput?: GetCompletedQuestLogsInput;
     getPlayerQuestLogInput?: GetPlayerQuestLogInput;
     getArtistAllActiveQuestCountInput?: GetArtistAllActiveQuestCountInput;
+    getQuestTypesInput?: GetQuestTypesInput;
     pagination?: PaginationInput;
     useInfiniteScroll?: boolean;
     pageSize?: number;
@@ -127,6 +131,13 @@ export function useQuestGet({
         input: getArtistAllActiveQuestCountInput,
     });
 
+    const {
+        data: questTypes,
+        isLoading: isLoadingQuestTypes,
+        error: questTypesError,
+        refetch: refetchQuestTypes,
+    } = useQuestTypesQuery({ input: getQuestTypesInput });
+
     const isLoading =
         (useInfiniteScroll ? questsInfiniteQuery.isLoading : isLoadingQuests) ||
         isLoadingQuestLogs ||
@@ -136,7 +147,8 @@ export function useQuestGet({
         isLoadingActiveQuestLogs ||
         isLoadingCompletedQuestLogs ||
         isLoadingPlayerQuestLog ||
-        isLoadingArtistAllActiveQuestCount;
+        isLoadingArtistAllActiveQuestCount ||
+        isLoadingQuestTypes;
 
     const error =
         (useInfiniteScroll ? questsInfiniteQuery.error : questsError) ||
@@ -147,7 +159,8 @@ export function useQuestGet({
         activeQuestLogsError ||
         completedQuestLogsError ||
         playerQuestLogError ||
-        artistAllActiveQuestCountError;
+        artistAllActiveQuestCountError ||
+        questTypesError;
 
     return {
         quests: useInfiniteScroll ? questsInfiniteQuery.data : quests,
@@ -188,6 +201,10 @@ export function useQuestGet({
         refetchPlayerQuestLog,
         isLoading,
         error,
+        questTypes,
+        isLoadingQuestTypes,
+        questTypesError,
+        refetchQuestTypes,
     };
 }
 

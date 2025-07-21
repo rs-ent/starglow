@@ -116,7 +116,7 @@ async function findNextPollToProcess(): Promise<{
                     bettingStatus: "SETTLING",
                     isSettled: false,
                     isActive: true,
-                    updatedAt: { gte: new Date(now.getTime() - 1000) }, // 1초 이내 업데이트
+                    updatedAt: { gte: new Date(now.getTime() - 1000) },
                 },
                 select: { id: true },
                 orderBy: { endDate: "asc" },

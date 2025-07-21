@@ -1115,6 +1115,7 @@ const ParticipationCard = memo(function ParticipationCard({
         hasReachedMaxEntries,
         playerAsset?.data?.balance,
         raffle.entryFeeAmount,
+        raffle.prizes,
     ]);
 
     // 참여 핸들러

@@ -83,7 +83,7 @@ export function useSessionRecovery() {
                             });
 
                             toast.info(
-                                "Session has been recovered. Please sign in again."
+                                "Session has been cleared. Please sign in again."
                             );
 
                             setTimeout(() => {
@@ -92,7 +92,9 @@ export function useSessionRecovery() {
                                 ) {
                                     window.location.href = "/auth/signin";
                                 } else {
-                                    window.location.reload();
+                                    console.info(
+                                        "🔄 Session cleared, signin page will handle redirect"
+                                    );
                                 }
                             }, 500);
                         } catch (error) {

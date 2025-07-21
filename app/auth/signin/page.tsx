@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState, useCallback } from "react";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { getProviders, signIn } from "next-auth/react";
 
 import { useToast } from "@/app/hooks/useToast";
@@ -14,10 +14,10 @@ import TelegramLoginButton from "@/components/atoms/TelegramLoginButton";
 import WalletAuthButton from "@/components/atoms/WalletAuthButton";
 
 import type { Provider } from "@/app/types/auth";
-import { redirect } from "next/navigation";
 
 function SignInButtons() {
     const toast = useToast();
+    const router = useRouter();
     const [providers, setProviders] = useState<Record<string, Provider> | null>(
         null
     );
@@ -29,9 +29,9 @@ function SignInButtons() {
 
     useEffect(() => {
         if (isSessionHealthy && !isRecovering) {
-            redirect(callbackUrl || "/");
+            router.push(callbackUrl || "/");
         }
-    }, [isSessionHealthy, isRecovering, callbackUrl]);
+    }, [isSessionHealthy, isRecovering, callbackUrl, router]);
 
     useEffect(() => {
         if (error) {
@@ -53,14 +53,14 @@ function SignInButtons() {
         try {
             const result = await getProviders();
             setProviders(result as Record<string, Provider>);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to fetch providers:", error);
             setProviders({});
         }
     }, []);
 
     useEffect(() => {
-        fetchProviders().catch((error) => {
+        fetchProviders().catch((error: any) => {
             console.error("Failed to fetch providers:", error);
         });
     }, [fetchProviders]);

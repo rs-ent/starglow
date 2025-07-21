@@ -28,6 +28,7 @@ import type {
     GetQuestInput,
     GetQuestLogsInput,
     GetQuestsInput,
+    GetQuestTypesInput,
     TokenGatingQuestInput,
 } from "./actions/quests";
 import type { GetReferralLogsInput } from "./actions/referral";
@@ -653,6 +654,9 @@ export const questKeys = {
         ] as const,
     artistAllActiveQuestCount: (input?: string) =>
         [...questKeys.all, "artist-all-active-quest-count", input] as const,
+
+    types: (input?: GetQuestTypesInput) =>
+        [...questKeys.all, "types", input] as const,
 } as const;
 
 export const artistKeys = {
