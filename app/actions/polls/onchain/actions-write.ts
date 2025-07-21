@@ -1,6 +1,23 @@
 "use server";
 
-import { getContract, decodeEventLog } from "viem";
+import { getContract, parseEventLogs } from "viem";
+
+// 🎯 타입 안전성을 위한 이벤트 인터페이스 정의
+interface PollParticipatedEvent {
+    participationId: bigint;
+    pollId: bigint;
+    participant: string;
+    optionId: string;
+    isBetting: boolean;
+    bettingAssetId: string;
+    bettingAmount: bigint;
+    timestamp: bigint;
+}
+
+interface ParsedPollEventLog {
+    eventName: string;
+    args: PollParticipatedEvent;
+}
 
 import { prisma } from "@/lib/prisma/client";
 import { fetchPublicClient, fetchWalletClient } from "@/app/story/client";
@@ -178,6 +195,7 @@ async function executeWithRetry<T>(
 
     throw lastError;
 }
+
 
 export interface ParticipatePollInput {
     contractAddressId: string;
@@ -367,9 +385,9 @@ export async function participatePollOnchain(
             },
             "transaction receipt confirmation",
             {
-                maxRetries: 2,
+                maxRetries: 1,
                 baseDelayMs: 3000,
-                maxDelayMs: 10000,
+                maxDelayMs: 6000,
                 retryableErrors: [
                     "timeout",
                     "network error",
@@ -379,42 +397,34 @@ export async function participatePollOnchain(
             }
         );
 
-        // 6. 이벤트 파싱
+        // 🚀 최적화: parseEventLogs로 PollParticipated 이벤트만 효율적으로 파싱
         let participationIdFromEvent = 0;
         let timestampFromEvent = 0;
 
         if (receipt.logs && receipt.logs.length > 0) {
-            for (const log of receipt.logs) {
-                try {
-                    const decoded = decodeEventLog({
-                        abi: abi,
-                        data: log.data,
-                        topics: log.topics,
-                        eventName: "PollParticipated",
-                    }) as any;
+            const pollParticipatedEvents = parseEventLogs({
+                abi,
+                logs: receipt.logs,
+                eventName: "PollParticipated",
+            }) as unknown as ParsedPollEventLog[];
 
-                    if (
-                        decoded.args.pollId.toString() === pollId &&
-                        decoded.args.participant.toLowerCase() ===
-                            playerWallet.toLowerCase()
-                    ) {
-                        participationIdFromEvent = Number(
-                            decoded.args.participationId
-                        );
-                        console.info(
-                            "participationIdFromEvent",
-                            participationIdFromEvent
-                        );
-                        timestampFromEvent = Number(decoded.args.timestamp);
-                        break;
-                    }
-                } catch (error) {
-                    console.error(
-                        "Error decoding PollParticipated event:",
-                        error
-                    );
-                    continue;
-                }
+            const targetEvent = pollParticipatedEvents.find((event) => {
+                return (
+                    event.args.pollId.toString() === pollId &&
+                    event.args.participant.toLowerCase() ===
+                        playerWallet.toLowerCase()
+                );
+            });
+
+            if (targetEvent) {
+                participationIdFromEvent = Number(
+                    targetEvent.args.participationId
+                );
+                timestampFromEvent = Number(targetEvent.args.timestamp);
+                console.info(
+                    "participationIdFromEvent",
+                    participationIdFromEvent
+                );
             }
         }
 

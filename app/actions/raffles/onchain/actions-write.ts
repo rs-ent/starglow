@@ -2,7 +2,21 @@
 
 "use server";
 
-import { getContract, decodeEventLog } from "viem";
+import { getContract, decodeEventLog, parseEventLogs } from "viem";
+
+interface ParticipatedAndDrawnEvent {
+    raffleId: bigint;
+    player: string;
+    participantId: bigint;
+    prizeIndex: bigint;
+    resultId: bigint;
+    timestamp: bigint;
+}
+
+interface ParsedEventLog {
+    eventName: string;
+    args: ParticipatedAndDrawnEvent;
+}
 
 import { prisma } from "@/lib/prisma/client";
 import { fetchPublicClient } from "@/app/story/client";
@@ -384,18 +398,15 @@ export async function participateAndDraw(
             return { success: false, error: "Raffle not found" };
         }
 
-        const playerWallet = await getDefaultUserWalletAddress({
-            userId: input.userId,
-        });
+        // 🚀 병렬 처리로 성능 최적화
+        const [playerWallet, publicClient] = await Promise.all([
+            getDefaultUserWalletAddress({ userId: input.userId }),
+            fetchPublicClient({ network: raffle.network }),
+        ]);
 
         if (!playerWallet) {
             return { success: false, error: "Player wallet not found" };
         }
-
-        // 스마트 컨트랙트 검증
-        const publicClient = await fetchPublicClient({
-            network: raffle.network,
-        });
 
         const raffleContract = getContract({
             address: raffle.contractAddress as `0x${string}`,
@@ -415,7 +426,28 @@ export async function participateAndDraw(
             };
         }
 
-        // 🚀 통합 스마트 컨트랙트 호출 (참가 + 추첨 + 배포 마킹) with retry logic
+        // 🔍 참가비 사전 검증 (스마트 컨트랙트 호출 전)
+        const entryFeeAmount = Number(
+            contractRaffle.fee.participationFeeAmount
+        );
+        const entryFeeAssetId = contractRaffle.fee.participationFeeAssetId;
+
+        if (entryFeeAssetId && entryFeeAmount > 0) {
+            const feeValidation = await validatePlayerAsset({
+                playerId: input.playerId,
+                assetId: entryFeeAssetId,
+                requiredAmount: entryFeeAmount,
+            });
+
+            if (!feeValidation.success) {
+                return {
+                    success: false,
+                    error: `Insufficient entry fee: ${feeValidation.error}`,
+                };
+            }
+        }
+
+        // 🚀 walletClient 생성과 동시에 스마트 컨트랙트 호출 준비
         const walletClient = await fetchWalletClient({
             network: raffle.network,
             walletAddress: raffle.deployedBy as `0x${string}`,
@@ -427,37 +459,18 @@ export async function participateAndDraw(
             client: walletClient,
         });
 
-        const participateAndDrawTx = await executeWithRetry(
-            async () => {
-                return await (
-                    raffleContractWrite.write as any
-                ).participateAndDraw([
-                    BigInt(input.raffleId),
-                    playerWallet as `0x${string}`,
-                ]);
-            },
-            "participateAndDraw transaction",
-            {
-                maxRetries: 2,
-                baseDelayMs: 2000,
-                maxDelayMs: 8000,
-                retryableErrors: [
-                    "network error",
-                    "timeout",
-                    "connection",
-                    "rpc",
-                    "gas",
-                    "nonce",
-                    "replacement",
-                ],
-            }
-        );
+        const participateAndDrawTx = await (
+            raffleContractWrite.write as any
+        ).participateAndDraw([
+            BigInt(input.raffleId),
+            playerWallet as `0x${string}`,
+        ]);
 
         const receipt = await executeWithRetry(
             async () => {
                 const txReceipt = await publicClient.waitForTransactionReceipt({
                     hash: participateAndDrawTx,
-                    timeout: 60000,
+                    timeout: 30000,
                 });
 
                 if (txReceipt.status !== "success") {
@@ -513,9 +526,9 @@ export async function participateAndDraw(
             },
             "transaction receipt confirmation",
             {
-                maxRetries: 5,
-                baseDelayMs: 10000,
-                maxDelayMs: 100000,
+                maxRetries: 1,
+                baseDelayMs: 3000,
+                maxDelayMs: 6000,
                 retryableErrors: [
                     "timeout",
                     "network error",
@@ -525,75 +538,43 @@ export async function participateAndDraw(
             }
         );
 
-        // 참가비 처리 (기존 로직 재사용)
-        const entryFeeAmount = Number(
-            contractRaffle.fee.participationFeeAmount
-        );
+        // 🎯 참가비 차감 (이미 검증된 상태)
+        if (entryFeeAssetId && entryFeeAmount > 0) {
+            const feeDeduction = await updatePlayerAsset({
+                transaction: {
+                    playerId: input.playerId,
+                    assetId: entryFeeAssetId,
+                    amount: entryFeeAmount,
+                    operation: "SUBTRACT",
+                    reason: `Raffle participation: ${contractRaffle.basicInfo.title}`,
+                },
+            });
 
-        // 트랜잭션 실행
-        await prisma.$transaction(async (tx) => {
-            const entryFeeAssetId = contractRaffle.fee.participationFeeAssetId;
-
-            if (entryFeeAssetId && entryFeeAmount > 0) {
-                const feeValidation = await validatePlayerAsset(
-                    {
-                        playerId: input.playerId,
-                        assetId: entryFeeAssetId,
-                        requiredAmount: entryFeeAmount,
-                    },
-                    tx
-                );
-
-                if (!feeValidation.success) {
-                    throw new Error(
-                        `Entry fee check failed: ${feeValidation.error}`
-                    );
-                }
-
-                const feeDeduction = await updatePlayerAsset(
-                    {
-                        transaction: {
-                            playerId: input.playerId,
-                            assetId: entryFeeAssetId,
-                            amount: entryFeeAmount,
-                            operation: "SUBTRACT",
-                            reason: `Raffle participation: ${contractRaffle.basicInfo.title}`,
-                        },
-                    },
-                    tx
-                );
-
-                if (!feeDeduction.success) {
-                    throw new Error(
-                        `Failed to deduct entry fee: ${feeDeduction.error}`
-                    );
-                }
+            if (!feeDeduction.success) {
+                return {
+                    success: false,
+                    error: `Failed to deduct entry fee: ${feeDeduction.error}`,
+                };
             }
-        });
+        }
 
         let participantId = 0;
         let prizeIndex = 0;
 
-        if (receipt.logs && receipt.logs.length > 0) {
-            for (const log of receipt.logs) {
-                try {
-                    const decoded = decodeEventLog({
-                        abi,
-                        data: log.data,
-                        topics: log.topics,
-                        eventName: "ParticipatedAndDrawn",
-                    }) as any;
+        // 🚀 최적화: parseEventLogs로 ParticipatedAndDrawn 이벤트만 효율적으로 파싱
+        const participatedAndDrawnEvents = parseEventLogs({
+            abi,
+            logs: receipt.logs,
+            eventName: "ParticipatedAndDrawn",
+        }) as unknown as ParsedEventLog[];
 
-                    if (decoded.args.raffleId.toString() === input.raffleId) {
-                        participantId = Number(decoded.args.participantId);
-                        prizeIndex = Number(decoded.args.prizeIndex);
-                        break;
-                    }
-                } catch (error) {
-                    console.error("Error decoding event:", error);
-                    continue;
-                }
-            }
+        const targetEvent = participatedAndDrawnEvents.find((event) => {
+            return event.args.raffleId.toString() === input.raffleId;
+        });
+
+        if (targetEvent) {
+            participantId = Number(targetEvent.args.participantId);
+            prizeIndex = Number(targetEvent.args.prizeIndex);
         }
 
         const prize = contractRaffle.prizes[prizeIndex];
@@ -610,19 +591,18 @@ export async function participateAndDraw(
             entryFeeAmount,
         };
 
-        // 🎁 통합 상금 분배 로직 사용
-        const distributionResult = await distributePrize({
+        // 🎁 백그라운드 상금 분배: 사용자 응답 속도 최적화
+        distributePrize({
             playerId: input.playerId,
             prize,
             prizeTitle: prize.title || `Prize ${prizeIndex + 1}`,
             playerWalletAddress: playerWallet,
-        });
-
-        if (!distributionResult.success) {
-            console.warn(
-                `Prize distribution failed: ${distributionResult.error}`
+        }).catch((error) => {
+            console.error(
+                `⚠️ Background prize distribution failed for player ${input.playerId}:`,
+                error
             );
-        }
+        });
 
         return {
             success: true,
