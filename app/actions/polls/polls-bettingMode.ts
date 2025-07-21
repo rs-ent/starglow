@@ -1241,7 +1241,44 @@ export interface BulkSettlementResult {
     };
 }
 
-export async function bulkSettlementPlayersOptimized(
+export async function checkAndMarkPlayerForSettlement(
+    pollId: string,
+    playerId: string
+): Promise<{ canSettle: boolean; alreadySettled: boolean; error?: string }> {
+    try {
+        const existingSettlement = await prisma.rewardsLog.findFirst({
+            where: {
+                pollId: pollId,
+                playerId: playerId,
+                reason: { contains: "Betting payout" },
+            },
+            select: { id: true, amount: true, createdAt: true },
+        });
+
+        if (existingSettlement) {
+            return {
+                canSettle: false,
+                alreadySettled: true,
+                error: `Player ${playerId.slice(
+                    -6
+                )} already settled at ${existingSettlement.createdAt.toISOString()}`,
+            };
+        }
+
+        return { canSettle: true, alreadySettled: false };
+    } catch (error) {
+        return {
+            canSettle: false,
+            alreadySettled: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Settlement check failed",
+        };
+    }
+}
+
+export async function bulkSettlementPlayersWithDuplicateCheck(
     input: BulkSettlementInput
 ): Promise<BulkSettlementResult> {
     const { batchSize = 30, delayBetweenBatches = 50 } = {};
@@ -1276,7 +1313,15 @@ export async function bulkSettlementPlayersOptimized(
             };
         }
 
-        // 🚀 성능 최적화: 공통 데이터 사전 계산 (캐싱 적용)
+        const results = [];
+        let totalSuccess = 0;
+        let totalFailed = 0;
+        let totalSettlementAmount = 0;
+        let alreadySettledCount = 0;
+
+        console.log(
+            `🔍 Starting settlement for ${playerIds.length} players with duplicate check`
+        );
 
         const cachedCommonData = await settlementCacheManager.getCommonData(
             pollId,
@@ -1284,12 +1329,10 @@ export async function bulkSettlementPlayersOptimized(
             async () => {
                 const [actualTotalBets, totalWinningBetsInPoll] =
                     await Promise.all([
-                        // 전체 베팅 총액
                         prisma.pollLog.aggregate({
                             where: { pollId },
                             _sum: { amount: true },
                         }),
-                        // 승리 옵션 베팅 총액
                         winningOptionIds.length > 0
                             ? prisma.pollLog.aggregate({
                                   where: {
@@ -1320,7 +1363,6 @@ export async function bulkSettlementPlayersOptimized(
             }
         );
 
-        // 공통 계산 데이터
         const sharedCalculationData = {
             poll: cachedCommonData.poll,
             pollTotalBetAmount: cachedCommonData.pollTotalBetAmount,
@@ -1329,21 +1371,54 @@ export async function bulkSettlementPlayersOptimized(
             winningOptionIds,
         };
 
-        const results = [];
-        let totalSuccess = 0;
-        let totalFailed = 0;
-        let totalSettlementAmount = 0;
-
-        // 배치 처리로 성능 최적화
         for (let i = 0; i < playerIds.length; i += batchSize) {
             const batch = playerIds.slice(i, i + batchSize);
+            console.log(
+                `🔄 Processing batch ${
+                    Math.floor(i / batchSize) + 1
+                }/${Math.ceil(playerIds.length / batchSize)} (${
+                    batch.length
+                } players)`
+            );
 
-            const batchPromises = batch.map((playerId) =>
-                processSinglePlayerSettlementOptimized(
+            const batchPromises = batch.map(async (playerId) => {
+                const duplicateCheck = await checkAndMarkPlayerForSettlement(
+                    pollId,
+                    playerId
+                );
+
+                if (!duplicateCheck.canSettle) {
+                    if (duplicateCheck.alreadySettled) {
+                        console.log(
+                            `⚠️ Player ${playerId.slice(
+                                -6
+                            )} already settled, skipping`
+                        );
+                        return {
+                            playerId,
+                            success: true,
+                            message: "Already settled - skipped",
+                            settlementAmount: 0,
+                            notificationSent: false,
+                        };
+                    } else {
+                        return {
+                            playerId,
+                            success: false,
+                            error:
+                                duplicateCheck.error ||
+                                "Settlement check failed",
+                            settlementAmount: 0,
+                            notificationSent: false,
+                        };
+                    }
+                }
+
+                return await processSinglePlayerSettlementOptimized(
                     playerId,
                     sharedCalculationData
-                )
-            );
+                );
+            });
 
             const batchResults = await Promise.allSettled(batchPromises);
 
@@ -1353,9 +1428,16 @@ export async function bulkSettlementPlayersOptimized(
                     results.push(settlementResult);
 
                     if (settlementResult.success) {
-                        totalSuccess++;
-                        totalSettlementAmount +=
-                            settlementResult.settlementAmount;
+                        if (
+                            settlementResult.message ===
+                            "Already settled - skipped"
+                        ) {
+                            alreadySettledCount++;
+                        } else {
+                            totalSuccess++;
+                            totalSettlementAmount +=
+                                settlementResult.settlementAmount;
+                        }
                     } else {
                         totalFailed++;
                     }
@@ -1378,9 +1460,13 @@ export async function bulkSettlementPlayersOptimized(
             }
         }
 
+        console.log(
+            `✅ Settlement completed: ${totalSuccess} successful, ${totalFailed} failed, ${alreadySettledCount} already settled`
+        );
+
         return {
             success: totalFailed === 0,
-            message: `Optimized bulk settlement completed. ${totalSuccess} successful, ${totalFailed} failed.`,
+            message: `Settlement completed. ${totalSuccess} successful, ${totalFailed} failed, ${alreadySettledCount} already settled.`,
             results,
             summary: {
                 totalProcessed: playerIds.length,
@@ -1390,7 +1476,7 @@ export async function bulkSettlementPlayersOptimized(
             },
         };
     } catch (error) {
-        console.error("Error in optimized bulk settlement:", error);
+        console.error("Error in duplicate-safe bulk settlement:", error);
         return {
             success: false,
             error:
@@ -1594,7 +1680,7 @@ export async function bulkSettlementPlayers(
     input: BulkSettlementInput
 ): Promise<BulkSettlementResult> {
     // 🚀 최적화된 정산 로직 사용
-    const result = await bulkSettlementPlayersOptimized(input);
+    const result = await bulkSettlementPlayersWithDuplicateCheck(input);
 
     // 전체 정산 완료 후 폴 상태 업데이트
     if (result.success && result.summary.totalFailed === 0) {
