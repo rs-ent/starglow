@@ -99,8 +99,6 @@ export default memo(function RaffleOnchainPrizesTierItem({
         };
     }, [data, totalPrizes]);
 
-    console.log("Prize Info", prizeInfo);
-
     const itemVariants = useMemo(
         () => ({
             hidden: { opacity: 0, y: 20, scale: 0.95 },

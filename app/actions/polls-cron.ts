@@ -3,7 +3,6 @@
 "use server";
 
 import { prisma } from "@/lib/prisma/client";
-import { getPollResult } from "./polls";
 import { updatePlayerAsset } from "./playerAssets/actions";
 import {
     createBettingWinNotification,

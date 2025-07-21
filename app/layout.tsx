@@ -16,6 +16,9 @@ import GlobalNotificationManager from "@/components/notifications/GlobalNotifica
 import MaintenancePage from "./maintenance/page";
 
 export const metadata: Metadata = {
+    metadataBase: new URL(
+        process.env.NEXT_PUBLIC_BASE_URL || "https://starglow.io"
+    ),
     // 기본 메타데이터
     title: {
         default:
@@ -59,9 +62,9 @@ export const metadata: Metadata = {
             "Starglow is a next-generation Web3 entertainment platform for K-POP, connecting fans and artists through blockchain, NFTs, and real-world assets.",
         images: [
             {
-                url: "https://starglow.io/default-og-image.png",
-                width: 1087,
-                height: 614,
+                url: "/default-og-image.png",
+                width: 1200,
+                height: 630,
                 alt: "Starglow - Web3 K-POP Platform",
             },
         ],
@@ -73,9 +76,9 @@ export const metadata: Metadata = {
         title: "Starglow: The Next-Gen Web3 Platform for K-POP & Fan Engagement",
         description:
             "Revolutionizing K-POP fan engagement and artist valuation with blockchain, NFTs, and real-world assets. Join Starglow today.",
-        creator: "@starglowP",
-        images: ["https://starglow.io/default-og-image.png"],
-        site: "@starglowP",
+        creator: "@Starglow_world",
+        images: ["/default-og-image.png"],
+        site: "@Starglow_world",
     },
 
     icons: {

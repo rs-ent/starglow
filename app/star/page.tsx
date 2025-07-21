@@ -12,12 +12,12 @@ export const metadata: Metadata = {
     openGraph: {
         title: "Star",
         description: "Explore the galaxy of K-pop artists with Starglow",
-        images: ["/default-og-image.jpg"],
+        images: ["/default-og-image.png"],
     },
     twitter: {
         title: "Star",
         description: "Explore the galaxy of K-pop artists with Starglow",
-        images: ["/default-og-image.jpg"],
+        images: ["/default-og-image.png"],
     },
 };
 

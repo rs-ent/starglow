@@ -24,12 +24,12 @@ export async function generateMetadata({
         openGraph: {
             title: `${raffle.data?.title || "Raffle"} - Raffles`,
             description,
-            images: [raffle.data?.imgUrl || "/default-og-image.jpg"],
+            images: [raffle.data?.imgUrl || "/default-og-image.png"],
         },
         twitter: {
             title: `${raffle.data?.title || "Raffle"} - Raffles`,
             description,
-            images: [raffle.data?.imgUrl || "/default-og-image.jpg"],
+            images: [raffle.data?.imgUrl || "/default-og-image.png"],
         },
     };
 }
