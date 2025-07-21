@@ -55,8 +55,12 @@ export default memo(function RaffleOnchain({
 }: RaffleOnchainProps) {
     const [modalState, setModalState] = useState<ModalState>("none");
     const [ticketData, setTicketData] = useState<TicketData | null>(null);
+    const [scratchCardSize, setScratchCardSize] = useState({
+        width: 350,
+        height: 250,
+    });
 
-    const scratchCardSize = useMemo(() => {
+    const getScratchCardSize = useCallback(() => {
         if (typeof window === "undefined") {
             return { width: 350, height: 250 };
         }
@@ -79,8 +83,9 @@ export default memo(function RaffleOnchain({
     }, []);
 
     const handleInstantDraw = useCallback(() => {
+        setScratchCardSize(getScratchCardSize());
         setModalState("scratch");
-    }, []);
+    }, [getScratchCardSize]);
 
     const handleCloseModal = useCallback(() => {
         setModalState("none");
