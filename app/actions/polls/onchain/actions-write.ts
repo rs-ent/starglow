@@ -5,6 +5,7 @@ import { getContract, decodeEventLog } from "viem";
 import { prisma } from "@/lib/prisma/client";
 import { fetchPublicClient, fetchWalletClient } from "@/app/story/client";
 import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
+import { getDefaultUserWalletAddress } from "@/app/story/userWallet/actions";
 
 import pollsJson from "@/web3/artifacts/contracts/Polls.sol/Polls.json";
 
@@ -181,7 +182,7 @@ async function executeWithRetry<T>(
 export interface ParticipatePollInput {
     contractAddressId: string;
     pollId: string;
-    playerId: string;
+    userId: string;
     optionId: string;
     isBetting?: boolean;
     bettingAssetId?: string;
@@ -211,7 +212,7 @@ export async function participatePollOnchain(
         const {
             contractAddressId,
             pollId,
-            playerId,
+            userId,
             optionId,
             isBetting = false,
             bettingAssetId = "",
@@ -246,42 +247,13 @@ export async function participatePollOnchain(
         }
 
         // 2. Player 지갑 조회
-        const player = (await prisma.player.findUnique({
-            cacheStrategy: getCacheStrategy("oneMinute"),
-            where: { id: playerId },
-            select: {
-                id: true,
-                userId: true,
-                user: {
-                    select: {
-                        id: true,
-                        wallets: {
-                            where: { status: "ACTIVE" },
-                            select: {
-                                address: true,
-                                status: true,
-                                default: true,
-                            },
-                            orderBy: { default: "desc" },
-                        },
-                    },
-                },
-            },
-        })) as {
-            userId: string | null;
-            user: {
-                wallets: {
-                    address: string;
-                    default: boolean;
-                }[];
-            } | null;
-        } | null;
+        const playerWallet = await getDefaultUserWalletAddress({
+            userId: userId,
+        });
 
-        if (!player?.user?.wallets?.[0]) {
+        if (!playerWallet) {
             return { success: false, error: "Player wallet not found" };
         }
-
-        const participantAddress = player.user.wallets[0].address;
 
         // 3. 블록체인 클라이언트 초기화
         const publicClient = await fetchPublicClient({
@@ -305,7 +277,7 @@ export async function participatePollOnchain(
                 return await (contract.write as any).participatePoll([
                     BigInt(pollId),
                     optionId,
-                    participantAddress as `0x${string}`,
+                    playerWallet as `0x${string}`,
                     isBetting,
                     bettingAssetId,
                     BigInt(bettingAmount),
@@ -424,7 +396,7 @@ export async function participatePollOnchain(
                     if (
                         decoded.args.pollId.toString() === pollId &&
                         decoded.args.participant.toLowerCase() ===
-                            participantAddress.toLowerCase()
+                            playerWallet.toLowerCase()
                     ) {
                         participationIdFromEvent = Number(
                             decoded.args.participationId
@@ -449,10 +421,10 @@ export async function participatePollOnchain(
         return {
             success: true,
             data: {
-                participationId: `${pollContract.address}_${pollId}_${participantAddress}`,
+                participationId: `${pollContract.address}_${pollId}_${playerWallet}`,
                 txHash: participateTx,
                 blockNumber: Number(receipt.blockNumber),
-                participantAddress: participantAddress,
+                participantAddress: playerWallet,
                 optionId: optionId,
                 isBetting: isBetting,
                 bettingAssetId: bettingAssetId,

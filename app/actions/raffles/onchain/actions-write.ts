@@ -17,6 +17,7 @@ import {
 import { fetchWalletClient } from "@/app/story/client";
 import { initialTransfer } from "@/app/story/transfer/actions";
 import { estimateGasComprehensive } from "@/app/story/interaction/actions";
+import { getDefaultUserWalletAddress } from "@/app/story/userWallet/actions";
 
 const abi = rafflesJson.abi;
 
@@ -325,6 +326,7 @@ export interface ParticipateAndDrawInput {
     contractAddress: string;
     raffleId: string;
     playerId: string;
+    userId: string;
 }
 
 export interface ParticipateAndDrawResult {
@@ -382,38 +384,11 @@ export async function participateAndDraw(
             return { success: false, error: "Raffle not found" };
         }
 
-        const player = (await prisma.player.findUnique({
-            cacheStrategy: getCacheStrategy("oneMinute"),
-            where: { id: input.playerId },
-            select: {
-                id: true,
-                userId: true,
-                user: {
-                    select: {
-                        id: true,
-                        wallets: {
-                            where: { status: "ACTIVE" },
-                            select: {
-                                address: true,
-                                status: true,
-                                default: true,
-                            },
-                            orderBy: { default: "desc" },
-                        },
-                    },
-                },
-            },
-        })) as {
-            userId: string | null;
-            user: {
-                wallets: {
-                    address: string;
-                    default: boolean;
-                }[];
-            } | null;
-        } | null;
+        const playerWallet = await getDefaultUserWalletAddress({
+            userId: input.userId,
+        });
 
-        if (!player?.user?.wallets?.[0]) {
+        if (!playerWallet) {
             return { success: false, error: "Player wallet not found" };
         }
 
@@ -458,7 +433,7 @@ export async function participateAndDraw(
                     raffleContractWrite.write as any
                 ).participateAndDraw([
                     BigInt(input.raffleId),
-                    player.user!.wallets[0].address as `0x${string}`,
+                    playerWallet as `0x${string}`,
                 ]);
             },
             "participateAndDraw transaction",
@@ -640,7 +615,7 @@ export async function participateAndDraw(
             playerId: input.playerId,
             prize,
             prizeTitle: prize.title || `Prize ${prizeIndex + 1}`,
-            playerWalletAddress: player.user!.wallets[0].address,
+            playerWalletAddress: playerWallet,
         });
 
         if (!distributionResult.success) {
@@ -652,9 +627,7 @@ export async function participateAndDraw(
         return {
             success: true,
             data: {
-                participationId: `${raffle.contractAddress}_${input.raffleId}_${
-                    player.user!.wallets[0].address
-                }`,
+                participationId: `${raffle.contractAddress}_${input.raffleId}_${playerWallet}`,
                 txHash: result.txHash,
                 blockNumber: result.blockNumber,
                 participantId: result.participantId,
@@ -668,7 +641,7 @@ export async function participateAndDraw(
                     userValue: Number(result.prize.userValue || 0),
                 },
                 entryFeePaid: result.entryFeeAmount,
-                walletAddress: player.user!.wallets[0].address,
+                walletAddress: playerWallet,
             },
         };
     } catch (error) {
@@ -699,6 +672,7 @@ export async function participateAndDraw(
 export interface ParticipateInput {
     contractAddress: string;
     raffleId: string;
+    userId: string;
     playerId: string;
 }
 
@@ -750,38 +724,11 @@ export async function participate(
             return { success: false, error: "Raffle not found" };
         }
 
-        const player = (await prisma.player.findUnique({
-            cacheStrategy: getCacheStrategy("oneMinute"),
-            where: { id: input.playerId },
-            select: {
-                id: true,
-                userId: true,
-                user: {
-                    select: {
-                        id: true,
-                        wallets: {
-                            where: { status: "ACTIVE" },
-                            select: {
-                                address: true,
-                                status: true,
-                                default: true,
-                            },
-                            orderBy: { default: "desc" },
-                        },
-                    },
-                },
-            },
-        })) as {
-            userId: string | null;
-            user: {
-                wallets: {
-                    address: string;
-                    default: boolean;
-                }[];
-            } | null;
-        } | null;
+        const playerWallet = await getDefaultUserWalletAddress({
+            userId: input.userId,
+        });
 
-        if (!player?.user?.wallets?.[0]) {
+        if (!playerWallet) {
             return { success: false, error: "Player wallet not found" };
         }
 
@@ -855,10 +802,7 @@ export async function participate(
             const participateTx = await executeWithRetry(
                 async () => {
                     return await (raffleContractWrite.write as any).participate(
-                        [
-                            BigInt(input.raffleId),
-                            player.user!.wallets[0].address as `0x${string}`,
-                        ]
+                        [BigInt(input.raffleId), playerWallet as `0x${string}`]
                     );
                 },
                 "participate transaction",
@@ -969,7 +913,7 @@ export async function participate(
                             decoded.args.raffleId.toString() ===
                                 input.raffleId &&
                             decoded.args.player.toLowerCase() ===
-                                player.user!.wallets[0].address.toLowerCase()
+                                playerWallet.toLowerCase()
                         ) {
                             participantId = Number(decoded.args.participantId);
                             ticketNumber = decoded.args.ticketNumber;
@@ -999,16 +943,14 @@ export async function participate(
         return {
             success: true,
             data: {
-                participationId: `${raffle.contractAddress}_${input.raffleId}_${
-                    player.user!.wallets[0].address
-                }`,
+                participationId: `${raffle.contractAddress}_${input.raffleId}_${playerWallet}`,
                 txHash: result.txHash,
                 blockNumber: result.blockNumber,
                 participantId: result.participantId,
                 ticketNumber: result.ticketNumber,
                 entryFeePaid: result.entryFeeAmount,
                 participatedAt: result.participatedAt,
-                walletAddress: player.user!.wallets[0].address,
+                walletAddress: playerWallet,
             },
         };
     } catch (error) {

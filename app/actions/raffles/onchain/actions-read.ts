@@ -9,6 +9,7 @@ import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 import rafflesJson from "@/web3/artifacts/contracts/Raffles.sol/Raffles.json";
 import type { BlockchainNetwork, OnchainRaffle, Prisma } from "@prisma/client";
+import { getDefaultUserWalletAddress } from "@/app/story/userWallet/actions";
 
 const abi = rafflesJson.abi;
 
@@ -525,7 +526,7 @@ export async function getRaffleCoreInfoForListCard(
 export interface GetUserParticipationInput {
     contractAddress: string;
     raffleId: string;
-    playerId: string;
+    userId: string;
 }
 
 export interface UserParticipationDetail {
@@ -563,43 +564,18 @@ export async function getUserParticipation(
         };
     }
     try {
-        const { contractAddress, raffleId, playerId } = input;
+        const { contractAddress, raffleId, userId } = input;
 
-        const player = (await prisma.player.findUnique({
-            cacheStrategy: getCacheStrategy("oneHour"),
-            where: {
-                id: playerId,
-            },
-            select: {
-                user: {
-                    select: {
-                        wallets: {
-                            where: {
-                                default: true,
-                            },
-                            select: {
-                                address: true,
-                            },
-                        },
-                    },
-                },
-            },
-        })) as {
-            user: {
-                wallets: {
-                    address: string;
-                }[];
-            };
-        };
+        const playerWallet = await getDefaultUserWalletAddress({
+            userId: userId,
+        });
 
-        if (!player || player.user.wallets.length === 0) {
+        if (!playerWallet) {
             return {
                 success: false,
                 error: "Player wallet not found",
             };
         }
-
-        const playerWallet = player.user.wallets[0].address;
 
         const dbRaffle = await prisma.onchainRaffle.findUnique({
             cacheStrategy: getCacheStrategy("fiveMinutes"),

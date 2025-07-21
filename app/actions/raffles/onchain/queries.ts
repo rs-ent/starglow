@@ -122,10 +122,10 @@ export function useUserParticipationQuery(
         queryKey: raffleQueryKeys.userParticipation(
             input?.contractAddress ?? "",
             input?.raffleId ?? "",
-            input?.playerId ?? ""
+            input?.userId ?? ""
         ),
         queryFn: () => getUserParticipation(input),
-        enabled: Boolean(input && input.playerId),
+        enabled: Boolean(input && input.userId),
         // 사용자 데이터 최적화
         staleTime: options?.staleTime ?? 1000 * 15, // 15초 (중간 캐시)
         gcTime: options?.gcTime ?? 1000 * 60 * 5, // 5분

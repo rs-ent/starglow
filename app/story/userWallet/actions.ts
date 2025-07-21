@@ -511,36 +511,113 @@ export async function getDefaultUserWallet(
     }
 
     try {
-        const wallet = await prisma.wallet.findFirst({
-            cacheStrategy: getCacheStrategy("fiveMinutes"),
-            where: { userId: input.userId, default: true },
-        });
+        const result = await prisma.$transaction(async (tx) => {
+            const wallet = await tx.wallet.findFirst({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
+                where: { userId: input.userId, default: true },
+            });
 
-        if (!wallet) {
-            const wallets = await prisma.wallet.findMany({
+            if (wallet) {
+                return wallet;
+            }
+
+            const wallets = await tx.wallet.findMany({
                 cacheStrategy: getCacheStrategy("fiveMinutes"),
                 where: { userId: input.userId },
                 orderBy: {
                     lastAccessedAt: "desc",
                 },
+                take: 1,
             });
 
             if (wallets.length === 0) {
                 return "No wallets found";
             }
 
-            const updatedWallet = await prisma.wallet.update({
+            const updatedWallet = await tx.wallet.update({
                 where: { id: wallets[0].id },
                 data: { default: true },
             });
 
             return updatedWallet;
-        }
+        });
 
-        return wallet;
+        return result;
     } catch (error) {
         console.error("Failed to get default user wallet:", error);
         return "Failed to get default user wallet";
+    }
+}
+
+export interface getDefaultUserWalletAddressInput {
+    userId?: string;
+    playerId?: string;
+}
+
+export async function getDefaultUserWalletAddress(
+    input?: getDefaultUserWalletAddressInput
+): Promise<string | null> {
+    if (!input || (!input.userId && !input.playerId)) {
+        return null;
+    }
+
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            let userId = input.userId;
+
+            if (!userId && input.playerId) {
+                const player = await tx.player.findUnique({
+                    where: { id: input.playerId },
+                    select: { userId: true },
+                });
+
+                if (!player || !player.userId) {
+                    return null;
+                }
+
+                userId = player.userId;
+            }
+
+            if (!userId) {
+                return null;
+            }
+
+            const wallet = await tx.wallet.findFirst({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
+                where: { userId, default: true },
+                select: { address: true },
+            });
+
+            if (wallet) {
+                return wallet.address;
+            }
+
+            const wallets = await tx.wallet.findMany({
+                cacheStrategy: getCacheStrategy("fiveMinutes"),
+                where: { userId },
+                orderBy: {
+                    lastAccessedAt: "desc",
+                },
+                select: { id: true, address: true },
+                take: 1,
+            });
+
+            if (wallets.length === 0) {
+                return null;
+            }
+
+            await tx.wallet.update({
+                where: { id: wallets[0].id },
+                data: { default: true },
+            });
+
+            return wallets[0].address;
+        });
+
+        return result;
+    } catch (error) {
+        console.error("Failed to get default user wallet address:", error);
+        return null;
     }
 }
 

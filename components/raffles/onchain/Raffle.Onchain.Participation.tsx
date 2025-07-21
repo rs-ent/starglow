@@ -96,13 +96,11 @@ export default memo(function RaffleOnchainParticipation({
         participateError,
         participateAndDrawError,
     } = useOnchainRaffles({
-        getUserParticipationInput: session?.player?.id
-            ? {
-                  contractAddress,
-                  raffleId,
-                  playerId: session.player.id,
-              }
-            : undefined,
+        getUserParticipationInput: {
+            contractAddress,
+            raffleId,
+            userId: session?.user.id || "",
+        },
     });
 
     const { asset } = useAssetsGet({
@@ -167,7 +165,7 @@ export default memo(function RaffleOnchainParticipation({
     ]);
 
     const handleParticipate = useCallback(async () => {
-        if (!session?.player?.id) {
+        if (!session?.player?.id || !session?.user.id) {
             toast.error("Please login to participate");
             return;
         }
@@ -181,6 +179,7 @@ export default memo(function RaffleOnchainParticipation({
                 contractAddress,
                 raffleId,
                 playerId: session.player.id,
+                userId: session.user.id,
             });
 
             const ticket = {
@@ -207,7 +206,7 @@ export default memo(function RaffleOnchainParticipation({
                         ? (result as any).prizeWon
                         : undefined,
                 isInstantDraw: Boolean(timingData?.instantDraw),
-                explorerUrl: "https://odyssey.storyscan.xyz",
+                explorerUrl: "https://beratrail.io",
                 walletAddress: (result as any)?.walletAddress || "",
             };
 
@@ -224,7 +223,7 @@ export default memo(function RaffleOnchainParticipation({
                 toast.success("🎫 Ticket successfully obtained! Good luck!");
             }
 
-            refetchUserParticipation().catch((err) => {
+            refetchUserParticipation().catch((err: any) => {
                 console.error("Refetch error:", err);
             });
         } catch (error) {
@@ -237,6 +236,7 @@ export default memo(function RaffleOnchainParticipation({
             toast.error(errorMessage);
         }
     }, [
+        session?.user.id,
         session?.player?.id,
         participateAndDrawAsync,
         participateAsync,

@@ -59,7 +59,6 @@ function formatErrorMessage(error: any): string {
     return errorMessage;
 }
 
-// 🎯 일반 래플 참가 Mutation
 export function useParticipateMutation() {
     const queryClient = useQueryClient();
 
