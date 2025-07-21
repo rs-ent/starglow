@@ -242,35 +242,3 @@ export const getTierGradient = (rarity: number): string => {
     const tierInfo = getTierInfo(rarity);
     return tierInfo.gradient;
 };
-
-export const calculateWinProbability = (
-    prizeQuantity: number,
-    registeredTickets: number
-): number => {
-    return registeredTickets > 0
-        ? (prizeQuantity / registeredTickets) * 100
-        : 0;
-};
-
-export const calculatePrizePercentage = (
-    prizeQuantity: number,
-    totalPrizes: number
-): number => {
-    return totalPrizes > 0 ? (prizeQuantity / totalPrizes) * 100 : 0;
-};
-
-export const isPrizeNFT = (prizeType: number): boolean => {
-    return prizeType === 1;
-};
-
-export const isPrizeAsset = (prizeType: number): boolean => {
-    return prizeType === 0;
-};
-
-export const getProgressPercentage = (
-    pickedTickets: number,
-    totalQuantity: number
-): number => {
-    if (totalQuantity === 0) return 0;
-    return Math.min((pickedTickets / totalQuantity) * 100, 100);
-};

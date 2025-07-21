@@ -134,6 +134,20 @@ export default memo(function RaffleOnchainPrizes({
         return groupPrizesByTier(data);
     }, [data]);
 
+    const totalQuantity = useMemo(() => {
+        return data?.reduce(
+            (acc, curr) =>
+                acc +
+                Number(
+                    curr.registeredTicketQuantity && curr.pickedTicketQuantity
+                        ? Number(curr.registeredTicketQuantity) -
+                              Number(curr.pickedTicketQuantity)
+                        : 0
+                ),
+            0
+        );
+    }, [data]);
+
     const containerVariants = useMemo(
         () => ({
             hidden: { opacity: 0, y: 30, scale: 0.95 },
@@ -320,9 +334,7 @@ export default memo(function RaffleOnchainPrizes({
                                                     key={`${tier}-${prizeIndex}`}
                                                     data={prize}
                                                     index={globalIndex}
-                                                    totalPrizes={
-                                                        prizeAnalysis.totalPrizes
-                                                    }
+                                                    totalPrizes={totalQuantity}
                                                 />
                                             );
                                         })}

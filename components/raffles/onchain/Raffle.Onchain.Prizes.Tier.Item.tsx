@@ -77,12 +77,10 @@ export default memo(function RaffleOnchainPrizesTierItem({
         const tier = Math.min(rarity, Object.keys(tierMap).length - 1);
         const tierInfo = tierMap[tier as keyof typeof tierMap] || tierMap[0];
 
-        const winProbability =
-            registeredTickets > 0
-                ? (prizeQuantity / registeredTickets) * 100
-                : 0;
         const percentage =
-            totalPrizes > 0 ? (prizeQuantity / totalPrizes) * 100 : 0;
+            totalPrizes > 0
+                ? ((registeredTickets - pickedTickets) / totalPrizes) * 100
+                : 0;
 
         return {
             order,
@@ -92,7 +90,6 @@ export default memo(function RaffleOnchainPrizesTierItem({
             prizeQuantity,
             registeredTickets,
             pickedTickets,
-            winProbability,
             percentage,
             isNFT: data.prizeType === 1,
             isAsset: data.prizeType === 0,
@@ -101,6 +98,8 @@ export default memo(function RaffleOnchainPrizesTierItem({
                 : 0,
         };
     }, [data, totalPrizes]);
+
+    console.log("Prize Info", prizeInfo);
 
     const itemVariants = useMemo(
         () => ({
@@ -237,7 +236,7 @@ export default memo(function RaffleOnchainPrizesTierItem({
                     </motion.div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-0.5">
                     <motion.h4
                         className={cn(
                             "font-bold line-clamp-2 text-white drop-shadow-md gpu-animate",
@@ -248,6 +247,22 @@ export default memo(function RaffleOnchainPrizesTierItem({
                     >
                         {data.title || "Cosmic Prize"}
                     </motion.h4>
+
+                    <div className="flex items-center justify-center">
+                        <div
+                            className={cn(
+                                "text-white/60",
+                                prizeInfo.percentage > 0
+                                    ? "text-green-500"
+                                    : "text-red-600",
+                                getResponsiveClass(5).textClass
+                            )}
+                        >
+                            {prizeInfo.percentage > 0
+                                ? `${prizeInfo.percentage.toFixed(4)}%`
+                                : "OUT OF STOCK"}
+                        </div>
+                    </div>
                 </div>
             </div>
         </motion.div>
