@@ -248,6 +248,45 @@ export interface GetPollsInput {
     test?: boolean;
 }
 
+export type PollListData = {
+    id: string;
+    title: string;
+    description: string;
+    imgUrl: string;
+    youtubeUrl: string;
+    startDate: Date;
+    endDate: Date;
+    bettingMode: boolean;
+    allowMultipleVote: boolean;
+    isOnchain: boolean;
+    hasAnswer: boolean;
+    participationRewardAssetId: string;
+    participationRewardAmount: number;
+    artistId: string;
+    isActive: boolean;
+    test: boolean;
+    artist: {
+        id: string;
+        name: string;
+        imageUrl: string;
+        logoUrl: string;
+        backgroundColors: string[];
+        foregroundColors: string[];
+    };
+    participationRewardAsset: {
+        id: string;
+        name: string;
+        symbol: string;
+        iconUrl: string;
+    };
+};
+
+export interface GetPollsOutput {
+    items: PollListData[];
+    totalItems: number;
+    totalPages: number;
+}
+
 export async function getPolls({
     input,
     pagination,
@@ -255,7 +294,7 @@ export async function getPolls({
     input?: GetPollsInput;
     pagination?: PaginationInput;
 }): Promise<{
-    items: PollsWithArtist[];
+    items: PollListData[];
     totalItems: number;
     totalPages: number;
 }> {
@@ -350,10 +389,38 @@ export async function getPolls({
                 },
                 skip: (pagination.currentPage - 1) * pagination.itemsPerPage,
                 take: pagination.itemsPerPage,
-                include: {
-                    artist: true,
-                    participationRewardAsset: true,
-                    participationConsumeAsset: true,
+                select: {
+                    id: true,
+                    title: true,
+                    description: true,
+                    imgUrl: true,
+                    youtubeUrl: true,
+                    startDate: true,
+                    endDate: true,
+                    bettingMode: true,
+                    allowMultipleVote: true,
+                    isOnchain: true,
+                    hasAnswer: true,
+                    participationRewardAssetId: true,
+                    participationRewardAmount: true,
+                    artistId: true,
+                    isActive: true,
+                    test: true,
+                    artist: {
+                        select: {
+                            id: true,
+                            name: true,
+                            imageUrl: true,
+                        },
+                    },
+                    participationRewardAsset: {
+                        select: {
+                            id: true,
+                            name: true,
+                            symbol: true,
+                            iconUrl: true,
+                        },
+                    },
                 },
             }),
             prisma.poll.count({
@@ -363,7 +430,7 @@ export async function getPolls({
         ]);
         const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
         return {
-            items: items as PollsWithArtist[],
+            items: items as unknown as PollListData[],
             totalItems,
             totalPages,
         };
@@ -377,26 +444,47 @@ export async function getPolls({
     }
 }
 
-export async function getPoll(id: string): Promise<
-    | (Poll & {
-          participationRewardAsset: Asset | null;
-          artist: Artist | null;
-          participationConsumeAsset: Asset | null;
-      })
-    | null
-> {
+export async function getPoll(id: string): Promise<PollListData | null> {
     try {
         const poll = await prisma.poll.findUnique({
             cacheStrategy: getCacheStrategy("tenMinutes"),
             where: { id },
-            include: {
-                participationRewardAsset: true,
-                artist: true,
-                participationConsumeAsset: true,
+            select: {
+                id: true,
+                title: true,
+                description: true,
+                imgUrl: true,
+                youtubeUrl: true,
+                startDate: true,
+                endDate: true,
+                bettingMode: true,
+                allowMultipleVote: true,
+                isOnchain: true,
+                hasAnswer: true,
+                participationRewardAssetId: true,
+                participationRewardAmount: true,
+                artistId: true,
+                isActive: true,
+                test: true,
+                artist: {
+                    select: {
+                        id: true,
+                        name: true,
+                        imageUrl: true,
+                    },
+                },
+                participationRewardAsset: {
+                    select: {
+                        id: true,
+                        name: true,
+                        symbol: true,
+                        iconUrl: true,
+                    },
+                },
             },
         });
 
-        return poll;
+        return poll as PollListData;
     } catch (error) {
         console.error("Error getting poll:", error);
         throw new Error("Failed to get poll");
@@ -665,11 +753,10 @@ export async function tokenGatingPoll(
 }
 
 export interface ParticipatePollInput {
-    poll: Poll;
+    pollId: string;
     player: Player;
     optionId: string;
     amount?: number;
-    tokenGating?: TokenGatingData;
     alreadyVotedAmount?: number;
     ipAddress?: string;
     userAgent?: string;
@@ -689,9 +776,36 @@ export async function participatePoll(
     input: ParticipatePollInput
 ): Promise<ParticipatePollResult> {
     try {
-        const { poll, player, optionId } = input;
+        const { pollId, player, optionId } = input;
         const amount = input.amount || 1;
         let playerAssetUpdated = false;
+
+        const poll = await prisma.poll.findUnique({
+            where: { id: pollId },
+            select: {
+                id: true,
+                title: true,
+                options: true,
+                startDate: true,
+                endDate: true,
+                bettingMode: true,
+                bettingAssetId: true,
+                minimumBet: true,
+                maximumBet: true,
+                participationConsumeAssetId: true,
+                participationConsumeAmount: true,
+                needToken: true,
+                needTokenAddress: true,
+                allowMultipleVote: true,
+                participationRewardAssetId: true,
+                participationRewardAmount: true,
+                isOnchain: true,
+                onchainContractId: true,
+                onchainPollId: true,
+                hasAnswer: true,
+                answerOptionIds: true,
+            },
+        });
 
         if (!poll)
             return { success: false, error: ERROR_MESSAGES.POLL_NOT_FOUND };
@@ -839,24 +953,6 @@ export async function participatePoll(
                     } Required: ${requiredAmount}, Available: ${
                         playerConsumeAsset?.balance || 0
                     }`,
-                };
-            }
-        }
-
-        if (poll.needToken && poll.needTokenAddress) {
-            if (!input.tokenGating || !input.tokenGating.hasToken)
-                return {
-                    success: false,
-                    error: ERROR_MESSAGES.TOKEN_GATING_REQUIRED,
-                };
-
-            const alreadyVotedAmount = input.alreadyVotedAmount || 0;
-            const remainingTokenCount =
-                input.tokenGating.detail.length - (amount + alreadyVotedAmount);
-            if (remainingTokenCount < 0) {
-                return {
-                    success: false,
-                    error: ERROR_MESSAGES.ALL_TOKENS_USED,
                 };
             }
         }
@@ -1427,9 +1523,14 @@ export interface GetPlayerPollLogsInput {
     pollId?: string;
 }
 
+export interface GetPlayerPollLogsResponse {
+    amount: number;
+    optionId: string;
+}
+
 export async function getPlayerPollLogs(
     input?: GetPlayerPollLogsInput
-): Promise<PollLog[]> {
+): Promise<GetPlayerPollLogsResponse[]> {
     if (!input) {
         return [];
     }
@@ -1442,6 +1543,10 @@ export async function getPlayerPollLogs(
         return await prisma.pollLog.findMany({
             cacheStrategy: getCacheStrategy("realtime"),
             where,
+            select: {
+                amount: true,
+                optionId: true,
+            },
         });
     } catch (error) {
         console.error("Error getting player poll logs:", error);
@@ -2402,5 +2507,145 @@ export async function manualSettlePoll(
                     ? error.message
                     : "Manual settlement failed",
         };
+    }
+}
+
+export interface GetPollDetailInput {
+    pollId: string;
+}
+
+export type PollDetail = {
+    id: string;
+    title: string;
+    imgUrl: string;
+    startDate: Date;
+    endDate: Date;
+    bettingMode: boolean;
+    allowMultipleVote: boolean;
+    isOnchain: boolean;
+    hasAnswer: boolean;
+    needToken: boolean;
+    needTokenAddress: string;
+    participationRewardAssetId: string;
+    participationConsumeAssetId: string;
+    participationRewardAmount: number;
+    participationConsumeAmount: number;
+    bettingAssetId: string;
+    options: object;
+    artistId: string;
+    isActive: boolean;
+    test: boolean;
+    totalCommissionAmount: number;
+    optionBetAmounts: object;
+    minimumBet: number;
+    maximumBet: number;
+    description: string;
+    artist: {
+        id: string;
+        name: string;
+        imageUrl: string;
+        logoUrl: string;
+        code: string;
+        backgroundColors: string[];
+        foregroundColors: string[];
+    };
+    participationRewardAsset: {
+        id: string;
+        name: string;
+        symbol: string;
+        iconUrl: string;
+        imageUrl: string;
+    };
+    participationConsumeAsset: {
+        id: string;
+        name: string;
+        symbol: string;
+        iconUrl: string;
+        imageUrl: string;
+    };
+    bettingAsset: {
+        id: string;
+        name: string;
+        symbol: string;
+        iconUrl: string;
+        imageUrl: string;
+    };
+};
+
+export async function getPollDetail(
+    input: GetPollDetailInput
+): Promise<PollDetail | null> {
+    try {
+        const poll = await prisma.poll.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
+            where: { id: input.pollId },
+            select: {
+                id: true,
+                title: true,
+                imgUrl: true,
+                startDate: true,
+                endDate: true,
+                bettingMode: true,
+                allowMultipleVote: true,
+                isOnchain: true,
+                hasAnswer: true,
+                needToken: true,
+                needTokenAddress: true,
+                participationRewardAssetId: true,
+                participationConsumeAssetId: true,
+                participationRewardAmount: true,
+                participationConsumeAmount: true,
+                bettingAssetId: true,
+                options: true,
+                artistId: true,
+                isActive: true,
+                test: true,
+                totalCommissionAmount: true,
+                optionBetAmounts: true,
+                artist: {
+                    select: {
+                        id: true,
+                        name: true,
+                        imageUrl: true,
+                        code: true,
+                        logoUrl: true,
+                        backgroundColors: true,
+                        foregroundColors: true,
+                    },
+                },
+                participationRewardAsset: {
+                    select: {
+                        id: true,
+                        name: true,
+                        symbol: true,
+                        iconUrl: true,
+                        imageUrl: true,
+                    },
+                },
+                participationConsumeAsset: {
+                    select: {
+                        id: true,
+                        name: true,
+                        symbol: true,
+                        iconUrl: true,
+                        imageUrl: true,
+                    },
+                },
+                bettingAsset: {
+                    select: {
+                        id: true,
+                        name: true,
+                        symbol: true,
+                        iconUrl: true,
+                        imageUrl: true,
+                    },
+                },
+            },
+        });
+
+        return poll as PollDetail;
+    } catch (error) {
+        console.error("Error getting poll detail:", error);
+        return null;
     }
 }

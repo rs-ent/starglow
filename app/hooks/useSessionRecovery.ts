@@ -21,6 +21,7 @@ export function useSessionRecovery() {
     const lastSessionCheck = useRef<string | null>(null);
     const recoveryCount = useRef(0);
     const maxRecoveryAttempts = 3;
+    const sessionCheckDelay = 120 * 1000; // 2분 대기
 
     useEffect(() => {
         if (isDev && typeof window !== "undefined") {
@@ -148,9 +149,9 @@ export function useSessionRecovery() {
             }
         };
 
-        const timeoutId = setTimeout(checkSessionIntegrity, 100);
+        const timeoutId = setTimeout(checkSessionIntegrity, sessionCheckDelay);
         return () => clearTimeout(timeoutId);
-    }, [session, status, toast]);
+    }, [session, status]);
 
     return {
         isSessionHealthy:

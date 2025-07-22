@@ -170,12 +170,9 @@ export async function getPlayerAssets(
                         name: true,
                         symbol: true,
                         iconUrl: true,
-                        description: true,
-                        assetType: true,
                         isActive: true,
                         hasInstance: true,
                         imageUrl: true,
-                        metadata: true,
                     },
                 },
             },
@@ -410,7 +407,7 @@ async function updatePlayerAssetBalance(
     if (
         !input.skipRewardsLog &&
         (input.transaction.operation === "ADD" ||
-        input.transaction.operation === "SUBTRACT")
+            input.transaction.operation === "SUBTRACT")
     ) {
         await tx.rewardsLog.create({
             data: {

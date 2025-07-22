@@ -37,7 +37,7 @@ export function useGetUnreadNotificationCountQuery(
         staleTime: 1000 * 30, // 30 seconds (짧은 캐시 - 실시간성 중요)
         gcTime: 1000 * 60 * 2, // 2 minutes
         refetchOnWindowFocus: true,
-        refetchInterval: 1000 * 60, // 1분마다 자동 새로고침
+        refetchInterval: 1000 * 60 * 3, // 3분마다 자동 새로고침 (서버 부하 감소)
     });
 }
 

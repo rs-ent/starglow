@@ -21,6 +21,7 @@ import type {
     AssetInstanceWithRelations,
 } from "@/app/actions/playerAssets/actions";
 import type { RewardLog } from "@/app/actions/rewardsLogs";
+import Image from "next/image";
 
 interface UserRewardsModalCardProps {
     playerId?: string;
@@ -169,15 +170,13 @@ function UserRewardsModalCard({
                     </h2>
 
                     <div className="flex justify-center mb-3">
-                        <img
+                        <Image
                             src="/elements/el03.svg"
                             alt="el03"
                             className={getResponsiveClass(40).frameClass}
                             loading="lazy"
-                            onError={(e) => {
-                                (e.target as HTMLImageElement).src =
-                                    "/elements/el03.svg";
-                            }}
+                            width={100}
+                            height={100}
                         />
                     </div>
 

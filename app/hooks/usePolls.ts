@@ -13,6 +13,7 @@ import {
 import {
     usePollsQuery,
     usePollQuery,
+    usePollDetailQuery,
     usePollResultQuery,
     usePollsResultsQuery,
     useUserSelectionQuery,
@@ -23,6 +24,7 @@ import {
 
 import type {
     GetPollsInput,
+    GetPollDetailInput,
     GetPollResultInput,
     GetPollsResultsInput,
     GetUserSelectionInput,
@@ -34,6 +36,7 @@ import type {
 
 export function usePollsGet({
     getPollsInput,
+    pollDetailInput,
     pollResultInput,
     pollsResultsInput,
     userSelectionInput,
@@ -43,6 +46,7 @@ export function usePollsGet({
     getArtistAllActivePollCountInput,
 }: {
     getPollsInput?: GetPollsInput;
+    pollDetailInput?: GetPollDetailInput;
     pollResultInput?: GetPollResultInput;
     pollsResultsInput?: GetPollsResultsInput;
     userSelectionInput?: GetUserSelectionInput;
@@ -62,6 +66,12 @@ export function usePollsGet({
         isLoading: isLoadingPoll,
         error: pollError,
     } = usePollQuery(getPollsInput?.id || "");
+
+    const {
+        data: pollDetail,
+        isLoading: isLoadingPollDetail,
+        error: pollDetailError,
+    } = usePollDetailQuery(pollDetailInput || { pollId: "" });
 
     const {
         data: pollResult,
@@ -125,6 +135,7 @@ export function usePollsGet({
         isLoading,
         error,
         poll,
+        pollDetail,
         pollResult,
         pollsResults,
         userSelection,
@@ -138,6 +149,7 @@ export function usePollsGet({
         isLoadingUserSelection,
         isLoadingPollLogs,
         isLoadingPlayerPollLogs,
+        isLoadingPollDetail,
 
         pollsError,
         pollError,
@@ -146,6 +158,7 @@ export function usePollsGet({
         userSelectionError,
         pollLogsError,
         playerPollLogsError,
+        pollDetailError,
 
         artistAllActivePollCount,
         isLoadingArtistAllActivePollCount,

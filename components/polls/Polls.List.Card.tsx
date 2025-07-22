@@ -18,26 +18,20 @@ import { cn } from "@/lib/utils/tailwind";
 
 import Button from "../atoms/Button";
 import Countdown from "../atoms/Countdown";
-import Doorman from "../atoms/Doorman";
 import Popup from "../atoms/Popup";
 import PopupInteractFeedback from "../atoms/Popup.InteractFeedback";
 import PollsBettingModeTutorialModal from "./Polls.BettingModeTutorial.Modal";
 import PollBettingParticipationModal from "./Poll.Betting.Participation.Modal";
 import PollBettingRecord from "./Poll.Betting.Record";
-import type { PollsWithArtist, PollOption } from "@/app/actions/polls";
+import type { PollListData, PollOption } from "@/app/actions/polls";
 import { ArtistBG } from "@/lib/utils/get/artist-colors";
 import type { Player } from "@prisma/client";
-import { getPlayerAsset } from "@/app/actions/playerAssets/actions";
 import Image from "next/image";
-import type { TokenGatingData } from "@/app/story/nft/actions";
-
-import PartialLoading from "../atoms/PartialLoading";
 
 interface PollsCardProps {
     index?: number;
-    poll: PollsWithArtist;
+    poll: PollListData;
     player: Player | null;
-    tokenGating?: TokenGatingData | null;
     isSelected?: boolean;
     fgColorFrom?: string;
     fgColorTo?: string;
@@ -70,7 +64,6 @@ interface UIState {
 function PollsListCard({
     poll,
     player,
-    tokenGating,
     isSelected,
     fgColorFrom,
     fgColorTo,
@@ -101,21 +94,6 @@ function PollsListCard({
         showBettingRecord: false,
         onchainTxHash: undefined,
     });
-
-    const { accentColorFrom, accentColorTo } = useMemo(() => {
-        return {
-            accentColorFrom: poll.bettingMode
-                ? "rgba(160, 16, 11, 0.9)"
-                : poll.artist
-                ? ArtistBG(poll.artist, 2, 100)
-                : bgColorAccentFrom,
-            accentColorTo: poll.bettingMode
-                ? "rgba(32,20,47,0.9)"
-                : poll.artist
-                ? ArtistBG(poll.artist, 3, 100)
-                : bgColorAccentTo,
-        };
-    }, [poll, bgColorAccentFrom, bgColorAccentTo]);
 
     // 날짜 관련 계산 메모이제이션
     const pollDateInfo = useMemo(() => {
@@ -160,7 +138,17 @@ function PollsListCard({
     }, [poll.startDate, poll.endDate]);
 
     // 투표 결과 가져오기
-    const { playerPollLogs, pollResult, isLoading, error } = usePollsGet({
+    const {
+        pollDetail,
+        isLoadingPollDetail,
+        playerPollLogs,
+        pollResult,
+        isLoading,
+        error,
+    } = usePollsGet({
+        pollDetailInput: {
+            pollId: poll.id,
+        },
         getPlayerPollLogsInput: {
             pollId: poll.id,
             playerId: player?.id,
@@ -176,16 +164,26 @@ function PollsListCard({
     // 베팅 에셋 정보 가져오기 (베팅 모드인 경우에만)
     const { playerAsset } = usePlayerAssetsGet({
         getPlayerAssetInput: {
-            assetId: poll.bettingAssetId || "",
+            assetId:
+                pollDetail?.participationConsumeAssetId ||
+                pollDetail?.bettingAssetId ||
+                "",
             playerId: player?.id || "",
         },
     });
 
-    // 옵션 파싱
+    // 옵션 파싱 (상세 데이터 우선, 없으면 기본 데이터 사용)
     const options = useMemo(
-        () => poll.options as unknown as PollOption[],
-        [poll.options]
+        () => pollDetail?.options as unknown as PollOption[],
+        [pollDetail?.options]
     );
+
+    const { totalVoteAmount } = useMemo(() => {
+        const totalVoteAmount =
+            playerPollLogs?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
+
+        return { totalVoteAmount };
+    }, [playerPollLogs]);
 
     // 정렬된 결과 메모이제이션
     const sortedResults = useMemo(() => {
@@ -202,27 +200,6 @@ function PollsListCard({
         }, 0);
     }, [poll.bettingMode, pollResult?.results]);
 
-    // 토큰 게이팅 정보 메모이제이션
-    const tokenGatingInfo = useMemo(() => {
-        const permission = tokenGating?.hasToken;
-        const alreadyVotedAmount =
-            playerPollLogs?.reduce((acc, curr) => acc + curr.amount, 0) || 0;
-
-        let maxVoteAmount = 0;
-        if (poll.needToken && tokenGating) {
-            maxVoteAmount = Math.max(
-                0,
-                tokenGating.detail.length - alreadyVotedAmount
-            );
-        }
-
-        return {
-            alreadyVotedAmount,
-            maxVoteAmount,
-            permission,
-        };
-    }, [tokenGating, poll.needToken, playerPollLogs]);
-
     // 베팅 정보 메모이제이션
     const bettingInfo = useMemo(() => {
         if (!poll.bettingMode || !player) {
@@ -233,13 +210,7 @@ function PollsListCard({
             };
         }
 
-        // 내 베팅 기록 확인
-        const myBetLogs =
-            playerPollLogs?.filter(
-                (log) => log.pollId === poll.id && log.playerId === player.id
-            ) || [];
-
-        const hasBet = myBetLogs.length > 0;
+        const hasBet = (playerPollLogs?.length || 0) > 0;
 
         // 베팅 에셋 정보
         const bettingAsset = playerAsset?.data || null;
@@ -247,52 +218,68 @@ function PollsListCard({
         return {
             hasBet,
             bettingAsset,
-            myBetLogs,
+            playerPollLogs,
         };
-    }, [poll.bettingMode, poll.id, player, playerPollLogs, playerAsset]);
+    }, [poll.bettingMode, player, playerPollLogs, playerAsset]);
+
+    const { accentColorFrom, accentColorTo } = useMemo(() => {
+        return {
+            accentColorFrom: poll.bettingMode
+                ? "rgba(160, 16, 11, 0.9)"
+                : pollDetail?.artist
+                ? ArtistBG(pollDetail?.artist, 2, 100)
+                : bgColorAccentFrom,
+            accentColorTo: poll.bettingMode
+                ? "rgba(32,20,47,0.9)"
+                : pollDetail?.artist
+                ? ArtistBG(pollDetail?.artist, 3, 100)
+                : bgColorAccentTo,
+        };
+    }, [
+        poll.bettingMode,
+        pollDetail?.artist,
+        bgColorAccentFrom,
+        bgColorAccentTo,
+    ]);
 
     // 옵션 클릭 핸들러
-    const handleOptionClick = useCallback(
-        (option: PollOption) => {
-            setVotingState((prev) => {
-                if (option.optionId === prev.selection?.optionId) {
-                    return {
-                        ...prev,
-                        selection: null,
-                        animateSubmit: false,
-                    };
-                }
-
-                const newState = {
+    const handleOptionClick = useCallback((option: PollOption) => {
+        setVotingState((prev) => {
+            if (option.optionId === prev.selection?.optionId) {
+                return {
                     ...prev,
-                    selection: option,
-                    voteAmount: poll.needToken && poll.needTokenAddress ? 0 : 1,
+                    selection: null,
+                    animateSubmit: false,
                 };
+            }
 
-                // 애니메이션 효과
-                setTimeout(() => {
-                    setVotingState((current) => ({
-                        ...current,
-                        animateSubmit: true,
-                    }));
-                }, 100);
+            const newState = {
+                ...prev,
+                selection: option,
+                voteAmount: 1,
+            };
 
-                return newState;
-            });
-        },
-        [poll.needToken, poll.needTokenAddress]
-    );
+            // 애니메이션 효과
+            setTimeout(() => {
+                setVotingState((current) => ({
+                    ...current,
+                    animateSubmit: true,
+                }));
+            }, 100);
+
+            return newState;
+        });
+    }, []);
 
     // 베팅 확인 핸들러 (모달에서 호출)
     const handleBettingConfirm = useCallback(
         async (betAmount: number) => {
             const result = await participatePoll({
-                poll: poll,
+                pollId: poll.id,
                 player: player!,
                 optionId: votingState.selection!.optionId,
                 amount: betAmount,
-                tokenGating: tokenGating || undefined,
-                alreadyVotedAmount: tokenGatingInfo.alreadyVotedAmount,
+                alreadyVotedAmount: totalVoteAmount,
             });
 
             // 결과 처리
@@ -315,7 +302,7 @@ function PollsListCard({
             // 상태 초기화
             setVotingState((prev) => ({
                 ...prev,
-                voteAmount: poll.needToken && poll.needTokenAddress ? 0 : 1,
+                voteAmount: 1,
                 voteAmountInput: "0",
             }));
         },
@@ -323,9 +310,8 @@ function PollsListCard({
             poll,
             player,
             votingState.selection,
-            tokenGating,
-            tokenGatingInfo.alreadyVotedAmount,
             participatePoll,
+            totalVoteAmount,
             toast,
         ]
     );
@@ -400,74 +386,22 @@ function PollsListCard({
                     return;
                 }
 
-                // 토큰 게이팅 검증
-                if (poll.needToken && poll.needTokenAddress) {
-                    if (!tokenGating) {
-                        toast.error(
-                            "Please wait for the token gating process to complete."
-                        );
-                        setUIState((prev) => ({
-                            ...prev,
-                            confirmedAnswer: false,
-                            showAnswerPopup: false,
-                        }));
-                        return;
-                    }
-                    if (!tokenGating?.hasToken) {
-                        toast.error(
-                            "This polls is need an authentication. Please purchase the NFT before participation."
-                        );
-                        setUIState((prev) => ({
-                            ...prev,
-                            confirmedAnswer: false,
-                            showAnswerPopup: false,
-                        }));
-                        return;
-                    }
-
-                    // 남은 토큰 수량 검증
-                    const remainingTokenCount =
-                        tokenGating.detail.length -
-                        (votingState.voteAmount +
-                            tokenGatingInfo.alreadyVotedAmount);
-                    if (remainingTokenCount < 0) {
-                        toast.error(
-                            "You've used all your tokens for this poll. Please purchase more NFTs to participate in this poll."
-                        );
-                        setUIState((prev) => ({
-                            ...prev,
-                            confirmedAnswer: false,
-                            showAnswerPopup: false,
-                        }));
-                        return;
-                    }
-                }
-
                 if (
-                    poll.participationConsumeAssetId &&
-                    poll.participationConsumeAmount
+                    pollDetail?.participationConsumeAssetId &&
+                    pollDetail?.participationConsumeAmount
                 ) {
                     const consumeAmount =
-                        poll.participationConsumeAmount *
+                        pollDetail?.participationConsumeAmount *
                         votingState.voteAmount;
-                    const playerConsumeAsset = await getPlayerAsset({
-                        playerId: player.id,
-                        assetId: poll.participationConsumeAssetId,
-                    });
-                    if (!playerConsumeAsset.success) {
-                        toast.error(
-                            playerConsumeAsset.error ||
-                                "Failed to get player asset."
-                        );
-                        return;
-                    }
+
                     if (
-                        playerConsumeAsset.data == null ||
-                        playerConsumeAsset.data.balance < consumeAmount
+                        !playerAsset?.data ||
+                        playerAsset.data.balance < consumeAmount
                     ) {
                         toast.error(
                             `Insufficient balance for participation fee. Required: ${consumeAmount} ${
-                                poll.participationConsumeAsset?.symbol || ""
+                                pollDetail?.participationConsumeAsset?.symbol ||
+                                ""
                             } to participate in this poll.`
                         );
                         return;
@@ -476,12 +410,11 @@ function PollsListCard({
 
                 // 투표 제출
                 const result = await participatePoll({
-                    poll: poll,
+                    pollId: poll.id,
                     player: player,
                     optionId: votingState.selection.optionId,
                     amount: votingState.voteAmount,
-                    tokenGating: tokenGating || undefined,
-                    alreadyVotedAmount: tokenGatingInfo.alreadyVotedAmount,
+                    alreadyVotedAmount: totalVoteAmount,
                 });
 
                 // 결과 처리
@@ -508,7 +441,7 @@ function PollsListCard({
                 }));
                 setVotingState((prev) => ({
                     ...prev,
-                    voteAmount: poll.needToken && poll.needTokenAddress ? 0 : 1,
+                    voteAmount: 1,
                     voteAmountInput: "0",
                 }));
             } catch (error) {
@@ -524,12 +457,12 @@ function PollsListCard({
             }
         },
         [
+            playerAsset?.data,
+
             poll,
             player,
             votingState.selection,
             votingState.voteAmount,
-            tokenGating,
-            tokenGatingInfo.alreadyVotedAmount,
             uiState.confirmedAnswer,
             participatePoll,
             startLoading,
@@ -537,64 +470,6 @@ function PollsListCard({
             toast,
         ]
     );
-
-    // 투표 수량 변경 핸들러
-    const handleVoteAmountChange = useCallback(
-        (value: string) => {
-            if (/^\d*$/.test(value)) {
-                setVotingState((prev) => {
-                    const num = parseInt(value, 10);
-                    if (!isNaN(num) && num > 0) {
-                        const amount = Math.min(
-                            tokenGatingInfo.maxVoteAmount,
-                            num
-                        );
-                        return {
-                            ...prev,
-                            voteAmount: amount,
-                            voteAmountInput: amount.toString(),
-                        };
-                    }
-                    return {
-                        ...prev,
-                        voteAmountInput: value,
-                    };
-                });
-            }
-        },
-        [tokenGatingInfo.maxVoteAmount]
-    );
-
-    // 투표 수량 증가/감소 핸들러
-    const increaseVoteAmount = useCallback(
-        (e: React.MouseEvent) => {
-            e.stopPropagation();
-            setVotingState((prev) => {
-                const amount = Math.min(
-                    tokenGatingInfo.maxVoteAmount,
-                    prev.voteAmount + 1
-                );
-                return {
-                    ...prev,
-                    voteAmount: amount,
-                    voteAmountInput: amount.toString(),
-                };
-            });
-        },
-        [tokenGatingInfo.maxVoteAmount]
-    );
-
-    const decreaseVoteAmount = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        setVotingState((prev) => {
-            const amount = Math.max(0, prev.voteAmount - 1);
-            return {
-                ...prev,
-                voteAmount: amount,
-                voteAmountInput: amount.toString(),
-            };
-        });
-    }, []);
 
     // 애니메이션 변수 최적화
     const animations = useMemo(
@@ -615,6 +490,7 @@ function PollsListCard({
     // 옵션 렌더링 함수
     const renderOptions = useCallback(() => {
         if (!pollDateInfo.showOptions) return null;
+        if (isLoadingPollDetail) return null;
 
         return (
             <motion.div
@@ -764,6 +640,7 @@ function PollsListCard({
             </motion.div>
         );
     }, [
+        isLoadingPollDetail,
         pollDateInfo.showOptions,
         options,
         sortedResults,
@@ -781,12 +658,13 @@ function PollsListCard({
     // 결과 차트 렌더링 함수
     const renderResults = useCallback(() => {
         if (!pollDateInfo.isEnded) return null;
+        if (isLoadingPollDetail) return null;
 
         return (
             <div className="mt-6">
-                {isLoading ? (
+                {isLoading || isLoadingPollDetail ? (
                     <div className="animate-pulse">
-                        {Array.from({ length: options.length }).map(
+                        {Array.from({ length: options.length || 0 }).map(
                             (_, idx) => (
                                 <div
                                     key={idx}
@@ -825,10 +703,11 @@ function PollsListCard({
             </div>
         );
     }, [
+        isLoadingPollDetail,
+        options.length,
         pollDateInfo.isEnded,
         isLoading,
         error,
-        options.length,
         sortedResults,
         pollDateInfo.isBlurred,
         fgColorFrom,
@@ -840,6 +719,7 @@ function PollsListCard({
     // 제출 버튼 렌더링 함수
     const renderSubmitButton = useCallback(() => {
         if (!pollDateInfo.showOptions || !votingState.selection) return null;
+        if (isLoadingPollDetail) return null;
 
         return (
             <motion.div
@@ -850,81 +730,9 @@ function PollsListCard({
                 initial="initial"
                 animate="animate"
             >
-                {poll.allowMultipleVote &&
-                    poll.needToken &&
-                    poll.needTokenAddress && (
-                        <div
-                            className={cn(
-                                "flex flex-row justify-center items-center overflow-hidden mb-[10px]",
-                                getResponsiveClass(30).gapClass
-                            )}
-                        >
-                            <button
-                                className={cn(
-                                    "cursor-pointer",
-                                    "rounded-full text-center",
-                                    getResponsiveClass(30).frameClass,
-                                    getResponsiveClass(15).textClass
-                                )}
-                                style={{
-                                    background: `linear-gradient(to bottom right, ${bgColorFrom}, ${bgColorTo})`,
-                                }}
-                                onClick={decreaseVoteAmount}
-                                aria-label="Decrease amount"
-                            >
-                                -
-                            </button>
-
-                            <input
-                                type="text"
-                                inputMode="numeric"
-                                value={votingState.voteAmountInput}
-                                placeholder="0"
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) =>
-                                    handleVoteAmountChange(e.target.value)
-                                }
-                                className={cn(
-                                    "py-[3px] text-center",
-                                    "rounded-full border border-[rgba(255,255,255,0.8)]",
-                                    "focus:outline-none",
-                                    "focus:border-[rgba(255,255,255,0.8)]",
-                                    "focus:shadow-none",
-                                    getResponsiveClass(15).textClass
-                                )}
-                                style={{
-                                    width: `${Math.max(
-                                        votingState.voteAmountInput.length,
-                                        1
-                                    )}ch`,
-                                    minWidth: "7ch",
-                                    maxWidth: "14ch",
-                                    transition: "width 0.2s",
-                                }}
-                            />
-
-                            <button
-                                className={cn(
-                                    "cursor-pointer",
-                                    "rounded-full text-center",
-                                    getResponsiveClass(30).frameClass,
-                                    getResponsiveClass(15).textClass
-                                )}
-                                style={{
-                                    background: `linear-gradient(to bottom right, ${bgColorFrom}, ${bgColorTo})`,
-                                }}
-                                onClick={increaseVoteAmount}
-                                aria-label="Increase amount"
-                            >
-                                +
-                            </button>
-                        </div>
-                    )}
-
                 {/* 참여 비용 정보 - options 바로 위 배치 */}
-                {poll.participationConsumeAssetId &&
-                    poll.participationConsumeAsset &&
-                    poll.participationConsumeAmount && (
+                {pollDetail?.participationConsumeAssetId &&
+                    pollDetail?.participationConsumeAmount && (
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -947,11 +755,14 @@ function PollsListCard({
                                     </span>
                                     <Image
                                         src={
-                                            poll.participationConsumeAsset
-                                                .imageUrl || "/icons/coin.svg"
+                                            pollDetail
+                                                ?.participationConsumeAsset
+                                                ?.imageUrl || "/icons/coin.svg"
                                         }
                                         alt={
-                                            poll.participationConsumeAsset.name
+                                            pollDetail
+                                                ?.participationConsumeAsset
+                                                .name || ""
                                         }
                                         width={24}
                                         height={24}
@@ -961,15 +772,10 @@ function PollsListCard({
                                         )}
                                     />
                                     <span className="text-[rgba(255,233,233,1)] font-semibold">
-                                        {poll.participationConsumeAmount *
-                                            (poll.allowMultipleVote &&
-                                            poll.needToken &&
-                                            poll.needTokenAddress
-                                                ? votingState.voteAmount
-                                                : 1)}{" "}
-                                        {poll.participationConsumeAsset
-                                            .symbol ||
-                                            poll.participationConsumeAsset.name}
+                                        {pollDetail?.participationConsumeAmount ||
+                                            0}{" "}
+                                        {pollDetail?.participationConsumeAsset
+                                            ?.symbol || ""}
                                     </span>
                                 </div>
                             </div>
@@ -996,8 +802,8 @@ function PollsListCard({
                 >
                     {poll.bettingMode
                         ? "BET"
-                        : poll.participationConsumeAssetId &&
-                          poll.participationConsumeAmount
+                        : pollDetail?.participationConsumeAssetId &&
+                          pollDetail?.participationConsumeAmount
                         ? "SUBMIT WITH FEE"
                         : "SUBMIT"}
                     {poll.bettingMode && (
@@ -1017,47 +823,15 @@ function PollsListCard({
             </motion.div>
         );
     }, [
-        poll.bettingMode,
-        poll.needToken,
-        poll.needTokenAddress,
-        poll.participationConsumeAssetId,
-        poll.participationConsumeAsset,
-        poll.participationConsumeAmount,
+        isLoadingPollDetail,
+        poll,
         pollDateInfo.showOptions,
-        votingState.selection,
-        votingState.animateSubmit,
-        votingState.voteAmount,
-        poll.allowMultipleVote,
+        pollDetail,
         votingState.voteAmountInput,
-        handleVoteAmountChange,
-        decreaseVoteAmount,
-        increaseVoteAmount,
         handleSubmit,
         animations.submit,
         bgColorFrom,
         bgColorTo,
-    ]);
-
-    // 토큰 게이팅 정보 렌더링 함수
-    const renderTokenGatingInfo = useCallback(() => {
-        if (!poll.needToken || !poll.needTokenAddress || !tokenGating) {
-            return null;
-        }
-
-        return (
-            <div className="my-3">
-                <h2 className="text-xs font-light text-[rgba(255,255,255,0.9)]">
-                    My Vote :{" "}
-                    {tokenGatingInfo.maxVoteAmount - votingState.voteAmount}
-                </h2>
-            </div>
-        );
-    }, [
-        poll.needToken,
-        poll.needTokenAddress,
-        tokenGating,
-        tokenGatingInfo.maxVoteAmount,
-        votingState.voteAmount,
     ]);
 
     // 보상 정보 렌더링 함수
@@ -1066,13 +840,13 @@ function PollsListCard({
             (poll.endDate && poll.endDate < new Date()) ||
             !poll.participationRewardAssetId ||
             !poll.participationRewardAmount ||
-            !poll.participationRewardAsset ||
-            (playerPollLogs &&
-                playerPollLogs.filter((log) => log.pollId === poll.id).length >
-                    0)
+            (playerPollLogs?.length || 0) > 0
         ) {
             return null;
         }
+
+        const rewardAsset = poll.participationRewardAsset;
+        const rewardAmount = poll.participationRewardAmount;
 
         return (
             <div className={getResponsiveClass(10).marginYClass}>
@@ -1106,16 +880,10 @@ function PollsListCard({
                                         getResponsiveClass(20).frameClass
                                     )}
                                 >
-                                    {poll.participationRewardAsset.imageUrl ? (
+                                    {rewardAsset?.iconUrl ? (
                                         <Image
-                                            src={
-                                                poll.participationRewardAsset
-                                                    .imageUrl
-                                            }
-                                            alt={
-                                                poll.participationRewardAsset
-                                                    .name
-                                            }
+                                            src={rewardAsset.iconUrl}
+                                            alt={rewardAsset.name}
                                             width={32}
                                             height={32}
                                             className="w-full h-full rounded-full object-contain"
@@ -1136,7 +904,7 @@ function PollsListCard({
                                         getResponsiveClass(15).textClass
                                     )}
                                 >
-                                    {poll.participationRewardAsset.name}
+                                    {rewardAsset?.name}
                                 </p>
                             </div>
                         </div>
@@ -1159,18 +927,17 @@ function PollsListCard({
                                 getResponsiveClass(20).textClass
                             )}
                         >
-                            +{poll.participationRewardAmount}
+                            +{rewardAmount}
                         </span>
                     </div>
                 </div>
             </div>
         );
     }, [
-        poll.id,
+        poll.endDate,
         poll.participationRewardAssetId,
         poll.participationRewardAmount,
         poll.participationRewardAsset,
-        poll.endDate,
         playerPollLogs,
     ]);
 
@@ -1181,8 +948,8 @@ function PollsListCard({
         // Artist 태그 (가장 먼저 배치)
         if (poll.artist) {
             tags.push({
-                label: poll.artist.name,
-                artistLogo: poll.artist.logoUrl,
+                label: poll?.artist?.name,
+                artistLogo: poll?.artist?.logoUrl,
                 color: "from-pink-500/20 to-rose-500/20 border-pink-500/30 text-pink-300",
             });
         } else {
@@ -1217,15 +984,6 @@ function PollsListCard({
                 label: "Quiz",
                 emoji: "🧠",
                 color: "from-green-500/20 to-emerald-500/20 border-green-500/30 text-green-300",
-            });
-        }
-
-        // Token Gating 태그
-        if (poll.needToken && poll.needTokenAddress) {
-            tags.push({
-                label: "NFT Required",
-                emoji: "🎫",
-                color: "from-blue-500/20 to-cyan-500/20 border-blue-500/30 text-blue-300",
             });
         }
 
@@ -1301,8 +1059,7 @@ function PollsListCard({
         poll.bettingMode,
         poll.allowMultipleVote,
         poll.hasAnswer,
-        poll.needToken,
-        poll.needTokenAddress,
+        poll.isOnchain,
     ]);
 
     // 정답 확인 팝업 렌더링 함수
@@ -1391,14 +1148,8 @@ function PollsListCard({
         const showBettingRecordButton = poll.bettingMode && bettingInfo.hasBet;
         const showResultsButton =
             pollDateInfo.status === "ONGOING" &&
-            playerPollLogs &&
-            playerPollLogs.filter((log) => log.pollId === poll.id).length > 0 &&
-            !(
-                poll.hasAnswer &&
-                (!playerPollLogs ||
-                    playerPollLogs.filter((log) => log.pollId === poll.id)
-                        .length === 0)
-            ) &&
+            (playerPollLogs?.length || 0) > 0 &&
+            !(poll.hasAnswer && (playerPollLogs?.length || 0) === 0) &&
             !poll.bettingMode;
 
         // 아무것도 안 보이면 footer 자체를 렌더링하지 않음
@@ -1581,7 +1332,6 @@ function PollsListCard({
         pollDateInfo.status,
         poll.hasAnswer,
         playerPollLogs,
-        poll.id,
         uiState.showOngoingResults,
     ]);
 
@@ -1596,16 +1346,16 @@ function PollsListCard({
                     }))
                 }
                 title={
-                    poll.hasAnswer
+                    pollDetail?.hasAnswer
                         ? "Correct Answer!"
-                        : poll.isOnchain && uiState.onchainTxHash
+                        : pollDetail?.isOnchain && uiState.onchainTxHash
                         ? "Transaction Confirmed!"
                         : "Thanks for voting!"
                 }
                 description={
-                    poll.hasAnswer
+                    pollDetail?.hasAnswer
                         ? "You've selected the correct answer. Thank you for your participation!"
-                        : poll.isOnchain && uiState.onchainTxHash
+                        : pollDetail?.isOnchain && uiState.onchainTxHash
                         ? `Transaction: ${uiState.onchainTxHash.slice(
                               0,
                               6
@@ -1615,10 +1365,10 @@ function PollsListCard({
                 type="success"
                 autoCloseMs={6000}
                 showReward={uiState.rewarded}
-                reward={poll.participationRewardAsset || undefined}
-                rewardAmount={poll.participationRewardAmount}
+                reward={pollDetail?.participationRewardAsset || null}
+                rewardAmount={pollDetail?.participationRewardAmount || 0}
             />
-            {poll.bettingMode && votingState.selection && player && (
+            {pollDetail?.bettingMode && votingState.selection && player && (
                 <PollBettingParticipationModal
                     isOpen={uiState.showBettingModal}
                     onClose={() =>
@@ -1628,7 +1378,7 @@ function PollsListCard({
                         }))
                     }
                     onConfirm={handleBettingConfirm}
-                    poll={poll}
+                    poll={pollDetail}
                     player={player}
                     selectedOption={votingState.selection}
                     isLoading={false}
@@ -1646,35 +1396,35 @@ function PollsListCard({
             />
 
             {/* 베팅 현황 모달 */}
-            {bettingInfo.hasBet && bettingInfo.bettingAsset && player && (
-                <PollBettingRecord
-                    isOpen={uiState.showBettingRecord}
-                    onClose={() =>
-                        setUIState((prev) => ({
-                            ...prev,
-                            showBettingRecord: false,
-                        }))
-                    }
-                    poll={poll}
-                    player={player}
-                    pollLogs={bettingInfo.myBetLogs}
-                    bettingAsset={bettingInfo.bettingAsset}
-                />
-            )}
+            {pollDetail &&
+                bettingInfo.hasBet &&
+                bettingInfo.bettingAsset &&
+                player && (
+                    <PollBettingRecord
+                        isOpen={uiState.showBettingRecord}
+                        onClose={() =>
+                            setUIState((prev) => ({
+                                ...prev,
+                                showBettingRecord: false,
+                            }))
+                        }
+                        poll={pollDetail}
+                        pollLogs={playerPollLogs || []}
+                        bettingAsset={bettingInfo.bettingAsset}
+                    />
+                )}
 
             <div className="relative w-full max-w-[800px] min-w-[180px] my-[25px] mx-auto">
                 <div
                     className={cn(
-                        "absolute inset-0 rounded-[16px] pointer-events-none transition-opacity duration-300 ease-out -z-40", // 더 빠른 transition
-                        tokenGatingInfo.permission && isSelected
-                            ? "opacity-100"
-                            : "opacity-0"
+                        "absolute inset-0 rounded-[16px] pointer-events-none transition-opacity duration-300 ease-out -z-40",
+                        isSelected ? "opacity-100" : "opacity-0"
                     )}
                     style={{
                         background: `linear-gradient(to bottom right, ${accentColorFrom}, ${accentColorTo})`,
                     }}
                 />
-                {!tokenGatingInfo.permission && <Doorman />}
+
                 <div
                     className={cn(
                         "flex flex-col p-[12px] border border-[rgba(255,255,255,0.4)] rounded-[16px]",
@@ -1683,7 +1433,6 @@ function PollsListCard({
                         "relative overflow-hidden"
                     )}
                 >
-                    {/* 모든 컨텐츠를 불길 위에 표시하기 위한 wrapper */}
                     <div className="relative z-10">
                         {/* 이미지 섹션 */}
                         <div className="gradient-border rounded-[16px] p-[1px] shadow-sm">
@@ -1782,12 +1531,11 @@ function PollsListCard({
                             </div>
                         )}
 
-                        {isLoading ? (
-                            <div className="flex justify-center items-center h-full">
-                                <PartialLoading
-                                    loadingSize={40}
-                                    className="p-6"
-                                />
+                        {isLoading || isLoadingPollDetail ? (
+                            <div className="flex justify-center items-center h-32">
+                                <div className="text-white/60 text-sm">
+                                    Loading poll details...
+                                </div>
                             </div>
                         ) : (
                             <>
@@ -1802,9 +1550,6 @@ function PollsListCard({
 
                                 {/* Submit Button */}
                                 {renderSubmitButton()}
-
-                                {/* 토큰 게이팅이 필요한 폴의 경우 몇 개의 폴을 추가로 참여할 수 있는지 */}
-                                {renderTokenGatingInfo()}
 
                                 {/* Footer - How it works & Results toggle buttons */}
                                 {renderFooter()}

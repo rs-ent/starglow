@@ -8,8 +8,11 @@ import { Clock } from "lucide-react";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils/tailwind";
-import type { PollsWithArtist, PollOption } from "@/app/actions/polls";
-import type { Player, PollLog } from "@prisma/client";
+import type {
+    PollOption,
+    GetPlayerPollLogsResponse,
+    PollDetail,
+} from "@/app/actions/polls";
 import type { PlayerAssetWithAsset } from "@/app/actions/playerAssets/actions";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import Countdown from "../atoms/Countdown";
@@ -17,9 +20,8 @@ import Countdown from "../atoms/Countdown";
 interface BettingRecordProps {
     isOpen: boolean;
     onClose: () => void;
-    poll: PollsWithArtist;
-    player: Player;
-    pollLogs: PollLog[];
+    poll: PollDetail;
+    pollLogs: GetPlayerPollLogsResponse[];
     bettingAsset: PlayerAssetWithAsset | null;
 }
 
@@ -40,7 +42,7 @@ function ProfitDisplay({ stats, asset }: { stats: BettingStats; asset: any }) {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className={cn(
-                "text-center rounded-xl p-6",
+                "text-center rounded-xl <Ip-6",
                 "bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-green-500/20",
                 "border-2 border-yellow-400/60"
             )}
@@ -252,11 +254,9 @@ export default function PollBettingRecord({
     isOpen,
     onClose,
     poll,
-    player,
     pollLogs,
     bettingAsset,
 }: BettingRecordProps) {
-    // Optimized betting stats calculation
     const bettingStats = useMemo((): BettingStats => {
         const optionBetAmounts = (poll.optionBetAmounts as any) || {};
 
@@ -268,12 +268,7 @@ export default function PollBettingRecord({
         const myBetsByOption: Record<string, number> = {};
         let myTotalBets = 0;
 
-        // Filter logs once for better performance
-        const relevantLogs = pollLogs.filter(
-            (log) => log.pollId === poll.id && log.playerId === player.id
-        );
-
-        relevantLogs.forEach((log) => {
+        pollLogs.forEach((log) => {
             myBetsByOption[log.optionId] =
                 (myBetsByOption[log.optionId] || 0) + log.amount;
             myTotalBets += log.amount;
@@ -316,7 +311,7 @@ export default function PollBettingRecord({
             winningChance: maxWinChance,
             isProfit: potentialProfit > 0,
         };
-    }, [poll, pollLogs, player.id]);
+    }, [poll, pollLogs]);
 
     const options = poll.options as unknown as PollOption[];
     const optionBetAmounts = (poll.optionBetAmounts as any) || {};

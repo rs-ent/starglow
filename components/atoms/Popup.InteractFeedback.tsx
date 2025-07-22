@@ -19,7 +19,6 @@ import EnhancedPortal from "@/components/atoms/Portal.Enhanced";
 import NFTsCollectionsCardR3FAcqusition from "../nfts/NFTs.Collections.Card.R3F.Acqusition";
 
 import type { SPG } from "@/app/story/spg/actions";
-import type { Asset } from "@prisma/client";
 import Image from "next/image";
 
 interface PopupInteractFeedbackProps {
@@ -31,7 +30,13 @@ interface PopupInteractFeedbackProps {
     autoCloseMs?: number;
     showConfetti?: boolean;
     showReward?: boolean;
-    reward?: Asset | null;
+    reward?: {
+        id: string;
+        name: string;
+        symbol: string;
+        iconUrl: string;
+        imageUrl: string;
+    } | null;
     rewardAmount?: number | null;
     spg?: SPG | null;
 }

@@ -9,21 +9,20 @@ import Image from "next/image";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
-import type { GetPollsInput, PollsWithArtist } from "@/app/actions/polls";
+import type { GetPollsInput, PollListData } from "@/app/actions/polls";
 
 // 클라이언트 사이드 필터 타입 (GetPollsInput 확장)
 export interface ClientPollFilters extends Omit<GetPollsInput, "status"> {
     actualStatus?: string;
+    // 서버에서 지원하지 않는 필터들은 클라이언트 사이드에서 처리
     allowMultipleVote?: boolean;
-    hasAnswer?: boolean;
-    participationRewardAssetId?: string;
     isOnchain?: boolean;
 }
 
 interface PollsFilterProps {
     filters: ClientPollFilters;
     onFiltersChange: (filters: ClientPollFilters) => void;
-    allPolls: PollsWithArtist[];
+    allPolls: PollListData[];
     filteredCount: number;
     className?: string;
 }

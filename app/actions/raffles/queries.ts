@@ -124,7 +124,7 @@ export function useGetUnrevealedCountQuery(input?: GetUnrevealedCountInput) {
         gcTime: 1000 * 60 * 2, // 2 minutes
         refetchOnWindowFocus: true,
         refetchOnMount: true, // 마운트 시 항상 새로 가져오기
-        refetchInterval: 1000 * 30, // 30초마다 자동 새로고침 (더 자주)
+        refetchInterval: 1000 * 60 * 2, // 2분마다 자동 새로고침 (서버 부하 감소)
     });
 }
 

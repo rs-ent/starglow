@@ -258,11 +258,12 @@ const authOptions: NextAuthConfig = {
             user?: any;
             trigger?: any;
         }) {
-            if (user) {
-                token.id = user.id;
+            if (user || (trigger === "update" && (token.sub || token.id))) {
+                const userId = user?.id || token.sub || token.id;
+                token.sub = userId;
 
                 try {
-                    const player = await getPlayerByUserIdForSession(user.id);
+                    const player = await getPlayerByUserIdForSession(userId);
                     if (player) {
                         token.player = player;
                     }
@@ -274,28 +275,20 @@ const authOptions: NextAuthConfig = {
                 }
             }
 
-            if (trigger === "update" && token.id) {
-                try {
-                    const player = await getPlayerByUserIdForSession(token.id);
-                    if (player) {
-                        token.player = player;
-                    }
-                } catch (error) {
-                    console.error(
-                        "Failed to update player in JWT callback:",
-                        error
-                    );
-                }
-            }
-
             return token;
         },
         async session({ session, token }: { session: any; token: any }) {
             if (token) {
-                session.user.id = token.id;
+                session.user.id = token.sub || token.id;
                 session.player = token.player;
             }
-            return session;
+            return {
+                ...session,
+                user: {
+                    ...session.user,
+                    id: token?.sub || token?.id,
+                },
+            };
         },
         async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
             if (url.startsWith("/")) return `${baseUrl}${url}`;
@@ -339,28 +332,29 @@ const authOptions: NextAuthConfig = {
                         );
                     }
 
-                    const corePromises = [
-                        prisma.user
-                            .update({
-                                where: { id: user.id },
-                                data: updateData,
-                            })
-                            .catch((error) => {
-                                console.error("Failed to update user:", error);
-                                return null;
-                            }),
+                    try {
+                        await prisma.user.update({
+                            where: { id: user.id },
+                            data: updateData,
+                        });
+                    } catch (error) {
+                        console.error("Failed to update user:", error);
+                    }
 
-                        setPlayer({
+                    try {
+                        await setPlayer({
                             user: user,
                             tweetAuthorId: tweetAuthorId,
-                        }).catch((error) => {
-                            console.error("Failed to set player:", error);
-                            return null;
-                        }),
-                    ];
+                        });
+                    } catch (error) {
+                        console.error("Failed to set player:", error);
+                    }
 
-                    await Promise.allSettled(corePromises);
-                    await createWallet(user.id, account?.provider || null);
+                    try {
+                        await createWallet(user.id, account?.provider || null);
+                    } catch (error) {
+                        console.error("Failed to create wallet:", error);
+                    }
 
                     if (backgroundTasks.length > 0) {
                         Promise.allSettled(backgroundTasks).catch(() => {});

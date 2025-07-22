@@ -11,10 +11,10 @@ import { getYoutubeVideoId, getYoutubeThumbnailUrl } from "@/lib/utils/youtube";
 
 import YoutubeViewer from "./YoutubeViewer";
 
-import type { Poll } from "@prisma/client";
+import type { PollListData } from "@/app/actions/polls";
 
 interface PollThumbnailProps {
-    poll: Poll;
+    poll: PollListData;
     className?: string;
     imageClassName?: string;
     fallbackSrc?: string;

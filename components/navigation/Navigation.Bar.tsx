@@ -192,8 +192,10 @@ function NavigationBar({ user, player }: NavigationBarProps) {
     const pathname = usePathname();
 
     const menuItems = useMemo(() => {
-        return user?.id ? [...defaultMenuItems, myPageItem] : defaultMenuItems;
-    }, [user?.id]);
+        return user?.id || user?.name
+            ? [...defaultMenuItems, myPageItem]
+            : defaultMenuItems;
+    }, [user?.id, user?.name]);
 
     const isActivePath = useCallback(
         (href: string) => pathname === href,

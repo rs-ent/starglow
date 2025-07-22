@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
     getPolls,
     getPoll,
+    getPollDetail,
     tokenGatingPoll,
     getPollResult,
     getPollsResults,
@@ -19,6 +20,7 @@ import { pollKeys } from "../queryKeys";
 
 import type {
     GetPollsInput,
+    GetPollDetailInput,
     TokenGatingPollInput,
     GetPollResultResponse,
     GetPollResultInput,
@@ -29,11 +31,13 @@ import type {
     PaginationInput,
     GetPollLogsInput,
     GetPlayerPollLogsInput,
-    PollsWithArtist,
     GetArtistAllActivePollCountInput,
+    PollDetail,
+    GetPlayerPollLogsResponse,
+    PollListData,
 } from "../actions/polls";
 import type { TokenGatingData } from "../story/nft/actions";
-import type { Poll, PollLog } from "@prisma/client";
+import type { PollLog } from "@prisma/client";
 
 export function usePollsQuery({
     input,
@@ -43,7 +47,7 @@ export function usePollsQuery({
     pagination?: PaginationInput;
 }) {
     return useQuery<{
-        items: PollsWithArtist[];
+        items: PollListData[];
         totalItems: number;
         totalPages: number;
     }>({
@@ -58,11 +62,21 @@ export function usePollsQuery({
     });
 }
 
-export function usePollQuery(id: string) {
-    return useQuery<Poll | null>({
-        queryKey: pollKeys.detail(id),
-        queryFn: () => getPoll(id),
-        enabled: !!id,
+export function usePollQuery(pollId: string) {
+    return useQuery<PollListData | null>({
+        queryKey: pollKeys.detail(pollId),
+        queryFn: () => getPoll(pollId),
+        enabled: !!pollId,
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 10,
+    });
+}
+
+export function usePollDetailQuery(input: GetPollDetailInput) {
+    return useQuery<PollDetail | null>({
+        queryKey: pollKeys.detail(input.pollId),
+        queryFn: () => getPollDetail(input),
+        enabled: !!input.pollId,
         staleTime: 1000 * 60 * 5,
         gcTime: 1000 * 60 * 10,
     });
@@ -81,7 +95,7 @@ export function usePollResultQuery(input?: GetPollResultInput) {
     return useQuery<GetPollResultResponse>({
         queryKey: pollKeys.result(input?.pollId || ""),
         queryFn: () => getPollResult(input),
-        refetchInterval: 1000 * 60 * 1,
+        refetchInterval: 1000 * 60 * 10,
         staleTime: 1000 * 60 * 5,
         gcTime: 1000 * 60 * 10,
     });
@@ -117,7 +131,7 @@ export function usePollLogsQuery(input?: GetPollLogsInput) {
 }
 
 export function usePlayerPollLogsQuery(input?: GetPlayerPollLogsInput) {
-    return useQuery<PollLog[]>({
+    return useQuery<GetPlayerPollLogsResponse[]>({
         queryKey: pollKeys.playerLogs(input?.playerId || "", input?.pollId),
         queryFn: () => getPlayerPollLogs(input),
         enabled: !!input?.playerId,

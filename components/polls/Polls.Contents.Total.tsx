@@ -2,15 +2,12 @@
 
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 
 import { usePollsGet } from "@/app/hooks/usePolls";
-import PartialLoading from "@/components/atoms/PartialLoading";
 import { cn } from "@/lib/utils/tailwind";
 import PollsList from "./Polls.List";
-import PollsFilter, {
-    getPollActualStatus,
-} from "./Polls.Contents.Total.Filter";
+import PollsFilter from "./Polls.Contents.Total.Filter";
 import type { ClientPollFilters } from "./Polls.Contents.Total.Filter";
 
 import type { Player } from "@prisma/client";
@@ -26,96 +23,69 @@ function PollsContentsTotal({ player, className }: PollsContentsTotalProps) {
         isActive: true,
     });
 
-    // 전체 데이터를 한 번만 가져오기
+    // 페이지네이션 상태
+    const [currentPage, setCurrentPage] = useState(1);
+    const [allPolls, setAllPolls] = useState<any[]>([]);
+    const [totalItems, setTotalItems] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+
+    // 페이지네이션된 데이터 가져오기
     const { pollsList, isLoading, error } = usePollsGet({
         getPollsInput: {
             isActive: true,
             showOnPollPage: true,
             test: player?.tester ?? false,
+            // 지원되는 필터 조건들만 추가
+            artistId: filters.artistId,
+            bettingMode: filters.bettingMode,
+            hasAnswer: filters.hasAnswer,
+            participationRewardAssetId: filters.participationRewardAssetId,
+        },
+        pagination: {
+            currentPage: currentPage,
+            itemsPerPage: 5,
         },
     });
 
-    // 클라이언트 사이드 필터링
-    const filteredPolls = useMemo(() => {
-        if (!pollsList?.items) return [];
-
-        return pollsList.items.filter((poll) => {
-            // 아티스트 필터
-            if (filters.artistId !== undefined) {
-                if (filters.artistId === null && poll.artistId !== null) {
-                    return false;
-                }
-                if (
-                    filters.artistId !== null &&
-                    poll.artistId !== filters.artistId
-                ) {
-                    return false;
-                }
+    // 새로운 데이터가 로드되면 누적
+    useEffect(() => {
+        if (pollsList?.items) {
+            if (currentPage === 1) {
+                setAllPolls(pollsList.items);
+            } else {
+                setAllPolls((prev) => [...prev, ...pollsList.items]);
             }
+            setTotalItems(pollsList.totalItems);
+            setTotalPages(pollsList.totalPages);
+        }
+    }, [
+        pollsList?.items,
+        currentPage,
+        pollsList?.totalItems,
+        pollsList?.totalPages,
+    ]);
 
-            // 실제 상태 필터
-            if (filters.actualStatus) {
-                const actualStatus = getPollActualStatus(
-                    poll.startDate,
-                    poll.endDate
-                );
-                if (actualStatus !== filters.actualStatus) {
-                    return false;
-                }
-            }
+    // 캐러셀 인덱스 변경 핸들러
+    const handleCarouselIndexChange = (index: number) => {
+        // 인덱스가 현재 로드된 데이터의 80% 지점에 도달하면 다음 페이지 로드
+        const loadedItems = allPolls.length;
+        const threshold = Math.floor(loadedItems * 0.5);
 
-            // 베팅모드 필터
-            if (
-                filters.bettingMode !== undefined &&
-                poll.bettingMode !== filters.bettingMode
-            ) {
-                return false;
-            }
+        if (
+            index >= threshold &&
+            pollsList?.totalPages &&
+            currentPage < pollsList.totalPages
+        ) {
+            setCurrentPage(currentPage + 1);
+        }
+    };
 
-            // 다중 투표 필터
-            if (
-                filters.allowMultipleVote !== undefined &&
-                poll.allowMultipleVote !== filters.allowMultipleVote
-            ) {
-                return false;
-            }
-
-            // 온체인 필터
-            if (
-                filters.isOnchain !== undefined &&
-                poll.isOnchain !== filters.isOnchain
-            ) {
-                return false;
-            }
-
-            // 정답 여부 필터
-            if (
-                filters.hasAnswer !== undefined &&
-                poll.hasAnswer !== filters.hasAnswer
-            ) {
-                return false;
-            }
-
-            // 리워드 자산 필터
-            if (filters.participationRewardAssetId !== undefined) {
-                if (
-                    filters.participationRewardAssetId === null &&
-                    poll.participationRewardAssetId !== null
-                ) {
-                    return false;
-                }
-                if (
-                    filters.participationRewardAssetId !== null &&
-                    poll.participationRewardAssetId !==
-                        filters.participationRewardAssetId
-                ) {
-                    return false;
-                }
-            }
-
-            return true;
-        });
-    }, [pollsList?.items, filters]);
+    // 필터 변경 시 페이지 리셋 및 데이터 초기화
+    const handleFiltersChange = (newFilters: ClientPollFilters) => {
+        setFilters(newFilters);
+        setCurrentPage(1);
+        setAllPolls([]); // 기존 데이터 초기화
+    };
 
     return (
         <div
@@ -129,23 +99,29 @@ function PollsContentsTotal({ player, className }: PollsContentsTotalProps) {
             {/* 필터 컴포넌트 */}
             <PollsFilter
                 filters={filters}
-                onFiltersChange={setFilters}
+                onFiltersChange={handleFiltersChange}
                 allPolls={pollsList?.items || []}
-                filteredCount={filteredPolls.length}
+                filteredCount={pollsList?.items?.length || 0}
                 className="mb-1"
             />
 
             <div className="relative">
-                {isLoading ? (
-                    <PartialLoading text="Loading..." />
-                ) : error ? (
+                {error ? (
                     <div className="text-center text-red-400 py-4">
                         Error: {error.message}
                     </div>
                 ) : (
                     <div key="public-polls">
-                        {filteredPolls && filteredPolls.length > 0 ? (
-                            <PollsList polls={filteredPolls} player={player} />
+                        {allPolls && allPolls.length > 0 ? (
+                            <PollsList
+                                polls={allPolls}
+                                player={player}
+                                totalItems={totalItems}
+                                totalPages={totalPages}
+                                currentPage={currentPage}
+                                onPageChange={handleCarouselIndexChange}
+                                isListLoading={isLoading}
+                            />
                         ) : (
                             <div className="text-center text-2xl py-10">
                                 {isLoading ? "Loading..." : "No polls found"}

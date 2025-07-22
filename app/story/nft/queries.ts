@@ -57,7 +57,7 @@ export function useTokenGatingQuery(input?: TokenGatingInput) {
 
         refetchOnWindowFocus: true,
         refetchOnMount: true,
-        refetchInterval: 1000 * 60 * 5,
+        refetchInterval: 1000 * 60 * 10, // 10분마다 (서버 부하 감소)
         refetchOnReconnect: true,
     });
 }

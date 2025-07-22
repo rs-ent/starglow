@@ -92,8 +92,20 @@ export async function getRewardsLogs({
         const result = await prisma.rewardsLog.findMany({
             cacheStrategy: getCacheStrategy("realtime"),
             where,
-            include: {
-                asset: true,
+            select: {
+                id: true,
+                assetId: true,
+                amount: true,
+                reason: true,
+                createdAt: true,
+                asset: {
+                    select: {
+                        id: true,
+                        name: true,
+                        symbol: true,
+                        iconUrl: true,
+                    },
+                },
             },
             orderBy: {
                 createdAt: "desc",

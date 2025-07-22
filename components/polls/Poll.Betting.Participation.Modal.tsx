@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { usePlayerAssetsGet } from "@/app/actions/playerAssets/hooks";
-import type { PollsWithArtist, PollOption } from "@/app/actions/polls";
+import type { PollDetail, PollOption } from "@/app/actions/polls";
 import type { Player } from "@prisma/client";
 import Image from "next/image";
 import { useToast } from "@/app/hooks/useToast";
@@ -18,7 +18,7 @@ interface PollBettingParticipationModalProps {
     isOpen: boolean;
     onClose: () => void;
     onConfirm: (betAmount: number) => Promise<void>;
-    poll: PollsWithArtist;
+    poll: PollDetail;
     player: Player;
     selectedOption: PollOption;
     isLoading?: boolean;

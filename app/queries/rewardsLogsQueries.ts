@@ -2,10 +2,16 @@
 
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 
-import { getRewardsLogs, getRewardsLogsPaginated } from "../actions/rewardsLogs";
+import {
+    getRewardsLogs,
+    getRewardsLogsPaginated,
+} from "../actions/rewardsLogs";
 import { rewardLogsKeys } from "../queryKeys";
 
-import type { GetRewardsLogsInput, GetRewardsLogsOutput } from "../actions/rewardsLogs";
+import type {
+    GetRewardsLogsInput,
+    GetRewardsLogsOutput,
+} from "../actions/rewardsLogs";
 
 export const useGetRewardsLogsQuery = (input?: GetRewardsLogsInput) => {
     return useQuery({
@@ -21,7 +27,7 @@ export const useInfiniteRewardsLogsQuery = (input?: GetRewardsLogsInput) => {
         GetRewardsLogsOutput,
         Error,
         GetRewardsLogsOutput,
-        readonly ["rewardLogs", "infinite", any],
+        readonly ["reward-logs", "infinite", GetRewardsLogsInput | undefined],
         number
     >({
         queryKey: rewardLogsKeys.infinite(input),
@@ -44,8 +50,8 @@ export const useInfiniteRewardsLogsQuery = (input?: GetRewardsLogsInput) => {
             return undefined;
         },
         enabled: !!input?.playerId,
-        staleTime: 1000 * 60 * 3, // 3 minutes
-        gcTime: 1000 * 60 * 5, // 5 minutes
+        staleTime: 1000 * 30,
+        gcTime: 1000 * 60,
         refetchOnWindowFocus: false,
     });
 };

@@ -16,6 +16,6 @@ export function useTokenGateQuery(input?: TokenGateInput) {
         queryFn: () => tokenGate(input),
         enabled: !!input,
         staleTime: 1000 * 60 * 5, // 5 minutes
-        refetchInterval: 1000 * 60 * 5, // 5 minutes
+        refetchInterval: 1000 * 60 * 10, // 10 minutes (서버 부하 감소)
     });
 }

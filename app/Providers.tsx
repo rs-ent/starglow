@@ -110,7 +110,6 @@ const queryClient = new QueryClient({
             gcTime: 10 * 60 * 1000, // 10분
             refetchOnWindowFocus: false,
             retry: (failureCount, error: any) => {
-                // 특정 에러는 재시도하지 않음
                 if (error?.status === 404) return false;
                 return failureCount < 2;
             },
@@ -125,7 +124,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     return (
         <WagmiProvider config={wagmiConfig} reconnectOnMount>
             <QueryClientProvider client={queryClient}>
-                <SessionProvider refetchInterval={0}>
+                <SessionProvider refetchInterval={2 * 60 * 60}>
                     <ModalProvider>
                         <WalletDisconnectWatcher />
                         <SessionMonitor />

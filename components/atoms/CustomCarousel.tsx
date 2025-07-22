@@ -23,6 +23,7 @@ interface CustomCarouselProps {
     onIndexChange?: (index: number) => void;
     initialIndex?: number;
     currentIndex?: number;
+    totalItems?: number;
     className?: string;
     containerClassName?: string;
     showIndicators?: boolean;
@@ -35,7 +36,7 @@ interface CustomCarouselProps {
 const CarouselItem = memo(
     ({ child, style }: { child: ReactNode; style: any }) => (
         <div
-            className="flex items-center justify-center flex-shrink-0"
+            className="flex items-start justify-center flex-shrink-0"
             style={style}
         >
             {child}
@@ -50,6 +51,7 @@ export default React.memo(function CustomCarousel({
     onIndexChange,
     initialIndex = 0,
     currentIndex: externalCurrentIndex,
+    totalItems: externalTotalItems,
     className,
     containerClassName,
     showIndicators = true,
@@ -57,9 +59,8 @@ export default React.memo(function CustomCarousel({
     swipeThreshold = 50,
     speed = 700,
 }: CustomCarouselProps) {
-    // Children을 배열로 변환하고 개수 계산
     const childrenArray = Children.toArray(children);
-    const totalItems = childrenArray.length;
+    const totalItems = externalTotalItems || childrenArray.length;
 
     // 최소한의 상태만
     const [internalCurrentIndex, setInternalCurrentIndex] =
@@ -346,7 +347,6 @@ export default React.memo(function CustomCarousel({
                     containerClassName
                 )}
                 style={{
-                    // 레이아웃 계산 최적화
                     contain: "layout style paint",
                 }}
                 {...eventHandlers}

@@ -12,13 +12,14 @@ import {
     getTweetAuthors,
     getTweetMetricsHistory,
     getAuthorMetricsHistory,
-    getAuthorByPlayerId
+    getAuthorByPlayerId,
 } from "./actions";
 
 import type {
     GetTweetMetricsHistoryInput,
     GetAuthorMetricsHistoryInput,
-    GetAuthorByPlayerIdInput} from "./actions";
+    GetAuthorByPlayerIdInput,
+} from "./actions";
 
 export function useLatestSyncDataQuery() {
     return useQuery({

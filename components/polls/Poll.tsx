@@ -11,14 +11,12 @@ import { cn } from "@/lib/utils/tailwind";
 import PollsListCard from "./Polls.List.Card";
 import QRCodeModal from "../atoms/QRCode";
 
-import type { TokenGatingData } from "@/app/story/nft/actions";
 import type { Player } from "@prisma/client";
-import type { PollsWithArtist } from "@/app/actions/polls";
+import type { PollListData } from "@/app/actions/polls";
 
 interface PollProps {
-    poll: PollsWithArtist;
+    poll: PollListData;
     player: Player | null;
-    tokenGating: TokenGatingData | null;
     bgColorAccentFrom?: string | undefined;
     bgColorAccentTo?: string | undefined;
 }
@@ -26,7 +24,6 @@ interface PollProps {
 export default function PollComponent({
     poll,
     player,
-    tokenGating,
     bgColorAccentFrom,
     bgColorAccentTo,
 }: PollProps) {
@@ -85,7 +82,6 @@ export default function PollComponent({
             <PollsListCard
                 poll={poll}
                 player={player || null}
-                tokenGating={tokenGating}
                 isSelected={true}
                 bgColorAccentFrom={bgColorAccentFrom}
                 bgColorAccentTo={bgColorAccentTo}
