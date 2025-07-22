@@ -169,8 +169,8 @@ export default memo(function RaffleDetail({ raffleId }: RaffleDetailProps) {
     }, [raffle?.endDate]);
 
     // 티어 시스템 정의
-    const getTierInfo = (order: number) => {
-        const tier = Math.floor(order / 10);
+    const getTierInfo = (order: number, rarity?: number) => {
+        const tier = rarity ? rarity : Math.floor(order / 10);
         return tierMap[tier as keyof typeof tierMap] || tierMap[0];
     };
 

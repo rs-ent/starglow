@@ -2,7 +2,7 @@
 
 "use client";
 
-import { memo, useMemo, useState, useCallback } from "react";
+import { memo, useMemo, useCallback, useReducer } from "react";
 import { motion } from "framer-motion";
 import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -36,6 +36,8 @@ interface TicketData {
         imageUrl: string;
         prizeType: number;
         userValue: number;
+        order: number;
+        rarity: number;
     };
     isInstantDraw?: boolean;
     explorerUrl: string;
@@ -49,110 +51,162 @@ interface RaffleOnchainProps {
     raffleId: string;
 }
 
-export default memo(function RaffleOnchain({
-    contractAddress,
-    raffleId,
-}: RaffleOnchainProps) {
-    const [modalState, setModalState] = useState<ModalState>("none");
-    const [ticketData, setTicketData] = useState<TicketData | null>(null);
-    const [scratchCardSize, setScratchCardSize] = useState({
-        width: 350,
-        height: 250,
-    });
+const DEFAULT_SCRATCH_CARD_SIZE = { width: 350, height: 250 };
+const SCREEN_SIZE_BREAKPOINTS = {
+    XL: 1280,
+    LG: 1024,
+    MD: 768,
+} as const;
 
-    const getScratchCardSize = useCallback(() => {
-        if (typeof window === "undefined") {
-            return { width: 350, height: 250 };
-        }
+const getScratchCardSize = (): { width: number; height: number } => {
+    if (typeof window === "undefined") {
+        return DEFAULT_SCRATCH_CARD_SIZE;
+    }
 
-        const screenWidth = window.innerWidth;
-        if (screenWidth >= 1280) {
-            return { width: 450, height: 320 };
-        } else if (screenWidth >= 1024) {
-            return { width: 400, height: 280 };
-        } else if (screenWidth >= 768) {
-            return { width: 350, height: 250 };
-        } else {
-            return { width: 300, height: 200 };
-        }
-    }, []);
+    const screenWidth = window.innerWidth;
+    if (screenWidth >= SCREEN_SIZE_BREAKPOINTS.XL) {
+        return { width: 450, height: 320 };
+    } else if (screenWidth >= SCREEN_SIZE_BREAKPOINTS.LG) {
+        return { width: 400, height: 280 };
+    } else if (screenWidth >= SCREEN_SIZE_BREAKPOINTS.MD) {
+        return { width: 350, height: 250 };
+    } else {
+        return { width: 300, height: 200 };
+    }
+};
 
-    const handleParticipationSuccess = useCallback((ticket: TicketData) => {
-        setTicketData(ticket);
-        setModalState("ticket");
-    }, []);
+interface ModalStateData {
+    modalState: ModalState;
+    ticketData: TicketData | null;
+    scratchCardSize: { width: number; height: number };
+}
 
-    const handleInstantDraw = useCallback(() => {
-        setScratchCardSize(getScratchCardSize());
-        setModalState("scratch");
-    }, [getScratchCardSize]);
+type ModalAction =
+    | { type: "OPEN_TICKET"; payload: TicketData }
+    | { type: "OPEN_SCRATCH"; payload: { width: number; height: number } }
+    | { type: "CLOSE_MODAL" };
 
-    const handleCloseModal = useCallback(() => {
-        setModalState("none");
-        setTimeout(() => {
-            setTicketData(null);
-        }, 200);
-    }, []);
+const modalReducer = (
+    state: ModalStateData,
+    action: ModalAction
+): ModalStateData => {
+    switch (action.type) {
+        case "OPEN_TICKET":
+            return {
+                ...state,
+                modalState: "ticket",
+                ticketData: action.payload,
+            };
+        case "OPEN_SCRATCH":
+            return {
+                ...state,
+                modalState: "scratch",
+                scratchCardSize: action.payload,
+            };
+        case "CLOSE_MODAL":
+            return {
+                ...state,
+                modalState: "none",
+                ticketData: null,
+            };
+        default:
+            return state;
+    }
+};
 
-    const scratchPrizeData = useMemo(() => {
-        if (!ticketData?.prizeWon) return null;
+const createPrizeData = (prizeWon: TicketData["prizeWon"]) => {
+    if (!prizeWon) return null;
 
-        const prizeType =
-            ticketData.prizeWon.prizeType === 0
-                ? ("EMPTY" as const)
-                : ticketData.prizeWon.prizeType === 1
-                ? ("ASSET" as const)
-                : ("NFT" as const);
+    const prizeType =
+        prizeWon.prizeType === 0
+            ? ("EMPTY" as const)
+            : prizeWon.prizeType === 1
+            ? ("ASSET" as const)
+            : ("NFT" as const);
+
+    const baseData = {
+        id: `prize-${prizeWon.title}-${Date.now()}`,
+        title: prizeWon.title,
+        prizeType,
+        order: prizeWon.order,
+        rarity: prizeWon.rarity,
+        quantity: 1,
+    };
+
+    if (prizeWon.imageUrl) {
+        const imageData = {
+            imageUrl: prizeWon.imageUrl,
+            metadata: { image: prizeWon.imageUrl },
+        };
 
         return {
-            id: `prize-${ticketData.prizeWon.title}-${Date.now()}`,
-            title: ticketData.prizeWon.title,
-            prizeType,
-            order: ticketData.prizeWon.prizeType * 10,
-            quantity: 1,
-            spg: ticketData.prizeWon.imageUrl
-                ? {
-                      imageUrl: ticketData.prizeWon.imageUrl,
-                      metadata: {
-                          image: ticketData.prizeWon.imageUrl,
-                      },
-                  }
-                : undefined,
+            ...baseData,
+            spg: imageData,
             asset:
-                ticketData.prizeWon.prizeType === 1
+                prizeWon.prizeType === 1
                     ? {
-                          iconUrl: ticketData.prizeWon.imageUrl,
+                          iconUrl: prizeWon.imageUrl,
                           symbol: "REWARD",
                       }
                     : undefined,
         };
-    }, [ticketData?.prizeWon]);
+    }
+
+    return {
+        ...baseData,
+        spg: undefined,
+        asset: undefined,
+    };
+};
+
+export default memo(function RaffleOnchain({
+    contractAddress,
+    raffleId,
+}: RaffleOnchainProps) {
+    const [modalState, dispatch] = useReducer(modalReducer, {
+        modalState: "none",
+        ticketData: null,
+        scratchCardSize: DEFAULT_SCRATCH_CARD_SIZE,
+    });
+
+    const handleParticipationSuccess = useCallback((ticket: TicketData) => {
+        dispatch({ type: "OPEN_TICKET", payload: ticket });
+    }, []);
+
+    const handleInstantDraw = useCallback(() => {
+        const size = getScratchCardSize();
+        dispatch({ type: "OPEN_SCRATCH", payload: size });
+    }, []);
+
+    const handleCloseModal = useCallback(() => {
+        dispatch({ type: "CLOSE_MODAL" });
+    }, []);
+
+    const scratchPrizeData = useMemo(() => {
+        return createPrizeData(modalState.ticketData?.prizeWon);
+    }, [modalState.ticketData?.prizeWon]);
 
     const handleScratchReveal = useCallback(() => {
         // 스크래치 완료 후 모달은 유지됨
     }, []);
 
     const {
-        raffleFromContract: staticData,
+        raffleFromContract: raffleData,
         isRaffleFromContractLoading: isStaticLoading,
         isRaffleFromContractError: isStaticError,
-    } = useOnchainRaffles({
-        getRaffleFromContractInput: {
-            contractAddress,
-            raffleId,
-            dataKeys: ["basicInfo", "timing", "settings", "fee", "prizes"],
-        },
-    });
-
-    const {
-        raffleFromContract: dynamicData,
-        isRaffleFromContractLoading: isDynamicLoading,
         raffleParticipants,
     } = useOnchainRaffles({
         getRaffleFromContractInput: {
             contractAddress,
             raffleId,
-            dataKeys: ["status"],
+            dataKeys: [
+                "basicInfo",
+                "timing",
+                "settings",
+                "fee",
+                "prizes",
+                "status",
+            ],
         },
         getRaffleParticipantsInput: {
             contractAddress,
@@ -160,13 +214,14 @@ export default memo(function RaffleOnchain({
         },
     });
 
-    const raffleData = useMemo(
-        () => (staticData?.success ? staticData.data : null),
-        [staticData?.success, staticData?.data]
+    const staticRaffleData = useMemo(
+        () => (raffleData?.success ? raffleData.data : null),
+        [raffleData?.success, raffleData?.data]
     );
+
     const statusData = useMemo(
-        () => (dynamicData?.success ? dynamicData.data?.status : null),
-        [dynamicData?.success, dynamicData?.data?.status]
+        () => (raffleData?.success ? raffleData.data?.status : null),
+        [raffleData?.success, raffleData?.data?.status]
     );
 
     const transformedStatusData = useMemo(
@@ -189,7 +244,7 @@ export default memo(function RaffleOnchain({
         return <OnchainRaffleSkeleton />;
     }
 
-    if (isStaticError || !staticData?.success) {
+    if (isStaticError || !raffleData?.success) {
         return <OnchainRaffleError />;
     }
 
@@ -207,7 +262,7 @@ export default memo(function RaffleOnchain({
                         getResponsiveClass(20).paddingClass
                     )}
                 >
-                    {raffleData && (
+                    {staticRaffleData && (
                         <>
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
@@ -215,7 +270,7 @@ export default memo(function RaffleOnchain({
                                 transition={{ duration: 0.3, ease: "easeOut" }}
                             >
                                 <RaffleOnchainHero
-                                    raffleData={raffleData}
+                                    raffleData={staticRaffleData}
                                     contractAddress={contractAddress}
                                     raffleId={raffleId}
                                 />
@@ -230,10 +285,10 @@ export default memo(function RaffleOnchain({
                         )}
                     >
                         <div className="lg:col-span-3 space-y-8">
-                            {raffleData?.prizes &&
-                                raffleData?.prizes.length > 0 && (
+                            {staticRaffleData?.prizes &&
+                                staticRaffleData?.prizes.length > 0 && (
                                     <RaffleOnchainPrizesGrandPrize
-                                        data={raffleData?.prizes}
+                                        data={staticRaffleData?.prizes}
                                     />
                                 )}
 
@@ -244,7 +299,7 @@ export default memo(function RaffleOnchain({
                                 className="relative hidden md:block"
                             >
                                 <RaffleOnchainPrizes
-                                    data={raffleData?.prizes}
+                                    data={staticRaffleData?.prizes}
                                 />
                             </motion.div>
 
@@ -255,7 +310,7 @@ export default memo(function RaffleOnchain({
                                 className="relative group hidden md:block"
                             >
                                 <RaffleOnchainSettings
-                                    data={raffleData?.settings}
+                                    data={staticRaffleData?.settings}
                                 />
                             </motion.div>
                         </div>
@@ -270,12 +325,12 @@ export default memo(function RaffleOnchain({
                                 <RaffleOnchainParticipation
                                     contractAddress={contractAddress}
                                     raffleId={raffleId}
-                                    basicInfo={raffleData?.basicInfo}
-                                    timingData={raffleData?.timing}
-                                    settingsData={raffleData?.settings}
-                                    feeData={raffleData?.fee}
+                                    basicInfo={staticRaffleData?.basicInfo}
+                                    timingData={staticRaffleData?.timing}
+                                    settingsData={staticRaffleData?.settings}
+                                    feeData={staticRaffleData?.fee}
                                     statusData={transformedStatusData}
-                                    isStatusLoading={isDynamicLoading}
+                                    isStatusLoading={isStaticLoading}
                                     onParticipationSuccess={
                                         handleParticipationSuccess
                                     }
@@ -289,7 +344,7 @@ export default memo(function RaffleOnchain({
                                 className="relative group"
                             >
                                 <RaffleOnchainTiming
-                                    data={raffleData?.timing}
+                                    data={staticRaffleData?.timing}
                                 />
                             </motion.div>
 
@@ -300,7 +355,7 @@ export default memo(function RaffleOnchain({
                                 className="relative block md:hidden"
                             >
                                 <RaffleOnchainPrizes
-                                    data={raffleData?.prizes}
+                                    data={staticRaffleData?.prizes}
                                 />
                             </motion.div>
 
@@ -312,7 +367,7 @@ export default memo(function RaffleOnchain({
                             >
                                 <RaffleOnchainStatus
                                     data={transformedStatusData}
-                                    isLoading={isDynamicLoading}
+                                    isLoading={isStaticLoading}
                                 />
                             </motion.div>
 
@@ -323,7 +378,7 @@ export default memo(function RaffleOnchain({
                                 className="relative group block md:hidden"
                             >
                                 <RaffleOnchainSettings
-                                    data={raffleData?.settings}
+                                    data={staticRaffleData?.settings}
                                 />
                             </motion.div>
                         </div>
@@ -331,50 +386,51 @@ export default memo(function RaffleOnchain({
                 </div>
             </div>
 
-            {modalState === "ticket" && ticketData && (
+            {modalState.modalState === "ticket" && modalState.ticketData && (
                 <EnhancedPortal layer="modal">
                     <RaffleOnchainParticipationTicket
-                        isVisible={modalState === "ticket"}
+                        isVisible={modalState.modalState === "ticket"}
                         onClose={handleCloseModal}
-                        ticketData={ticketData}
+                        ticketData={modalState.ticketData}
                         onInstantDraw={handleInstantDraw}
                     />
                 </EnhancedPortal>
             )}
 
-            {modalState === "scratch" && ticketData?.prizeWon && (
-                <EnhancedPortal layer="modal">
-                    <div
-                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
-                        onClick={handleCloseModal}
-                    >
+            {modalState.modalState === "scratch" &&
+                modalState.ticketData?.prizeWon && (
+                    <EnhancedPortal layer="modal">
                         <div
-                            className="relative"
-                            onClick={(e) => e.stopPropagation()}
+                            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+                            onClick={handleCloseModal}
                         >
-                            <RaffleScratchCard
-                                prize={scratchPrizeData}
-                                onReveal={handleScratchReveal}
-                                cardSize={scratchCardSize}
-                                className="mx-auto"
-                            />
-
-                            <button
-                                onClick={handleCloseModal}
-                                className={cn(
-                                    "absolute -top-12 right-0 text-white/60 hover:text-white",
-                                    "w-10 h-10 flex items-center justify-center rounded-full",
-                                    "bg-black/20 backdrop-blur-sm transition-all",
-                                    "text-xl font-light",
-                                    "touch-manipulation select-none"
-                                )}
+                            <div
+                                className="relative"
+                                onClick={(e) => e.stopPropagation()}
                             >
-                                ✕
-                            </button>
+                                <RaffleScratchCard
+                                    prize={scratchPrizeData}
+                                    onReveal={handleScratchReveal}
+                                    cardSize={modalState.scratchCardSize}
+                                    className="mx-auto"
+                                />
+
+                                <button
+                                    onClick={handleCloseModal}
+                                    className={cn(
+                                        "absolute -top-12 right-0 text-white/60 hover:text-white",
+                                        "w-10 h-10 flex items-center justify-center rounded-full",
+                                        "bg-black/20 backdrop-blur-sm transition-all",
+                                        "text-xl font-light",
+                                        "touch-manipulation select-none"
+                                    )}
+                                >
+                                    ✕
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </EnhancedPortal>
-            )}
+                    </EnhancedPortal>
+                )}
         </div>
     );
 });

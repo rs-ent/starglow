@@ -10,6 +10,8 @@ import type {
     GetLotteryResultInput,
     GetRaffleCoreInfoForListCardInput,
     GetRaffleParticipantsInput,
+    GetUserParticipationSummaryInput,
+    GetUserParticipationDetailsInput,
 } from "./actions-read";
 
 import {
@@ -19,6 +21,8 @@ import {
     getUserParticipation,
     getLotteryResult,
     getRaffleParticipants,
+    getUserParticipationSummary,
+    getUserParticipationDetails,
 } from "./actions-read";
 import { raffleQueryKeys } from "./queryKeys";
 
@@ -47,42 +51,18 @@ export function useRaffleFromContractQuery(
         enabled?: boolean;
         staleTime?: number;
         gcTime?: number;
-        refetchInterval?: number;
     }
 ) {
-    // 정적 데이터만 포함하는지 확인
-    const isStaticDataOnly = input?.dataKeys?.every((key) =>
-        ["basicInfo", "timing", "settings", "fee", "prizes"].includes(key)
-    );
-
-    // 정적 데이터 전용 최적화
-    const staticDataOptimization = isStaticDataOnly
-        ? {
-              staleTime: 1000 * 60 * 15, // 15분 (매우 긴 캐시)
-              gcTime: 1000 * 60 * 60, // 1시간 (메모리에 오래 보관)
-              refetchOnWindowFocus: false, // 포커스 시 자동 새로고침 안함
-              refetchOnReconnect: false, // 재연결 시 자동 새로고침 안함
-          }
-        : {
-              staleTime: 1000 * 60 * 2, // 2분 (기본값)
-              gcTime: 1000 * 60 * 30, // 30분
-              refetchOnWindowFocus: true, // 포커스 시 새로고침
-              refetchOnReconnect: true, // 재연결 시 새로고침
-          };
-
     return useQuery({
         queryKey: raffleQueryKeys.contract(
-            input?.contractAddress ?? "",
-            input?.raffleId ?? "",
+            input?.contractAddress || "",
+            input?.raffleId || "",
             input?.dataKeys
         ),
         queryFn: () => getRaffleFromContract(input),
-        enabled: Boolean(input),
-        refetchInterval: options?.refetchInterval,
-        ...staticDataOptimization,
-        // 사용자 옵션으로 오버라이드 가능
-        staleTime: options?.staleTime ?? staticDataOptimization.staleTime,
-        gcTime: options?.gcTime ?? staticDataOptimization.gcTime,
+        enabled: Boolean(input?.contractAddress && input?.raffleId),
+        staleTime: options?.staleTime ?? 1000 * 60 * 5,
+        gcTime: options?.gcTime ?? 1000 * 60 * 30,
     });
 }
 
@@ -90,21 +70,20 @@ export function useRaffleCoreInfoForListCardQuery(
     input?: GetRaffleCoreInfoForListCardInput,
     options?: {
         enabled?: boolean;
-        refetchInterval?: number;
         staleTime?: number;
+        gcTime?: number;
     }
 ) {
     return useQuery({
-        queryKey: raffleQueryKeys.raffleListCard(
-            `${input?.contractAddress ?? ""}-${input?.raffleId ?? ""}`
+        queryKey: raffleQueryKeys.contract(
+            input?.contractAddress || "",
+            input?.raffleId || "",
+            ["basicInfo", "timing", "settings", "fee", "status"]
         ),
         queryFn: () => getRaffleCoreInfoForListCard(input),
-        enabled: Boolean(input),
-        staleTime: options?.staleTime ?? 1000 * 30, // 30초 (초단기 캐시)
-        gcTime: 1000 * 60 * 5, // 5분 (빠른 정리)
-        refetchInterval: options?.refetchInterval ?? 1000 * 30, // 30초마다 업데이트
-        refetchOnWindowFocus: true,
-        refetchOnReconnect: true,
+        enabled: Boolean(input?.contractAddress && input?.raffleId),
+        staleTime: options?.staleTime ?? 1000 * 60 * 5,
+        gcTime: options?.gcTime ?? 1000 * 60 * 30,
     });
 }
 
@@ -115,22 +94,78 @@ export function useUserParticipationQuery(
         enabled?: boolean;
         staleTime?: number;
         gcTime?: number;
-        refetchInterval?: number;
     }
 ) {
     return useQuery({
         queryKey: raffleQueryKeys.userParticipation(
-            input?.contractAddress ?? "",
-            input?.raffleId ?? "",
-            input?.userId ?? ""
+            input?.contractAddress || "",
+            input?.raffleId || "",
+            input?.userId || ""
         ),
         queryFn: () => getUserParticipation(input),
-        enabled: Boolean(input && input.userId),
-        // 사용자 데이터 최적화
-        staleTime: options?.staleTime ?? 1000 * 15, // 15초 (중간 캐시)
-        gcTime: options?.gcTime ?? 1000 * 60 * 5, // 5분
-        refetchInterval: options?.refetchInterval, // 수동 새로고침 (참여 후 호출)
-        refetchOnWindowFocus: true, // 포커스 시 새로고침
+        enabled: Boolean(
+            input?.contractAddress && input?.raffleId && input?.userId
+        ),
+        staleTime: options?.staleTime ?? 1000 * 60 * 5,
+        gcTime: options?.gcTime ?? 1000 * 60 * 30,
+    });
+}
+
+// 🎯 새로운 쿼리: 사용자 참여 요약 정보 조회 (가벼운 API)
+export function useUserParticipationSummaryQuery(
+    input?: GetUserParticipationSummaryInput,
+    options?: {
+        enabled?: boolean;
+        staleTime?: number;
+        gcTime?: number;
+    }
+) {
+    return useQuery({
+        queryKey: [
+            ...raffleQueryKeys.userParticipation(
+                input?.contractAddress || "",
+                input?.raffleId || "",
+                input?.userId || ""
+            ),
+            "summary",
+        ],
+        queryFn: () => getUserParticipationSummary(input),
+        enabled: Boolean(
+            input?.contractAddress && input?.raffleId && input?.userId
+        ),
+        staleTime: options?.staleTime ?? 1000 * 60 * 5,
+        gcTime: options?.gcTime ?? 1000 * 60 * 30,
+    });
+}
+
+// 🎯 새로운 쿼리: 사용자 참여 상세 정보 페이지네이션 조회
+export function useUserParticipationDetailsQuery(
+    input?: GetUserParticipationDetailsInput,
+    options?: {
+        enabled?: boolean;
+        staleTime?: number;
+        gcTime?: number;
+    }
+) {
+    return useQuery({
+        queryKey: [
+            ...raffleQueryKeys.userParticipation(
+                input?.contractAddress || "",
+                input?.raffleId || "",
+                input?.userId || ""
+            ),
+            "details",
+            input?.page || 1,
+            input?.limit || 20,
+            input?.sortBy || "participatedAt",
+            input?.sortOrder || "desc",
+        ],
+        queryFn: () => getUserParticipationDetails(input),
+        enabled: Boolean(
+            input?.contractAddress && input?.raffleId && input?.userId
+        ),
+        staleTime: options?.staleTime ?? 1000 * 60 * 5,
+        gcTime: options?.gcTime ?? 1000 * 60 * 30,
     });
 }
 
@@ -145,16 +180,13 @@ export function useLotteryResultQuery(
 ) {
     return useQuery({
         queryKey: raffleQueryKeys.lotteryResult(
-            input?.contractAddress ?? "",
-            input?.resultId ?? ""
+            input?.contractAddress || "",
+            input?.resultId || ""
         ),
         queryFn: () => getLotteryResult(input),
-        enabled: Boolean(input),
-        // 불변 데이터 최적화
-        staleTime: options?.staleTime ?? 1000 * 60 * 60 * 2, // 2시간 (매우 긴 캐시)
-        gcTime: options?.gcTime ?? 1000 * 60 * 60 * 24, // 24시간 (장기 보관)
-        refetchOnWindowFocus: false, // 자동 새로고침 불필요
-        refetchOnReconnect: false, // 재연결 새로고침 불필요
+        enabled: Boolean(input?.contractAddress && input?.resultId),
+        staleTime: options?.staleTime ?? 1000 * 60 * 5,
+        gcTime: options?.gcTime ?? 1000 * 60 * 30,
     });
 }
 
@@ -168,12 +200,12 @@ export function useRaffleParticipantsQuery(
 ) {
     return useQuery({
         queryKey: raffleQueryKeys.raffleParticipants(
-            input?.contractAddress ?? "",
-            input?.raffleId ?? ""
+            input?.contractAddress || "",
+            input?.raffleId || ""
         ),
         queryFn: () => getRaffleParticipants(input),
-        enabled: Boolean(input),
-        staleTime: options?.staleTime ?? 1000 * 30, // 30초
-        gcTime: options?.gcTime ?? 1000 * 60 * 5, // 5분
+        enabled: Boolean(input?.contractAddress && input?.raffleId),
+        staleTime: options?.staleTime ?? 1000 * 60 * 5,
+        gcTime: options?.gcTime ?? 1000 * 60 * 30,
     });
 }

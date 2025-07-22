@@ -17,6 +17,7 @@ interface Prize {
     title: string;
     prizeType: "NFT" | "ASSET" | "EMPTY";
     order: number;
+    rarity?: number;
     quantity: number;
     spg?: {
         imageUrl?: string;
@@ -576,7 +577,7 @@ export default memo(function RaffleScratchCard({
     const tierInfo = useMemo(() => {
         if (!prize) return null;
 
-        const tier = Math.floor(prize.order / 10);
+        const tier = prize.rarity ? prize.rarity : Math.floor(prize.order / 10);
         const tierData = tierMap[tier as keyof typeof tierMap] || tierMap[0];
 
         return {

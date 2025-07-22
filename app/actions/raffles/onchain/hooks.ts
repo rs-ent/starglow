@@ -13,6 +13,8 @@ import {
     useRaffleFromContractQuery,
     useRaffleCoreInfoForListCardQuery,
     useUserParticipationQuery,
+    useUserParticipationSummaryQuery,
+    useUserParticipationDetailsQuery,
     useLotteryResultQuery,
     useRaffleParticipantsQuery,
 } from "./queries";
@@ -22,6 +24,8 @@ import type {
     GetRaffleFromContractInput,
     GetRaffleCoreInfoForListCardInput,
     GetUserParticipationInput,
+    GetUserParticipationSummaryInput,
+    GetUserParticipationDetailsInput,
     GetLotteryResultInput,
     GetRaffleParticipantsInput,
 } from "./actions-read";
@@ -31,6 +35,8 @@ export interface UseOnchainRafflesInput {
     getRaffleFromContractInput?: GetRaffleFromContractInput;
     getRaffleCoreInfoForListCardInput?: GetRaffleCoreInfoForListCardInput;
     getUserParticipationInput?: GetUserParticipationInput;
+    getUserParticipationSummaryInput?: GetUserParticipationSummaryInput;
+    getUserParticipationDetailsInput?: GetUserParticipationDetailsInput;
     getLotteryResultInput?: GetLotteryResultInput;
     getRaffleParticipantsInput?: GetRaffleParticipantsInput;
 }
@@ -65,6 +71,24 @@ export function useOnchainRaffles(input?: UseOnchainRafflesInput) {
         isError: isUserParticipationError,
         refetch: refetchUserParticipation,
     } = useUserParticipationQuery(input?.getUserParticipationInput);
+
+    const {
+        data: userParticipationSummary,
+        isLoading: isUserParticipationSummaryLoading,
+        isError: isUserParticipationSummaryError,
+        refetch: refetchUserParticipationSummary,
+    } = useUserParticipationSummaryQuery(
+        input?.getUserParticipationSummaryInput
+    );
+
+    const {
+        data: userParticipationDetails,
+        isLoading: isUserParticipationDetailsLoading,
+        isError: isUserParticipationDetailsError,
+        refetch: refetchUserParticipationDetails,
+    } = useUserParticipationDetailsQuery(
+        input?.getUserParticipationDetailsInput
+    );
 
     const {
         data: lotteryResult,
@@ -124,6 +148,16 @@ export function useOnchainRaffles(input?: UseOnchainRafflesInput) {
         isUserParticipationLoading,
         isUserParticipationError,
         refetchUserParticipation,
+
+        userParticipationSummary,
+        isUserParticipationSummaryLoading,
+        isUserParticipationSummaryError,
+        refetchUserParticipationSummary,
+
+        userParticipationDetails,
+        isUserParticipationDetailsLoading,
+        isUserParticipationDetailsError,
+        refetchUserParticipationDetails,
 
         lotteryResult,
         isLotteryResultLoading,

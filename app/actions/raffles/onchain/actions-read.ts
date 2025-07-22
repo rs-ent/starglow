@@ -667,13 +667,281 @@ export async function getUserParticipation(
             },
         };
     } catch (error) {
-        console.error("Error fetching user participation:", error);
+        console.error("Error getting user participation:", error);
         return {
             success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to fetch user participation",
+            error: "Failed to get user participation",
+        };
+    }
+}
+
+// 🎯 새로운 함수: 참여 요약 정보만 조회 (가벼운 API)
+export interface GetUserParticipationSummaryInput {
+    contractAddress: string;
+    raffleId: string;
+    userId: string;
+}
+
+export interface GetUserParticipationSummaryResult {
+    success: boolean;
+    data?: {
+        participationCount: number;
+        canViewResults: boolean;
+        playerWallet: string;
+    };
+    error?: string;
+}
+
+export async function getUserParticipationSummary(
+    input?: GetUserParticipationSummaryInput
+): Promise<GetUserParticipationSummaryResult> {
+    if (!input) {
+        return {
+            success: false,
+            error: "Input is required",
+        };
+    }
+    try {
+        const { contractAddress, raffleId, userId } = input;
+
+        const playerWallet = await getDefaultUserWalletAddress({
+            userId: userId,
+        });
+
+        if (!playerWallet) {
+            return {
+                success: false,
+                error: "Player wallet not found",
+            };
+        }
+
+        const dbRaffle = await prisma.onchainRaffle.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
+            where: {
+                contractAddress_raffleId: {
+                    contractAddress,
+                    raffleId,
+                },
+            },
+            select: {
+                network: {
+                    select: {
+                        id: true,
+                        name: true,
+                        chainId: true,
+                        symbol: true,
+                        rpcUrl: true,
+                        explorerUrl: true,
+                        multicallAddress: true,
+                    },
+                },
+            },
+        });
+
+        if (!dbRaffle) {
+            return {
+                success: false,
+                error: "Raffle not found in database",
+            };
+        }
+
+        const publicClient = await fetchPublicClient({
+            network: dbRaffle.network,
+        });
+
+        const contract = getContract({
+            address: contractAddress as `0x${string}`,
+            abi,
+            client: publicClient,
+        });
+
+        // 🚀 가벼운 조회: 참여 개수만 조회
+        const participationCount = await contract.read.playerParticipationCount(
+            [BigInt(raffleId), playerWallet as `0x${string}`]
+        );
+
+        // 🚀 추첨 결과 조회 가능 여부 확인 (가벼운 조회)
+        let canViewResults = false;
+        try {
+            const raffleInfo = (await contract.read.raffles([
+                BigInt(raffleId),
+            ])) as any;
+            if (raffleInfo && raffleInfo.timing && raffleInfo.status) {
+                const timing = raffleInfo.timing;
+                const status = raffleInfo.status;
+
+                const currentTime = BigInt(Math.floor(Date.now() / 1000));
+                canViewResults =
+                    timing.instantDraw ||
+                    (status.isDrawn && currentTime >= timing.drawDate);
+            }
+        } catch (error) {
+            console.warn(
+                "Failed to get raffle info for canViewResults check:",
+                error
+            );
+            canViewResults = false;
+        }
+
+        return {
+            success: true,
+            data: {
+                participationCount: Number(participationCount),
+                canViewResults,
+                playerWallet,
+            },
+        };
+    } catch (error) {
+        console.error("Error getting user participation summary:", error);
+        return {
+            success: false,
+            error: "Failed to get user participation summary",
+        };
+    }
+}
+
+// 🎯 새로운 함수: 참여 상세 정보 페이지네이션 조회
+export interface GetUserParticipationDetailsInput {
+    contractAddress: string;
+    raffleId: string;
+    userId: string;
+    page?: number;
+    limit?: number;
+    sortBy?: "participatedAt" | "prizeIndex" | "claimed";
+    sortOrder?: "asc" | "desc";
+}
+
+export interface GetUserParticipationDetailsResult {
+    success: boolean;
+    data?: {
+        participations: UserParticipationDetail[];
+        totalCount: number;
+        currentPage: number;
+        totalPages: number;
+        hasNextPage: boolean;
+    };
+    error?: string;
+}
+
+export async function getUserParticipationDetails(
+    input?: GetUserParticipationDetailsInput
+): Promise<GetUserParticipationDetailsResult> {
+    if (!input) {
+        return {
+            success: false,
+            error: "Input is required",
+        };
+    }
+    try {
+        const {
+            contractAddress,
+            raffleId,
+            userId,
+            page = 1,
+            limit = 20,
+            sortBy = "participatedAt",
+            sortOrder = "desc",
+        } = input;
+
+        // 🚀 먼저 요약 정보로 전체 개수 확인
+        const summaryResult = await getUserParticipationSummary({
+            contractAddress,
+            raffleId,
+            userId,
+        });
+
+        if (!summaryResult.success || !summaryResult.data) {
+            return {
+                success: false,
+                error:
+                    summaryResult.error ||
+                    "Failed to get participation summary",
+            };
+        }
+
+        const { participationCount } = summaryResult.data;
+
+        // 참여가 없으면 빈 결과 반환
+        if (participationCount === 0) {
+            return {
+                success: true,
+                data: {
+                    participations: [],
+                    totalCount: 0,
+                    currentPage: 1,
+                    totalPages: 0,
+                    hasNextPage: false,
+                },
+            };
+        }
+
+        // 🚀 전체 데이터 조회 (기존 함수 활용)
+        const fullResult = await getUserParticipation({
+            contractAddress,
+            raffleId,
+            userId,
+        });
+
+        if (!fullResult.success || !fullResult.data) {
+            return {
+                success: false,
+                error:
+                    fullResult.error || "Failed to get participation details",
+            };
+        }
+
+        let participations = fullResult.data.participations;
+
+        // 🎯 정렬 적용
+        participations = participations.sort((a, b) => {
+            let aValue: any, bValue: any;
+
+            switch (sortBy) {
+                case "participatedAt":
+                    aValue = Number(a.participatedAt);
+                    bValue = Number(b.participatedAt);
+                    break;
+                case "prizeIndex":
+                    aValue = Number(a.prizeIndex);
+                    bValue = Number(b.prizeIndex);
+                    break;
+                case "claimed":
+                    aValue = a.claimed ? 1 : 0;
+                    bValue = b.claimed ? 1 : 0;
+                    break;
+                default:
+                    aValue = Number(a.participatedAt);
+                    bValue = Number(b.participatedAt);
+            }
+
+            return sortOrder === "asc" ? aValue - bValue : bValue - aValue;
+        });
+
+        // 🎯 페이지네이션 적용
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedParticipations = participations.slice(
+            startIndex,
+            endIndex
+        );
+
+        const totalPages = Math.ceil(participationCount / limit);
+
+        return {
+            success: true,
+            data: {
+                participations: paginatedParticipations,
+                totalCount: participationCount,
+                currentPage: page,
+                totalPages,
+                hasNextPage: page < totalPages,
+            },
+        };
+    } catch (error) {
+        console.error("Error getting user participation details:", error);
+        return {
+            success: false,
+            error: "Failed to get user participation details",
         };
     }
 }
@@ -840,6 +1108,26 @@ export interface GetRaffleParticipantsResult {
     error?: string;
 }
 
+export interface GetRaffleCoreInfoBatchInput {
+    raffles: Array<{
+        contractAddress: string;
+        raffleId: string;
+    }>;
+}
+
+export interface GetRaffleCoreInfoBatchResult {
+    success: boolean;
+    data?: {
+        raffles: Array<{
+            contractAddress: string;
+            raffleId: string;
+            data?: RaffleCoreInfo;
+            error?: string;
+        }>;
+    };
+    error?: string;
+}
+
 export async function getRaffleParticipants(
     input?: GetRaffleParticipantsInput
 ): Promise<GetRaffleParticipantsResult> {
@@ -853,68 +1141,192 @@ export async function getRaffleParticipants(
     try {
         const { contractAddress, raffleId } = input;
 
-        const dbRaffle = await prisma.onchainRaffle.findUnique({
-            cacheStrategy: getCacheStrategy("fiveMinutes"),
-            where: {
-                contractAddress_raffleId: { contractAddress, raffleId },
-            },
-            select: {
-                raffleId: true,
-                contractAddress: true,
-                network: {
-                    select: {
-                        id: true,
-                        name: true,
-                        chainId: true,
-                        symbol: true,
-                        rpcUrl: true,
-                        explorerUrl: true,
-                        multicallAddress: true,
-                    },
-                },
-            },
-        });
+        const publicClient = await fetchPublicClient({});
 
-        if (!dbRaffle) {
-            return {
-                success: false,
-                error: "Raffle not found in database",
-            };
-        }
-
-        const publicClient = await fetchPublicClient({
-            network: dbRaffle.network,
-        });
-
-        const contract = getContract({
+        const participantIds = (await publicClient.readContract({
             address: contractAddress as `0x${string}`,
             abi,
-            client: publicClient,
-        });
+            functionName: "getParticipantIds",
+            args: [BigInt(raffleId)],
+        })) as bigint[];
 
-        const participantIds = (await contract.read.getRaffleParticipants([
-            BigInt(raffleId),
-        ])) as bigint[];
-
-        const participantIdsString = participantIds.map((id) => id.toString());
+        const totalCount = participantIds.length;
 
         return {
             success: true,
             data: {
                 raffleId,
                 contractAddress,
-                participantIds: participantIdsString,
-                totalCount: participantIdsString.length,
+                participantIds: participantIds.map((id) => id.toString()),
+                totalCount,
             },
         };
     } catch (error) {
         console.error("Error fetching raffle participants:", error);
         return {
             success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to fetch raffle participants",
+            error: "Failed to fetch raffle participants",
+        };
+    }
+}
+
+export async function getRaffleCoreInfoBatch(
+    input?: GetRaffleCoreInfoBatchInput
+): Promise<GetRaffleCoreInfoBatchResult> {
+    if (!input || !input.raffles || input.raffles.length === 0) {
+        return {
+            success: false,
+            error: "Input with raffles array is required",
+        };
+    }
+
+    try {
+        const publicClient = await fetchPublicClient({});
+        const results = await Promise.allSettled(
+            input.raffles.map(async ({ contractAddress, raffleId }) => {
+                try {
+                    const [
+                        basicInfo,
+                        timing,
+                        settings,
+                        fee,
+                        status,
+                        participationCount,
+                        defaultBestPrize,
+                        currentBestPrize,
+                    ] = await Promise.all([
+                        publicClient.readContract({
+                            address: contractAddress as `0x${string}`,
+                            abi,
+                            functionName: "getBasicInfo",
+                            args: [BigInt(raffleId)],
+                        }) as Promise<{
+                            title: string;
+                            imageUrl: string;
+                            iconUrl: string;
+                        }>,
+                        publicClient.readContract({
+                            address: contractAddress as `0x${string}`,
+                            abi,
+                            functionName: "getTiming",
+                            args: [BigInt(raffleId)],
+                        }) as Promise<{
+                            startDate: bigint;
+                            endDate: bigint;
+                            drawDate: bigint;
+                            instantDraw: boolean;
+                        }>,
+                        publicClient.readContract({
+                            address: contractAddress as `0x${string}`,
+                            abi,
+                            functionName: "getSettings",
+                            args: [BigInt(raffleId)],
+                        }) as Promise<{
+                            participationLimit: bigint;
+                            participationLimitPerPlayer: bigint;
+                        }>,
+                        publicClient.readContract({
+                            address: contractAddress as `0x${string}`,
+                            abi,
+                            functionName: "getFee",
+                            args: [BigInt(raffleId)],
+                        }) as Promise<{
+                            participationFeeAssetId: string;
+                            participationFeeAmount: bigint;
+                        }>,
+                        publicClient.readContract({
+                            address: contractAddress as `0x${string}`,
+                            abi,
+                            functionName: "getStatus",
+                            args: [BigInt(raffleId)],
+                        }) as Promise<{
+                            isActive: boolean;
+                            isDrawn: boolean;
+                            totalQuantity: bigint;
+                        }>,
+                        publicClient.readContract({
+                            address: contractAddress as `0x${string}`,
+                            abi,
+                            functionName: "getParticipationCount",
+                            args: [BigInt(raffleId)],
+                        }) as Promise<bigint>,
+                        publicClient.readContract({
+                            address: contractAddress as `0x${string}`,
+                            abi,
+                            functionName: "getDefaultBestPrize",
+                            args: [BigInt(raffleId)],
+                        }) as Promise<Prize>,
+                        publicClient.readContract({
+                            address: contractAddress as `0x${string}`,
+                            abi,
+                            functionName: "getCurrentBestPrize",
+                            args: [BigInt(raffleId)],
+                        }) as Promise<Prize>,
+                    ]);
+
+                    return {
+                        contractAddress,
+                        raffleId,
+                        data: {
+                            title: basicInfo.title,
+                            imageUrl: basicInfo.imageUrl,
+                            iconUrl: basicInfo.iconUrl,
+                            startDate: timing.startDate,
+                            endDate: timing.endDate,
+                            drawDate: timing.drawDate,
+                            instantDraw: timing.instantDraw,
+                            participationLimit: settings.participationLimit,
+                            participationLimitPerPlayer:
+                                settings.participationLimitPerPlayer,
+                            participationFeeAssetId:
+                                fee.participationFeeAssetId,
+                            participationFeeAmount: fee.participationFeeAmount,
+                            raffleId: BigInt(raffleId),
+                            isActive: status.isActive,
+                            isDrawn: status.isDrawn,
+                            totalQuantity: status.totalQuantity,
+                            participationCount: participationCount as bigint,
+                            defaultBestPrize,
+                            currentBestPrize,
+                        } as RaffleCoreInfo,
+                    };
+                } catch (error) {
+                    return {
+                        contractAddress,
+                        raffleId,
+                        error:
+                            error instanceof Error
+                                ? error.message
+                                : "Unknown error",
+                    };
+                }
+            })
+        );
+
+        const raffles = results.map((result, index) => {
+            if (result.status === "fulfilled") {
+                return result.value;
+            } else {
+                return {
+                    contractAddress: input.raffles[index].contractAddress,
+                    raffleId: input.raffles[index].raffleId,
+                    error:
+                        result.reason instanceof Error
+                            ? result.reason.message
+                            : "Unknown error",
+                };
+            }
+        });
+
+        return {
+            success: true,
+            data: { raffles },
+        };
+    } catch (error) {
+        console.error("Error fetching raffle core info batch:", error);
+        return {
+            success: false,
+            error: "Failed to fetch raffle core info batch",
         };
     }
 }

@@ -2082,7 +2082,7 @@ export async function getSettlementProgress(pollId: string): Promise<{
 export async function resumeSettlement(
     pollId: string,
     batchSize: number = 25,
-    timeoutMs: number = 30000 // 30초 기본 타임아웃 (cron 안전)
+    timeoutMs: number = 15000 // 15초로 단축 (더 안전한 타임아웃)
 ): Promise<{
     success: boolean;
     message?: string;
@@ -2115,30 +2115,56 @@ export async function resumeSettlement(
         };
     };
 }> {
+    const startTime = Date.now();
+    const stageTimings: { [stage: string]: number } = {};
+
+    // 🛡️ 타임아웃 체크 함수 (더 엄격한 체크)
+    const checkTimeout = (stage: string) => {
+        const elapsed = Date.now() - startTime;
+        if (elapsed > timeoutMs) {
+            console.info(
+                `⏰ [정산 재개] 타임아웃 발생 - ${stage} 단계에서 ${elapsed}ms 경과 (제한: ${timeoutMs}ms)`
+            );
+            throw new Error(
+                `TIMEOUT_EXCEEDED: ${stage} 단계에서 타임아웃 (${elapsed}ms/${timeoutMs}ms)`
+            );
+        }
+    };
+
+    console.info(`🛡️ [정산 재개] 타임아웃 안전장치 활성화 (${timeoutMs}ms)`);
+
     try {
-        const startTime = Date.now();
-        const stageTimings: { [stage: string]: number } = {};
+        // 0단계: 기본 진단 (새로 추가)
+        checkTimeout("진단 시작");
+        const diagnosticStart = Date.now();
+        console.info(`🔍 [정산 재개] 기본 진단 시작...`);
 
-        // 🛡️ 타임아웃 체크 함수
-        const checkTimeout = (stage: string) => {
-            const elapsed = Date.now() - startTime;
-            if (elapsed > timeoutMs) {
-                console.info(
-                    `⏰ [정산 재개] 타임아웃 발생 - ${stage} 단계에서 ${elapsed}ms 경과 (제한: ${timeoutMs}ms)`
-                );
-                throw new Error(
-                    `TIMEOUT_EXCEEDED: ${stage} 단계에서 타임아웃 (${elapsed}ms/${timeoutMs}ms)`
-                );
-            }
-        };
+        const diagnostics = await testSettlementDiagnostics(pollId);
 
+        if (!diagnostics.success) {
+            console.error(`❌ [정산 재개] 진단 실패:`, diagnostics.error);
+            return {
+                success: false,
+                error: `Diagnostic failed: ${diagnostics.error}`,
+            };
+        }
+
+        if (!diagnostics.pollExists) {
+            console.error(`❌ [정산 재개] Poll이 존재하지 않음: ${pollId}`);
+            return {
+                success: false,
+                error: `Poll not found: ${pollId}`,
+            };
+        }
+
+        stageTimings.diagnostic = Date.now() - diagnosticStart;
         console.info(
-            `🛡️ [정산 재개] 타임아웃 안전장치 활성화 (${timeoutMs}ms)`
+            `✅ [정산 재개] 진단 완료 (${stageTimings.diagnostic}ms) - Poll 존재: ${diagnostics.pollExists}`
         );
 
-        // 1단계: 정산 진행 상태 확인
-        checkTimeout("시작");
-        const stageStart = Date.now();
+        // 1단계: 정산 진행 상태 확인 (간소화)
+        checkTimeout("진행 상태 확인 시작");
+        const progressStart = Date.now();
         console.info(`🔍 [정산 재개] 정산 진행 상태 확인 중...`);
 
         const progress = await getSettlementProgress(pollId);
@@ -2158,68 +2184,103 @@ export async function resumeSettlement(
             };
         }
 
-        stageTimings.progressCheck = Date.now() - stageStart;
+        stageTimings.progressCheck = Date.now() - progressStart;
         console.info(
             `✅ [정산 재개] 진행 상태 확인 완료 (${stageTimings.progressCheck}ms)`
         );
 
-        // 2단계: Poll 정보 및 승리 옵션 조회
+        // 2단계: Poll 정보 및 승리 옵션 조회 (개선된 버전)
         checkTimeout("Poll 정보 조회 시작");
         const pollStageStart = Date.now();
         console.info(`📋 [정산 재개] Poll 정보 및 승리 옵션 조회 중...`);
+        console.info(`🔍 [정산 재개] pollId: ${pollId}`);
 
-        const poll = await prisma.poll.findUnique({
-            where: { id: pollId },
-            select: {
-                answerOptionIds: true,
-                bettingMode: true,
-                options: true,
-                title: true,
-            },
-        });
+        let poll: any = null;
+        try {
+            poll = await prisma.poll.findUnique({
+                where: { id: pollId },
+                select: {
+                    answerOptionIds: true,
+                    bettingMode: true,
+                    options: true,
+                    title: true,
+                },
+            });
 
-        if (!poll || !poll.bettingMode) {
+            console.info(`📊 [정산 재개] Poll 조회 결과:`, {
+                found: !!poll,
+                bettingMode: poll?.bettingMode,
+                hasAnswerOptions: poll?.answerOptionIds?.length > 0,
+                optionsCount: poll?.options?.length || 0,
+                title: poll?.title,
+            });
+
+            if (!poll) {
+                console.error(`❌ [정산 재개] Poll을 찾을 수 없음: ${pollId}`);
+                return {
+                    success: false,
+                    error: `Poll not found: ${pollId}`,
+                };
+            }
+
+            if (!poll.bettingMode) {
+                console.error(`❌ [정산 재개] 베팅 모드가 아닌 폴: ${pollId}`);
+                return {
+                    success: false,
+                    error: "Invalid betting poll - not a betting mode poll",
+                };
+            }
+
+            if (
+                !poll.answerOptionIds ||
+                (poll.answerOptionIds && poll.answerOptionIds.length === 0)
+            ) {
+                console.warn(
+                    `⚠️ [정산 재개] 승리 옵션이 설정되지 않음: ${pollId}`
+                );
+                console.info(
+                    `🔍 [정산 재개] 자동 승리 옵션 결정을 시도합니다...`
+                );
+            }
+
+            stageTimings.pollInfoCheck = Date.now() - pollStageStart;
+            console.info(
+                `✅ [정산 재개] Poll 정보 조회 완료 (${stageTimings.pollInfoCheck}ms)`
+            );
+        } catch (error) {
+            console.error(`❌ [정산 재개] Poll 조회 중 오류:`, error);
             return {
                 success: false,
-                error: "Invalid betting poll",
+                error: `Poll query failed: ${
+                    error instanceof Error ? error.message : "Unknown error"
+                }`,
             };
         }
 
-        if (!poll.answerOptionIds || poll.answerOptionIds.length === 0) {
-            return {
-                success: false,
-                error: "No winning options set for this poll",
-            };
-        }
-
-        stageTimings.pollInfoCheck = Date.now() - pollStageStart;
-        console.info(
-            `✅ [정산 재개] Poll 정보 조회 완료 (${stageTimings.pollInfoCheck}ms)`
-        );
-
-        // 3단계: 미정산 플레이어 탐지
+        // 3단계: 미정산 플레이어 탐지 (최적화)
         checkTimeout("플레이어 탐지 시작");
         const playerStageStart = Date.now();
         console.info(`🔍 [정산 재개] 미정산 플레이어 탐지 중...`);
 
-        const settledPlayerIds = await prisma.rewardsLog.findMany({
-            where: {
-                pollId: pollId,
-                reason: { contains: "Betting payout" },
-            },
-            select: { playerId: true },
-        });
+        // 병렬로 처리하여 시간 단축
+        const [settledPlayerIds, allPlayers] = await Promise.all([
+            prisma.rewardsLog.findMany({
+                where: {
+                    pollId: pollId,
+                    reason: { contains: "Betting payout" },
+                },
+                select: { playerId: true },
+            }),
+            prisma.pollLog.findMany({
+                where: { pollId },
+                select: { playerId: true },
+                distinct: ["playerId"],
+            }),
+        ]);
 
         const settledPlayerIdSet = new Set(
             settledPlayerIds.map((log) => log.playerId)
         );
-
-        // 전체 참여자 조회 (최적화된 쿼리)
-        const allPlayers = await prisma.pollLog.findMany({
-            where: { pollId },
-            select: { playerId: true },
-            distinct: ["playerId"],
-        });
 
         const remainingPlayerIds = allPlayers
             .map((p) => p.playerId)
@@ -2251,37 +2312,20 @@ export async function resumeSettlement(
             `🚀 [정산 재개] 동적 배치 처리 시작 - 총 ${remainingPlayerIds.length}명, 예상 배치: ${totalBatches}개`
         );
 
-        // 🎯 승리 옵션 결정 (Settlement와 동일한 로직)
+        // 🎯 승리 옵션 결정 (간소화)
         let determinedWinningOptionIds: string[];
 
-        // 1. 먼저 이미 설정된 answerOptionIds 확인
         console.info(`📋 [정산 재개] 승리 옵션 확인 중...`);
 
-        const pollData = await prisma.poll.findUnique({
-            where: { id: pollId },
-            select: {
-                answerOptionIds: true,
-                options: true,
-                bettingMode: true,
-                title: true,
-            },
-        });
-
-        if (!pollData || !pollData.bettingMode) {
-            return {
-                success: false,
-                error: "Invalid betting poll",
-            };
-        }
-
-        if (pollData.answerOptionIds && pollData.answerOptionIds.length > 0) {
+        if (poll.answerOptionIds && poll.answerOptionIds.length > 0) {
             // 이미 승리 옵션이 설정되어 있음
-            determinedWinningOptionIds = pollData.answerOptionIds;
+            determinedWinningOptionIds = poll.answerOptionIds;
 
             const optionNames = (
-                pollData.options as Array<{ optionId: string; name: string }>
+                (poll.options as Array<{ optionId: string; name: string }>) ||
+                []
             )
-                ?.filter((opt) =>
+                .filter((opt) =>
                     determinedWinningOptionIds.includes(opt.optionId)
                 )
                 .map((opt) => opt.name)
@@ -2309,7 +2353,7 @@ export async function resumeSettlement(
                 };
             }
 
-            // 가장 많은 참여자를 받은 옵션 찾기 (Settlement와 동일한 로직)
+            // 가장 많은 참여자를 받은 옵션 찾기
             const topOption = bettingStats.optionStats.reduce(
                 (prev: any, current: any) =>
                     prev.participantCount > current.participantCount
@@ -2320,8 +2364,9 @@ export async function resumeSettlement(
             determinedWinningOptionIds = [topOption.optionId];
 
             const optionName = (
-                pollData.options as Array<{ optionId: string; name: string }>
-            )?.find((opt) => opt.optionId === topOption.optionId)?.name;
+                (poll.options as Array<{ optionId: string; name: string }>) ||
+                []
+            ).find((opt) => opt.optionId === topOption.optionId)?.name;
 
             console.info(
                 `🎯 [정산 재개] 자동으로 찾은 승리 옵션: ${
@@ -2330,7 +2375,7 @@ export async function resumeSettlement(
             );
         }
 
-        // 5단계: 동적 배치 정산 처리
+        // 5단계: 동적 배치 정산 처리 (타임아웃 강화)
         checkTimeout("동적 정산 처리 시작");
         const settlementStageStart = Date.now();
         console.info(`⚡ [정산 재개] 동적 배치 정산 처리 시작...`);
@@ -2338,20 +2383,27 @@ export async function resumeSettlement(
         let totalProcessedCount = 0;
         let currentBatch = 1;
         let lastBatchTime = 0;
-        const safetyMarginMs = 3000; // 3초 안전 마진
+        const safetyMarginMs = 2000; // 2초 안전 마진 (단축)
         const processedPlayerIds: string[] = [];
 
-        // 동적 배치 처리 루프
+        // 동적 배치 처리 루프 (타임아웃 강화)
         while (totalProcessedCount < remainingPlayerIds.length) {
             const currentBatchStart = Date.now();
 
-            // 타임아웃 체크
+            // 타임아웃 체크 (더 엄격하게)
             const elapsedTime = currentBatchStart - startTime;
             const remainingTime = timeoutMs - elapsedTime;
 
+            if (remainingTime < safetyMarginMs) {
+                console.info(
+                    `⏰ [정산 재개] 시간 부족으로 배치 ${currentBatch} 중단 (남은시간: ${remainingTime}ms)`
+                );
+                break;
+            }
+
             // 첫 번째 배치가 아니라면 예상 시간으로 타임아웃 체크
             if (currentBatch > 1 && lastBatchTime > 0) {
-                const estimatedNextBatchTime = lastBatchTime * 1.2; // 20% 여유
+                const estimatedNextBatchTime = lastBatchTime * 1.1; // 10% 여유 (단축)
                 if (remainingTime < estimatedNextBatchTime + safetyMarginMs) {
                     console.info(
                         `⏰ [정산 재개] 시간 부족으로 배치 ${currentBatch} 중단 (남은시간: ${remainingTime}ms, 예상필요: ${estimatedNextBatchTime}ms)`
@@ -2373,19 +2425,6 @@ export async function resumeSettlement(
 
             console.info(
                 `🔄 [정산 재개] 배치 ${currentBatch}/${totalBatches} 처리 중 (${batchPlayerIds.length}명) - 남은시간: ${remainingTime}ms`
-            );
-
-            // 처리 대상 플레이어 ID 일부 표시 (디버깅용)
-            const samplePlayerIds = batchPlayerIds
-                .slice(0, 3)
-                .map((id) => id.slice(-6))
-                .join(", ");
-            const remainingSample =
-                batchPlayerIds.length > 3
-                    ? ` 외 ${batchPlayerIds.length - 3}명`
-                    : "";
-            console.info(
-                `👥 [정산 재개] 처리 대상: ${samplePlayerIds}${remainingSample}`
             );
 
             try {
@@ -2416,7 +2455,7 @@ export async function resumeSettlement(
 
                 // 마지막 배치가 아니라면 짧은 딜레이
                 if (totalProcessedCount < remainingPlayerIds.length) {
-                    await new Promise((resolve) => setTimeout(resolve, 100));
+                    await new Promise((resolve) => setTimeout(resolve, 50)); // 딜레이 단축
                 }
             } catch (error) {
                 console.error(
@@ -2439,7 +2478,7 @@ export async function resumeSettlement(
 
         const remainingCount = remainingPlayerIds.length - totalProcessedCount;
 
-        // 🏁 모든 플레이어 정산 완료 시 폴 상태 업데이트 (효율적인 버전)
+        // 🏁 모든 플레이어 정산 완료 시 폴 상태 업데이트 (간소화)
         if (remainingCount === 0 && totalProcessedCount > 0) {
             console.info(
                 `🏁 [정산 재개] 모든 플레이어 정산 완료! 폴 상태 업데이트 중...`
@@ -2560,9 +2599,9 @@ export async function resumeSettlement(
             message: `Dynamic batch settlement completed: ${totalProcessedCount} players processed`,
             summary: {
                 totalProcessed: totalProcessedCount,
-                totalSuccess: totalProcessedCount, // 실제로는 각 배치의 성공/실패를 추적해야 함
+                totalSuccess: totalProcessedCount,
                 totalFailed: 0,
-                totalSettlementAmount: 0, // 실제 금액은 별도 계산 필요
+                totalSettlementAmount: 0,
             },
         };
 
@@ -2581,7 +2620,7 @@ export async function resumeSettlement(
                               (opt) =>
                                   opt.optionId === determinedWinningOptionIds[0]
                           )?.name || determinedWinningOptionIds[0],
-                      participantCount: 0, // 이 값은 getBettingModeStats에서 가져와야 함
+                      participantCount: 0,
                       isAutoDetected: !poll.answerOptionIds?.length,
                   }
                 : undefined;
@@ -2590,9 +2629,9 @@ export async function resumeSettlement(
         const estimatedPayouts =
             settlementResult.success && settlementResult.summary
                 ? {
-                      totalPayoutAmount: 0, // 실제 계산 필요
-                      averageWinnerPayout: 0, // 실제 계산 필요
-                      estimatedRefunds: 0, // 실제 계산 필요
+                      totalPayoutAmount: 0,
+                      averageWinnerPayout: 0,
+                      estimatedRefunds: 0,
                   }
                 : undefined;
 
@@ -2611,7 +2650,7 @@ export async function resumeSettlement(
                 alreadySettled: settledPlayerIds.length,
                 unsettledCount: remainingPlayerIds.length,
                 batchInfo: {
-                    currentBatch: currentBatch - 1, // 실제 처리된 배치 수
+                    currentBatch: currentBatch - 1,
                     totalBatches: Math.ceil(
                         remainingPlayerIds.length / batchSize
                     ),
@@ -2918,6 +2957,94 @@ export async function getSettlementRewardLogs({
                 error instanceof Error
                     ? error.message
                     : "Failed to fetch settlement logs",
+        };
+    }
+}
+
+export async function testSettlementDiagnostics(pollId: string): Promise<{
+    success: boolean;
+    pollExists: boolean;
+    pollData?: any;
+    error?: string;
+    diagnostics: {
+        databaseConnection: boolean;
+        pollQueryTime: number;
+        basicInfo: {
+            id: string;
+            title?: string;
+            bettingMode?: boolean;
+            hasOptions?: boolean;
+        };
+    };
+}> {
+    const startTime = Date.now();
+
+    try {
+        console.info(`🔍 [진단] Poll ID: ${pollId}`);
+
+        // 1. 기본 데이터베이스 연결 테스트
+        const connectionTest = await prisma.poll.count({
+            where: { id: pollId },
+        });
+
+        const pollQueryStart = Date.now();
+
+        // 2. Poll 정보 조회 테스트
+        const poll = await prisma.poll.findUnique({
+            where: { id: pollId },
+            select: {
+                id: true,
+                title: true,
+                bettingMode: true,
+                options: true,
+                answerOptionIds: true,
+                status: true,
+                isSettled: true,
+            },
+        });
+
+        const pollQueryTime = Date.now() - pollQueryStart;
+        const totalTime = Date.now() - startTime;
+
+        console.info(`📊 [진단] 결과:`, {
+            pollExists: !!poll,
+            queryTime: pollQueryTime,
+            totalTime,
+            bettingMode: poll?.bettingMode,
+            hasOptions:
+                (poll?.options && (poll.options as any[]).length > 0) || false,
+        });
+
+        return {
+            success: true,
+            pollExists: !!poll,
+            pollData: poll,
+            diagnostics: {
+                databaseConnection: connectionTest >= 0,
+                pollQueryTime,
+                basicInfo: {
+                    id: pollId,
+                    title: poll?.title,
+                    bettingMode: poll?.bettingMode,
+                    hasOptions:
+                        (poll?.options && (poll.options as any[]).length > 0) ||
+                        false,
+                },
+            },
+        };
+    } catch (error) {
+        console.error(`❌ [진단] 오류:`, error);
+        return {
+            success: false,
+            pollExists: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+            diagnostics: {
+                databaseConnection: false,
+                pollQueryTime: 0,
+                basicInfo: {
+                    id: pollId,
+                },
+            },
         };
     }
 }

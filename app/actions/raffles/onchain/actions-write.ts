@@ -357,6 +357,8 @@ export interface ParticipateAndDrawResult {
             imageUrl: string;
             prizeType: number;
             userValue: number;
+            order: number;
+            rarity: number;
         };
         entryFeePaid: number;
         walletAddress: string;
@@ -619,6 +621,8 @@ export async function participateAndDraw(
                     imageUrl: result.prize.imageUrl || "",
                     prizeType: Number(result.prize.prizeType),
                     userValue: Number(result.prize.userValue || 0),
+                    order: Number(result.prize.order || 0),
+                    rarity: Number(result.prize.rarity || 0),
                 },
                 entryFeePaid: result.entryFeeAmount,
                 walletAddress: playerWallet,
