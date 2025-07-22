@@ -192,7 +192,6 @@ export function useWagmiConnection() {
                         );
 
                         setProgress(100);
-                        toast.success("Wallet connected successfully!");
                         endLoading();
 
                         if (callbackUrlRef.current) {
@@ -211,14 +210,6 @@ export function useWagmiConnection() {
                 }
 
                 if (user) {
-                    console.info(
-                        `Existing user session found, connecting wallet:`,
-                        {
-                            userId: user.id,
-                            userName: user.name,
-                        }
-                    );
-
                     setProgress(70);
 
                     await connectWalletWithRetry(
@@ -227,7 +218,6 @@ export function useWagmiConnection() {
                     );
 
                     setProgress(100);
-                    toast.success("Wallet connected successfully!");
                     endLoading();
 
                     if (callbackUrlRef.current) {
@@ -330,14 +320,9 @@ export function useWagmiConnection() {
                         continue;
                     }
 
-                    console.info(
-                        `Wallet connected successfully (${attempt}/${maxRetries}): ${walletAddress}`
-                    );
-
                     try {
                         setProgress(90);
                         await updateSession();
-                        console.info("Session updated after wallet connection");
                     } catch (sessionError) {
                         console.warn("Failed to update session:", sessionError);
                     }
