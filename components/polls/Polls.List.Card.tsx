@@ -64,6 +64,7 @@ interface UIState {
     showBettingTutorial: boolean;
     showBettingModal: boolean;
     showBettingRecord: boolean;
+    onchainTxHash?: string;
 }
 
 function PollsListCard({
@@ -98,6 +99,7 @@ function PollsListCard({
         showBettingTutorial: false,
         showBettingModal: false,
         showBettingRecord: false,
+        onchainTxHash: undefined,
     });
 
     const { accentColorFrom, accentColorTo } = useMemo(() => {
@@ -303,6 +305,7 @@ function PollsListCard({
                         rewarded: result.playerAssetUpdated || false,
                         showInteractFeedback: true,
                         showBettingModal: false,
+                        onchainTxHash: result.onchainTxHash,
                     }));
                 }
             } else {
@@ -490,6 +493,7 @@ function PollsListCard({
                             ...prev,
                             rewarded: result.playerAssetUpdated || false,
                             showInteractFeedback: true,
+                            onchainTxHash: result.onchainTxHash,
                         }));
                     }
                 } else {
@@ -1225,6 +1229,15 @@ function PollsListCard({
             });
         }
 
+        // Onchain 태그
+        if (poll.isOnchain) {
+            tags.push({
+                label: "Onchain",
+                emoji: "⛓️",
+                color: "from-indigo-500/20 to-purple-500/20 border-indigo-500/30 text-indigo-300",
+            });
+        }
+
         return (
             <div
                 className={cn(
@@ -1583,11 +1596,20 @@ function PollsListCard({
                     }))
                 }
                 title={
-                    poll.hasAnswer ? "Correct Answer!" : "Thanks for voting!"
+                    poll.hasAnswer
+                        ? "Correct Answer!"
+                        : poll.isOnchain && uiState.onchainTxHash
+                        ? "Transaction Confirmed!"
+                        : "Thanks for voting!"
                 }
                 description={
                     poll.hasAnswer
                         ? "You've selected the correct answer. Thank you for your participation!"
+                        : poll.isOnchain && uiState.onchainTxHash
+                        ? `Transaction: ${uiState.onchainTxHash.slice(
+                              0,
+                              6
+                          )}...${uiState.onchainTxHash.slice(-6)}`
                         : "Your opinion matters to us. Stay tuned for the results!"
                 }
                 type="success"

@@ -17,6 +17,7 @@ export interface ClientPollFilters extends Omit<GetPollsInput, "status"> {
     allowMultipleVote?: boolean;
     hasAnswer?: boolean;
     participationRewardAssetId?: string;
+    isOnchain?: boolean;
 }
 
 interface PollsFilterProps {
@@ -73,6 +74,13 @@ const HAS_ANSWER_OPTIONS = [
     { value: "all", label: "All", emoji: "🔍" },
     { value: "true", label: "Has Answer", emoji: "✅" },
     { value: "false", label: "No Answer", emoji: "❓" },
+];
+
+// 온체인 여부 옵션들
+const IS_ONCHAIN_OPTIONS = [
+    { value: "all", label: "All", emoji: "🌐" },
+    { value: "true", label: "Onchain", emoji: "⛓️" },
+    { value: "false", label: "Offchain", emoji: "💾" },
 ];
 
 function PollsFilter({
@@ -182,6 +190,21 @@ function PollsFilter({
         });
     }, [allPolls]);
 
+    // 온체인 여부 옵션 필터링
+    const availableIsOnchainOptions = useMemo(() => {
+        if (!allPolls) return IS_ONCHAIN_OPTIONS;
+
+        const hasOnchain = allPolls.some((poll) => poll.isOnchain === true);
+        const hasOffchain = allPolls.some((poll) => poll.isOnchain === false);
+
+        return IS_ONCHAIN_OPTIONS.filter((option) => {
+            if (option.value === "all") return true;
+            if (option.value === "true") return hasOnchain;
+            if (option.value === "false") return hasOffchain;
+            return false;
+        });
+    }, [allPolls]);
+
     // 사용 가능한 리워드 자산들
     const availableRewardAssets = useMemo(() => {
         if (!allPolls) return [];
@@ -219,7 +242,8 @@ function PollsFilter({
         } else if (
             key === "bettingMode" ||
             key === "allowMultipleVote" ||
-            key === "hasAnswer"
+            key === "hasAnswer" ||
+            key === "isOnchain"
         ) {
             convertedValue = value === "true";
         }
@@ -578,7 +602,7 @@ function PollsFilter({
                                     </div>
                                 </motion.div>
 
-                                {/* Answer & Reward Grid */}
+                                {/* Answer & Onchain Grid */}
                                 <motion.div
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
@@ -638,16 +662,16 @@ function PollsFilter({
                                         </div>
                                     </div>
 
-                                    {/* Reward Asset Filter */}
+                                    {/* Onchain Filter */}
                                     <div>
                                         <label
                                             className={cn(
-                                                "block text-cyan-300 font-medium",
+                                                "block text-indigo-300 font-medium",
                                                 labelText.textClass,
                                                 sectionGap.marginYClass
                                             )}
                                         >
-                                            🎁 Reward Asset
+                                            ⛓️ Blockchain
                                         </label>
                                         <div
                                             className={cn(
@@ -655,56 +679,112 @@ function PollsFilter({
                                                 pillGap.gapClass
                                             )}
                                         >
-                                            <FilterPill
-                                                isSelected={
-                                                    filters.participationRewardAssetId ===
-                                                    undefined
-                                                }
-                                                onClick={() =>
-                                                    handleFilterChange(
-                                                        "participationRewardAssetId",
-                                                        "all"
-                                                    )
-                                                }
-                                                label="All"
-                                                emoji="🌟"
-                                            />
-                                            {hasNoRewardAssetPolls && (
-                                                <FilterPill
-                                                    isSelected={
-                                                        filters.participationRewardAssetId ===
-                                                        null
-                                                    }
-                                                    onClick={() =>
-                                                        handleFilterChange(
-                                                            "participationRewardAssetId",
-                                                            null
-                                                        )
-                                                    }
-                                                    label="No Reward"
-                                                    emoji="❌"
-                                                />
-                                            )}
-                                            {availableRewardAssets.map(
-                                                (asset) => (
+                                            {availableIsOnchainOptions.map(
+                                                (option) => (
                                                     <FilterPill
-                                                        key={asset.id}
+                                                        key={option.value}
                                                         isSelected={
-                                                            filters.participationRewardAssetId ===
-                                                            asset.id
+                                                            (filters.isOnchain ===
+                                                                undefined &&
+                                                                option.value ===
+                                                                    "all") ||
+                                                            (option.value ===
+                                                                "true" &&
+                                                                filters.isOnchain ===
+                                                                    true) ||
+                                                            (option.value ===
+                                                                "false" &&
+                                                                filters.isOnchain ===
+                                                                    false)
                                                         }
                                                         onClick={() =>
                                                             handleFilterChange(
-                                                                "participationRewardAssetId",
-                                                                asset.id
+                                                                "isOnchain",
+                                                                option.value
                                                             )
                                                         }
-                                                        label={asset.symbol}
-                                                        asset={asset}
+                                                        label={option.label}
+                                                        emoji={option.emoji}
                                                     />
                                                 )
                                             )}
                                         </div>
+                                    </div>
+                                </motion.div>
+
+                                {/* Reward Asset Filter */}
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.3 }}
+                                    className={cn(
+                                        "w-full",
+                                        filterGap.gapClass,
+                                        sectionMargin.marginYClass
+                                    )}
+                                >
+                                    <label
+                                        className={cn(
+                                            "block text-cyan-300 font-medium",
+                                            labelText.textClass,
+                                            sectionGap.marginYClass
+                                        )}
+                                    >
+                                        🎁 Reward Asset
+                                    </label>
+                                    <div
+                                        className={cn(
+                                            "flex flex-wrap",
+                                            pillGap.gapClass
+                                        )}
+                                    >
+                                        <FilterPill
+                                            isSelected={
+                                                filters.participationRewardAssetId ===
+                                                undefined
+                                            }
+                                            onClick={() =>
+                                                handleFilterChange(
+                                                    "participationRewardAssetId",
+                                                    "all"
+                                                )
+                                            }
+                                            label="All"
+                                            emoji="🌟"
+                                        />
+                                        {hasNoRewardAssetPolls && (
+                                            <FilterPill
+                                                isSelected={
+                                                    filters.participationRewardAssetId ===
+                                                    null
+                                                }
+                                                onClick={() =>
+                                                    handleFilterChange(
+                                                        "participationRewardAssetId",
+                                                        null
+                                                    )
+                                                }
+                                                label="No Reward"
+                                                emoji="❌"
+                                            />
+                                        )}
+                                        {availableRewardAssets.map((asset) => (
+                                            <FilterPill
+                                                key={asset.id}
+                                                isSelected={
+                                                    filters.participationRewardAssetId ===
+                                                    asset.id
+                                                }
+                                                onClick={() =>
+                                                    handleFilterChange(
+                                                        "participationRewardAssetId",
+                                                        asset.id
+                                                    )
+                                                }
+                                                label={asset.symbol}
+                                                asset={asset}
+                                            />
+                                        ))}
                                     </div>
                                 </motion.div>
 

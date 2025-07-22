@@ -80,6 +80,39 @@ function PollsContentsTotal({ player, className }: PollsContentsTotalProps) {
                 return false;
             }
 
+            // 온체인 필터
+            if (
+                filters.isOnchain !== undefined &&
+                poll.isOnchain !== filters.isOnchain
+            ) {
+                return false;
+            }
+
+            // 정답 여부 필터
+            if (
+                filters.hasAnswer !== undefined &&
+                poll.hasAnswer !== filters.hasAnswer
+            ) {
+                return false;
+            }
+
+            // 리워드 자산 필터
+            if (filters.participationRewardAssetId !== undefined) {
+                if (
+                    filters.participationRewardAssetId === null &&
+                    poll.participationRewardAssetId !== null
+                ) {
+                    return false;
+                }
+                if (
+                    filters.participationRewardAssetId !== null &&
+                    poll.participationRewardAssetId !==
+                        filters.participationRewardAssetId
+                ) {
+                    return false;
+                }
+            }
+
             return true;
         });
     }, [pollsList?.items, filters]);

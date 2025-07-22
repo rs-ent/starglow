@@ -680,6 +680,9 @@ export interface ParticipatePollResult {
     data?: PollLog;
     error?: string;
     playerAssetUpdated?: boolean;
+    onchainTxHash?: string;
+    onchainBlockNumber?: number;
+    onchainParticipationId?: string;
 }
 
 export async function participatePoll(
@@ -1126,6 +1129,10 @@ export async function participatePoll(
 
         const { pollLog } = result;
 
+        let onchainTxHash: string | undefined;
+        let onchainBlockNumber: number | undefined;
+        let onchainParticipationId: string | undefined;
+
         if (poll.isOnchain && poll.onchainContractId && poll.onchainPollId) {
             try {
                 const onchainResult = await participatePollOnchain({
@@ -1144,15 +1151,36 @@ export async function participatePoll(
                         onchainResult.error
                     );
                 } else {
+                    onchainTxHash = onchainResult.data?.txHash;
+                    onchainBlockNumber = onchainResult.data?.blockNumber;
+                    onchainParticipationId =
+                        onchainResult.data?.participationId;
+
                     console.info(
                         `✅ Onchain participation successful for poll ${poll.id}:`,
                         {
-                            txHash: onchainResult.data?.txHash,
-                            blockNumber: onchainResult.data?.blockNumber,
-                            participationId:
-                                onchainResult.data?.participationId,
+                            txHash: onchainTxHash,
+                            blockNumber: onchainBlockNumber,
+                            participationId: onchainParticipationId,
                         }
                     );
+
+                    if (onchainTxHash) {
+                        const currentRecord = (pollLog.record as any) || {};
+                        const updatedRecord = {
+                            ...currentRecord,
+                            onchainTxHash,
+                            onchainBlockNumber,
+                            onchainParticipationId,
+                        };
+
+                        await prisma.pollLog.update({
+                            where: { id: pollLog.id },
+                            data: {
+                                record: updatedRecord,
+                            },
+                        });
+                    }
                 }
             } catch (error) {
                 console.error(
@@ -1179,7 +1207,14 @@ export async function participatePoll(
             }
         }
 
-        return { success: true, data: pollLog, playerAssetUpdated };
+        return {
+            success: true,
+            data: pollLog,
+            playerAssetUpdated,
+            onchainTxHash,
+            onchainBlockNumber,
+            onchainParticipationId,
+        };
     } catch (error) {
         console.error("Error creating poll log:", error);
         throw new Error("Failed to create poll log");
