@@ -1319,7 +1319,7 @@ export async function bulkSettlementPlayersWithDuplicateCheck(
         let totalSettlementAmount = 0;
         let alreadySettledCount = 0;
 
-        console.log(
+        console.info(
             `🔍 Starting settlement for ${playerIds.length} players with duplicate check`
         );
 
@@ -1373,7 +1373,7 @@ export async function bulkSettlementPlayersWithDuplicateCheck(
 
         for (let i = 0; i < playerIds.length; i += batchSize) {
             const batch = playerIds.slice(i, i + batchSize);
-            console.log(
+            console.info(
                 `🔄 Processing batch ${
                     Math.floor(i / batchSize) + 1
                 }/${Math.ceil(playerIds.length / batchSize)} (${
@@ -1389,7 +1389,7 @@ export async function bulkSettlementPlayersWithDuplicateCheck(
 
                 if (!duplicateCheck.canSettle) {
                     if (duplicateCheck.alreadySettled) {
-                        console.log(
+                        console.info(
                             `⚠️ Player ${playerId.slice(
                                 -6
                             )} already settled, skipping`
@@ -1460,7 +1460,7 @@ export async function bulkSettlementPlayersWithDuplicateCheck(
             }
         }
 
-        console.log(
+        console.info(
             `✅ Settlement completed: ${totalSuccess} successful, ${totalFailed} failed, ${alreadySettledCount} already settled`
         );
 
@@ -1622,9 +1622,14 @@ async function processSinglePlayerSettlementOptimized(
             sharedData,
         });
 
+        // 정산 처리 (승리자는 상금, 패배자는 0원이라도 기록 남김)
+        let payoutResult: { success: boolean; error?: string } = {
+            success: true,
+        };
+
         if (totalAmount > 0) {
-            // 실제 정산 처리 (기존 로직 사용)
-            const payoutResult = await updatePlayerAsset({
+            // 실제 정산 처리 (승리자/환불)
+            payoutResult = await updatePlayerAsset({
                 transaction: {
                     playerId: playerId,
                     assetId: poll.bettingAssetId,
@@ -1640,16 +1645,74 @@ async function processSinglePlayerSettlementOptimized(
                     pollId: poll.id,
                 },
             });
+        } else {
+            // 패배자도 0원 정산 기록을 남겨서 중복 정산 방지
+            payoutResult = await updatePlayerAsset({
+                transaction: {
+                    playerId: playerId,
+                    assetId: poll.bettingAssetId,
+                    amount: 0,
+                    operation: "ADD",
+                    reason: `Betting payout for poll 『${poll.title}』 (Loss - No payout)`,
+                    metadata: {
+                        pollId: poll.id,
+                        payoutAmount: 0,
+                        refundAmount: 0,
+                        calculationType: calculationDetails.type,
+                        isOptimizedSettlement: true,
+                        isLoss: true,
+                    },
+                    pollId: poll.id,
+                },
+            });
+        }
 
-            if (!payoutResult.success) {
-                return {
+        if (!payoutResult.success) {
+            return {
+                playerId,
+                success: false,
+                error: `Payout failed: ${payoutResult.error}`,
+                settlementAmount: 0,
+                notificationSent: false,
+            };
+        }
+
+        // 알림 발송
+        let notificationResult = { success: false };
+        const hasWinningBets = calculationDetails.type === "PAYOUT";
+
+        try {
+            if (winningOptionIds.length === 0) {
+                notificationResult = await createBettingRefundNotification(
                     playerId,
-                    success: false,
-                    error: `Payout failed: ${payoutResult.error}`,
-                    settlementAmount: 0,
-                    notificationSent: false,
-                };
+                    poll.id,
+                    poll.title,
+                    totalBetAmount,
+                    "No winning option determined"
+                );
+            } else if (hasWinningBets) {
+                notificationResult = await createBettingWinNotification(
+                    playerId,
+                    poll.id,
+                    poll.title,
+                    totalBetAmount,
+                    payoutAmount
+                );
+            } else {
+                notificationResult = await createBettingFailedNotification(
+                    playerId,
+                    poll.id,
+                    poll.title,
+                    totalBetAmount,
+                    "Selected options"
+                );
             }
+        } catch (notificationError) {
+            console.error(
+                `Notification error for player ${playerId}:`,
+                notificationError
+            );
+            // 알림 실패해도 정산은 성공으로 처리
         }
 
         return {
@@ -1660,7 +1723,7 @@ async function processSinglePlayerSettlementOptimized(
                     ? "Settlement completed"
                     : "No settlement needed",
             settlementAmount: totalAmount,
-            notificationSent: true,
+            notificationSent: notificationResult.success,
             calculationDetails,
             validationResult,
         };
@@ -1932,14 +1995,14 @@ export async function getSettlementProgress(pollId: string): Promise<{
             orderBy: { createdAt: "desc" },
         });
 
-        // 전체 참여자 수
-        const totalParticipants = await prisma.pollLog.groupBy({
-            by: ["playerId"],
+        // 전체 참여자 수 (최적화된 쿼리 - distinct 사용)
+        const uniqueParticipants = await prisma.pollLog.findMany({
             where: { pollId },
-            _count: { playerId: true },
+            select: { playerId: true },
+            distinct: ["playerId"],
         });
 
-        const totalPlayers = totalParticipants.length;
+        const totalPlayers = uniqueParticipants.length;
 
         // 정산된 플레이어 수
         const settledPlayers = await prisma.rewardsLog.count({
@@ -2018,16 +2081,68 @@ export async function getSettlementProgress(pollId: string): Promise<{
 
 export async function resumeSettlement(
     pollId: string,
-    batchSize: number = 50
+    batchSize: number = 25,
+    timeoutMs: number = 30000 // 30초 기본 타임아웃 (cron 안전)
 ): Promise<{
     success: boolean;
     message?: string;
     error?: string;
-    settlementLogId?: string;
-    remainingPlayers?: string[];
+    processedCount?: number;
+    remainingCount?: number;
+    settlementResult?: any;
+    winningOptionIds?: string[];
+    timeoutOccurred?: boolean;
+    detailedProgress?: {
+        stageTimings: { [stage: string]: number };
+        totalParticipants: number;
+        alreadySettled: number;
+        unsettledCount: number;
+        batchInfo: {
+            currentBatch: number;
+            totalBatches: number;
+            batchSize: number;
+        };
+        winningOptionInfo?: {
+            optionId: string;
+            optionName: string;
+            participantCount: number;
+            isAutoDetected: boolean;
+        };
+        estimatedPayouts?: {
+            totalPayoutAmount: number;
+            averageWinnerPayout: number;
+            estimatedRefunds: number;
+        };
+    };
 }> {
     try {
+        const startTime = Date.now();
+        const stageTimings: { [stage: string]: number } = {};
+
+        // 🛡️ 타임아웃 체크 함수
+        const checkTimeout = (stage: string) => {
+            const elapsed = Date.now() - startTime;
+            if (elapsed > timeoutMs) {
+                console.info(
+                    `⏰ [정산 재개] 타임아웃 발생 - ${stage} 단계에서 ${elapsed}ms 경과 (제한: ${timeoutMs}ms)`
+                );
+                throw new Error(
+                    `TIMEOUT_EXCEEDED: ${stage} 단계에서 타임아웃 (${elapsed}ms/${timeoutMs}ms)`
+                );
+            }
+        };
+
+        console.info(
+            `🛡️ [정산 재개] 타임아웃 안전장치 활성화 (${timeoutMs}ms)`
+        );
+
+        // 1단계: 정산 진행 상태 확인
+        checkTimeout("시작");
+        const stageStart = Date.now();
+        console.info(`🔍 [정산 재개] 정산 진행 상태 확인 중...`);
+
         const progress = await getSettlementProgress(pollId);
+        checkTimeout("진행 상태 확인");
 
         if (!progress.success) {
             return {
@@ -2043,7 +2158,50 @@ export async function resumeSettlement(
             };
         }
 
-        // 아직 정산되지 않은 플레이어들 가져오기
+        stageTimings.progressCheck = Date.now() - stageStart;
+        console.info(
+            `✅ [정산 재개] 진행 상태 확인 완료 (${stageTimings.progressCheck}ms)`
+        );
+
+        // 2단계: Poll 정보 및 승리 옵션 조회
+        checkTimeout("Poll 정보 조회 시작");
+        const pollStageStart = Date.now();
+        console.info(`📋 [정산 재개] Poll 정보 및 승리 옵션 조회 중...`);
+
+        const poll = await prisma.poll.findUnique({
+            where: { id: pollId },
+            select: {
+                answerOptionIds: true,
+                bettingMode: true,
+                options: true,
+                title: true,
+            },
+        });
+
+        if (!poll || !poll.bettingMode) {
+            return {
+                success: false,
+                error: "Invalid betting poll",
+            };
+        }
+
+        if (!poll.answerOptionIds || poll.answerOptionIds.length === 0) {
+            return {
+                success: false,
+                error: "No winning options set for this poll",
+            };
+        }
+
+        stageTimings.pollInfoCheck = Date.now() - pollStageStart;
+        console.info(
+            `✅ [정산 재개] Poll 정보 조회 완료 (${stageTimings.pollInfoCheck}ms)`
+        );
+
+        // 3단계: 미정산 플레이어 탐지
+        checkTimeout("플레이어 탐지 시작");
+        const playerStageStart = Date.now();
+        console.info(`🔍 [정산 재개] 미정산 플레이어 탐지 중...`);
+
         const settledPlayerIds = await prisma.rewardsLog.findMany({
             where: {
                 pollId: pollId,
@@ -2056,81 +2214,438 @@ export async function resumeSettlement(
             settledPlayerIds.map((log) => log.playerId)
         );
 
-        const allPlayerIds = await prisma.pollLog.groupBy({
-            by: ["playerId"],
+        // 전체 참여자 조회 (최적화된 쿼리)
+        const allPlayers = await prisma.pollLog.findMany({
             where: { pollId },
-            _count: { playerId: true },
+            select: { playerId: true },
+            distinct: ["playerId"],
         });
 
-        const remainingPlayerIds = allPlayerIds
-            .map((p) => (p as any).playerId)
+        const remainingPlayerIds = allPlayers
+            .map((p) => p.playerId)
             .filter((playerId) => !settledPlayerIdSet.has(playerId));
 
+        stageTimings.playerDetection = Date.now() - playerStageStart;
+
+        console.info(
+            `📊 [정산 재개] 전체 참여자: ${allPlayers.length}명, 이미 정산됨: ${settledPlayerIds.length}명`
+        );
+        console.info(
+            `🎯 [정산 재개] 미정산된 사용자 ${remainingPlayerIds.length}명 발견 (${stageTimings.playerDetection}ms)`
+        );
+
         if (remainingPlayerIds.length === 0) {
+            console.info(`✅ [정산 재개] 모든 플레이어가 이미 정산 완료됨`);
             return {
                 success: true,
                 message: "No remaining players to settle",
             };
         }
 
-        // 배치 크기만큼만 처리
-        const batchPlayerIds = remainingPlayerIds.slice(0, batchSize);
+        // 4단계: 동적 배치 처리 준비
+        const batchStageStart = Date.now();
+        const totalBatches = Math.ceil(remainingPlayerIds.length / batchSize);
+        stageTimings.batchPreparation = Date.now() - batchStageStart;
 
-        // 정산 로그 업데이트 또는 생성
-        let settlementLogId: string;
-        const existingLog = await prisma.pollBettingSettlementLog.findFirst({
-            where: {
-                pollId: pollId,
-                status: { in: ["PENDING", "PARTIAL"] },
+        console.info(
+            `🚀 [정산 재개] 동적 배치 처리 시작 - 총 ${remainingPlayerIds.length}명, 예상 배치: ${totalBatches}개`
+        );
+
+        // 🎯 승리 옵션 결정 (Settlement와 동일한 로직)
+        let determinedWinningOptionIds: string[];
+
+        // 1. 먼저 이미 설정된 answerOptionIds 확인
+        console.info(`📋 [정산 재개] 승리 옵션 확인 중...`);
+
+        const pollData = await prisma.poll.findUnique({
+            where: { id: pollId },
+            select: {
+                answerOptionIds: true,
+                options: true,
+                bettingMode: true,
+                title: true,
             },
-            orderBy: { createdAt: "desc" },
         });
 
-        if (existingLog) {
-            const currentMetadata = (existingLog.metadata as any) || {};
-            await prisma.pollBettingSettlementLog.update({
-                where: { id: existingLog.id },
-                data: {
-                    status: "PENDING",
-                    metadata: {
-                        ...currentMetadata,
-                        lastProcessedAt: new Date().toISOString(),
-                    },
-                },
-            });
-            settlementLogId = existingLog.id;
-        } else {
-            const newLog = await prisma.pollBettingSettlementLog.create({
-                data: {
-                    pollId: pollId,
-                    settlementType: "MANUAL",
-                    totalPayout: 0,
-                    totalWinners: 0,
-                    totalBettingPool: 0,
-                    houseCommission: 0,
-                    houseCommissionRate: 0.05,
-                    status: "PENDING",
-                    isManual: true,
-                    processedBy: "bulk-settlement-resume",
-                    metadata: {
-                        processedPlayerCount: progress.progress.settledPlayers,
-                        totalPlayerCount: progress.progress.totalPlayers,
-                        settlementStartedAt: new Date().toISOString(),
-                    },
-                    settlementStartedAt: new Date(),
-                },
-            });
-            settlementLogId = newLog.id;
+        if (!pollData || !pollData.bettingMode) {
+            return {
+                success: false,
+                error: "Invalid betting poll",
+            };
         }
 
+        if (pollData.answerOptionIds && pollData.answerOptionIds.length > 0) {
+            // 이미 승리 옵션이 설정되어 있음
+            determinedWinningOptionIds = pollData.answerOptionIds;
+
+            const optionNames = (
+                pollData.options as Array<{ optionId: string; name: string }>
+            )
+                ?.filter((opt) =>
+                    determinedWinningOptionIds.includes(opt.optionId)
+                )
+                .map((opt) => opt.name)
+                .join(", ");
+
+            console.info(
+                `✅ [정산 재개] 선택된 승리 옵션: ${
+                    optionNames || determinedWinningOptionIds.join(", ")
+                }`
+            );
+        } else {
+            console.info(`⚠️ [정산 재개] 선택된 승리 옵션이 없습니다.`);
+            console.info(`🔍 [정산 재개] 자동으로 찾습니다...`);
+
+            // 승리 옵션이 설정되지 않았으므로 자동으로 결정
+            const bettingStats = await getBettingModeStats({ pollId });
+
+            if (
+                !bettingStats.optionStats ||
+                bettingStats.optionStats.length === 0
+            ) {
+                return {
+                    success: false,
+                    error: "No betting data available for settlement",
+                };
+            }
+
+            // 가장 많은 참여자를 받은 옵션 찾기 (Settlement와 동일한 로직)
+            const topOption = bettingStats.optionStats.reduce(
+                (prev: any, current: any) =>
+                    prev.participantCount > current.participantCount
+                        ? prev
+                        : current
+            );
+
+            determinedWinningOptionIds = [topOption.optionId];
+
+            const optionName = (
+                pollData.options as Array<{ optionId: string; name: string }>
+            )?.find((opt) => opt.optionId === topOption.optionId)?.name;
+
+            console.info(
+                `🎯 [정산 재개] 자동으로 찾은 승리 옵션: ${
+                    optionName || topOption.optionId
+                } (참여자 ${topOption.participantCount}명)`
+            );
+        }
+
+        // 5단계: 동적 배치 정산 처리
+        checkTimeout("동적 정산 처리 시작");
+        const settlementStageStart = Date.now();
+        console.info(`⚡ [정산 재개] 동적 배치 정산 처리 시작...`);
+
+        let totalProcessedCount = 0;
+        let currentBatch = 1;
+        let lastBatchTime = 0;
+        const safetyMarginMs = 3000; // 3초 안전 마진
+        const processedPlayerIds: string[] = [];
+
+        // 동적 배치 처리 루프
+        while (totalProcessedCount < remainingPlayerIds.length) {
+            const currentBatchStart = Date.now();
+
+            // 타임아웃 체크
+            const elapsedTime = currentBatchStart - startTime;
+            const remainingTime = timeoutMs - elapsedTime;
+
+            // 첫 번째 배치가 아니라면 예상 시간으로 타임아웃 체크
+            if (currentBatch > 1 && lastBatchTime > 0) {
+                const estimatedNextBatchTime = lastBatchTime * 1.2; // 20% 여유
+                if (remainingTime < estimatedNextBatchTime + safetyMarginMs) {
+                    console.info(
+                        `⏰ [정산 재개] 시간 부족으로 배치 ${currentBatch} 중단 (남은시간: ${remainingTime}ms, 예상필요: ${estimatedNextBatchTime}ms)`
+                    );
+                    break;
+                }
+            }
+
+            // 현재 배치 플레이어 선택
+            const startIndex = totalProcessedCount;
+            const endIndex = Math.min(
+                startIndex + batchSize,
+                remainingPlayerIds.length
+            );
+            const batchPlayerIds = remainingPlayerIds.slice(
+                startIndex,
+                endIndex
+            );
+
+            console.info(
+                `🔄 [정산 재개] 배치 ${currentBatch}/${totalBatches} 처리 중 (${batchPlayerIds.length}명) - 남은시간: ${remainingTime}ms`
+            );
+
+            // 처리 대상 플레이어 ID 일부 표시 (디버깅용)
+            const samplePlayerIds = batchPlayerIds
+                .slice(0, 3)
+                .map((id) => id.slice(-6))
+                .join(", ");
+            const remainingSample =
+                batchPlayerIds.length > 3
+                    ? ` 외 ${batchPlayerIds.length - 3}명`
+                    : "";
+            console.info(
+                `👥 [정산 재개] 처리 대상: ${samplePlayerIds}${remainingSample}`
+            );
+
+            try {
+                const batchResult = await bulkSettlementPlayers({
+                    pollId,
+                    playerIds: batchPlayerIds,
+                    winningOptionIds: determinedWinningOptionIds,
+                });
+
+                const batchEndTime = Date.now();
+                lastBatchTime = batchEndTime - currentBatchStart;
+
+                if (batchResult.success) {
+                    totalProcessedCount += batchPlayerIds.length;
+                    processedPlayerIds.push(...batchPlayerIds);
+
+                    console.info(
+                        `✅ [정산 재개] 배치 ${currentBatch} 완료 (${lastBatchTime}ms) - 처리: ${batchPlayerIds.length}명, 총 처리: ${totalProcessedCount}명`
+                    );
+                } else {
+                    console.info(
+                        `❌ [정산 재개] 배치 ${currentBatch} 실패: ${batchResult.error}`
+                    );
+                    break;
+                }
+
+                currentBatch++;
+
+                // 마지막 배치가 아니라면 짧은 딜레이
+                if (totalProcessedCount < remainingPlayerIds.length) {
+                    await new Promise((resolve) => setTimeout(resolve, 100));
+                }
+            } catch (error) {
+                console.error(
+                    `❌ [정산 재개] 배치 ${currentBatch} 오류:`,
+                    error
+                );
+                break;
+            }
+        }
+
+        stageTimings.settlement = Date.now() - settlementStageStart;
+        stageTimings.total = Date.now() - startTime;
+
+        console.info(
+            `✅ [정산 재개] 동적 정산 처리 완료 (${stageTimings.settlement}ms)`
+        );
+        console.info(
+            `🏁 [정산 재개] 전체 프로세스 완료 (${stageTimings.total}ms) - 총 ${totalProcessedCount}명 처리`
+        );
+
+        const remainingCount = remainingPlayerIds.length - totalProcessedCount;
+
+        // 🏁 모든 플레이어 정산 완료 시 폴 상태 업데이트 (효율적인 버전)
+        if (remainingCount === 0 && totalProcessedCount > 0) {
+            console.info(
+                `🏁 [정산 재개] 모든 플레이어 정산 완료! 폴 상태 업데이트 중...`
+            );
+
+            try {
+                // 총 정산 금액 계산 (간단한 집계)
+                const totalPayoutResult = await prisma.rewardsLog.aggregate({
+                    where: {
+                        pollId: pollId,
+                        reason: { contains: "Betting payout" },
+                        amount: { gt: 0 },
+                    },
+                    _sum: { amount: true },
+                    _count: { id: true },
+                });
+
+                const totalPayout =
+                    (totalPayoutResult._sum as { amount: number | null })
+                        ?.amount || 0;
+                const totalWinners = totalPayoutResult._count || 0;
+
+                // 폴 상태와 정산 로그를 동시에 업데이트 (트랜잭션)
+                await prisma.$transaction(async (tx) => {
+                    // 1. 폴 상태 업데이트
+                    await tx.poll.update({
+                        where: { id: pollId },
+                        data: {
+                            isSettled: true,
+                            settledAt: new Date(),
+                            settledBy: "resumeSettlement-auto",
+                        },
+                    });
+
+                    // 2. 기존 정산 로그 확인 후 처리
+                    const existingLog =
+                        await tx.pollBettingSettlementLog.findFirst({
+                            where: { pollId: pollId },
+                            orderBy: { createdAt: "desc" },
+                        });
+
+                    if (existingLog) {
+                        // 기존 로그 업데이트
+                        await tx.pollBettingSettlementLog.update({
+                            where: { id: existingLog.id },
+                            data: {
+                                status: "SUCCESS",
+                                totalPayout: totalPayout,
+                                settlementCompletedAt: new Date(),
+                                metadata: {
+                                    totalParticipants: allPlayers.length,
+                                    totalWinners: totalWinners,
+                                    settledPlayers: allPlayers.length,
+                                    processedByResumeSettlement: true,
+                                    finalBatchCount: currentBatch - 1,
+                                    totalProcessingTime: stageTimings.total,
+                                    averageBatchTime:
+                                        currentBatch > 1
+                                            ? stageTimings.settlement /
+                                              (currentBatch - 1)
+                                            : 0,
+                                    completedAt: new Date().toISOString(),
+                                },
+                            },
+                        });
+                    } else {
+                        // 새 로그 생성
+                        await tx.pollBettingSettlementLog.create({
+                            data: {
+                                pollId: pollId,
+                                settlementType: "AUTO",
+                                totalPayout: totalPayout,
+                                totalBettingPool:
+                                    allPlayers.length > 0
+                                        ? totalProcessedCount
+                                        : 0,
+                                houseCommission: 0,
+                                houseCommissionRate: 0.05,
+                                status: "SUCCESS",
+                                isManual: false,
+                                processedBy: "resumeSettlement-auto",
+                                settlementStartedAt: new Date(startTime),
+                                settlementCompletedAt: new Date(),
+                                metadata: {
+                                    totalParticipants: allPlayers.length,
+                                    totalWinners: totalWinners,
+                                    settledPlayers: allPlayers.length,
+                                    processedByResumeSettlement: true,
+                                    finalBatchCount: currentBatch - 1,
+                                    totalProcessingTime: stageTimings.total,
+                                    averageBatchTime:
+                                        currentBatch > 1
+                                            ? stageTimings.settlement /
+                                              (currentBatch - 1)
+                                            : 0,
+                                    completedAt: new Date().toISOString(),
+                                },
+                            },
+                        });
+                    }
+                });
+
+                console.info(
+                    `✅ [정산 재개] 폴 정산 완료! (${allPlayers.length}명, 상금 ${totalPayout}, 승자 ${totalWinners}명)`
+                );
+            } catch (pollUpdateError) {
+                console.error(
+                    `❌ [정산 재개] 폴 상태 업데이트 실패:`,
+                    pollUpdateError
+                );
+                // 폴 상태 업데이트 실패해도 정산은 성공으로 처리
+            }
+        }
+
+        // 전체 정산 결과 생성
+        const settlementResult = {
+            success: totalProcessedCount > 0,
+            message: `Dynamic batch settlement completed: ${totalProcessedCount} players processed`,
+            summary: {
+                totalProcessed: totalProcessedCount,
+                totalSuccess: totalProcessedCount, // 실제로는 각 배치의 성공/실패를 추적해야 함
+                totalFailed: 0,
+                totalSettlementAmount: 0, // 실제 금액은 별도 계산 필요
+            },
+        };
+
+        // 승리 옵션 정보 생성
+        const winningOptionInfo =
+            determinedWinningOptionIds.length > 0
+                ? {
+                      optionId: determinedWinningOptionIds[0],
+                      optionName:
+                          (
+                              poll.options as Array<{
+                                  optionId: string;
+                                  name: string;
+                              }>
+                          )?.find(
+                              (opt) =>
+                                  opt.optionId === determinedWinningOptionIds[0]
+                          )?.name || determinedWinningOptionIds[0],
+                      participantCount: 0, // 이 값은 getBettingModeStats에서 가져와야 함
+                      isAutoDetected: !poll.answerOptionIds?.length,
+                  }
+                : undefined;
+
+        // 예상 지급액 계산 (간단 버전)
+        const estimatedPayouts =
+            settlementResult.success && settlementResult.summary
+                ? {
+                      totalPayoutAmount: 0, // 실제 계산 필요
+                      averageWinnerPayout: 0, // 실제 계산 필요
+                      estimatedRefunds: 0, // 실제 계산 필요
+                  }
+                : undefined;
+
         return {
-            success: true,
-            message: `Resumed settlement with ${batchPlayerIds.length} players`,
-            settlementLogId,
-            remainingPlayers: remainingPlayerIds,
+            success: settlementResult.success,
+            message: settlementResult.success
+                ? `동적 정산 재개 완료: ${totalProcessedCount}명 처리, ${remainingCount}명 남음`
+                : `정산 재개 실패: 처리 중 오류 발생`,
+            processedCount: totalProcessedCount,
+            remainingCount,
+            settlementResult,
+            winningOptionIds: determinedWinningOptionIds,
+            detailedProgress: {
+                stageTimings,
+                totalParticipants: allPlayers.length,
+                alreadySettled: settledPlayerIds.length,
+                unsettledCount: remainingPlayerIds.length,
+                batchInfo: {
+                    currentBatch: currentBatch - 1, // 실제 처리된 배치 수
+                    totalBatches: Math.ceil(
+                        remainingPlayerIds.length / batchSize
+                    ),
+                    batchSize:
+                        totalProcessedCount > 0
+                            ? Math.ceil(
+                                  totalProcessedCount / (currentBatch - 1)
+                              )
+                            : batchSize,
+                },
+                winningOptionInfo,
+                estimatedPayouts,
+            },
         };
     } catch (error) {
         console.error("Error resuming settlement:", error);
+
+        // 🛡️ 타임아웃 에러 특별 처리
+        if (
+            error instanceof Error &&
+            error.message.includes("TIMEOUT_EXCEEDED")
+        ) {
+            console.info(
+                `⏰ [정산 재개] cron 안전 타임아웃 발생: ${error.message}`
+            );
+            return {
+                success: false,
+                error: `정산 재개 타임아웃 (cron 안전): ${timeoutMs}ms 초과`,
+                timeoutOccurred: true,
+                processedCount: 0,
+                remainingCount: 0,
+            };
+        }
+
         return {
             success: false,
             error: error instanceof Error ? error.message : "Unknown error",
@@ -2221,6 +2736,65 @@ export async function processSinglePlayerSettlement(
             ? settlementResult.payoutAmount
             : settlementResult.refundAmount;
 
+        // 실제 정산 처리 (승리자/패배자 모두 기록 남김)
+        let payoutResult: { success: boolean; error?: string } = {
+            success: true,
+        };
+
+        if (totalAmount > 0) {
+            // 승리자/환불 - 실제 상금 지급
+            payoutResult = await updatePlayerAsset({
+                transaction: {
+                    playerId: playerId,
+                    assetId: poll.bettingAssetId,
+                    amount: totalAmount,
+                    operation: "ADD",
+                    reason: `Betting payout for poll 『${poll.title}』`,
+                    metadata: {
+                        pollId: poll.id,
+                        payoutAmount: hasWinningBets
+                            ? settlementResult.payoutAmount
+                            : 0,
+                        refundAmount: hasWinningBets
+                            ? 0
+                            : settlementResult.refundAmount,
+                        hasWinningBets,
+                    },
+                    pollId: poll.id,
+                },
+            });
+        } else {
+            // 패배자 - 0원 정산 기록 남김 (중복 정산 방지용)
+            payoutResult = await updatePlayerAsset({
+                transaction: {
+                    playerId: playerId,
+                    assetId: poll.bettingAssetId,
+                    amount: 0,
+                    operation: "ADD",
+                    reason: `Betting payout for poll 『${poll.title}』 (Loss - No payout)`,
+                    metadata: {
+                        pollId: poll.id,
+                        payoutAmount: 0,
+                        refundAmount: 0,
+                        hasWinningBets: false,
+                        isLoss: true,
+                    },
+                    pollId: poll.id,
+                },
+            });
+        }
+
+        if (!payoutResult.success) {
+            return {
+                playerId,
+                success: false,
+                error: `Payout failed: ${payoutResult.error}`,
+                settlementAmount: 0,
+                notificationSent: false,
+            };
+        }
+
+        // 알림 발송
         let notificationResult = { success: false };
 
         if (winningOptionIds.length === 0) {

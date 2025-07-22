@@ -2,29 +2,22 @@
 
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import {
-    getSettlementPreview,
-    type SettlementPreview,
-    bulkSettlementPlayers,
     getSettlementProgress,
     resumeSettlement,
     pauseSettlement,
 } from "@/app/actions/polls/polls-bettingMode";
 import { formatAmount, settlementCacheManager } from "@/lib/utils/formatting";
-import { manualSettlePoll } from "@/app/actions/polls";
 import SettlementPlayers from "./Admin.Polls.BettingMode.Settlement.Players";
 import {
     Calculator,
     DollarSign,
     Users,
-    Trophy,
     AlertTriangle,
     CheckCircle,
     XCircle,
     RefreshCw,
-    Eye,
-    Play,
     Loader2,
     UserCheck,
     Database,
@@ -37,7 +30,6 @@ import {
 } from "lucide-react";
 import type { Poll } from "@prisma/client";
 import { getBettingModeStats } from "@/app/actions/polls/polls-bettingMode";
-import { SAFETY_CONFIG } from "./types/betting-mode";
 
 interface SettlementModalProps {
     poll: Poll;
@@ -55,9 +47,6 @@ export default function SettlementModal({
     const [selectedWinningOptions, setSelectedWinningOptions] = useState<
         Set<string>
     >(new Set());
-    const [preview, setPreview] = useState<SettlementPreview | null>(null);
-    const [loadingPreview, setLoadingPreview] = useState(false);
-    const [settling, setSettling] = useState(false);
     const [settlementResult, setSettlementResult] = useState<{
         success: boolean;
         message: string;
@@ -68,6 +57,7 @@ export default function SettlementModal({
     );
     const [winningOptionConfirmed, setWinningOptionConfirmed] = useState(false);
     const [bettingStats, setBettingStats] = useState<any>(null);
+    const [loadingBettingStats, setLoadingBettingStats] = useState(false);
     const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
     const [showCacheStats, setShowCacheStats] = useState(false);
     const [cacheStats, setCacheStats] = useState<any>(null);
@@ -85,17 +75,19 @@ export default function SettlementModal({
 
     const clearCache = useCallback(() => {
         settlementCacheManager.clearCache(poll.id);
-        refreshCacheStats();
+        const stats = settlementCacheManager.getCacheStats();
+        setCacheStats(stats);
         alert("캐시가 삭제되었습니다.");
-    }, [poll.id, refreshCacheStats]);
+    }, [poll.id]);
 
     const clearAllCache = useCallback(() => {
         if (confirm("모든 캐시를 삭제하시겠습니까?")) {
             settlementCacheManager.clearCache();
-            refreshCacheStats();
+            const stats = settlementCacheManager.getCacheStats();
+            setCacheStats(stats);
             alert("모든 캐시가 삭제되었습니다.");
         }
-    }, [refreshCacheStats]);
+    }, []);
 
     // 🆕 정산 진행 상태 확인
     const checkSettlementProgress = useCallback(async () => {
@@ -135,8 +127,10 @@ export default function SettlementModal({
                     success: true,
                     message: `정산 재개됨: ${result.message}`,
                 });
-                // 진행 상태 다시 확인
-                await checkSettlementProgress();
+                const progressResult = await getSettlementProgress(poll.id);
+                if (progressResult.success) {
+                    setSettlementProgress(progressResult);
+                }
             } else {
                 setSettlementResult({
                     success: false,
@@ -155,7 +149,7 @@ export default function SettlementModal({
         } finally {
             setResuming(false);
         }
-    }, [poll.id, settlementProgress, checkSettlementProgress]);
+    }, [poll.id, settlementProgress]);
 
     // 🆕 정산 일시정지
     const handlePauseSettlement = useCallback(async () => {
@@ -169,7 +163,10 @@ export default function SettlementModal({
                     success: true,
                     message: "정산이 일시정지되었습니다.",
                 });
-                await checkSettlementProgress();
+                const progressResult = await getSettlementProgress(poll.id);
+                if (progressResult.success) {
+                    setSettlementProgress(progressResult);
+                }
             } else {
                 setSettlementResult({
                     success: false,
@@ -188,32 +185,11 @@ export default function SettlementModal({
         } finally {
             setPausing(false);
         }
-    }, [poll.id, checkSettlementProgress]);
+    }, [poll.id]);
 
     const formatPercentage = (value: number) => {
         return `${(value * 100).toFixed(1)}%`;
     };
-
-    // 🆕 useEffect: 정산 진행 상태 자동 확인
-    useEffect(() => {
-        if (isOpen) {
-            checkSettlementProgress().catch((err) => {
-                console.error("Error checking settlement progress:", err);
-            });
-            // 5초마다 자동 갱신
-            const interval = setInterval(checkSettlementProgress, 5000);
-            return () => clearInterval(interval);
-        }
-    }, [isOpen, checkSettlementProgress]);
-
-    useEffect(() => {
-        if (showCacheStats) {
-            refreshCacheStats();
-            // 5초마다 캐시 통계 자동 갱신
-            const interval = setInterval(refreshCacheStats, 5000);
-            return () => clearInterval(interval);
-        }
-    }, [showCacheStats, refreshCacheStats]);
 
     const handleOptionToggle = useCallback(
         (optionId: string) => {
@@ -237,11 +213,14 @@ export default function SettlementModal({
 
     const handleConfirmWinningOption = useCallback(async () => {
         if (!bettingStats) {
-            alert("베팅 통계를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
+            alert("먼저 '베팅 통계 불러오기' 버튼을 클릭해주세요.");
             return;
         }
 
-        if (bettingStats.optionStats.length === 0) {
+        if (
+            !bettingStats.optionStats ||
+            bettingStats.optionStats.length === 0
+        ) {
             alert("베팅 데이터가 없습니다.");
             return;
         }
@@ -281,218 +260,8 @@ export default function SettlementModal({
         }
     }, [poll, bettingStats]);
 
-    const handlePreviewSettlement = useCallback(async () => {
-        if (selectedWinningOptions.size === 0) {
-            setSettlementResult({
-                success: false,
-                message: "승리 옵션을 선택해주세요.",
-            });
-            return;
-        }
-
-        setLoadingPreview(true);
-        setSettlementResult(null);
-
-        try {
-            const previewData = await getSettlementPreview({
-                pollId: poll.id,
-                winningOptionIds: Array.from(selectedWinningOptions),
-            });
-
-            if (!previewData) {
-                throw new Error("미리보기 데이터를 받지 못했습니다");
-            }
-
-            setPreview(previewData);
-        } catch (error) {
-            console.error("Failed to get settlement preview:", error);
-            const errorMessage =
-                error instanceof Error
-                    ? error.message
-                    : "정산 미리보기를 불러오는데 실패했습니다.";
-
-            setSettlementResult({
-                success: false,
-                message: errorMessage,
-                error: errorMessage,
-            });
-        } finally {
-            setLoadingPreview(false);
-        }
-    }, [poll.id, selectedWinningOptions]);
-
-    const handleExecuteSettlement = useCallback(async () => {
-        if (selectedWinningOptions.size === 0) {
-            setSettlementResult({
-                success: false,
-                message: "승리 옵션을 선택해주세요.",
-            });
-            return;
-        }
-
-        if (
-            !confirm("정산을 실행하시겠습니까? 이 작업은 되돌릴 수 없습니다.")
-        ) {
-            return;
-        }
-
-        setSettling(true);
-        setSettlementResult(null);
-
-        try {
-            const result = await manualSettlePoll({
-                pollId: poll.id,
-                winningOptionIds: Array.from(selectedWinningOptions),
-            });
-
-            if (!result) {
-                throw new Error("정산 결과를 받지 못했습니다");
-            }
-
-            setSettlementResult({
-                success: result.success,
-                message: result.message || "정산이 완료되었습니다.",
-                error: result.error,
-            });
-
-            if (result.success) {
-                onSettlementComplete();
-            }
-        } catch (error) {
-            console.error("Failed to execute settlement:", error);
-            const errorMessage =
-                error instanceof Error
-                    ? error.message
-                    : "정산 실행 중 오류가 발생했습니다.";
-
-            setSettlementResult({
-                success: false,
-                message: errorMessage,
-                error: errorMessage,
-            });
-        } finally {
-            setSettling(false);
-        }
-    }, [poll.id, selectedWinningOptions, onSettlementComplete]);
-
-    const handleBulkSettlement = useCallback(async () => {
-        if (selectedPlayers.length === 0) {
-            setSettlementResult({
-                success: false,
-                message: "정산할 플레이어를 선택해주세요.",
-            });
-            return;
-        }
-
-        const selectedCount = selectedPlayers.length;
-        const playerIds = selectedPlayers
-            .slice(0, 5)
-            .map((id) => id.slice(-6))
-            .join(", ");
-
-        // 🚨 단계적 안전장치 시스템 (LiveLog와 동일)
-        // 1단계: 50명 이상 - 기본 경고
-        if (selectedCount >= SAFETY_CONFIG.warningThreshold) {
-            const warningMessage =
-                `⚠️ 주의: ${selectedCount}명의 플레이어를 정산합니다\n\n` +
-                `정산 예상 시간: ${Math.ceil(selectedCount * 0.1)}초\n` +
-                `선택된 플레이어 ID (처음 5개): ${playerIds}\n\n` +
-                `계속 진행하시겠습니까?`;
-
-            if (!confirm(warningMessage)) {
-                setSettlementResult({
-                    success: false,
-                    message: `사용자가 ${selectedCount}명 정산을 취소했습니다.`,
-                });
-                return;
-            }
-        }
-
-        // 2단계: 100명 이상 - 위험 경고
-        if (selectedCount >= SAFETY_CONFIG.dangerThreshold) {
-            const dangerMessage =
-                `🚨 위험: ${selectedCount}명 대량 정산!\n\n` +
-                `⚠️ 이는 많은 수의 플레이어입니다.\n` +
-                `예상 처리 시간: ${Math.ceil(selectedCount * 0.1)}초\n` +
-                `메모리 사용량: 약 ${Math.ceil(selectedCount / 100)}MB\n\n` +
-                `정말로 ${selectedCount}명 전체를 정산하시겠습니까?\n` +
-                `(되돌릴 수 없습니다)`;
-
-            if (!confirm(dangerMessage)) {
-                setSettlementResult({
-                    success: false,
-                    message: `사용자가 대량 정산(${selectedCount}명)을 취소했습니다.`,
-                });
-                return;
-            }
-        }
-
-        // 3단계: 500명 이상 - 최종 확인
-        if (selectedCount >= 500) {
-            const finalWarning =
-                `🚨🚨 최종 확인 🚨🚨\n\n` +
-                `${selectedCount}명은 매우 많은 수입니다!\n\n` +
-                `예상 처리 시간: ${Math.ceil(
-                    selectedCount * 0.1
-                )}초 (${Math.ceil((selectedCount * 0.1) / 60)}분)\n` +
-                `시스템 부하가 발생할 수 있습니다.\n\n` +
-                `정말 진행하시겠습니까?\n\n` +
-                `"예"를 입력하시면 진행됩니다.`;
-
-            const userInput = prompt(finalWarning);
-            if (userInput !== "예") {
-                setSettlementResult({
-                    success: false,
-                    message: `사용자가 대용량 정산(${selectedCount}명)을 취소했습니다.`,
-                });
-                return;
-            }
-        }
-
-        setSettling(true);
-        setSettlementResult(null);
-
-        try {
-            const result = await bulkSettlementPlayers({
-                pollId: poll.id,
-                playerIds: selectedPlayers,
-                winningOptionIds: Array.from(selectedWinningOptions),
-            });
-
-            if (result.success) {
-                setSettlementResult({
-                    success: true,
-                    message: `일괄 정산이 완료되었습니다. ${result.summary.totalSuccess}명 성공, ${result.summary.totalFailed}명 실패.`,
-                });
-                setSelectedPlayers([]);
-                onSettlementComplete();
-            } else {
-                setSettlementResult({
-                    success: false,
-                    message: "일괄 정산 중 오류가 발생했습니다.",
-                    error: result.error,
-                });
-            }
-        } catch (error) {
-            console.error("Failed to execute bulk settlement:", error);
-            setSettlementResult({
-                success: false,
-                message: "일괄 정산 실행 중 오류가 발생했습니다.",
-                error: error instanceof Error ? error.message : "Unknown error",
-            });
-        } finally {
-            setSettling(false);
-        }
-    }, [
-        poll.id,
-        selectedPlayers,
-        selectedWinningOptions,
-        onSettlementComplete,
-    ]);
-
     const resetState = useCallback(() => {
         setSelectedWinningOptions(new Set());
-        setPreview(null);
         setSettlementResult(null);
         setActiveTab("preview");
         setWinningOptionConfirmed(false);
@@ -503,22 +272,21 @@ export default function SettlementModal({
         onClose();
     }, [resetState, onClose]);
 
-    const loadBettingStats = useCallback(async () => {
+    // 수동 베팅 통계 로딩
+    const handleLoadBettingStats = useCallback(async () => {
+        setLoadingBettingStats(true);
         try {
             const stats = await getBettingModeStats({ pollId: poll.id });
             setBettingStats(stats);
+            alert("베팅 통계를 불러왔습니다.");
         } catch (error) {
             console.error("베팅 통계를 가져오는데 실패했습니다:", error);
+            setBettingStats(null);
+            alert("베팅 통계를 불러오는데 실패했습니다.");
+        } finally {
+            setLoadingBettingStats(false);
         }
     }, [poll.id]);
-
-    useEffect(() => {
-        if (isOpen) {
-            loadBettingStats().catch((err) => {
-                console.error("Error loading betting stats:", err);
-            });
-        }
-    }, [isOpen, loadBettingStats]);
 
     if (!isOpen) return null;
 
@@ -651,7 +419,7 @@ export default function SettlementModal({
                                         .isFullySettled && (
                                         <button
                                             onClick={handleResumeSettlement}
-                                            disabled={resuming || settling}
+                                            disabled={resuming}
                                             className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
                                         >
                                             {resuming ? (
@@ -667,7 +435,7 @@ export default function SettlementModal({
                                     "PENDING" && (
                                     <button
                                         onClick={handlePauseSettlement}
-                                        disabled={pausing || settling}
+                                        disabled={pausing}
                                         className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 text-white text-xs rounded-md hover:bg-orange-700 disabled:opacity-50 transition-colors"
                                     >
                                         {pausing ? (
@@ -904,20 +672,55 @@ export default function SettlementModal({
                                     </p>
                                 )}
                             </div>
+                            {settlementResult.success && (
+                                <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-3 mb-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <CheckCircle className="w-4 h-4 text-blue-400" />
+                                        <span className="text-sm font-medium text-blue-400">
+                                            정산 결과를 확인해주세요
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-blue-300">
+                                        {`일괄정산이 완료되었습니다. 결과를 확인한
+                                        후 "확인 완료" 버튼을 클릭하여 모달을
+                                        닫아주세요.`}
+                                    </p>
+                                </div>
+                            )}
                             <div className="flex gap-2">
-                                <button
-                                    onClick={handleClose}
-                                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                                >
-                                    닫기
-                                </button>
-                                {!settlementResult.success && (
-                                    <button
-                                        onClick={resetState}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                    >
-                                        다시 시도
-                                    </button>
+                                {settlementResult.success ? (
+                                    <>
+                                        <button
+                                            onClick={() => {
+                                                onSettlementComplete();
+                                                handleClose();
+                                            }}
+                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                        >
+                                            확인 완료
+                                        </button>
+                                        <button
+                                            onClick={resetState}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                        >
+                                            추가 정산하기
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={handleClose}
+                                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                                        >
+                                            닫기
+                                        </button>
+                                        <button
+                                            onClick={resetState}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                        >
+                                            다시 시도
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -982,12 +785,52 @@ export default function SettlementModal({
                                             정해진 승리 옵션을 확인하고
                                             선택해주세요.
                                         </p>
+
+                                        {/* 로딩 상태 표시 */}
+                                        {loadingBettingStats && (
+                                            <div className="flex items-center gap-2 text-xs text-blue-300 mb-3">
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                베팅 통계를 불러오는 중...
+                                            </div>
+                                        )}
+
+                                        {/* 베팅 통계가 없을 때 수동 로딩 버튼 */}
+                                        {!loadingBettingStats &&
+                                            !bettingStats && (
+                                                <div className="space-y-3 mb-2">
+                                                    <div className="flex items-center gap-2 text-xs text-yellow-300">
+                                                        <AlertTriangle className="w-3 h-3" />
+                                                        먼저 베팅 통계를
+                                                        불러와주세요.
+                                                    </div>
+                                                    <button
+                                                        onClick={
+                                                            handleLoadBettingStats
+                                                        }
+                                                        className="flex items-center gap-2 px-3 py-1.5 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition-colors"
+                                                    >
+                                                        <RefreshCw className="w-3 h-3" />
+                                                        베팅 통계 불러오기
+                                                    </button>
+                                                </div>
+                                            )}
+
                                         <button
                                             onClick={handleConfirmWinningOption}
-                                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                            disabled={
+                                                loadingBettingStats ||
+                                                !bettingStats
+                                            }
+                                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                         >
-                                            <CheckCircle className="w-4 h-4" />
-                                            승리 옵션 확인
+                                            {loadingBettingStats ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <CheckCircle className="w-4 h-4" />
+                                            )}
+                                            {loadingBettingStats
+                                                ? "로딩 중..."
+                                                : "승리 옵션 확인"}
                                         </button>
                                     </div>
                                 )}
@@ -1055,57 +898,9 @@ export default function SettlementModal({
                                 </div>
                             </div>
 
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={handlePreviewSettlement}
-                                    disabled={
-                                        loadingPreview ||
-                                        selectedWinningOptions.size === 0 ||
-                                        !winningOptionConfirmed
-                                    }
-                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    {loadingPreview ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                        <Eye className="w-4 h-4" />
-                                    )}
-                                    정산 미리보기
-                                </button>
-                                <button
-                                    onClick={handleExecuteSettlement}
-                                    disabled={
-                                        settling ||
-                                        selectedWinningOptions.size === 0 ||
-                                        !winningOptionConfirmed
-                                    }
-                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    {settling ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                        <Play className="w-4 h-4" />
-                                    )}
-                                    정산 실행
-                                </button>
-                            </div>
-
                             {selectedWinningOptions.size > 0 && (
                                 <div className="border-t border-gray-700 pt-6">
                                     <div className="flex items-center gap-4 mb-4">
-                                        <button
-                                            onClick={() =>
-                                                setActiveTab("preview")
-                                            }
-                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                                                activeTab === "preview"
-                                                    ? "bg-blue-600 text-white"
-                                                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                                            }`}
-                                        >
-                                            <Calculator className="w-4 h-4" />
-                                            정산 미리보기
-                                        </button>
                                         <button
                                             onClick={() =>
                                                 setActiveTab("players")
@@ -1121,174 +916,6 @@ export default function SettlementModal({
                                         </button>
                                     </div>
 
-                                    {activeTab === "preview" && preview && (
-                                        <div className="space-y-4">
-                                            <h3 className="text-lg font-medium text-white flex items-center gap-2">
-                                                <Calculator className="w-5 h-5" />
-                                                정산 미리보기
-                                            </h3>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div className="bg-gray-800 rounded-lg p-4">
-                                                    <div className="text-sm text-gray-400 mb-1">
-                                                        총 베팅 금액
-                                                    </div>
-                                                    <div className="text-xl font-bold text-white">
-                                                        {formatAmount(
-                                                            preview.totalBetAmount
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="bg-gray-800 rounded-lg p-4">
-                                                    <div className="text-sm text-gray-400 mb-1">
-                                                        수수료
-                                                    </div>
-                                                    <div className="text-xl font-bold text-orange-400">
-                                                        {formatAmount(
-                                                            preview.totalCommission
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="bg-gray-800 rounded-lg p-4">
-                                                    <div className="text-sm text-gray-400 mb-1">
-                                                        배당 풀
-                                                    </div>
-                                                    <div className="text-xl font-bold text-green-400">
-                                                        {formatAmount(
-                                                            preview.payoutPool
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {preview.potentialWinners.length >
-                                            0 ? (
-                                                <div className="space-y-3">
-                                                    <h4 className="text-md font-medium text-white flex items-center gap-2">
-                                                        <Trophy className="w-4 h-4 text-yellow-400" />
-                                                        예상 승리자
-                                                    </h4>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                        {preview.potentialWinners.map(
-                                                            (winner) => (
-                                                                <div
-                                                                    key={
-                                                                        winner.optionId
-                                                                    }
-                                                                    className="bg-green-900/20 border border-green-800 rounded-lg p-3"
-                                                                >
-                                                                    <div className="font-medium text-green-400">
-                                                                        {
-                                                                            winner.optionName
-                                                                        }
-                                                                    </div>
-                                                                    <div className="text-sm text-gray-400 mt-1">
-                                                                        베팅
-                                                                        금액:{" "}
-                                                                        {formatAmount(
-                                                                            winner.totalBetAmount
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="text-sm text-gray-400">
-                                                                        참여자:{" "}
-                                                                        {
-                                                                            winner.participantCount
-                                                                        }
-                                                                        명
-                                                                    </div>
-                                                                    <div className="text-lg font-bold text-green-400 mt-2">
-                                                                        예상
-                                                                        배당:{" "}
-                                                                        {formatAmount(
-                                                                            winner.estimatedPayout
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            )
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                                                        <span className="font-medium text-yellow-400">
-                                                            환불 예정
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-yellow-300">
-                                                        선택된 옵션에 베팅이
-                                                        없어 모든 베팅 금액이
-                                                        환불됩니다.
-                                                    </p>
-                                                    <div className="mt-2 text-sm">
-                                                        <div>
-                                                            환불 금액:{" "}
-                                                            {formatAmount(
-                                                                preview
-                                                                    .potentialRefund
-                                                                    .totalAmount
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            환불 대상:{" "}
-                                                            {
-                                                                preview
-                                                                    .potentialRefund
-                                                                    .participantCount
-                                                            }
-                                                            명
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            <div className="bg-gray-800 rounded-lg p-4">
-                                                <h4 className="text-sm font-medium text-white mb-3">
-                                                    정산 규칙
-                                                </h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                                    <div>
-                                                        <span className="text-gray-400">
-                                                            수수료율:{" "}
-                                                        </span>
-                                                        <span className="text-white">
-                                                            {formatPercentage(
-                                                                preview
-                                                                    .settlementRules
-                                                                    .houseCommissionRate
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-gray-400">
-                                                            최소 베팅:{" "}
-                                                        </span>
-                                                        <span className="text-white">
-                                                            {formatAmount(
-                                                                preview
-                                                                    .settlementRules
-                                                                    .minimumBet
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-gray-400">
-                                                            최대 베팅:{" "}
-                                                        </span>
-                                                        <span className="text-white">
-                                                            {formatAmount(
-                                                                preview
-                                                                    .settlementRules
-                                                                    .maximumBet
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
                                     {activeTab === "players" && (
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between">
@@ -1296,30 +923,6 @@ export default function SettlementModal({
                                                     <UserCheck className="w-5 h-5" />
                                                     참여자 목록
                                                 </h3>
-                                                <div className="flex items-center gap-2">
-                                                    {selectedPlayers.length >
-                                                        0 && (
-                                                        <button
-                                                            onClick={
-                                                                handleBulkSettlement
-                                                            }
-                                                            disabled={settling}
-                                                            className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                                            title={`Settlement 컴포넌트에서 ${selectedPlayers.length}명 정산 실행`}
-                                                        >
-                                                            {settling ? (
-                                                                <Loader2 className="w-3 h-3 animate-spin" />
-                                                            ) : (
-                                                                <Play className="w-3 h-3" />
-                                                            )}
-                                                            일괄 정산 (
-                                                            {
-                                                                selectedPlayers.length
-                                                            }
-                                                            명) [Settlement]
-                                                        </button>
-                                                    )}
-                                                </div>
                                                 {selectedPlayers.length > 0 && (
                                                     <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-3">
                                                         <div className="text-sm text-blue-400">
@@ -1355,6 +958,31 @@ export default function SettlementModal({
                                                 onSelectedPlayersChange={
                                                     setSelectedPlayers
                                                 }
+                                                onBulkSettlementResult={(
+                                                    result
+                                                ) => {
+                                                    if (result.success) {
+                                                        setSettlementResult({
+                                                            success: true,
+                                                            message: `일괄 정산이 완료되었습니다. ${
+                                                                result.summary
+                                                                    ?.totalSuccess ||
+                                                                0
+                                                            }명 성공, ${
+                                                                result.summary
+                                                                    ?.totalFailed ||
+                                                                0
+                                                            }명 실패.`,
+                                                        });
+                                                    } else {
+                                                        setSettlementResult({
+                                                            success: false,
+                                                            message:
+                                                                "일괄 정산 중 오류가 발생했습니다.",
+                                                            error: result.error,
+                                                        });
+                                                    }
+                                                }}
                                             />
                                         </div>
                                     )}

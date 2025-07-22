@@ -143,14 +143,7 @@ export default function LiveLog({
         } catch (error) {
             console.error("Error checking poll settlement progress:", error);
         }
-    }, [
-        poll.id,
-        poll.isSettled,
-        poll.settledAt,
-        poll.settledBy,
-        addLog,
-        onPollSettlementComplete,
-    ]);
+    }, [poll.id, poll.isSettled, poll.settledAt, poll.settledBy, addLog, onPollSettlementComplete]);
 
     const startSettlement = useCallback(async () => {
         if (selectedPlayers.length === 0) {
@@ -293,17 +286,87 @@ export default function LiveLog({
                 },
             });
 
+            // 🔍 이미 정산된 플레이어 수 계산 (공통 사용을 위해 밖으로 이동)
+            const alreadySettledCount = result.results.filter(
+                (playerResult: any) => {
+                    return (
+                        playerResult.alreadySettled ||
+                        playerResult.skipped ||
+                        (playerResult.message &&
+                            (playerResult.message.includes("already settled") ||
+                                playerResult.message.includes("이미 정산") ||
+                                playerResult.message.includes("skipping"))) ||
+                        playerResult.status === "already_settled" ||
+                        playerResult.status === "skipped"
+                    );
+                }
+            ).length;
+
+            const actualSuccessCount =
+                result.summary.totalSuccess - alreadySettledCount;
+
             if (result.success) {
-                addLog("success", "일괄 정산 성공적으로 완료", {
+                let completionMessage = "일괄 정산 성공적으로 완료";
+                if (alreadySettledCount > 0) {
+                    completionMessage += ` (${alreadySettledCount}명 이미 정산됨)`;
+                }
+
+                addLog("success", completionMessage, {
                     totalProcessed: result.summary.totalProcessed,
                     totalSuccess: result.summary.totalSuccess,
+                    actualSuccessCount, // 실제 새로 정산된 수
                     totalFailed: result.summary.totalFailed,
+                    alreadySettledCount, // 이미 정산된 수
                     totalSettlementAmount: result.summary.totalSettlementAmount,
                     duration: `${duration}ms`,
                 });
 
                 result.results.forEach((playerResult: any, index) => {
-                    const logLevel = playerResult.success ? "success" : "error";
+                    // 🔍 디버깅: 실제 응답 구조 확인
+                    if (index === 0) {
+                        addLog("debug", "첫 번째 플레이어 결과 구조 확인", {
+                            playerResult: {
+                                playerId: playerResult.playerId,
+                                success: playerResult.success,
+                                message: playerResult.message,
+                                status: playerResult.status,
+                                alreadySettled: playerResult.alreadySettled,
+                                skipped: playerResult.skipped,
+                                error: playerResult.error,
+                                allKeys: Object.keys(playerResult),
+                            },
+                        });
+                    }
+
+                    // 🔍 이미 정산된 플레이어 감지 (더 포괄적으로)
+                    const isAlreadySettled =
+                        playerResult.alreadySettled ||
+                        playerResult.skipped ||
+                        (playerResult.message &&
+                            (playerResult.message.includes("already settled") ||
+                                playerResult.message.includes("이미 정산") ||
+                                playerResult.message.includes("skipping") ||
+                                playerResult.message.includes(
+                                    "already been settled"
+                                ) ||
+                                playerResult.message.includes("duplicate") ||
+                                playerResult.message
+                                    .toLowerCase()
+                                    .includes("skip"))) ||
+                        playerResult.status === "already_settled" ||
+                        playerResult.status === "skipped" ||
+                        (playerResult.error &&
+                            (playerResult.error.includes("already settled") ||
+                                playerResult.error.includes("이미 정산") ||
+                                playerResult.error.includes("skipping")));
+
+                    // 로그 레벨 결정
+                    let logLevel: LogEntry["level"];
+                    if (isAlreadySettled) {
+                        logLevel = "info"; // warning에서 info로 변경하여 기본 필터에서 보이도록
+                    } else {
+                        logLevel = playerResult.success ? "success" : "error";
+                    }
 
                     // 🔍 정산 상세 정보 포함
                     const hasValidationErrors =
@@ -311,16 +374,18 @@ export default function LiveLog({
                     const hasValidationWarnings =
                         playerResult.validationResult?.warnings?.length > 0;
 
-                    let message = playerResult.success
-                        ? `플레이어 ${playerResult.playerId.slice(
-                              -6
-                          )} 정산 성공`
-                        : `플레이어 ${playerResult.playerId.slice(
-                              -6
-                          )} 정산 실패`;
+                    let message: string;
 
+                    // 🔍 이미 정산된 사용자 특별 처리 (최우선)
+                    if (isAlreadySettled) {
+                        message = `플레이어 ${playerResult.playerId.slice(
+                            -6
+                        )} 이미 정산됨 - 건너뜀 ⚠️`;
+                    }
                     // 🔍 베팅이 없는 사용자 특별 처리
-                    if (playerResult.calculationDetails?.type === "NO_BET") {
+                    else if (
+                        playerResult.calculationDetails?.type === "NO_BET"
+                    ) {
                         message = `플레이어 ${playerResult.playerId.slice(
                             -6
                         )} 베팅 없음 - 정산 대상 아님 ⚪`;
@@ -330,12 +395,25 @@ export default function LiveLog({
                         message = `플레이어 ${playerResult.playerId.slice(
                             -6
                         )} 0원 베팅 - 정산 대상 아님 ⚪`;
-                    } else if (hasValidationErrors) {
-                        message += ` ⚠️ 계산 오류 감지 (${playerResult.validationResult.errors.length}개)`;
-                    } else if (hasValidationWarnings) {
-                        message += ` ⚠️ 경고 (${playerResult.validationResult.warnings.length}개)`;
-                    } else if (playerResult.validationResult?.isValid) {
-                        message += ` ✓ 검증 완료`;
+                    }
+                    // 기본 성공/실패 메시지
+                    else {
+                        message = playerResult.success
+                            ? `플레이어 ${playerResult.playerId.slice(
+                                  -6
+                              )} 정산 성공`
+                            : `플레이어 ${playerResult.playerId.slice(
+                                  -6
+                              )} 정산 실패`;
+
+                        // 추가 상태 표시
+                        if (hasValidationErrors) {
+                            message += ` ⚠️ 계산 오류 감지 (${playerResult.validationResult.errors.length}개)`;
+                        } else if (hasValidationWarnings) {
+                            message += ` ⚠️ 경고 (${playerResult.validationResult.warnings.length}개)`;
+                        } else if (playerResult.validationResult?.isValid) {
+                            message += ` ✓ 검증 완료`;
+                        }
                     }
 
                     const endTime = new Date();
@@ -343,8 +421,18 @@ export default function LiveLog({
                     const processingDuration =
                         endTime.getTime() - playerStartTime.getTime();
 
+                    // 플레이어 상태 업데이트
+                    let playerStatus: PlayerStatus["status"];
+                    if (isAlreadySettled) {
+                        playerStatus = "completed"; // 이미 정산된 것으로 표시하되 별도 표기
+                    } else {
+                        playerStatus = playerResult.success
+                            ? "completed"
+                            : "failed";
+                    }
+
                     updatePlayerStatus(playerResult.playerId, {
-                        status: playerResult.success ? "completed" : "failed",
+                        status: playerStatus,
                         settlementAmount: playerResult.settlementAmount,
                         error: playerResult.error,
                         endTime,
@@ -362,7 +450,19 @@ export default function LiveLog({
                         error: playerResult.error,
                         message: playerResult.message,
                         duration: `${processingDuration}ms`,
+                        isAlreadySettled,
                     };
+
+                    // 🔍 이미 정산된 사용자 로그 데이터
+                    if (isAlreadySettled) {
+                        logData.alreadySettledReason = {
+                            status: "already_settled",
+                            reason: "이 플레이어는 이미 정산되어 처리를 건너뛰었습니다",
+                            originalMessage: playerResult.message,
+                            skippedAt: new Date().toISOString(),
+                            hadPreviousSettlement: true,
+                        };
+                    }
 
                     // 🔍 베팅이 없는 사용자 로그 데이터 개선
                     if (
@@ -438,8 +538,9 @@ export default function LiveLog({
                 isRunning: false,
                 endTime: new Date(),
                 processedPlayers: result.summary.totalProcessed,
-                successfulPlayers: result.summary.totalSuccess,
+                successfulPlayers: actualSuccessCount, // 실제 새로 정산된 수
                 failedPlayers: result.summary.totalFailed,
+                alreadySettledPlayers: alreadySettledCount, // 이미 정산된 수 추가
                 totalSettlementAmount: result.summary.totalSettlementAmount,
                 currentProcessingPlayer: undefined,
             }));
@@ -491,12 +592,396 @@ export default function LiveLog({
         addLog("info", `정산 재개 시도: ${remainingPlayers}명 남음`);
 
         try {
+            // 🔍 단계별 진행 상황 표시
+            addLog("info", "🛡️ cron 안전 타임아웃 활성화 (30초)");
+            addLog("info", "📋 승리 옵션 확인 중...");
+            addLog("info", "🔍 미정산 플레이어 탐지 중...");
+
             const result = await resumeSettlement(poll.id);
-            if (result.success) {
-                addLog("success", `정산 재개 성공: ${result.message}`);
-                await checkPollSettlementProgress();
+            if (result.success && result.settlementResult) {
+                // 🎯 상세 진행 정보 표시
+                const progress = result.detailedProgress;
+
+                if (progress) {
+                    // 단계별 소요 시간 표시
+                    addLog("info", `⏱️ 단계별 소요 시간:`);
+                    if (progress.stageTimings.progressCheck) {
+                        addLog(
+                            "info",
+                            `  📊 진행 상태 확인: ${progress.stageTimings.progressCheck}ms`
+                        );
+                    }
+                    if (progress.stageTimings.pollInfoCheck) {
+                        addLog(
+                            "info",
+                            `  📋 Poll 정보 조회: ${progress.stageTimings.pollInfoCheck}ms`
+                        );
+                    }
+                    if (progress.stageTimings.playerDetection) {
+                        addLog(
+                            "info",
+                            `  🔍 플레이어 탐지: ${progress.stageTimings.playerDetection}ms`
+                        );
+                    }
+                    if (progress.stageTimings.batchPreparation) {
+                        addLog(
+                            "info",
+                            `  🚀 배치 준비: ${progress.stageTimings.batchPreparation}ms`
+                        );
+                    }
+                    if (progress.stageTimings.settlement) {
+                        addLog(
+                            "info",
+                            `  ⚡ 정산 처리: ${progress.stageTimings.settlement}ms`
+                        );
+                    }
+                    addLog(
+                        "success",
+                        `🏁 전체 완료: ${progress.stageTimings.total}ms`
+                    );
+                }
+
+                // 승리 옵션 정보
+                if (progress?.winningOptionInfo) {
+                    const optionInfo = progress.winningOptionInfo;
+                    addLog(
+                        "success",
+                        `🎯 ${
+                            optionInfo.isAutoDetected
+                                ? "자동으로 찾은"
+                                : "선택된"
+                        } 승리 옵션: ${optionInfo.optionName}`
+                    );
+                }
+
+                // 참여자 통계
+                if (progress) {
+                    addLog(
+                        "success",
+                        `📊 전체 참여자: ${progress.totalParticipants}명, 이미 정산됨: ${progress.alreadySettled}명`
+                    );
+                    addLog(
+                        "success",
+                        `🎯 미정산된 사용자 ${progress.unsettledCount}명 발견`
+                    );
+
+                    // 배치 정보
+                    const batch = progress.batchInfo;
+                    addLog(
+                        "info",
+                        `📦 배치 정보: ${batch.currentBatch}/${batch.totalBatches} (배치당 최대 ${batch.batchSize}명)`
+                    );
+                }
+
+                addLog("info", "🚀 진행합니다");
+
+                // 처리 결과 알림
+                addLog(
+                    "info",
+                    `👥 이번 배치 처리 완료: ${result.processedCount}명`
+                );
+                if ((result.remainingCount || 0) > 0) {
+                    addLog(
+                        "info",
+                        `📋 처리 후 남은 인원: ${result.remainingCount}명`
+                    );
+                } else {
+                    addLog("success", "🎉 모든 플레이어 정산 완료!");
+                }
+
+                // 🔍 정산 재개 결과 상세 분석
+                const settlementResult = result.settlementResult;
+                const alreadySettledCount = settlementResult.results.filter(
+                    (playerResult: any) => {
+                        return (
+                            playerResult.alreadySettled ||
+                            playerResult.skipped ||
+                            (playerResult.message &&
+                                (playerResult.message.includes(
+                                    "already settled"
+                                ) ||
+                                    playerResult.message.includes(
+                                        "이미 정산"
+                                    ) ||
+                                    playerResult.message.includes(
+                                        "skipping"
+                                    ))) ||
+                            playerResult.status === "already_settled" ||
+                            playerResult.status === "skipped"
+                        );
+                    }
+                ).length;
+
+                const actualSuccessCount =
+                    settlementResult.summary.totalSuccess - alreadySettledCount;
+
+                // 전체 배치 완료 메시지
+                let completionMessage = `정산 재개 배치 완료: ${result.processedCount}명 처리`;
+                if (alreadySettledCount > 0) {
+                    completionMessage += ` (${alreadySettledCount}명 이미 정산됨)`;
+                }
+                if ((result.remainingCount || 0) > 0) {
+                    completionMessage += `, ${
+                        result.remainingCount || 0
+                    }명 남음`;
+                }
+
+                addLog("success", completionMessage, {
+                    processedCount: result.processedCount,
+                    remainingCount: result.remainingCount,
+                    totalProcessed: settlementResult.summary.totalProcessed,
+                    totalSuccess: settlementResult.summary.totalSuccess,
+                    actualSuccessCount,
+                    totalFailed: settlementResult.summary.totalFailed,
+                    alreadySettledCount,
+                    totalSettlementAmount:
+                        settlementResult.summary.totalSettlementAmount,
+                    winningOptionIds: result.winningOptionIds,
+                });
+
+                // 🎯 각 플레이어별 상세 결과 표시 (startSettlement와 동일)
+                settlementResult.results.forEach((playerResult: any) => {
+                    // 🔍 이미 정산된 플레이어 감지
+                    const isAlreadySettled =
+                        playerResult.alreadySettled ||
+                        playerResult.skipped ||
+                        (playerResult.message &&
+                            (playerResult.message.includes("already settled") ||
+                                playerResult.message.includes("이미 정산") ||
+                                playerResult.message.includes("skipping") ||
+                                playerResult.message.includes(
+                                    "already been settled"
+                                ) ||
+                                playerResult.message.includes("duplicate") ||
+                                playerResult.message
+                                    .toLowerCase()
+                                    .includes("skip"))) ||
+                        playerResult.status === "already_settled" ||
+                        playerResult.status === "skipped" ||
+                        (playerResult.error &&
+                            (playerResult.error.includes("already settled") ||
+                                playerResult.error.includes("이미 정산") ||
+                                playerResult.error.includes("skipping")));
+
+                    // 로그 레벨 결정
+                    let logLevel: LogEntry["level"];
+                    if (isAlreadySettled) {
+                        logLevel = "info";
+                    } else {
+                        logLevel = playerResult.success ? "success" : "error";
+                    }
+
+                    // 🔍 정산 상세 정보 포함
+                    const hasValidationErrors =
+                        playerResult.validationResult?.errors?.length > 0;
+                    const hasValidationWarnings =
+                        playerResult.validationResult?.warnings?.length > 0;
+
+                    let message: string;
+
+                    // 🔍 이미 정산된 사용자 특별 처리
+                    if (isAlreadySettled) {
+                        message = `플레이어 ${playerResult.playerId.slice(
+                            -6
+                        )} 이미 정산됨 - 건너뜀 ⚠️`;
+                    }
+                    // 🔍 베팅이 없는 사용자 특별 처리
+                    else if (
+                        playerResult.calculationDetails?.type === "NO_BET"
+                    ) {
+                        message = `플레이어 ${playerResult.playerId.slice(
+                            -6
+                        )} 베팅 없음 - 정산 대상 아님 ⚪`;
+                    } else if (
+                        playerResult.calculationDetails?.type === "ZERO_BET"
+                    ) {
+                        message = `플레이어 ${playerResult.playerId.slice(
+                            -6
+                        )} 0원 베팅 - 정산 대상 아님 ⚪`;
+                    }
+                    // 승리자
+                    else if (
+                        playerResult.success &&
+                        playerResult.settlementAmount > 0
+                    ) {
+                        message = `플레이어 ${playerResult.playerId.slice(
+                            -6
+                        )} 승리 정산 ✅ (+${formatAmount(
+                            playerResult.settlementAmount
+                        )})`;
+                    }
+                    // 패배자 (0원 정산)
+                    else if (
+                        playerResult.success &&
+                        playerResult.settlementAmount === 0
+                    ) {
+                        message = `플레이어 ${playerResult.playerId.slice(
+                            -6
+                        )} 패배 정산 ❌ (0원)`;
+                    }
+                    // 기본 성공/실패 메시지
+                    else {
+                        message = playerResult.success
+                            ? `플레이어 ${playerResult.playerId.slice(
+                                  -6
+                              )} 정산 성공`
+                            : `플레이어 ${playerResult.playerId.slice(
+                                  -6
+                              )} 정산 실패`;
+
+                        // 추가 상태 표시
+                        if (hasValidationErrors) {
+                            message += ` ⚠️ 계산 오류 감지 (${playerResult.validationResult.errors.length}개)`;
+                        } else if (hasValidationWarnings) {
+                            message += ` ⚠️ 경고 (${playerResult.validationResult.warnings.length}개)`;
+                        } else if (playerResult.validationResult?.isValid) {
+                            message += ` ✓ 검증 완료`;
+                        }
+                    }
+
+                    // 플레이어 상태 업데이트
+                    let playerStatus: PlayerStatus["status"];
+                    if (isAlreadySettled) {
+                        playerStatus = "completed";
+                    } else {
+                        playerStatus = playerResult.success
+                            ? "completed"
+                            : "failed";
+                    }
+
+                    updatePlayerStatus(playerResult.playerId, {
+                        status: playerStatus,
+                        settlementAmount: playerResult.settlementAmount,
+                        error: playerResult.error,
+                        endTime: new Date(),
+                        duration: 50,
+                        startTime: new Date(),
+                        calculationDetails: playerResult.calculationDetails,
+                        validationResult: playerResult.validationResult,
+                    });
+
+                    // 🔍 상세 로그 데이터 구성 (startSettlement와 동일)
+                    const logData: any = {
+                        playerId: playerResult.playerId,
+                        settlementAmount: playerResult.settlementAmount,
+                        notificationSent: playerResult.notificationSent,
+                        error: playerResult.error,
+                        message: playerResult.message,
+                        isAlreadySettled,
+                        batchType: "resume", // 재개 배치임을 표시
+                    };
+
+                    // 🔍 이미 정산된 사용자 로그 데이터
+                    if (isAlreadySettled) {
+                        logData.alreadySettledReason = {
+                            status: "already_settled",
+                            reason: "이 플레이어는 이미 정산되어 처리를 건너뛰었습니다",
+                            originalMessage: playerResult.message,
+                            skippedAt: new Date().toISOString(),
+                            hadPreviousSettlement: true,
+                        };
+                    }
+
+                    // 🔍 베팅이 없는 사용자 로그 데이터 개선
+                    if (
+                        playerResult.calculationDetails?.type === "NO_BET" ||
+                        playerResult.calculationDetails?.type === "ZERO_BET"
+                    ) {
+                        logData.noSettlementReason = {
+                            type: playerResult.calculationDetails.type,
+                            reason: playerResult.calculationDetails.reason,
+                            isParticipant:
+                                playerResult.calculationDetails.isParticipant ||
+                                false,
+                            betCount:
+                                playerResult.calculationDetails.betCount || 0,
+                        };
+                    }
+
+                    // 계산 상세 정보 추가
+                    if (playerResult.calculationDetails) {
+                        logData.calculation = {
+                            type: playerResult.calculationDetails.type,
+                            totalBet:
+                                playerResult.calculationDetails.playerTotalBet,
+                            winningBet:
+                                playerResult.calculationDetails
+                                    .playerWinningBet || 0,
+                            payoutAmount:
+                                playerResult.calculationDetails.finalPayout ||
+                                0,
+                            refundAmount:
+                                playerResult.calculationDetails.refundAmount ||
+                                0,
+                            payoutRatio:
+                                playerResult.calculationDetails.payoutRatio ||
+                                0,
+                        };
+
+                        if (playerResult.calculationDetails.winningBets) {
+                            logData.calculation.winningBets =
+                                playerResult.calculationDetails.winningBets;
+                        }
+                        if (playerResult.calculationDetails.losingBets) {
+                            logData.calculation.losingBets =
+                                playerResult.calculationDetails.losingBets;
+                        }
+                    }
+
+                    // 검증 결과 추가
+                    if (playerResult.validationResult) {
+                        logData.validation = {
+                            isValid: playerResult.validationResult.isValid,
+                            errors: playerResult.validationResult.errors,
+                            warnings: playerResult.validationResult.warnings,
+                            summary:
+                                playerResult.validationResult
+                                    .calculationSummary,
+                        };
+                    }
+
+                    addLog(logLevel, message, logData);
+                });
+
+                // 진행 상태 업데이트
+                const progressResult = await getSettlementProgress(poll.id);
+                if (progressResult.success) {
+                    setProgress((prev) => ({
+                        ...prev,
+                        pollSettlementStatus: {
+                            isSettled: poll.isSettled,
+                            settledAt: poll.settledAt || undefined,
+                            settledBy: poll.settledBy || undefined,
+                            totalPlayers: progressResult.progress.totalPlayers,
+                            settledPlayers:
+                                progressResult.progress.settledPlayers,
+                            unsettledPlayers:
+                                progressResult.progress.unsettledPlayers,
+                            settlementProgress:
+                                progressResult.progress.settlementProgress,
+                            isFullySettled:
+                                progressResult.progress.isFullySettled,
+                        },
+                    }));
+                }
             } else {
-                addLog("error", `정산 재개 실패: ${result.error}`);
+                // 🛡️ 타임아웃 에러 특별 처리
+                if (result.timeoutOccurred) {
+                    addLog("warning", "⏰ 타임아웃 발생: cron 안전 시간 초과");
+                    addLog(
+                        "info",
+                        "💡 해결 방법: 더 작은 배치 크기로 다시 시도하거나 타임아웃 시간을 늘려주세요"
+                    );
+                    addLog(
+                        "info",
+                        `🔧 현재 설정: 배치 크기 25명, 타임아웃 30초`
+                    );
+                } else {
+                    addLog(
+                        "error",
+                        `정산 재개 실패: ${result.error || "알 수 없는 오류"}`
+                    );
+                }
             }
         } catch (error) {
             const errorMessage =
@@ -508,10 +993,13 @@ export default function LiveLog({
             setResuming(false);
         }
     }, [
-        poll.id,
-        progress.pollSettlementStatus,
         addLog,
-        checkPollSettlementProgress,
+        updatePlayerStatus,
+        poll.id,
+        poll.isSettled,
+        poll.settledAt,
+        poll.settledBy,
+        progress.pollSettlementStatus,
     ]);
 
     const exportLogs = useCallback(() => {
@@ -582,7 +1070,8 @@ export default function LiveLog({
         checkPollSettlementProgress().catch((err) => {
             console.error("Error checking poll settlement progress:", err);
         });
-    }, [checkPollSettlementProgress]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [poll.id]);
 
     return (
         <div className="space-y-4">
@@ -882,7 +1371,7 @@ const SettlementProgressSection = ({ progress, progressPercentage }: any) => (
             </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
             {[
                 {
                     label: "총 플레이어",
@@ -895,9 +1384,14 @@ const SettlementProgressSection = ({ progress, progressPercentage }: any) => (
                     color: "text-blue-400",
                 },
                 {
-                    label: "성공",
+                    label: "새로 정산",
                     value: progress.successfulPlayers,
                     color: "text-green-400",
+                },
+                {
+                    label: "이미 정산됨",
+                    value: (progress as any).alreadySettledPlayers || 0,
+                    color: "text-yellow-400",
                 },
                 {
                     label: "실패",
@@ -1090,6 +1584,73 @@ const LogsSection = ({ filteredLogs, showTimestamps, logsEndRef }: any) => {
                                     </div>
                                     {log.data && (
                                         <div className="mt-2">
+                                            {/* 🔍 이미 정산된 사용자 특별 표시 */}
+                                            {log.data.alreadySettledReason && (
+                                                <div className="mb-3 p-3 bg-yellow-900/20 border border-yellow-600 rounded-lg">
+                                                    <h4 className="text-xs font-medium text-yellow-400 mb-2">
+                                                        ⚠️ 이미 정산된 플레이어
+                                                    </h4>
+                                                    <div className="grid grid-cols-1 gap-2 text-xs">
+                                                        <div>
+                                                            <span className="text-gray-400">
+                                                                상태:
+                                                            </span>
+                                                            <span className="ml-1 text-yellow-300 font-medium">
+                                                                {
+                                                                    log.data
+                                                                        .alreadySettledReason
+                                                                        .status
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-gray-400">
+                                                                건너뛴 시간:
+                                                            </span>
+                                                            <span className="ml-1 text-gray-300">
+                                                                {new Date(
+                                                                    log.data.alreadySettledReason.skippedAt
+                                                                ).toLocaleTimeString()}
+                                                            </span>
+                                                        </div>
+                                                        {log.data
+                                                            .alreadySettledReason
+                                                            .originalMessage && (
+                                                            <div>
+                                                                <span className="text-gray-400">
+                                                                    원본 메시지:
+                                                                </span>
+                                                                <span className="ml-1 text-gray-300 text-xs">
+                                                                    {
+                                                                        log.data
+                                                                            .alreadySettledReason
+                                                                            .originalMessage
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <span className="text-gray-400">
+                                                                사유:
+                                                            </span>
+                                                            <span className="ml-1 text-gray-300 text-xs">
+                                                                {
+                                                                    log.data
+                                                                        .alreadySettledReason
+                                                                        .reason
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-2 p-2 bg-yellow-800/30 rounded text-xs text-yellow-300">
+                                                        ⚠️ 이 플레이어는 이미
+                                                        정산되어 처리를
+                                                        건너뛰었습니다. 중복
+                                                        정산 방지됨.
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* 🔍 베팅이 없는 사용자 특별 표시 */}
                                             {log.data.noSettlementReason && (
                                                 <div className="mb-3 p-3 bg-gray-900/20 border border-gray-600 rounded-lg">

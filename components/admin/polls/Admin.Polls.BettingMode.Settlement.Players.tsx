@@ -1,15 +1,13 @@
 "use client";
 
-import { useCallback, useState, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect, useMemo, useRef } from "react";
 import {
     getPollParticipants,
     getSettlementAmountSinglePlayer,
+    resumeSettlement,
 } from "@/app/actions/polls/polls-bettingMode";
 import type { Poll } from "@prisma/client";
-import {
-    formatAmount,
-    formatPlayerName,
-} from "@/lib/utils/formatting";
+import { formatAmount, formatPlayerName } from "@/lib/utils/formatting";
 import LiveLog from "./Admin.Polls.BettingMode.Settlement.LiveLog";
 import {
     usePlayerSelection,
@@ -24,25 +22,30 @@ import {
     type SortOrder,
 } from "./types/betting-mode";
 import {
-    Header,
     TabNavigation,
     ParticipantsTable,
     PlayerRow,
     Pagination,
     CalculationModal,
-    BulkSettlementResultModal,
 } from "./components/PlayerComponents";
+import { RefreshCw, Calculator, X, Zap } from "lucide-react";
 
 interface SettlementPlayersProps {
     poll: Poll;
     winningOptionIds: string[];
     onSelectedPlayersChange?: (selectedPlayers: string[]) => void;
+    onBulkSettlementResult?: (result: {
+        success: boolean;
+        summary?: { totalSuccess: number; totalFailed: number };
+        error?: string;
+    }) => void;
 }
 
 export default function SettlementPlayers({
     poll,
     winningOptionIds,
     onSelectedPlayersChange,
+    onBulkSettlementResult,
 }: SettlementPlayersProps) {
     const [participants, setParticipants] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -58,6 +61,15 @@ export default function SettlementPlayers({
     const [playerWinStatus, setPlayerWinStatus] = useState<
         Record<string, boolean>
     >({});
+    const [autoSettling, setAutoSettling] = useState(false);
+    const [autoSettlementProgress, setAutoSettlementProgress] = useState<{
+        currentBatch: number;
+        totalBatches: number;
+        processedCount: number;
+        remainingCount: number;
+        totalPlayers: number;
+    } | null>(null);
+    const autoSettlementCancelRef = useRef(false);
 
     const {
         selectedPlayers,
@@ -76,9 +88,7 @@ export default function SettlementPlayers({
 
     const {
         bulkSettling,
-        bulkSettlementResult,
         executeBulkSettlement,
-        clearResult,
     } = useBulkSettlement(poll, winningOptionIds);
 
     const { activeTab, setActiveTab, filteredParticipants, tabStats } =
@@ -255,7 +265,93 @@ export default function SettlementPlayers({
                 console.error("Error fetching participants:", err);
             });
         }
-    }, [executeBulkSettlement, selectedPlayers, fetchParticipants]);
+        if (onBulkSettlementResult && result) {
+            onBulkSettlementResult(result);
+        }
+    }, [
+        executeBulkSettlement,
+        selectedPlayers,
+        fetchParticipants,
+        onBulkSettlementResult,
+    ]);
+
+    const handleAutoSettlement = useCallback(async () => {
+        if (autoSettling) return;
+
+        try {
+            setAutoSettling(true);
+            autoSettlementCancelRef.current = false;
+            setAutoSettlementProgress(null);
+
+            let currentBatch = 1;
+            let totalProcessedCount = 0;
+            let remainingCount = 0;
+
+            while (!autoSettlementCancelRef.current) {
+
+                const result = await resumeSettlement(poll.id, 25, 25000);
+
+                if (!result.success) {
+                    if (result.timeoutOccurred) {
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, 1000)
+                        );
+                        continue;
+                    } else {
+                        throw new Error(result.error || "자동 정산 실패");
+                    }
+                }
+
+                totalProcessedCount += result.processedCount || 0;
+                remainingCount = result.remainingCount || 0;
+
+                if (result.detailedProgress) {
+                    setAutoSettlementProgress({
+                        currentBatch,
+                        totalBatches:
+                            result.detailedProgress.batchInfo.totalBatches,
+                        processedCount: totalProcessedCount,
+                        remainingCount,
+                        totalPlayers: result.detailedProgress.totalParticipants,
+                    });
+                }
+
+                if (remainingCount === 0) {
+                    break;
+                }
+
+                currentBatch++;
+                await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+
+            if (autoSettlementCancelRef.current) {
+                onBulkSettlementResult?.({
+                    success: false,
+                    error: "자동 정산이 취소되었습니다",
+                });
+            } else {
+            }
+
+            await fetchParticipants();
+        } catch (error) {
+            console.error("자동 정산 오류:", error);
+            onBulkSettlementResult?.({
+                success: false,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "자동 정산 중 오류 발생",
+            });
+        } finally {
+            setAutoSettling(false);
+            setAutoSettlementProgress(null);
+            autoSettlementCancelRef.current = false;
+        }
+    }, [poll.id, autoSettling, fetchParticipants, onBulkSettlementResult]);
+
+    const handleCancelAutoSettlement = useCallback(() => {
+        autoSettlementCancelRef.current = true;
+    }, []);
 
     const handleSort = useCallback(
         (newSortBy: SortBy) => {
@@ -308,12 +404,26 @@ export default function SettlementPlayers({
                 setCalculationModalOpen(true);
             }
         },
-        [
-            participants,
-            settlementResults,
-            generateCalculationSteps,
-            poll,
-        ]
+        [participants, settlementResults, generateCalculationSteps, poll]
+    );
+
+    // 개별 플레이어 승리/패배 상태 확인
+    const handleCheckSinglePlayerStatus = useCallback(
+        async (playerId: string) => {
+            if (playerWinStatus[playerId] !== undefined) {
+                alert("이미 확인된 플레이어입니다.");
+                return;
+            }
+
+            try {
+                await checkPlayerWinStatus(playerId);
+                alert("승리/패배 상태를 확인했습니다.");
+            } catch (error) {
+                console.error("Error checking player win status:", error);
+                alert("상태 확인 중 오류가 발생했습니다.");
+            }
+        },
+        [playerWinStatus, checkPlayerWinStatus]
     );
 
     const handleForceResettle = useCallback(
@@ -418,6 +528,7 @@ export default function SettlementPlayers({
                 onShowCalculation={handleShowCalculation}
                 onForceResettle={handleForceResettle}
                 onCalculateSettlement={calculateSettlementAmount}
+                onCheckPlayerStatus={handleCheckSinglePlayerStatus}
             />
         ));
     }, [
@@ -431,23 +542,25 @@ export default function SettlementPlayers({
         handleShowCalculation,
         handleForceResettle,
         calculateSettlementAmount,
+        handleCheckSinglePlayerStatus,
     ]);
 
-    useEffect(() => {
-        fetchParticipants().catch((err) => {
+    // 수동 새로고침 - 버튼 클릭 시에만 실행
+    const handleManualRefresh = useCallback(async () => {
+        await fetchParticipants().catch((err) => {
             console.error("Error fetching participants:", err);
         });
     }, [fetchParticipants]);
 
+    // 페이지 변경 시에만 데이터 다시 로드
     useEffect(() => {
-        participants.forEach((participant) => {
-            if (playerWinStatus[participant.playerId] === undefined) {
-                checkPlayerWinStatus(participant.playerId).catch((err) => {
-                    console.error("Error checking player win status:", err);
-                });
-            }
-        });
-    }, [participants, checkPlayerWinStatus, playerWinStatus]);
+        if (participants.length > 0) {
+            handleManualRefresh().catch((err) => {
+                console.error("Error fetching participants:", err);
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage, sortBy, sortOrder]);
 
     useEffect(() => {
         if (onSelectedPlayersChange) {
@@ -457,14 +570,18 @@ export default function SettlementPlayers({
 
     return (
         <div className="space-y-4">
-            <Header
+            <SettlementHeader
                 totalParticipants={totalParticipants}
                 totalBetAmount={totalBetAmount}
                 safetyCheck={safetyCheck}
                 onBulkSettlement={handleBulkSettlement}
-                onRefresh={fetchParticipants}
+                onRefresh={handleManualRefresh}
                 bulkSettling={bulkSettling}
                 loading={loading}
+                autoSettling={autoSettling}
+                autoSettlementProgress={autoSettlementProgress}
+                onAutoSettlement={handleAutoSettlement}
+                onCancelAutoSettlement={handleCancelAutoSettlement}
             />
 
             <TabNavigation
@@ -472,10 +589,7 @@ export default function SettlementPlayers({
                 tabStats={tabStats}
                 onTabChange={handleTabChange}
                 onSelectAll={() =>
-                    handleSelectAll(
-                        participants.map((p) => p.playerId),
-                        totalParticipants
-                    )
+                    handleSelectAll(participants.map((p) => p.playerId))
                 }
                 onDeselectAll={handleDeselectAll}
             />
@@ -502,10 +616,11 @@ export default function SettlementPlayers({
                 onClose={() => setCalculationModalOpen(false)}
             />
 
-            <BulkSettlementResultModal
+            {/* BulkSettlementResultModal 비활성화 - Settlement 컴포넌트에서 결과 표시 */}
+            {/* <BulkSettlementResultModal
                 result={bulkSettlementResult}
                 onClose={clearResult}
-            />
+            /> */}
 
             <LiveLog
                 poll={poll}
@@ -523,3 +638,179 @@ export default function SettlementPlayers({
         </div>
     );
 }
+
+const SettlementHeader = ({
+    totalParticipants,
+    totalBetAmount,
+    safetyCheck,
+    onBulkSettlement,
+    onRefresh,
+    bulkSettling,
+    loading,
+    autoSettling,
+    autoSettlementProgress,
+    onAutoSettlement,
+    onCancelAutoSettlement,
+}: {
+    totalParticipants: number;
+    totalBetAmount: number;
+    safetyCheck: {
+        count: number;
+        isWarning: boolean;
+        isDanger: boolean;
+        canProceed: boolean;
+        getMessage: () => string;
+    };
+    onBulkSettlement: () => void;
+    onRefresh: () => void;
+    bulkSettling: boolean;
+    loading: boolean;
+    autoSettling: boolean;
+    autoSettlementProgress: {
+        currentBatch: number;
+        totalBatches: number;
+        processedCount: number;
+        remainingCount: number;
+        totalPlayers: number;
+    } | null;
+    onAutoSettlement: () => void;
+    onCancelAutoSettlement: () => void;
+}) => {
+    return (
+        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+                <div>
+                    <h3 className="text-lg font-semibold text-white">
+                        정산 대상 플레이어
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                        총 {formatAmount(totalParticipants)}명 참여 · 총 베팅{" "}
+                        {formatAmount(totalBetAmount)}
+                    </p>
+                </div>
+                <button
+                    onClick={onRefresh}
+                    disabled={loading || bulkSettling || autoSettling}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                    <RefreshCw
+                        className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                    />
+                    새로고침
+                </button>
+            </div>
+
+            <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={onBulkSettlement}
+                        disabled={
+                            !safetyCheck.canProceed ||
+                            bulkSettling ||
+                            autoSettling ||
+                            safetyCheck.count === 0
+                        }
+                        className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        {bulkSettling ? (
+                            <>
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                정산 중...
+                            </>
+                        ) : (
+                            <>
+                                <Calculator className="w-4 h-4" />
+                                선택된 플레이어 일괄 정산
+                            </>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={
+                            autoSettling
+                                ? onCancelAutoSettlement
+                                : onAutoSettlement
+                        }
+                        disabled={loading || bulkSettling}
+                        className={`flex items-center gap-2 px-4 py-2 text-white text-sm rounded-md transition-colors ${
+                            autoSettling
+                                ? "bg-red-600 hover:bg-red-700"
+                                : "bg-green-600 hover:bg-green-700"
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                        {autoSettling ? (
+                            <>
+                                <X className="w-4 h-4" />
+                                자동 정산 취소
+                            </>
+                        ) : (
+                            <>
+                                <Zap className="w-4 h-4" />
+                                모든 플레이어 자동 정산
+                            </>
+                        )}
+                    </button>
+                </div>
+
+                {autoSettlementProgress && (
+                    <div className="bg-gray-700 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-white">
+                                자동 정산 진행 중...
+                            </span>
+                            <span className="text-sm text-gray-300">
+                                배치 {autoSettlementProgress.currentBatch}/
+                                {autoSettlementProgress.totalBatches}
+                            </span>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-xs text-gray-400">
+                                <span>
+                                    처리완료:{" "}
+                                    {formatAmount(
+                                        autoSettlementProgress.processedCount
+                                    )}
+                                    명
+                                </span>
+                                <span>
+                                    남은플레이어:{" "}
+                                    {formatAmount(
+                                        autoSettlementProgress.remainingCount
+                                    )}
+                                    명
+                                </span>
+                            </div>
+                            <div className="w-full bg-gray-600 rounded-full h-2">
+                                <div
+                                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                                    style={{
+                                        width: `${
+                                            autoSettlementProgress.totalPlayers >
+                                            0
+                                                ? (autoSettlementProgress.processedCount /
+                                                      autoSettlementProgress.totalPlayers) *
+                                                  100
+                                                : 0
+                                        }%`,
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div
+                    className={`text-sm p-2 rounded-md ${
+                        safetyCheck.isDanger
+                            ? "bg-red-900/50 text-red-200 border border-red-700"
+                            : safetyCheck.isWarning
+                            ? "bg-yellow-900/50 text-yellow-200 border border-yellow-700"
+                            : "bg-green-900/50 text-green-200 border border-green-700"
+                    }`}
+                >
+                    {safetyCheck.getMessage()}
+                </div>
+            </div>
+        </div>
+    );
+};

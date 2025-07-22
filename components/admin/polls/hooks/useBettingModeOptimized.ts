@@ -181,20 +181,9 @@ export function usePlayerSelection() {
         []
     );
 
-    const handleSelectAll = useCallback(
-        (playerIds: string[], totalParticipants: number) => {
-            const confirmed = confirm(
-                `현재 페이지의 ${playerIds.length}명을 모두 선택하시겠습니까?\n\n` +
-                    `⚠️ 주의: 이는 현재 페이지에만 해당됩니다.\n` +
-                    `전체 참여자 수: ${totalParticipants}명`
-            );
-
-            if (confirmed) {
-                setSelectedPlayers(new Set(playerIds));
-            }
-        },
-        []
-    );
+    const handleSelectAll = useCallback((playerIds: string[]) => {
+        setSelectedPlayers(new Set(playerIds));
+    }, []);
 
     const handleDeselectAll = useCallback(() => {
         setSelectedPlayers(new Set());
@@ -346,11 +335,20 @@ export function useSettlementCalculation(
         async (playerIds: string[]) => {
             const promises = playerIds
                 .filter((id) => settlementAmounts[id] === undefined)
-                .map((id) => calculateSettlementAmount(id));
+                .map(async (id) => {
+                    try {
+                        await calculateSettlementAmount(id);
+                    } catch (error) {
+                        console.error(
+                            `Failed to calculate settlement for ${id}:`,
+                            error
+                        );
+                    }
+                });
 
             await Promise.allSettled(promises);
         },
-        [settlementAmounts, calculateSettlementAmount]
+        [calculateSettlementAmount, settlementAmounts]
     );
 
     return {

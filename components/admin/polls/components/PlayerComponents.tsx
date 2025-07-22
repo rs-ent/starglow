@@ -14,8 +14,6 @@ import {
     X,
     CheckSquare,
     Square,
-    Play,
-    Loader2,
     Clock,
 } from "lucide-react";
 import {
@@ -46,9 +44,7 @@ export const Header = ({
     totalParticipants,
     totalBetAmount,
     safetyCheck,
-    onBulkSettlement,
     onRefresh,
-    bulkSettling,
     loading,
 }: HeaderProps) => (
     <div className="flex items-center justify-between">
@@ -77,21 +73,6 @@ export const Header = ({
             )}
         </div>
         <div className="flex items-center gap-2">
-            {safetyCheck.count > 0 && (
-                <button
-                    onClick={onBulkSettlement}
-                    disabled={bulkSettling}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    title={`Players 컴포넌트에서 ${safetyCheck.count}명 정산 실행`}
-                >
-                    {bulkSettling ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                        <Play className="w-3 h-3" />
-                    )}
-                    일괄 정산 ({safetyCheck.count}명) [Players]
-                </button>
-            )}
             <button
                 onClick={onRefresh}
                 disabled={loading}
@@ -345,6 +326,7 @@ interface PlayerRowProps {
     onShowCalculation: (playerId: string) => void;
     onForceResettle: (playerId: string) => void;
     onCalculateSettlement: (playerId: string) => void;
+    onCheckPlayerStatus: (playerId: string) => void;
 }
 
 export const PlayerRow = ({
@@ -358,6 +340,7 @@ export const PlayerRow = ({
     onShowCalculation,
     onForceResettle,
     onCalculateSettlement,
+    onCheckPlayerStatus,
 }: PlayerRowProps) => (
     <tr
         className={`hover:bg-gray-700 transition-colors ${
@@ -411,7 +394,16 @@ export const PlayerRow = ({
         <td className="px-4 py-3">
             <div className="text-center">
                 {isWinner === undefined ? (
-                    <div className="text-xs text-gray-400">계산 중...</div>
+                    <button
+                        onClick={() =>
+                            onCheckPlayerStatus(participant.playerId)
+                        }
+                        className="flex items-center justify-center gap-1 px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+                        title="승리/패배 상태 확인"
+                    >
+                        <Clock className="w-3 h-3" />
+                        확인
+                    </button>
                 ) : isWinner ? (
                     <div className="flex items-center justify-center gap-1 text-xs text-green-400">
                         <Trophy className="w-3 h-3" />
