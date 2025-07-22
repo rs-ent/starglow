@@ -147,7 +147,7 @@ function PollsList({
                 <div className="relative group">
                     {/* 드래그 힌트 - 좌측 */}
                     <motion.div
-                        className="absolute left-2 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-60 pointer-events-none"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 -z-20 opacity-0 group-hover:opacity-60 pointer-events-none"
                         initial={{ x: -10, opacity: 0 }}
                         animate={{
                             x: [0, -5, 0],
@@ -181,7 +181,7 @@ function PollsList({
 
                     {/* 드래그 힌트 - 우측 */}
                     <motion.div
-                        className="absolute right-2 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-60 pointer-events-none"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 -z-20 opacity-0 group-hover:opacity-60 pointer-events-none"
                         initial={{ x: 10, opacity: 0 }}
                         animate={{
                             x: [0, 5, 0],
