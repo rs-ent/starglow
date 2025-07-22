@@ -522,6 +522,11 @@ function PollsListCard({
                                 e.stopPropagation();
                                 handleOptionClick(option);
                             }}
+                            onTouchEnd={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handleOptionClick(option);
+                            }}
                             className={cn(
                                 votingState.selection?.optionId ===
                                     option.optionId &&
@@ -535,7 +540,8 @@ function PollsListCard({
                                 "hover:border-[rgba(255,255,255,0.4)]",
                                 "cursor-pointer",
                                 "relative overflow-hidden",
-                                "mx-auto"
+                                "mx-auto",
+                                "touch-action-none"
                             )}
                             initial="initial"
                             animate="animate"
@@ -784,11 +790,17 @@ function PollsListCard({
 
                 <div
                     onClick={() => void handleSubmit()}
+                    onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        void handleSubmit();
+                    }}
                     className={cn(
                         "cursor-pointer relative text-center",
                         "w-full hover:glow-purple rounded-full font-main",
                         "transition-all duration-300 ease-in",
                         "mb-[50px]",
+                        "touch-action-none",
                         getResponsiveClass(30).paddingClass,
                         getResponsiveClass(15).textClass
                     )}
@@ -1182,6 +1194,14 @@ function PollsListCard({
                                     showBettingTutorial: true,
                                 }));
                             }}
+                            onTouchEnd={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setUIState((prev) => ({
+                                    ...prev,
+                                    showBettingTutorial: true,
+                                }));
+                            }}
                             className={cn(
                                 "rounded-full flex items-center gap-1",
                                 "bg-gradient-to-r from-orange-900/30 to-red-900/30",
@@ -1190,6 +1210,7 @@ function PollsListCard({
                                 "transition-all duration-300",
                                 "hover:scale-105 hover:border-orange-400/60",
                                 "cursor-pointer",
+                                "touch-action-none",
                                 getResponsiveClass(10).textClass,
                                 getResponsiveClass(15).paddingClass
                             )}
@@ -1228,6 +1249,14 @@ function PollsListCard({
                                     showBettingRecord: true,
                                 }));
                             }}
+                            onTouchEnd={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setUIState((prev) => ({
+                                    ...prev,
+                                    showBettingRecord: true,
+                                }));
+                            }}
                             whileHover={{
                                 scale: 1.08,
                                 boxShadow: "0 0 20px rgba(34, 197, 94, 0.6)",
@@ -1240,6 +1269,7 @@ function PollsListCard({
                                 "text-green-300 hover:text-green-200",
                                 "transition-all duration-300",
                                 "cursor-pointer font-medium",
+                                "touch-action-none",
                                 getResponsiveClass(10).textClass,
                                 getResponsiveClass(15).paddingClass
                             )}
@@ -1288,10 +1318,20 @@ function PollsListCard({
                                         ? "opacity-45"
                                         : "opacity-0",
                                     "transition-all duration-300 ease-in cursor-pointer",
+                                    "touch-action-none",
                                     getResponsiveClass(25).frameClass
                                 )}
                                 onClick={(e) => {
                                     e.stopPropagation();
+                                    setUIState((prev) => ({
+                                        ...prev,
+                                        showOngoingResults:
+                                            !prev.showOngoingResults,
+                                    }));
+                                }}
+                                onTouchEnd={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
                                     setUIState((prev) => ({
                                         ...prev,
                                         showOngoingResults:
@@ -1310,10 +1350,20 @@ function PollsListCard({
                                         : "opacity-0",
                                     "absolute top-0 left-0",
                                     "transition-all duration-300 ease-in cursor-pointer",
+                                    "touch-action-none",
                                     getResponsiveClass(25).frameClass
                                 )}
                                 onClick={(e) => {
                                     e.stopPropagation();
+                                    setUIState((prev) => ({
+                                        ...prev,
+                                        showOngoingResults:
+                                            !prev.showOngoingResults,
+                                    }));
+                                }}
+                                onTouchEnd={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
                                     setUIState((prev) => ({
                                         ...prev,
                                         showOngoingResults:
@@ -1349,14 +1399,14 @@ function PollsListCard({
                     pollDetail?.hasAnswer
                         ? "Correct Answer!"
                         : pollDetail?.isOnchain && uiState.onchainTxHash
-                        ? "Transaction Confirmed!"
+                        ? "Tx Confirmed!"
                         : "Thanks for voting!"
                 }
                 description={
                     pollDetail?.hasAnswer
                         ? "You've selected the correct answer. Thank you for your participation!"
                         : pollDetail?.isOnchain && uiState.onchainTxHash
-                        ? `Transaction: ${uiState.onchainTxHash.slice(
+                        ? `Tx Hash: ${uiState.onchainTxHash.slice(
                               0,
                               6
                           )}...${uiState.onchainTxHash.slice(-6)}`

@@ -111,11 +111,35 @@ export default React.memo(function CustomCarousel({
         [currentIndex, goToIndex]
     );
 
-    // 드래그 시작
+    // 드래그 시작 (인터랙티브 요소 체크 추가)
     const handleDragStart = useCallback(
-        (pos: number) => {
+        (pos: number, target?: HTMLElement) => {
             if (totalItems <= 1) {
                 return;
+            }
+
+            // 인터랙티브 요소인지 확인
+            if (target) {
+                const interactiveElements = [
+                    "button",
+                    "input",
+                    "select",
+                    "textarea",
+                    "a",
+                    '[role="button"]',
+                    "[onclick]",
+                    ".cursor-pointer",
+                    ".touch-action-none",
+                    "[data-interactive]",
+                ];
+
+                const isInteractive = interactiveElements.some(
+                    (selector) => target.closest(selector) !== null
+                );
+
+                if (isInteractive) {
+                    return;
+                }
             }
 
             setIsDragging(true);
@@ -170,22 +194,25 @@ export default React.memo(function CustomCarousel({
                 handleDragMove(pos);
             },
             onTouchEnd: (e: React.TouchEvent) => {
-                e.preventDefault();
+                if (isDragging) {
+                    e.preventDefault();
+                }
                 handleDragEnd();
             },
             onMouseDown: (e: React.MouseEvent) => {
-                e.preventDefault();
                 const pos = isHorizontal ? e.clientX : e.clientY;
-                handleDragStart(pos);
+                handleDragStart(pos, e.target as HTMLElement);
             },
             onMouseMove: (e: React.MouseEvent) => {
-                e.preventDefault();
                 if (!isDragging) return;
+                e.preventDefault();
                 const pos = isHorizontal ? e.clientX : e.clientY;
                 handleDragMove(pos);
             },
             onMouseUp: (e: React.MouseEvent) => {
-                e.preventDefault();
+                if (isDragging) {
+                    e.preventDefault();
+                }
                 handleDragEnd();
             },
             onMouseLeave: () => {
@@ -294,7 +321,7 @@ export default React.memo(function CustomCarousel({
             const pos = isHorizontal
                 ? e.touches[0].clientX
                 : e.touches[0].clientY;
-            handleDragStart(pos);
+            handleDragStart(pos, e.target as HTMLElement);
         };
 
         // 패시브 리스너로 성능 향상
@@ -335,8 +362,10 @@ export default React.memo(function CustomCarousel({
             )}
             style={{
                 userSelect: isDragging ? "none" : undefined,
-                // 터치 액션 최적화
+                // 터치 액션 최적화 - 자식 요소의 터치 이벤트 허용
                 touchAction: isHorizontal ? "pan-y" : "pan-x",
+                WebkitTouchCallout: "none",
+                WebkitUserSelect: isDragging ? "none" : undefined,
             }}
         >
             <div

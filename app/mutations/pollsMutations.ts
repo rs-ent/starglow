@@ -175,7 +175,7 @@ export function useParticipatePollMutation() {
             }
             queryClient
                 .invalidateQueries({
-                    queryKey: pollKeys.logs(variables.poll.id as any),
+                    queryKey: pollKeys.logs({ playerId: variables.player.id }),
                 })
                 .catch((error) => {
                     console.error(error);
@@ -190,7 +190,7 @@ export function useParticipatePollMutation() {
             queryClient
                 .invalidateQueries({
                     queryKey: pollKeys.logByUser(
-                        variables.poll.id,
+                        variables.pollId,
                         variables.player.id
                     ),
                 })
@@ -199,7 +199,7 @@ export function useParticipatePollMutation() {
                 });
             queryClient
                 .invalidateQueries({
-                    queryKey: pollKeys.result(variables.poll.id),
+                    queryKey: pollKeys.result(variables.pollId),
                 })
                 .catch((error) => {
                     console.error(error);
@@ -208,7 +208,7 @@ export function useParticipatePollMutation() {
                 .invalidateQueries({
                     queryKey: pollKeys.playerLogs(
                         variables.player.id,
-                        variables.poll.id
+                        variables.pollId
                     ),
                 })
                 .catch((error) => {
