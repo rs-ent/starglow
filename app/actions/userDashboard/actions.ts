@@ -5,7 +5,11 @@ import { prisma } from "@/lib/prisma/client";
 import type {
     DailyActivityWallet,
     MonthlyActivityWallet,
+    NotificationType,
+    NotificationCategory,
 } from "@prisma/client";
+import { updatePlayerAsset } from "../playerAssets/actions";
+import { createRewardNotification } from "../notification/actions";
 
 // 실시간 데이터 (자주 변함) - 짧은 캐시
 export async function getWalletsCount() {
@@ -775,6 +779,362 @@ export async function getMemeQuestMigrationTotal() {
         return {
             totalAmount: 0,
             error: "밈퀘스트 마이그레이션 데이터 조회 실패",
+        };
+    }
+}
+
+export interface GetUsersListResult {
+    users: any[];
+    totalCount: number;
+    currentPage: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+    error?: string;
+}
+
+export async function getUsersList(
+    page: number = 1
+): Promise<GetUsersListResult> {
+    try {
+        const pageSize = 50;
+        const skip = (page - 1) * pageSize;
+
+        const [users, totalCount] = await Promise.all([
+            prisma.user.findMany({
+                skip,
+                take: pageSize,
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    createdAt: true,
+                    lastLoginAt: true,
+                    provider: true,
+                    wallets: {
+                        select: {
+                            address: true,
+                            provider: true,
+                        },
+                    },
+                    player: {
+                        select: {
+                            id: true,
+                            name: true,
+                            nickname: true,
+                            email: true,
+                            browser: true,
+                            city: true,
+                            country: true,
+                            device: true,
+                            ipAddress: true,
+                            locale: true,
+                            os: true,
+                            state: true,
+                            timezone: true,
+                        },
+                    },
+                },
+                orderBy: {
+                    createdAt: "desc",
+                },
+                cacheStrategy: getCacheStrategy("oneHour"),
+            }),
+
+            prisma.user.count({
+                cacheStrategy: getCacheStrategy("oneHour"),
+            }),
+        ]);
+
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        return {
+            users,
+            totalCount,
+            currentPage: page,
+            totalPages,
+            hasNext: page < totalPages,
+            hasPrevious: page > 1,
+        };
+    } catch (error) {
+        console.error("Failed to fetch users list:", error);
+        return {
+            users: [],
+            totalCount: 0,
+            currentPage: page,
+            totalPages: 0,
+            hasNext: false,
+            hasPrevious: false,
+            error: "유저 리스트 조회에 실패했습니다.",
+        };
+    }
+}
+
+export interface SearchUsersResult {
+    users: any[];
+    totalCount: number;
+    currentPage: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+    searchQuery: string;
+    error?: string;
+}
+
+export async function searchUsers(
+    query: string,
+    page: number = 1
+): Promise<SearchUsersResult> {
+    try {
+        if (!query || query.trim().length === 0) {
+            const result = await getUsersList(page);
+            return {
+                ...result,
+                searchQuery: "",
+            };
+        }
+
+        const pageSize = 50;
+        const skip = (page - 1) * pageSize;
+        const searchTerm = query.trim();
+
+        // 다양한 검색 조건을 OR로 연결
+        const searchConditions = {
+            OR: [
+                // User 테이블에서 검색
+                { id: { contains: searchTerm, mode: "insensitive" as const } },
+                {
+                    name: {
+                        contains: searchTerm,
+                        mode: "insensitive" as const,
+                    },
+                },
+                {
+                    email: {
+                        contains: searchTerm,
+                        mode: "insensitive" as const,
+                    },
+                },
+
+                // Player 테이블에서 검색
+                {
+                    player: {
+                        OR: [
+                            {
+                                id: {
+                                    contains: searchTerm,
+                                    mode: "insensitive" as const,
+                                },
+                            },
+                            {
+                                name: {
+                                    contains: searchTerm,
+                                    mode: "insensitive" as const,
+                                },
+                            },
+                            {
+                                nickname: {
+                                    contains: searchTerm,
+                                    mode: "insensitive" as const,
+                                },
+                            },
+                            {
+                                email: {
+                                    contains: searchTerm,
+                                    mode: "insensitive" as const,
+                                },
+                            },
+                        ],
+                    },
+                },
+
+                // Wallet 테이블에서 검색
+                {
+                    wallets: {
+                        some: {
+                            OR: [
+                                {
+                                    id: {
+                                        contains: searchTerm,
+                                        mode: "insensitive" as const,
+                                    },
+                                },
+                                {
+                                    address: {
+                                        contains: searchTerm,
+                                        mode: "insensitive" as const,
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                },
+            ],
+        };
+
+        const [users, totalCount] = await Promise.all([
+            prisma.user.findMany({
+                where: searchConditions,
+                skip,
+                take: pageSize,
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    createdAt: true,
+                    lastLoginAt: true,
+                    provider: true,
+                    wallets: {
+                        select: {
+                            address: true,
+                            provider: true,
+                        },
+                    },
+                    player: {
+                        select: {
+                            id: true,
+                            name: true,
+                            nickname: true,
+                            email: true,
+                            browser: true,
+                            city: true,
+                            country: true,
+                            device: true,
+                            ipAddress: true,
+                            locale: true,
+                            os: true,
+                            state: true,
+                            timezone: true,
+                        },
+                    },
+                },
+                orderBy: {
+                    createdAt: "desc",
+                },
+            }),
+
+            prisma.user.count({
+                where: searchConditions,
+            }),
+        ]);
+
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        return {
+            users,
+            totalCount,
+            currentPage: page,
+            totalPages,
+            hasNext: page < totalPages,
+            hasPrevious: page > 1,
+            searchQuery: searchTerm,
+        };
+    } catch (error) {
+        console.error("Failed to search users:", error);
+        return {
+            users: [],
+            totalCount: 0,
+            currentPage: page,
+            totalPages: 0,
+            hasNext: false,
+            hasPrevious: false,
+            searchQuery: query,
+            error: "유저 검색에 실패했습니다.",
+        };
+    }
+}
+
+export interface GiveRewardInput {
+    playerId: string;
+    assetId: string;
+    amount: number;
+    reason?: string;
+    type: NotificationType;
+    category: NotificationCategory;
+    title: string;
+    message: string;
+    description: string;
+}
+
+export interface GiveRewardResult {
+    success: boolean;
+    error?: string;
+}
+
+export async function giveReward(
+    input: GiveRewardInput
+): Promise<GiveRewardResult> {
+    try {
+        // 플레이어 존재 확인
+        const player = await prisma.player.findUnique({
+            where: { id: input.playerId },
+            select: { id: true, name: true, nickname: true },
+        });
+
+        if (!player) {
+            return {
+                success: false,
+                error: "플레이어를 찾을 수 없습니다.",
+            };
+        }
+
+        // 에셋 존재 확인
+        const asset = await prisma.asset.findUnique({
+            where: { id: input.assetId },
+            select: { id: true, name: true, symbol: true, isActive: true },
+        });
+
+        if (!asset) {
+            return {
+                success: false,
+                error: "에셋을 찾을 수 없습니다.",
+            };
+        }
+
+        if (!asset.isActive) {
+            return {
+                success: false,
+                error: "비활성화된 에셋입니다.",
+            };
+        }
+
+        const updateResult = await updatePlayerAsset({
+            transaction: {
+                playerId: input.playerId,
+                assetId: input.assetId,
+                amount: input.amount,
+                operation: "ADD",
+                reason: input.reason || "Event Reward",
+            },
+        });
+
+        if (!updateResult.success) {
+            return {
+                success: false,
+                error: `보상 지급에 실패했습니다: ${updateResult.error}`,
+            };
+        }
+
+        await createRewardNotification(
+            input.playerId,
+            input.assetId,
+            input.amount,
+            input.type,
+            input.category,
+            input.title,
+            input.message,
+            input.description,
+            input.reason || "Event Reward"
+        );
+
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error("Error giving reward:", error);
+        return {
+            success: false,
+            error: "보상 지급 중 오류가 발생했습니다.",
         };
     }
 }

@@ -9,6 +9,7 @@ import type { NotificationWithEntity } from "@/app/actions/notification/actions"
 
 import NotifyWalletsBackup from "./Notify.Wallets.Backup";
 import NotifyPollsBettingResult from "./Notify.Polls.Betting.Result";
+import NotifyAssetRewarded from "./Notify.Asset.Rewarded";
 
 const WalletBackupModalAdapter = ({
     isOpen,
@@ -42,6 +43,20 @@ const BettingResultModalAdapter = ({
     );
 };
 
+const AssetRewardedModalAdapter = ({
+    isOpen,
+    onClose,
+    notification,
+}: ModalComponentProps) => {
+    return (
+        <NotifyAssetRewarded
+            isOpen={isOpen}
+            onClose={onClose}
+            notification={notification}
+        />
+    );
+};
+
 export function initializeModalRegistry() {
     registerModal("wallet-backup", {
         component: WalletBackupModalAdapter,
@@ -56,6 +71,82 @@ export function initializeModalRegistry() {
         extraProps: (notification: NotificationWithEntity) => ({
             walletAddress: notification.entityId,
         }),
+    });
+
+    registerModal("asset-received", {
+        component: AssetRewardedModalAdapter,
+        filter: {
+            types: ["ASSET_RECEIVED"],
+            categories: ["ASSETS"],
+        },
+        priority: 95,
+        showCondition: (notification: NotificationWithEntity) => {
+            const hasRewardAmount =
+                notification.rewardAmount !== undefined &&
+                notification.rewardAmount > 0;
+            const entityDataAmount = (notification.entityData as any)?.amount;
+            const hasEntityAmount =
+                entityDataAmount !== undefined && entityDataAmount > 0;
+
+            return hasRewardAmount || hasEntityAmount;
+        },
+    });
+
+    registerModal("event-reward", {
+        component: AssetRewardedModalAdapter,
+        filter: {
+            types: ["EVENT_REWARD"],
+            categories: ["ASSETS"],
+        },
+        priority: 95,
+        showCondition: (notification: NotificationWithEntity) => {
+            const hasRewardAmount =
+                notification.rewardAmount !== undefined &&
+                notification.rewardAmount > 0;
+            const entityDataAmount = (notification.entityData as any)?.amount;
+            const hasEntityAmount =
+                entityDataAmount !== undefined && entityDataAmount > 0;
+
+            return hasRewardAmount || hasEntityAmount;
+        },
+    });
+
+    registerModal("quest-reward", {
+        component: AssetRewardedModalAdapter,
+        filter: {
+            types: ["QUEST_REWARD_RECEIVED"],
+            categories: ["ASSETS"],
+        },
+        priority: 95,
+        showCondition: (notification: NotificationWithEntity) => {
+            const hasRewardAmount =
+                notification.rewardAmount !== undefined &&
+                notification.rewardAmount > 0;
+            const entityDataAmount = (notification.entityData as any)?.amount;
+            const hasEntityAmount =
+                entityDataAmount !== undefined && entityDataAmount > 0;
+
+            return hasRewardAmount || hasEntityAmount;
+        },
+    });
+
+    registerModal("referral-reward", {
+        component: AssetRewardedModalAdapter,
+        filter: {
+            types: ["REFERRAL_REWARD"],
+            categories: ["ASSETS"],
+        },
+        priority: 95,
+        showCondition: (notification: NotificationWithEntity) => {
+            const hasRewardAmount =
+                notification.rewardAmount !== undefined &&
+                notification.rewardAmount > 0;
+            const entityDataAmount = (notification.entityData as any)?.amount;
+            const hasEntityAmount =
+                entityDataAmount !== undefined && entityDataAmount > 0;
+
+            return hasRewardAmount || hasEntityAmount;
+        },
     });
 
     registerModal("betting-success", {
@@ -139,6 +230,10 @@ export function initializeModalRegistry() {
 export function cleanupModalRegistry() {
     const modalIds = [
         "wallet-backup",
+        "asset-received",
+        "event-reward",
+        "quest-reward",
+        "referral-reward",
         "betting-success",
         "betting-win",
         "betting-refund",

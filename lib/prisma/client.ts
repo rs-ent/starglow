@@ -50,8 +50,8 @@ function createPrismaClient() {
         },
 
         transactionOptions: {
-            timeout: 10000,
-            maxWait: 2000,
+            timeout: 30000,
+            maxWait: 5000,
             isolationLevel: "ReadCommitted",
         },
 

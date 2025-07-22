@@ -96,7 +96,9 @@ class NotificationModalRegistry {
             const hasTag = filter.tags.some((tag) =>
                 notification.tags.includes(tag)
             );
-            if (!hasTag) return false;
+            if (!hasTag) {
+                return false;
+            }
         }
 
         if (filter.customFilter && !filter.customFilter(notification)) {

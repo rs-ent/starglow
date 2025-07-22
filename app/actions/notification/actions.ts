@@ -13,6 +13,33 @@ import type {
 } from "@prisma/client";
 import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
+// 성능 모니터링 유틸리티
+async function withPerformanceMonitoring<T>(
+    operation: () => Promise<T>,
+    operationName: string
+): Promise<T> {
+    const startTime = Date.now();
+    try {
+        const result = await operation();
+        const duration = Date.now() - startTime;
+
+        if (duration > 5000) {
+            console.warn(
+                `Slow notification operation: ${operationName} took ${duration}ms`
+            );
+        }
+
+        return result;
+    } catch (error) {
+        const duration = Date.now() - startTime;
+        console.error(
+            `Failed notification operation: ${operationName} after ${duration}ms`,
+            error
+        );
+        throw error;
+    }
+}
+
 // 🔔 ===== TYPES & INTERFACES =====
 
 export interface CreateNotificationInput {
@@ -214,28 +241,52 @@ export async function getNotifications(input: GetNotificationsInput): Promise<{
             orderDirection = "desc",
         } = input;
 
-        const where: Prisma.UserNotificationWhereInput = {
+        const now = new Date();
+
+        // 기본 조건 구성
+        const baseConditions = {
             playerId,
             ...(type && { type }),
             ...(category && { category }),
             ...(entityType && { entityType }),
             ...(isRead !== undefined && { isRead }),
-            // 만료되지 않은 알림만
-            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        };
+
+        // 만료 조건을 별도로 처리하여 인덱스 활용 최적화
+        const expiresCondition = {
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        };
+
+        const baseWhere: Prisma.UserNotificationWhereInput = {
+            ...baseConditions,
+            ...expiresCondition,
+        };
+
+        const countWhere: Prisma.UserNotificationWhereInput = {
+            ...baseConditions,
+            ...expiresCondition,
         };
 
         const [notifications, total] = await Promise.all([
-            prisma.userNotification.findMany({
-                cacheStrategy: getCacheStrategy("tenSeconds"),
-                where,
-                orderBy: { [orderBy]: orderDirection },
-                take: limit,
-                skip: offset,
-            }),
-            prisma.userNotification.count({
-                cacheStrategy: getCacheStrategy("tenSeconds"),
-                where,
-            }),
+            withPerformanceMonitoring(
+                () =>
+                    prisma.userNotification.findMany({
+                        cacheStrategy: getCacheStrategy("oneMinute"),
+                        where: baseWhere,
+                        orderBy: { [orderBy]: orderDirection },
+                        take: limit,
+                        skip: offset,
+                    }),
+                "getNotifications.findMany"
+            ),
+            withPerformanceMonitoring(
+                () =>
+                    prisma.userNotification.count({
+                        cacheStrategy: getCacheStrategy("oneMinute"),
+                        where: countWhere,
+                    }),
+                "getNotifications.count"
+            ),
         ]);
 
         return {
@@ -482,16 +533,17 @@ export async function getUnreadNotificationCount(
     category?: NotificationCategory
 ): Promise<{ success: boolean; count?: number; error?: string }> {
     try {
+        const now = new Date();
+
         const where: Prisma.UserNotificationWhereInput = {
             playerId,
             isRead: false,
             ...(category && { category }),
-            // 만료되지 않은 알림만
-            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         };
 
         const count = await prisma.userNotification.count({
-            cacheStrategy: getCacheStrategy("tenSeconds"),
+            cacheStrategy: getCacheStrategy("oneMinute"),
             where,
         });
 
@@ -518,14 +570,15 @@ export async function getNotificationsByEntity(
     error?: string;
 }> {
     try {
+        const now = new Date();
+
         const notifications = await prisma.userNotification.findMany({
             cacheStrategy: getCacheStrategy("tenSeconds"),
             where: {
                 playerId,
                 entityType,
                 entityId,
-                // 만료되지 않은 알림만
-                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+                OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
             },
             orderBy: { createdAt: "desc" },
         });
@@ -617,9 +670,9 @@ export async function createBettingSuccessNotification(
         playerId,
         type: "BETTING_SUCCESS",
         category: "BETTING",
-        title: "🎰 베팅 성공!",
-        message: `"${pollTitle}"에 ${betAmount.toLocaleString()}만큼 베팅했습니다.`,
-        description: `선택한 옵션: ${optionName}`,
+        title: "🎰 Betting Success!",
+        message: `"${pollTitle}" Betting Success`,
+        description: `Selected Option: ${optionName}`,
         actionType: "OPEN_POLL",
         actionUrl: `/polls/${pollId}`,
         entityType: "poll",
@@ -649,9 +702,9 @@ export async function createBettingWinNotification(
         playerId,
         type: "POLL_BETTING_WIN",
         category: "BETTING",
-        title: "🎉 축하합니다! 베팅 당첨!",
-        message: `"${pollTitle}"에서 ${winAmount.toLocaleString()}을 획득했습니다!`,
-        description: `투자: ${betAmount.toLocaleString()} → 수익: +${profit.toLocaleString()}`,
+        title: "🎉 Congratulations! Betting Win!",
+        message: `"${pollTitle}" Betting Win!`,
+        description: `Investment: ${betAmount.toLocaleString()} → Profit: +${profit.toLocaleString()}`,
         actionType: "OPEN_POLL",
         actionUrl: `/polls/${pollId}`,
         entityType: "poll",
@@ -679,9 +732,9 @@ export async function createPollEndingSoonNotification(
         playerId,
         type: "POLL_ENDING_SOON",
         category: "POLLS",
-        title: "⏰ 폴 종료 1시간 전!",
-        message: `"${pollTitle}"이 곧 종료됩니다.`,
-        description: `종료 시간: ${endDate.toLocaleString()}`,
+        title: "⏰ Poll Ending Soon!",
+        message: `"${pollTitle}" Ending Soon`,
+        description: `End Time: ${endDate.toLocaleString()}`,
         actionType: "OPEN_POLL",
         actionUrl: `/polls/${pollId}`,
         entityType: "poll",
@@ -707,9 +760,9 @@ export async function createBettingFailedNotification(
         playerId,
         type: "BETTING_FAILED",
         category: "BETTING",
-        title: "😔 베팅 실패",
-        message: `"${pollTitle}"에서 베팅이 성공하지 못했습니다.`,
-        description: `선택한 옵션: ${optionName} (${betAmount.toLocaleString()})`,
+        title: "😔 Betting Failed",
+        message: `"${pollTitle}" Betting Failed`,
+        description: `Selected Option: ${optionName} (${betAmount.toLocaleString()})`,
         actionType: "OPEN_POLL",
         actionUrl: `/polls/${pollId}`,
         entityType: "poll",
@@ -736,9 +789,9 @@ export async function createPollResultNotification(
         playerId,
         type: "POLL_RESULT_ANNOUNCED",
         category: "POLLS",
-        title: "📊 폴 결과 발표!",
-        message: `"${pollTitle}"의 결과가 나왔습니다.`,
-        description: `승리 옵션: ${winningOption}`,
+        title: "📊 Poll Result Announced!",
+        message: `"${pollTitle}" Result Announced`,
+        description: `Winning Option: ${winningOption}`,
         actionType: "OPEN_POLL",
         actionUrl: `/polls/${pollId}`,
         entityType: "poll",
@@ -765,9 +818,9 @@ export async function createBettingRefundNotification(
         playerId,
         type: "POLL_BETTING_REFUND",
         category: "BETTING",
-        title: "💰 베팅 환불",
-        message: `"${pollTitle}"에서 ${refundAmount.toLocaleString()}이 환불되었습니다.`,
-        description: `환불 사유: ${reason}`,
+        title: "💰 Betting Refund",
+        message: `"${pollTitle}" Betting Refund`,
+        description: `Refund Amount: ${refundAmount.toLocaleString()}`,
         actionType: "OPEN_POLL",
         actionUrl: `/polls/${pollId}`,
         entityType: "poll",
@@ -795,9 +848,9 @@ export async function createSettlementCompleteNotification(
         playerId,
         type: "SETTLEMENT_COMPLETE",
         category: "BETTING",
-        title: "⚡ 정산 완료",
-        message: `"${pollTitle}"의 정산이 완료되었습니다.`,
-        description: `총 ${totalWinners}명에게 ${totalPayout.toLocaleString()} 지급`,
+        title: "⚡ Settlement Complete",
+        message: `"${pollTitle}" Settlement Complete`,
+        description: `Total ${totalWinners} winners, ${totalPayout.toLocaleString()} paid`,
         actionType: "OPEN_POLL",
         actionUrl: `/polls/${pollId}`,
         entityType: "poll",
@@ -806,5 +859,47 @@ export async function createSettlementCompleteNotification(
         priority: "MEDIUM",
         channels: ["in-app"],
         iconUrl: "/icons/settlement-complete.svg",
+    });
+}
+
+export async function createRewardNotification(
+    playerId: string,
+    assetId: string,
+    amount: number,
+    type: NotificationType,
+    category: NotificationCategory,
+    title: string,
+    message: string,
+    description: string,
+    reason: string
+): Promise<{ success: boolean; error?: string }> {
+    const asset = await prisma.asset.findUnique({
+        where: { id: assetId },
+        select: { id: true, name: true, symbol: true },
+    });
+
+    return createNotification({
+        playerId,
+        type,
+        category,
+        title,
+        message,
+        description,
+        actionType: "NONE",
+        actionUrl: "",
+        entityType: "asset",
+        entityId: assetId,
+        entityData: {
+            assetId,
+            amount,
+            reason,
+            assetName: asset?.name || "Asset",
+            assetSymbol: asset?.symbol || "TOKEN",
+        },
+        rewardAmount: amount,
+        priority: "MEDIUM",
+        channels: ["in-app", "push"],
+        iconUrl: "/icons/reward.svg",
+        showBadge: true,
     });
 }

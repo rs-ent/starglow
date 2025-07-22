@@ -136,8 +136,8 @@ export default function RootLayout({
                     <Toast />
                     <SpeedInsights />
                     <Analytics />
-                    <Navigation />
                     <GlobalNotificationManager />
+                    <Navigation />
                     {children}
                 </Providers>
             </body>

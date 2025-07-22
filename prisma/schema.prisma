@@ -1945,6 +1945,9 @@ model UserNotification {
   @@index([entityType, entityId])
   @@index([entityType, type])
   @@index([playerId, entityType, createdAt])
+  @@index([playerId, isRead, expiresAt, createdAt])
+  @@index([playerId, type, expiresAt, createdAt])
+  @@index([playerId, category, expiresAt, createdAt])
   @@map("user_notifications")
 }
 

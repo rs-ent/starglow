@@ -1,5 +1,5 @@
-import AdminUsersDashboardAnalytics from "@/components/admin/users/Admin.Users.Dashboard.Analytics";
+import AdminUsers from "@/components/admin/users/Admin.Users";
 
 export default function AdminUsersPage() {
-    return <AdminUsersDashboardAnalytics />;
+    return <AdminUsers />;
 }
