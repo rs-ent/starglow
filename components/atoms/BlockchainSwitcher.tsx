@@ -2,7 +2,6 @@
 
 import { memo, useState } from "react";
 import { motion } from "framer-motion";
-import { Network } from "lucide-react";
 import { useStoryNetwork } from "@/app/story/network/hooks";
 import { useWagmiConnection } from "@/app/story/userWallet/wagmi-hooks";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -14,8 +13,6 @@ export default memo(function BlockchainSwitcher() {
     const [isSwitching, setIsSwitching] = useState(false);
     const { defaultStoryNetwork, isLoadingDefaultStoryNetwork } =
         useStoryNetwork();
-
-    console.log("Default Story Network", defaultStoryNetwork);
 
     const { chainId, switchChain, isConnected } = useWagmiConnection();
 
