@@ -5,7 +5,11 @@ import {
     useUpdateStoryNetworkMutation,
     useDeleteStoryNetworkMutation,
 } from "./mutations";
-import { useGetStoryNetworkQuery, useGetStoryNetworksQuery } from "./queries";
+import {
+    useGetStoryNetworkQuery,
+    useGetStoryNetworksQuery,
+    useGetDefaultStoryNetworkQuery,
+} from "./queries";
 
 import type { getStoryNetworkInput, getStoryNetworksInput } from "./actions";
 
@@ -50,6 +54,13 @@ export function useStoryNetwork(input?: useStoryNetworkInput) {
         isError: isErrorDeleteStoryNetwork,
     } = useDeleteStoryNetworkMutation();
 
+    const {
+        data: defaultStoryNetwork,
+        isLoading: isLoadingDefaultStoryNetwork,
+        isError: isErrorDefaultStoryNetwork,
+        refetch: refetchDefaultStoryNetwork,
+    } = useGetDefaultStoryNetworkQuery();
+
     return {
         storyNetwork,
         isLoadingStoryNetwork,
@@ -75,6 +86,11 @@ export function useStoryNetwork(input?: useStoryNetworkInput) {
         deleteStoryNetworkAsync,
         isPendingDeleteStoryNetwork,
         isErrorDeleteStoryNetwork,
+
+        defaultStoryNetwork,
+        isLoadingDefaultStoryNetwork,
+        isErrorDefaultStoryNetwork,
+        refetchDefaultStoryNetwork,
 
         useGetStoryNetworkQuery,
         useGetStoryNetworksQuery,

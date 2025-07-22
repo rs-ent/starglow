@@ -6,6 +6,7 @@ export const queryKeys = {
         list: () => [...queryKeys.storyNetwork.all, "list"] as const,
         network: (id: string) =>
             [...queryKeys.storyNetwork.all, "network", id] as const,
+        default: () => [...queryKeys.storyNetwork.all, "default"] as const,
     },
     escrowWallet: {
         all: ["escrowWallet"] as const,

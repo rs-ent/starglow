@@ -11,6 +11,7 @@ import AuthButton from "../atoms/AuthButton";
 import LinkButton from "../atoms/LinkButton";
 import RewardPanel from "../atoms/RewardPanel";
 import VerticalButton from "../atoms/VerticalButton";
+import BlockchainSwitcher from "../atoms/BlockchainSwitcher";
 
 import type { Player } from "@prisma/client";
 import type { User } from "next-auth";
@@ -91,7 +92,10 @@ const DesktopMenu = memo(function DesktopMenu({
             ))}
 
             {player ? (
-                <RewardPanel playerId={player.id} assetNames={["SGP"]} />
+                <div className="flex flex-row items-center gap-6">
+                    <RewardPanel playerId={player.id} assetNames={["SGP"]} />
+                    <BlockchainSwitcher />
+                </div>
             ) : (
                 <AuthButton
                     frameSize={15}
@@ -138,7 +142,13 @@ const MobileMenu = memo(function MobileMenu({
                     />
                 </LinkButton>
                 {player ? (
-                    <RewardPanel playerId={player.id} assetNames={["SGP"]} />
+                    <div className="flex flex-row items-center gap-1">
+                        <RewardPanel
+                            playerId={player.id}
+                            assetNames={["SGP"]}
+                        />
+                        <BlockchainSwitcher />
+                    </div>
                 ) : (
                     <AuthButton
                         frameSize={10}

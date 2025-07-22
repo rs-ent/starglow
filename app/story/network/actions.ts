@@ -2,6 +2,7 @@
 
 "use server";
 
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 import { prisma } from "@/lib/prisma/client";
 
 import type { Prisma, BlockchainNetwork } from "@prisma/client";
@@ -61,6 +62,7 @@ export interface getStoryNetworkInput {
     id?: string;
     name?: string;
     chainId?: number;
+    defaultNetwork?: boolean;
 }
 
 export async function getStoryNetwork(
@@ -99,6 +101,53 @@ export async function getStoryNetwork(
     } catch (error) {
         console.error(error);
         return "네트워크 조회에 실패했습니다.";
+    }
+}
+
+export interface getDefaultStoryNetworkOutput {
+    id: string;
+    name: string;
+    chainId: number;
+    rpcUrl: string;
+    explorerUrl: string;
+    symbol: string;
+}
+
+export async function getDefaultStoryNetwork(): Promise<getDefaultStoryNetworkOutput | null> {
+    try {
+        const result = await prisma.blockchainNetwork.findFirst({
+            cacheStrategy: getCacheStrategy("oneDay"),
+            where: { defaultNetwork: true },
+            select: {
+                id: true,
+                name: true,
+                chainId: true,
+                rpcUrl: true,
+                explorerUrl: true,
+                symbol: true,
+            },
+        });
+
+        if (result && result.chainId) {
+            return result;
+        }
+
+        const secondResult = await prisma.blockchainNetwork.findFirst({
+            cacheStrategy: getCacheStrategy("oneDay"),
+            where: { defaultNetwork: false, isActive: true, isTestnet: false },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        if (secondResult) {
+            return secondResult;
+        }
+
+        return null;
+    } catch (error) {
+        console.error(error);
+        return null;
     }
 }
 

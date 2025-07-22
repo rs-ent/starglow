@@ -13,13 +13,30 @@ import {
 import { SessionProvider } from "next-auth/react";
 import { WagmiProvider, createConfig, http, createStorage } from "wagmi";
 import { sepolia, storyAeneid } from "wagmi/chains";
+import { defineChain } from "viem";
 
 import { ModalProvider } from "@/app/hooks/useModalStack";
 import { WalletDisconnectWatcher } from "@/components/atoms/WalletDisconnectWatcher";
 import SessionMonitor from "@/components/atoms/SessionMonitor";
 
-// 체인 배열 정의
-export const chains = [sepolia, storyAeneid] as const;
+const berachain = defineChain({
+    id: 80094,
+    name: "Berachain",
+    nativeCurrency: {
+        name: "BERA",
+        symbol: "BERA",
+        decimals: 18,
+    },
+    rpcUrls: {
+        default: { http: ["https://rpc.berachain.com/"] },
+        public: { http: ["https://rpc.berachain.com/"] },
+    },
+    blockExplorers: {
+        default: { name: "Berascan", url: "https://berascan.com/" },
+    },
+});
+
+export const chains = [sepolia, storyAeneid, berachain] as const;
 
 // SSR 안전한 storage 생성
 const storage = createStorage({
@@ -96,6 +113,10 @@ export const wagmiConfig = createConfig({
         [storyAeneid.id]: http(
             process.env.NEXT_PUBLIC_STORY_RPC_URL ||
                 "https://testnet.storyrpc.io"
+        ),
+        [berachain.id]: http(
+            process.env.NEXT_PUBLIC_BERACHAIN_RPC_URL ||
+                "https://rpc.berachain.com/"
         ),
     },
     syncConnectedChain: true,
