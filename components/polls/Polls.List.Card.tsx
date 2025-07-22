@@ -660,18 +660,18 @@ function PollsListCard({
         if (!pollDateInfo.isEnded) return null;
         if (isLoadingPollDetail) return null;
 
+        const optionsLength = options?.length || 0;
+
         return (
             <div className="mt-6">
                 {isLoading || isLoadingPollDetail ? (
                     <div className="animate-pulse">
-                        {Array.from({ length: options.length || 0 }).map(
-                            (_, idx) => (
-                                <div
-                                    key={idx}
-                                    className="h-[34px] bg-[rgba(255,255,255,0.3)] rounded mb-2"
-                                ></div>
-                            )
-                        )}
+                        {Array.from({ length: optionsLength }).map((_, idx) => (
+                            <div
+                                key={idx}
+                                className="h-[34px] bg-[rgba(255,255,255,0.3)] rounded mb-2"
+                            ></div>
+                        ))}
                     </div>
                 ) : error ? (
                     <div className="text-red-500 text-sm">
@@ -704,7 +704,7 @@ function PollsListCard({
         );
     }, [
         isLoadingPollDetail,
-        options.length,
+        options,
         pollDateInfo.isEnded,
         isLoading,
         error,
