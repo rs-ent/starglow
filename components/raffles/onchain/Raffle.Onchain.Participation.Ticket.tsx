@@ -197,10 +197,7 @@ export default memo(function RaffleOnchainParticipationTicket({
                 ticketData.lotteryTicketNumber ||
                 ticketData.ticketNumber ||
                 generateLotteryNumber(ticketData.txHash),
-            hasInstantPrize:
-                ticketData.isInstantDraw &&
-                ticketData.prizeWon &&
-                ticketData.prizeWon.prizeType !== 0,
+            hasInstantPrize: ticketData.isInstantDraw && ticketData.prizeWon,
             barcodeData: generateBarcodeFromHash(ticketData.txHash),
         };
     }, [ticketData]);

@@ -17,6 +17,7 @@ import RaffleOnchainPrizesGrandPrize from "./Raffle.Onchain.Prizes.GrandPrize";
 import RaffleOnchainParticipationTicket from "./Raffle.Onchain.Participation.Ticket";
 import RaffleScratchCard from "../Raffle.Reveal.Scratch";
 import EnhancedPortal from "@/components/atoms/Portal.Enhanced";
+import PartialLoading from "@/components/atoms/PartialLoading";
 
 interface TicketData {
     raffleTitle: string;
@@ -194,7 +195,6 @@ export default memo(function RaffleOnchain({
         raffleFromContract: raffleData,
         isRaffleFromContractLoading: isStaticLoading,
         isRaffleFromContractError: isStaticError,
-        raffleParticipants,
     } = useOnchainRaffles({
         getRaffleFromContractInput: {
             contractAddress,
@@ -207,10 +207,6 @@ export default memo(function RaffleOnchain({
                 "prizes",
                 "status",
             ],
-        },
-        getRaffleParticipantsInput: {
-            contractAddress,
-            raffleId,
         },
     });
 
@@ -234,14 +230,13 @@ export default memo(function RaffleOnchain({
                           statusData.drawnParticipantCount
                       ),
                       totalQuantity: Number(statusData.totalQuantity),
-                      totalParticipants: raffleParticipants?.data?.totalCount,
                   }
                 : undefined,
-        [statusData, raffleParticipants?.data?.totalCount]
+        [statusData]
     );
 
     if (isStaticLoading) {
-        return <OnchainRaffleSkeleton />;
+        return <PartialLoading text="Sorting tickets...🎟️" />;
     }
 
     if (isStaticError || !raffleData?.success) {
@@ -431,31 +426,6 @@ export default memo(function RaffleOnchain({
                         </div>
                     </EnhancedPortal>
                 )}
-        </div>
-    );
-});
-
-const OnchainRaffleSkeleton = memo(function OnchainRaffleSkeleton() {
-    return (
-        <div className="flex items-center justify-center min-h-screen relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950" />
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="text-center max-w-md mx-auto px-6 relative z-10"
-            >
-                <div className="relative mb-8">
-                    <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full mx-auto animate-spin" />
-                </div>
-                <p className="text-slate-300 leading-relaxed">
-                    Loading raffle data...
-                    <br />
-                    <span className="text-slate-400 text-sm mt-2 block">
-                        Please wait
-                    </span>
-                </p>
-            </motion.div>
         </div>
     );
 });

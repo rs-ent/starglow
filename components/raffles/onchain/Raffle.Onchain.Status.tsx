@@ -22,7 +22,6 @@ interface RaffleOnchainStatusProps {
         isDrawn?: boolean;
         drawnParticipantCount?: bigint | number;
         totalQuantity?: bigint | number;
-        totalParticipants?: bigint | number;
     };
     isLoading?: boolean;
 }
@@ -184,8 +183,8 @@ export default memo(function RaffleOnchainStatus({
     }
 
     const totalQuantity = data.totalQuantity ? Number(data.totalQuantity) : 0;
-    const totalParticipants = data.totalParticipants
-        ? Number(data.totalParticipants)
+    const totalParticipants = data.drawnParticipantCount
+        ? Number(data.drawnParticipantCount)
         : 0;
     const remainingPrizes = totalQuantity;
 

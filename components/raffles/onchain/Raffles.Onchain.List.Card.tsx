@@ -54,7 +54,9 @@ function RafflesOnchainListCard({
         },
     });
 
-    const coreData = raffleCoreInfoForListCard?.data;
+    const coreData = useMemo(() => {
+        return raffleCoreInfoForListCard?.data;
+    }, [raffleCoreInfoForListCard]);
 
     const { asset } = useAssetsGet({
         getAssetInput: {
@@ -95,7 +97,7 @@ function RafflesOnchainListCard({
     }
 
     if (isRaffleCoreInfoForListCardError || !coreData) {
-        return <OnchainRaffleCardError />;
+        return null;
     }
 
     const raffleTitle = coreData.title || DEFAULT_TITLE;
@@ -164,14 +166,6 @@ function RafflesOnchainListCard({
                                 )}
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
-                            <h1
-                                className={cn(
-                                    "absolute bottom-1 right-3 text-white/80 text-center text-2xl font-bold",
-                                    getResponsiveClass(30).textClass
-                                )}
-                            >
-                                {raffleTitle}
-                            </h1>
                         </div>
                     )}
 
@@ -342,20 +336,6 @@ const OnchainRaffleCardSkeleton = memo(function OnchainRaffleCardSkeleton() {
                 </div>
             </div>
         </motion.div>
-    );
-});
-
-const OnchainRaffleCardError = memo(function OnchainRaffleCardError() {
-    return (
-        <div
-            className={cn(
-                "morp-glass-1 inner-shadow rounded-[12px] text-center",
-                getResponsiveClass(30).paddingClass
-            )}
-        >
-            <div className="text-4xl mb-2">⚠️</div>
-            <p className="text-white/60">Failed to load raffle data</p>
-        </div>
     );
 });
 

@@ -109,14 +109,13 @@ export default memo(function RaffleOnchainHero({
                             <motion.h1
                                 className={cn(
                                     "font-light tracking-tighter text-left break-words",
-                                    "bg-gradient-to-r from-emerald-300 via-cyan-200 to-purple-300 bg-clip-text text-transparent",
+                                    "rainbow-text",
                                     "drop-shadow-[0_0_30px_rgba(20,184,166,0.5)]",
                                     getResponsiveClass(55).textClass
                                 )}
                                 style={{ lineHeight: "1.1" }}
                             >
-                                {raffleData?.basicInfo?.title ||
-                                    "Epic Blockchain Raffle"}
+                                {raffleData?.basicInfo?.title || "Epic Raffle"}
                             </motion.h1>
 
                             <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-purple-500/10 rounded-2xl blur-2xl opacity-60 gpu-animate" />

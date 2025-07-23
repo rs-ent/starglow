@@ -1141,7 +1141,39 @@ export async function getRaffleParticipants(
     try {
         const { contractAddress, raffleId } = input;
 
-        const publicClient = await fetchPublicClient({});
+        const dbRaffle = await prisma.onchainRaffle.findUnique({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
+            where: {
+                contractAddress_raffleId: {
+                    contractAddress,
+                    raffleId,
+                },
+            },
+            select: {
+                network: {
+                    select: {
+                        id: true,
+                        name: true,
+                        chainId: true,
+                        symbol: true,
+                        rpcUrl: true,
+                        explorerUrl: true,
+                        multicallAddress: true,
+                    },
+                },
+            },
+        });
+
+        if (!dbRaffle) {
+            return {
+                success: false,
+                error: "Raffle not found in database",
+            };
+        }
+
+        const publicClient = await fetchPublicClient({
+            network: dbRaffle.network,
+        });
 
         const participantIds = (await publicClient.readContract({
             address: contractAddress as `0x${string}`,
@@ -1150,15 +1182,13 @@ export async function getRaffleParticipants(
             args: [BigInt(raffleId)],
         })) as bigint[];
 
-        const totalCount = participantIds.length;
-
         return {
             success: true,
             data: {
                 raffleId,
                 contractAddress,
                 participantIds: participantIds.map((id) => id.toString()),
-                totalCount,
+                totalCount: participantIds.length,
             },
         };
     } catch (error) {

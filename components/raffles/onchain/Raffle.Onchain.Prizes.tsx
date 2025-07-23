@@ -139,10 +139,8 @@ export default memo(function RaffleOnchainPrizes({
             (acc, curr) =>
                 acc +
                 Number(
-                    curr.registeredTicketQuantity && curr.pickedTicketQuantity
-                        ? Number(curr.registeredTicketQuantity) -
-                              Number(curr.pickedTicketQuantity)
-                        : 0
+                    Number(curr.registeredTicketQuantity) -
+                        Number(curr.pickedTicketQuantity)
                 ),
             0
         );

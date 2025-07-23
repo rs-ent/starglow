@@ -457,8 +457,11 @@ function PollsListCard({
             }
         },
         [
+            pollDetail?.participationConsumeAssetId,
+            pollDetail?.participationConsumeAmount,
+            pollDetail?.participationConsumeAsset?.symbol,
+            totalVoteAmount,
             playerAsset?.data,
-
             poll,
             player,
             votingState.selection,
@@ -835,11 +838,12 @@ function PollsListCard({
             </motion.div>
         );
     }, [
+        votingState.animateSubmit,
+        votingState.selection,
         isLoadingPollDetail,
         poll,
         pollDateInfo.showOptions,
         pollDetail,
-        votingState.voteAmountInput,
         handleSubmit,
         animations.submit,
         bgColorFrom,
