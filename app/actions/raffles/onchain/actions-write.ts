@@ -564,9 +564,9 @@ export async function participateAndDraw(
             }
         );
 
-        // 🎯 참가비 차감 (이미 검증된 상태)
+        let feeDeductionResult = null;
         if (entryFeeAssetId && entryFeeAmount > 0) {
-            const feeDeduction = await updatePlayerAsset({
+            feeDeductionResult = await updatePlayerAsset({
                 transaction: {
                     playerId: input.playerId,
                     assetId: entryFeeAssetId,
@@ -576,10 +576,21 @@ export async function participateAndDraw(
                 },
             });
 
-            if (!feeDeduction.success) {
+            // 참가비 차감 실패 시 early return
+            if (!feeDeductionResult.success) {
+                console.error(
+                    `CRITICAL: User participated in raffle but fee deduction failed`,
+                    {
+                        raffleId: input.raffleId,
+                        playerId: input.playerId,
+                        txHash: participateAndDrawTx,
+                        feeError: feeDeductionResult.error,
+                    }
+                );
+
                 return {
                     success: false,
-                    error: `Failed to deduct entry fee: ${feeDeduction.error}`,
+                    error: `Participation completed but payment processing failed. Please contact support with transaction: ${participateAndDrawTx}`,
                 };
             }
         }
