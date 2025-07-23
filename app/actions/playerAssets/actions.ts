@@ -5,7 +5,6 @@
 import { PlayerAssetStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 import { createAssetInstance } from "@/app/actions/assets/actions";
-import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 import type { AssetStatusChangeEvent } from "@/app/actions/assets/actions";
 import type {
@@ -155,7 +154,6 @@ export async function getPlayerAssets(
 
     const [playerAssets, totalCount] = await Promise.all([
         prisma.playerAsset.findMany({
-            cacheStrategy: getCacheStrategy("realtime"),
             where,
             select: {
                 id: true,
@@ -181,7 +179,6 @@ export async function getPlayerAssets(
             take: limit,
         }),
         prisma.playerAsset.count({
-            cacheStrategy: getCacheStrategy("realtime"),
             where,
         }),
     ]);
@@ -218,7 +215,6 @@ export async function getPlayerAsset(
     }
 
     const playerAsset = await prisma.playerAsset.findUnique({
-        cacheStrategy: getCacheStrategy("realtime"),
         where: {
             playerId_assetId: {
                 playerId: input.playerId,
@@ -284,7 +280,6 @@ export async function updatePlayerAsset(
     const tx = (trx || prisma) as typeof prisma;
 
     const asset = await tx.asset.findUnique({
-        cacheStrategy: getCacheStrategy("realtime"),
         where: { id: input.transaction.assetId },
     });
 
@@ -442,7 +437,6 @@ async function updatePlayerAssetWithInstances(
 
     // 🔍 PlayerAsset 상태 확인 (일관성을 위해 추가)
     const existingPlayerAsset = await tx.playerAsset.findUnique({
-        cacheStrategy: getCacheStrategy("realtime"),
         where: {
             playerId_assetId: {
                 playerId: transaction.playerId,
@@ -539,7 +533,6 @@ async function setPlayerAssetWithInstances(
 
     // 🔍 현재 PlayerAsset 조회
     const currentPlayerAsset = await tx.playerAsset.findUnique({
-        cacheStrategy: getCacheStrategy("realtime"),
         where: {
             playerId_assetId: {
                 playerId: transaction.playerId,
@@ -660,7 +653,6 @@ async function getRewardLogsToRollback(
 ): Promise<RewardLogForRollback[] | { error: string }> {
     if (input.rewardLogId) {
         const rewardLog = await tx.rewardsLog.findUnique({
-            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: input.rewardLogId },
             select: { id: true, playerId: true, assetId: true, amount: true },
         });
@@ -674,7 +666,6 @@ async function getRewardLogsToRollback(
 
     if (input.questLogId) {
         const rewardLogs = await tx.rewardsLog.findMany({
-            cacheStrategy: getCacheStrategy("realtime"),
             where: { questLogId: input.questLogId },
             select: { id: true, playerId: true, assetId: true, amount: true },
         });
@@ -736,7 +727,6 @@ async function getPlayerAssetsForRollback(
 
     // 🔄 OR 조건 최적화
     return await tx.playerAsset.findMany({
-        cacheStrategy: getCacheStrategy("realtime"),
         where: {
             OR: Array.from(uniquePlayerAssets.values()).map(
                 ({ playerId, assetId }) => ({
@@ -1110,7 +1100,6 @@ export async function updatePlayerAssetsOnAssetChange(
         const { assetId, newStatus } = event;
 
         const affectedPlayerAssets = await prisma.playerAsset.findMany({
-            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 assetId,
                 status: PlayerAssetStatus.ACTIVE,
@@ -1223,7 +1212,6 @@ export async function validatePlayerAsset(
     try {
         const tx = (externalTx || prisma) as typeof prisma;
         const asset = await tx.asset.findUnique({
-            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: input.assetId },
         });
 
@@ -1342,7 +1330,6 @@ export async function setDefaultPlayerAsset(
         }
 
         const defaultAssets = await tx.asset.findMany({
-            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 isDefault: true,
                 isActive: true,
@@ -1639,7 +1626,6 @@ export async function withdrawPlayerAssetInstances(
         const asset =
             input.asset ||
             (await tx.asset.findUnique({
-                cacheStrategy: getCacheStrategy("realtime"),
                 where: { id: input.assetId, isActive: true },
             }));
 
@@ -1653,7 +1639,6 @@ export async function withdrawPlayerAssetInstances(
 
         // 🔍 PlayerAsset 확인
         const playerAsset = await tx.playerAsset.findUnique({
-            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 playerId_assetId: {
                     playerId: input.playerId,
@@ -1698,7 +1683,6 @@ export async function withdrawPlayerAssetInstances(
         }
 
         const availableInstances = await tx.assetInstance.findMany({
-            cacheStrategy: getCacheStrategy("realtime"),
             where: whereCondition,
             take: input.amount,
             orderBy: [
@@ -1780,7 +1764,6 @@ export async function withdrawPlayerAssetInstances(
 
         // 🔄 업데이트된 AssetInstance 조회
         const withdrawnInstances = await tx.assetInstance.findMany({
-            cacheStrategy: getCacheStrategy("realtime"),
             where: { id: { in: instanceIds } },
             select: {
                 id: true,
@@ -1877,7 +1860,6 @@ export async function autoExpirePlayerAssetInstances(
 
         // 🔍 만료된 AssetInstance 조회
         const expiredInstances = await tx.assetInstance.findMany({
-            cacheStrategy: getCacheStrategy("realtime"),
             where: {
                 status: {
                     in: ["RECEIVED", "PENDING"], // 활성 상태인 것만
@@ -1973,7 +1955,6 @@ export async function autoExpirePlayerAssetInstances(
         for (const update of playerAssetUpdates.values()) {
             // PlayerAsset 잔액 감소
             const playerAssetBefore = await tx.playerAsset.findUnique({
-                cacheStrategy: getCacheStrategy("realtime"),
                 where: { id: update.playerAssetId },
                 select: {
                     balance: true,
@@ -2177,7 +2158,6 @@ export async function getPlayerAssetInstances(
         // 🔍 데이터 조회
         const [instances, totalCount] = await Promise.all([
             prisma.assetInstance.findMany({
-                cacheStrategy: getCacheStrategy("realtime"),
                 where,
                 select: {
                     id: true,
@@ -2225,7 +2205,6 @@ export async function getPlayerAssetInstances(
                 take: limit,
             }),
             prisma.assetInstance.count({
-                cacheStrategy: getCacheStrategy("realtime"),
                 where,
             }),
         ]);
