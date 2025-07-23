@@ -565,6 +565,8 @@ export async function participateAndDraw(
         );
 
         if (entryFeeAssetId && entryFeeAmount > 0) {
+            console.log("entryFeeAssetId", entryFeeAssetId);
+            console.log("entryFeeAmount", entryFeeAmount);
             const feeDeductionResult = await updatePlayerAsset({
                 transaction: {
                     playerId: input.playerId,
@@ -574,6 +576,8 @@ export async function participateAndDraw(
                     reason: `Raffle participation: ${contractRaffle.basicInfo.title}`,
                 },
             });
+
+            console.log("feeDeductionResult", feeDeductionResult);
 
             // 참가비 차감 실패 시 early return
             if (!feeDeductionResult.success) {

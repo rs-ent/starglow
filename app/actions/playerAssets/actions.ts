@@ -316,7 +316,6 @@ async function updatePlayerAssetBalance(
     tx: typeof prisma
 ): Promise<PlayerAssetUpdateResult> {
     const playerAsset = await tx.playerAsset.findUnique({
-        cacheStrategy: getCacheStrategy("realtime"),
         where: {
             playerId_assetId: {
                 playerId: input.transaction.playerId,
