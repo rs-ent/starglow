@@ -236,7 +236,15 @@ export default memo(function RaffleOnchain({
     );
 
     if (isStaticLoading) {
-        return <PartialLoading text="Sorting tickets...🎟️" />;
+        return (
+            <div className="relative flex flex-col w-full min-h-screen h-full overflow-hidden items-center justify-center">
+                <div className="fixed inset-0 -z-10">
+                    <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950" />
+                    <div className="absolute inset-0 bg-gradient-to-tr from-cyan-950/20 via-transparent to-purple-950/20" />
+                </div>
+                <PartialLoading text="Sorting tickets...🎟️" />
+            </div>
+        );
     }
 
     if (isStaticError || !raffleData?.success) {

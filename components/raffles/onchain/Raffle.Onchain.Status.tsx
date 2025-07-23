@@ -181,12 +181,9 @@ export default memo(function RaffleOnchainStatus({
     if (!data) {
         return <StatusErrorState />;
     }
-
-    const totalQuantity = data.totalQuantity ? Number(data.totalQuantity) : 0;
     const totalParticipants = data.drawnParticipantCount
         ? Number(data.drawnParticipantCount)
         : 0;
-    const remainingPrizes = totalQuantity;
 
     const getStatusInfo = () => {
         if (data.isDrawn) {
@@ -255,7 +252,7 @@ export default memo(function RaffleOnchainStatus({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                     <StatusCard
                         icon={
                             statusInfo.value === "ACTIVE" ? (
@@ -292,17 +289,6 @@ export default memo(function RaffleOnchainStatus({
                         value={totalParticipants}
                         label="Participants"
                         colorScheme="info"
-                    />
-
-                    <StatusCard
-                        icon={
-                            <Package
-                                className={getResponsiveClass(25).frameClass}
-                            />
-                        }
-                        value={remainingPrizes}
-                        label="Prizes Left"
-                        colorScheme="warning"
                     />
                 </div>
 
