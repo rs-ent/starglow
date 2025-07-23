@@ -564,9 +564,8 @@ export async function participateAndDraw(
             }
         );
 
-        let feeDeductionResult = null;
         if (entryFeeAssetId && entryFeeAmount > 0) {
-            feeDeductionResult = await updatePlayerAsset({
+            const feeDeductionResult = await updatePlayerAsset({
                 transaction: {
                     playerId: input.playerId,
                     assetId: entryFeeAssetId,
