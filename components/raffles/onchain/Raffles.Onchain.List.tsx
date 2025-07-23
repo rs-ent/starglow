@@ -67,12 +67,11 @@ export default memo(function RafflesOnchainList({
                                 getResponsiveClass(50).gapClass
                             )}
                         >
-                            {raffles.map((raffle: any, index: number) => (
+                            {raffles.map((raffle: any) => (
                                 <RafflesOnchainListCard
                                     key={`${raffle.contractAddress}-${raffle.raffleId}`}
                                     contractAddress={raffle.contractAddress}
                                     raffleId={raffle.raffleId}
-                                    index={index}
                                 />
                             ))}
                         </motion.div>

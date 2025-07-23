@@ -124,14 +124,16 @@ export default memo(function RaffleOnchainParticipation({
     const entryFeeAsset = useMemo(() => (asset ? asset : null), [asset]);
 
     const currentTime = new Date().getTime();
-    const isLive =
-        !statusData?.isDrawn &&
-        timingData?.endDate &&
-        currentTime <= Number(timingData.endDate) * 1000;
 
     const isUpcoming =
         timingData?.startDate &&
         currentTime < Number(timingData.startDate) * 1000;
+
+    const isLive =
+        !statusData?.isDrawn &&
+        !isUpcoming &&
+        timingData?.endDate &&
+        currentTime <= Number(timingData.endDate) * 1000;
 
     const hasParticipated =
         userParticipationSummary?.success &&
@@ -169,6 +171,58 @@ export default memo(function RaffleOnchainParticipation({
         feeData?.participationFeeAmount,
         playerAsset?.data?.balance,
     ]);
+
+    const parseContractError = (error: any): string => {
+        const errorMessage = error?.message || String(error);
+
+        if (errorMessage.includes("RAFFLE_NOT_STARTED")) {
+            return "Raffle hasn't started yet. Please wait for the start time.";
+        }
+
+        if (errorMessage.includes("RAFFLE_ENDED")) {
+            return "This raffle has already ended. Participation is no longer available.";
+        }
+
+        if (errorMessage.includes("RAFFLE_DRAWN")) {
+            return "This raffle has already been drawn. No more tickets can be purchased.";
+        }
+
+        if (errorMessage.includes("PARTICIPATION_LIMIT_REACHED")) {
+            return "You've reached the maximum number of tickets for this raffle.";
+        }
+
+        if (errorMessage.includes("INSUFFICIENT_PAYMENT")) {
+            return "Insufficient balance to purchase a ticket. Please check your wallet balance.";
+        }
+
+        if (errorMessage.includes("RAFFLE_PAUSED")) {
+            return "This raffle is temporarily paused. Please try again later.";
+        }
+
+        if (errorMessage.includes("INVALID_RAFFLE")) {
+            return "This raffle is no longer available or has been cancelled.";
+        }
+
+        if (
+            errorMessage.includes("User rejected the request") ||
+            errorMessage.includes("user rejected")
+        ) {
+            return "Transaction was cancelled. Please try again when ready.";
+        }
+
+        if (errorMessage.includes("insufficient funds")) {
+            return "Insufficient funds for gas fees. Please add more funds to your wallet.";
+        }
+
+        if (
+            errorMessage.includes("network") ||
+            errorMessage.includes("Network")
+        ) {
+            return "Network connection issue. Please check your connection and try again.";
+        }
+
+        return "Unable to participate right now. Please try again in a few moments.";
+    };
 
     const handleParticipate = useCallback(async () => {
         if (!session?.player?.id || !session?.user.id) {
@@ -234,12 +288,8 @@ export default memo(function RaffleOnchainParticipation({
             });
         } catch (error) {
             console.error("Participation error:", error);
-            const errorMessage =
-                error instanceof Error
-                    ? error.message
-                    : "Looks like network is busy now. Please try again!";
-
-            toast.error(errorMessage);
+            const userFriendlyMessage = parseContractError(error);
+            toast.error(userFriendlyMessage);
         }
     }, [
         session?.user.id,
@@ -907,7 +957,7 @@ export default memo(function RaffleOnchainParticipation({
                                 className="relative p-2 rounded-2xl bg-red-900/40 border-2 border-red-400/40 backdrop-blur-lg"
                             >
                                 <p className="text-red-300 text-center font-medium">
-                                    {error.message}
+                                    {parseContractError(error)}
                                 </p>
                             </motion.div>
                         )}

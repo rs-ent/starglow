@@ -48,12 +48,23 @@ function formatErrorMessage(error: any): string {
         return "Transaction was cancelled by user";
     }
 
+    if (errorMessage.toLowerCase().includes("timeout")) {
+        return "Transaction timeout. Please check your transaction status or try again.";
+    }
+
     if (
         errorMessage.toLowerCase().includes("network") ||
         errorMessage.toLowerCase().includes("rpc") ||
-        errorMessage.toLowerCase().includes("timeout")
+        errorMessage.toLowerCase().includes("connection")
     ) {
-        return "Looks like network is busy now. Please try again!";
+        return "Network connection issue. Please check your internet and try again.";
+    }
+
+    if (
+        errorMessage.toLowerCase().includes("replacement") ||
+        errorMessage.toLowerCase().includes("underpriced")
+    ) {
+        return "Gas price issue. Please try again with a higher gas fee.";
     }
 
     return errorMessage;

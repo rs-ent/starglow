@@ -10,6 +10,21 @@ export const formatCurrency = (
     }).format(currency === "CURRENCY_KRW" ? amount : amount * usdMultiples);
 };
 
+export const getTimeUntilEnd = (endDate: Date): string => {
+    if (!endDate) return "N/A";
+
+    const now = new Date();
+    const diff = endDate.getTime() - now.getTime();
+
+    if (diff <= 0) return "Ended";
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+    if (days > 0) return `${days}d ${hours}h`;
+    return `${hours}h left`;
+};
+
 export function formatDate(date: Date, withTime: boolean = true) {
     const d = new Date(date);
     const yyyy = d.getFullYear();

@@ -10,7 +10,6 @@ import {
     XCircle,
     Trophy,
     Users,
-    Package,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils/tailwind";

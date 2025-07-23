@@ -4,16 +4,19 @@
 
 import { memo, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Gift, Users, Clock, Target } from "lucide-react";
+import { Gift, Users, Clock, Target, Zap, Database } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
 import { useRaffles } from "@/app/actions/raffles/hooks";
+import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
+import RafflesOnchainListCard from "./onchain/Raffles.Onchain.List.Card";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 
 import type { RaffleWithDetails } from "@/app/actions/raffles/actions";
 import type { RaffleStatus } from "@/app/actions/raffles/utils";
+import { InteractiveGridPattern } from "../magicui/interactive-grid-pattern";
 
 // Utility function to calculate raffle status based on dates
 const getRaffleStatus = (
@@ -32,9 +35,9 @@ const getRaffleStatus = (
 };
 
 export default memo(function RafflesList() {
-    const [selectedFilter, setSelectedFilter] = useState<
-        "all" | "active" | "upcoming"
-    >("all");
+    const [selectedTab, setSelectedTab] = useState<"offchain" | "onchain">(
+        "offchain"
+    );
 
     const { rafflesData, isRafflesLoading, rafflesError } = useRaffles({
         getRafflesInput: {
@@ -42,11 +45,18 @@ export default memo(function RafflesList() {
         },
     });
 
+    const { onchainRaffles, isOnchainRafflesLoading, isOnchainRafflesError } =
+        useOnchainRaffles({
+            getOnchainRafflesInput: {
+                isActive: "ACTIVE",
+            },
+        });
+
     const filteredRaffles = useMemo(() => {
         if (!rafflesData?.success || !rafflesData.data) return [];
 
         // Filter raffles and calculate status based on dates
-        let filtered = rafflesData.data
+        return rafflesData.data
             .map((raffle: RaffleWithDetails) => ({
                 ...raffle,
                 calculatedStatus: getRaffleStatus(
@@ -64,19 +74,7 @@ export default memo(function RafflesList() {
                     raffle.calculatedStatus === "ACTIVE" ||
                     raffle.calculatedStatus === "UPCOMING"
             );
-
-        if (selectedFilter !== "all") {
-            filtered = filtered.filter(
-                (
-                    raffle: RaffleWithDetails & {
-                        calculatedStatus: RaffleStatus;
-                    }
-                ) => raffle.calculatedStatus === selectedFilter.toUpperCase()
-            );
-        }
-
-        return filtered;
-    }, [rafflesData, selectedFilter]);
+    }, [rafflesData]);
 
     if (isRafflesLoading) {
         return <RafflesSkeleton />;
@@ -88,28 +86,133 @@ export default memo(function RafflesList() {
 
     return (
         <div className="relative flex flex-col w-full min-h-screen h-full overflow-hidden">
-            <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
+            {/* Dynamic Background based on selected tab */}
+            <AnimatePresence mode="wait">
+                {selectedTab === "onchain" ? (
+                    <motion.div
+                        key="onchain-bg"
+                        className="fixed inset-0 -z-20"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.6 }}
+                        style={{
+                            background:
+                                "linear-gradient(135deg,rgb(14, 2, 25),rgb(34, 19, 60),rgb(12, 3, 22),rgb(80, 60, 88))",
+                        }}
+                    />
+                ) : (
+                    <motion.div
+                        key="offchain-bg"
+                        className="fixed inset-0 -z-20"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.6 }}
+                        style={{
+                            background:
+                                "linear-gradient(to bottom, #09021B, #311473)",
+                        }}
+                    />
+                )}
+            </AnimatePresence>
 
-            {/* Multiple radial gradients to create blur-like effect */}
-            <div
-                className="absolute inset-0 bg-gradient-radial from-purple-500/30 via-transparent to-transparent blur-xl animate-pulse-slow -z-10"
-                style={{
-                    background: `
-                                 radial-gradient(circle at 20% 30%, rgba(33, 109, 172, 0.57) 0%, transparent 60%),
-                                 radial-gradient(circle at 80% 70%, rgba(177, 112, 171, 0.4) 0%, transparent 50%),
-                                 radial-gradient(circle at 60% 20%, rgba(102, 72, 236, 0.62) 0%, transparent 40%),
-                                 radial-gradient(circle at 40% 80%, rgba(88, 45, 74, 0.56) 0%, transparent 45%)
-                             `,
+            <AnimatePresence mode="wait">
+                {selectedTab === "onchain" && (
+                    <InteractiveGridPattern
+                        className={cn(
+                            "[mask-image:radial-gradient(800px_circle_at_center,white,transparent)]"
+                        )}
+                        width={60}
+                        height={60}
+                        squares={[40, 40]}
+                        squaresClassName="hover:fill-blue-800 opacity-20"
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Dynamic radial gradients */}
+            <AnimatePresence mode="wait">
+                {selectedTab === "onchain" ? (
+                    <motion.div
+                        key="onchain-radial"
+                        className="absolute inset-0 blur-xl -z-10"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.8 }}
+                        style={{
+                            background: `
+                                radial-gradient(circle at 20% 30%, rgb(25, 16, 32) 0%, transparent 50%),
+                                radial-gradient(circle at 80% 70%, rgba(20, 6, 33, 0.8) 0%, transparent 40%),
+                                radial-gradient(circle at 60% 20%, rgba(39, 9, 46, 1.2) 0%, transparent 35%),
+                                radial-gradient(circle at 40% 80%, rgba(23, 15, 36, 0.9) 0%, transparent 40%)
+                            `,
+                        }}
+                    />
+                ) : (
+                    <motion.div
+                        key="offchain-radial"
+                        className="absolute inset-0 blur-xl animate-pulse-slow -z-10"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.8 }}
+                        style={{
+                            background: `
+                                radial-gradient(circle at 20% 30%, rgba(33, 109, 172, 0.57) 0%, transparent 60%),
+                                radial-gradient(circle at 80% 70%, rgba(177, 112, 171, 0.4) 0%, transparent 50%),
+                                radial-gradient(circle at 60% 20%, rgba(102, 72, 236, 0.62) 0%, transparent 40%),
+                                radial-gradient(circle at 40% 80%, rgba(88, 45, 74, 0.56) 0%, transparent 45%)
+                            `,
+                        }}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Animated floating orbs with dynamic colors */}
+            <motion.div
+                className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl animate-float-slow -z-10"
+                animate={{
+                    backgroundColor:
+                        selectedTab === "onchain"
+                            ? "rgba(56, 26, 84, 0.3)"
+                            : "rgba(168, 85, 247, 0.2)",
                 }}
+                transition={{ duration: 0.8 }}
+            />
+            <motion.div
+                className="absolute top-3/4 right-1/4 w-80 h-80 rounded-full blur-2xl animate-float-slow-reverse -z-10"
+                animate={{
+                    backgroundColor:
+                        selectedTab === "onchain"
+                            ? "rgba(28, 20, 35, 0.25)"
+                            : "rgba(244, 114, 182, 0.15)",
+                }}
+                transition={{ duration: 0.8 }}
+            />
+            <motion.div
+                className="absolute top-1/2 left-3/4 w-72 h-72 rounded-full blur-3xl animate-float-medium -z-10"
+                animate={{
+                    backgroundColor:
+                        selectedTab === "onchain"
+                            ? "rgba(139, 92, 246, 0.3)"
+                            : "rgba(99, 102, 241, 0.2)",
+                }}
+                transition={{ duration: 0.8 }}
             />
 
-            {/* Animated floating orbs */}
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl animate-float-slow -z-10" />
-            <div className="absolute top-3/4 right-1/4 w-80 h-80 bg-pink-400/15 rounded-full blur-2xl animate-float-slow-reverse -z-10" />
-            <div className="absolute top-1/2 left-3/4 w-72 h-72 bg-indigo-400/20 rounded-full blur-3xl animate-float-medium -z-10" />
-
             {/* Overlay blur effect */}
-            <div className="absolute inset-0 backdrop-blur-sm bg-black/10 -z-10" />
+            <motion.div
+                className="absolute inset-0 backdrop-blur-sm -z-10"
+                animate={{
+                    backgroundColor:
+                        selectedTab === "onchain"
+                            ? "rgba(0, 0, 0, 0.15)"
+                            : "rgba(0, 0, 0, 0.1)",
+                }}
+                transition={{ duration: 0.8 }}
+            />
 
             <div
                 className={cn(
@@ -118,48 +221,59 @@ export default memo(function RafflesList() {
                 )}
             >
                 {/* Title */}
-                <h2
+                <motion.h2
                     className={cn(
                         "text-center text-4xl font-bold",
                         "mt-[70px] md:mt-[80px] lg:mt-[20px]",
                         getResponsiveClass(45).textClass
                     )}
+                    animate={{
+                        color:
+                            selectedTab === "onchain" ? "#ffffff" : "#ffffff",
+                    }}
+                    transition={{ duration: 0.5 }}
                 >
                     Raffles
-                </h2>
+                </motion.h2>
 
-                {/* Filter Tabs */}
+                {/* Tab Selector */}
                 <div className="flex justify-center mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]">
-                    <div className="flex flex-row gap-2 overflow-x-auto whitespace-nowrap pb-2">
+                    <div className="relative flex bg-black/20 backdrop-blur-md rounded-2xl p-1 border border-white/10">
+                        <motion.div
+                            className="absolute inset-y-1 bg-gradient-to-r from-purple-500/80 to-violet-500/80 rounded-xl"
+                            initial={false}
+                            animate={{
+                                x: selectedTab === "offchain" ? 0 : "95%",
+                                width:
+                                    selectedTab === "offchain" ? "50%" : "50%",
+                            }}
+                            transition={{
+                                type: "spring",
+                                stiffness: 300,
+                                damping: 30,
+                            }}
+                        />
+
                         {[
                             {
-                                key: "all",
-                                label: "All",
+                                key: "offchain",
+                                label: "Offchain",
+                                icon: Database,
                                 count: filteredRaffles.length,
                             },
                             {
-                                key: "active",
-                                label: "Active",
-                                count: filteredRaffles.filter(
-                                    (r: any) => r.calculatedStatus === "ACTIVE"
-                                ).length,
+                                key: "onchain",
+                                label: "Onchain",
+                                icon: Zap,
+                                count:
+                                    onchainRaffles?.data?.raffles?.length || 0,
                             },
-                            {
-                                key: "upcoming",
-                                label: "Upcoming",
-                                count: filteredRaffles.filter(
-                                    (r: any) =>
-                                        r.calculatedStatus === "UPCOMING"
-                                ).length,
-                            },
-                        ].map((filter) => (
-                            <FilterButton
-                                key={filter.key}
-                                filter={filter}
-                                isSelected={selectedFilter === filter.key}
-                                onClick={() =>
-                                    setSelectedFilter(filter.key as any)
-                                }
+                        ].map((tab) => (
+                            <TabButton
+                                key={tab.key}
+                                tab={tab}
+                                isSelected={selectedTab === tab.key}
+                                onClick={() => setSelectedTab(tab.key as any)}
                             />
                         ))}
                     </div>
@@ -167,30 +281,70 @@ export default memo(function RafflesList() {
 
                 {/* Raffles Grid */}
                 <AnimatePresence mode="wait">
-                    {filteredRaffles.length > 0 ? (
+                    {selectedTab === "offchain" ? (
+                        filteredRaffles.length > 0 ? (
+                            <motion.div
+                                key="offchain-raffles"
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 20 }}
+                                transition={{ duration: 0.3 }}
+                                className={cn(
+                                    "grid grid-cols-1",
+                                    "mb-[100px] lg:mb-[40px]",
+                                    getResponsiveClass(50).gapClass
+                                )}
+                            >
+                                {filteredRaffles.map(
+                                    (raffle: any, index: number) => (
+                                        <RaffleCard
+                                            key={raffle.id}
+                                            raffle={raffle}
+                                            index={index}
+                                        />
+                                    )
+                                )}
+                            </motion.div>
+                        ) : (
+                            <EmptyState tabType="offchain" />
+                        )
+                    ) : isOnchainRafflesLoading ? (
+                        <OnchainLoadingState />
+                    ) : isOnchainRafflesError ? (
+                        <OnchainErrorState />
+                    ) : (onchainRaffles?.data?.raffles?.length || 0) > 0 ? (
                         <motion.div
-                            key="raffles"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
+                            key="onchain-raffles"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.3 }}
                             className={cn(
                                 "grid grid-cols-1",
                                 "mb-[100px] lg:mb-[40px]",
                                 getResponsiveClass(50).gapClass
                             )}
                         >
-                            {filteredRaffles.map(
+                            {onchainRaffles?.data?.raffles?.map(
                                 (raffle: any, index: number) => (
-                                    <RaffleCard
-                                        key={raffle.id}
-                                        raffle={raffle}
-                                        index={index}
-                                    />
+                                    <motion.div
+                                        key={`${raffle.contractAddress}-${raffle.raffleId}`}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: index * 0.1 }}
+                                    >
+                                        <RafflesOnchainListCard
+                                            contractAddress={
+                                                raffle.contractAddress
+                                            }
+                                            raffleId={raffle.raffleId}
+                                        />
+                                    </motion.div>
                                 )
                             )}
                         </motion.div>
                     ) : (
-                        <EmptyState />
+                        <EmptyState tabType="onchain" />
                     )}
                 </AnimatePresence>
             </div>
@@ -198,43 +352,83 @@ export default memo(function RafflesList() {
     );
 });
 
-// Filter Button Component
-interface FilterButtonProps {
-    filter: {
+// Tab Button Component
+interface TabButtonProps {
+    tab: {
         key: string;
         label: string;
+        icon: any;
         count: number;
     };
     isSelected: boolean;
     onClick: () => void;
 }
 
-const FilterButton = memo(function FilterButton({
-    filter,
+const TabButton = memo(function TabButton({
+    tab,
     isSelected,
     onClick,
-}: FilterButtonProps) {
+}: TabButtonProps) {
+    const Icon = tab.icon;
+
     return (
-        <div
+        <motion.button
             className={cn(
-                "flex flex-row gap-2 items-center justify-center text-sm transition-all duration-500 morp-glass-1 rounded-full px-4 py-2",
-                "cursor-pointer backdrop-blur-xs",
-                getResponsiveClass(15).textClass,
-                isSelected ? "opacity-100" : "opacity-50"
+                "relative z-10 flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-300",
+                "font-medium text-sm whitespace-nowrap",
+                isSelected
+                    ? "text-white shadow-lg"
+                    : "text-white/60 hover:text-white/80"
             )}
             onClick={onClick}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            animate={{
+                backgroundColor: isSelected
+                    ? tab.key === "onchain"
+                        ? "rgba(147, 51, 234, 0.3)"
+                        : "rgba(99, 102, 241, 0.3)"
+                    : "transparent",
+            }}
+            transition={{ duration: 0.3 }}
         >
-            {filter.label}
-            <span
-                className={cn(
-                    "bg-white/20 p-1 rounded-full text-xs text-center flex items-center justify-center",
-                    getResponsiveClass(20).frameClass,
-                    getResponsiveClass(5).textClass
-                )}
+            <motion.div
+                animate={{
+                    scale: isSelected ? 1.1 : 1,
+                    rotate:
+                        isSelected && tab.key === "onchain" ? [0, 5, -5, 0] : 0,
+                }}
+                transition={{
+                    scale: { duration: 0.3 },
+                    rotate: {
+                        duration: 1.5,
+                        repeat: isSelected ? Infinity : 0,
+                        repeatDelay: 3,
+                    },
+                }}
             >
-                {filter.count}
-            </span>
-        </div>
+                <Icon className="w-4 h-4" />
+            </motion.div>
+            <span>{tab.label}</span>
+            <motion.span
+                className={cn(
+                    "flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold",
+                    isSelected
+                        ? "bg-white/30 text-white border border-white/20"
+                        : "bg-white/10 text-white/60"
+                )}
+                initial={false}
+                animate={{
+                    scale: isSelected ? 1.1 : 0.9,
+                    boxShadow: isSelected
+                        ? "0 0 10px rgba(255,255,255,0.3)"
+                        : "none",
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            >
+                {tab.count}
+            </motion.span>
+        </motion.button>
     );
 });
 
@@ -519,10 +713,16 @@ const RaffleCard = memo(function RaffleCard({
 });
 
 // Empty State Component
-const EmptyState = memo(function EmptyState() {
+interface EmptyStateProps {
+    tabType: "offchain" | "onchain";
+}
+
+const EmptyState = memo(function EmptyState({ tabType }: EmptyStateProps) {
+    const isOnchain = tabType === "onchain";
+
     return (
         <motion.div
-            key="empty"
+            key={`empty-${tabType}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -537,7 +737,7 @@ const EmptyState = memo(function EmptyState() {
             }}
         >
             <div className={cn("mb-4", getResponsiveClass(60).textClass)}>
-                🎁
+                {isOnchain ? "⚡" : "🎁"}
             </div>
             <h3
                 className={cn(
@@ -545,7 +745,7 @@ const EmptyState = memo(function EmptyState() {
                     getResponsiveClass(30).textClass
                 )}
             >
-                No Raffles Available
+                No {isOnchain ? "Onchain" : "Offchain"} Raffles Available
             </h3>
             <p
                 className={cn(
@@ -553,7 +753,77 @@ const EmptyState = memo(function EmptyState() {
                     getResponsiveClass(15).textClass
                 )}
             >
-                New raffles will appear here when they become available.
+                New {isOnchain ? "blockchain-based" : "traditional"} raffles
+                will appear here when they become available.
+            </p>
+        </motion.div>
+    );
+});
+
+// Onchain Loading State
+const OnchainLoadingState = memo(function OnchainLoadingState() {
+    return (
+        <motion.div
+            key="onchain-loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex items-center justify-center py-20"
+        >
+            <div className="text-center">
+                <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "linear",
+                    }}
+                    className="w-12 h-12 border-4 border-purple-400 border-t-transparent rounded-full mx-auto mb-4"
+                />
+                <p className="text-white/80 text-lg">
+                    Loading onchain raffles...
+                </p>
+            </div>
+        </motion.div>
+    );
+});
+
+// Onchain Error State
+const OnchainErrorState = memo(function OnchainErrorState() {
+    return (
+        <motion.div
+            key="onchain-error"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={cn(
+                "col-span-full",
+                "morp-glass-1 inner-shadow rounded-3xl text-center",
+                getResponsiveClass(60).paddingClass
+            )}
+            style={{
+                background:
+                    "linear-gradient(to bottom right, rgba(139,69,19,0.2), rgba(139,69,19,0.05))",
+            }}
+        >
+            <div className={cn("mb-4", getResponsiveClass(60).textClass)}>
+                ⚠️
+            </div>
+            <h3
+                className={cn(
+                    "font-bold text-white mb-2",
+                    getResponsiveClass(30).textClass
+                )}
+            >
+                Failed to load onchain raffles
+            </h3>
+            <p
+                className={cn(
+                    "text-white/60",
+                    getResponsiveClass(15).textClass
+                )}
+            >
+                Please check your connection and try again.
             </p>
         </motion.div>
     );

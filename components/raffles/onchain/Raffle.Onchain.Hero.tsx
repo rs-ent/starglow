@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { cn } from "@/lib/utils/tailwind";
@@ -8,7 +8,8 @@ import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { Particles } from "@/components/magicui/particles";
 import { RetroGrid } from "@/components/magicui/retro-grid";
-import { safeBigIntToNumber, formatDate } from "@/lib/utils/format";
+import { safeBigIntToNumber, getTimeUntilEnd } from "@/lib/utils/format";
+import { ShimmerEffect } from "@/components/magicui/shimmer-effect";
 
 interface RaffleOnchainHeroProps {
     raffleData?: {
@@ -20,8 +21,10 @@ interface RaffleOnchainHeroProps {
     };
     showAsListCard?: boolean;
     listCardInfo?: {
+        drawDate?: string;
         startDate?: string;
         endDate?: string;
+        instantDraw?: string;
         participationLimit?: string;
         participationCount?: string;
         participationFeeAsset?: {
@@ -58,36 +61,49 @@ export default memo(function RaffleOnchainHero({
     showAsListCard = false,
     listCardInfo,
 }: RaffleOnchainHeroProps) {
+    const [isHovered, setIsHovered] = useState(false);
     const handleCopyAddress = useCallback(() => {
         const fullAddress = `${contractAddress}`;
         window.open(`https://beratrail.io/address/${fullAddress}`, "_blank");
     }, [contractAddress]);
 
-    const { dateLabel, dateValue } = useMemo(() => {
-        if (!listCardInfo) return { dateLabel: "", dateValue: "" };
+    const { dateLabel, dateValue, drawDateValue } = useMemo(() => {
+        if (!listCardInfo)
+            return { dateLabel: "", dateValue: "", drawDateValue: "" };
 
         const now = new Date();
         const startDate =
             safeBigIntToNumber(listCardInfo.startDate || 0) * 1000;
         const endDate = safeBigIntToNumber(listCardInfo.endDate || 0) * 1000;
+        const drawDate =
+            listCardInfo.instantDraw === "true"
+                ? "Instant"
+                : getTimeUntilEnd(
+                      new Date(
+                          safeBigIntToNumber(listCardInfo.drawDate || 0) * 1000
+                      )
+                  );
 
         if (now < new Date(startDate)) {
             return {
                 dateLabel: "Starts in",
-                dateValue: formatDate(new Date(startDate), false),
+                dateValue: getTimeUntilEnd(new Date(startDate)),
+                drawDateValue: drawDate,
             };
         }
 
         if (now > new Date(endDate)) {
             return {
                 dateLabel: "Ended",
-                dateValue: formatDate(new Date(endDate), false),
+                dateValue: getTimeUntilEnd(new Date(endDate)),
+                drawDateValue: drawDate,
             };
         }
 
         return {
             dateLabel: "Ends in",
-            dateValue: formatDate(new Date(endDate), false),
+            dateValue: getTimeUntilEnd(new Date(endDate)),
+            drawDateValue: drawDate,
         };
     }, [listCardInfo]);
 
@@ -96,6 +112,8 @@ export default memo(function RaffleOnchainHero({
             initial="hidden"
             animate="visible"
             className="relative mb-12 overflow-hidden rounded-3xl border-2 border-emerald-400/30 shadow-2xl shadow-emerald-500/20 gpu-accelerate"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
         >
             <Particles
                 className="absolute inset-0"
@@ -116,6 +134,8 @@ export default memo(function RaffleOnchainHero({
             />
 
             <RetroGrid opacity={0.3} />
+
+            {isHovered && <ShimmerEffect />}
 
             <div className="relative z-10 min-h-[35vh] flex items-center p-4">
                 <div className="flex flex-col items-start w-full space-y-1">
@@ -179,18 +199,113 @@ export default memo(function RaffleOnchainHero({
                         )}
 
                         {showAsListCard && (
-                            <div className="flex items-center gap-3 mt-2">
+                            <div className="grid grid-cols-2 items-center gap-3 mt-2">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-emerald-300/80 text-xs font-medium tracking-wider uppercase">
+                                    <div className="w-1 h-1 bg-emerald-400 rounded-full" />
+                                    <span
+                                        className={cn(
+                                            "text-emerald-300/60 text-xs font-extralight tracking-wider uppercase",
+                                            getResponsiveClass(5).textClass
+                                        )}
+                                    >
+                                        Draw
+                                    </span>
+                                    <span
+                                        className={cn(
+                                            "text-emerald-300/90 text-xs font-medium tracking-wider uppercase",
+                                            getResponsiveClass(10).textClass
+                                        )}
+                                    >
+                                        {drawDateValue}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1 h-1 bg-emerald-400 rounded-full" />
+                                    <span
+                                        className={cn(
+                                            "text-emerald-300/60 text-xs font-extralight tracking-wider uppercase",
+                                            getResponsiveClass(5).textClass
+                                        )}
+                                    >
                                         {dateLabel}
                                     </span>
                                     <span
                                         className={cn(
-                                            "text-emerald-300/80 text-xs font-medium tracking-wider uppercase",
+                                            "text-emerald-300/90 text-xs font-medium tracking-wider uppercase",
                                             getResponsiveClass(10).textClass
                                         )}
                                     >
                                         {dateValue}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1 h-1 bg-emerald-400 rounded-full" />
+                                    <span
+                                        className={cn(
+                                            "text-emerald-300/60 text-xs font-extralight tracking-wider uppercase",
+                                            getResponsiveClass(5).textClass
+                                        )}
+                                    >
+                                        Remain Tickets
+                                    </span>
+                                    <span
+                                        className={cn(
+                                            "text-emerald-300/90 text-xs font-medium tracking-wider uppercase",
+                                            getResponsiveClass(10).textClass
+                                        )}
+                                    >
+                                        {safeBigIntToNumber(
+                                            listCardInfo?.participationLimit ||
+                                                0
+                                        ) -
+                                            safeBigIntToNumber(
+                                                listCardInfo?.participationCount ||
+                                                    0
+                                            )}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1 h-1 bg-emerald-400 rounded-full" />
+                                    <span
+                                        className={cn(
+                                            "text-emerald-300/60 text-xs font-extralight tracking-wider uppercase",
+                                            getResponsiveClass(5).textClass
+                                        )}
+                                    >
+                                        Ticket Price
+                                    </span>
+                                    {listCardInfo?.participationFeeAsset
+                                        ?.iconUrl && (
+                                        <Image
+                                            src={
+                                                listCardInfo
+                                                    ?.participationFeeAsset
+                                                    ?.iconUrl || ""
+                                            }
+                                            alt="Ticket Price"
+                                            width={24}
+                                            height={24}
+                                            className={cn(
+                                                "object-contain",
+                                                getResponsiveClass(15)
+                                                    .frameClass
+                                            )}
+                                        />
+                                    )}
+                                    <span
+                                        className={cn(
+                                            "text-emerald-300/90 text-xs font-medium tracking-wider uppercase",
+                                            getResponsiveClass(10).textClass
+                                        )}
+                                    >
+                                        {listCardInfo?.participationFeeAmount}{" "}
+                                        {
+                                            listCardInfo?.participationFeeAsset
+                                                ?.symbol
+                                        }
                                     </span>
                                 </div>
                             </div>

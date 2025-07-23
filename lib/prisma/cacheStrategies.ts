@@ -8,8 +8,8 @@
 export const PrismaCacheStrategies = {
     /** 실시간 데이터 (가격, 투표 결과 등) */
     realtime: {
-        ttl: 2, // 2초
-        swr: 5, // 5초
+        ttl: 1, // 1초
+        swr: 3, // 3초
     },
     /** 매우 자주 업데이트되는 데이터 (사용자 활동 등) */
     tenSeconds: {

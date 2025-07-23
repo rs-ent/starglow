@@ -43,9 +43,9 @@ interface RetryConfig {
 }
 
 const DEFAULT_RETRY_CONFIG: RetryConfig = {
-    maxRetries: 3,
-    baseDelayMs: 1000,
-    maxDelayMs: 10000,
+    maxRetries: 5, // 3에서 5로 증가
+    baseDelayMs: 2000, // 1000에서 2000으로 증가
+    maxDelayMs: 15000, // 10000에서 15000으로 증가
     retryableErrors: [
         "network error",
         "timeout",
@@ -53,6 +53,8 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
         "rpc",
         "gas",
         "nonce",
+        "replacement",
+        "underpriced",
     ],
 };
 
@@ -369,6 +371,8 @@ export interface ParticipateAndDrawResult {
 export async function participateAndDraw(
     input: ParticipateAndDrawInput
 ): Promise<ParticipateAndDrawResult> {
+    const startTime = Date.now(); // 성능 모니터링 시작
+
     try {
         // 기존 검증 로직 재사용
         const raffle = await prisma.onchainRaffle.findUnique({
@@ -400,10 +404,13 @@ export async function participateAndDraw(
             return { success: false, error: "Raffle not found" };
         }
 
-        // 🚀 병렬 처리로 성능 최적화
-        const [playerWallet, publicClient] = await Promise.all([
+        const [playerWallet, publicClient, walletClient] = await Promise.all([
             getDefaultUserWalletAddress({ userId: input.userId }),
             fetchPublicClient({ network: raffle.network }),
+            fetchWalletClient({
+                network: raffle.network,
+                walletAddress: raffle.deployedBy as `0x${string}`,
+            }),
         ]);
 
         if (!playerWallet) {
@@ -416,8 +423,9 @@ export async function participateAndDraw(
             client: publicClient,
         });
 
-        const contractRaffle = await (raffleContract.read as any).getRaffle([
-            BigInt(input.raffleId),
+        // 🚀 래플 정보 조회와 참가비 검증 병렬 처리
+        const [contractRaffle] = await Promise.all([
+            (raffleContract.read as any).getRaffle([BigInt(input.raffleId)]),
         ]);
 
         // 즉시 추첨 래플인지 확인
@@ -449,30 +457,45 @@ export async function participateAndDraw(
             }
         }
 
-        // 🚀 walletClient 생성과 동시에 스마트 컨트랙트 호출 준비
-        const walletClient = await fetchWalletClient({
-            network: raffle.network,
-            walletAddress: raffle.deployedBy as `0x${string}`,
-        });
-
         const raffleContractWrite = getContract({
             address: raffle.contractAddress as `0x${string}`,
             abi,
             client: walletClient,
         });
 
-        const participateAndDrawTx = await (
-            raffleContractWrite.write as any
-        ).participateAndDraw([
-            BigInt(input.raffleId),
-            playerWallet as `0x${string}`,
-        ]);
+        // 🚀 트랜잭션 호출에도 재시도 로직 추가
+        const participateAndDrawTx = await executeWithRetry(
+            async () => {
+                return await (
+                    raffleContractWrite.write as any
+                ).participateAndDraw([
+                    BigInt(input.raffleId),
+                    playerWallet as `0x${string}`,
+                ]);
+            },
+            "participateAndDraw transaction",
+            {
+                maxRetries: 3,
+                baseDelayMs: 3000,
+                maxDelayMs: 12000,
+                retryableErrors: [
+                    "network error",
+                    "timeout",
+                    "connection",
+                    "rpc",
+                    "gas",
+                    "nonce",
+                    "replacement",
+                    "underpriced",
+                ],
+            }
+        );
 
         const receipt = await executeWithRetry(
             async () => {
                 const txReceipt = await publicClient.waitForTransactionReceipt({
                     hash: participateAndDrawTx,
-                    timeout: 30000,
+                    timeout: 90000, // 30초에서 90초로 증가
                 });
 
                 if (txReceipt.status !== "success") {
@@ -514,7 +537,7 @@ export async function participateAndDraw(
                             }
                         } else {
                             errorMessage =
-                                "Looks like network is busy now. Please try again!";
+                                "Transaction timeout. The raffle participation may still be processing.";
                         }
                     }
 
@@ -528,14 +551,15 @@ export async function participateAndDraw(
             },
             "transaction receipt confirmation",
             {
-                maxRetries: 1,
-                baseDelayMs: 3000,
-                maxDelayMs: 6000,
+                maxRetries: 3, // 1에서 3으로 증가
+                baseDelayMs: 5000, // 3000에서 5000으로 증가
+                maxDelayMs: 15000, // 6000에서 15000으로 증가
                 retryableErrors: [
                     "timeout",
                     "network error",
                     "connection",
                     "rpc",
+                    "replacement",
                 ],
             }
         );
@@ -606,6 +630,16 @@ export async function participateAndDraw(
             );
         });
 
+        // 🔍 성능 모니터링 로깅
+        const executionTime = Date.now() - startTime;
+        console.info(`✅ participateAndDraw success - ${executionTime}ms`, {
+            raffleId: input.raffleId,
+            contractAddress: input.contractAddress,
+            executionTimeMs: executionTime,
+            prizeIndex: result.prizeIndex,
+            entryFee: result.entryFeeAmount,
+        });
+
         return {
             success: true,
             data: {
@@ -629,7 +663,20 @@ export async function participateAndDraw(
             },
         };
     } catch (error) {
-        console.error("❌ Error in participateAndDraw:", error);
+        // 🔍 에러 성능 모니터링 로깅
+        const executionTime = Date.now() - startTime;
+        console.error(`❌ participateAndDraw failed - ${executionTime}ms`, {
+            raffleId: input.raffleId,
+            contractAddress: input.contractAddress,
+            executionTimeMs: executionTime,
+            errorType:
+                error instanceof Error ? error.constructor.name : "Unknown",
+            errorMessage:
+                error instanceof Error ? error.message : String(error),
+            isRevert: (error as any)?.isRevert,
+            isRetryable:
+                error instanceof Error ? isRetryableError(error) : false,
+        });
 
         let errorMessage = "Failed to participate and draw";
 
@@ -811,7 +858,7 @@ export async function participate(
                     const txReceipt =
                         await publicClient.waitForTransactionReceipt({
                             hash: participateTx,
-                            timeout: 60000,
+                            timeout: 90000, // 60초에서 90초로 증가
                         });
 
                     if (txReceipt.status !== "success") {

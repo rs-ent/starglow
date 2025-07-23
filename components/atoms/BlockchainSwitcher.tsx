@@ -6,7 +6,6 @@ import { useStoryNetwork } from "@/app/story/network/hooks";
 import { useWagmiConnection } from "@/app/story/userWallet/wagmi-hooks";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-import PartialLoading from "./PartialLoading";
 import Image from "next/image";
 
 export default memo(function BlockchainSwitcher() {
@@ -16,11 +15,11 @@ export default memo(function BlockchainSwitcher() {
 
     const { chainId, switchChain, isConnected } = useWagmiConnection();
 
-    if (isLoadingDefaultStoryNetwork) {
-        return <PartialLoading loadingSize={20} />;
-    }
-
     const isOnDefaultNetwork = chainId === defaultStoryNetwork?.chainId;
+
+    if (isLoadingDefaultStoryNetwork) {
+        return null;
+    }
 
     if (!isConnected || isOnDefaultNetwork) {
         return null;

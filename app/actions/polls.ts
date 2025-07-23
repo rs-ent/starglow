@@ -238,6 +238,10 @@ export interface GetPollsInput {
     endDate?: Date;
     endDateBefore?: Date;
     endDateAfter?: Date;
+    startDateFrom?: Date;
+    startDateTo?: Date;
+    endDateFrom?: Date;
+    endDateTo?: Date;
     exposeInScheduleTab?: boolean;
     bettingMode?: boolean;
     bettingAssetId?: string;
@@ -246,6 +250,8 @@ export interface GetPollsInput {
     artistId?: string | null;
     isActive?: boolean;
     test?: boolean;
+    allowMultipleVote?: boolean;
+    isOnchain?: boolean;
 }
 
 export type PollListData = {
@@ -312,6 +318,8 @@ export async function getPolls({
         if (input?.needToken) where.needToken = input.needToken;
         if (input?.needTokenAddress)
             where.needTokenAddress = input.needTokenAddress;
+
+        // 기존 날짜 필터 (하위호환성)
         if (
             input?.startDate &&
             !input.startDateBefore &&
@@ -358,26 +366,45 @@ export async function getPolls({
                 gt: input.endDateAfter,
             };
         }
-        if (input?.exposeInScheduleTab)
+
+        // 새로운 직관적인 날짜 필터
+        if (input?.startDateFrom || input?.startDateTo) {
+            where.startDate = {
+                ...(input.startDateFrom && { gte: input.startDateFrom }),
+                ...(input.startDateTo && { lte: input.startDateTo }),
+            };
+        }
+        if (input?.endDateFrom || input?.endDateTo) {
+            where.endDate = {
+                ...(input.endDateFrom && { gte: input.endDateFrom }),
+                ...(input.endDateTo && { lte: input.endDateTo }),
+            };
+        }
+        if (input?.exposeInScheduleTab !== undefined)
             where.exposeInScheduleTab = input.exposeInScheduleTab;
-        if (input?.bettingMode) where.bettingMode = input.bettingMode;
+        if (input?.bettingMode !== undefined)
+            where.bettingMode = input.bettingMode;
         if (input?.bettingAssetId) where.bettingAssetId = input.bettingAssetId;
         if (input?.participationRewardAssetId)
             where.participationRewardAssetId = input.participationRewardAssetId;
         if (input?.artistId === null) where.artistId = null;
         else if (input?.artistId) where.artistId = input.artistId;
-        if (input?.isActive) where.isActive = input.isActive;
+        if (input?.isActive !== undefined) where.isActive = input.isActive;
         if (input?.participationConsumeAssetId)
             where.participationConsumeAssetId =
                 input.participationConsumeAssetId;
-        if (input?.showOnPollPage) where.showOnPollPage = input.showOnPollPage;
-        if (input?.showOnStarPage) where.showOnStarPage = input.showOnStarPage;
-        if (input?.hasAnswer) where.hasAnswer = input.hasAnswer;
-        if (input?.hasAnswerAnnouncement)
+        if (input?.showOnPollPage !== undefined)
+            where.showOnPollPage = input.showOnPollPage;
+        if (input?.showOnStarPage !== undefined)
+            where.showOnStarPage = input.showOnStarPage;
+        if (input?.hasAnswer !== undefined) where.hasAnswer = input.hasAnswer;
+        if (input?.hasAnswerAnnouncement !== undefined)
             where.hasAnswerAnnouncement = input.hasAnswerAnnouncement;
         if (input?.answerAnnouncementDate)
             where.answerAnnouncementDate = input.answerAnnouncementDate;
-
+        if (input?.allowMultipleVote !== undefined)
+            where.allowMultipleVote = input.allowMultipleVote;
+        if (input?.isOnchain !== undefined) where.isOnchain = input.isOnchain;
         if (input?.test !== undefined) where.test = input.test;
 
         const [items, totalItems] = await Promise.all([

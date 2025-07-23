@@ -2,7 +2,7 @@
 
 "use client";
 
-import { memo, useState, useEffect } from "react";
+import { memo, useState, useEffect, useMemo } from "react";
 
 import { usePollsGet } from "@/app/hooks/usePolls";
 import { cn } from "@/lib/utils/tailwind";
@@ -17,37 +17,72 @@ interface PollsContentsTotalProps {
     className?: string;
 }
 
+const convertActualStatusToDateFilters = (
+    actualStatus?: string,
+    currentDate?: Date
+) => {
+    const now = currentDate || new Date();
+
+    switch (actualStatus) {
+        case "UPCOMING":
+            return {
+                startDateFrom: now,
+            };
+        case "ONGOING":
+            return {
+                startDateTo: now,
+                endDateFrom: now,
+            };
+        case "ENDED":
+            return {
+                endDateTo: now,
+            };
+        default:
+            return {};
+    }
+};
+
 function PollsContentsTotal({ player, className }: PollsContentsTotalProps) {
-    // 필터 상태 관리
     const [filters, setFilters] = useState<ClientPollFilters>({
         isActive: true,
     });
 
-    // 페이지네이션 상태
     const [currentPage, setCurrentPage] = useState(1);
     const [allPolls, setAllPolls] = useState<any[]>([]);
     const [totalItems, setTotalItems] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
 
-    // 페이지네이션된 데이터 가져오기
-    const { pollsList, isLoading, error } = usePollsGet({
-        getPollsInput: {
+    const currentDate = useMemo(() => new Date(), []);
+
+    const serverFilters = useMemo(() => {
+        const dateFilters = convertActualStatusToDateFilters(
+            filters.actualStatus,
+            currentDate
+        );
+
+        return {
             isActive: true,
             showOnPollPage: true,
             test: player?.tester ?? false,
-            // 지원되는 필터 조건들만 추가
             artistId: filters.artistId,
             bettingMode: filters.bettingMode,
             hasAnswer: filters.hasAnswer,
             participationRewardAssetId: filters.participationRewardAssetId,
-        },
+            allowMultipleVote: filters.allowMultipleVote,
+            isOnchain: filters.isOnchain,
+            ...dateFilters,
+        };
+    }, [filters, player?.tester, currentDate]);
+
+    const { pollsList, isLoading, error } = usePollsGet({
+        getPollsInput: serverFilters,
         pagination: {
             currentPage: currentPage,
             itemsPerPage: 5,
         },
     });
 
-    // 새로운 데이터가 로드되면 누적
+    // 새로운 데이터가 로드되면 누적 (무한스크롤용)
     useEffect(() => {
         if (pollsList?.items) {
             if (currentPage === 1) {
@@ -65,9 +100,8 @@ function PollsContentsTotal({ player, className }: PollsContentsTotalProps) {
         pollsList?.totalPages,
     ]);
 
-    // 캐러셀 인덱스 변경 핸들러
     const handleCarouselIndexChange = (index: number) => {
-        // 인덱스가 현재 로드된 데이터의 80% 지점에 도달하면 다음 페이지 로드
+        // 인덱스가 현재 로드된 데이터의 50% 지점에 도달하면 다음 페이지 로드
         const loadedItems = allPolls.length;
         const threshold = Math.floor(loadedItems * 0.5);
 
@@ -80,11 +114,10 @@ function PollsContentsTotal({ player, className }: PollsContentsTotalProps) {
         }
     };
 
-    // 필터 변경 시 페이지 리셋 및 데이터 초기화
     const handleFiltersChange = (newFilters: ClientPollFilters) => {
         setFilters(newFilters);
         setCurrentPage(1);
-        setAllPolls([]); // 기존 데이터 초기화
+        setAllPolls([]); // 필터 변경시 기존 데이터 초기화
     };
 
     return (
@@ -96,12 +129,11 @@ function PollsContentsTotal({ player, className }: PollsContentsTotalProps) {
                 className
             )}
         >
-            {/* 필터 컴포넌트 */}
             <PollsFilter
                 filters={filters}
                 onFiltersChange={handleFiltersChange}
                 allPolls={pollsList?.items || []}
-                filteredCount={pollsList?.items?.length || 0}
+                filteredCount={totalItems}
                 className="mb-1"
             />
 
@@ -124,7 +156,7 @@ function PollsContentsTotal({ player, className }: PollsContentsTotalProps) {
                             />
                         ) : (
                             <div className="text-center text-2xl py-10">
-                                {isLoading ? "Loading..." : "No polls found"}
+                                {"No polls found"}
                             </div>
                         )}
                     </div>
