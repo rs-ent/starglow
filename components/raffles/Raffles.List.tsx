@@ -36,7 +36,7 @@ const getRaffleStatus = (
 
 export default memo(function RafflesList() {
     const [selectedTab, setSelectedTab] = useState<"offchain" | "onchain">(
-        "offchain"
+        "onchain"
     );
 
     const { rafflesData, isRafflesLoading, rafflesError } = useRaffles({
@@ -243,9 +243,9 @@ export default memo(function RafflesList() {
                             className="absolute inset-y-1 bg-gradient-to-r from-purple-500/80 to-violet-500/80 rounded-xl"
                             initial={false}
                             animate={{
-                                x: selectedTab === "offchain" ? 0 : "95%",
+                                x: selectedTab === "onchain" ? 0 : "95%",
                                 width:
-                                    selectedTab === "offchain" ? "50%" : "50%",
+                                    selectedTab === "onchain" ? "50%" : "50%",
                             }}
                             transition={{
                                 type: "spring",
@@ -256,15 +256,15 @@ export default memo(function RafflesList() {
 
                         {[
                             {
-                                key: "offchain",
-                                label: "Offchain",
-                                icon: Database,
-                                count: filteredRaffles.length,
-                            },
-                            {
                                 key: "onchain",
                                 label: "Onchain",
                                 icon: Zap,
+                                count: filteredRaffles.length,
+                            },
+                            {
+                                key: "offchain",
+                                label: "Offchain",
+                                icon: Database,
                                 count: allRaffles?.data?.length || 0,
                             },
                         ].map((tab) => (
@@ -284,9 +284,9 @@ export default memo(function RafflesList() {
                         filteredRaffles.length > 0 ? (
                             <motion.div
                                 key="offchain-raffles"
-                                initial={{ opacity: 0, x: -20 }}
+                                initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 20 }}
+                                exit={{ opacity: 0, x: -20 }}
                                 transition={{ duration: 0.3 }}
                                 className={cn(
                                     "grid grid-cols-1",
@@ -314,9 +314,9 @@ export default memo(function RafflesList() {
                     ) : (allRaffles?.data?.length || 0) > 0 ? (
                         <motion.div
                             key="onchain-raffles"
-                            initial={{ opacity: 0, x: 20 }}
+                            initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
+                            exit={{ opacity: 0, x: 20 }}
                             transition={{ duration: 0.3 }}
                             className={cn(
                                 "grid grid-cols-1",

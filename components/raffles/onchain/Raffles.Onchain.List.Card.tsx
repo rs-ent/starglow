@@ -76,7 +76,6 @@ function RafflesOnchainListCard({
                     uniqueParticipants:
                         coreData?.uniqueParticipants?.toString(),
                 }}
-                contractAddress={contractAddress}
                 raffleId={raffleId}
             />
         </Link>

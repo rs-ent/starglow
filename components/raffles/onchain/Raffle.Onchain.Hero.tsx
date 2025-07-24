@@ -57,16 +57,10 @@ const ShimmerBadge = ({ children }: { children: React.ReactNode }) => (
 
 export default memo(function RaffleOnchainHero({
     raffleData,
-    contractAddress,
-    raffleId,
     showAsListCard = false,
     listCardInfo,
 }: RaffleOnchainHeroProps) {
     const [isHovered, setIsHovered] = useState(false);
-    const handleCopyAddress = useCallback(() => {
-        const fullAddress = `${contractAddress}`;
-        window.open(`https://beratrail.io/address/${fullAddress}`, "_blank");
-    }, [contractAddress]);
 
     const { dateLabel, dateValue, drawDateValue } = useMemo(() => {
         if (!listCardInfo)
@@ -309,61 +303,6 @@ export default memo(function RaffleOnchainHero({
                                         }
                                     </span>
                                 </div>
-                            </div>
-                        )}
-
-                        {contractAddress && raffleId && !showAsListCard && (
-                            <div className="flex items-center gap-3 mt-2">
-                                <div className="flex items-center gap-2">
-                                    <div className="relative">
-                                        <div className="w-1 h-1 bg-emerald-400 rounded-full animate-pulse"></div>
-                                    </div>
-                                    <span
-                                        className={cn(
-                                            "text-emerald-300/80 text-xs font-medium tracking-wider uppercase",
-                                            getResponsiveClass(10).textClass
-                                        )}
-                                    >
-                                        Contract Address
-                                    </span>
-                                </div>
-
-                                <motion.button
-                                    whileHover={{ scale: 1.02, y: -1 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    onClick={handleCopyAddress}
-                                    className={cn(
-                                        "group relative overflow-hidden",
-                                        "bg-gradient-to-r from-slate-900/60 via-emerald-950/40 to-slate-900/60",
-                                        "border border-emerald-400/30 rounded-lg backdrop-blur-lg",
-                                        "hover:border-emerald-400/60 hover:shadow-emerald-400/20 hover:shadow-lg",
-                                        "transition-all duration-300 cursor-pointer gpu-animate",
-                                        getResponsiveClass(10).paddingClass,
-                                        getResponsiveClass(10).textClass
-                                    )}
-                                >
-                                    {/* Holographic scan line effect */}
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out"></div>
-
-                                    {/* Content */}
-                                    <div className="relative z-10 flex items-center gap-2">
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-emerald-300 font-mono">
-                                                {contractAddress.slice(0, 6)}...
-                                                {contractAddress.slice(-4)}
-                                            </span>
-                                            <span className="text-emerald-400/60">
-                                                /
-                                            </span>
-                                            <span className="text-cyan-300 font-mono font-bold">
-                                                {raffleId}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Border glow effect */}
-                                    <div className="absolute inset-0 rounded-lg border border-emerald-400/20 group-hover:border-emerald-400/40 transition-colors duration-300"></div>
-                                </motion.button>
                             </div>
                         )}
                     </motion.div>

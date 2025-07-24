@@ -865,6 +865,7 @@ export async function getRaffles(
         const where: {
             artistId?: string;
             isPublic?: boolean;
+            isActive?: boolean;
             participants?: {
                 some: { playerId: string };
             };
@@ -883,6 +884,8 @@ export async function getRaffles(
                 some: { playerId: input.playerId },
             };
         }
+
+        where.isActive = true;
 
         const raffles = await prisma.raffle.findMany({
             cacheStrategy: getCacheStrategy("fiveMinutes"),
