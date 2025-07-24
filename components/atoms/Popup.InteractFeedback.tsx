@@ -7,7 +7,7 @@ import React, { useCallback, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import confetti from "canvas-confetti";
 import { AnimatePresence, motion } from "framer-motion";
-import { XIcon } from "lucide-react";
+import { XIcon, ExternalLink, Copy, Check } from "lucide-react";
 
 import { NumberTicker } from "@/components/magicui/number-ticker";
 import { TextAnimate } from "@/components/magicui/text-animate";
@@ -39,6 +39,8 @@ interface PopupInteractFeedbackProps {
     } | null;
     rewardAmount?: number | null;
     spg?: SPG | null;
+    hasTxHash?: boolean;
+    txHash?: string;
 }
 
 export default function PopupInteractFeedback({
@@ -53,9 +55,36 @@ export default function PopupInteractFeedback({
     reward,
     rewardAmount,
     spg,
+    hasTxHash,
+    txHash,
 }: PopupInteractFeedbackProps) {
     const { pushModal, popModal, setInteracting } = useModalStack();
     const popupId = "interact-feedback-popup";
+    const [copied, setCopied] = React.useState(false);
+
+    // 베라체인 블록 익스플로러 URL 생성
+    const getBeratrailUrl = (hash: string) => {
+        return `https://beratrail.io/tx/${hash}`;
+    };
+
+    // 트랜잭션 해시 복사
+    const handleCopyTxHash = async () => {
+        if (txHash) {
+            try {
+                await navigator.clipboard.writeText(txHash);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            } catch (error) {
+                console.error("Failed to copy transaction hash:", error);
+            }
+        }
+    };
+
+    // 트랜잭션 해시를 축약된 형태로 표시
+    const formatTxHash = (hash: string) => {
+        if (hash.length <= 12) return hash;
+        return `${hash.slice(0, 6)}...${hash.slice(-6)}`;
+    };
 
     const handleConfetti = useCallback(() => {
         const defaults = {
@@ -352,6 +381,72 @@ export default function PopupInteractFeedback({
                                                 </span>
                                             )}
                                         </div>
+                                    </div>
+                                </div>
+                            )}
+                            {hasTxHash && txHash && (
+                                <div className="flex flex-col items-center w-full">
+                                    <div className="h-[1px] w-full bg-white/10 my-3" />
+                                    <div className="flex flex-col items-center gap-3 w-full max-w-[400px]">
+                                        <span
+                                            className={cn(
+                                                "text-sm text-[rgba(255,255,255,0.7)] font-medium",
+                                                getResponsiveClass(20).textClass
+                                            )}
+                                        >
+                                            Transaction Hash
+                                        </span>
+                                        <div className="flex items-center gap-2 w-full">
+                                            <div
+                                                className={cn(
+                                                    "flex-1 px-3 py-2 rounded-lg",
+                                                    "bg-white/5 border border-white/20",
+                                                    "text-sm font-mono text-[rgba(255,255,255,0.9)]",
+                                                    "break-all"
+                                                )}
+                                            >
+                                                {formatTxHash(txHash)}
+                                            </div>
+                                            <button
+                                                onClick={handleCopyTxHash}
+                                                className={cn(
+                                                    "p-2 rounded-lg transition-all duration-200",
+                                                    "bg-white/10 border border-white/20",
+                                                    "hover:bg-white/20 hover:border-white/30",
+                                                    "active:scale-95"
+                                                )}
+                                                title="Copy transaction hash"
+                                            >
+                                                {copied ? (
+                                                    <Check className="w-4 h-4 text-green-400" />
+                                                ) : (
+                                                    <Copy className="w-4 h-4 text-white" />
+                                                )}
+                                            </button>
+                                            <a
+                                                href={getBeratrailUrl(txHash)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={cn(
+                                                    "p-2 rounded-lg transition-all duration-200",
+                                                    "bg-white/10 border border-white/20",
+                                                    "hover:bg-white/20 hover:border-white/30",
+                                                    "active:scale-95"
+                                                )}
+                                                title="View on Explorer"
+                                            >
+                                                <ExternalLink className="w-4 h-4 text-white" />
+                                            </a>
+                                        </div>
+                                        <span
+                                            className={cn(
+                                                "text-xs text-[rgba(255,255,255,0.5)] text-center",
+                                                getResponsiveClass(15).textClass
+                                            )}
+                                        >
+                                            Click the link icon to view on
+                                            Beratrail
+                                        </span>
                                     </div>
                                 </div>
                             )}

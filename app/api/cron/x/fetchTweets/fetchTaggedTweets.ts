@@ -82,6 +82,7 @@ interface ApiRequestLog {
     processingTime: number;
 }
 
+
 export async function fetchTaggedTweets(): Promise<SyncResult> {
     const startTime = Date.now();
     const BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN;
@@ -138,6 +139,9 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
             ? undefined
             : fiveMinutesAgo;
 
+        let queryParams = null;
+        let requestStartTime = null;
+        let response = null;
         do {
             requestCount++;
 
@@ -167,10 +171,10 @@ export async function fetchTaggedTweets(): Promise<SyncResult> {
                 ...(nextToken && { pagination_token: nextToken }),
             };
 
-            const queryParams = new URLSearchParams(requestParams);
-            const requestStartTime = Date.now();
+            queryParams = new URLSearchParams(requestParams);
+            requestStartTime = Date.now();
 
-            const response = await fetch(
+            response = await fetch(
                 `https://api.twitter.com/2/tweets/search/recent?${queryParams}`,
                 {
                     headers: {

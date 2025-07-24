@@ -1410,10 +1410,7 @@ function PollsListCard({
                     pollDetail?.hasAnswer
                         ? "You've selected the correct answer. Thank you for your participation!"
                         : pollDetail?.isOnchain && uiState.onchainTxHash
-                        ? `Tx Hash: ${uiState.onchainTxHash.slice(
-                              0,
-                              6
-                          )}...${uiState.onchainTxHash.slice(-6)}`
+                        ? "Your vote has been recorded on the blockchain. Transaction details are shown below."
                         : "Your opinion matters to us. Stay tuned for the results!"
                 }
                 type="success"
@@ -1421,6 +1418,8 @@ function PollsListCard({
                 showReward={uiState.rewarded}
                 reward={pollDetail?.participationRewardAsset || null}
                 rewardAmount={pollDetail?.participationRewardAmount || 0}
+                hasTxHash={pollDetail?.isOnchain && !!uiState.onchainTxHash}
+                txHash={uiState.onchainTxHash}
             />
             {pollDetail?.bettingMode && votingState.selection && player && (
                 <PollBettingParticipationModal

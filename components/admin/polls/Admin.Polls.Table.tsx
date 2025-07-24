@@ -13,6 +13,7 @@ import {
     TrendingUp,
 } from "lucide-react";
 import type { Poll } from "@prisma/client";
+import type { PollListData } from "@/app/actions/polls";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -49,7 +50,7 @@ export default function PollsTable({
     onDelete,
     onActiveChange,
 }: PollsTableProps) {
-    const getStatusBadge = (poll: Poll) => {
+    const getStatusBadge = (poll: PollListData | Poll) => {
         const now = new Date();
         const isStarted = poll.startDate <= now;
         const isEnded = poll.endDate <= now;

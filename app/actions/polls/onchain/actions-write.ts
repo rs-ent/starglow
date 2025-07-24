@@ -196,7 +196,6 @@ async function executeWithRetry<T>(
     throw lastError;
 }
 
-
 export interface ParticipatePollInput {
     contractAddressId: string;
     pollId: string;
@@ -205,6 +204,8 @@ export interface ParticipatePollInput {
     isBetting?: boolean;
     bettingAssetId?: string;
     bettingAmount?: number;
+    estimateGas?: boolean;
+    gasSpeedMultiplier?: number; // 1 = normal, 2 = 2x faster, 50 = 50x faster
 }
 
 export interface ParticipatePollResult {
@@ -219,6 +220,11 @@ export interface ParticipatePollResult {
         bettingAssetId: string;
         bettingAmount: number;
         timestamp: number;
+        gasEstimate?: {
+            gasEstimate: string;
+            gasPrice: string;
+            estimatedCost: string;
+        };
     };
     error?: string;
 }
@@ -235,6 +241,8 @@ export async function participatePollOnchain(
             isBetting = false,
             bettingAssetId = "",
             bettingAmount = 0,
+            estimateGas = false,
+            gasSpeedMultiplier = 1,
         } = input;
 
         // 1. Poll 컨트랙트 조회
@@ -289,17 +297,112 @@ export async function participatePollOnchain(
             client: walletClient,
         });
 
+        // 가스비 추정 (선택적 실행으로 성능 최적화)
+        let gasEstimateData:
+            | {
+                  gasEstimate: string;
+                  gasPrice: string;
+                  estimatedCost: string;
+              }
+            | undefined;
+
+        if (estimateGas) {
+            try {
+                const [gasEstimate, gasPrice] = await Promise.all([
+                    publicClient.estimateContractGas({
+                        address: pollContract.address as `0x${string}`,
+                        abi,
+                        functionName: "participatePoll",
+                        args: [
+                            BigInt(pollId),
+                            optionId,
+                            playerWallet as `0x${string}`,
+                            isBetting,
+                            bettingAssetId,
+                            BigInt(bettingAmount),
+                        ],
+                        account: pollContract.deployedBy as `0x${string}`,
+                    }),
+                    publicClient.getGasPrice(),
+                ]);
+
+                const estimatedCost = gasEstimate * gasPrice;
+
+                gasEstimateData = {
+                    gasEstimate: gasEstimate.toString(),
+                    gasPrice: gasPrice.toString(),
+                    estimatedCost: estimatedCost.toString(),
+                };
+            } catch (gasError) {
+                console.warn("Failed to estimate gas:", gasError);
+                console.warn("Will use fallback gas limits");
+            }
+        }
+
+        let baseGasEstimate: bigint;
+
+        if (gasEstimateData?.gasEstimate) {
+            baseGasEstimate = BigInt(gasEstimateData.gasEstimate);
+        } else {
+            // 래플의 1/2 기본값 사용 (성능과 안정성 균형)
+            baseGasEstimate = BigInt(750000); // 래플의 1500000의 1/2
+        }
+
+        // 안전 마진: 추정치의 15% 추가 (기본값 사용 시 마진 줄임)
+        const safetyMargin = gasEstimateData?.gasEstimate
+            ? BigInt(120)
+            : BigInt(110);
+        const gasLimit = (baseGasEstimate * safetyMargin) / BigInt(100);
+
+        // 가스 가격 조정 (속도 최적화)
+        let finalGasPrice: bigint | undefined;
+        if (gasEstimateData?.gasPrice) {
+            const baseGasPrice = BigInt(gasEstimateData.gasPrice);
+            const speedMultiplier = gasSpeedMultiplier || 1;
+            // 가스 가격에 속도 배수 적용 (50배까지 허용)
+            const clampedMultiplier = Math.min(
+                Math.max(speedMultiplier, 1),
+                50
+            );
+            finalGasPrice =
+                (baseGasPrice * BigInt(Math.floor(clampedMultiplier * 100))) /
+                BigInt(100);
+        } else {
+            // 기본 가스 가격 추정 시도
+            try {
+                const currentGasPrice = await publicClient.getGasPrice();
+                const speedMultiplier = gasSpeedMultiplier || 1;
+                const clampedMultiplier = Math.min(
+                    Math.max(speedMultiplier, 1),
+                    50
+                );
+                finalGasPrice =
+                    (currentGasPrice *
+                        BigInt(Math.floor(clampedMultiplier * 100))) /
+                    BigInt(100);
+            } catch (gasPriceError) {
+                console.warn("Failed to get current gas price:", gasPriceError);
+                finalGasPrice = undefined;
+            }
+        }
+
         // 4. 스마트 컨트랙트 호출
         const participateTx = await executeWithRetry(
             async () => {
-                return await (contract.write as any).participatePoll([
-                    BigInt(pollId),
-                    optionId,
-                    playerWallet as `0x${string}`,
-                    isBetting,
-                    bettingAssetId,
-                    BigInt(bettingAmount),
-                ]);
+                return await (contract.write as any).participatePoll(
+                    [
+                        BigInt(pollId),
+                        optionId,
+                        playerWallet as `0x${string}`,
+                        isBetting,
+                        bettingAssetId,
+                        BigInt(bettingAmount),
+                    ],
+                    {
+                        gas: gasLimit,
+                        gasPrice: finalGasPrice,
+                    }
+                );
             },
             "participatePoll transaction",
             {
@@ -440,6 +543,7 @@ export async function participatePollOnchain(
                 bettingAssetId: bettingAssetId,
                 bettingAmount: bettingAmount,
                 timestamp: timestampFromEvent || Math.floor(Date.now() / 1000),
+                gasEstimate: gasEstimateData,
             },
         };
     } catch (error) {

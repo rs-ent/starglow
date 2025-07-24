@@ -58,7 +58,7 @@ export function AdminPollsOnchainDeploy() {
     const [selectedWalletAddress, setSelectedWalletAddress] =
         useState<string>("");
     const [isDeploying, setIsDeploying] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [walletBalances, setWalletBalances] = useState<
         Record<string, string>
     >({});

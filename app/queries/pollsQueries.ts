@@ -15,6 +15,7 @@ import {
     getPollLogs,
     getPlayerPollLogs,
     getArtistAllActivePollCount,
+    getPollsForAdmin,
 } from "../actions/polls";
 import { pollKeys } from "../queryKeys";
 
@@ -54,6 +55,29 @@ export function usePollsQuery({
         queryKey: pollKeys.list(input, pagination),
         queryFn: () =>
             getPolls({
+                input: input || {},
+                pagination: pagination,
+            }),
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 10,
+    });
+}
+
+export function usePollsForAdminQuery({
+    input,
+    pagination,
+}: {
+    input?: GetPollsInput;
+    pagination?: PaginationInput;
+}) {
+    return useQuery<{
+        items: Poll[];
+        totalItems: number;
+        totalPages: number;
+    }>({
+        queryKey: [...pollKeys.list(input, pagination), "admin"],
+        queryFn: () =>
+            getPollsForAdmin({
                 input: input || {},
                 pagination: pagination,
             }),

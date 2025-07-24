@@ -787,6 +787,8 @@ export interface ParticipatePollInput {
     alreadyVotedAmount?: number;
     ipAddress?: string;
     userAgent?: string;
+    estimateGas?: boolean;
+    gasSpeedMultiplier?: number; // 1 = normal, 2 = 2x faster, 50 = 50x faster
 }
 
 export interface ParticipatePollResult {
@@ -797,6 +799,11 @@ export interface ParticipatePollResult {
     onchainTxHash?: string;
     onchainBlockNumber?: number;
     onchainParticipationId?: string;
+    gasEstimate?: {
+        gasEstimate: string;
+        gasPrice: string;
+        estimatedCost: string;
+    };
 }
 
 export async function participatePoll(
@@ -1255,6 +1262,7 @@ export async function participatePoll(
         let onchainTxHash: string | undefined;
         let onchainBlockNumber: number | undefined;
         let onchainParticipationId: string | undefined;
+        let gasEstimate: any = undefined;
 
         if (poll.isOnchain && poll.onchainContractId && poll.onchainPollId) {
             try {
@@ -1266,6 +1274,8 @@ export async function participatePoll(
                     isBetting: poll.bettingMode,
                     bettingAssetId: poll.bettingAssetId || undefined,
                     bettingAmount: amount,
+                    estimateGas: false,
+                    gasSpeedMultiplier: 20,
                 });
 
                 if (!onchainResult.success) {
@@ -1278,6 +1288,7 @@ export async function participatePoll(
                     onchainBlockNumber = onchainResult.data?.blockNumber;
                     onchainParticipationId =
                         onchainResult.data?.participationId;
+                    gasEstimate = onchainResult.data?.gasEstimate;
 
                     console.info(
                         `✅ Onchain participation successful for poll ${poll.id}:`,
@@ -1285,6 +1296,7 @@ export async function participatePoll(
                             txHash: onchainTxHash,
                             blockNumber: onchainBlockNumber,
                             participationId: onchainParticipationId,
+                            gasEstimate: gasEstimate,
                         }
                     );
 
@@ -1337,6 +1349,7 @@ export async function participatePoll(
             onchainTxHash,
             onchainBlockNumber,
             onchainParticipationId,
+            gasEstimate,
         };
     } catch (error) {
         console.error("Error creating poll log:", error);
@@ -2355,6 +2368,20 @@ export interface BettingSettlementPoll {
     optionBetAmounts: any;
     createdAt: Date;
     updatedAt: Date;
+}
+
+export async function getPollsForAdmin(): Promise<Poll[]> {
+    try {
+        const polls = await prisma.poll.findMany({
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+        return polls;
+    } catch (error) {
+        console.error("Error getting polls for admin:", error);
+        return [];
+    }
 }
 
 export async function getBettingSettlementPolls(): Promise<

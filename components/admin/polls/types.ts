@@ -5,6 +5,7 @@ import type {
     CreatePollInput,
     UpdatePollInput,
     PollOption,
+    PollListData,
 } from "@/app/actions/polls";
 
 // Export types for use in other components
@@ -25,7 +26,7 @@ export interface PollFormProps {
     mode: "create" | "edit";
     artists?: any[];
     assets?: any;
-    polls?: Poll[];
+    polls?: Poll[] | PollListData[];
     newPollId?: string;
 }
 

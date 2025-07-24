@@ -2,31 +2,22 @@
 
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
-import { LayoutGrid, List, Plus, RefreshCw, BarChart3 } from "lucide-react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { LayoutGrid, List, Plus, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { Poll } from "@prisma/client";
 
-import { useArtistsGet } from "@/app/hooks/useArtists";
-import { usePollsGet, usePollsSet } from "@/app/hooks/usePolls";
+import { usePollsSet } from "@/app/hooks/usePolls";
 import { useToast } from "@/app/hooks/useToast";
 import { usePollsResultsQuery } from "@/app/queries/pollsQueries";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-    Pagination,
-    PaginationContent,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from "@/components/ui/pagination";
 
 import PollCreateModal from "./Admin.Polls.CreateModal";
-import PollsFilter, { type PollFilterState } from "./Admin.Polls.Filter";
 import PollsTable from "./Admin.Polls.Table";
 import PollsCards from "./Admin.Polls.Cards";
+import { getPollsForAdmin } from "@/app/actions/polls";
 
 interface PollListProps {
     viewType: "table" | "card";
@@ -42,70 +33,29 @@ export default function AdminPollsList({
     const [viewType, setViewType] = useState<"table" | "card">(initialViewType);
     const [editPoll, setEditPoll] = useState<Poll | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [pagination, setPagination] = useState({
-        currentPage: 1,
-        itemsPerPage: 24, // Increased for better card view
-    });
-    const [filter, setFilter] = useState<PollFilterState>({
-        search: "",
-        type: "all",
-        pollMode: "all",
-        activeStatus: "all",
-        artistId: "",
-    });
 
-    // Data fetching
-    const { pollsList, isLoading, error } = usePollsGet({ pagination });
+    const [polls, setPolls] = useState<Poll[]>([]);
+
+    const fetchPolls = useCallback(async () => {
+        const polls = await getPollsForAdmin();
+        setPolls(polls);
+    }, []);
+
+    useEffect(() => {
+        fetchPolls().catch((error) => {
+            console.error("Error!", error);
+        });
+    }, []);
+
     const { updateActivePoll, deletePoll } = usePollsSet();
-    const { artists } = useArtistsGet({});
 
-    const { polls, totalPages, pollIds } = useMemo(() => {
-        return {
-            polls: pollsList?.items || [],
-            totalPages: pollsList?.totalPages || 0,
-            pollIds: pollsList?.items.map((poll) => poll.id) || [],
-        };
-    }, [pollsList]);
-
-    const { data: pollsResults } = usePollsResultsQuery({ pollIds });
+    const { data: pollsResults } = usePollsResultsQuery({
+        pollIds: polls.map((poll) => poll.id),
+    });
     const resultsData = useMemo(
         () => pollsResults?.results || [],
         [pollsResults]
     );
-
-    // Filter logic
-    const filteredPolls = useMemo(() => {
-        return polls.filter((poll) => {
-            // Search filter
-            if (
-                filter.search &&
-                !poll.title.toLowerCase().includes(filter.search.toLowerCase())
-            ) {
-                return false;
-            }
-
-            // Type filter (world/exclusive)
-            if (filter.type === "world" && poll.artistId) return false;
-            if (filter.type === "exclusive" && !poll.artistId) return false;
-
-            // Poll mode filter (regular/betting)
-            if (filter.pollMode === "regular" && poll.bettingMode) return false;
-            if (filter.pollMode === "betting" && !poll.bettingMode)
-                return false;
-
-            // Active status filter
-            if (filter.activeStatus === "active" && !poll.isActive)
-                return false;
-            if (filter.activeStatus === "inactive" && poll.isActive)
-                return false;
-
-            // Artist filter
-            if (filter.artistId && poll.artistId !== filter.artistId)
-                return false;
-
-            return true;
-        });
-    }, [polls, filter]);
 
     // Statistics
     const stats = useMemo(() => {
@@ -180,28 +130,10 @@ export default function AdminPollsList({
         [updateActivePoll, toast]
     );
 
-    const handlePageChange = useCallback((page: number) => {
-        setPagination((prev) => ({ ...prev, currentPage: page }));
-    }, []);
-
-    const handleFilterChange = useCallback((newFilter: PollFilterState) => {
-        setFilter(newFilter);
-        setPagination((prev) => ({ ...prev, currentPage: 1 })); // Reset to first page
-    }, []);
-
     const handleModalClose = useCallback(() => {
         setShowCreateModal(false);
         setEditPoll(null);
     }, []);
-
-    if (error) {
-        return (
-            <div className="text-center py-12">
-                <div className="text-red-400 mb-4">⚠️ 오류 발생</div>
-                <p className="text-slate-400">{error.message}</p>
-            </div>
-        );
-    }
 
     return (
         <div className="space-y-6">
@@ -222,7 +154,7 @@ export default function AdminPollsList({
                     <div className="flex items-center gap-3">
                         <Button
                             variant="outline"
-                            onClick={() => router.refresh()}
+                            onClick={() => fetchPolls()}
                             className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600"
                         >
                             <RefreshCw className="w-4 h-4 mr-2" />
@@ -273,13 +205,6 @@ export default function AdminPollsList({
                 </div>
             </Card>
 
-            {/* Filters */}
-            <PollsFilter
-                filter={filter}
-                onFilterChange={handleFilterChange}
-                artists={artists || []}
-            />
-
             {/* View Toggle and Results Info */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -305,51 +230,20 @@ export default function AdminPollsList({
                     </div>
 
                     <div className="text-sm text-slate-400">
-                        총 {filteredPolls.length}개 폴
-                        {filter.search ||
-                        filter.type !== "all" ||
-                        filter.pollMode !== "all" ||
-                        filter.activeStatus !== "all" ||
-                        filter.artistId
-                            ? ` (${polls.length}개 중 필터링됨)`
-                            : ""}
+                        총 {polls.length}개 폴
                     </div>
                 </div>
-
-                {/* Betting Mode Quick Filter */}
-                <Button
-                    variant="outline"
-                    onClick={() =>
-                        handleFilterChange({
-                            ...filter,
-                            pollMode:
-                                filter.pollMode === "betting"
-                                    ? "all"
-                                    : "betting",
-                        })
-                    }
-                    className={`
-                        ${
-                            filter.pollMode === "betting"
-                                ? "bg-orange-500/20 border-orange-500/50 text-orange-300"
-                                : "bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600"
-                        }
-                    `}
-                >
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    베팅 폴만 보기
-                </Button>
             </div>
 
             {/* Content */}
-            {isLoading ? (
+            {polls.length === 0 ? (
                 <div className="text-center py-12">
                     <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
                     <p className="text-slate-400">폴을 불러오는 중...</p>
                 </div>
             ) : viewType === "table" ? (
                 <PollsTable
-                    polls={filteredPolls}
+                    polls={polls}
                     results={resultsData}
                     onEdit={handleEditPoll}
                     onDelete={handleDeletePoll}
@@ -357,72 +251,12 @@ export default function AdminPollsList({
                 />
             ) : (
                 <PollsCards
-                    polls={filteredPolls}
+                    polls={polls}
                     results={resultsData}
                     onEdit={handleEditPoll}
                     onDelete={handleDeletePoll}
                     onActiveChange={handleActiveChange}
                 />
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex justify-center">
-                    <Pagination>
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious
-                                    onClick={() =>
-                                        handlePageChange(
-                                            pagination.currentPage - 1
-                                        )
-                                    }
-                                    className={
-                                        pagination.currentPage === 1
-                                            ? "pointer-events-none opacity-50"
-                                            : "cursor-pointer"
-                                    }
-                                />
-                            </PaginationItem>
-                            {Array.from(
-                                { length: Math.min(totalPages, 5) },
-                                (_, i) => {
-                                    const page = i + 1;
-                                    return (
-                                        <PaginationItem key={page}>
-                                            <PaginationLink
-                                                isActive={
-                                                    pagination.currentPage ===
-                                                    page
-                                                }
-                                                onClick={() =>
-                                                    handlePageChange(page)
-                                                }
-                                                className="cursor-pointer"
-                                            >
-                                                {page}
-                                            </PaginationLink>
-                                        </PaginationItem>
-                                    );
-                                }
-                            )}
-                            <PaginationItem>
-                                <PaginationNext
-                                    onClick={() =>
-                                        handlePageChange(
-                                            pagination.currentPage + 1
-                                        )
-                                    }
-                                    className={
-                                        pagination.currentPage === totalPages
-                                            ? "pointer-events-none opacity-50"
-                                            : "cursor-pointer"
-                                    }
-                                />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
-                </div>
             )}
 
             {/* Create/Edit Modal */}

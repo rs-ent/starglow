@@ -94,6 +94,7 @@ export async function getArtist(
         if (!input) {
             return null;
         }
+        // null 포인트
 
         if (input.id) {
             return (await prisma.artist.findUnique({
